@@ -2,23 +2,39 @@ package dev.bee.kanjianki.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.R
 import dev.bee.kanjianki.domain.SeedRefreshSnapshot
 import dev.bee.kanjianki.domain.StudyOverviewSnapshot
 import dev.bee.kanjianki.domain.StudyReviewSnapshot
 import dev.bee.kanjianki.domain.StudySessionSnapshot
+import dev.bee.kanjianki.ui.components.BlossomCard
+import dev.bee.kanjianki.ui.components.BlossomTag
+import dev.bee.kanjianki.ui.components.BlossomTagFlow
+import dev.bee.kanjianki.ui.components.BlossomTone
+import dev.bee.kanjianki.ui.components.DetailLine
+import dev.bee.kanjianki.ui.components.EmptyStateCard
+import dev.bee.kanjianki.ui.components.MetricTile
+import dev.bee.kanjianki.ui.components.SectionEyebrow
+import dev.bee.kanjianki.ui.components.StatusBanner
+import dev.bee.kanjianki.ui.components.ghostButtonColors
+import dev.bee.kanjianki.ui.components.primaryButtonColors
+import dev.bee.kanjianki.ui.components.secondaryButtonColors
+import dev.bee.kanjianki.ui.components.warmButtonColors
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StudyScreen(
     overview: StudyOverviewSnapshot?,
@@ -36,96 +52,215 @@ fun StudyScreen(
 ) {
     Column(
         modifier = modifier
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Study Overview", style = MaterialTheme.typography.titleLarge)
-                if (overview == null) {
-                    Text("Loading study overview…")
-                } else {
-                    Text("Due: ${overview.dueCount}  New: ${overview.newCount}  Active: ${overview.activeQueueCount}")
-                    Text("Problem seeds: ${overview.currentProblemSeedCount}")
-                    Text("Next due: ${overview.nextDueAt ?: "none"}")
-                }
-                if (refreshResult != null) {
-                    Text(
-                        "Refresh introduced ${refreshResult.introducedCount}, updated ${refreshResult.updatedCount}, inactivated ${refreshResult.inactivatedCount}.",
-                        style = MaterialTheme.typography.bodySmall,
+        BlossomCard(tone = BlossomTone.VIOLET) {
+            SectionEyebrow("Study lounge")
+            Text(
+                text = "Fast queue overview",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            if (overview == null) {
+                Text(
+                    text = "Loading the local queue…",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    MetricTile(
+                        label = "Due",
+                        value = overview.dueCount.toString(),
+                        tone = BlossomTone.PINK,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MetricTile(
+                        label = "New",
+                        value = overview.newCount.toString(),
+                        tone = BlossomTone.APRICOT,
+                        modifier = Modifier.weight(1f),
                     )
                 }
-                if (!statusMessage.isNullOrBlank()) {
-                    Text(statusMessage, style = MaterialTheme.typography.bodySmall)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    MetricTile(
+                        label = "Active queue",
+                        value = overview.activeQueueCount.toString(),
+                        tone = BlossomTone.MINT,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MetricTile(
+                        label = "Problem seeds",
+                        value = overview.currentProblemSeedCount.toString(),
+                        tone = BlossomTone.ROSE,
+                        supporting = overview.nextDueAt ?: "No due item scheduled yet",
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+        if (!statusMessage.isNullOrBlank()) {
+            StatusBanner(
+                message = statusMessage,
+                tone = BlossomTone.MINT,
+            )
+        }
+
+        if (refreshResult != null) {
+            StatusBanner(
+                message = "Seed refresh introduced ${refreshResult.introducedCount}, updated ${refreshResult.updatedCount}, reactivated ${refreshResult.reactivatedCount}, and inactivated ${refreshResult.inactivatedCount}.",
+                tone = BlossomTone.APRICOT,
+            )
+        }
+
+        BlossomCard(tone = BlossomTone.PINK) {
+            SectionEyebrow("Launch pad")
+            Text(
+                text = "Start the next useful session",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = "Review is the speed run. Mixed keeps you moving. New is only for fresh introductions.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                onClick = onLoadReviewSession,
+                modifier = Modifier.fillMaxWidth(),
+                colors = primaryButtonColors(),
             ) {
-                Text("Study actions", style = MaterialTheme.typography.titleMedium)
-                Button(onClick = onRefreshSeeds, modifier = Modifier.fillMaxWidth()) {
-                    Text("Refresh seeds")
+                Text("Review now")
+            }
+            Button(
+                onClick = onLoadMixedSession,
+                modifier = Modifier.fillMaxWidth(),
+                colors = secondaryButtonColors(),
+            ) {
+                Text("Start a mixed session")
+            }
+            Button(
+                onClick = onLoadNewSession,
+                modifier = Modifier.fillMaxWidth(),
+                colors = warmButtonColors(),
+            ) {
+                Text("Open a new batch")
+            }
+            Button(
+                onClick = onRefreshSeeds,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ghostButtonColors(),
+            ) {
+                Text("Refresh queue seeds")
+            }
+        }
+
+        if (session == null) {
+            EmptyStateCard(
+                title = "No active session yet",
+                body = "Pick one of the launch buttons above and the prompt card will appear here ready for a fast review.",
+                plushieRes = R.drawable.plushie_quick_session,
+            )
+        } else {
+            BlossomCard(tone = BlossomTone.ROSE) {
+                SectionEyebrow("Current prompt")
+                Text(
+                    text = "${session.kanji} · ${session.promptLabel}",
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    BlossomTag(text = session.taskKind, tone = BlossomTone.PINK, selected = true)
+                    BlossomTag(text = session.schedulerPhase, tone = BlossomTone.VIOLET)
+                    BlossomTag(text = session.itemStatus, tone = BlossomTone.MINT)
+                    BlossomTag(text = session.guideLevelLabel, tone = BlossomTone.APRICOT)
+                    BlossomTag(
+                        text = if (session.requiresWriting) "Writing required" else "Recognition ok",
+                        tone = if (session.requiresWriting) BlossomTone.DANGER else BlossomTone.MINT,
+                    )
                 }
-                Button(onClick = onLoadNewSession, modifier = Modifier.fillMaxWidth()) {
-                    Text("Load next new session")
-                }
-                Button(onClick = onLoadMixedSession, modifier = Modifier.fillMaxWidth()) {
-                    Text("Load next mixed session")
-                }
-                Button(onClick = onLoadReviewSession, modifier = Modifier.fillMaxWidth()) {
-                    Text("Load next review session")
-                }
+                DetailLine(label = "Keyword", value = session.keyword)
+                DetailLine(label = "Prompt type", value = session.promptType)
+                DetailLine(
+                    label = "Allowed ratings after failed writing",
+                    value = session.handwritingPolicy.allowedRatingsOnFailure.joinToString().ifBlank { "none" },
+                )
+                DetailSection(
+                    title = "Production context",
+                    values = session.productionContext,
+                    tone = BlossomTone.ROSE,
+                )
+                DetailSection(
+                    title = "Recognition context",
+                    values = session.recognitionContext,
+                    tone = BlossomTone.VIOLET,
+                )
+                DetailSection(
+                    title = "Support words",
+                    values = session.supportWords,
+                    tone = BlossomTone.MINT,
+                )
                 Button(
                     onClick = onSubmitPass,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = session != null,
+                    colors = primaryButtonColors(),
                 ) {
-                    Text("Submit pass review")
+                    Text("Mark pass")
                 }
                 Button(
                     onClick = onSubmitRetry,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = session != null,
+                    colors = ghostButtonColors(),
                 ) {
-                    Text("Submit retry review")
-                }
-            }
-        }
-
-        if (session != null) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Current session", style = MaterialTheme.typography.titleMedium)
-                    Text("${session.kanji}  ${session.promptLabel}")
-                    Text("Prompt: ${session.promptType}  Task: ${session.taskKind}")
-                    Text("Scheduler: ${session.schedulerPhase}")
-                    Text("Requires writing: ${session.requiresWriting}")
-                    Text("Guide: ${session.handwritingPolicy.guideMode} / ${session.handwritingPolicy.guideLevelLabel}")
-                    Text("Allowed ratings on failure: ${session.handwritingPolicy.allowedRatingsOnFailure.joinToString()}")
-                    Text("Keyword: ${session.keyword}")
-                    Text("Context: ${session.productionContext.joinToString()}")
-                    Text("Support words: ${session.supportWords.joinToString()}")
+                    Text("Mark retry")
                 }
             }
         }
 
         if (review != null) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Latest review", style = MaterialTheme.typography.titleMedium)
-                    Text("Outcome: ${review.binaryOutcome}")
-                    Text("Item status: ${review.itemStatus}")
-                    Text("Review count: ${review.reviewCount}")
-                    Text("Guide level: ${review.guideLevelLabel}")
-                    Text("Next due: ${review.dueAt ?: "none"}")
-                    Text("Overview due count: ${review.overviewDueCount}")
+            BlossomCard(tone = BlossomTone.MINT) {
+                SectionEyebrow("Latest review")
+                Text(
+                    text = review.binaryOutcome.replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    BlossomTag(text = review.itemStatus, tone = BlossomTone.MINT, selected = true)
+                    BlossomTag(text = "Review #${review.reviewCount}", tone = BlossomTone.VIOLET)
+                    BlossomTag(text = review.guideLevelLabel, tone = BlossomTone.APRICOT)
+                    BlossomTag(text = "${review.overviewDueCount} still due", tone = BlossomTone.ROSE)
                 }
+                DetailLine(label = "Reviewed at", value = review.reviewedAt)
+                DetailLine(label = "Next due", value = review.dueAt ?: "No due date scheduled")
             }
         }
+    }
+}
+
+@Composable
+private fun DetailSection(
+    title: String,
+    values: List<String>,
+    tone: BlossomTone,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        BlossomTagFlow(values = values, tone = tone)
     }
 }
