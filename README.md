@@ -12,6 +12,27 @@ Kanji Companion Server is a single-user self-hosted Python web app for finding w
 
 The default workflow is the server plus its same-origin web app.
 
+## Features
+
+Server and web app:
+
+- Syncs notes and cards from Anki through AnkiConnect into a local SQLite working copy.
+- Derives problem-kanji dashboard rows from the synced collection instead of forcing a second manual tagging workflow.
+- Serves the API and first-party browser UI from the same FastAPI process and origin.
+- Exposes kanji detail views with readings, meanings, components, example words, and stroke-order assets.
+- Runs a bridge-style kanji SRS with capped introductions, handwriting checks, guide levels, and retirement/reactivation rules.
+- Keeps the collection mirror, derived analysis, and internal study state separate so analysis can be rebuilt without resyncing Anki.
+
+Android app:
+
+- Reads live notes and cards from AnkiDroid's exported content provider when permission is granted.
+- Falls back to the checked-in parity fixture when AnkiDroid is unavailable, so the Android app still boots predictably.
+- Persists local cache, dashboard rows, sync history, and study state in Room.
+- Supports manual sync, periodic WorkManager sync, and on-device settings edits for model/field mapping and polling.
+- Includes dashboard-to-detail drill-down, local study sessions, handwriting policy enforcement, and review progression.
+- Checks GitHub Releases for updates, downloads the latest APK, and can install it through Android's package installer flow.
+- Ships with tag-driven GitHub Actions release CI that builds a signed APK and publishes it with a SHA-256 checksum.
+
 ## CLI
 
 The server exposes three operational commands:
@@ -118,6 +139,20 @@ The Android scaffold's WorkManager layer now respects the cached polling setting
 Signed Android release builds are now supported through gitignored local/Gradle properties for the keystore path, store password, key alias, and key password, so the repo can produce installable `assembleRelease` APKs without committing signing material.
 
 Tag-driven Android release CI now lives in `.github/workflows/android-release.yml`. Pushing `vMAJOR.MINOR.PATCH` builds a signed APK under `android-app/`, derives `versionName` and `versionCode` from the tag, uploads the APK plus its SHA-256 checksum as workflow artifacts, and publishes them to the matching GitHub release. The workflow expects the Android signing keystore and passwords as GitHub Actions secrets.
+
+The release workflow does not mint a debug or unsigned artifact on purpose. If the signing secrets are missing, the job should fail at the signing step instead of silently shipping an unusable APK. Populate these repository secrets before relying on tag pushes for Android releases:
+
+- `KANJI_ANKI_SIGNING_KEYSTORE_BASE64`
+- `KANJI_ANKI_SIGNING_STORE_PASSWORD`
+- `KANJI_ANKI_SIGNING_KEY_ALIAS`
+- `KANJI_ANKI_SIGNING_KEY_PASSWORD`
+
+Typical Android release flow:
+
+1. Update code on the release branch.
+2. Push a tag in `vMAJOR.MINOR.PATCH` form, for example `v0.1.1`.
+3. Let GitHub Actions build `kanji-anki-android-$VERSION.apk` and `kanji-anki-android-$VERSION.apk.sha256`.
+4. Use the published GitHub release as the feed for the in-app updater.
 
 ## Current API surface
 
