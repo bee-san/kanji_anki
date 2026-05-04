@@ -1,4 +1,0 @@
--e .
-playwright>=1.58,<2.0
-pytest>=8.3,<9.0
-pytest-cov>=5.0,<6.0
