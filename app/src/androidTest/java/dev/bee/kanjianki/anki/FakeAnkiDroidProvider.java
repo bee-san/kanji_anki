@@ -15,12 +15,14 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     public static int perNoteCardsQueries;
     public static String activeTags = "";
     public static String suspendedTags = "";
+    public static boolean failSuspendedSearch;
 
     public static void reset() {
         topLevelCardsQueries = 0;
         perNoteCardsQueries = 0;
         activeTags = "";
         suspendedTags = "";
+        failSuspendedSearch = false;
     }
 
     @Override
@@ -43,6 +45,11 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         }
         if ("perNoteCardsQueries".equals(method)) {
             result.putInt("value", perNoteCardsQueries);
+            return result;
+        }
+        if ("failSuspendedSearch".equals(method)) {
+            failSuspendedSearch = true;
+            result.putBoolean("ok", true);
             return result;
         }
         return result;
@@ -97,6 +104,9 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     private Cursor notes(String selection) {
         MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "mid", "flds", "tags"});
         boolean suspendedOnly = selection != null && selection.contains("is:suspended");
+        if (suspendedOnly && failSuspendedSearch) {
+            throw new IllegalArgumentException("queue _id is unknown");
+        }
         if (!suspendedOnly) {
             cursor.addRow(new Object[]{1L, 100L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
         }
