@@ -321,43 +321,44 @@ public final class AnkiDroidGateway implements CollectionGateway {
         Set<Long> suspendedNoteIds = querySuspendedNoteIds(target, settings);
         List<Records.Card> cards = new ArrayList<>();
         for (Long noteId : noteIds) {
-            Cursor cursor = queryPerNoteCards(target, noteId);
-            if (cursor == null) {
-                throw SyncException.retryable("AnkiDroid returned no per-note card cursor.");
-            }
             try {
-                while (cursor.moveToNext()) {
-                    int ord = intValue(cursor, "ord", 0);
-                    boolean suspendedFromSearch = suspendedNoteIds.contains(noteId);
-                    int queue = intValue(cursor, "queue", suspendedFromSearch ? -1 : 0);
-                    boolean suspended = suspendedFromSearch || queue < 0;
-                    cards.add(new Records.Card(
-                            longValue(cursor, "_id", noteId * 1000L + ord),
-                            longValue(cursor, "note_id", noteId),
-                            ord,
-                            value(cursor, "deck_id"),
-                            queue,
-                            intValue(cursor, "type", suspended ? 3 : 0),
-                            intValue(cursor, "due", 0),
-                            intValue(cursor, "interval", 0),
-                            intValue(cursor, "reps", 0),
-                            intValue(cursor, "lapses", 0),
-                            suspended
-                    ));
-                }
-            } finally {
-                cursor.close();
+                cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_WITH_SCHEDULER));
+            } catch (Throwable unsupportedSchedulerColumns) {
+                cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_MINIMAL));
             }
         }
         return cards;
     }
 
-    private Cursor queryPerNoteCards(ProviderTarget target, long noteId) {
-        Uri uri = uriFor(target.authority, "notes", Long.toString(noteId), "cards");
+    private List<Records.Card> queryCardsForNote(ProviderTarget target, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws SyncException {
+        Cursor cursor = resolver.query(uriFor(target.authority, "notes", Long.toString(noteId), "cards"), columns, null, null, null);
+        if (cursor == null) {
+            throw SyncException.retryable("AnkiDroid returned no per-note card cursor.");
+        }
+        List<Records.Card> cards = new ArrayList<>();
         try {
-            return resolver.query(uri, CARD_COLUMNS_WITH_SCHEDULER, null, null, null);
-        } catch (IllegalArgumentException unsupportedSchedulerColumns) {
-            return resolver.query(uri, CARD_COLUMNS_MINIMAL, null, null, null);
+            while (cursor.moveToNext()) {
+                int ord = intValue(cursor, "ord", 0);
+                boolean suspendedFromSearch = suspendedNoteIds.contains(noteId);
+                int queue = intValue(cursor, "queue", suspendedFromSearch ? -1 : 0);
+                boolean suspended = suspendedFromSearch || queue < 0;
+                cards.add(new Records.Card(
+                        longValue(cursor, "_id", noteId * 1000L + ord),
+                        longValue(cursor, "note_id", noteId),
+                        ord,
+                        value(cursor, "deck_id"),
+                        queue,
+                        intValue(cursor, "type", suspended ? 3 : 0),
+                        intValue(cursor, "due", 0),
+                        intValue(cursor, "interval", 0),
+                        intValue(cursor, "reps", 0),
+                        intValue(cursor, "lapses", 0),
+                        suspended
+                ));
+            }
+            return cards;
+        } finally {
+            cursor.close();
         }
     }
 
