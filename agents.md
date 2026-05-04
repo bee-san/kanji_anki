@@ -17,6 +17,7 @@ The study workflow now includes a progressive handwriting check: the server deci
 - Prefer edits in `kanji_leech_dashboard/`, `tests/`, repo docs, and packaging files for server work.
 - Keep `dist/` treated as build output, not as an active product surface.
 - Check `README.md` first if you need the current runtime model, CLI contract, or API surface.
+- `android-app/` is a valid active surface only when the task is explicitly about the Android port, release flow, or mobile UI/runtime behavior.
 
 ## Agent Expectations
 
@@ -27,6 +28,13 @@ The study workflow now includes a progressive handwriting check: the server deci
 - Treat handwriting changes as cross-surface work: keep `study.py`, the API/service layer, and browser tests aligned so the same writing rules are enforced in both client and server paths.
 - Do not reintroduce sorter-specific or add-on packaging steps into the workflow.
 - Avoid changing packaged artifacts or unrelated generated files unless the task specifically requires it.
+
+## Android Notes
+
+- The Android runtime should stay on the live `AnkiDroid + Room` path. The parity oracle is for migration/parity work and contract comparison, not as a production runtime fallback.
+- Verify Android changes with `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:lintDebug --no-daemon` before calling the mobile build ready.
+- The tag-driven Android release flow expects `vMAJOR.MINOR.PATCH`. The GitHub Actions `sdkmanager --licenses` step must not run under `pipefail`, or the expected `yes | sdkmanager --licenses` broken pipe will fail the release.
+- Treat large-phone validation as required for Android UI work. A layout that looks acceptable in code or on a smaller profile can still look bad on an S24 Ultra class device, so do a real emulator/device pass before calling the UI finished.
 
 ## Common Commands
 
