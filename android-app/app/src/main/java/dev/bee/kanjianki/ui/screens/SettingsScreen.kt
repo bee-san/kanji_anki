@@ -2,31 +2,41 @@ package dev.bee.kanjianki.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.data.ankidroid.AnkiDroidStatus
 import dev.bee.kanjianki.data.update.ReleaseCheckResult
 import dev.bee.kanjianki.domain.HealthSnapshot
 import dev.bee.kanjianki.domain.SettingsSnapshot
+import dev.bee.kanjianki.ui.components.BlossomCard
+import dev.bee.kanjianki.ui.components.BlossomTag
+import dev.bee.kanjianki.ui.components.BlossomTone
+import dev.bee.kanjianki.ui.components.DetailLine
+import dev.bee.kanjianki.ui.components.SectionEyebrow
+import dev.bee.kanjianki.ui.components.StatusBanner
+import dev.bee.kanjianki.ui.components.blossomSwitchColors
+import dev.bee.kanjianki.ui.components.blossomTextFieldColors
+import dev.bee.kanjianki.ui.components.ghostButtonColors
+import dev.bee.kanjianki.ui.components.primaryButtonColors
 import kotlin.math.max
 
 @Composable
@@ -57,6 +67,7 @@ fun SettingsScreen(
         ankiDroidStatus?.installed == true &&
             ankiDroidStatus.permissionGranted != true &&
             !ankiDroidStatus.permissionName.isNullOrBlank()
+
     var noteModelsText by rememberSaveable { mutableStateOf("") }
     var expressionFieldText by rememberSaveable { mutableStateOf("") }
     var readingFieldText by rememberSaveable { mutableStateOf("") }
@@ -88,314 +99,349 @@ fun SettingsScreen(
 
     Column(
         modifier = modifier
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Settings", style = MaterialTheme.typography.titleLarge)
-                if (settings == null) {
-                    Text("Loading settings…")
-                } else {
-                    OutlinedTextField(
-                        value = noteModelsText,
-                        onValueChange = { noteModelsText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Note models") },
-                        supportingText = { Text("Comma-separated model names") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
+        BlossomCard(tone = BlossomTone.PINK) {
+            SectionEyebrow("Settings studio")
+            Text(
+                text = "Keep this simple, save once, sync fast",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = "The only fields you should need often are note models, field mapping, and how aggressively background sync should poll.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        BlossomCard(tone = BlossomTone.ROSE) {
+            SectionEyebrow("Collection mapping")
+            SettingsField(
+                value = noteModelsText,
+                onValueChange = { noteModelsText = it },
+                label = "Note models",
+                supporting = "Comma-separated model names",
+                enabled = !settingsBusy,
+            )
+            SettingsField(
+                value = expressionFieldText,
+                onValueChange = { expressionFieldText = it },
+                label = "Expression field",
+                enabled = !settingsBusy,
+            )
+            SettingsField(
+                value = readingFieldText,
+                onValueChange = { readingFieldText = it },
+                label = "Reading field",
+                enabled = !settingsBusy,
+            )
+            SettingsField(
+                value = meaningFieldText,
+                onValueChange = { meaningFieldText = it },
+                label = "Meaning field",
+                enabled = !settingsBusy,
+            )
+        }
+
+        BlossomCard(tone = BlossomTone.VIOLET) {
+            SectionEyebrow("Cadence and thresholds")
+            SettingsField(
+                value = matureDaysText,
+                onValueChange = { matureDaysText = it },
+                label = "Mature days",
+                enabled = !settingsBusy,
+            )
+            SettingsField(
+                value = supportThresholdText,
+                onValueChange = { supportThresholdText = it },
+                label = "Kanji support threshold",
+                enabled = !settingsBusy,
+            )
+            SettingsField(
+                value = jitenCacheTtlText,
+                onValueChange = { jitenCacheTtlText = it },
+                label = "Jiten cache TTL (hours)",
+                enabled = !settingsBusy,
+            )
+            SettingsField(
+                value = requestTimeoutText,
+                onValueChange = { requestTimeoutText = it },
+                label = "Jiten request timeout (seconds)",
+                enabled = !settingsBusy,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Background sync",
+                        style = MaterialTheme.typography.titleMedium,
                     )
-                    OutlinedTextField(
-                        value = expressionFieldText,
-                        onValueChange = { expressionFieldText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Expression field") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
+                    Text(
+                        text = "Android enforces a minimum periodic interval of 15 minutes.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OutlinedTextField(
-                        value = readingFieldText,
-                        onValueChange = { readingFieldText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Reading field") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
-                    )
-                    OutlinedTextField(
-                        value = meaningFieldText,
-                        onValueChange = { meaningFieldText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Meaning field") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
-                    )
-                    OutlinedTextField(
-                        value = matureDaysText,
-                        onValueChange = { matureDaysText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Mature days") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
-                    )
-                    OutlinedTextField(
-                        value = supportThresholdText,
-                        onValueChange = { supportThresholdText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Kanji support threshold") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
-                    )
-                    OutlinedTextField(
-                        value = jitenCacheTtlText,
-                        onValueChange = { jitenCacheTtlText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Jiten cache TTL (hours)") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
-                    )
-                    OutlinedTextField(
-                        value = requestTimeoutText,
-                        onValueChange = { requestTimeoutText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Jiten request timeout (seconds)") },
-                        singleLine = true,
-                        enabled = !settingsBusy,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("Background sync", style = MaterialTheme.typography.bodyLarge)
-                        Switch(
-                            checked = pollingEnabled,
-                            onCheckedChange = { pollingEnabled = it },
-                            enabled = !settingsBusy,
+                }
+                Switch(
+                    checked = pollingEnabled,
+                    onCheckedChange = { pollingEnabled = it },
+                    enabled = !settingsBusy,
+                    colors = blossomSwitchColors(),
+                )
+            }
+            SettingsField(
+                value = pollingIntervalMinutesText,
+                onValueChange = { pollingIntervalMinutesText = it },
+                label = "Polling interval (minutes)",
+                enabled = !settingsBusy,
+            )
+            if (settingsBusy) {
+                CircularProgressIndicator()
+            }
+            localValidationMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                StatusBanner(message = message, tone = BlossomTone.DANGER)
+            }
+            settingsStatusMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                StatusBanner(message = message, tone = BlossomTone.MINT)
+            }
+            Button(
+                onClick = {
+                    val current = settings ?: return@Button
+                    val matureDays = matureDaysText.trim().toIntOrNull()
+                    val supportThreshold = supportThresholdText.trim().toIntOrNull()
+                    val jitenCacheTtlHours = jitenCacheTtlText.trim().toIntOrNull()
+                    val requestTimeoutSeconds = requestTimeoutText.trim().toIntOrNull()
+                    val pollingIntervalMinutes = pollingIntervalMinutesText.trim().toIntOrNull()
+                    val models = noteModelsText.split(",")
+                        .map(String::trim)
+                        .filter(String::isNotBlank)
+
+                    localValidationMessage = when {
+                        expressionFieldText.isBlank() || readingFieldText.isBlank() || meaningFieldText.isBlank() ->
+                            "Field names cannot be blank."
+
+                        matureDays == null || matureDays < 0 ->
+                            "Mature days must be 0 or greater."
+
+                        supportThreshold == null || supportThreshold < 0 ->
+                            "Kanji support threshold must be 0 or greater."
+
+                        jitenCacheTtlHours == null || jitenCacheTtlHours < 0 ->
+                            "Jiten cache TTL must be 0 or greater."
+
+                        requestTimeoutSeconds == null || requestTimeoutSeconds <= 0 ->
+                            "Jiten request timeout must be greater than 0."
+
+                        pollingIntervalMinutes == null || pollingIntervalMinutes <= 0 ->
+                            "Polling interval must be greater than 0 minutes."
+
+                        else -> null
+                    }
+
+                    if (localValidationMessage == null) {
+                        onSaveSettings(
+                            SettingsSnapshot(
+                                ankiConnectUrl = current.ankiConnectUrl,
+                                noteModels = models,
+                                expressionField = expressionFieldText.trim(),
+                                readingField = readingFieldText.trim(),
+                                meaningField = meaningFieldText.trim(),
+                                matureDays = matureDays ?: 0,
+                                kanjiSupportThreshold = supportThreshold ?: 0,
+                                jitenCacheTtlHours = jitenCacheTtlHours ?: 0,
+                                jitenRequestTimeoutSeconds = requestTimeoutSeconds ?: 1,
+                                pollingEnabled = pollingEnabled,
+                                pollingIntervalSeconds = (pollingIntervalMinutes ?: 15) * 60,
+                            ),
                         )
                     }
-                    OutlinedTextField(
-                        value = pollingIntervalMinutesText,
-                        onValueChange = { pollingIntervalMinutesText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Polling interval (minutes)") },
-                        supportingText = {
-                            Text("Android enforces a minimum periodic sync interval of 15 minutes.")
-                        },
-                        singleLine = true,
-                        enabled = !settingsBusy,
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = settings != null && !settingsBusy,
+                colors = primaryButtonColors(),
+            ) {
+                Text("Save and resync")
+            }
+        }
+
+        BlossomCard(tone = BlossomTone.MINT) {
+            SectionEyebrow("Runtime boundary")
+            if (health == null) {
+                Text(
+                    text = "Loading runtime info…",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            } else {
+                DetailLine(label = "Version", value = health.version)
+                DetailLine(label = "Database path", value = health.databasePath)
+                DetailLine(label = "Web app path", value = health.webAppPath)
+                DetailLine(
+                    label = "Source counts",
+                    value = "${health.sourceCounts.noteCount} notes / ${health.sourceCounts.cardCount} cards",
+                )
+                val latestSync = health.latestSync
+                if (latestSync == null) {
+                    DetailLine(label = "Latest sync", value = "none recorded yet")
+                } else {
+                    DetailLine(label = "Latest sync", value = "${latestSync.status} via ${latestSync.source}")
+                    DetailLine(label = "Started", value = latestSync.startedAt)
+                    DetailLine(label = "Finished", value = latestSync.finishedAt ?: "in progress")
+                    DetailLine(
+                        label = "Counts",
+                        value = "${latestSync.noteCount} notes / ${latestSync.cardCount} cards",
                     )
-                    if (settingsBusy) {
-                        CircularProgressIndicator()
-                    }
-                    localValidationMessage?.let { message ->
-                        if (message.isNotBlank()) {
-                            Text(message, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    settingsStatusMessage?.let { message ->
-                        if (message.isNotBlank()) {
-                            Text(message, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    Button(
-                        onClick = {
-                            val matureDays = matureDaysText.trim().toIntOrNull()
-                            val supportThreshold = supportThresholdText.trim().toIntOrNull()
-                            val jitenCacheTtlHours = jitenCacheTtlText.trim().toIntOrNull()
-                            val requestTimeoutSeconds = requestTimeoutText.trim().toIntOrNull()
-                            val pollingIntervalMinutes = pollingIntervalMinutesText.trim().toIntOrNull()
-                            val models = noteModelsText.split(",")
-                                .map(String::trim)
-                                .filter(String::isNotBlank)
-                            when {
-                                expressionFieldText.isBlank() ||
-                                    readingFieldText.isBlank() ||
-                                    meaningFieldText.isBlank() -> {
-                                    localValidationMessage = "Field names cannot be blank."
-                                }
-
-                                matureDays == null || matureDays < 0 -> {
-                                    localValidationMessage = "Mature days must be 0 or greater."
-                                }
-
-                                supportThreshold == null || supportThreshold < 0 -> {
-                                    localValidationMessage =
-                                        "Kanji support threshold must be 0 or greater."
-                                }
-
-                                jitenCacheTtlHours == null || jitenCacheTtlHours < 0 -> {
-                                    localValidationMessage =
-                                        "Jiten cache TTL must be 0 or greater."
-                                }
-
-                                requestTimeoutSeconds == null || requestTimeoutSeconds <= 0 -> {
-                                    localValidationMessage =
-                                        "Jiten request timeout must be greater than 0."
-                                }
-
-                                pollingIntervalMinutes == null || pollingIntervalMinutes <= 0 -> {
-                                    localValidationMessage =
-                                        "Polling interval must be greater than 0 minutes."
-                                }
-
-                                else -> {
-                                    localValidationMessage = null
-                                    onSaveSettings(
-                                        SettingsSnapshot(
-                                            ankiConnectUrl = settings.ankiConnectUrl,
-                                            noteModels = models,
-                                            expressionField = expressionFieldText.trim(),
-                                            readingField = readingFieldText.trim(),
-                                            meaningField = meaningFieldText.trim(),
-                                            matureDays = matureDays,
-                                            kanjiSupportThreshold = supportThreshold,
-                                            jitenCacheTtlHours = jitenCacheTtlHours,
-                                            jitenRequestTimeoutSeconds = requestTimeoutSeconds,
-                                            pollingEnabled = pollingEnabled,
-                                            pollingIntervalSeconds = pollingIntervalMinutes * 60,
-                                        ),
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !settingsBusy,
-                    ) {
-                        Text("Save settings")
+                    latestSync.errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                        StatusBanner(message = message, tone = BlossomTone.DANGER)
                     }
                 }
             }
         }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Runtime boundary", style = MaterialTheme.typography.titleMedium)
-                if (health == null) {
-                    Text("Loading runtime info…")
-                } else {
-                    Text("Version: ${health.version}")
-                    Text("DB path: ${health.databasePath}")
-                    Text("Web app path: ${health.webAppPath}")
-                    Text("Source counts: ${health.sourceCounts.noteCount} notes / ${health.sourceCounts.cardCount} cards")
-                    val latestSync = health.latestSync
-                    if (latestSync == null) {
-                        Text("Latest sync: none recorded yet")
+
+        BlossomCard(tone = BlossomTone.APRICOT) {
+            SectionEyebrow("AnkiDroid live sync")
+            if (ankiDroidStatus == null) {
+                Text(
+                    text = "Loading AnkiDroid provider status…",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            } else {
+                Text(
+                    text = ankiDroidStatus.message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BlossomTag(
+                        text = if (ankiDroidStatus.installed) "Installed" else "Not installed",
+                        tone = if (ankiDroidStatus.installed) BlossomTone.MINT else BlossomTone.DANGER,
+                        selected = true,
+                    )
+                    BlossomTag(
+                        text = if (ankiDroidStatus.permissionGranted) "Permission granted" else "Permission missing",
+                        tone = if (ankiDroidStatus.permissionGranted) BlossomTone.MINT else BlossomTone.APRICOT,
+                    )
+                }
+                DetailLine(
+                    label = "Collection readable",
+                    value = if (ankiDroidStatus.canReadCollection) "yes" else "no",
+                )
+                ankiDroidStatus.packageName?.takeIf { it.isNotBlank() }?.let {
+                    DetailLine(label = "Package", value = it)
+                }
+                ankiDroidStatus.authority?.takeIf { it.isNotBlank() }?.let {
+                    DetailLine(label = "Provider authority", value = it)
+                }
+                ankiDroidStatus.permissionName?.takeIf { it.isNotBlank() }?.let {
+                    DetailLine(label = "Runtime permission", value = it)
+                }
+            }
+            if (ankiDroidBusy) {
+                CircularProgressIndicator()
+            }
+            ankiDroidStatusMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                StatusBanner(message = message, tone = BlossomTone.APRICOT)
+            }
+            Button(
+                onClick = onRefreshAnkiDroidStatus,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !ankiDroidBusy,
+                colors = ghostButtonColors(),
+            ) {
+                Text("Refresh AnkiDroid status")
+            }
+            OutlinedButton(
+                onClick = onRequestAnkiDroidPermission,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !ankiDroidBusy && canRequestAnkiDroidPermission,
+            ) {
+                Text(
+                    if (canRequestAnkiDroidPermission) {
+                        "Grant AnkiDroid permission"
+                    } else if (ankiDroidStatus?.installed != true) {
+                        "Install AnkiDroid first"
                     } else {
-                        Text("Latest sync: ${latestSync.status} via ${latestSync.source}")
-                        Text("Started: ${latestSync.startedAt}")
-                        Text("Finished: ${latestSync.finishedAt ?: "in progress"}")
-                        Text("Counts: ${latestSync.noteCount} notes / ${latestSync.cardCount} cards")
-                        if (!latestSync.errorMessage.isNullOrBlank()) {
-                            Text("Error: ${latestSync.errorMessage}", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
+                        "Permission already satisfied"
+                    },
+                )
             }
         }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("AnkiDroid live sync", style = MaterialTheme.typography.titleMedium)
-                if (ankiDroidStatus == null) {
-                    Text("Loading AnkiDroid provider status…")
-                } else {
-                    Text(ankiDroidStatus.message)
-                    Text("Installed: ${if (ankiDroidStatus.installed) "yes" else "no"}")
-                    Text("Permission granted: ${if (ankiDroidStatus.permissionGranted) "yes" else "no"}")
-                    Text("Live collection readable: ${if (ankiDroidStatus.canReadCollection) "yes" else "no"}")
-                    if (!ankiDroidStatus.packageName.isNullOrBlank()) {
-                        Text("Package: ${ankiDroidStatus.packageName}")
-                    }
-                    if (!ankiDroidStatus.authority.isNullOrBlank()) {
-                        Text("Provider authority: ${ankiDroidStatus.authority}")
-                    }
-                    if (!ankiDroidStatus.permissionName.isNullOrBlank()) {
-                        Text("Runtime permission: ${ankiDroidStatus.permissionName}")
-                    }
-                }
-                if (ankiDroidBusy) {
-                    CircularProgressIndicator()
-                }
-                ankiDroidStatusMessage?.let { message ->
-                    if (message.isNotBlank()) {
-                        Text(message, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Button(
-                    onClick = onRefreshAnkiDroidStatus,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !ankiDroidBusy,
-                ) {
-                    Text("Refresh AnkiDroid status")
-                }
-                OutlinedButton(
-                    onClick = onRequestAnkiDroidPermission,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !ankiDroidBusy && canRequestAnkiDroidPermission,
-                ) {
-                    Text(
-                        if (canRequestAnkiDroidPermission) {
-                            "Grant AnkiDroid permission"
-                        } else if (ankiDroidStatus?.installed != true) {
-                            "Install AnkiDroid to enable live sync"
-                        } else {
-                            "AnkiDroid permission already satisfied"
-                        },
-                    )
+
+        BlossomCard(tone = BlossomTone.ROSE) {
+            SectionEyebrow("App updates")
+            currentAppVersion?.let {
+                DetailLine(label = "Current version", value = it)
+            }
+            if (releaseBusy) {
+                CircularProgressIndicator()
+            }
+            if (releaseCheck == null) {
+                Text(
+                    text = "No GitHub release check has completed yet.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                DetailLine(label = "Feed", value = "${releaseCheck.releaseOwner}/${releaseCheck.releaseRepo}")
+                DetailLine(label = "Latest tag", value = releaseCheck.latestTag ?: "none")
+                StatusBanner(
+                    message = releaseCheck.statusMessage,
+                    tone = if (releaseCheck.updateAvailable) BlossomTone.MINT else BlossomTone.APRICOT,
+                )
+                releaseCheck.releaseNotes?.takeIf { it.isNotBlank() }?.let {
+                    DetailLine(label = "Release notes preview", value = releaseCheck.releaseNotesPreview)
                 }
             }
-        }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("App updates", style = MaterialTheme.typography.titleMedium)
-                if (currentAppVersion != null) {
-                    Text("Current version: $currentAppVersion")
-                }
-                if (releaseBusy) {
-                    CircularProgressIndicator()
-                }
-                if (releaseCheck == null) {
-                    Text("No GitHub release check has completed yet.")
-                } else {
-                    Text("Feed: ${releaseCheck.releaseOwner}/${releaseCheck.releaseRepo}")
-                    Text("Latest tag: ${releaseCheck.latestTag ?: "none"}")
-                    Text(releaseCheck.statusMessage)
-                    if (!releaseCheck.releaseNotes.isNullOrBlank()) {
-                        Text(releaseCheck.releaseNotesPreview)
-                    }
-                }
-                releaseStatusMessage?.let { message ->
-                    if (message.isNotBlank()) {
-                        Text(message, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Button(
-                    onClick = onCheckForUpdates,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !releaseBusy,
-                ) {
-                    Text("Check GitHub release")
-                }
-                Button(
-                    onClick = onInstallUpdate,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !releaseBusy && canInstallUpdate,
-                ) {
-                    Text(
-                        if (canInstallUpdate) {
-                            "Download and install $installLabel"
-                        } else {
-                            "No update available"
-                        },
-                    )
-                }
-                OutlinedButton(
-                    onClick = onOpenReleasePage,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !releaseBusy && canOpenReleasePage,
-                ) {
-                    Text("Open release page")
-                }
+            releaseStatusMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                StatusBanner(message = message, tone = BlossomTone.ROSE)
+            }
+            Button(
+                onClick = onCheckForUpdates,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !releaseBusy,
+                colors = ghostButtonColors(),
+            ) {
+                Text("Check GitHub release")
+            }
+            Button(
+                onClick = onInstallUpdate,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !releaseBusy && canInstallUpdate,
+                colors = primaryButtonColors(),
+            ) {
+                Text(if (canInstallUpdate) "Download and install $installLabel" else "No update available")
+            }
+            OutlinedButton(
+                onClick = onOpenReleasePage,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !releaseBusy && canOpenReleasePage,
+            ) {
+                Text("Open release page")
             }
         }
     }
+}
+
+@Composable
+private fun SettingsField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    enabled: Boolean,
+    supporting: String? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) },
+        supportingText = supporting?.let { { Text(it) } },
+        singleLine = true,
+        enabled = enabled,
+        colors = blossomTextFieldColors(),
+    )
 }
