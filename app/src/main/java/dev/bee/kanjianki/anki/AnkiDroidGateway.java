@@ -363,13 +363,18 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     private Set<Long> querySuspendedNoteIds(ProviderTarget target, Records.Settings settings) {
         Set<Long> ids = new LinkedHashSet<>();
-        Cursor cursor = resolver.query(
-                uriFor(target.authority, "notes"),
-                new String[]{"_id"},
-                "note:\"" + settings.modelName + "\" is:suspended",
-                null,
-                null
-        );
+        Cursor cursor;
+        try {
+            cursor = resolver.query(
+                    uriFor(target.authority, "notes"),
+                    new String[]{"_id"},
+                    "note:\"" + settings.modelName + "\" is:suspended",
+                    null,
+                    null
+            );
+        } catch (Throwable ignored) {
+            return ids;
+        }
         if (cursor == null) {
             return ids;
         }
@@ -437,10 +442,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     private static final class ProviderTarget {
         private static final List<ProviderTarget> TARGETS = Arrays.asList(
-                new ProviderTarget("com.ichi2.anki.flashcards", "com.ichi2.anki.permission.READ_WRITE_DATABASE"),
                 new ProviderTarget("com.ichi2.anki.api.provider", "com.ichi2.anki.permission.READ_WRITE_DATABASE"),
-                new ProviderTarget("com.ichi2.anki.debug.flashcards", "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE"),
-                new ProviderTarget("com.ichi2.anki.debug.api.provider", "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE")
+                new ProviderTarget("com.ichi2.anki.flashcards", "com.ichi2.anki.permission.READ_WRITE_DATABASE"),
+                new ProviderTarget("com.ichi2.anki.debug.api.provider", "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE"),
+                new ProviderTarget("com.ichi2.anki.debug.flashcards", "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE")
         );
 
         private final String authority;
