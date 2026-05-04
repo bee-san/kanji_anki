@@ -5,7 +5,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.core.content.ContextCompat
-import dev.bee.kanjianki.data.fixture.ParityFixtureParser
+import dev.bee.kanjianki.data.sync.PermanentCollectionSyncException
+import dev.bee.kanjianki.data.sync.TransientCollectionSyncException
 import dev.bee.kanjianki.domain.SettingsSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -91,39 +92,59 @@ class ContentProviderAnkiDroidGateway(
 
     override suspend fun readCollectionSnapshot(settings: SettingsSnapshot): AnkiDroidCollectionSnapshot =
         withContext(Dispatchers.IO) {
-            val target = resolveProviderTarget()
-                ?: error("AnkiDroid's flashcard provider is not installed.")
-            require(hasPermission(target.permissionName)) {
-                "AnkiDroid permission ${target.permissionName} has not been granted."
-            }
-            val deckNames = queryDeckNames(target)
-            val modelMappings = queryModelMappings(target, settings)
-            if (settings.noteModels.isNotEmpty()) {
-                val missingModels = settings.noteModels.filterNot { requested ->
-                    modelMappings.any { it.modelName == requested }
+            try {
+                val target = resolveProviderTarget()
+                    ?: throw PermanentCollectionSyncException(
+                        "AnkiDroid's flashcard provider is not installed.",
+                    )
+                if (!hasPermission(target.permissionName)) {
+                    throw PermanentCollectionSyncException(
+                        "AnkiDroid permission ${target.permissionName} has not been granted.",
+                    )
                 }
-                require(missingModels.isEmpty()) {
-                    "Configured note models were not found in AnkiDroid: ${missingModels.joinToString()}."
+
+                val deckNames = queryDeckNames(target)
+                val modelMappings = queryModelMappings(target, settings)
+                if (settings.noteModels.isNotEmpty()) {
+                    val missingModels = settings.noteModels.filterNot { requested ->
+                        modelMappings.any { it.modelName == requested }
+                    }
+                    if (missingModels.isNotEmpty()) {
+                        throw PermanentCollectionSyncException(
+                            "Configured note models were not found in AnkiDroid: ${missingModels.joinToString()}.",
+                        )
+                    }
                 }
-            }
-            val notes = modelMappings.flatMap { mapping ->
-                queryNotesForModel(
+
+                val notes = modelMappings.flatMap { mapping ->
+                    queryNotesForModel(
+                        target = target,
+                        mapping = mapping,
+                    )
+                }
+                val cards = queryCardsForModels(
                     target = target,
-                    mapping = mapping,
-                )
-            }
-            val cards = notes.flatMap { note ->
-                queryCardsForNote(
-                    target = target,
-                    noteId = note.noteId,
+                    modelNames = modelMappings.map(ModelMapping::modelName),
                     deckNames = deckNames,
                     matureDays = settings.matureDays,
                 )
+                AnkiDroidCollectionSnapshot(
+                    notes = notes,
+                    cards = cards,
+                )
+            } catch (error: PermanentCollectionSyncException) {
+                throw error
+            } catch (error: SecurityException) {
+                throw PermanentCollectionSyncException(
+                    "AnkiDroid denied collection access. Re-grant its runtime permission and sync again.",
+                    error,
+                )
+            } catch (error: Throwable) {
+                throw TransientCollectionSyncException(
+                    "Failed to read the AnkiDroid collection snapshot.",
+                    error,
+                )
             }
-            AnkiDroidCollectionSnapshot(
-                notes = notes,
-                cards = cards,
-            )
         }
 
     private fun queryModelMappings(
@@ -132,7 +153,7 @@ class ContentProviderAnkiDroidGateway(
     ): List<ModelMapping> {
         val requestedModels = settings.noteModels.toSet()
         val rows = mutableListOf<ModelMapping>()
-        resolver.query(
+        val cursor = resolver.query(
             uriFor(target.authority, "models"),
             arrayOf(
                 ModelColumns.ID,
@@ -142,7 +163,10 @@ class ContentProviderAnkiDroidGateway(
             null,
             null,
             null,
-        )?.use { cursor ->
+        ) ?: throw TransientCollectionSyncException(
+            "AnkiDroid returned no cursor for note models.",
+        )
+        cursor.use { cursor ->
             while (cursor.moveToNext()) {
                 val modelName = cursor.getString(cursor.getColumnIndexOrThrow(ModelColumns.NAME))
                 if (requestedModels.isNotEmpty() && modelName !in requestedModels) {
@@ -152,14 +176,20 @@ class ContentProviderAnkiDroidGateway(
                 val expressionIndex = fieldNames.indexOf(settings.expressionField)
                 val readingIndex = fieldNames.indexOf(settings.readingField)
                 val meaningIndex = fieldNames.indexOf(settings.meaningField)
-                require(expressionIndex >= 0) {
-                    "AnkiDroid note model $modelName is missing field ${settings.expressionField}."
+                if (expressionIndex < 0) {
+                    throw PermanentCollectionSyncException(
+                        "AnkiDroid note model $modelName is missing field ${settings.expressionField}.",
+                    )
                 }
-                require(readingIndex >= 0) {
-                    "AnkiDroid note model $modelName is missing field ${settings.readingField}."
+                if (readingIndex < 0) {
+                    throw PermanentCollectionSyncException(
+                        "AnkiDroid note model $modelName is missing field ${settings.readingField}.",
+                    )
                 }
-                require(meaningIndex >= 0) {
-                    "AnkiDroid note model $modelName is missing field ${settings.meaningField}."
+                if (meaningIndex < 0) {
+                    throw PermanentCollectionSyncException(
+                        "AnkiDroid note model $modelName is missing field ${settings.meaningField}.",
+                    )
                 }
                 rows += ModelMapping(
                     modelId = cursor.getLong(cursor.getColumnIndexOrThrow(ModelColumns.ID)),
@@ -172,7 +202,7 @@ class ContentProviderAnkiDroidGateway(
             }
         }
         if (requestedModels.isEmpty() && rows.isEmpty()) {
-            error("AnkiDroid returned no note models to sync.")
+            throw TransientCollectionSyncException("AnkiDroid returned no note models to sync.")
         }
         return rows
     }
@@ -182,7 +212,7 @@ class ContentProviderAnkiDroidGateway(
         mapping: ModelMapping,
     ): List<AnkiDroidNoteSnapshot> {
         val notes = mutableListOf<AnkiDroidNoteSnapshot>()
-        resolver.query(
+        val cursor = resolver.query(
             uriFor(target.authority, "notes_v2"),
             arrayOf(
                 NoteColumns.ID,
@@ -192,7 +222,10 @@ class ContentProviderAnkiDroidGateway(
             "${NoteColumns.MODEL_ID}=${mapping.modelId}",
             null,
             null,
-        )?.use { cursor ->
+        ) ?: throw TransientCollectionSyncException(
+            "AnkiDroid returned no cursor for note model ${mapping.modelName}.",
+        )
+        cursor.use { cursor ->
             while (cursor.moveToNext()) {
                 val fieldValues = splitFields(cursor.getString(cursor.getColumnIndexOrThrow(NoteColumns.FIELDS)))
                 val fieldMap = mapping.fieldNames.mapIndexed { index, fieldName ->
@@ -214,7 +247,7 @@ class ContentProviderAnkiDroidGateway(
 
     private fun queryDeckNames(target: ProviderTarget): Map<Long, String> {
         val rows = linkedMapOf<Long, String>()
-        resolver.query(
+        val cursor = resolver.query(
             uriFor(target.authority, "decks"),
             arrayOf(
                 DeckColumns.ID,
@@ -223,7 +256,10 @@ class ContentProviderAnkiDroidGateway(
             null,
             null,
             null,
-        )?.use { cursor ->
+        ) ?: throw TransientCollectionSyncException(
+            "AnkiDroid returned no cursor for deck names.",
+        )
+        cursor.use { cursor ->
             while (cursor.moveToNext()) {
                 rows[cursor.getLong(cursor.getColumnIndexOrThrow(DeckColumns.ID))] =
                     cursor.getString(cursor.getColumnIndexOrThrow(DeckColumns.NAME))
@@ -232,15 +268,16 @@ class ContentProviderAnkiDroidGateway(
         return rows
     }
 
-    private fun queryCardsForNote(
+    private fun queryCardsForModels(
         target: ProviderTarget,
-        noteId: Long,
+        modelNames: List<String>,
         deckNames: Map<Long, String>,
         matureDays: Int,
     ): List<AnkiDroidCardSnapshot> {
         val cards = mutableListOf<AnkiDroidCardSnapshot>()
-        resolver.query(
-            uriFor(target.authority, "notes", noteId.toString(), "cards"),
+        val selection = buildModelSearchQuery(modelNames)
+        val cursor = resolver.query(
+            uriFor(target.authority, "cards"),
             arrayOf(
                 CardColumns.ID,
                 CardColumns.NOTE_ID,
@@ -253,10 +290,13 @@ class ContentProviderAnkiDroidGateway(
                 CardColumns.RAW_DUE,
                 CardColumns.INTERVAL,
             ),
+            selection,
             null,
             null,
-            null,
-        )?.use { cursor ->
+        ) ?: throw TransientCollectionSyncException(
+            "AnkiDroid returned no cursor for card rows.",
+        )
+        cursor.use { cursor ->
             while (cursor.moveToNext()) {
                 val deckId = cursor.getLong(cursor.getColumnIndexOrThrow(CardColumns.DECK_ID))
                 val queueValue = cursor.getInt(cursor.getColumnIndexOrThrow(CardColumns.RAW_QUEUE))
@@ -313,6 +353,17 @@ class ContentProviderAnkiDroidGateway(
             .map(String::trim)
             .filter(String::isNotBlank)
 
+    private fun buildModelSearchQuery(modelNames: List<String>): String? {
+        val filters = modelNames
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .map { modelName ->
+                "note:\"${modelName.replace("\"", "\\\"")}\""
+            }
+        return filters.takeIf { it.isNotEmpty() }?.joinToString(" or ")
+    }
+
     private fun uriFor(
         authority: String,
         vararg pathSegments: String,
@@ -324,36 +375,6 @@ class ContentProviderAnkiDroidGateway(
                 pathSegments.forEach(::appendPath)
             }
             .build()
-}
-
-class FixtureAnkiDroidGateway(
-    context: Context,
-) : AnkiDroidGateway {
-    private val parser = ParityFixtureParser.fromAsset(context)
-
-    override suspend fun getStatus(): AnkiDroidStatus =
-        AnkiDroidStatus(
-            installed = true,
-            permissionGranted = true,
-            canReadCollection = true,
-            message = "Using the exported parity source snapshot as the Android collection fixture.",
-        )
-
-    override suspend fun readCollectionSnapshot(settings: SettingsSnapshot): AnkiDroidCollectionSnapshot =
-        parser.sourceSnapshot(settings)
-}
-
-class UnavailableAnkiDroidGateway : AnkiDroidGateway {
-    override suspend fun getStatus(): AnkiDroidStatus =
-        AnkiDroidStatus(
-            installed = false,
-            permissionGranted = false,
-            canReadCollection = false,
-            message = "AnkiDroid integration is not wired yet in the Android scaffold.",
-        )
-
-    override suspend fun readCollectionSnapshot(settings: SettingsSnapshot): AnkiDroidCollectionSnapshot =
-        error("AnkiDroid collection reads are not wired yet in the Android scaffold.")
 }
 
 private data class ProviderTarget(

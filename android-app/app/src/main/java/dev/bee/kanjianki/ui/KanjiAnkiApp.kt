@@ -64,7 +64,7 @@ private enum class AppDestination(
         caption = "triage",
         heroKicker = "Dashboard garden",
         heroTitle = "Kani* Android",
-        heroBody = "Your kanji snapshot, quick-launch study buttons, and the rows that deserve attention first.",
+        heroBody = "Your kanji home: quick study buttons, clear next steps, and the rows that need attention first.",
         tone = BlossomTone.PINK,
         plushieRes = R.drawable.plushie_read_book,
     ),
@@ -91,7 +91,7 @@ private enum class AppDestination(
         caption = "studio",
         heroKicker = "Settings studio",
         heroTitle = "Keep the runtime tidy",
-        heroBody = "Field mapping, sync cadence, live AnkiDroid status, and release updates are grouped into a few sections instead of one giant form.",
+        heroBody = "Deck mapping, sync timing, AnkiDroid access, and app updates are grouped into a few calm sections instead of one giant form.",
         tone = BlossomTone.APRICOT,
         plushieRes = R.drawable.plushie_sleepy,
     ),
@@ -173,9 +173,56 @@ fun KanjiAnkiApp(container: AppContainer) {
         ) {
             scope.launch {
                 destination = AppDestination.STUDY
-                session = container.useCases.createSession(mode)
-                review = null
-                statusMessage = if (session != null) successMessage else emptyMessage
+                runCatching {
+                    container.useCases.createSession(mode)
+                }.onSuccess { loadedSession ->
+                    session = loadedSession
+                    review = null
+                    statusMessage = if (loadedSession != null) successMessage else emptyMessage
+                }.onFailure { error ->
+                    statusMessage = error.message ?: "Couldn't start a study session."
+                }
+            }
+        }
+
+        fun launchBestSession() {
+            scope.launch {
+                destination = AppDestination.STUDY
+                val sessionOptions = listOf(
+                    Triple(
+                        SessionMode.REVIEW,
+                        "Loaded your next due review.",
+                        "No due review sessions are waiting.",
+                    ),
+                    Triple(
+                        SessionMode.MIXED,
+                        "Loaded a mixed study session.",
+                        "No due reviews or new introductions are waiting.",
+                    ),
+                    Triple(
+                        SessionMode.NEW,
+                        "Loaded your next new-item batch.",
+                        "No new introductions are currently available.",
+                    ),
+                )
+                runCatching {
+                    sessionOptions.firstNotNullOfOrNull { (mode, successMessage, _) ->
+                        container.useCases.createSession(mode)?.let { loadedSession ->
+                            loadedSession to successMessage
+                        }
+                    }
+                }.onSuccess { loaded ->
+                    review = null
+                    if (loaded != null) {
+                        session = loaded.first
+                        statusMessage = loaded.second
+                    } else {
+                        session = null
+                        statusMessage = "Nothing is due right now. Sync or refresh seeds if you expected more."
+                    }
+                }.onFailure { error ->
+                    statusMessage = error.message ?: "Couldn't start a study session."
+                }
             }
         }
 
@@ -185,9 +232,9 @@ fun KanjiAnkiApp(container: AppContainer) {
             scope.launch {
                 ankiDroidBusy = true
                 ankiDroidStatusMessage = if (granted) {
-                    "AnkiDroid permission granted. Refreshing the local cache from the live provider…"
+                    "AnkiDroid permission granted. Refreshing your deck now…"
                 } else {
-                    "AnkiDroid permission was not granted. The app will stay on the fixture fallback."
+                    "AnkiDroid permission was not granted. Live sync is unavailable until you grant it."
                 }
                 refreshAnkiDroidStatus()
                 if (granted) {
@@ -199,7 +246,7 @@ fun KanjiAnkiApp(container: AppContainer) {
                         payload to sourceLabel
                     }.onSuccess { (payload, sourceLabel) ->
                         syncStatusMessage =
-                            "Synced ${payload.sourceCounts.noteCount} notes / ${payload.sourceCounts.cardCount} cards via $sourceLabel."
+                            "Synced ${payload.sourceCounts.noteCount} notes / ${payload.sourceCounts.cardCount} cards from $sourceLabel."
                     }.onFailure { error ->
                         health = runCatching { container.useCases.getHealth() }.getOrNull() ?: health
                         syncStatusMessage = error.message ?: "Sync failed."
@@ -234,7 +281,7 @@ fun KanjiAnkiApp(container: AppContainer) {
                 health = loaded.fifth
             }.onFailure { error ->
                 health = runCatching { container.useCases.getHealth() }.getOrNull()
-                syncStatusMessage = error.message ?: "Failed to load the Android cache."
+                syncStatusMessage = error.message ?: "Couldn't load your saved deck yet."
             }
             releaseBusy = true
             releaseStatusMessage = "Checking GitHub releases on launch…"
@@ -368,14 +415,14 @@ fun KanjiAnkiApp(container: AppContainer) {
                                 val detailKanji = detail?.kanji
                                 scope.launch {
                                     syncBusy = true
-                                    syncStatusMessage = "Syncing the Android collection snapshot into Room…"
+                                    syncStatusMessage = "Pulling your cards from AnkiDroid…"
                                     runCatching {
                                         val payload = container.useCases.sync()
                                         val sourceLabel = refreshAfterSync(payload.dashboard, detailKanji)
                                         payload to sourceLabel
                                     }.onSuccess { (payload, sourceLabel) ->
                                         syncStatusMessage =
-                                            "Synced ${payload.sourceCounts.noteCount} notes / ${payload.sourceCounts.cardCount} cards via $sourceLabel."
+                                            "Synced ${payload.sourceCounts.noteCount} notes / ${payload.sourceCounts.cardCount} cards from $sourceLabel."
                                     }.onFailure { error ->
                                         health = runCatching { container.useCases.getHealth() }.getOrNull() ?: health
                                         refreshAnkiDroidStatus()
@@ -384,30 +431,39 @@ fun KanjiAnkiApp(container: AppContainer) {
                                     syncBusy = false
                                 }
                             },
+                            onStudyNow = {
+                                launchBestSession()
+                            },
                             onOpenDetail = { kanji ->
                                 scope.launch {
-                                    detail = container.useCases.getKanjiDetail(kanji)
-                                    destination = AppDestination.DETAIL
+                                    runCatching {
+                                        container.useCases.getKanjiDetail(kanji)
+                                    }.onSuccess { loadedDetail ->
+                                        detail = loadedDetail
+                                        destination = AppDestination.DETAIL
+                                    }.onFailure { error ->
+                                        statusMessage = error.message ?: "Couldn't open that kanji yet."
+                                    }
                                 }
                             },
                             onStartReviewSession = {
                                 launchSession(
                                     mode = SessionMode.REVIEW,
-                                    successMessage = "Loaded the next due review from the local Room queue.",
+                                    successMessage = "Loaded your next due review.",
                                     emptyMessage = "No due review sessions are waiting.",
                                 )
                             },
                             onStartMixedSession = {
                                 launchSession(
                                     mode = SessionMode.MIXED,
-                                    successMessage = "Loaded the next mixed session from the local Room queue.",
+                                    successMessage = "Loaded a mixed study session.",
                                     emptyMessage = "No due reviews or new introductions are waiting.",
                                 )
                             },
                             onStartNewSession = {
                                 launchSession(
                                     mode = SessionMode.NEW,
-                                    successMessage = "Loaded the next new-item session from the local Room queue.",
+                                    successMessage = "Loaded your next new-item batch.",
                                     emptyMessage = "No new introductions are currently available.",
                                 )
                             },
@@ -439,7 +495,7 @@ fun KanjiAnkiApp(container: AppContainer) {
                                 val permissionName = ankiDroidStatus?.permissionName
                                 if (permissionName.isNullOrBlank()) {
                                     ankiDroidStatusMessage =
-                                        "No AnkiDroid runtime permission is available to request."
+                                        "This build can't open the AnkiDroid permission prompt automatically."
                                 } else {
                                     permissionLauncher.launch(permissionName)
                                 }
@@ -448,7 +504,7 @@ fun KanjiAnkiApp(container: AppContainer) {
                                 val detailKanji = detail?.kanji
                                 scope.launch {
                                     settingsBusy = true
-                                    settingsStatusMessage = "Saving Android settings and refreshing local sync…"
+                                    settingsStatusMessage = "Saving your settings and refreshing the deck…"
                                     val savedSettings = runCatching {
                                         container.useCases.updateSettings(updatedSettings)
                                     }.onFailure { error ->
@@ -464,9 +520,9 @@ fun KanjiAnkiApp(container: AppContainer) {
                                             payload to sourceLabel
                                         }.onSuccess { (payload, sourceLabel) ->
                                             syncStatusMessage =
-                                                "Synced ${payload.sourceCounts.noteCount} notes / ${payload.sourceCounts.cardCount} cards after the settings change via $sourceLabel."
+                                                "Synced ${payload.sourceCounts.noteCount} notes / ${payload.sourceCounts.cardCount} cards after saving settings from $sourceLabel."
                                             settingsStatusMessage =
-                                                "Saved settings and resynced the local Room cache."
+                                                "Saved settings and refreshed your deck."
                                         }.onFailure { error ->
                                             health = runCatching { container.useCases.getHealth() }.getOrNull() ?: health
                                             refreshAnkiDroidStatus()
@@ -547,33 +603,44 @@ fun KanjiAnkiApp(container: AppContainer) {
                             session = session,
                             review = review,
                             statusMessage = statusMessage,
+                            onStudyNow = {
+                                launchBestSession()
+                            },
                             onRefreshSeeds = {
                                 scope.launch {
-                                    refreshResult = container.useCases.refreshSeeds()
-                                    overview = container.useCases.getStudyOverview()
-                                    session = null
-                                    review = null
-                                    statusMessage = "Rebuilt the local study queue from cached dashboard seeds."
+                                    runCatching {
+                                        val refreshed = container.useCases.refreshSeeds()
+                                        val updatedOverview = container.useCases.getStudyOverview()
+                                        refreshed to updatedOverview
+                                    }.onSuccess { (refreshed, updatedOverview) ->
+                                        refreshResult = refreshed
+                                        overview = updatedOverview
+                                        session = null
+                                        review = null
+                                        statusMessage = "Rebuilt your study queue from the latest synced deck."
+                                    }.onFailure { error ->
+                                        statusMessage = error.message ?: "Couldn't rebuild your queue."
+                                    }
                                 }
                             },
                             onLoadNewSession = {
                                 launchSession(
                                     mode = SessionMode.NEW,
-                                    successMessage = "Loaded the next new-item session from the local Room queue.",
+                                    successMessage = "Loaded your next new-item batch.",
                                     emptyMessage = "No new introductions are currently available.",
                                 )
                             },
                             onLoadMixedSession = {
                                 launchSession(
                                     mode = SessionMode.MIXED,
-                                    successMessage = "Loaded the next mixed session from the local Room queue.",
+                                    successMessage = "Loaded a mixed study session.",
                                     emptyMessage = "No due reviews or new introductions are waiting.",
                                 )
                             },
                             onLoadReviewSession = {
                                 launchSession(
                                     mode = SessionMode.REVIEW,
-                                    successMessage = "Loaded the next due review from the local Room queue.",
+                                    successMessage = "Loaded your next due review.",
                                     emptyMessage = "No due review sessions are waiting.",
                                 )
                             },
@@ -581,25 +648,32 @@ fun KanjiAnkiApp(container: AppContainer) {
                                 val activeSession = session
                                 if (activeSession != null) {
                                     scope.launch {
-                                        review = container.useCases.submitReview(
-                                            StudyReviewRequest(
-                                                kanji = activeSession.kanji,
-                                                reviewToken = activeSession.reviewToken,
-                                                promptType = activeSession.promptType,
-                                                rating = "good",
-                                                hintsUsed = 0,
-                                                handwritingResult = HandwritingResult(
-                                                    attempted = true,
-                                                    passed = true,
-                                                    score = 0.95,
-                                                    evaluationMode = "guided",
+                                        runCatching {
+                                            val reviewResult = container.useCases.submitReview(
+                                                StudyReviewRequest(
+                                                    kanji = activeSession.kanji,
+                                                    reviewToken = activeSession.reviewToken,
+                                                    promptType = activeSession.promptType,
+                                                    rating = "good",
+                                                    hintsUsed = 0,
+                                                    handwritingResult = HandwritingResult(
+                                                        attempted = true,
+                                                        passed = true,
+                                                        score = 0.95,
+                                                        evaluationMode = "guided",
+                                                    ),
                                                 ),
-                                            ),
-                                        )
-                                        overview = container.useCases.getStudyOverview()
-                                        session = null
-                                        statusMessage =
-                                            "Recorded a local pass review for ${activeSession.kanji}."
+                                            )
+                                            reviewResult to container.useCases.getStudyOverview()
+                                        }.onSuccess { (reviewResult, updatedOverview) ->
+                                            review = reviewResult
+                                            overview = updatedOverview
+                                            session = null
+                                            statusMessage =
+                                                "Recorded a pass for ${activeSession.kanji}."
+                                        }.onFailure { error ->
+                                            statusMessage = error.message ?: "Couldn't record that review."
+                                        }
                                     }
                                 }
                             },
@@ -631,7 +705,7 @@ fun KanjiAnkiApp(container: AppContainer) {
                                             overview = container.useCases.getStudyOverview()
                                             session = null
                                             statusMessage =
-                                                "Recorded a local retry review for ${activeSession.kanji}."
+                                                "Recorded a retry for ${activeSession.kanji}."
                                         }
                                     }
                                 }
@@ -655,8 +729,8 @@ private data class Quintuple<A, B, C, D, E>(
 
 private fun describeSyncSource(source: String?): String =
     when (source) {
-        "ankidroid-content-provider" -> "the live AnkiDroid content provider"
-        "parity-fixture-fallback", "parity-fixture" -> "the parity fixture fallback"
-        null -> "the Android collection source"
+        "ankidroid-content-provider" -> "AnkiDroid"
+        "parity-fixture-fallback", "parity-fixture" -> "an older fixture import"
+        null -> "your deck"
         else -> source
     }

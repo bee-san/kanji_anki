@@ -5,10 +5,8 @@ import androidx.room.withTransaction
 import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.data.ankidroid.AnkiDroidCollectionSnapshot
 import dev.bee.kanjianki.data.ankidroid.AnkiDroidGateway
-import dev.bee.kanjianki.data.ankidroid.AnkiDroidNoteSnapshot
 import dev.bee.kanjianki.data.ankidroid.ContentProviderAnkiDroidGateway
-import dev.bee.kanjianki.data.fixture.ParityFixtureRepository
-import dev.bee.kanjianki.domain.DashboardRowSnapshot
+import dev.bee.kanjianki.data.sync.PermanentCollectionSyncException
 import dev.bee.kanjianki.domain.DashboardSnapshot
 import dev.bee.kanjianki.domain.HealthSnapshot
 import dev.bee.kanjianki.domain.KanjiCompanionRepository
@@ -37,13 +35,11 @@ private const val SEED_REFRESH_KEY = "seed_refresh_snapshot"
 private const val SESSION_KEY_PREFIX = "study_session:"
 private const val REVIEW_KEY = "study_review:last"
 private const val SYNC_SOURCE_ANKIDROID = "ankidroid-content-provider"
-private const val SYNC_SOURCE_FIXTURE_FALLBACK = "parity-fixture-fallback"
 
 class RoomBackedKanjiCompanionRepository(
     private val context: Context,
     private val database: AppDatabase,
     private val gateway: AnkiDroidGateway = ContentProviderAnkiDroidGateway(context),
-    private val upstream: KanjiCompanionRepository = ParityFixtureRepository(context),
 ) : KanjiCompanionRepository {
     private val cacheLock = Mutex()
 
@@ -75,21 +71,19 @@ class RoomBackedKanjiCompanionRepository(
         cacheLock.withLock {
             runCatching { syncLocked() }
                 .onFailure { error ->
-                    val failureSource = runCatching {
-                        if (gateway.getStatus().canReadCollection) {
-                            SYNC_SOURCE_ANKIDROID
-                        } else {
-                            SYNC_SOURCE_FIXTURE_FALLBACK
-                        }
-                    }.getOrDefault("android-sync")
-                    runCatching { recordSyncFailureLocked(error, source = failureSource) }
+                    runCatching {
+                        recordSyncFailureLocked(
+                            error = error,
+                            source = SYNC_SOURCE_ANKIDROID,
+                        )
+                    }
                 }
                 .getOrThrow()
         }
 
     override suspend fun getDashboard(): DashboardSnapshot =
         cacheLock.withLock {
-            loadDashboardFromCache() ?: syncLocked().dashboard
+            loadDashboardFromCache() ?: emptyDashboardLocked()
         }
 
     override suspend fun getKanjiDetail(kanji: String): KanjiDetailSnapshot =
@@ -105,7 +99,15 @@ class RoomBackedKanjiCompanionRepository(
 
     override suspend fun refreshSeeds(): SeedRefreshSnapshot =
         cacheLock.withLock {
-            reseedStudyFromDashboardLocked().first
+            if (!hasCachedDashboardLocked()) {
+                val refresh = AndroidDefaults.emptySeedRefresh()
+                val overview = AndroidDefaults.emptyOverview()
+                storeJson(SEED_REFRESH_KEY, RoomCacheCodec.encodeSeedRefresh(refresh))
+                storeJson(STUDY_OVERVIEW_KEY, RoomCacheCodec.encodeStudyOverview(overview))
+                refresh
+            } else {
+                reseedStudyFromDashboardLocked().first
+            }
         }
 
     override suspend fun createSession(mode: SessionMode): StudySessionSnapshot? =
@@ -194,7 +196,7 @@ class RoomBackedKanjiCompanionRepository(
         }
 
     private suspend fun bootstrapSettingsLocked(): SettingsSnapshot {
-        val settings = upstream.getSettings()
+        val settings = AndroidDefaults.settings()
         storeJson(SETTINGS_KEY, RoomCacheCodec.encodeSettings(settings))
         return settings
     }
@@ -202,32 +204,25 @@ class RoomBackedKanjiCompanionRepository(
     private suspend fun syncLocked(): SyncSnapshot {
         val settings = ensureSettingsLocked()
         val gatewayStatus = gateway.getStatus()
-        if (gatewayStatus.canReadCollection) {
-            val gatewaySnapshot = gateway.readCollectionSnapshot(settings)
-            val payload = syncFromGatewayLocked(settings, gatewaySnapshot)
-            reseedStudyFromDashboardLocked()
-            return payload
+        if (!gatewayStatus.installed) {
+            throw PermanentCollectionSyncException(
+                "${gatewayStatus.message} Install AnkiDroid before syncing this app.",
+            )
         }
-        val payload = upstream.sync()
-        database.withTransaction {
-            cacheDashboardLocked(payload.dashboard)
-            recordSyncRunLocked(payload.sourceCounts, source = SYNC_SOURCE_FIXTURE_FALLBACK)
+        if (!gatewayStatus.permissionGranted) {
+            throw PermanentCollectionSyncException(
+                "${gatewayStatus.message} Grant the AnkiDroid runtime permission, then sync again.",
+            )
         }
+
+        val gatewaySnapshot = gateway.readCollectionSnapshot(settings)
+        val payload = syncFromGatewayLocked(settings, gatewaySnapshot)
         reseedStudyFromDashboardLocked()
         return payload
     }
 
     private suspend fun ensureSettingsLocked(): SettingsSnapshot =
         loadJson(SETTINGS_KEY)?.let(RoomCacheCodec::decodeSettings) ?: bootstrapSettingsLocked()
-
-    private suspend fun cacheDashboardLocked(snapshot: DashboardSnapshot) {
-        val nowTs = nowTs()
-        val rows = snapshot.rows.mapIndexed { index, row ->
-            val detail = upstream.getKanjiDetail(row.kanji)
-            row.toEntity(detail, index, nowTs)
-        }
-        cacheDashboardLocked(snapshot, rows)
-    }
 
     private suspend fun cacheReviewLogLocked(
         request: StudyReviewRequest,
@@ -297,20 +292,25 @@ class RoomBackedKanjiCompanionRepository(
         loadJson(DASHBOARD_KEY)?.let(RoomCacheCodec::decodeDashboard)
 
     private suspend fun buildStudyOverviewLocked(): StudyOverviewSnapshot {
-        val overview = LocalStudyState.buildOverview(
-            items = database.studyDao().itemsForProfile(DEFAULT_PROFILE),
-            nowTs = nowTs(),
-        )
+        val items = database.studyDao().itemsForProfile(DEFAULT_PROFILE)
+        val overview = if (items.isEmpty()) {
+            AndroidDefaults.emptyOverview()
+        } else {
+            LocalStudyState.buildOverview(
+                items = items,
+                nowTs = nowTs(),
+            )
+        }
         storeJson(STUDY_OVERVIEW_KEY, RoomCacheCodec.encodeStudyOverview(overview))
         return overview
     }
 
     private suspend fun ensureStudyItemsLocked() {
         if (database.studyDao().itemsForProfile(DEFAULT_PROFILE).isEmpty()) {
-            if (database.snapshotDao().dashboardRows().isEmpty() && loadDashboardFromCache() == null) {
-                syncLocked()
-            } else {
+            if (hasCachedDashboardLocked()) {
                 reseedStudyFromDashboardLocked()
+            } else {
+                storeJson(STUDY_OVERVIEW_KEY, RoomCacheCodec.encodeStudyOverview(AndroidDefaults.emptyOverview()))
             }
         }
     }
@@ -321,14 +321,9 @@ class RoomBackedKanjiCompanionRepository(
                 return RoomCacheCodec.decodeKanjiDetail(row.detailJson)
             }
         }
-        val dashboard = loadDashboardFromCache() ?: syncLocked().dashboard
-        val row = dashboard.rows.firstOrNull { it.kanji == kanji }
-            ?: error("No cached dashboard row exists for kanji $kanji.")
-        val detail = upstream.getKanjiDetail(kanji)
-        database.snapshotDao().upsertProblemRows(
-            listOf(row.toEntity(detail, dashboard.rows.indexOf(row), nowTs())),
+        throw IllegalStateException(
+            "No cached detail exists for kanji $kanji. Sync the AnkiDroid collection first.",
         )
-        return detail
     }
 
     private suspend fun syncFromGatewayLocked(
@@ -336,7 +331,10 @@ class RoomBackedKanjiCompanionRepository(
         snapshot: AnkiDroidCollectionSnapshot,
     ): SyncSnapshot {
         val nowTs = nowTs()
-        val detailLookup = loadDetailLookupForSnapshot(snapshot.notes)
+        val detailLookup = CollectionDetailDerivation.derive(
+            settings = settings,
+            notes = snapshot.notes,
+        )
         val derived = LocalDashboardState.derive(
             snapshot = snapshot,
             settings = settings,
@@ -356,9 +354,12 @@ class RoomBackedKanjiCompanionRepository(
 
     private suspend fun reseedStudyFromDashboardLocked(): Pair<SeedRefreshSnapshot, StudyOverviewSnapshot> {
         val dashboardRows = database.snapshotDao().dashboardRows()
-        if (dashboardRows.isEmpty() && loadDashboardFromCache() == null) {
-            syncLocked()
-            return reseedStudyFromDashboardLocked()
+        if (dashboardRows.isEmpty() && !hasCachedDashboardLocked()) {
+            val refresh = AndroidDefaults.emptySeedRefresh()
+            val overview = AndroidDefaults.emptyOverview()
+            storeJson(SEED_REFRESH_KEY, RoomCacheCodec.encodeSeedRefresh(refresh))
+            storeJson(STUDY_OVERVIEW_KEY, RoomCacheCodec.encodeStudyOverview(overview))
+            return refresh to overview
         }
         val result = LocalStudyState.syncProblemSeeds(
             existingItems = database.studyDao().itemsForProfile(DEFAULT_PROFILE),
@@ -392,32 +393,34 @@ class RoomBackedKanjiCompanionRepository(
         }
     }
 
-    private suspend fun loadDetailLookupForSnapshot(
-        notes: List<AnkiDroidNoteSnapshot>,
-    ): Map<String, KanjiDetailSnapshot> =
-        notes
-            .flatMap { extractKanjiChars(it.expression) }
-            .distinct()
-            .associateWith { kanji ->
-                runCatching { upstream.getKanjiDetail(kanji) }.getOrElse {
-                    KanjiDetailSnapshot(
-                        kanji = kanji,
-                        jitenRank = null,
-                        keyword = kanji,
-                        meanings = listOf("fixture"),
-                        onReadings = emptyList(),
-                        kunReadings = emptyList(),
-                        components = emptyList(),
-                        componentHint = "",
-                        strokeCount = 0,
-                        browserSearch = "",
-                        collectionExamples = emptyList(),
-                        suspendedExamples = emptyList(),
-                        activeRecurringExamples = emptyList(),
-                        matureExamples = emptyList(),
-                    )
-                }
+    private suspend fun emptyDashboardLocked(): DashboardSnapshot {
+        val settings = ensureSettingsLocked()
+        val latestSync = database.syncRunDao().latest()
+        val gatewayStatus = runCatching { gateway.getStatus() }.getOrNull()
+        val warnings = buildList {
+            latestSync?.takeIf { it.status == "error" }
+                ?.errorMessage
+                ?.takeIf(String::isNotBlank)
+                ?.let(::add)
+            when {
+                gatewayStatus == null ->
+                    add("No synced collection snapshot yet. Open Settings, verify AnkiDroid, then run Sync collection now.")
+
+                !gatewayStatus.installed ->
+                    add("Install AnkiDroid, then run Sync collection now to populate the dashboard.")
+
+                !gatewayStatus.permissionGranted ->
+                    add("Grant the AnkiDroid runtime permission, then run Sync collection now to populate the dashboard.")
+
+                else ->
+                    add("No synced collection snapshot yet. Run Sync collection now to populate the dashboard.")
             }
+        }
+        return AndroidDefaults.emptyDashboard(settings = settings, warnings = warnings)
+    }
+
+    private suspend fun hasCachedDashboardLocked(): Boolean =
+        database.snapshotDao().dashboardRows().isNotEmpty() || loadDashboardFromCache() != null
 
     private suspend fun loadJson(key: String): String? =
         database.settingsDao().load(key)?.valueJson
@@ -444,36 +447,6 @@ class RoomBackedKanjiCompanionRepository(
             database.snapshotDao().upsertProblemRows(cachedRows)
         }
     }
-
-    private fun DashboardRowSnapshot.toEntity(
-        detail: KanjiDetailSnapshot,
-        sortIndex: Int,
-        nowTs: Long,
-    ): ProblemKanjiSnapshotEntity =
-        ProblemKanjiSnapshotEntity(
-            kanji = kanji,
-            jitenRank = jitenRank,
-            collectionExpressionCount = collectionExpressionCount,
-            suspendedExpressionCount = suspendedExpressionCount,
-            activeRecurringExpressionCount = activeRecurringExpressionCount,
-            matureSupportCount = matureSupportCount,
-            supportDeficit = supportDeficit,
-            isUnknown = isUnknown,
-            browserSearch = browserSearch,
-            detailJson = RoomCacheCodec.encodeKanjiDetail(detail),
-            sortIndex = sortIndex,
-            updatedTs = nowTs,
-        )
-
-    private fun extractKanjiChars(text: String): List<String> =
-        text.asSequence()
-            .map(Char::toString)
-            .filter { value ->
-                value.singleOrNull()?.let { char ->
-                    Character.UnicodeScript.of(char.code) == Character.UnicodeScript.HAN
-                } == true
-            }
-            .toList()
 
     private fun SyncRunEntity.toSnapshot(): LatestSyncSnapshot =
         LatestSyncSnapshot(

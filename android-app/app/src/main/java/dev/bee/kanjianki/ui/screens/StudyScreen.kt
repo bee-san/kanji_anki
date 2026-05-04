@@ -42,6 +42,7 @@ fun StudyScreen(
     session: StudySessionSnapshot?,
     review: StudyReviewSnapshot?,
     statusMessage: String?,
+    onStudyNow: () -> Unit,
     onRefreshSeeds: () -> Unit,
     onLoadNewSession: () -> Unit,
     onLoadMixedSession: () -> Unit,
@@ -64,7 +65,7 @@ fun StudyScreen(
             )
             if (overview == null) {
                 Text(
-                    text = "Loading the local queue…",
+                    text = "Loading your queue…",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -133,33 +134,41 @@ fun StudyScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(
-                onClick = onLoadReviewSession,
+                onClick = onStudyNow,
                 modifier = Modifier.fillMaxWidth(),
                 colors = primaryButtonColors(),
             ) {
-                Text("Review now")
+                Text("Study now")
+            }
+            Button(
+                onClick = onLoadReviewSession,
+                modifier = Modifier.fillMaxWidth(),
+                colors = secondaryButtonColors(),
+            ) {
+                Text("Review only")
             }
             Button(
                 onClick = onLoadMixedSession,
                 modifier = Modifier.fillMaxWidth(),
-                colors = secondaryButtonColors(),
+                colors = warmButtonColors(),
             ) {
                 Text("Start a mixed session")
             }
             Button(
                 onClick = onLoadNewSession,
                 modifier = Modifier.fillMaxWidth(),
-                colors = warmButtonColors(),
+                colors = ghostButtonColors(),
             ) {
                 Text("Open a new batch")
             }
-            Button(
-                onClick = onRefreshSeeds,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ghostButtonColors(),
-            ) {
-                Text("Refresh queue seeds")
-            }
+        }
+
+        Button(
+            onClick = onRefreshSeeds,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ghostButtonColors(),
+        ) {
+            Text("Refresh queue seeds")
         }
 
         if (session == null) {
