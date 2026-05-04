@@ -276,6 +276,9 @@ public final class MainActivity extends Activity {
         copy.setOnClickListener(v -> {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", row.browserSearch));
+            if (v instanceof Button) {
+                ((Button) v).setText(R.string.copied_anki_search);
+            }
             Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
         });
         content.addView(copy);

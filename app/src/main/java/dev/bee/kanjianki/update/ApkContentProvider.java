@@ -43,7 +43,8 @@ public final class ApkContentProvider extends ContentProvider {
         File updatesDir = new File(context.getCacheDir(), "updates");
         try {
             String canonical = file.getCanonicalPath();
-            if (!canonical.startsWith(updatesDir.getCanonicalPath()) || !file.isFile()) {
+            String updatesPath = updatesDir.getCanonicalPath();
+            if ((!canonical.equals(updatesPath) && !canonical.startsWith(updatesPath + File.separator)) || !file.isFile()) {
                 throw new FileNotFoundException("APK not found.");
             }
         } catch (Exception error) {
