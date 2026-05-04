@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.coverage
+htmlcov/
+dist/
+addon/anki_vn_sorter/user_files/
+addon/kanji_leech_dashboard/user_files/
+addon/anki_vn_sorter/meta.json
+.codex
