@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to build and publish, for example v0.1.1"
+        description: "Release tag, for example v0.3.0"
         required: true
         type: string
 
@@ -22,11 +22,6 @@ jobs:
   release-apk:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        shell: bash
-        working-directory: android-app
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -39,13 +34,14 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.1"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Compute release metadata
         id: meta
-        working-directory: .
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             release_tag="${{ inputs.release_tag }}"
@@ -76,17 +72,11 @@ jobs:
 
       - name: Install Android SDK packages
         run: |
-          set +o pipefail
           yes | sdkmanager --licenses >/dev/null
-          set -o pipefail
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;34.0.0"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Decode signing keystore
         id: signing
-        working-directory: .
         env:
           KANJI_ANKI_SIGNING_KEYSTORE_BASE64: ${{ secrets.KANJI_ANKI_SIGNING_KEYSTORE_BASE64 }}
         run: |
@@ -94,6 +84,9 @@ jobs:
           keystore_path="${RUNNER_TEMP}/kanji-anki-release.jks"
           printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
           echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Test and lint
+        run: gradle :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
 
       - name: Assemble signed release APK
         env:
@@ -103,7 +96,7 @@ jobs:
           KANJI_ANKI_SIGNING_STORE_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_STORE_PASSWORD }}
           KANJI_ANKI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
           KANJI_ANKI_SIGNING_KEY_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: gradle :app:assembleRelease --no-daemon
 
       - name: Prepare release assets
         id: assets
@@ -116,7 +109,6 @@ jobs:
 
           apk_path="${RUNNER_TEMP}/${{ steps.meta.outputs.apk_name }}"
           sha_path="${RUNNER_TEMP}/${{ steps.meta.outputs.checksum_name }}"
-
           cp "${source_apk}" "${apk_path}"
           sha256sum "${apk_path}" > "${sha_path}"
 
@@ -134,7 +126,6 @@ jobs:
             ${{ steps.assets.outputs.sha_path }}
 
       - name: Publish GitHub release assets
-        working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -143,9 +134,7 @@ jobs:
           sha_path="${{ steps.assets.outputs.sha_path }}"
 
           if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release upload "${release_tag}" "${apk_path}" "${sha_path}" \
-              --clobber \
-              --repo "${GITHUB_REPOSITORY}"
+            gh release upload "${release_tag}" "${apk_path}" "${sha_path}" --clobber --repo "${GITHUB_REPOSITORY}"
           else
             gh release create "${release_tag}" "${apk_path}" "${sha_path}" \
               --title "${release_tag}" \
