@@ -22,8 +22,8 @@ fun configValue(name: String): String? =
 fun intConfigValue(name: String, defaultValue: Int): Int =
     configValue(name)?.toIntOrNull() ?: defaultValue
 
-val appVersionName = configValue("KANJI_ANKI_VERSION_NAME") ?: "0.3.2"
-val appVersionCode = intConfigValue("KANJI_ANKI_VERSION_CODE", 3002)
+val appVersionName = configValue("KANJI_ANKI_VERSION_NAME") ?: "0.3.3"
+val appVersionCode = intConfigValue("KANJI_ANKI_VERSION_CODE", 3003)
 val releaseOwner = configValue("KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
 val releaseRepo = configValue("KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
 
