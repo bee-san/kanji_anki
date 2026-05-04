@@ -1,0 +1,153 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to build and publish, for example v0.1.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release-apk:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: android-app
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Compute release metadata
+        id: meta
+        working-directory: .
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            release_tag="${{ inputs.release_tag }}"
+          else
+            release_tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${release_tag}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Release tag must match vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          version_name="${major}.${minor}.${patch}"
+          version_code=$((major * 1000000 + minor * 1000 + patch))
+          apk_name="kanji-anki-android-${version_name}.apk"
+          checksum_name="${apk_name}.sha256"
+
+          {
+            echo "release_tag=${release_tag}"
+            echo "version_name=${version_name}"
+            echo "version_code=${version_code}"
+            echo "apk_name=${apk_name}"
+            echo "checksum_name=${checksum_name}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;34.0.0"
+
+      - name: Decode signing keystore
+        id: signing
+        working-directory: .
+        env:
+          KANJI_ANKI_SIGNING_KEYSTORE_BASE64: ${{ secrets.KANJI_ANKI_SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          : "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64:?Missing KANJI_ANKI_SIGNING_KEYSTORE_BASE64 secret}"
+          keystore_path="${RUNNER_TEMP}/kanji-anki-release.jks"
+          printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Assemble signed release APK
+        env:
+          KANJI_ANKI_VERSION_NAME: ${{ steps.meta.outputs.version_name }}
+          KANJI_ANKI_VERSION_CODE: ${{ steps.meta.outputs.version_code }}
+          KANJI_ANKI_SIGNING_STORE_FILE: ${{ steps.signing.outputs.keystore_path }}
+          KANJI_ANKI_SIGNING_STORE_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_STORE_PASSWORD }}
+          KANJI_ANKI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
+          KANJI_ANKI_SIGNING_KEY_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Prepare release assets
+        id: assets
+        run: |
+          source_apk="app/build/outputs/apk/release/app-release.apk"
+          if [[ ! -f "${source_apk}" ]]; then
+            echo "::error::Expected release APK at ${source_apk}"
+            exit 1
+          fi
+
+          apk_path="${RUNNER_TEMP}/${{ steps.meta.outputs.apk_name }}"
+          sha_path="${RUNNER_TEMP}/${{ steps.meta.outputs.checksum_name }}"
+
+          cp "${source_apk}" "${apk_path}"
+          sha256sum "${apk_path}" > "${sha_path}"
+
+          {
+            echo "apk_path=${apk_path}"
+            echo "sha_path=${sha_path}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-${{ steps.meta.outputs.version_name }}
+          path: |
+            ${{ steps.assets.outputs.apk_path }}
+            ${{ steps.assets.outputs.sha_path }}
+
+      - name: Publish GitHub release assets
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_tag="${{ steps.meta.outputs.release_tag }}"
+          apk_path="${{ steps.assets.outputs.apk_path }}"
+          sha_path="${{ steps.assets.outputs.sha_path }}"
+
+          if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${release_tag}" "${apk_path}" "${sha_path}" \
+              --clobber \
+              --repo "${GITHUB_REPOSITORY}"
+          else
+            gh release create "${release_tag}" "${apk_path}" "${sha_path}" \
+              --title "${release_tag}" \
+              --target "${GITHUB_SHA}" \
+              --generate-notes \
+              --repo "${GITHUB_REPOSITORY}"
+          fi
