@@ -75,6 +75,22 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, providerInt("perNoteCardsQueries"));
     }
 
+    @Test
+    public void manualSyncDoesNotBlockWhenAnkiDroidRejectsSuspendedSearch() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "failSuspendedSearch", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.success);
+        assertEquals("success", store.latestSync().status);
+        assertFalse(store.dashboardRows().isEmpty());
+        assertTrue(store.suspendedImports().isEmpty());
+        assertEquals(0, providerInt("topLevelCardsQueries"));
+        assertEquals(2, providerInt("perNoteCardsQueries"));
+    }
+
     private void resetProvider() {
         context.getContentResolver().call(providerUri(), "reset", null, null);
     }
