@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kanji Companion</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-wash" aria-hidden="true"></div>
+  <div class="page-petals" aria-hidden="true"></div>
+  <div class="app-shell">
+    <aside class="sidebar-shell">
+      <div class="panel sidebar-panel">
+        <div class="brand-lockup">
+          <div class="brand-flower">*</div>
+          <div>
+            <p class="brand-name">Kani*</p>
+            <p class="brand-caption">kanji study companion<br>for Anki</p>
+          </div>
+        </div>
+
+        <nav class="main-nav sidebar-nav" aria-label="Primary">
+          <button id="nav-dashboard" class="nav-button" type="button">Home</button>
+          <button id="nav-study" class="nav-button" type="button">Study Queue</button>
+        </nav>
+
+        <section class="sidebar-static-group" aria-label="Watchlist">
+          <p class="sidebar-static-label">Watchlist</p>
+          <ul class="sidebar-watchlist">
+            <li class="sidebar-static-item">Problem kanji pressure</li>
+            <li class="sidebar-static-item">Queue health snapshot</li>
+            <li class="sidebar-static-item">Handwriting guide level</li>
+            <li class="sidebar-static-item">Collection settings</li>
+          </ul>
+        </section>
+
+        <div class="sidebar-plush">
+          <img src="./assets/plushies/read-book.png" alt="" class="plushie plushie-sidebar">
+          <p>Little by little,<br>every kanji.</p>
+        </div>
+      </div>
+    </aside>
+
+    <div class="content-shell">
+      <header class="topbar panel topbar-panel">
+        <div class="brand-block">
+          <p class="eyebrow">Kanji companion</p>
+          <h1>ohayo!</h1>
+          <p class="lede">Let&apos;s grow your kanji superpowers today.</p>
+          <p id="dashboard-copy" class="hero-copy">Loading dashboard...</p>
+          <div class="action-row hero-actions">
+            <button id="refresh-dashboard" class="button button-ghost" type="button">Reload dashboard</button>
+            <button id="sync-collection" class="button button-primary" type="button">Manual sync</button>
+            <button id="refresh-seeds" class="button button-ghost" type="button">Refresh study seeds</button>
+          </div>
+          <p id="health-detail" class="microcopy">Waiting for the health endpoint.</p>
+        </div>
+
+        <div class="header-rail">
+          <div class="top-status-grid">
+            <div id="health-pill" class="health-pill">Checking API health...</div>
+            <div id="status-sync-chip" class="status-pill">Checking sync mode...</div>
+            <div id="status-seeds-chip" class="status-pill">Checking study seeds...</div>
+            <div id="status-source-chip" class="status-pill">Checking rank source...</div>
+          </div>
+          <div class="header-branch" aria-hidden="true"></div>
+        </div>
+      </header>
+
+      <div id="status-banner" class="status-banner is-hidden" role="status" aria-live="polite"></div>
+
+      <main class="main-grid">
+        <section id="view-dashboard" class="view">
+          <div class="dashboard-feature-grid">
+            <article class="panel feature-card feature-card-new">
+              <div class="feature-copy">
+                <p class="section-kicker">New kanji</p>
+                <h2>Introduce weak or problem kanji.</h2>
+                <p class="body-copy">Kick off a guided introduction from the current seed queue.</p>
+                <div class="action-row compact">
+                  <button id="dashboard-start-new" class="button button-primary" type="button">Start new</button>
+                </div>
+              </div>
+              <img src="./assets/plushies/read-book.png" alt="" class="plushie plushie-feature">
+            </article>
+
+            <article class="panel feature-card feature-card-review">
+              <div class="feature-copy">
+                <p class="section-kicker">Reviews</p>
+                <h2>Review and strengthen weak kanji.</h2>
+                <p class="body-copy">Jump straight into review-only reps when you want focused recall.</p>
+                <div class="action-row compact">
+                  <button id="dashboard-start-review" class="button button-secondary" type="button">Start reviews</button>
+                </div>
+              </div>
+              <img src="./assets/plushies/wink.png" alt="" class="plushie plushie-feature plushie-feature-small">
+            </article>
+
+            <article class="panel feature-card feature-card-mixed">
+              <div class="feature-copy">
+                <p class="section-kicker">Quick session</p>
+                <h2>Short mixed practice to keep momentum.</h2>
+                <p class="body-copy">Blend new items and reviews into one lightweight practice pass.</p>
+                <div class="action-row compact">
+                  <button id="dashboard-start-mixed" class="button button-warm" type="button">Start session</button>
+                </div>
+              </div>
+              <img src="./assets/plushies/quick-session.png" alt="" class="plushie plushie-feature">
+            </article>
+          </div>
+
+          <div class="dashboard-body-grid">
+            <article class="panel overview-panel">
+              <div class="panel-head panel-head-roomy">
+                <div>
+                  <p class="section-kicker">Problem kanji overview</p>
+                  <h2>Spot the weakest support before it snowballs.</h2>
+                  <p id="dashboard-average-rank-note" class="body-copy">Loading dashboard metrics...</p>
+                </div>
+                <div class="pill-row">
+                  <span id="dashboard-support-threshold" class="pill" data-tone="accent">Waiting for threshold...</span>
+                </div>
+              </div>
+
+              <div class="metrics-grid blossom-metrics">
+                <article class="metric-card metric-card-rose">
+                  <p class="metric-label">Problem kanji</p>
+                  <strong id="metric-total-kanji" class="metric-value">-</strong>
+                  <p class="metric-note">need more practice</p>
+                </article>
+
+                <article class="metric-card metric-card-lilac">
+                  <p class="metric-label">Suspended expressions</p>
+                  <strong id="metric-suspended" class="metric-value">-</strong>
+                  <p class="metric-note">currently blocking recall</p>
+                </article>
+
+                <article class="metric-card metric-card-apricot">
+                  <p class="metric-label">Average rank</p>
+                  <strong id="metric-average-rank" class="metric-value">-</strong>
+                  <p class="metric-note">lower means more common</p>
+                </article>
+
+                <article class="metric-card metric-card-mint">
+                  <p class="metric-label">Unknown kanji</p>
+                  <strong id="metric-unknown" class="metric-value">-</strong>
+                  <p class="metric-note">still missing reliable support</p>
+                </article>
+              </div>
+
+              <div id="dashboard-warnings" class="warning-stack"></div>
+
+              <div class="overview-table-lede">
+                <p class="body-copy">Tap any kanji to open detail, stroke order, and collection pressure examples.</p>
+              </div>
+
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Kanji</th>
+                      <th>Rank</th>
+                      <th>Suspended</th>
+                      <th>Bridge</th>
+                      <th>Mature</th>
+                      <th>Deficit</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-tbody"></tbody>
+                </table>
+              </div>
+
+              <div id="dashboard-empty" class="empty-state is-hidden">
+                <h4>No kanji in scope</h4>
+                <p>The dashboard is empty right now, or the API returned no rows.</p>
+              </div>
+            </article>
+
+            <div class="dashboard-side-stack">
+              <article class="panel queue-panel">
+                <div class="panel-head">
+                  <div>
+                    <p class="section-kicker">Study queue</p>
+                    <h3>Warm up the next sessions</h3>
+                  </div>
+                  <button id="dashboard-open-study" class="button button-ghost" type="button">Open study</button>
+                </div>
+
+                <div class="mini-metrics-grid">
+                  <article class="mini-metric">
+                    <p>Due now</p>
+                    <strong id="dashboard-study-due">-</strong>
+                  </article>
+                  <article class="mini-metric">
+                    <p>New seeds</p>
+                    <strong id="dashboard-study-new">-</strong>
+                  </article>
+                  <article class="mini-metric">
+                    <p>Active queue</p>
+                    <strong id="dashboard-study-active">-</strong>
+                  </article>
+                  <article class="mini-metric">
+                    <p>Target</p>
+                    <strong id="dashboard-study-target">-</strong>
+                  </article>
+                </div>
+
+                <p id="dashboard-study-next" class="body-copy">Loading study overview...</p>
+                <div id="dashboard-study-preview" class="queue-preview compact-preview"></div>
+                <div id="dashboard-study-empty" class="empty-state is-hidden">
+                  <h4>No queue items</h4>
+                  <p>Refresh study seeds to repopulate the current study queue.</p>
+                </div>
+              </article>
+
+              <article class="panel snapshot-panel">
+                <div class="panel-head">
+                  <div>
+                    <p class="section-kicker">Today&apos;s snapshot</p>
+                    <h3>Current study pulse</h3>
+                  </div>
+                </div>
+
+                <div class="snapshot-inner">
+                  <div class="snapshot-copy">
+                    <p id="dashboard-snapshot-seeds" class="snapshot-number">-</p>
+                    <p class="snapshot-label">problem-child seeds ready</p>
+                    <p id="dashboard-snapshot-next" class="body-copy">Waiting for next due review...</p>
+
+                    <div class="definition-grid compact-definitions">
+                      <div class="definition-row">
+                        <span class="definition-key">Retention target</span>
+                        <span id="dashboard-snapshot-target" class="definition-value">-</span>
+                      </div>
+                      <div class="definition-row">
+                        <span class="definition-key">Active queue</span>
+                        <span id="dashboard-snapshot-active" class="definition-value">-</span>
+                      </div>
+                      <div class="definition-row">
+                        <span class="definition-key">Due now</span>
+                        <span id="dashboard-snapshot-due" class="definition-value">-</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <img src="./assets/plushies/cheer.png" alt="" class="plushie plushie-cheer">
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <article class="panel settings-panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-kicker">Settings studio</p>
+                <h3>Collection connection</h3>
+              </div>
+              <div class="action-row compact">
+                <button id="reload-settings" class="button button-ghost" type="button">Reload</button>
+                <button id="save-settings" class="button button-primary" type="button">Save</button>
+              </div>
+            </div>
+
+            <p id="settings-state" class="microcopy">Edit the common settings directly here. The JSON preview mirrors what will be sent to <code>PUT /api/settings</code>.</p>
+
+            <form id="settings-form" class="settings-form">
+              <div class="form-grid">
+                <label class="field span-2">
+                  <span>AnkiConnect base URL</span>
+                  <input id="setting-ankiconnect-url" type="url" autocomplete="off" placeholder="http://127.0.0.1:8765">
+                </label>
+                <label class="field span-2">
+                  <span>Note models</span>
+                  <textarea id="setting-note-models" rows="3" spellcheck="false" placeholder="Kiku&#10;Core"></textarea>
+                  <small>Comma or newline separated note type names.</small>
+                </label>
+                <label class="field">
+                  <span>Expression field</span>
+                  <input id="setting-expression-field" type="text" autocomplete="off" placeholder="Expression">
+                </label>
+                <label class="field">
+                  <span>Reading field</span>
+                  <input id="setting-reading-field" type="text" autocomplete="off" placeholder="Reading">
+                </label>
+                <label class="field">
+                  <span>Meaning field</span>
+                  <input id="setting-meaning-field" type="text" autocomplete="off" placeholder="Meaning">
+                </label>
+                <label class="field">
+                  <span>Mature days</span>
+                  <input id="setting-mature-days" type="number" min="1" step="1" inputmode="numeric" placeholder="21">
+                </label>
+                <label class="field">
+                  <span>Kanji support threshold</span>
+                  <input id="setting-support-threshold" type="number" min="1" step="1" inputmode="numeric" placeholder="3">
+                </label>
+              </div>
+
+              <details class="settings-advanced">
+                <summary>Advanced sync and cache settings</summary>
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Polling</span>
+                    <select id="setting-polling-enabled">
+                      <option value="false">Disabled</option>
+                      <option value="true">Enabled</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Polling interval (seconds)</span>
+                    <input id="setting-polling-interval-seconds" type="number" min="1" step="1" inputmode="numeric" placeholder="900">
+                  </label>
+                  <label class="field">
+                    <span>Jiten cache TTL (hours)</span>
+                    <input id="setting-jiten-cache-ttl-hours" type="number" min="1" step="1" inputmode="numeric" placeholder="24">
+                  </label>
+                  <label class="field">
+                    <span>Jiten request timeout (seconds)</span>
+                    <input id="setting-jiten-timeout-seconds" type="number" min="1" step="1" inputmode="numeric" placeholder="10">
+                  </label>
+                </div>
+              </details>
+
+              <details class="settings-advanced">
+                <summary>Generated JSON preview</summary>
+                <textarea id="settings-editor" class="settings-editor" spellcheck="false" aria-label="Settings JSON preview" readonly>{}</textarea>
+              </details>
+            </form>
+          </article>
+
+          <article class="panel quote-banner">
+            <div class="quote-scene" aria-hidden="true"></div>
+            <img src="./assets/plushies/sleepy.png" alt="" class="plushie plushie-banner">
+            <div class="quote-copy">
+              <p class="quote-mark">継続は力なり。</p>
+              <p class="quote-romanji">Keizoku wa chikara nari.</p>
+              <p class="quote-translation">Consistency is power.</p>
+            </div>
+          </article>
+        </section>
+
+        <section id="view-detail" class="view is-hidden">
+          <div class="view-toolbar">
+            <button id="detail-back" class="button button-ghost" type="button">Back to overview</button>
+          </div>
+
+          <div class="detail-hero">
+            <article class="panel detail-lockup">
+              <p class="section-kicker">Kanji detail</p>
+              <div class="kanji-lockup">
+                <div id="detail-kanji" class="kanji-mark">字</div>
+                <div>
+                  <h2 id="detail-headline">Loading kanji detail...</h2>
+                  <p id="detail-subtitle" class="body-copy">Waiting for <code>GET /api/kanji/{kanji}</code>.</p>
+                </div>
+              </div>
+              <div class="detail-metrics">
+                <article class="mini-metric">
+                  <p>Rank</p>
+                  <strong id="detail-rank">-</strong>
+                </article>
+                <article class="mini-metric">
+                  <p>Support deficit</p>
+                  <strong id="detail-deficit">-</strong>
+                </article>
+                <article class="mini-metric">
+                  <p>Suspended expressions</p>
+                  <strong id="detail-suspended">-</strong>
+                </article>
+                <article class="mini-metric">
+                  <p>Mature support</p>
+                  <strong id="detail-mature">-</strong>
+                </article>
+              </div>
+            </article>
+
+            <aside class="panel stroke-panel">
+              <p class="section-kicker">Stroke order</p>
+              <div class="stroke-frame">
+                <img id="detail-stroke-image" class="stroke-image is-hidden" alt="Stroke order diagram">
+                <p id="detail-stroke-note" class="microcopy">Loading stroke order asset...</p>
+              </div>
+              <p id="detail-writing-meta" class="body-copy">Writing metadata will appear here when available.</p>
+            </aside>
+          </div>
+
+          <div class="content-grid detail-grid">
+            <article class="panel">
+              <p class="section-kicker">Meaning and readings</p>
+              <div id="detail-meaning-list" class="token-grid"></div>
+              <div id="detail-reading-list" class="definition-grid"></div>
+            </article>
+
+            <article class="panel">
+              <p class="section-kicker">Structure</p>
+              <div id="detail-structure-list" class="definition-grid"></div>
+            </article>
+
+            <article class="panel">
+              <p class="section-kicker">Collection pressure</p>
+              <p id="detail-browser-search" class="inline-code-block"></p>
+              <div id="detail-collection-list" class="stack-list"></div>
+              <div id="detail-support-list" class="stack-list"></div>
+            </article>
+
+            <article class="panel">
+              <p class="section-kicker">Collection pressure examples</p>
+              <div id="detail-note-list" class="stack-list"></div>
+            </article>
+
+            <article class="panel">
+              <p class="section-kicker">Sources and warnings</p>
+              <div id="detail-source-list" class="stack-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-study" class="view is-hidden">
+          <div class="content-grid study-grid">
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="section-kicker">Study queue</p>
+                  <h2>Queue overview</h2>
+                </div>
+                <div class="action-row compact">
+                  <button id="study-refresh" class="button button-ghost" type="button">Reload queue</button>
+                  <button id="study-refresh-seeds" class="button button-ghost" type="button">Refresh seeds</button>
+                </div>
+              </div>
+
+              <div class="metrics-grid compact-metrics">
+                <article class="metric-card">
+                  <p class="metric-label">Due now</p>
+                  <strong id="study-due" class="metric-value">-</strong>
+                </article>
+                <article class="metric-card">
+                  <p class="metric-label">New seeds</p>
+                  <strong id="study-new" class="metric-value">-</strong>
+                </article>
+                <article class="metric-card">
+                  <p class="metric-label">Active queue</p>
+                  <strong id="study-active" class="metric-value">-</strong>
+                </article>
+                <article class="metric-card">
+                  <p class="metric-label">Retention target</p>
+                  <strong id="study-target" class="metric-value">-</strong>
+                </article>
+              </div>
+
+              <p id="study-next" class="body-copy">Loading study overview...</p>
+
+              <div class="session-launcher">
+                <button id="start-mixed" class="button button-primary" type="button">Start mixed</button>
+                <button id="start-review" class="button button-ghost" type="button">Start review-only</button>
+                <button id="start-new" class="button button-ghost" type="button">Start new-only</button>
+              </div>
+
+              <div id="study-preview" class="queue-preview"></div>
+              <div id="study-empty" class="empty-state is-hidden">
+                <h4>No queue items</h4>
+                <p>The Study API returned an empty queue preview.</p>
+              </div>
+
+              <div id="study-attribution" class="definition-grid attribution-grid"></div>
+            </article>
+
+            <article class="panel session-panel">
+              <div id="study-session-empty" class="empty-state">
+                <h4>No active session</h4>
+                <p>Pick a session mode from the queue panel to start reviewing.</p>
+              </div>
+
+              <div id="study-session-content" class="is-hidden">
+                <div class="panel-head">
+                  <div>
+                    <p id="session-label" class="section-kicker">Study session</p>
+                    <h2 id="session-title">Loading session...</h2>
+                    <p id="session-copy" class="body-copy"></p>
+                  </div>
+                  <div class="action-row compact">
+                    <button id="session-end" class="button button-ghost" type="button">End session</button>
+                  </div>
+                </div>
+
+                <div id="session-badges" class="pill-row"></div>
+
+                <div class="session-layout">
+                  <article class="panel inset-panel">
+                    <p class="section-kicker">Prompt</p>
+                    <div id="session-prompt-kanji" class="prompt-mark">字</div>
+                    <p id="session-prompt-keyword" class="prompt-copy"></p>
+                    <div id="session-context" class="context-strip"></div>
+                    <p id="session-instruction" class="body-copy"></p>
+                    <div class="action-row">
+                      <button id="session-reveal" class="button button-primary" type="button">Reveal answer</button>
+                    </div>
+                  </article>
+
+                  <article id="session-answer-panel" class="panel inset-panel is-hidden">
+                    <p class="section-kicker">Answer bundle</p>
+                    <div id="session-answer-kanji" class="kanji-mark compact-mark">字</div>
+                    <p id="session-answer-summary" class="body-copy"></p>
+                    <div id="session-answer-facts" class="definition-grid"></div>
+                    <div class="stroke-frame small-stroke-frame">
+                      <img id="session-stroke-image" class="stroke-image is-hidden" alt="Study session stroke order diagram">
+                      <p id="session-stroke-note" class="microcopy">Reveal the answer to load the stroke order diagram.</p>
+                    </div>
+                  </article>
+                </div>
+
+                <div id="handwriting-panel" class="panel inset-panel is-hidden">
+                  <div class="panel-head">
+                    <div>
+                      <p class="section-kicker">Handwriting check</p>
+                      <h3>Guided scoring before rating</h3>
+                    </div>
+                  </div>
+                  <p id="handwriting-copy" class="body-copy">Write from memory, then let the client estimate how close the attempt was before you rate recall.</p>
+                  <div id="handwriting-guide" class="guide-callout"></div>
+                  <canvas id="handwriting-canvas" class="handwriting-canvas" width="320" height="320" aria-label="Handwriting practice canvas"></canvas>
+                  <div class="action-row wrap-row">
+                    <button id="canvas-undo" class="button button-ghost" type="button">Undo</button>
+                    <button id="canvas-clear" class="button button-ghost" type="button">Clear</button>
+                    <button id="session-hint" class="button button-ghost" type="button">Toggle stroke hint</button>
+                    <button id="handwriting-evaluate" class="button button-primary" type="button">Evaluate attempt</button>
+                    <button id="handwriting-pass" class="button button-ghost" type="button">Override pass</button>
+                    <button id="handwriting-fail" class="button button-ghost" type="button">Override retry</button>
+                  </div>
+                  <p id="handwriting-status" class="microcopy">No handwriting result recorded yet.</p>
+                  <div id="handwriting-metrics" class="definition-grid handwriting-metrics"></div>
+                  <div id="handwriting-hint-wrap" class="stroke-frame small-stroke-frame is-hidden">
+                    <img id="handwriting-hint-image" class="stroke-image is-hidden" alt="Handwriting hint stroke order diagram">
+                    <p id="handwriting-hint-note" class="microcopy">Stroke order hint will appear here.</p>
+                  </div>
+                </div>
+
+                <article class="panel inset-panel rating-panel">
+                  <p class="section-kicker">Recall rating</p>
+                  <p id="rating-help" class="body-copy">Reveal the answer before submitting a rating.</p>
+                  <div class="rating-grid">
+                    <button class="button rating-button" type="button" data-rating="again">Again</button>
+                    <button class="button rating-button" type="button" data-rating="hard">Hard</button>
+                    <button class="button rating-button" type="button" data-rating="good">Good</button>
+                    <button class="button rating-button" type="button" data-rating="easy">Easy</button>
+                  </div>
+                </article>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
