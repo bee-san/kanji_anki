@@ -2,6 +2,17 @@
 
 This directory is the first Android migration slice for the Kotlin/Compose port described in `plans/android-port-github-backup-plan.md`.
 
+Implemented features:
+
+- Live AnkiDroid note/card sync through the exported `flashcards` content provider when runtime permission is granted.
+- Deterministic parity-fixture fallback so the app can still boot and exercise its flows without AnkiDroid access.
+- Room-backed persistence for settings, source snapshots, problem-kanji dashboard rows, sync runs, study items, and review logs.
+- Compose dashboard, detail, study, and settings screens with manual sync and latest-sync health visibility.
+- Editable on-device settings for note-model filtering, field mapping, study thresholds, and background polling.
+- Local study queue generation, session creation, handwriting policy enforcement, and review progression after bootstrap.
+- GitHub Releases updater support for checking, downloading, and installing newer APK assets from a public feed.
+- Tag-driven GitHub Actions release CI that builds signed APK releases and publishes matching SHA-256 checksum files.
+
 Current scope:
 
 - `parity-fixtures/oracle-v1.json` is the frozen Python oracle for settings, kanji detail content, and exported source notes/cards used by the Android fixture gateway.
@@ -61,6 +72,14 @@ GitHub Actions release CI:
   - `KANJI_ANKI_SIGNING_KEY_ALIAS`
   - `KANJI_ANKI_SIGNING_KEY_PASSWORD`
 - The workflow derives `versionName` from the tag without the `v` prefix and derives a monotonic `versionCode` from `MAJOR.MINOR.PATCH`.
+- The workflow intentionally expects real signing credentials. If those secrets are absent, the release job should fail rather than publishing an unsigned APK.
+
+Operational release notes:
+
+1. Keep the Android signing keystore private and export only its base64 bytes plus passwords into the four GitHub repository secrets above.
+2. Push a semantic tag such as `v0.1.1`.
+3. The workflow emits `kanji-anki-android-0.1.1.apk` plus `kanji-anki-android-0.1.1.apk.sha256`.
+4. The Android in-app updater compares its current `versionName` to the latest GitHub release tag, so the tag format must stay compatible with the app's numeric parser.
 
 Bootstrap flow:
 
