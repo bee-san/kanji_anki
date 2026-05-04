@@ -74,8 +74,6 @@ fun SettingsScreen(
     var meaningFieldText by rememberSaveable { mutableStateOf("") }
     var matureDaysText by rememberSaveable { mutableStateOf("") }
     var supportThresholdText by rememberSaveable { mutableStateOf("") }
-    var jitenCacheTtlText by rememberSaveable { mutableStateOf("") }
-    var requestTimeoutText by rememberSaveable { mutableStateOf("") }
     var pollingEnabled by rememberSaveable { mutableStateOf(false) }
     var pollingIntervalMinutesText by rememberSaveable { mutableStateOf("") }
     var localValidationMessage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -90,8 +88,6 @@ fun SettingsScreen(
         meaningFieldText = settings.meaningField
         matureDaysText = settings.matureDays.toString()
         supportThresholdText = settings.kanjiSupportThreshold.toString()
-        jitenCacheTtlText = settings.jitenCacheTtlHours.toString()
-        requestTimeoutText = settings.jitenRequestTimeoutSeconds.toString()
         pollingEnabled = settings.pollingEnabled
         pollingIntervalMinutesText = max(settings.pollingIntervalSeconds / 60, 1).toString()
         localValidationMessage = null
@@ -110,7 +106,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "The only fields you should need often are note models, field mapping, and how aggressively background sync should poll.",
+                text = "The only fields you should need often are note models, field mapping, and how often the app should quietly refresh your deck.",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -159,18 +155,6 @@ fun SettingsScreen(
                 label = "Kanji support threshold",
                 enabled = !settingsBusy,
             )
-            SettingsField(
-                value = jitenCacheTtlText,
-                onValueChange = { jitenCacheTtlText = it },
-                label = "Jiten cache TTL (hours)",
-                enabled = !settingsBusy,
-            )
-            SettingsField(
-                value = requestTimeoutText,
-                onValueChange = { requestTimeoutText = it },
-                label = "Jiten request timeout (seconds)",
-                enabled = !settingsBusy,
-            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -214,8 +198,6 @@ fun SettingsScreen(
                     val current = settings ?: return@Button
                     val matureDays = matureDaysText.trim().toIntOrNull()
                     val supportThreshold = supportThresholdText.trim().toIntOrNull()
-                    val jitenCacheTtlHours = jitenCacheTtlText.trim().toIntOrNull()
-                    val requestTimeoutSeconds = requestTimeoutText.trim().toIntOrNull()
                     val pollingIntervalMinutes = pollingIntervalMinutesText.trim().toIntOrNull()
                     val models = noteModelsText.split(",")
                         .map(String::trim)
@@ -230,12 +212,6 @@ fun SettingsScreen(
 
                         supportThreshold == null || supportThreshold < 0 ->
                             "Kanji support threshold must be 0 or greater."
-
-                        jitenCacheTtlHours == null || jitenCacheTtlHours < 0 ->
-                            "Jiten cache TTL must be 0 or greater."
-
-                        requestTimeoutSeconds == null || requestTimeoutSeconds <= 0 ->
-                            "Jiten request timeout must be greater than 0."
 
                         pollingIntervalMinutes == null || pollingIntervalMinutes <= 0 ->
                             "Polling interval must be greater than 0 minutes."
@@ -253,8 +229,8 @@ fun SettingsScreen(
                                 meaningField = meaningFieldText.trim(),
                                 matureDays = matureDays ?: 0,
                                 kanjiSupportThreshold = supportThreshold ?: 0,
-                                jitenCacheTtlHours = jitenCacheTtlHours ?: 0,
-                                jitenRequestTimeoutSeconds = requestTimeoutSeconds ?: 1,
+                                jitenCacheTtlHours = current.jitenCacheTtlHours,
+                                jitenRequestTimeoutSeconds = current.jitenRequestTimeoutSeconds,
                                 pollingEnabled = pollingEnabled,
                                 pollingIntervalSeconds = (pollingIntervalMinutes ?: 15) * 60,
                             ),
@@ -270,25 +246,26 @@ fun SettingsScreen(
         }
 
         BlossomCard(tone = BlossomTone.MINT) {
-            SectionEyebrow("Runtime boundary")
+            SectionEyebrow("App status")
             if (health == null) {
                 Text(
-                    text = "Loading runtime info…",
+                    text = "Loading app status…",
                     style = MaterialTheme.typography.bodyLarge,
                 )
             } else {
                 DetailLine(label = "Version", value = health.version)
-                DetailLine(label = "Database path", value = health.databasePath)
-                DetailLine(label = "Web app path", value = health.webAppPath)
                 DetailLine(
-                    label = "Source counts",
+                    label = "Saved deck size",
                     value = "${health.sourceCounts.noteCount} notes / ${health.sourceCounts.cardCount} cards",
                 )
                 val latestSync = health.latestSync
                 if (latestSync == null) {
                     DetailLine(label = "Latest sync", value = "none recorded yet")
                 } else {
-                    DetailLine(label = "Latest sync", value = "${latestSync.status} via ${latestSync.source}")
+                    DetailLine(
+                        label = "Latest sync",
+                        value = "${latestSync.status} from ${friendlySyncSource(latestSync.source)}",
+                    )
                     DetailLine(label = "Started", value = latestSync.startedAt)
                     DetailLine(label = "Finished", value = latestSync.finishedAt ?: "in progress")
                     DetailLine(
@@ -327,18 +304,9 @@ fun SettingsScreen(
                     )
                 }
                 DetailLine(
-                    label = "Collection readable",
-                    value = if (ankiDroidStatus.canReadCollection) "yes" else "no",
+                    label = "Deck access",
+                    value = if (ankiDroidStatus.canReadCollection) "ready" else "not ready yet",
                 )
-                ankiDroidStatus.packageName?.takeIf { it.isNotBlank() }?.let {
-                    DetailLine(label = "Package", value = it)
-                }
-                ankiDroidStatus.authority?.takeIf { it.isNotBlank() }?.let {
-                    DetailLine(label = "Provider authority", value = it)
-                }
-                ankiDroidStatus.permissionName?.takeIf { it.isNotBlank() }?.let {
-                    DetailLine(label = "Runtime permission", value = it)
-                }
             }
             if (ankiDroidBusy) {
                 CircularProgressIndicator()
@@ -405,7 +373,7 @@ fun SettingsScreen(
                 enabled = !releaseBusy,
                 colors = ghostButtonColors(),
             ) {
-                Text("Check GitHub release")
+                Text("Check for updates")
             }
             Button(
                 onClick = onInstallUpdate,
@@ -425,6 +393,13 @@ fun SettingsScreen(
         }
     }
 }
+
+private fun friendlySyncSource(source: String): String =
+    when (source) {
+        "ankidroid-content-provider" -> "AnkiDroid"
+        "parity-fixture-fallback", "parity-fixture" -> "an older fixture import"
+        else -> source
+    }
 
 @Composable
 private fun SettingsField(

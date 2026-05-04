@@ -9,6 +9,7 @@ addon/anki_vn_sorter/meta.json
 .codex
 .tmp-app-home/
 android-app/.gradle/
+android-app/.kotlin/
 android-app/build/
 android-app/app/build/
 android-app/local.properties

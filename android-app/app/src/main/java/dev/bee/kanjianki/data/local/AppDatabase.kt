@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         StudyReviewLogEntity::class,
     ],
     version = 1,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao

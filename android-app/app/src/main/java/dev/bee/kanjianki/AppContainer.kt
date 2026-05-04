@@ -5,12 +5,10 @@ import androidx.room.Room
 import androidx.work.WorkManager
 import dev.bee.kanjianki.data.ankidroid.AnkiDroidGateway
 import dev.bee.kanjianki.data.ankidroid.ContentProviderAnkiDroidGateway
-import dev.bee.kanjianki.data.fixture.ParityFixtureRepository
 import dev.bee.kanjianki.data.local.AppDatabase
 import dev.bee.kanjianki.data.local.RoomBackedKanjiCompanionRepository
 import dev.bee.kanjianki.data.sync.SyncScheduler
 import dev.bee.kanjianki.data.update.GitHubReleaseUpdater
-import dev.bee.kanjianki.domain.KanjiCompanionRepository
 import dev.bee.kanjianki.domain.buildKanjiCompanionUseCases
 
 class AppContainer(context: Context) {
@@ -18,21 +16,16 @@ class AppContainer(context: Context) {
         context.applicationContext,
         AppDatabase::class.java,
         "kanji_anki_android.db",
-    ).fallbackToDestructiveMigration().build()
+    ).build()
 
     val ankiDroidGateway: AnkiDroidGateway = ContentProviderAnkiDroidGateway(
         context = context.applicationContext,
     )
 
-    val repository: KanjiCompanionRepository = ParityFixtureRepository(
-        context = context.applicationContext,
-    )
-
-    val cachedRepository: KanjiCompanionRepository = RoomBackedKanjiCompanionRepository(
+    val cachedRepository = RoomBackedKanjiCompanionRepository(
         context = context.applicationContext,
         database = database,
         gateway = ankiDroidGateway,
-        upstream = repository,
     )
 
     val releaseUpdater = GitHubReleaseUpdater(
