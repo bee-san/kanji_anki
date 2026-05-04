@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public final class AnkiDroidGateway {
+public final class AnkiDroidGateway implements CollectionGateway {
     private static final char FIELD_SEPARATOR = '\u001f';
     private static final String ARCHIVED_TAG = "kanji_anki_archived";
 
@@ -463,7 +463,7 @@ public final class AnkiDroidGateway {
         public final int taggedNotes;
         public final String message;
 
-        private RemovalSummary(int sourceCards, int deletedNotes, int taggedNotes, String message) {
+        public RemovalSummary(int sourceCards, int deletedNotes, int taggedNotes, String message) {
             this.sourceCards = sourceCards;
             this.deletedNotes = deletedNotes;
             this.taggedNotes = taggedNotes;

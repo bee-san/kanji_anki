@@ -4,6 +4,7 @@ import android.content.Context;
 
 import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
@@ -21,10 +22,10 @@ import java.util.Map;
 public final class ManualSyncEngine {
     private final Context context;
     private final LocalStore store;
-    private final AnkiDroidGateway gateway;
+    private final CollectionGateway gateway;
     private final Records.Settings settings;
 
-    public ManualSyncEngine(Context context, LocalStore store, AnkiDroidGateway gateway, Records.Settings settings) {
+    public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings) {
         this.context = context.getApplicationContext();
         this.store = store;
         this.gateway = gateway;
