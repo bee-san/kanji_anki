@@ -97,6 +97,25 @@ The default suite covers the active server, study flow, hosted web app, sync, an
 - `kanji_leech_dashboard/`: active server package, domain logic, CLI, API, and hosted web app.
 - `tests/`: server-first pytest suite for the active product.
 - `dist/`: historical build output, not part of the active workflow.
+- `android-app/`: Android port scaffold, parity fixtures, Compose shell, and Room schema mirror.
+
+## Android Port Scaffold
+
+The repo now includes an Android migration slice under `android-app/`. It does not replace the Python server yet; it uses a checked-in parity oracle exported from the current Python implementation to bootstrap settings plus static kanji detail content, prefers AnkiDroid's exported content provider for live note/card reads when its runtime permission is granted, falls back to the parity snapshot when AnkiDroid is missing or unavailable, derives dashboard/problem rows locally, records sync runs in Room, exposes manual sync plus latest-sync health in the Compose shell, lets the Android settings form update note-model filtering and polling config on-device, surfaces AnkiDroid install/permission state directly in Settings, supports dashboard-to-detail drill-down for any cached kanji row, and runs study seed refresh, overview generation, session selection, handwriting enforcement, and review progression from Room so the Kotlin app can start acting like a real standalone client while the direct Android port catches up.
+
+Regenerate the Android oracle fixture from the current Python implementation with:
+
+```bash
+kanji-companion-server export-android-parity-fixtures --output android-app/parity-fixtures/oracle-v1.json
+```
+
+The Android project is intentionally repo-local scaffolding at this stage. The Gradle wrapper is checked in under `android-app/`.
+
+The Android scaffold now also includes a GitHub Releases updater path. It expects a public release feed with an APK asset; if the source repository remains private, configure the Android build to point at a public mirror repo for release delivery.
+
+The Android scaffold's WorkManager layer now respects the cached polling settings for periodic background sync, subject to Android's minimum 15-minute repeat interval, and uses the same live-AnkiDroid-or-fixture-fallback sync boundary as the manual sync path.
+
+Signed Android release builds are now supported through gitignored local/Gradle properties for the keystore path, store password, key alias, and key password, so the repo can produce installable `assembleRelease` APKs without committing signing material.
 
 ## Current API surface
 
