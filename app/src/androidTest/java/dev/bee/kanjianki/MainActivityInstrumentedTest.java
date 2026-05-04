@@ -3,6 +3,7 @@ package dev.bee.kanjianki;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabaseLockedException;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
@@ -16,6 +17,7 @@ import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,6 +34,8 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
 public final class MainActivityInstrumentedTest {
+    private static final String LIVE_ARG = "kanjiLiveAnkiDroid";
+
     private Context context;
 
     @Before
@@ -163,6 +167,10 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testManualSyncButtonRecordsProviderFailureWithoutCrash() throws Exception {
+        Assume.assumeFalse(
+                "The opt-in live AnkiDroid run exercises the successful sync button path instead.",
+                liveAnkiDroidEnabled()
+        );
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid now");
             LocalStore.SyncStatus status = waitForLatestSync();
@@ -172,20 +180,49 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
+    @Test
+    public void testManualSyncButtonWorksAgainstLiveAnkiDroid() throws Exception {
+        Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", liveAnkiDroidEnabled());
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Sync AnkiDroid now");
+            LocalStore.SyncStatus status = waitForLatestSync(2400);
+            assertNotNull(status);
+            assertEquals("success", status.status);
+
+            LocalStore store = new LocalStore(context);
+            try {
+                assertFalse(store.dashboardRows().isEmpty());
+                assertFalse(store.studyItems().isEmpty());
+            } finally {
+                store.close();
+            }
+        }
+    }
+
     private LocalStore.SyncStatus waitForLatestSync() throws Exception {
-        for (int i = 0; i < 200; i++) {
+        return waitForLatestSync(200);
+    }
+
+    private LocalStore.SyncStatus waitForLatestSync(int attempts) throws Exception {
+        for (int i = 0; i < attempts; i++) {
             LocalStore store = new LocalStore(context);
             try {
                 LocalStore.SyncStatus status = store.latestSync();
                 if (status != null) {
                     return status;
                 }
+            } catch (SQLiteDatabaseLockedException busy) {
+                // The live sync button test polls while the app is committing a large collection mirror.
             } finally {
                 store.close();
             }
             Thread.sleep(100);
         }
         return null;
+    }
+
+    private boolean liveAnkiDroidEnabled() {
+        return "true".equals(InstrumentationRegistry.getArguments().getString(LIVE_ARG));
     }
 
     private void seedDashboard() {

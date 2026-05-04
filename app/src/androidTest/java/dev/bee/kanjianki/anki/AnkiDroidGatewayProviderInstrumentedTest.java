@@ -52,9 +52,14 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
+        assertEquals(2, snapshot.cards.get(0).queue);
+        assertEquals(42, snapshot.cards.get(0).intervalDays);
+        assertEquals(80, snapshot.cards.get(0).reps);
+        assertEquals(3, snapshot.cards.get(0).lapses);
         assertTrue(snapshot.cards.get(1).suspended);
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
+        assertEquals(0, providerInt("explicitIdProjectionQueries"));
     }
 
     @Test
@@ -70,13 +75,14 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         List<Records.SuspendedImport> imports = store.suspendedImports();
         assertEquals(1, imports.size());
         assertEquals("笥", imports.get(0).kanji);
-        assertTrue(result.message.contains("tagged locally"));
+        assertTrue(result.message.contains("tagged in AnkiDroid"));
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
+        assertEquals(0, providerInt("explicitIdProjectionQueries"));
     }
 
     @Test
-    public void manualSyncDoesNotBlockWhenAnkiDroidRejectsSuspendedSearch() {
+    public void manualSyncUsesCardQueueWhenAnkiDroidRejectsSuspendedSearch() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "failSuspendedSearch", null, null);
@@ -86,9 +92,29 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.success);
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
-        assertTrue(store.suspendedImports().isEmpty());
+        List<Records.SuspendedImport> imports = store.suspendedImports();
+        assertEquals(1, imports.size());
+        assertEquals("笥", imports.get(0).kanji);
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
+        assertEquals(0, providerInt("explicitIdProjectionQueries"));
+    }
+
+    @Test
+    public void manualSyncFallsBackWhenPerNoteSchedulerProjectionIsUnsupported() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "rejectSchedulerProjection", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.success);
+        assertEquals("success", store.latestSync().status);
+        assertFalse(store.dashboardRows().isEmpty());
+        assertEquals(0, providerInt("topLevelCardsQueries"));
+        assertEquals(2, providerInt("schedulerProjectionRejects"));
+        assertEquals(2, providerInt("perNoteCardsQueries"));
+        assertEquals(0, providerInt("explicitIdProjectionQueries"));
     }
 
     private void resetProvider() {
