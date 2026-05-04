@@ -117,6 +117,8 @@ The Android scaffold's WorkManager layer now respects the cached polling setting
 
 Signed Android release builds are now supported through gitignored local/Gradle properties for the keystore path, store password, key alias, and key password, so the repo can produce installable `assembleRelease` APKs without committing signing material.
 
+Tag-driven Android release CI now lives in `.github/workflows/android-release.yml`. Pushing `vMAJOR.MINOR.PATCH` builds a signed APK under `android-app/`, derives `versionName` and `versionCode` from the tag, uploads the APK plus its SHA-256 checksum as workflow artifacts, and publishes them to the matching GitHub release. The workflow expects the Android signing keystore and passwords as GitHub Actions secrets.
+
 ## Current API surface
 
 - `GET /api/health`

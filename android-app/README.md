@@ -38,14 +38,29 @@ If `KANJI_ANKI_RELEASE_APK_NAME` is blank, the updater uses the first `.apk` ass
 
 Release signing configuration:
 
-- Release builds read signing settings from gitignored Gradle/local properties.
+- Release builds read signing settings from Gradle properties, environment variables, or gitignored `local.properties`.
 - Supported keys:
   - `KANJI_ANKI_SIGNING_STORE_FILE`
   - `KANJI_ANKI_SIGNING_STORE_PASSWORD`
   - `KANJI_ANKI_SIGNING_KEY_ALIAS`
   - `KANJI_ANKI_SIGNING_KEY_PASSWORD`
+- CI and other automated builds can also override:
+  - `KANJI_ANKI_VERSION_NAME`
+  - `KANJI_ANKI_VERSION_CODE`
 - The local checkout can keep those values in `android-app/local.properties` alongside `sdk.dir`, or supply them as Gradle properties in another private location.
 - `./gradlew :app:assembleRelease` becomes an installable signed APK only when those signing properties are present.
+
+GitHub Actions release CI:
+
+- The repo now includes `.github/workflows/android-release.yml`.
+- Pushing a tag like `v0.1.1` builds a signed release APK, writes a SHA-256 file, uploads both as workflow artifacts, and publishes them to the matching GitHub release.
+- Manual runs are also supported through `workflow_dispatch`, but they still require a semantic tag input in `vMAJOR.MINOR.PATCH` form.
+- Required repository secrets:
+  - `KANJI_ANKI_SIGNING_KEYSTORE_BASE64`
+  - `KANJI_ANKI_SIGNING_STORE_PASSWORD`
+  - `KANJI_ANKI_SIGNING_KEY_ALIAS`
+  - `KANJI_ANKI_SIGNING_KEY_PASSWORD`
+- The workflow derives `versionName` from the tag without the `v` prefix and derives a monotonic `versionCode` from `MAJOR.MINOR.PATCH`.
 
 Bootstrap flow:
 
