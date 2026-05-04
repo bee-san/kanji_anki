@@ -7,3 +7,8 @@ addon/anki_vn_sorter/user_files/
 addon/kanji_leech_dashboard/user_files/
 addon/anki_vn_sorter/meta.json
 .codex
+.tmp-app-home/
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/local.properties

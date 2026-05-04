@@ -5,6 +5,7 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+import org.gradle.api.GradleException
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -18,17 +19,28 @@ val localProperties = Properties().apply {
     }
 }
 
-fun localOrGradleProperty(name: String): String? =
+fun configValue(name: String): String? =
     providers.gradleProperty(name).orNull
+        ?.takeIf { it.isNotBlank() }
+        ?: providers.environmentVariable(name).orNull
+            ?.takeIf { it.isNotBlank() }
         ?: localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 
-val githubReleaseOwner = providers.gradleProperty("KANJI_ANKI_RELEASE_OWNER").orElse("bee-san")
-val githubReleaseRepo = providers.gradleProperty("KANJI_ANKI_RELEASE_REPO").orElse("kanji_anki")
-val githubReleaseApkName = providers.gradleProperty("KANJI_ANKI_RELEASE_APK_NAME").orElse("")
-val releaseSigningStoreFile = localOrGradleProperty("KANJI_ANKI_SIGNING_STORE_FILE")
-val releaseSigningStorePassword = localOrGradleProperty("KANJI_ANKI_SIGNING_STORE_PASSWORD")
-val releaseSigningKeyAlias = localOrGradleProperty("KANJI_ANKI_SIGNING_KEY_ALIAS")
-val releaseSigningKeyPassword = localOrGradleProperty("KANJI_ANKI_SIGNING_KEY_PASSWORD")
+fun intConfigValue(name: String, defaultValue: Int): Int {
+    val raw = configValue(name) ?: return defaultValue
+    return raw.toIntOrNull()
+        ?: throw GradleException("$name must be an integer, found '$raw'.")
+}
+
+val appVersionName = configValue("KANJI_ANKI_VERSION_NAME") ?: "0.1.0"
+val appVersionCode = intConfigValue("KANJI_ANKI_VERSION_CODE", 1)
+val githubReleaseOwner = configValue("KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
+val githubReleaseRepo = configValue("KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
+val githubReleaseApkName = configValue("KANJI_ANKI_RELEASE_APK_NAME") ?: ""
+val releaseSigningStoreFile = configValue("KANJI_ANKI_SIGNING_STORE_FILE")
+val releaseSigningStorePassword = configValue("KANJI_ANKI_SIGNING_STORE_PASSWORD")
+val releaseSigningKeyAlias = configValue("KANJI_ANKI_SIGNING_KEY_ALIAS")
+val releaseSigningKeyPassword = configValue("KANJI_ANKI_SIGNING_KEY_PASSWORD")
 val hasReleaseSigning =
     listOf(
         releaseSigningStoreFile,
@@ -45,14 +57,14 @@ android {
         applicationId = "dev.bee.kanjianki"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "GITHUB_RELEASE_OWNER", quoted(githubReleaseOwner.get()))
-        buildConfigField("String", "GITHUB_RELEASE_REPO", quoted(githubReleaseRepo.get()))
-        buildConfigField("String", "GITHUB_RELEASE_APK_NAME", quoted(githubReleaseApkName.get()))
+        buildConfigField("String", "GITHUB_RELEASE_OWNER", quoted(githubReleaseOwner))
+        buildConfigField("String", "GITHUB_RELEASE_REPO", quoted(githubReleaseRepo))
+        buildConfigField("String", "GITHUB_RELEASE_APK_NAME", quoted(githubReleaseApkName))
     }
 
     buildFeatures {
