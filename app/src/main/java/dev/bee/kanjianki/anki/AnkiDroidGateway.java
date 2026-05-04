@@ -24,6 +24,18 @@ import java.util.Set;
 public final class AnkiDroidGateway implements CollectionGateway {
     private static final char FIELD_SEPARATOR = '\u001f';
     private static final String ARCHIVED_TAG = "kanji_anki_archived";
+    private static final String[] CARD_COLUMNS_WITH_SCHEDULER = {
+            "note_id",
+            "ord",
+            "deck_id",
+            "queue",
+            "type",
+            "due",
+            "interval",
+            "reps",
+            "lapses"
+    };
+    private static final String[] CARD_COLUMNS_MINIMAL = {"note_id", "ord", "deck_id"};
 
     private final Context context;
     private final ContentResolver resolver;
@@ -101,51 +113,33 @@ public final class AnkiDroidGateway implements CollectionGateway {
             return new RemovalSummary(0, 0, 0, "No suspended cards needed provider cleanup.");
         }
 
-        int deletedCards = 0;
-        int deletedNotes = 0;
         int tagged = 0;
         int failed = 0;
         Set<Long> notesToTag = new LinkedHashSet<>();
         for (Records.Card card : suspendedCards) {
-            try {
-                int count = resolver.delete(uriFor(target.authority, "cards", String.valueOf(card.cardId)), null, null);
-                if (count > 0) {
-                    deletedCards += count;
-                    continue;
-                }
-            } catch (Throwable ignored) {
-                // Fall through to note-level cleanup when it is safe.
-            }
             if (cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))) {
-                try {
-                    int noteDeleteCount = resolver.delete(uriFor(target.authority, "notes", String.valueOf(card.noteId)), null, null);
-                    if (noteDeleteCount > 0) {
-                        deletedNotes += noteDeleteCount;
-                        continue;
-                    }
-                } catch (Throwable ignored) {
-                    // Fall through to tag fallback.
-                }
                 notesToTag.add(card.noteId);
+            } else {
+                failed++;
             }
-            failed++;
         }
 
         for (Long noteId : notesToTag) {
             if (tagNoteArchived(target, noteId)) {
                 tagged++;
+            } else {
+                failed++;
             }
         }
-        int totalDeleted = deletedCards + deletedNotes;
         String message;
-        if (failed == 0) {
-            message = "Archived suspended cards were removed from AnkiDroid.";
-        } else if (totalDeleted > 0) {
-            message = "Archived suspended cards were partly removed; tagged leftovers will be ignored on future syncs.";
+        if (tagged > 0 && failed == 0) {
+            message = "Archived suspended notes were tagged in AnkiDroid and hidden from future syncs.";
+        } else if (tagged > 0) {
+            message = "Archived suspended notes were partly tagged in AnkiDroid; any leftovers stay in the local archive.";
         } else {
-            message = "Archived suspended cards were tagged locally but AnkiDroid did not allow provider deletion.";
+            message = "Archived suspended cards were kept in the local archive; AnkiDroid did not allow provider tagging.";
         }
-        return new RemovalSummary(suspendedCards.size(), deletedNotes, tagged, message);
+        return new RemovalSummary(suspendedCards.size(), 0, tagged, message);
     }
 
     private boolean tagNoteArchived(ProviderTarget target, long noteId) {
@@ -198,7 +192,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private ModelMapping findKikuModel(ProviderTarget target, Records.Settings settings) throws SyncException {
-        Cursor cursor = resolver.query(uriFor(target.authority, "models"), new String[]{"_id", "name", "field_names"}, null, null, null);
+        Cursor cursor = resolver.query(uriFor(target.authority, "models"), null, null, null, null);
         if (cursor == null) {
             throw SyncException.retryable("AnkiDroid returned no note model cursor.");
         }
@@ -234,7 +228,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         Map<Long, Records.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
                 uriFor(target.authority, "notes"),
-                new String[]{"_id", "mid", "flds", "tags"},
+                null,
                 search,
                 null,
                 null
@@ -261,9 +255,9 @@ public final class AnkiDroidGateway implements CollectionGateway {
         Map<Long, Records.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
                 uriFor(target.authority, "notes_v2"),
-                new String[]{"_id", "flds", "tags"},
-                "mid=" + mapping.modelId,
                 null,
+                "mid=?",
+                new String[]{Long.toString(mapping.modelId)},
                 null
         );
         if (cursor == null) {
@@ -327,30 +321,27 @@ public final class AnkiDroidGateway implements CollectionGateway {
         Set<Long> suspendedNoteIds = querySuspendedNoteIds(target, settings);
         List<Records.Card> cards = new ArrayList<>();
         for (Long noteId : noteIds) {
-            Cursor cursor = resolver.query(
-                    uriFor(target.authority, "notes", Long.toString(noteId), "cards"),
-                    new String[]{"_id", "note_id", "ord", "deck_id", "card_name"},
-                    null,
-                    null,
-                    null
-            );
+            Cursor cursor = queryPerNoteCards(target, noteId);
             if (cursor == null) {
                 throw SyncException.retryable("AnkiDroid returned no per-note card cursor.");
             }
             try {
                 while (cursor.moveToNext()) {
-                    boolean suspended = suspendedNoteIds.contains(noteId);
+                    int ord = intValue(cursor, "ord", 0);
+                    boolean suspendedFromSearch = suspendedNoteIds.contains(noteId);
+                    int queue = intValue(cursor, "queue", suspendedFromSearch ? -1 : 0);
+                    boolean suspended = suspendedFromSearch || queue < 0;
                     cards.add(new Records.Card(
-                            longValue(cursor, "_id", 0),
+                            longValue(cursor, "_id", noteId * 1000L + ord),
                             longValue(cursor, "note_id", noteId),
-                            intValue(cursor, "ord", 0),
+                            ord,
                             value(cursor, "deck_id"),
-                            suspended ? -1 : 0,
-                            suspended ? 3 : 0,
-                            0,
-                            0,
-                            0,
-                            0,
+                            queue,
+                            intValue(cursor, "type", suspended ? 3 : 0),
+                            intValue(cursor, "due", 0),
+                            intValue(cursor, "interval", 0),
+                            intValue(cursor, "reps", 0),
+                            intValue(cursor, "lapses", 0),
                             suspended
                     ));
                 }
@@ -361,13 +352,22 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return cards;
     }
 
+    private Cursor queryPerNoteCards(ProviderTarget target, long noteId) {
+        Uri uri = uriFor(target.authority, "notes", Long.toString(noteId), "cards");
+        try {
+            return resolver.query(uri, CARD_COLUMNS_WITH_SCHEDULER, null, null, null);
+        } catch (IllegalArgumentException unsupportedSchedulerColumns) {
+            return resolver.query(uri, CARD_COLUMNS_MINIMAL, null, null, null);
+        }
+    }
+
     private Set<Long> querySuspendedNoteIds(ProviderTarget target, Records.Settings settings) {
         Set<Long> ids = new LinkedHashSet<>();
         Cursor cursor;
         try {
             cursor = resolver.query(
                     uriFor(target.authority, "notes"),
-                    new String[]{"_id"},
+                    null,
                     "note:\"" + settings.modelName + "\" is:suspended",
                     null,
                     null
