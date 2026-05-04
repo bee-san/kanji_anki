@@ -19,6 +19,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     public static String suspendedTags = "";
     public static boolean failSuspendedSearch;
     public static boolean rejectSchedulerProjection;
+    public static boolean deferSchedulerProjectionFailure;
 
     public static void reset() {
         topLevelCardsQueries = 0;
@@ -29,6 +30,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         suspendedTags = "";
         failSuspendedSearch = false;
         rejectSchedulerProjection = false;
+        deferSchedulerProjectionFailure = false;
     }
 
     @Override
@@ -71,6 +73,12 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             result.putBoolean("ok", true);
             return result;
         }
+        if ("deferSchedulerProjectionFailure".equals(method)) {
+            rejectSchedulerProjection = true;
+            deferSchedulerProjectionFailure = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
         return result;
     }
 
@@ -87,7 +95,10 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             return notes(selection);
         }
         if (path.matches("/notes/\\d+/cards")) {
-            rejectRawSchedulerProjection(uri, projection);
+            Cursor rejected = rejectedSchedulerProjectionCursor(uri, projection);
+            if (rejected != null) {
+                return rejected;
+            }
             perNoteCardsQueries++;
             long noteId = Long.parseLong(uri.getPathSegments().get(1));
             String[] columns = projection == null ? new String[]{"_id", "note_id", "ord", "deck_id", "card_name"} : projection;
@@ -118,9 +129,9 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         }
     }
 
-    private void rejectRawSchedulerProjection(Uri uri, String[] projection) {
+    private Cursor rejectedSchedulerProjectionCursor(Uri uri, String[] projection) {
         if (!rejectSchedulerProjection || projection == null) {
-            return;
+            return null;
         }
         for (String column : projection) {
             if ("queue".equals(column)
@@ -130,9 +141,14 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
                     || "reps".equals(column)
                     || "lapses".equals(column)) {
                 schedulerProjectionRejects++;
+                if (deferSchedulerProjectionFailure) {
+                    perNoteCardsQueries++;
+                    return new ThrowingCursor(projection, "Queue \"" + column + "\" is unknown");
+                }
                 throw new IllegalArgumentException(column + " is not part of the public card projection for " + uri);
             }
         }
+        return null;
     }
 
     private Cursor notes(String selection) {
@@ -245,5 +261,20 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             out.append(value);
         }
         return out.toString();
+    }
+
+    private static final class ThrowingCursor extends MatrixCursor {
+        private final RuntimeException error;
+
+        private ThrowingCursor(String[] columns, String message) {
+            super(columns);
+            this.error = new IllegalArgumentException(message);
+            addRow(new Object[columns.length]);
+        }
+
+        @Override
+        public boolean onMove(int oldPosition, int newPosition) {
+            throw error;
+        }
     }
 }
