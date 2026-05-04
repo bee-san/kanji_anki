@@ -21,9 +21,9 @@ The `_id is unknown` / `queue _id is unknown` fix was validated with:
   release APK assembly.
 - GitHub Actions release workflow for tag `v0.3.6`.
 
-Passing results from that release:
+Passing results from the latest live release testing:
 
-- Live emulator instrumentation: `OK (19 tests)`.
+- Live emulator instrumentation: `OK (20 tests)`.
 - Local production gate: `BUILD SUCCESSFUL`.
 - Release APK metadata: `dev.bee.kanjianki`, versionName `0.3.6`, versionCode
   `3006`.
@@ -123,7 +123,7 @@ adb shell am instrument -w \
 Expected result:
 
 ```text
-OK (19 tests)
+OK (20 tests)
 ```
 
 Important live tests:
@@ -135,7 +135,8 @@ Important live tests:
   reads the copied Kiku collection through the real AnkiDroid provider and
   asserts at least 7,000 Kiku notes/cards plus real scheduler state.
 - `AnkiDroidGatewayProviderInstrumentedTest` uses the fake provider to reject
-  explicit `_id` projections and unsupported scheduler projections.
+  explicit `_id` projections, unsupported scheduler projections, and deferred
+  cursor-time errors such as `Queue "queue" is unknown`.
 
 If the live test fails with `SQLiteDatabaseLockedException` in a test poller,
 retry only after confirming the app did not crash. The test poller should treat
