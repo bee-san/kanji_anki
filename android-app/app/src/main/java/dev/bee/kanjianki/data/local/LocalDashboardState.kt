@@ -276,7 +276,7 @@ internal object LocalDashboardState {
             kanji = row.kanji,
             jitenRank = row.jitenRank,
             keyword = baseDetail?.keyword ?: fallbackKeyword,
-            meanings = baseDetail?.meanings ?: listOf("fixture"),
+            meanings = baseDetail?.meanings ?: listOf("Collection-derived detail"),
             onReadings = baseDetail?.onReadings ?: emptyList(),
             kunReadings = baseDetail?.kunReadings ?: emptyList(),
             components = baseDetail?.components ?: emptyList(),

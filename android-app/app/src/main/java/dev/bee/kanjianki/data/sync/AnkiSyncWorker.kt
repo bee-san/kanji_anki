@@ -15,7 +15,13 @@ class AnkiSyncWorker(
             app.container.useCases.sync()
         }.fold(
             onSuccess = { Result.success() },
-            onFailure = { Result.retry() },
+            onFailure = { error ->
+                if (error.isPermanentCollectionSyncFailure()) {
+                    Result.failure()
+                } else {
+                    Result.retry()
+                }
+            },
         )
     }
 

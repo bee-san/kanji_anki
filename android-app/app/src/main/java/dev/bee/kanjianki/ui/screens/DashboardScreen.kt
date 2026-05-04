@@ -42,6 +42,7 @@ fun DashboardScreen(
     syncBusy: Boolean,
     syncStatusMessage: String?,
     onSyncNow: () -> Unit,
+    onStudyNow: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onStartReviewSession: () -> Unit,
     onStartMixedSession: () -> Unit,
@@ -51,7 +52,7 @@ fun DashboardScreen(
     if (dashboard == null) {
         EmptyStateCard(
             title = "Arranging your dashboard garden…",
-            body = "Loading the cached collection snapshot and lining up the quickest study paths.",
+            body = "Loading your saved deck and lining up the quickest study paths.",
             plushieRes = R.drawable.plushie_read_book,
             modifier = modifier.padding(16.dp),
         )
@@ -67,6 +68,7 @@ fun DashboardScreen(
             QuickLaunchCard(
                 syncBusy = syncBusy,
                 onSyncNow = onSyncNow,
+                onStudyNow = onStudyNow,
                 onStartReviewSession = onStartReviewSession,
                 onStartMixedSession = onStartMixedSession,
                 onStartNewSession = onStartNewSession,
@@ -74,7 +76,7 @@ fun DashboardScreen(
         }
         item {
             BlossomCard(tone = BlossomTone.ROSE) {
-                SectionEyebrow("Collection snapshot")
+                SectionEyebrow("Your deck")
                 Text(
                     text = "What needs love first",
                     style = MaterialTheme.typography.titleLarge,
@@ -114,6 +116,15 @@ fun DashboardScreen(
                         modifier = Modifier.weight(1f),
                     )
                 }
+            }
+        }
+        if (dashboard.rows.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    title = "Sync once, then everything gets easier",
+                    body = "Open Settings if AnkiDroid needs permission, then tap Sync from AnkiDroid here. Once your deck lands, review can start in one tap.",
+                    plushieRes = R.drawable.plushie_cheer,
+                )
             }
         }
         if (!syncStatusMessage.isNullOrBlank()) {
@@ -158,6 +169,7 @@ fun DashboardScreen(
 private fun QuickLaunchCard(
     syncBusy: Boolean,
     onSyncNow: () -> Unit,
+    onStudyNow: () -> Unit,
     onStartReviewSession: () -> Unit,
     onStartMixedSession: () -> Unit,
     onStartNewSession: () -> Unit,
@@ -174,23 +186,30 @@ private fun QuickLaunchCard(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Button(
-            onClick = onStartReviewSession,
+            onClick = onStudyNow,
             modifier = Modifier.fillMaxWidth(),
             colors = primaryButtonColors(),
         ) {
-            Text("Review now")
+            Text("Study now")
+        }
+        Button(
+            onClick = onStartReviewSession,
+            modifier = Modifier.fillMaxWidth(),
+            colors = secondaryButtonColors(),
+        ) {
+            Text("Review only")
         }
         Button(
             onClick = onStartMixedSession,
             modifier = Modifier.fillMaxWidth(),
-            colors = secondaryButtonColors(),
+            colors = warmButtonColors(),
         ) {
             Text("Start a mixed session")
         }
         Button(
             onClick = onStartNewSession,
             modifier = Modifier.fillMaxWidth(),
-            colors = warmButtonColors(),
+            colors = ghostButtonColors(),
         ) {
             Text("Open a new batch")
         }
@@ -200,7 +219,7 @@ private fun QuickLaunchCard(
             modifier = Modifier.fillMaxWidth(),
             colors = ghostButtonColors(),
         ) {
-            Text(if (syncBusy) "Syncing collection…" else "Refresh collection snapshot")
+            Text(if (syncBusy) "Syncing from AnkiDroid…" else "Sync from AnkiDroid")
         }
     }
 }

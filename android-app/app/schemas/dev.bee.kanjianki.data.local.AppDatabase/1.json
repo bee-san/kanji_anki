@@ -1,0 +1,808 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "0d672f3e1bcd4d590dae3390cb733f48",
+    "entities": [
+      {
+        "tableName": "app_settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value_json` TEXT NOT NULL, `updated_ts` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valueJson",
+            "columnName": "value_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedTs",
+            "columnName": "updated_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "sync_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `source` TEXT NOT NULL, `status` TEXT NOT NULL, `started_ts` INTEGER NOT NULL, `finished_ts` INTEGER, `note_count` INTEGER NOT NULL, `card_count` INTEGER NOT NULL, `error_message` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedTs",
+            "columnName": "started_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedTs",
+            "columnName": "finished_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "noteCount",
+            "columnName": "note_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardCount",
+            "columnName": "card_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "error_message",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "source_notes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`note_id` INTEGER NOT NULL, `model_name` TEXT NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `fields_json` TEXT NOT NULL, `tags_json` TEXT NOT NULL, `is_deleted` INTEGER NOT NULL, `first_seen_ts` INTEGER NOT NULL, `updated_ts` INTEGER NOT NULL, `synced_ts` INTEGER, PRIMARY KEY(`note_id`))",
+        "fields": [
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldsJson",
+            "columnName": "fields_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagsJson",
+            "columnName": "tags_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstSeenTs",
+            "columnName": "first_seen_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedTs",
+            "columnName": "updated_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedTs",
+            "columnName": "synced_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "note_id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "source_cards",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `deck_name` TEXT NOT NULL, `interval_days` INTEGER NOT NULL, `modified_ts` INTEGER NOT NULL, `due_value` INTEGER NOT NULL, `card_ord` INTEGER NOT NULL, `queue_value` INTEGER NOT NULL, `card_type` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `is_suspended` INTEGER NOT NULL, `is_active` INTEGER NOT NULL, `is_mature` INTEGER NOT NULL, `is_deleted` INTEGER NOT NULL, `first_seen_ts` INTEGER NOT NULL, `updated_ts` INTEGER NOT NULL, `synced_ts` INTEGER, PRIMARY KEY(`card_id`), FOREIGN KEY(`note_id`) REFERENCES `source_notes`(`note_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckName",
+            "columnName": "deck_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "interval_days",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modifiedTs",
+            "columnName": "modified_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueValue",
+            "columnName": "due_value",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardOrd",
+            "columnName": "card_ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queueValue",
+            "columnName": "queue_value",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardType",
+            "columnName": "card_type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapses",
+            "columnName": "lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSuspended",
+            "columnName": "is_suspended",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isActive",
+            "columnName": "is_active",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isMature",
+            "columnName": "is_mature",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isDeleted",
+            "columnName": "is_deleted",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstSeenTs",
+            "columnName": "first_seen_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedTs",
+            "columnName": "updated_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedTs",
+            "columnName": "synced_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "card_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_source_cards_note_id",
+            "unique": false,
+            "columnNames": [
+              "note_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_source_cards_note_id` ON `${TABLE_NAME}` (`note_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "source_notes",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "note_id"
+            ],
+            "referencedColumns": [
+              "note_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "expression_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`normalized_expression` TEXT NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `tags_json` TEXT NOT NULL, `source_note_ids_json` TEXT NOT NULL, `source_card_ids_json` TEXT NOT NULL, `suspended_card_count` INTEGER NOT NULL, `active_card_count` INTEGER NOT NULL, `mature_card_count` INTEGER NOT NULL, `updated_ts` INTEGER NOT NULL, PRIMARY KEY(`normalized_expression`))",
+        "fields": [
+          {
+            "fieldPath": "normalizedExpression",
+            "columnName": "normalized_expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagsJson",
+            "columnName": "tags_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceNoteIdsJson",
+            "columnName": "source_note_ids_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceCardIdsJson",
+            "columnName": "source_card_ids_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedCardCount",
+            "columnName": "suspended_card_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeCardCount",
+            "columnName": "active_card_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matureCardCount",
+            "columnName": "mature_card_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedTs",
+            "columnName": "updated_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "normalized_expression"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "problem_kanji_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `jiten_rank` REAL, `collection_expression_count` INTEGER NOT NULL, `suspended_expression_count` INTEGER NOT NULL, `active_recurring_expression_count` INTEGER NOT NULL, `mature_support_count` INTEGER NOT NULL, `support_deficit` INTEGER NOT NULL, `is_unknown` INTEGER NOT NULL, `browser_search` TEXT NOT NULL, `detail_json` TEXT NOT NULL, `sort_index` INTEGER NOT NULL, `updated_ts` INTEGER NOT NULL, PRIMARY KEY(`kanji`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jitenRank",
+            "columnName": "jiten_rank",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "collectionExpressionCount",
+            "columnName": "collection_expression_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedExpressionCount",
+            "columnName": "suspended_expression_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeRecurringExpressionCount",
+            "columnName": "active_recurring_expression_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matureSupportCount",
+            "columnName": "mature_support_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supportDeficit",
+            "columnName": "support_deficit",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isUnknown",
+            "columnName": "is_unknown",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "browserSearch",
+            "columnName": "browser_search",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detailJson",
+            "columnName": "detail_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortIndex",
+            "columnName": "sort_index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedTs",
+            "columnName": "updated_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "study_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profile` TEXT NOT NULL, `kanji` TEXT NOT NULL, `due_ts` INTEGER NOT NULL, `item_status` TEXT NOT NULL, `is_problem_seed` INTEGER NOT NULL, `guide_level` INTEGER NOT NULL, `consecutive_writing_successes` INTEGER NOT NULL, `consecutive_writing_failures` INTEGER NOT NULL, `stability` REAL NOT NULL, `difficulty` REAL NOT NULL, `total_reviews` INTEGER NOT NULL, `total_lapses` INTEGER NOT NULL, `last_prompt_type` TEXT, `latest_problem_snapshot_json` TEXT NOT NULL, `priority_suspended_count` INTEGER NOT NULL, `priority_support_deficit` INTEGER NOT NULL, `priority_active_recurring_count` INTEGER NOT NULL, `priority_rank` REAL, `created_ts` INTEGER NOT NULL, `updated_ts` INTEGER NOT NULL, `last_reviewed_ts` INTEGER, `active_review_token` TEXT, `active_prompt_type` TEXT, `active_session_issued_ts` INTEGER, `learning_step` INTEGER NOT NULL, `review_cycle_index` INTEGER NOT NULL, `first_introduced_ts` INTEGER, `inactive_reason` TEXT, `retired_ts` INTEGER, `retirement_context_json` TEXT NOT NULL, PRIMARY KEY(`profile`, `kanji`))",
+        "fields": [
+          {
+            "fieldPath": "profile",
+            "columnName": "profile",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueTs",
+            "columnName": "due_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemStatus",
+            "columnName": "item_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isProblemSeed",
+            "columnName": "is_problem_seed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "guideLevel",
+            "columnName": "guide_level",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consecutiveWritingSuccesses",
+            "columnName": "consecutive_writing_successes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consecutiveWritingFailures",
+            "columnName": "consecutive_writing_failures",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stability",
+            "columnName": "stability",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalReviews",
+            "columnName": "total_reviews",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalLapses",
+            "columnName": "total_lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPromptType",
+            "columnName": "last_prompt_type",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "latestProblemSnapshotJson",
+            "columnName": "latest_problem_snapshot_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prioritySuspendedCount",
+            "columnName": "priority_suspended_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "prioritySupportDeficit",
+            "columnName": "priority_support_deficit",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priorityActiveRecurringCount",
+            "columnName": "priority_active_recurring_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priorityRank",
+            "columnName": "priority_rank",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdTs",
+            "columnName": "created_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedTs",
+            "columnName": "updated_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastReviewedTs",
+            "columnName": "last_reviewed_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "activeReviewToken",
+            "columnName": "active_review_token",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "activePromptType",
+            "columnName": "active_prompt_type",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "activeSessionIssuedTs",
+            "columnName": "active_session_issued_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "learningStep",
+            "columnName": "learning_step",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewCycleIndex",
+            "columnName": "review_cycle_index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstIntroducedTs",
+            "columnName": "first_introduced_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "inactiveReason",
+            "columnName": "inactive_reason",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retiredTs",
+            "columnName": "retired_ts",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "retirementContextJson",
+            "columnName": "retirement_context_json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profile",
+            "kanji"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_study_due",
+            "unique": false,
+            "columnNames": [
+              "profile",
+              "item_status",
+              "due_ts"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_study_due` ON `${TABLE_NAME}` (`profile`, `item_status`, `due_ts`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "study_review_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `profile` TEXT NOT NULL, `kanji` TEXT NOT NULL, `review_token` TEXT NOT NULL, `reviewed_ts` INTEGER NOT NULL, `prompt_type` TEXT NOT NULL, `srs_rating` TEXT NOT NULL, `handwriting_passed` INTEGER NOT NULL, `handwriting_score` REAL NOT NULL, `guide_level_before` INTEGER NOT NULL, `guide_level_after` INTEGER NOT NULL, `hints_used` INTEGER NOT NULL, `review_payload_json` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profile",
+            "columnName": "profile",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewToken",
+            "columnName": "review_token",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewedTs",
+            "columnName": "reviewed_ts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "promptType",
+            "columnName": "prompt_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "srsRating",
+            "columnName": "srs_rating",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "handwritingPassed",
+            "columnName": "handwriting_passed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "handwritingScore",
+            "columnName": "handwriting_score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "guideLevelBefore",
+            "columnName": "guide_level_before",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "guideLevelAfter",
+            "columnName": "guide_level_after",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hintsUsed",
+            "columnName": "hints_used",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewPayloadJson",
+            "columnName": "review_payload_json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_study_review_token",
+            "unique": true,
+            "columnNames": [
+              "profile",
+              "review_token"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `idx_study_review_token` ON `${TABLE_NAME}` (`profile`, `review_token`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0d672f3e1bcd4d590dae3390cb733f48')"
+    ]
+  }
+}
