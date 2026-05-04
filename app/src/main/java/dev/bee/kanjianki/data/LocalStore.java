@@ -1,0 +1,751 @@
+package dev.bee.kanjianki.data;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.TextUtil;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+public final class LocalStore extends SQLiteOpenHelper {
+    private static final String DB_NAME = "kanji_anki_simple.db";
+    private static final int DB_VERSION = 1;
+
+    public LocalStore(Context context) {
+        super(context.getApplicationContext(), DB_NAME, null, DB_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE sync_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
+        db.execSQL("CREATE TABLE source_notes (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE source_cards (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE suspended_archive (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, archived_at INTEGER NOT NULL, archived_sync_id INTEGER NOT NULL, restored_at INTEGER)");
+        db.execSQL("CREATE TABLE suspended_imports (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, rank_known INTEGER NOT NULL, cutoff_used INTEGER NOT NULL, first_imported_at INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
+        db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, active_token TEXT, created_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
+        db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
+        db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS settings");
+        db.execSQL("DROP TABLE IF EXISTS sync_runs");
+        db.execSQL("DROP TABLE IF EXISTS source_notes");
+        db.execSQL("DROP TABLE IF EXISTS source_cards");
+        db.execSQL("DROP TABLE IF EXISTS suspended_archive");
+        db.execSQL("DROP TABLE IF EXISTS suspended_imports");
+        db.execSQL("DROP TABLE IF EXISTS suspended_sources");
+        db.execSQL("DROP TABLE IF EXISTS dashboard_rows");
+        db.execSQL("DROP TABLE IF EXISTS kanji_examples");
+        db.execSQL("DROP TABLE IF EXISTS study_items");
+        db.execSQL("DROP TABLE IF EXISTS review_log");
+        onCreate(db);
+    }
+
+    public long saveSuccessfulSync(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            long startedAt,
+            long finishedAt,
+            AnkiDroidGateway.RemovalSummary removal
+    ) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Set<Long> activeNoteIds = activeNoteIds(snapshot.cards);
+            Set<Long> activeCardIds = activeCardIds(snapshot.cards);
+            int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeNoteIds);
+            int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeCardIds);
+            long syncId = insertSyncRun(db, startedAt, finishedAt, "success", snapshot, imports, null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
+            db.delete("source_cards", null, null);
+            db.delete("source_notes", null, null);
+            db.delete("dashboard_rows", null, null);
+            db.delete("kanji_examples", null, null);
+
+            Map<Long, Records.Note> notesById = snapshot.notesById();
+            for (Records.Note note : snapshot.notes) {
+                if (hasActiveCard(snapshot.cards, note.noteId)) {
+                    ContentValues values = new ContentValues();
+                    values.put("note_id", note.noteId);
+                    values.put("model_name", note.modelName);
+                    values.put("expression", TextUtil.normalizeJapanese(note.expression(settings)));
+                    values.put("reading", TextUtil.normalizeJapanese(note.reading(settings)));
+                    values.put("meaning", TextUtil.firstMeaningLine(note.meaning(settings)));
+                    values.put("sentence", TextUtil.normalizeJapanese(note.sentence(settings)));
+                    values.put("fields_json", fieldsJson(note.fields));
+                    values.put("tags", String.join(" ", note.tags));
+                    values.put("last_seen_sync_id", syncId);
+                    db.insertWithOnConflict("source_notes", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                }
+            }
+
+            for (Records.Card card : snapshot.cards) {
+                Records.Note note = notesById.get(card.noteId);
+                if (note == null) {
+                    continue;
+                }
+                if (card.suspended) {
+                    ContentValues values = new ContentValues();
+                    values.put("card_id", card.cardId);
+                    values.put("note_id", card.noteId);
+                    values.put("deck_name", card.deckName);
+                    values.put("model_name", note.modelName);
+                    values.put("expression", TextUtil.normalizeJapanese(note.expression(settings)));
+                    values.put("reading", TextUtil.normalizeJapanese(note.reading(settings)));
+                    values.put("meaning", TextUtil.firstMeaningLine(note.meaning(settings)));
+                    values.put("sentence", TextUtil.normalizeJapanese(note.sentence(settings)));
+                    values.put("fields_json", fieldsJson(note.fields));
+                    values.put("archived_at", finishedAt);
+                    values.put("archived_sync_id", syncId);
+                    db.insertWithOnConflict("suspended_archive", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+                } else {
+                    ContentValues values = new ContentValues();
+                    values.put("card_id", card.cardId);
+                    values.put("note_id", card.noteId);
+                    values.put("deck_name", card.deckName);
+                    values.put("ord", card.ord);
+                    values.put("queue", card.queue);
+                    values.put("type", card.type);
+                    values.put("due", card.due);
+                    values.put("interval_days", card.intervalDays);
+                    values.put("reps", card.reps);
+                    values.put("lapses", card.lapses);
+                    values.put("last_seen_sync_id", syncId);
+                    db.insertWithOnConflict("source_cards", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                }
+            }
+
+            for (Records.SuspendedImport imported : imports) {
+                ContentValues values = new ContentValues();
+                values.put("kanji", imported.kanji);
+                if (imported.jitenRank != null) {
+                    values.put("jiten_rank", imported.jitenRank);
+                }
+                values.put("rank_known", imported.rankKnown ? 1 : 0);
+                values.put("cutoff_used", imported.cutoffUsed);
+                values.put("first_imported_at", firstImportedAt(db, imported.kanji, finishedAt));
+                values.put("last_seen_sync_id", syncId);
+                db.insertWithOnConflict("suspended_imports", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                for (Records.SuspendedSource source : imported.sources) {
+                    ContentValues sourceValues = new ContentValues();
+                    sourceValues.put("kanji", imported.kanji);
+                    sourceValues.put("card_id", source.cardId);
+                    sourceValues.put("note_id", source.noteId);
+                    sourceValues.put("expression", source.expression);
+                    sourceValues.put("reading", source.reading);
+                    sourceValues.put("meaning", source.meaning);
+                    sourceValues.put("sentence", source.sentence);
+                    sourceValues.put("sync_id", syncId);
+                    db.insertWithOnConflict("suspended_sources", null, sourceValues, SQLiteDatabase.CONFLICT_REPLACE);
+                }
+            }
+
+            saveRows(db, rows, finishedAt);
+            db.setTransactionSuccessful();
+            return syncId;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void saveFailedSync(long startedAt, long finishedAt, String status, String errorCode, String errorMessage) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("started_at", startedAt);
+        values.put("finished_at", finishedAt);
+        values.put("status", status);
+        values.put("active_notes_count", 0);
+        values.put("active_cards_count", 0);
+        values.put("suspended_cards_archived_count", 0);
+        values.put("suspended_kanji_imported_count", 0);
+        values.put("deleted_notes_count", 0);
+        values.put("deleted_cards_count", 0);
+        values.put("error_code", errorCode);
+        values.put("error_message", errorMessage);
+        values.put("removal_message", "");
+        db.insert("sync_runs", null, values);
+    }
+
+    public void updateSyncRemovalMessage(long syncId, String message) {
+        ContentValues values = new ContentValues();
+        values.put("removal_message", message == null ? "" : message);
+        getWritableDatabase().update("sync_runs", values, "id=?", new String[]{Long.toString(syncId)});
+    }
+
+    public List<Records.DashboardRow> dashboardRows() {
+        SQLiteDatabase db = getReadableDatabase();
+        List<Records.DashboardRow> rows = new ArrayList<>();
+        Cursor cursor = db.query("dashboard_rows", null, null, null, null, null, "weakness_score DESC, suspended_example_count DESC, kanji ASC", "120");
+        try {
+            while (cursor.moveToNext()) {
+                String kanji = string(cursor, "kanji");
+                rows.add(new Records.DashboardRow(
+                        kanji,
+                        nullableInt(cursor, "jiten_rank"),
+                        string(cursor, "primary_meaning"),
+                        string(cursor, "reading"),
+                        string(cursor, "browser_search"),
+                        integer(cursor, "weakness_score"),
+                        string(cursor, "reason_code"),
+                        string(cursor, "reason_text"),
+                        integer(cursor, "active_example_count"),
+                        integer(cursor, "suspended_example_count"),
+                        integer(cursor, "mature_support_count"),
+                        examplesForKanji(db, kanji)
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+        return rows;
+    }
+
+    public Records.DashboardRow rowForKanji(String kanji) {
+        for (Records.DashboardRow row : dashboardRows()) {
+            if (row.kanji.equals(kanji)) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    public List<Records.StudyItem> studyItems() {
+        SQLiteDatabase db = getReadableDatabase();
+        List<Records.StudyItem> items = new ArrayList<>();
+        Cursor cursor = db.query("study_items", null, null, null, null, null, "due_at ASC");
+        try {
+            while (cursor.moveToNext()) {
+                items.add(readStudyItem(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return items;
+    }
+
+    public List<Records.SuspendedImport> suspendedImports() {
+        SQLiteDatabase db = getReadableDatabase();
+        Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();
+        Cursor cursor = db.query("suspended_imports", null, null, null, null, null, "jiten_rank ASC, kanji ASC");
+        try {
+            while (cursor.moveToNext()) {
+                String kanji = string(cursor, "kanji");
+                imports.put(kanji, new MutableSuspendedImport(
+                        kanji,
+                        nullableInt(cursor, "jiten_rank"),
+                        integer(cursor, "rank_known") == 1,
+                        integer(cursor, "cutoff_used")
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+
+        Cursor sources = db.query("suspended_sources", null, null, null, null, null, "kanji ASC, card_id ASC");
+        try {
+            while (sources.moveToNext()) {
+                MutableSuspendedImport imported = imports.get(string(sources, "kanji"));
+                if (imported == null) {
+                    continue;
+                }
+                imported.sources.add(new Records.SuspendedSource(
+                        imported.kanji,
+                        longValue(sources, "card_id"),
+                        longValue(sources, "note_id"),
+                        string(sources, "expression"),
+                        string(sources, "reading"),
+                        string(sources, "meaning"),
+                        string(sources, "sentence")
+                ));
+            }
+        } finally {
+            sources.close();
+        }
+
+        List<Records.SuspendedImport> out = new ArrayList<>();
+        for (MutableSuspendedImport imported : imports.values()) {
+            out.add(imported.build());
+        }
+        return out;
+    }
+
+    public void replaceStudyItems(List<Records.StudyItem> items) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            db.delete("study_items", null, null);
+            for (Records.StudyItem item : items) {
+                upsertStudyItem(db, item);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void saveStudyItem(Records.StudyItem item) {
+        upsertStudyItem(getWritableDatabase(), item);
+    }
+
+    public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt) {
+        ContentValues values = new ContentValues();
+        values.put("kanji", request.kanji);
+        values.put("token", request.token);
+        values.put("rating", appliedRating);
+        values.put("writing_required", request.writingRequired ? 1 : 0);
+        values.put("writing_passed", request.writingPassed ? 1 : 0);
+        values.put("manual_override", request.manualOverride ? 1 : 0);
+        values.put("reviewed_at", reviewedAt);
+        getWritableDatabase().insertWithOnConflict("review_log", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    public List<String> consumedTokens() {
+        List<String> tokens = new ArrayList<>();
+        Cursor cursor = getReadableDatabase().query("review_log", new String[]{"token"}, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                tokens.add(string(cursor, "token"));
+            }
+        } finally {
+            cursor.close();
+        }
+        return tokens;
+    }
+
+    public SyncStatus latestSync() {
+        Cursor cursor = getReadableDatabase().query("sync_runs", null, null, null, null, null, "id DESC", "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return new SyncStatus(
+                    string(cursor, "status"),
+                    integer(cursor, "active_notes_count"),
+                    integer(cursor, "active_cards_count"),
+                    integer(cursor, "suspended_cards_archived_count"),
+                    integer(cursor, "suspended_kanji_imported_count"),
+                    longValue(cursor, "finished_at"),
+                    string(cursor, "error_message"),
+                    string(cursor, "removal_message")
+            );
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public int getIntSetting(String key, int fallback) {
+        Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return fallback;
+            }
+            try {
+                return Integer.parseInt(string(cursor, "value"));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public long getLongSetting(String key, long fallback) {
+        Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return fallback;
+            }
+            try {
+                return Long.parseLong(string(cursor, "value"));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public double getDoubleSetting(String key, double fallback) {
+        Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return fallback;
+            }
+            try {
+                return Double.parseDouble(string(cursor, "value"));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public void putIntSetting(String key, int value) {
+        putSetting(key, Integer.toString(value));
+    }
+
+    public void putLongSetting(String key, long value) {
+        putSetting(key, Long.toString(value));
+    }
+
+    public void putDoubleSetting(String key, double value) {
+        putSetting(key, String.format(Locale.ROOT, "%.4f", value));
+    }
+
+    public Records.SchedulerParameters schedulerParameters() {
+        Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
+        return new Records.SchedulerParameters(
+                getDoubleSetting("scheduler_target_retention", defaults.targetRetention),
+                getDoubleSetting("scheduler_again_multiplier", defaults.againMultiplier),
+                getDoubleSetting("scheduler_hard_multiplier", defaults.hardMultiplier),
+                getDoubleSetting("scheduler_good_multiplier", defaults.goodMultiplier),
+                getDoubleSetting("scheduler_easy_multiplier", defaults.easyMultiplier),
+                getLongSetting("scheduler_last_adjusted_at", defaults.lastAdjustedAtMillis),
+                getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount)
+        );
+    }
+
+    public void saveSchedulerParameters(Records.SchedulerParameters parameters) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putDoubleSetting("scheduler_target_retention", parameters.targetRetention);
+            putDoubleSetting("scheduler_again_multiplier", parameters.againMultiplier);
+            putDoubleSetting("scheduler_hard_multiplier", parameters.hardMultiplier);
+            putDoubleSetting("scheduler_good_multiplier", parameters.goodMultiplier);
+            putDoubleSetting("scheduler_easy_multiplier", parameters.easyMultiplier);
+            putLongSetting("scheduler_last_adjusted_at", parameters.lastAdjustedAtMillis);
+            putIntSetting("scheduler_last_adjustment_review_count", parameters.lastAdjustmentReviewCount);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public Records.ReviewStats reviewStatsSince(long sinceMillis) {
+        Cursor cursor = getReadableDatabase().query(
+                "review_log",
+                new String[]{"rating", "writing_required", "writing_passed", "manual_override"},
+                "reviewed_at>=?",
+                new String[]{Long.toString(sinceMillis)},
+                null,
+                null,
+                null
+        );
+        int total = 0;
+        int again = 0;
+        int hard = 0;
+        int good = 0;
+        int easy = 0;
+        int writingRequired = 0;
+        int writingFailed = 0;
+        try {
+            while (cursor.moveToNext()) {
+                total++;
+                String rating = string(cursor, "rating");
+                if ("again".equals(rating)) {
+                    again++;
+                } else if ("hard".equals(rating)) {
+                    hard++;
+                } else if ("easy".equals(rating)) {
+                    easy++;
+                } else {
+                    good++;
+                }
+                boolean required = integer(cursor, "writing_required") == 1;
+                boolean passed = integer(cursor, "writing_passed") == 1;
+                boolean override = integer(cursor, "manual_override") == 1;
+                if (required) {
+                    writingRequired++;
+                    if (!passed && !override) {
+                        writingFailed++;
+                    }
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return new Records.ReviewStats(total, again, hard, good, easy, writingRequired, writingFailed);
+    }
+
+    private void putSetting(String key, String value) {
+        ContentValues values = new ContentValues();
+        values.put("key", key);
+        values.put("value", value);
+        values.put("updated_at", System.currentTimeMillis());
+        getWritableDatabase().insertWithOnConflict("settings", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private long insertSyncRun(SQLiteDatabase db, long startedAt, long finishedAt, String status, Records.CollectionSnapshot snapshot, List<Records.SuspendedImport> imports, String errorCode, String errorMessage, String removalMessage, int deletedNotes, int deletedCards) {
+        int activeCards = 0;
+        int suspended = 0;
+        Set<Long> activeNotes = new HashSet<>();
+        for (Records.Card card : snapshot.cards) {
+            if (card.suspended) {
+                suspended++;
+            } else {
+                activeCards++;
+                activeNotes.add(card.noteId);
+            }
+        }
+        ContentValues values = new ContentValues();
+        values.put("started_at", startedAt);
+        values.put("finished_at", finishedAt);
+        values.put("status", status);
+        values.put("active_notes_count", activeNotes.size());
+        values.put("active_cards_count", activeCards);
+        values.put("suspended_cards_archived_count", suspended);
+        values.put("suspended_kanji_imported_count", imports.size());
+        values.put("deleted_notes_count", deletedNotes);
+        values.put("deleted_cards_count", deletedCards);
+        values.put("error_code", errorCode);
+        values.put("error_message", errorMessage);
+        values.put("removal_message", removalMessage);
+        return db.insert("sync_runs", null, values);
+    }
+
+    private void saveRows(SQLiteDatabase db, List<Records.DashboardRow> rows, long rebuiltAt) {
+        for (Records.DashboardRow row : rows) {
+            ContentValues values = new ContentValues();
+            values.put("kanji", row.kanji);
+            if (row.jitenRank != null) {
+                values.put("jiten_rank", row.jitenRank);
+            }
+            values.put("primary_meaning", row.primaryMeaning);
+            values.put("reading", row.reading);
+            values.put("browser_search", row.browserSearch);
+            values.put("weakness_score", row.weaknessScore);
+            values.put("reason_code", row.reasonCode);
+            values.put("reason_text", row.reasonText);
+            values.put("active_example_count", row.activeExampleCount);
+            values.put("suspended_example_count", row.suspendedExampleCount);
+            values.put("mature_support_count", row.matureSupportCount);
+            values.put("rebuilt_at", rebuiltAt);
+            db.insertWithOnConflict("dashboard_rows", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            for (Records.Example example : row.examples) {
+                ContentValues ex = new ContentValues();
+                ex.put("kanji", row.kanji);
+                ex.put("source_type", example.sourceType);
+                ex.put("card_id", example.cardId);
+                ex.put("note_id", example.noteId);
+                ex.put("expression", example.expression);
+                ex.put("reading", example.reading);
+                ex.put("meaning", example.meaning);
+                ex.put("sentence", example.sentence);
+                ex.put("mature", example.mature ? 1 : 0);
+                ex.put("lapses", example.lapses);
+                db.insert("kanji_examples", null, ex);
+            }
+        }
+    }
+
+    private List<Records.Example> examplesForKanji(SQLiteDatabase db, String kanji) {
+        List<Records.Example> examples = new ArrayList<>();
+        Cursor cursor = db.query("kanji_examples", null, "kanji=?", new String[]{kanji}, null, null, "source_type DESC, id ASC", "8");
+        try {
+            while (cursor.moveToNext()) {
+                examples.add(new Records.Example(
+                        string(cursor, "source_type"),
+                        longValue(cursor, "card_id"),
+                        longValue(cursor, "note_id"),
+                        string(cursor, "expression"),
+                        string(cursor, "reading"),
+                        string(cursor, "meaning"),
+                        string(cursor, "sentence"),
+                        integer(cursor, "mature") == 1,
+                        integer(cursor, "lapses")
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+        return examples;
+    }
+
+    private void upsertStudyItem(SQLiteDatabase db, Records.StudyItem item) {
+        ContentValues values = new ContentValues();
+        values.put("kanji", item.kanji);
+        values.put("state", item.state);
+        values.put("due_at", item.dueAtMillis);
+        values.put("stability", item.stability);
+        values.put("difficulty", item.difficulty);
+        values.put("total_reviews", item.totalReviews);
+        values.put("lapses", item.lapses);
+        values.put("learning_step", item.learningStep);
+        values.put("writing_level", item.writingLevel);
+        values.put("active_token", item.activeToken);
+        values.put("created_at", item.createdAtMillis);
+        db.insertWithOnConflict("study_items", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private Records.StudyItem readStudyItem(Cursor cursor) {
+        return new Records.StudyItem(
+                string(cursor, "kanji"),
+                string(cursor, "state"),
+                longValue(cursor, "due_at"),
+                cursor.getDouble(cursor.getColumnIndexOrThrow("stability")),
+                cursor.getDouble(cursor.getColumnIndexOrThrow("difficulty")),
+                integer(cursor, "total_reviews"),
+                integer(cursor, "lapses"),
+                integer(cursor, "learning_step"),
+                integer(cursor, "writing_level"),
+                string(cursor, "active_token"),
+                longValue(cursor, "created_at")
+        );
+    }
+
+    private long firstImportedAt(SQLiteDatabase db, String kanji, long fallback) {
+        Cursor cursor = db.query("suspended_imports", new String[]{"first_imported_at"}, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            return cursor.moveToFirst() ? longValue(cursor, "first_imported_at") : fallback;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Set<Long> activeNoteIds(List<Records.Card> cards) {
+        Set<Long> ids = new HashSet<>();
+        for (Records.Card card : cards) {
+            if (!card.suspended) {
+                ids.add(card.noteId);
+            }
+        }
+        return ids;
+    }
+
+    private Set<Long> activeCardIds(List<Records.Card> cards) {
+        Set<Long> ids = new HashSet<>();
+        for (Records.Card card : cards) {
+            if (!card.suspended) {
+                ids.add(card.cardId);
+            }
+        }
+        return ids;
+    }
+
+    private int countDeletedExisting(SQLiteDatabase db, String table, String idColumn, Set<Long> currentIds) {
+        int missing = 0;
+        Cursor cursor = db.query(table, new String[]{idColumn}, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                if (!currentIds.contains(cursor.getLong(0))) {
+                    missing++;
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return missing;
+    }
+
+    private boolean hasActiveCard(List<Records.Card> cards, long noteId) {
+        for (Records.Card card : cards) {
+            if (card.noteId == noteId && !card.suspended) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final class MutableSuspendedImport {
+        private final String kanji;
+        private final Integer rank;
+        private final boolean rankKnown;
+        private final int cutoff;
+        private final List<Records.SuspendedSource> sources = new ArrayList<>();
+
+        private MutableSuspendedImport(String kanji, Integer rank, boolean rankKnown, int cutoff) {
+            this.kanji = kanji;
+            this.rank = rank;
+            this.rankKnown = rankKnown;
+            this.cutoff = cutoff;
+        }
+
+        private Records.SuspendedImport build() {
+            return new Records.SuspendedImport(kanji, rank, rankKnown, cutoff, sources);
+        }
+    }
+
+    private static String fieldsJson(Map<String, String> fields) {
+        StringBuilder out = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (!first) {
+                out.append(',');
+            }
+            first = false;
+            out.append(TextUtil.jsonQuote(entry.getKey())).append(':').append(TextUtil.jsonQuote(entry.getValue()));
+        }
+        out.append('}');
+        return out.toString();
+    }
+
+    private static String string(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        return index < 0 || cursor.isNull(index) ? "" : cursor.getString(index);
+    }
+
+    private static int integer(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        return index < 0 || cursor.isNull(index) ? 0 : cursor.getInt(index);
+    }
+
+    private static Integer nullableInt(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        return index < 0 || cursor.isNull(index) ? null : cursor.getInt(index);
+    }
+
+    private static long longValue(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        return index < 0 || cursor.isNull(index) ? 0L : cursor.getLong(index);
+    }
+
+    public static final class SyncStatus {
+        public final String status;
+        public final int activeNotes;
+        public final int activeCards;
+        public final int suspendedCards;
+        public final int importedKanji;
+        public final long finishedAt;
+        public final String errorMessage;
+        public final String removalMessage;
+
+        private SyncStatus(String status, int activeNotes, int activeCards, int suspendedCards, int importedKanji, long finishedAt, String errorMessage, String removalMessage) {
+            this.status = status;
+            this.activeNotes = activeNotes;
+            this.activeCards = activeCards;
+            this.suspendedCards = suspendedCards;
+            this.importedKanji = importedKanji;
+            this.finishedAt = finishedAt;
+            this.errorMessage = errorMessage;
+            this.removalMessage = removalMessage;
+        }
+
+        public String headline() {
+            if (!"success".equals(status)) {
+                return "Sync blocked: " + errorMessage;
+            }
+            return String.format(Locale.ROOT, "%d active cards, %d archived suspended cards, %d imported kanji", activeCards, suspendedCards, importedKanji);
+        }
+    }
+}

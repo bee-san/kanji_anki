@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Kanji Anki</string>
+    <string name="writing_passed">Writing passed</string>
+    <string name="manual_override">Manual override</string>
+</resources>
