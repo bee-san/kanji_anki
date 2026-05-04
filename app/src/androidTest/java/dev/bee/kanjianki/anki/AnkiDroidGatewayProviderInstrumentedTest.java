@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.anki;
 
 import android.content.Context;
+import android.net.Uri;
+import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -30,7 +32,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
         store = new LocalStore(context);
-        FakeAnkiDroidProvider.reset();
+        resetProvider();
     }
 
     @After
@@ -39,7 +41,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
             store.close();
         }
         context.deleteDatabase("kanji_anki_simple.db");
-        FakeAnkiDroidProvider.reset();
+        resetProvider();
     }
 
     @Test
@@ -51,6 +53,8 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
         assertTrue(snapshot.cards.get(1).suspended);
+        assertEquals(0, providerInt("topLevelCardsQueries"));
+        assertEquals(2, providerInt("perNoteCardsQueries"));
     }
 
     @Test
@@ -67,5 +71,20 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(1, imports.size());
         assertEquals("笥", imports.get(0).kanji);
         assertTrue(result.message.contains("tagged locally"));
+        assertEquals(0, providerInt("topLevelCardsQueries"));
+        assertEquals(2, providerInt("perNoteCardsQueries"));
+    }
+
+    private void resetProvider() {
+        context.getContentResolver().call(providerUri(), "reset", null, null);
+    }
+
+    private int providerInt(String method) {
+        Bundle result = context.getContentResolver().call(providerUri(), method, null, null);
+        return result == null ? -1 : result.getInt("value", -1);
+    }
+
+    private Uri providerUri() {
+        return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
     }
 }
