@@ -53,9 +53,10 @@ public final class AnkiDroidGateway {
         }
         try {
             ModelMapping mapping = findKikuModel(target, settings);
-            Map<Long, Records.Note> notes = queryNotes(target, mapping);
-            List<Records.Card> cards = queryCards(target, settings, notes.keySet());
+            List<Records.Card> cards = queryCards(target, settings);
             validateTemplateCards(cards, settings);
+            Map<Long, Records.Note> notes = queryNotes(target, mapping, noteIds(cards), settings);
+            cards = cardsWithNotes(cards, notes.keySet());
             return new Records.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
         } catch (SyncException error) {
             throw error;
@@ -209,44 +210,73 @@ public final class AnkiDroidGateway {
         throw SyncException.permanent("Kiku note type was not found in AnkiDroid.");
     }
 
-    private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping) throws SyncException {
+    private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Set<Long> noteIds, Records.Settings settings) throws SyncException {
         Map<Long, Records.Note> notes = new LinkedHashMap<>();
-        Cursor cursor = resolver.query(
-                uriFor(target.authority, "notes_v2"),
-                new String[]{"_id", "flds", "tags"},
-                "mid=" + mapping.modelId,
-                null,
-                null
-        );
-        if (cursor == null) {
-            throw SyncException.retryable("AnkiDroid returned no Kiku note cursor.");
-        }
-        try {
-            while (cursor.moveToNext()) {
-                long noteId = longValue(cursor, "_id", 0);
-                List<String> values = splitFields(value(cursor, "flds"));
-                Map<String, String> fieldMap = new LinkedHashMap<>();
-                for (int i = 0; i < mapping.fields.size(); i++) {
-                    fieldMap.put(mapping.fields.get(i), i < values.size() ? values.get(i) : "");
-                }
-                List<String> tags = splitTags(value(cursor, "tags"));
-                if (tags.contains(ARCHIVED_TAG)) {
+        for (Long noteId : noteIds) {
+            Cursor cursor = resolver.query(
+                    uriFor(target.authority, "notes_v2"),
+                    new String[]{"_id", "flds", "tags"},
+                    "_id=" + noteId + " AND mid=" + mapping.modelId,
+                    null,
+                    null
+            );
+            if (cursor == null) {
+                throw SyncException.retryable("AnkiDroid returned no Kiku note cursor.");
+            }
+            try {
+                if (!cursor.moveToFirst()) {
                     continue;
                 }
-                notes.put(noteId, new Records.Note(noteId, mapping.name, fieldMap, tags));
+                List<String> values = splitFields(value(cursor, "flds"));
+                Map<String, String> fieldMap = selectedFields(mapping, values, settings);
+                List<String> tags = splitTags(value(cursor, "tags"));
+                if (!tags.contains(ARCHIVED_TAG)) {
+                    notes.put(noteId, new Records.Note(noteId, mapping.name, fieldMap, tags));
+                }
+            } finally {
+                cursor.close();
             }
-        } finally {
-            cursor.close();
         }
         return notes;
     }
 
-    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
+    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings) throws SyncException {
         try {
             return queryRawCards(target, settings);
         } catch (Throwable ignored) {
-            return queryBasicCards(target, settings, noteIds);
+            return queryBasicCards(target, settings);
         }
+    }
+
+    private Map<String, String> selectedFields(ModelMapping mapping, List<String> values, Records.Settings settings) {
+        return selectRequiredFields(mapping.fields, values, settings);
+    }
+
+    static Map<String, String> selectRequiredFields(List<String> modelFields, List<String> values, Records.Settings settings) {
+        Map<String, String> fieldMap = new LinkedHashMap<>();
+        for (String field : settings.requiredFields()) {
+            int index = modelFields.indexOf(field);
+            fieldMap.put(field, index >= 0 && index < values.size() ? values.get(index) : "");
+        }
+        return fieldMap;
+    }
+
+    private Set<Long> noteIds(List<Records.Card> cards) {
+        Set<Long> ids = new LinkedHashSet<>();
+        for (Records.Card card : cards) {
+            ids.add(card.noteId);
+        }
+        return ids;
+    }
+
+    private List<Records.Card> cardsWithNotes(List<Records.Card> cards, Set<Long> noteIds) {
+        List<Records.Card> out = new ArrayList<>();
+        for (Records.Card card : cards) {
+            if (noteIds.contains(card.noteId)) {
+                out.add(card);
+            }
+        }
+        return out;
     }
 
     private void validateTemplateCards(List<Records.Card> cards, Records.Settings settings) throws SyncException {
@@ -292,7 +322,7 @@ public final class AnkiDroidGateway {
         return cards;
     }
 
-    private List<Records.Card> queryBasicCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
+    private List<Records.Card> queryBasicCards(ProviderTarget target, Records.Settings settings) throws SyncException {
         Set<Long> suspendedIds = queryBasicCardIds(target, "note:\"" + settings.modelName + "\" is:suspended");
         List<Records.Card> cards = new ArrayList<>();
         Cursor cursor = resolver.query(uriFor(target.authority, "cards"), null, "note:\"" + settings.modelName + "\"", null, null);
@@ -303,9 +333,6 @@ public final class AnkiDroidGateway {
             while (cursor.moveToNext()) {
                 long cardId = longValue(cursor, "_id", 0);
                 long noteId = longValue(cursor, "note_id", 0);
-                if (!noteIds.contains(noteId)) {
-                    continue;
-                }
                 boolean suspended = suspendedIds.contains(cardId);
                 cards.add(new Records.Card(
                         cardId,
