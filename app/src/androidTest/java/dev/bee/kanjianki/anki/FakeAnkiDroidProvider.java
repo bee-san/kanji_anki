@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.os.Bundle;
 
 public final class FakeAnkiDroidProvider extends ContentProvider {
     public static final String AUTHORITY = "dev.bee.kanjianki.test.ankidroid";
@@ -29,6 +30,25 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     }
 
     @Override
+    public Bundle call(String method, String arg, Bundle extras) {
+        Bundle result = new Bundle();
+        if ("reset".equals(method)) {
+            reset();
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("topLevelCardsQueries".equals(method)) {
+            result.putInt("value", topLevelCardsQueries);
+            return result;
+        }
+        if ("perNoteCardsQueries".equals(method)) {
+            result.putInt("value", perNoteCardsQueries);
+            return result;
+        }
+        return result;
+    }
+
+    @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         String path = uri.getPath() == null ? "" : uri.getPath();
         if ("/models".equals(path)) {
@@ -40,6 +60,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             return notes(selection);
         }
         if (path.matches("/notes/\\d+/cards")) {
+            rejectRawSchedulerProjection(uri, projection);
             perNoteCardsQueries++;
             long noteId = Long.parseLong(uri.getPathSegments().get(1));
             MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "note_id", "ord", "deck_id", "card_name"});
@@ -52,9 +73,25 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         }
         if ("/cards".equals(path)) {
             topLevelCardsQueries++;
-            throw new UnsupportedOperationException("uri " + uri + " is not supported");
+            throw new UnsupportedOperationException("uri " + uri + " is not supported; raw card queries expose unsupported scheduler columns");
         }
         return null;
+    }
+
+    private void rejectRawSchedulerProjection(Uri uri, String[] projection) {
+        if (projection == null) {
+            return;
+        }
+        for (String column : projection) {
+            if ("queue".equals(column)
+                    || "type".equals(column)
+                    || "due".equals(column)
+                    || "ivl".equals(column)
+                    || "reps".equals(column)
+                    || "lapses".equals(column)) {
+                throw new IllegalArgumentException(column + " is not part of the public card projection for " + uri);
+            }
+        }
     }
 
     private Cursor notes(String selection) {
