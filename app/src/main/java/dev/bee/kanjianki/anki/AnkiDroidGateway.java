@@ -289,11 +289,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
-        try {
-            return queryRawCards(target, settings, noteIds);
-        } catch (Throwable ignored) {
-            return queryCardsByNote(target, settings, noteIds);
-        }
+        return queryCardsByNote(target, settings, noteIds);
     }
 
     private Map<String, String> selectedFields(ModelMapping mapping, List<String> values, Records.Settings settings) {
@@ -325,45 +321,6 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 throw SyncException.permanent(settings.modelName + " has card template ord " + card.ord + ". This app supports the " + settings.templateName + " template at ord 0 only.");
             }
         }
-    }
-
-    private List<Records.Card> queryRawCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
-        List<Records.Card> cards = new ArrayList<>();
-        Cursor cursor = resolver.query(
-                uriFor(target.authority, "cards"),
-                new String[]{"_id", "note_id", "ord", "deck_id", "queue", "type", "due", "ivl", "reps", "lapses"},
-                "note:\"" + settings.modelName + "\"",
-                null,
-                null
-        );
-        if (cursor == null) {
-            throw SyncException.retryable("AnkiDroid returned no card cursor.");
-        }
-        try {
-            while (cursor.moveToNext()) {
-                long noteId = longValue(cursor, "note_id", 0);
-                if (!noteIds.contains(noteId)) {
-                    continue;
-                }
-                int queue = intValue(cursor, "queue", 0);
-                cards.add(new Records.Card(
-                        longValue(cursor, "_id", 0),
-                        noteId,
-                        intValue(cursor, "ord", 0),
-                        value(cursor, "deck_id"),
-                        queue,
-                        intValue(cursor, "type", 0),
-                        intValue(cursor, "due", 0),
-                        intValue(cursor, "ivl", 0),
-                        intValue(cursor, "reps", 0),
-                        intValue(cursor, "lapses", 0),
-                        queue == -1
-                ));
-            }
-        } finally {
-            cursor.close();
-        }
-        return cards;
     }
 
     private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
