@@ -275,11 +275,11 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Reading: ら");
                 assertHasText(activity, "From: 拉麺  らーめん");
                 assertHasText(activity, "I knew it");
-                assertHasText(activity, "Write it");
+                assertHasText(activity, "I missed it");
                 assertNoText(activity, "Check");
             });
 
-            clickText(scenario, "Write it");
+            clickText(scenario, "I missed it");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Draw this kanji");
                 assertHasText(activity, "Write to repair");
@@ -415,7 +415,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             clickText(scenario, "Reveal");
-            clickText(scenario, "Write it");
+            clickText(scenario, "I missed it");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "No numbered stroke guide is bundled");
                 assertHasText(activity, "Stroke-order feedback will be limited");
@@ -535,7 +535,7 @@ public final class MainActivityInstrumentedTest {
                 assertFalse(hasAncestorOfType(reveal, ScrollView.class));
             });
             clickText(scenario, "Reveal");
-            clickText(scenario, "Write it");
+            clickText(scenario, "I missed it");
             scenario.onActivity(activity -> {
                 View root = activity.findViewById(android.R.id.content);
                 View check = findExactText(root, "Check");
@@ -564,7 +564,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Answer");
                 assertHasText(activity, "拉");
                 assertHasText(activity, "I knew it");
-                assertHasText(activity, "Write it");
+                assertHasText(activity, "I missed it");
             });
             clickText(scenario, "I knew it");
 
@@ -582,6 +582,40 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, item.totalReviews);
                 assertEquals(1, item.learningStep);
                 assertEquals(0, item.writingLevel);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testMissedFlashcardRepairCapsCorrectWritingToHard() {
+        seedDashboard();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Reveal");
+            clickText(scenario, "I missed it");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Write to repair");
+                assertHasText(activity, "clean repair is still logged as hard");
+                drawGuideKanji(activity, "拉");
+            });
+            clickText(scenario, "Check");
+            waitForText(scenario, "Clean match");
+            clickText(scenario, "Next card");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(0, stats.good);
+                assertEquals(1, stats.hard);
+                assertEquals(1, stats.writingRequired);
+                assertEquals(0, stats.writingFailed);
+                List<Records.StudyItem> items = store.studyItems();
+                assertEquals(1, items.size());
+                assertEquals(0, items.get(0).writingLevel);
             } finally {
                 store.close();
             }

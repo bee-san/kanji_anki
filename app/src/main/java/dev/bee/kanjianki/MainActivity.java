@@ -106,6 +106,7 @@ public final class MainActivity extends Activity {
     private boolean checkingWriting;
     private boolean writingModelDownloaded;
     private boolean writingModelStatusKnown;
+    private boolean activeFlashcardMissed;
     private int hintsUsed;
     private int currentPracticeLevel;
     private Map<String, StrokeGuide> strokeGuides;
@@ -925,6 +926,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSession(Records.StudySession session) {
+        activeFlashcardMissed = false;
         if (session.writingRequired) {
             renderWritingSession(session);
         } else {
@@ -1118,7 +1120,7 @@ public final class MainActivity extends Activity {
             known.setOnClickListener(v -> submitReview("good", false));
             actions.addView(known, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-            Button write = primaryButton("Write it", CORAL);
+            Button write = primaryButton("I missed it", CORAL);
             write.setOnClickListener(v -> startWritingRepairSession());
             actions.addView(write, new LinearLayout.LayoutParams(0, dp(62), 1));
         }
@@ -1130,6 +1132,7 @@ public final class MainActivity extends Activity {
             return;
         }
         Records.StudySession previous = activeSession;
+        activeFlashcardMissed = true;
         activeSession = new Records.StudySession(
                 previous.item,
                 previous.row,
@@ -1145,7 +1148,7 @@ public final class MainActivity extends Activity {
         if (drawingPad != null) {
             drawingPad.setGuide(guide, currentPracticeLevel, false);
         }
-        setStudyStatus(guideLabel(currentPracticeLevel, guide) + "\nMissed recall. Write it once with the guide; this counts as the same review.", MUTED);
+        setStudyStatus(guideStatusPrefix(guide) + "\nWrite it once with the guide.", MUTED);
         updateResultActions();
     }
 
@@ -1341,6 +1344,9 @@ public final class MainActivity extends Activity {
     }
 
     private String adjustedRatingForHelp(String rating, boolean override) {
+        if (activeFlashcardMissed && "repair_writing".equals(activeSession.taskType) && passingRating(rating)) {
+            return "hard";
+        }
         if (override || activeAnalysis == null || !activeAnalysis.writingPassed) {
             return rating;
         }
@@ -1348,6 +1354,21 @@ public final class MainActivity extends Activity {
             return "good";
         }
         return rating;
+    }
+
+    private boolean passingRating(String rating) {
+        return "good".equals(rating) || "easy".equals(rating);
+    }
+
+    private String guideStatusPrefix(StrokeGuide guide) {
+        return guideLabel(currentPracticeLevel, guide) + flashcardRepairNote();
+    }
+
+    private String flashcardRepairNote() {
+        if (activeFlashcardMissed && activeSession != null && "repair_writing".equals(activeSession.taskType)) {
+            return "\nMissed recall. A clean repair is still logged as hard.";
+        }
+        return "";
     }
 
     private void showWritingHint() {
@@ -1526,7 +1547,7 @@ public final class MainActivity extends Activity {
         WritingRecognizer recognizer = writingRecognizer();
         if (recognizer == null) {
             writingModelStatusKnown = true;
-            setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nAutomatic handwriting checks are unavailable on this device.", CORAL);
+            setStudyStatus(guideStatusPrefix(strokeGuide(activeSession.item.kanji)) + "\nAutomatic handwriting checks are unavailable on this device.", CORAL);
             updateResultActions();
             return;
         }
@@ -1541,11 +1562,11 @@ public final class MainActivity extends Activity {
                 return;
             }
             if (error != null || status == null) {
-                setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nUnable to read handwriting checker status.", CORAL);
+                setStudyStatus(guideStatusPrefix(strokeGuide(activeSession.item.kanji)) + "\nUnable to read handwriting checker status.", CORAL);
             } else if (!status.downloaded) {
-                setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nDownload the handwriting checker before automatic checks.", CORAL);
+                setStudyStatus(guideStatusPrefix(strokeGuide(activeSession.item.kanji)) + "\nDownload the handwriting checker before automatic checks.", CORAL);
             } else {
-                setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nHandwriting checker ready.", MUTED);
+                setStudyStatus(guideStatusPrefix(strokeGuide(activeSession.item.kanji)) + "\nHandwriting checker ready.", MUTED);
             }
         }));
     }
