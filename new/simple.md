@@ -1,6 +1,6 @@
 # Simple
 
-This is the restart brief for a significantly simpler Kanji Anki app.
+This is the restart brief for a significantly simpler Kani app.
 
 The next generation should optimize for one product:
 

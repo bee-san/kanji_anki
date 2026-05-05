@@ -19,18 +19,18 @@ fun configValue(name: String): String? =
         ?: providers.environmentVariable(name).orNull?.takeIf { it.isNotBlank() }
         ?: localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
 
-fun intConfigValue(name: String, defaultValue: Int): Int =
-    configValue(name)?.toIntOrNull() ?: defaultValue
+fun renamedConfigValue(name: String, legacyName: String): String? =
+    configValue(name) ?: configValue(legacyName)
 
-val appVersionName = configValue("KANJI_ANKI_VERSION_NAME") ?: "0.3.9"
-val appVersionCode = intConfigValue("KANJI_ANKI_VERSION_CODE", 3009)
-val releaseOwner = configValue("KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
-val releaseRepo = configValue("KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
+val appVersionName = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME") ?: "0.4.0"
+val appVersionCode = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE")?.toIntOrNull() ?: 4000
+val releaseOwner = renamedConfigValue("KANI_RELEASE_OWNER", "KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
+val releaseRepo = renamedConfigValue("KANI_RELEASE_REPO", "KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
 
-val signingStoreFile = configValue("KANJI_ANKI_SIGNING_STORE_FILE")
-val signingStorePassword = configValue("KANJI_ANKI_SIGNING_STORE_PASSWORD")
-val signingKeyAlias = configValue("KANJI_ANKI_SIGNING_KEY_ALIAS")
-val signingKeyPassword = configValue("KANJI_ANKI_SIGNING_KEY_PASSWORD")
+val signingStoreFile = renamedConfigValue("KANI_SIGNING_STORE_FILE", "KANJI_ANKI_SIGNING_STORE_FILE")
+val signingStorePassword = renamedConfigValue("KANI_SIGNING_STORE_PASSWORD", "KANJI_ANKI_SIGNING_STORE_PASSWORD")
+val signingKeyAlias = renamedConfigValue("KANI_SIGNING_KEY_ALIAS", "KANJI_ANKI_SIGNING_KEY_ALIAS")
+val signingKeyPassword = renamedConfigValue("KANI_SIGNING_KEY_PASSWORD", "KANJI_ANKI_SIGNING_KEY_PASSWORD")
 val hasReleaseSigning = listOf(signingStoreFile, signingStorePassword, signingKeyAlias, signingKeyPassword)
     .all { !it.isNullOrBlank() }
 val releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
@@ -39,7 +39,7 @@ val releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
 }
 
 if (releaseBuildRequested && !hasReleaseSigning) {
-    throw GradleException("Release signing is required. Set KANJI_ANKI_SIGNING_STORE_FILE, KANJI_ANKI_SIGNING_STORE_PASSWORD, KANJI_ANKI_SIGNING_KEY_ALIAS, and KANJI_ANKI_SIGNING_KEY_PASSWORD.")
+    throw GradleException("Release signing is required. Set KANI_SIGNING_STORE_FILE, KANI_SIGNING_STORE_PASSWORD, KANI_SIGNING_KEY_ALIAS, and KANI_SIGNING_KEY_PASSWORD.")
 }
 
 android {

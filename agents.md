@@ -153,10 +153,10 @@ gradle :core:test \
   :app:compileDebugAndroidTestJavaWithJavac \
   :app:lintDebug \
   :app:assembleRelease \
-  -PKANJI_ANKI_SIGNING_STORE_FILE=/tmp/kanji_anki_temp_release.jks \
-  -PKANJI_ANKI_SIGNING_STORE_PASSWORD=temporary123 \
-  -PKANJI_ANKI_SIGNING_KEY_ALIAS=kanji_temp \
-  -PKANJI_ANKI_SIGNING_KEY_PASSWORD=temporary123
+  -PKANI_SIGNING_STORE_FILE=/tmp/kanji_anki_temp_release.jks \
+  -PKANI_SIGNING_STORE_PASSWORD=temporary123 \
+  -PKANI_SIGNING_KEY_ALIAS=kanji_temp \
+  -PKANI_SIGNING_KEY_PASSWORD=temporary123
 ```
 
 Then verify the generated APK:

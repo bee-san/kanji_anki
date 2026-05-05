@@ -88,7 +88,7 @@ public final class GitHubUpdater {
     private static String getText(String url) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestProperty("Accept", "application/vnd.github+json,text/plain,*/*");
-        connection.setRequestProperty("User-Agent", "KanjiAnki/" + BuildConfig.VERSION_NAME);
+        connection.setRequestProperty("User-Agent", "Kani/" + BuildConfig.VERSION_NAME);
         connection.setConnectTimeout(12_000);
         connection.setReadTimeout(20_000);
         try {
@@ -101,7 +101,7 @@ public final class GitHubUpdater {
 
     private static void download(String url, File file) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setRequestProperty("User-Agent", "KanjiAnki/" + BuildConfig.VERSION_NAME);
+        connection.setRequestProperty("User-Agent", "Kani/" + BuildConfig.VERSION_NAME);
         connection.setConnectTimeout(12_000);
         connection.setReadTimeout(60_000);
         try {
