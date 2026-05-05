@@ -64,7 +64,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return new ProviderStatus(true, granted, granted, target.authority, target.permission,
                 granted
                         ? "AnkiDroid is ready for live Kiku sync."
-                        : "Grant " + target.permission + " so Kanji Anki can read the live collection.");
+                        : "Allow AnkiDroid access so Kanji Anki can read your live collection.");
     }
 
     public Records.CollectionSnapshot readCollection(Records.Settings settings) throws SyncException {

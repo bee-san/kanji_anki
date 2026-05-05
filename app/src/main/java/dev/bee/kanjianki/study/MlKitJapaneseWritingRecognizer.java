@@ -59,8 +59,8 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
     public CompletableFuture<ModelStatus> modelStatus() {
         return toFuture(modelManager.isModelDownloaded(model))
                 .thenApply(downloaded -> status(downloaded, downloaded
-                        ? "Japanese writing model is downloaded."
-                        : "Japanese writing model needs download."));
+                        ? "Handwriting checker is ready."
+                        : "Handwriting checker needs download."));
     }
 
     @Override
@@ -70,7 +70,7 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
                 return CompletableFuture.completedFuture(status);
             }
             return toFuture(modelManager.download(model, downloadConditions))
-                    .thenApply(ignored -> status(true, "Japanese writing model downloaded."));
+                    .thenApply(ignored -> status(true, "Handwriting checker downloaded."));
         });
     }
 
@@ -82,7 +82,7 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
                 : writing;
         return modelStatus().thenCompose(status -> {
             if (!status.downloaded) {
-                return failedFuture(new IllegalStateException("Japanese writing model is not downloaded."));
+                return failedFuture(new IllegalStateException("Handwriting checker is not downloaded."));
             }
             Task<com.google.mlkit.vision.digitalink.common.RecognitionResult> task;
             RecognitionContext context = recognitionContext(prepared);
@@ -145,7 +145,7 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
         task.addOnSuccessListener(DIRECT_EXECUTOR, future::complete);
         task.addOnFailureListener(DIRECT_EXECUTOR, future::completeExceptionally);
         task.addOnCanceledListener(DIRECT_EXECUTOR, () ->
-                future.completeExceptionally(new CancellationException("ML Kit task was canceled.")));
+                future.completeExceptionally(new CancellationException("Handwriting checker task was canceled.")));
         return future;
     }
 

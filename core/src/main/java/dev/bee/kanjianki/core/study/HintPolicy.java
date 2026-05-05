@@ -34,10 +34,10 @@ public final class HintPolicy {
         }
         if (level == 2) {
             int distance = index - current;
-            if (distance < 0 || distance > 1) {
+            if (distance != 0) {
                 return new HintVisibility(false, 0f);
             }
-            return new HintVisibility(true, distance == 0 ? 0.86f : 0.34f);
+            return new HintVisibility(true, 0.86f);
         }
         return new HintVisibility(false, 0f);
     }
