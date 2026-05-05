@@ -21,6 +21,8 @@ import java.util.Set;
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
     private static final int DB_VERSION = 1;
+    private static final int DEFAULT_REMINDER_HOUR = 19;
+    private static final int DEFAULT_REMINDER_MINUTE = 0;
 
     public LocalStore(Context context) {
         super(context.getApplicationContext(), DB_NAME, null, DB_VERSION);
@@ -411,6 +413,28 @@ public final class LocalStore extends SQLiteOpenHelper {
         putSetting(key, String.format(Locale.ROOT, "%.4f", value));
     }
 
+    public ReminderSettings reminderSettings() {
+        return new ReminderSettings(
+                getIntSetting("reminder_enabled", 0) == 1,
+                getIntSetting("reminder_hour", DEFAULT_REMINDER_HOUR),
+                getIntSetting("reminder_minute", DEFAULT_REMINDER_MINUTE)
+        ).normalized();
+    }
+
+    public void saveReminderSettings(ReminderSettings settings) {
+        ReminderSettings normalized = settings.normalized();
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putIntSetting("reminder_enabled", normalized.enabled ? 1 : 0);
+            putIntSetting("reminder_hour", normalized.hour);
+            putIntSetting("reminder_minute", normalized.minute);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     public Records.SchedulerParameters schedulerParameters() {
         Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
         return new Records.SchedulerParameters(
@@ -736,6 +760,28 @@ public final class LocalStore extends SQLiteOpenHelper {
                 return "Sync blocked: " + errorMessage;
             }
             return String.format(Locale.ROOT, "%d active cards checked, %d suspended cards archived, %d rare kanji added", activeCards, suspendedCards, importedKanji);
+        }
+    }
+
+    public static final class ReminderSettings {
+        public final boolean enabled;
+        public final int hour;
+        public final int minute;
+
+        public ReminderSettings(boolean enabled, int hour, int minute) {
+            this.enabled = enabled;
+            this.hour = hour;
+            this.minute = minute;
+        }
+
+        private ReminderSettings normalized() {
+            int normalizedHour = Math.max(0, Math.min(23, hour));
+            int normalizedMinute = Math.max(0, Math.min(59, minute));
+            return new ReminderSettings(enabled, normalizedHour, normalizedMinute);
+        }
+
+        public String displayTime() {
+            return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
         }
     }
 }

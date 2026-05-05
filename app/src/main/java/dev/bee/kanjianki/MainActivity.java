@@ -1,10 +1,14 @@
 package dev.bee.kanjianki;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.TimePickerDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Insets;
@@ -17,6 +21,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -44,6 +49,7 @@ import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedStroke;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
@@ -68,6 +74,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
+    private static final int REQUEST_POST_NOTIFICATIONS = 704;
     private static final int BG = Color.rgb(255, 247, 251);
     private static final int INK = Color.rgb(45, 22, 53);
     private static final int MUTED = Color.rgb(108, 86, 116);
@@ -102,6 +109,7 @@ public final class MainActivity extends Activity {
     private int currentPracticeLevel;
     private Map<String, StrokeGuide> strokeGuides;
     private WritingRecognizer writingRecognizer;
+    private LocalStore.ReminderSettings pendingReminderSettings;
     private static AnkiDroidGateway ankiDroidGatewayForTests;
     private static WritingRecognizer writingRecognizerForTests;
 
@@ -111,6 +119,7 @@ public final class MainActivity extends Activity {
         store = new LocalStore(this);
         gateway = ankiDroidGatewayForTests == null ? new AnkiDroidGateway(this) : ankiDroidGatewayForTests;
         requestAnkiPermissionIfNeeded();
+        ReminderScheduler.schedule(this);
         renderHome();
     }
 
@@ -119,6 +128,9 @@ public final class MainActivity extends Activity {
         io.shutdownNow();
         if (writingRecognizer != null && writingRecognizer != writingRecognizerForTests) {
             writingRecognizer.close();
+        }
+        if (store != null) {
+            store.close();
         }
         super.onDestroy();
     }
@@ -143,6 +155,26 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 7) {
             renderHome();
+        } else if (requestCode == REQUEST_POST_NOTIFICATIONS) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            LocalStore.ReminderSettings pending = pendingReminderSettings;
+            if (granted) {
+                LocalStore.ReminderSettings reminder = pending == null ? store.reminderSettings() : pending;
+                store.saveReminderSettings(reminder);
+                ReminderScheduler.schedule(this, reminder);
+                if (ReminderScheduler.notificationsAllowed(this)) {
+                    Toast.makeText(this, "Reminder saved for around " + reminder.displayTime() + ".", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Reminder saved, but Android notifications are off.", Toast.LENGTH_LONG).show();
+                }
+            } else {
+                LocalStore.ReminderSettings fallback = pending == null ? store.reminderSettings() : pending;
+                store.saveReminderSettings(new LocalStore.ReminderSettings(false, fallback.hour, fallback.minute));
+                ReminderScheduler.cancel(this);
+                Toast.makeText(this, "Notifications are off, so reminders are disabled.", Toast.LENGTH_LONG).show();
+            }
+            pendingReminderSettings = null;
+            renderSettings();
         }
     }
 
@@ -1239,7 +1271,7 @@ public final class MainActivity extends Activity {
         base("settings");
         Records.Settings current = settings();
         content.addView(text("Settings", 34, INK, true));
-        content.addView(text("Tune which suspended Kiku cards become writing practice.", 16, MUTED, false));
+        content.addView(text("Tune which Kiku cards become writing practice and when Kani reminds you.", 16, MUTED, false));
         addSpace(12);
 
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
@@ -1282,6 +1314,8 @@ public final class MainActivity extends Activity {
         box.addView(save);
         content.addView(box);
 
+        content.addView(reminderSettingsPanel());
+
         LinearLayout mapping = band(BLUE);
         mapping.addView(text("Kiku fields used for clues", 22, Color.WHITE, true));
         mapping.addView(text("Expression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, Color.WHITE, false));
@@ -1291,6 +1325,124 @@ public final class MainActivity extends Activity {
         attribution.addView(text("Stroke data", 22, INK, true));
         attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
         content.addView(attribution);
+    }
+
+    private LinearLayout reminderSettingsPanel() {
+        LocalStore.ReminderSettings reminder = store.reminderSettings();
+        boolean notificationsAllowed = ReminderScheduler.notificationsAllowed(this);
+        boolean blocked = reminder.enabled && !notificationsAllowed;
+        int[] selectedHour = new int[]{reminder.hour};
+        int[] selectedMinute = new int[]{reminder.minute};
+
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        box.addView(text("Daily reminder", 23, INK, true));
+        box.addView(text(reminderStatus(reminder, blocked), 17, blocked ? CORAL : reminder.enabled ? TEAL : MUTED, true));
+        box.addView(text("Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work.", 15, MUTED, false));
+
+        Button time = secondaryButton(reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
+        time.setOnClickListener(v -> new TimePickerDialog(
+                this,
+                (view, hour, minute) -> {
+                    selectedHour[0] = hour;
+                    selectedMinute[0] = minute;
+                    time.setText(reminderTimeButtonLabel(hour, minute));
+                },
+                selectedHour[0],
+                selectedMinute[0],
+                true
+        ).show());
+        box.addView(time);
+
+        LinearLayout quick = new LinearLayout(this);
+        quick.setOrientation(LinearLayout.HORIZONTAL);
+        addReminderPreset(quick, "Morning", 8, 0, selectedHour, selectedMinute, time);
+        addReminderPreset(quick, "Lunch", 12, 30, selectedHour, selectedMinute, time);
+        addReminderPreset(quick, "Evening", 19, 0, selectedHour, selectedMinute, time);
+        addReminderPreset(quick, "Night", 21, 0, selectedHour, selectedMinute, time);
+        box.addView(quick);
+
+        Button save = primaryButton(reminder.enabled ? "Save reminder" : "Enable reminder", TEAL);
+        save.setOnClickListener(v -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true));
+        box.addView(save);
+        if (reminder.enabled) {
+            Button off = secondaryButton("Turn off reminder");
+            off.setOnClickListener(v -> {
+                store.saveReminderSettings(new LocalStore.ReminderSettings(false, reminder.hour, reminder.minute));
+                ReminderScheduler.cancel(this);
+                Toast.makeText(this, "Reminder turned off.", Toast.LENGTH_SHORT).show();
+                renderSettings();
+            });
+            box.addView(off);
+        }
+        if (blocked) {
+            box.addView(text("Android notifications are off for Kani, so this reminder cannot appear yet.", 14, CORAL, false));
+            Button notificationSettings = secondaryButton("Open notification settings");
+            notificationSettings.setOnClickListener(v -> openNotificationSettings());
+            box.addView(notificationSettings);
+        } else if (!ReminderScheduler.hasRuntimeNotificationPermission(this)) {
+            box.addView(text("Android will ask for notification permission before turning this on.", 14, CORAL, false));
+        }
+        return box;
+    }
+
+    private String reminderStatus(LocalStore.ReminderSettings reminder, boolean blocked) {
+        if (blocked) {
+            return "Blocked: notifications off";
+        }
+        if (reminder.enabled) {
+            return "Daily around " + reminder.displayTime();
+        }
+        return "Off";
+    }
+
+    private String reminderTime(int hour, int minute) {
+        return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+    }
+
+    private String reminderTimeButtonLabel(int hour, int minute) {
+        return String.format(Locale.ROOT, "Reminder time: %02d:%02d", hour, minute);
+    }
+
+    private void addReminderPreset(LinearLayout row, String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
+        Button preset = secondaryButton(label + " " + reminderTime(hour, minute));
+        preset.setTextSize(13);
+        preset.setOnClickListener(v -> {
+            selectedHour[0] = hour;
+            selectedMinute[0] = minute;
+            timeButton.setText(reminderTimeButtonLabel(hour, minute));
+        });
+        row.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
+    }
+
+    private void saveReminderFromSelection(int hour, int minute, boolean enabled) {
+        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(enabled, hour, minute);
+        if (!enabled) {
+            store.saveReminderSettings(reminder);
+            ReminderScheduler.cancel(this);
+            Toast.makeText(this, "Reminder turned off.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+            return;
+        }
+        ReminderScheduler.ensureNotificationChannel(this);
+        if (!ReminderScheduler.hasRuntimeNotificationPermission(this)) {
+            pendingReminderSettings = reminder;
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_POST_NOTIFICATIONS);
+            return;
+        }
+        store.saveReminderSettings(reminder);
+        ReminderScheduler.schedule(this, reminder);
+        if (ReminderScheduler.notificationsAllowed(this)) {
+            Toast.makeText(this, "Reminder saved for around " + reminder.displayTime() + ".", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Reminder saved, but Android notifications are off.", Toast.LENGTH_LONG).show();
+        }
+        renderSettings();
+    }
+
+    private void openNotificationSettings() {
+        Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+        startActivity(intent);
     }
 
     private String kanjiVgAttribution() {

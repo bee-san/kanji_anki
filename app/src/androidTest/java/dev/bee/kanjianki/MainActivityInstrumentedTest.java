@@ -1,10 +1,13 @@
 package dev.bee.kanjianki;
 
+import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabaseLockedException;
 import android.graphics.Rect;
+import android.os.Build;
+import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
@@ -32,6 +35,7 @@ import dev.bee.kanjianki.study.WritingRecognizer;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -56,6 +60,21 @@ public final class MainActivityInstrumentedTest {
     private static final String LIVE_ARG = "kanjiLiveAnkiDroid";
 
     private Context context;
+
+    @BeforeClass
+    public static void grantSuiteNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) {
+            return;
+        }
+        Context target = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        try {
+            InstrumentationRegistry.getInstrumentation()
+                    .getUiAutomation()
+                    .grantRuntimePermission(target.getPackageName(), Manifest.permission.POST_NOTIFICATIONS);
+        } catch (SecurityException ignored) {
+            // Some runners pre-grant or disallow shell permission grants; the test can still use the dialog.
+        }
+    }
 
     @Before
     public void setUp() {
@@ -105,18 +124,29 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Rarity cutoff");
                 assertHasText(activity, "Default: 3000");
+                assertHasText(activity, "Daily reminder");
+                assertHasText(activity, "Off");
             });
             clickText(scenario, "4000");
             clickText(scenario, "Save cutoff");
+            clickText(scenario, "Morning 08:00");
+            clickText(scenario, "Enable reminder");
+            clickTextIfPresent("Allow");
+            waitForText(scenario, "Daily around 08:00");
 
             LocalStore store = new LocalStore(context);
             try {
                 assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 3000));
+                LocalStore.ReminderSettings reminder = store.reminderSettings();
+                assertTrue(reminder.enabled);
+                assertEquals(8, reminder.hour);
+                assertEquals(0, reminder.minute);
             } finally {
                 store.close();
             }
 
             clickText(scenario, "Update");
+            waitForText(scenario, "GitHub updater");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "GitHub updater");
                 assertHasText(activity, "Current version");
@@ -424,6 +454,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
+            waitForText(scenario, "Clean match");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Clean match");
                 assertHasText(activity, "Target: 拉");
@@ -739,6 +770,15 @@ public final class MainActivityInstrumentedTest {
         object.click();
     }
 
+    private static void clickTextIfPresent(String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 object = findDeviceText(device, text);
+        if (object != null) {
+            object.click();
+            device.waitForIdle(2000L);
+        }
+    }
+
     private static UiObject2 findDeviceText(UiDevice device, String text) {
         UiObject2 object = device.wait(Until.findObject(By.text(text)), 1000L);
         if (object == null) {
@@ -751,6 +791,19 @@ public final class MainActivityInstrumentedTest {
             object = device.wait(Until.findObject(By.textContains(text.toUpperCase(Locale.ROOT))), 1000L);
         }
         return object;
+    }
+
+    private static void waitForText(ActivityScenario<MainActivity> scenario, String text) {
+        long deadline = SystemClock.uptimeMillis() + 5000L;
+        boolean[] found = new boolean[]{false};
+        while (SystemClock.uptimeMillis() < deadline) {
+            scenario.onActivity(activity -> found[0] = findText(activity.findViewById(android.R.id.content), text) != null);
+            if (found[0]) {
+                return;
+            }
+            SystemClock.sleep(100L);
+        }
+        scenario.onActivity(activity -> assertHasText(activity, text));
     }
 
     private static void assertHasText(MainActivity activity, String text) {

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -114,6 +115,17 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
         assertEquals(3000, store.getIntSetting("suspended_rank_cutoff", 1000));
+        LocalStore.ReminderSettings defaults = store.reminderSettings();
+        assertFalse(defaults.enabled);
+        assertEquals(19, defaults.hour);
+        assertEquals(0, defaults.minute);
+
+        store.saveReminderSettings(new LocalStore.ReminderSettings(true, 8, 30));
+        LocalStore.ReminderSettings reminder = store.reminderSettings();
+        assertTrue(reminder.enabled);
+        assertEquals(8, reminder.hour);
+        assertEquals(30, reminder.minute);
+        assertEquals("08:30", reminder.displayTime());
         List<String> tokens = store.consumedTokens();
         assertEquals(1, tokens.size());
         assertEquals("token-1", tokens.get(0));
