@@ -13,8 +13,11 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.study.CapturedWriting;
+import dev.bee.kanjianki.study.WritingRecognizer;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -25,7 +28,9 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -42,10 +47,14 @@ public final class MainActivityInstrumentedTest {
     public void setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
+        MainActivity.setAnkiDroidGatewayForTests(null);
+        MainActivity.setWritingRecognizerForTests(null);
     }
 
     @After
     public void tearDown() {
+        MainActivity.setAnkiDroidGatewayForTests(null);
+        MainActivity.setWritingRecognizerForTests(null);
         context.deleteDatabase("kanji_anki_simple.db");
     }
 
@@ -131,12 +140,80 @@ public final class MainActivityInstrumentedTest {
 
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Context production");
-                assertHasText(activity, "Trace: copy the shape deliberately before rating.");
-                assertHasText(activity, "good");
+                assertHasText(activity, "Write the kanji");
+                assertHasText(activity, "Prompt: ramen radical gap");
+                assertHasText(activity, "Trace the numbered strokes");
+                assertHasText(activity, "Fade guide");
+                assertNoText(activity, "拉麺");
             });
 
-            clickText(scenario, "good");
+            clickText(scenario, "Fade guide");
+            clickText(scenario, "Take away strokes");
+            clickText(scenario, "Clear and check");
+            clickText(scenario, "Check writing");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Write the kanji before checking");
+                assertNoText(activity, "I know this was right");
+                assertNoText(activity, "Next: again");
+            });
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                assertEquals(0, stats.total);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testCorrectWritingCheckSubmitsReview() {
+        seedDashboard();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Fade guide");
+            clickText(scenario, "Take away strokes");
+            clickText(scenario, "Clear and check");
+            scenario.onActivity(activity -> drawPullRadical(activity));
+            clickText(scenario, "Check writing");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Recognized cleanly");
+                assertHasText(activity, "Next: easy");
+            });
+            clickText(scenario, "Next: easy");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.easy);
+                assertEquals(1, stats.writingRequired);
+                assertEquals(0, stats.writingFailed);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testWrongRecognitionCanBeLoggedAsFailedAttempt() {
+        seedDashboard();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Fade guide");
+            clickText(scenario, "Take away strokes");
+            clickText(scenario, "Clear and check");
+            scenario.onActivity(activity -> drawPullRadical(activity));
+            clickText(scenario, "Check writing");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "That did not look like the target kanji yet");
+                assertHasText(activity, "Next: again");
+            });
+            clickText(scenario, "Next: again");
+
             LocalStore store = new LocalStore(context);
             try {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -144,6 +221,36 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, stats.again);
                 assertEquals(1, stats.writingRequired);
                 assertEquals(1, stats.writingFailed);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testWrongRecognitionAllowsLoggedManualOverride() {
+        seedDashboard();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Fade guide");
+            clickText(scenario, "Take away strokes");
+            clickText(scenario, "Clear and check");
+            scenario.onActivity(activity -> drawPullRadical(activity));
+            clickText(scenario, "Check writing");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "That did not look like the target kanji yet");
+                assertHasText(activity, "I know this was right");
+            });
+            clickText(scenario, "I know this was right");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.good);
+                assertEquals(1, stats.writingRequired);
+                assertEquals(0, stats.writingFailed);
             } finally {
                 store.close();
             }
@@ -171,6 +278,7 @@ public final class MainActivityInstrumentedTest {
                 "The opt-in live AnkiDroid run exercises the successful sync button path instead.",
                 liveAnkiDroidEnabled()
         );
+        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid now");
             LocalStore.SyncStatus status = waitForLatestSync();
@@ -286,6 +394,55 @@ public final class MainActivityInstrumentedTest {
         assertNotNull("Missing text: " + text, findText(activity.findViewById(android.R.id.content), text));
     }
 
+    private static void assertNoText(MainActivity activity, String text) {
+        View found = findText(activity.findViewById(android.R.id.content), text);
+        if (found != null) {
+            throw new AssertionError("Unexpected text before reveal: " + text);
+        }
+    }
+
+    private static void drawPullRadical(MainActivity activity) {
+        MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+        assertNotNull(pad);
+        pad.layout(0, 0, 1000, 1000);
+        float[][] strokes = new float[][]{
+                {240f, 180f, 240f, 840f},
+                {100f, 380f, 390f, 320f},
+                {440f, 160f, 780f, 160f},
+                {610f, 170f, 550f, 460f},
+                {430f, 460f, 820f, 460f},
+                {540f, 480f, 390f, 820f},
+                {660f, 490f, 830f, 820f}
+        };
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < strokes.length; i++) {
+            float[] stroke = strokes[i];
+            pad.onTouchEvent(MotionEvent.obtain(now, now + i * 30L, MotionEvent.ACTION_DOWN, stroke[0], stroke[1], 0));
+            pad.onTouchEvent(MotionEvent.obtain(now, now + i * 30L + 10L, MotionEvent.ACTION_MOVE, (stroke[0] + stroke[2]) / 2f, (stroke[1] + stroke[3]) / 2f, 0));
+            pad.onTouchEvent(MotionEvent.obtain(now, now + i * 30L + 20L, MotionEvent.ACTION_UP, stroke[2], stroke[3], 0));
+        }
+        assertTrue(pad.hasInk());
+    }
+
+    private static <T extends View> T findType(View root, Class<T> type) {
+        if (root.getVisibility() != View.VISIBLE) {
+            return null;
+        }
+        if (type.isInstance(root)) {
+            return type.cast(root);
+        }
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                T found = findType(group.getChildAt(i), type);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     private static View clickableAncestor(View view) {
         View current = view;
         while (current != null) {
@@ -299,6 +456,9 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static View findText(View root, String text) {
+        if (root.getVisibility() != View.VISIBLE) {
+            return null;
+        }
         if (root instanceof TextView) {
             CharSequence value = ((TextView) root).getText();
             if (value != null && value.toString().contains(text)) {
@@ -318,6 +478,9 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static View findExactText(View root, String text) {
+        if (root.getVisibility() != View.VISIBLE) {
+            return null;
+        }
         if (root instanceof TextView) {
             CharSequence value = ((TextView) root).getText();
             if (value != null && value.toString().equals(text)) {
@@ -334,5 +497,34 @@ public final class MainActivityInstrumentedTest {
             }
         }
         return null;
+    }
+
+    private static final class FakeWritingRecognizer implements WritingRecognizer {
+        private final String candidate;
+
+        private FakeWritingRecognizer(String candidate) {
+            this.candidate = candidate;
+        }
+
+        @Override
+        public CompletableFuture<ModelStatus> modelStatus() {
+            return CompletableFuture.completedFuture(new ModelStatus("JA", "ja", true, "ready"));
+        }
+
+        @Override
+        public CompletableFuture<ModelStatus> downloadModel() {
+            return modelStatus();
+        }
+
+        @Override
+        public CompletableFuture<RecognitionResult> recognize(CapturedWriting writing) {
+            return CompletableFuture.completedFuture(new RecognitionResult(
+                    Collections.singletonList(new Candidate(candidate, 0.99f))
+            ));
+        }
+
+        @Override
+        public void close() {
+        }
     }
 }

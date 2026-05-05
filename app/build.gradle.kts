@@ -33,6 +33,14 @@ val signingKeyAlias = configValue("KANJI_ANKI_SIGNING_KEY_ALIAS")
 val signingKeyPassword = configValue("KANJI_ANKI_SIGNING_KEY_PASSWORD")
 val hasReleaseSigning = listOf(signingStoreFile, signingStorePassword, signingKeyAlias, signingKeyPassword)
     .all { !it.isNullOrBlank() }
+val releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName == "assembleRelease" || taskName.endsWith(":assembleRelease") ||
+        taskName == "bundleRelease" || taskName.endsWith(":bundleRelease")
+}
+
+if (releaseBuildRequested && !hasReleaseSigning) {
+    throw GradleException("Release signing is required. Set KANJI_ANKI_SIGNING_STORE_FILE, KANJI_ANKI_SIGNING_STORE_PASSWORD, KANJI_ANKI_SIGNING_KEY_ALIAS, and KANJI_ANKI_SIGNING_KEY_PASSWORD.")
+}
 
 android {
     namespace = "dev.bee.kanjianki"
@@ -87,18 +95,9 @@ android {
     }
 }
 
-tasks.matching { task ->
-    task.name == "assembleRelease" || task.name == "bundleRelease"
-}.configureEach {
-    doFirst {
-        if (!hasReleaseSigning) {
-            throw GradleException("Release signing is required. Set KANJI_ANKI_SIGNING_STORE_FILE, KANJI_ANKI_SIGNING_STORE_PASSWORD, KANJI_ANKI_SIGNING_KEY_ALIAS, and KANJI_ANKI_SIGNING_KEY_PASSWORD.")
-        }
-    }
-}
-
 dependencies {
     implementation(project(":core"))
+    implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
