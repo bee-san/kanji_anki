@@ -125,8 +125,8 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Study streak");
                 assertHasText(activity, "2-day streak");
-                assertHasText(activity, "Today is done");
-                assertHasText(activity, "2 cards studied today");
+                assertHasText(activity, "Streak logged today");
+                assertHasText(activity, "2 writing reviews today");
                 assertHasText(activity, "Best: 2 days");
             });
         }

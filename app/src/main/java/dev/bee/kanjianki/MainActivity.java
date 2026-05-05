@@ -332,7 +332,7 @@ public final class MainActivity extends Activity {
             return "Start a new streak today. Last studied " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(streak.lastStudyAtMillis)) + "." + best;
         }
         if (streak.studiedToday) {
-            return "Today is done. " + countText(streak.reviewsToday, "card studied today", "cards studied today") + "." + best;
+            return "Streak logged today. " + countText(streak.reviewsToday, "writing review today", "writing reviews today") + "." + best;
         }
         return "Study one problem kanji today to keep it alive." + best;
     }
