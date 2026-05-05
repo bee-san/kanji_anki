@@ -11,6 +11,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class BridgeSchedulerTest {
@@ -93,6 +94,156 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void seedQueueRetiresItemsMissingFromDashboardRows() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.Settings settings = new Records.Settings("Kiku", "Mining", "Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort", 21, 1, 3000, 1, 2);
+        Records.StudyItem stale = new Records.StudyItem("古", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L);
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Collections.singletonList(row("裂", 30)),
+                Collections.singletonList(stale),
+                settings,
+                1000L,
+                0L
+        );
+
+        assertEquals("new", findItem(items, "裂").state);
+        assertEquals("retired", findItem(items, "古").state);
+    }
+
+    @Test
+    public void seedQueueRetiresReviewedItemsWithEnoughMatureSupport() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem reviewed = new Records.StudyItem("裂", "review", 0L, 1.5, 4.0, 3, 0, 2, 2, null, 0L);
+        Records.DashboardRow covered = new Records.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, new ArrayList<>());
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Collections.singletonList(covered),
+                Collections.singletonList(reviewed),
+                Records.Settings.kikuDefaults(),
+                1000L,
+                0L
+        );
+
+        assertEquals("retired", findItem(items, "裂").state);
+    }
+
+    @Test
+    public void seedQueueReopensRetiredItemsWhenWeakEvidenceReturns() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem retired = new Records.StudyItem("裂", "retired", 0L, 1.5, 4.0, 3, 0, 2, 2, null, 0L);
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Collections.singletonList(row("裂", 30)),
+                Collections.singletonList(retired),
+                Records.Settings.kikuDefaults(),
+                1000L,
+                0L
+        );
+
+        Records.StudyItem reopened = findItem(items, "裂");
+        assertEquals("new", reopened.state);
+        assertEquals(0, reopened.totalReviews);
+        assertEquals(1000L, reopened.createdAtMillis);
+    }
+
+    @Test
+    public void nextSessionSkipsItemsWithoutCurrentDashboardRows() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem stale = new Records.StudyItem("古", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L);
+        Records.StudyItem current = new Records.StudyItem("裂", "new", 500L, 0.4, 5.0, 0, 0, 0, 0, null, 0L);
+
+        Records.StudySession session = scheduler.nextSession(
+                Arrays.asList(stale, current),
+                Collections.singletonList(row("裂", 30)),
+                1000L
+        );
+
+        assertNotNull(session);
+        assertEquals("裂", session.item.kanji);
+    }
+
+    @Test
+    public void reseedPreservesExistingProgressForSameKanji() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem learned = new Records.StudyItem("裂", "learning", 1234L, 1.2, 4.4, 2, 1, 1, 2, "active", 55L);
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Collections.singletonList(row("裂", 30)),
+                Collections.singletonList(learned),
+                Records.Settings.kikuDefaults(),
+                2000L,
+                0L
+        );
+
+        Records.StudyItem item = findItem(items, "裂");
+        assertEquals("learning", item.state);
+        assertEquals(1234L, item.dueAtMillis);
+        assertEquals(2, item.totalReviews);
+        assertEquals(1, item.lapses);
+        assertEquals(2, item.writingLevel);
+        assertEquals("active", item.activeToken);
+    }
+
+    @Test
+    public void reviewSequenceLearnsThenReviewsAndMissReturnsSoon() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        List<Records.DashboardRow> rows = Collections.singletonList(row("裂", 30));
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult first = scheduler.applyReview(
+                item("裂").withToken("t1"),
+                new Records.ReviewRequest("裂", "t1", "good", true, true, false, 0),
+                consumed,
+                0L
+        );
+        assertEquals("learning", first.item.state);
+        assertEquals(1, first.item.learningStep);
+        assertEquals(1, first.item.writingLevel);
+        assertEquals(600_000L, first.item.dueAtMillis);
+        assertNull(scheduler.nextSession(Collections.singletonList(first.item), rows, 599_999L));
+
+        Records.StudySession dueLearning = scheduler.nextSession(Collections.singletonList(first.item), rows, 600_000L);
+        assertNotNull(dueLearning);
+        assertEquals("guided_writing", dueLearning.taskType);
+
+        Records.ReviewResult second = scheduler.applyReview(
+                first.item.withToken("t2"),
+                new Records.ReviewRequest("裂", "t2", "good", true, true, false, 0),
+                consumed,
+                600_000L
+        );
+        assertEquals("review", second.item.state);
+        assertEquals(2, second.item.learningStep);
+        assertEquals(2, second.item.writingLevel);
+
+        Records.StudyItem dueReview = new Records.StudyItem(
+                second.item.kanji,
+                second.item.state,
+                900_000L,
+                second.item.stability,
+                second.item.difficulty,
+                second.item.totalReviews,
+                second.item.lapses,
+                second.item.learningStep,
+                second.item.writingLevel,
+                "t3",
+                second.item.createdAtMillis
+        );
+        Records.ReviewResult miss = scheduler.applyReview(
+                dueReview,
+                new Records.ReviewRequest("裂", "t3", "again", true, false, false, 0),
+                consumed,
+                900_000L
+        );
+        assertEquals("learning", miss.item.state);
+        assertEquals(1, miss.item.lapses);
+        assertEquals(0, miss.item.learningStep);
+        assertEquals(1, miss.item.writingLevel);
+        assertEquals(1_500_000L, miss.item.dueAtMillis);
+    }
+
+    @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 3.0, 5.0, 3, 0, 2, 1, "token-1", 0);
@@ -108,6 +259,15 @@ public class BridgeSchedulerTest {
 
     private Records.StudyItem item(String kanji) {
         return new Records.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, null, 0);
+    }
+
+    private Records.StudyItem findItem(List<Records.StudyItem> items, String kanji) {
+        for (Records.StudyItem item : items) {
+            if (item.kanji.equals(kanji)) {
+                return item;
+            }
+        }
+        throw new AssertionError("Missing study item for " + kanji);
     }
 
     private Records.DashboardRow row(String kanji, int score) {

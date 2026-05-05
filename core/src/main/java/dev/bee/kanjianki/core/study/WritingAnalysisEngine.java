@@ -25,7 +25,14 @@ public final class WritingAnalysisEngine {
         }
         StrokeOrderEvaluator.StrokeOrderResult order = StrokeOrderEvaluator.evaluate(guide, sample);
         if (order.missingGuide) {
-            return new WritingAnalysis(WritingAnalysis.Status.NO_STROKE_DATA, "again", false, order.message, candidates, order);
+            RecognitionMatch match = match(target, candidates);
+            if (match.recognized) {
+                String message = match.topCandidate
+                        ? "Recognized as the target kanji. Stroke order could not be checked because no guide is bundled yet."
+                        : "Recognized as the target kanji, but stroke order could not be checked because no guide is bundled yet.";
+                return new WritingAnalysis(WritingAnalysis.Status.CLOSE, match.topCandidate ? "good" : "hard", true, message, candidates, order);
+            }
+            return new WritingAnalysis(WritingAnalysis.Status.NO_STROKE_DATA, "again", false, order.message + " I could not read that as the target kanji yet.", candidates, order);
         }
         RecognitionMatch match = match(target, candidates);
         if (!match.recognized) {

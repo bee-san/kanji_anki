@@ -175,6 +175,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Write in the square before checking");
                 assertNoText(activity, "Mark right anyway");
                 assertNoText(activity, "Next card");
+                assertNoText(activity, "It saw: nothing clear");
             });
 
             LocalStore store = new LocalStore(context);
@@ -222,7 +223,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "0 active kanji");
                 assertHasText(activity, "1 candidate waiting to join later");
-                assertHasText(activity, "Learn next problem kanji");
+                assertHasText(activity, "Study now");
             });
 
             LocalStore store = new LocalStore(context);
@@ -239,7 +240,7 @@ public final class MainActivityInstrumentedTest {
         seedDashboardRowsOnly(Collections.singletonList(dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards")));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Queue");
-            clickText(scenario, "Learn next problem kanji");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Draw this kanji");
                 assertHasText(activity, "New problem kanji");
@@ -275,10 +276,10 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Queue");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Review due now");
+                assertHasText(activity, "Study now");
                 assertTrue(textTop(activity, "mystery radical gap") < textTop(activity, "ramen radical gap"));
             });
-            clickText(scenario, "Review due now");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Memory check");
                 assertHasText(activity, "Prompt: mystery radical gap");
@@ -368,6 +369,37 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testBlindReviewMissRevealsRepairReference() {
+        seedDashboard();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+        LocalStore store = new LocalStore(context);
+        try {
+            store.replaceStudyItems(Collections.singletonList(
+                    new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
+            ));
+        } finally {
+            store.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Memory check");
+                assertNoText(activity, "Reference");
+                drawGuideKanji(activity, "拉");
+            });
+            clickText(scenario, "Check");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "I could not read that as the target kanji yet");
+                assertHasText(activity, "Reference");
+                assertHasText(activity, "Meaning: ramen radical gap");
+                assertHasText(activity, "Try again with full guide");
+                assertHasText(activity, "Save miss");
+            });
+        }
+    }
+
+    @Test
     public void testStudyLoopActionsArePinnedOutsideScrollableContent() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -407,6 +439,15 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, stats.good);
                 assertEquals(1, stats.writingRequired);
                 assertEquals(0, stats.writingFailed);
+                List<Records.StudyItem> items = store.studyItems();
+                assertEquals(1, items.size());
+                Records.StudyItem item = items.get(0);
+                assertEquals("拉", item.kanji);
+                assertEquals("learning", item.state);
+                assertEquals(1, item.totalReviews);
+                assertEquals(1, item.learningStep);
+                assertEquals(1, item.writingLevel);
+                assertTrue(item.activeToken == null || item.activeToken.isEmpty());
             } finally {
                 store.close();
             }
@@ -424,9 +465,9 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "I could not read that as the target kanji yet");
                 assertHasText(activity, "Target: 拉");
-                assertHasText(activity, "Next card");
+                assertHasText(activity, "Save miss");
             });
-            clickText(scenario, "Next card");
+            clickText(scenario, "Save miss");
 
             LocalStore store = new LocalStore(context);
             try {
@@ -500,7 +541,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Download the handwriting checker before automatic checks");
                 assertHasText(activity, "Target: 拉");
-                assertHasText(activity, "Next card");
+                assertHasText(activity, "Save miss");
                 assertHasText(activity, "Mark right anyway");
             });
             clickText(scenario, "Mark right anyway");
@@ -542,7 +583,7 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
-            clickText(scenario, "Sync and tag archive");
+            clickText(scenario, "Sync cards");
             LocalStore.SyncStatus status = waitForLatestSync();
             assertNotNull(status);
             assertEquals("config_error", status.status);
@@ -556,7 +597,7 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setAnkiDroidGatewayForTests(null);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
-            clickText(scenario, "Sync and tag archive");
+            clickText(scenario, "Sync cards");
             LocalStore.SyncStatus status = waitForLatestSync(2400);
             assertNotNull(status);
             assertEquals("success", status.status);

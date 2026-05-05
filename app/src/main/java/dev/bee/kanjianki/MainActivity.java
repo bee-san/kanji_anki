@@ -236,9 +236,9 @@ public final class MainActivity extends Activity {
                 hero.addView(text(sync.removalMessage, 14, Color.WHITE, false));
             }
         } else {
-            hero.addView(text("Sync once to build your personal writing queue.", 16, Color.WHITE, false));
+            hero.addView(text("Sync once to find the kanji your Anki reviews keep exposing.", 16, Color.WHITE, false));
         }
-        hero.addView(text("New writing items come from your own Anki cards.", 14, Color.WHITE, false));
+        hero.addView(text("Study admits a small active set so the queue stays focused.", 14, Color.WHITE, false));
         content.addView(hero);
         addSpace(18);
 
@@ -248,7 +248,7 @@ public final class MainActivity extends Activity {
             syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
         } else {
-            Button studyButton = primaryButton("Start writing practice", CORAL);
+            Button studyButton = primaryButton("Study now", CORAL);
             studyButton.setOnClickListener(v -> renderStudy());
             content.addView(studyButton);
 
@@ -265,7 +265,7 @@ public final class MainActivity extends Activity {
             List<QueueEntry> entries = queuedEntries(rows, studyQueue(rows, now, false), now);
             content.addView(sectionTitle("Your active kanji queue"));
             if (entries.isEmpty()) {
-                emptyState("Queue resting", "Sync has candidate kanji, but nothing is currently admitted for writing practice.");
+                emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji within your daily cap.");
             }
             for (int i = 0; i < Math.min(5, entries.size()); i++) {
                 content.addView(queueRowView(entries.get(i), now));
@@ -275,17 +275,17 @@ public final class MainActivity extends Activity {
 
     private void confirmSync() {
         new AlertDialog.Builder(this)
-                .setTitle("Sync and archive imported cards?")
-                .setMessage("Kani reads your Kiku cards from AnkiDroid. Suspended cards copied into writing practice may be tagged as archived in AnkiDroid after they are safely stored here, so they do not keep returning as new problems.")
-                .setPositiveButton("Sync and tag archive", (dialog, which) -> runSync())
+                .setTitle("Sync AnkiDroid?")
+                .setMessage("Kani will read your Kiku cards, copy problem kanji into writing practice, and mark imported suspended cards as archived after they are stored safely.")
+                .setPositiveButton("Sync cards", (dialog, which) -> runSync())
                 .setNegativeButton("Cancel", null)
                 .show();
     }
 
     private void runSync() {
         base("home");
-        content.addView(text("Syncing AnkiDroid", 34, INK, true));
-        content.addView(text("Reading your latest Kiku cards, copying problem kanji locally, and tagging imported suspended cards as archived when AnkiDroid allows it.", 17, MUTED, false));
+        content.addView(text("Finding problem kanji", 34, INK, true));
+        content.addView(text("Reading Kiku cards, saving missed kanji locally, and updating archived suspended cards when AnkiDroid allows it.", 17, MUTED, false));
         io.execute(() -> {
             ManualSyncEngine.SyncResult result = new ManualSyncEngine(this, store, gateway, settings()).run();
             main.post(() -> {
@@ -299,14 +299,20 @@ public final class MainActivity extends Activity {
         if (result.success) {
             content.addView(text("Sync complete", 34, INK, true));
             LinearLayout summary = band(TEAL);
-            summary.addView(text(countText(result.dashboardRows, "kanji ready", "kanji ready"), 24, Color.WHITE, true));
-            summary.addView(text(countText(result.importedSuspendedKanji, "suspended kanji added", "suspended kanji added"), 16, Color.WHITE, false));
+            long now = System.currentTimeMillis();
+            List<Records.DashboardRow> rows = store.dashboardRows();
+            List<QueueEntry> entries = queuedEntries(rows, store.studyItems(), now);
+            summary.addView(text(countText(entries.size(), "kanji ready to study", "kanji ready to study"), 24, Color.WHITE, true));
+            summary.addView(text(countText(result.dashboardRows, "candidate found from Kiku", "candidates found from Kiku") + ". " + queueCapText() + ".", 16, Color.WHITE, false));
+            if (result.importedSuspendedKanji > 0) {
+                summary.addView(text(countText(result.importedSuspendedKanji, "new archived suspended kanji added", "new archived suspended kanji added"), 15, Color.WHITE, false));
+            }
             if (result.message != null && !result.message.isEmpty()) {
                 summary.addView(text(result.message, 14, Color.WHITE, false));
             }
             content.addView(summary);
             if (result.dashboardRows > 0) {
-                Button study = primaryButton("Start writing practice", CORAL);
+                Button study = primaryButton("Study now", CORAL);
                 study.setOnClickListener(v -> renderStudy());
                 content.addView(study);
             }
@@ -331,7 +337,7 @@ public final class MainActivity extends Activity {
     private void renderKanjiList() {
         base("kanji");
         content.addView(text("Practice queue", 34, INK, true));
-        content.addView(text("Only kanji admitted from your AnkiDroid problem cards appear here. New candidates wait behind the daily and active queue caps.", 16, MUTED, false));
+        content.addView(text("Only kanji Kani pulled from your AnkiDroid Kiku cards appear here. Suspended misses and low-support active cards become practice candidates.", 16, MUTED, false));
         addSpace(12);
         List<Records.DashboardRow> rows = store.dashboardRows();
         if (rows.isEmpty()) {
@@ -341,20 +347,20 @@ public final class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         List<Records.StudyItem> items = studyQueue(rows, now, false);
         List<QueueEntry> entries = queuedEntries(rows, items, now);
-        int due = new BridgeScheduler().dueCount(items, now);
+        int due = dueEntryCount(entries, now);
 
         LinearLayout summary = band(BLUE);
         summary.addView(text(countText(entries.size(), "active kanji", "active kanji"), 24, Color.WHITE, true));
         summary.addView(text(countText(due, "due now", "due now") + ". " + countText(Math.max(0, rows.size() - entries.size()), "candidate waiting to join later", "candidates waiting to join later") + ".", 16, Color.WHITE, false));
-        summary.addView(text("Study mixes due items and brings misses back soon.", 15, Color.WHITE, false));
+        summary.addView(text(queueCapText() + ". Study mixes due items and brings misses back soon.", 15, Color.WHITE, false));
         content.addView(summary);
 
-        Button study = primaryButton(due > 0 ? "Review due now" : (entries.isEmpty() ? "Learn next problem kanji" : "Start writing practice"), CORAL);
+        Button study = primaryButton("Study now", CORAL);
         study.setOnClickListener(v -> renderStudy());
         content.addView(study);
 
         if (entries.isEmpty()) {
-            emptyState("Queue resting", "Your synced candidates are either retired or waiting for the active queue to open up.");
+            emptyState("No active practice yet", "Study now will admit the next candidate if your daily and active queue caps allow it.");
             return;
         }
         for (QueueEntry entry : entries) {
@@ -394,6 +400,16 @@ public final class MainActivity extends Activity {
                 .thenComparingInt(entry -> -entry.row.weaknessScore)
                 .thenComparing(entry -> entry.row.kanji));
         return entries;
+    }
+
+    private int dueEntryCount(List<QueueEntry> entries, long now) {
+        int due = 0;
+        for (QueueEntry entry : entries) {
+            if (entry.item.dueAtMillis <= now) {
+                due++;
+            }
+        }
+        return due;
     }
 
     private int stateRank(String state) {
@@ -614,8 +630,8 @@ public final class MainActivity extends Activity {
         List<Records.StudyItem> seeded = studyQueue(rows, now, true);
         activeSession = scheduler.nextSession(seeded, rows, now);
         if (activeSession == null) {
-            content.addView(text("Queue resting", 34, INK, true));
-            content.addView(text("No kanji is due right now.", 18, MUTED, false));
+            content.addView(text("Nothing due now", 34, INK, true));
+            content.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 18, MUTED, false));
             Button back = primaryButton("Back home", TEAL);
             back.setOnClickListener(v -> renderHome());
             content.addView(back);
@@ -946,7 +962,7 @@ public final class MainActivity extends Activity {
         if (nextAfterPassButton != null) {
             nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
             if (submittable) {
-                nextAfterPassButton.setText(nextReviewButtonText(adjustedRatingForHelp(activeAnalysis.rating, false)));
+                nextAfterPassButton.setText(nextReviewButtonText(activeAnalysis));
             }
         }
         if (manualOverrideButton != null) {
@@ -969,7 +985,7 @@ public final class MainActivity extends Activity {
 
     private boolean shouldShowLearningPanel(WritingAnalysis analysis) {
         if (activeSession != null && isRecallTask(activeSession)) {
-            return false;
+            return analysis != null && analysis.status != WritingAnalysis.Status.NO_INK && !analysis.writingPassed;
         }
         if (analysis == null || analysis.status == WritingAnalysis.Status.NO_INK) {
             return activeSession != null && isTeachingTask(activeSession) && currentPracticeLevel < 3;
@@ -1185,7 +1201,7 @@ public final class MainActivity extends Activity {
 
     private String candidateText(List<RecognitionCandidate> candidates) {
         if (candidates == null || candidates.isEmpty()) {
-            return "nothing clear";
+            return "";
         }
         List<String> values = new ArrayList<>();
         for (int i = 0; i < Math.min(3, candidates.size()); i++) {
@@ -1500,6 +1516,11 @@ public final class MainActivity extends Activity {
         return "Writing practice";
     }
 
+    private String queueCapText() {
+        Records.Settings settings = settings();
+        return "Kani admits " + settings.newPerDay + " new per day and keeps " + settings.activeQueueCap + " active";
+    }
+
     private String guideLabel(int level, StrokeGuide guide) {
         boolean hasGuide = guide != null && !guide.isEmpty();
         if (!hasGuide) {
@@ -1520,7 +1541,10 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private String nextReviewButtonText(String rating) {
+    private String nextReviewButtonText(WritingAnalysis analysis) {
+        if (analysis != null && !analysis.writingPassed) {
+            return "Save miss";
+        }
         return "Next card";
     }
 
