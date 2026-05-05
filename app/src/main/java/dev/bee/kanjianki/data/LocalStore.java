@@ -11,6 +11,7 @@ import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -511,6 +512,95 @@ public final class LocalStore extends SQLiteOpenHelper {
         return new Records.ReviewStats(total, again, hard, good, easy, writingRequired, writingFailed);
     }
 
+    public StudyStreak studyStreak(long nowMillis) {
+        Cursor cursor = getReadableDatabase().query(
+                "review_log",
+                new String[]{"reviewed_at"},
+                null,
+                null,
+                null,
+                null,
+                "reviewed_at DESC"
+        );
+        List<Long> days = new ArrayList<>();
+        int reviewsToday = 0;
+        long today = localDayStart(nowMillis);
+        long tomorrow = moveLocalDays(today, 1);
+        long lastStudyAt = 0L;
+        try {
+            long lastAddedDay = Long.MIN_VALUE;
+            while (cursor.moveToNext()) {
+                long reviewedAt = cursor.getLong(cursor.getColumnIndexOrThrow("reviewed_at"));
+                if (lastStudyAt == 0L) {
+                    lastStudyAt = reviewedAt;
+                }
+                if (reviewedAt >= today && reviewedAt < tomorrow) {
+                    reviewsToday++;
+                }
+                long day = localDayStart(reviewedAt);
+                if (day != lastAddedDay) {
+                    days.add(day);
+                    lastAddedDay = day;
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        if (days.isEmpty()) {
+            return new StudyStreak(0, 0, false, 0, 0L);
+        }
+
+        long yesterday = moveLocalDays(today, -1);
+        boolean studiedToday = days.get(0) == today;
+        int current = 0;
+        if (studiedToday || days.get(0) == yesterday) {
+            long expected = studiedToday ? today : yesterday;
+            for (long day : days) {
+                if (day != expected) {
+                    break;
+                }
+                current++;
+                expected = moveLocalDays(expected, -1);
+            }
+        }
+
+        int best = 0;
+        int run = 0;
+        long expectedPrevious = Long.MIN_VALUE;
+        for (int i = days.size() - 1; i >= 0; i--) {
+            long day = days.get(i);
+            if (run == 0 || day == moveLocalDays(expectedPrevious, 1)) {
+                run++;
+            } else {
+                run = 1;
+            }
+            best = Math.max(best, run);
+            expectedPrevious = day;
+        }
+        return new StudyStreak(current, best, studiedToday, reviewsToday, lastStudyAt);
+    }
+
+    private static long localDayStart(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private static long moveLocalDays(long localDayStart, int days) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(localDayStart);
+        calendar.add(Calendar.DAY_OF_YEAR, days);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
     private void putSetting(String key, String value) {
         ContentValues values = new ContentValues();
         values.put("key", key);
@@ -782,6 +872,22 @@ public final class LocalStore extends SQLiteOpenHelper {
 
         public String displayTime() {
             return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+        }
+    }
+
+    public static final class StudyStreak {
+        public final int currentDays;
+        public final int bestDays;
+        public final boolean studiedToday;
+        public final int reviewsToday;
+        public final long lastStudyAtMillis;
+
+        public StudyStreak(int currentDays, int bestDays, boolean studiedToday, int reviewsToday, long lastStudyAtMillis) {
+            this.currentDays = currentDays;
+            this.bestDays = bestDays;
+            this.studiedToday = studiedToday;
+            this.reviewsToday = reviewsToday;
+            this.lastStudyAtMillis = lastStudyAtMillis;
         }
     }
 }

@@ -43,6 +43,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -101,6 +102,32 @@ public final class MainActivityInstrumentedTest {
                 assertTrue(content.getHeight() >= 0);
                 assertHasText(activity, "Kani");
                 assertHasText(activity, "Sync AnkiDroid");
+                assertHasText(activity, "Study streak");
+                assertHasText(activity, "No streak yet");
+            });
+        }
+    }
+
+    @Test
+    public void testHomeShowsCurrentStudyStreak() {
+        long today = localDayStart(System.currentTimeMillis());
+        long yesterday = moveLocalDays(today, -1);
+        LocalStore store = new LocalStore(context);
+        try {
+            store.saveReview(review("拉", "streak-yesterday"), "good", yesterday + 60_000L);
+            store.saveReview(review("提", "streak-today-a"), "good", today + 60_000L);
+            store.saveReview(review("謎", "streak-today-b"), "easy", today + 120_000L);
+        } finally {
+            store.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Study streak");
+                assertHasText(activity, "2-day streak");
+                assertHasText(activity, "Today is done");
+                assertHasText(activity, "2 cards studied today");
+                assertHasText(activity, "Best: 2 days");
             });
         }
     }
@@ -667,6 +694,27 @@ public final class MainActivityInstrumentedTest {
 
     private boolean liveAnkiDroidEnabled() {
         return "true".equals(InstrumentationRegistry.getArguments().getString(LIVE_ARG));
+    }
+
+    private static Records.ReviewRequest review(String kanji, String token) {
+        return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
+    }
+
+    private static long localDayStart(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private static long moveLocalDays(long localDayStart, int days) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(localDayStart);
+        calendar.add(Calendar.DAY_OF_YEAR, days);
+        return calendar.getTimeInMillis();
     }
 
     private void seedDashboard() {
