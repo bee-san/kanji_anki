@@ -35,8 +35,8 @@ public final class ManualSyncEngine {
     public SyncResult run() {
         long started = System.currentTimeMillis();
         try {
-            JitenKanjiRanks ranks = loadRanks();
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
+            JitenKanjiRanks ranks = loadRanks();
             List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankCutoff)
                     .importFrom(snapshot, settings);
             List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(store.suspendedImports(), imports);

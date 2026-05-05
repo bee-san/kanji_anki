@@ -71,11 +71,10 @@ public final class LocalStore extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            Set<Long> activeNoteIds = activeNoteIds(snapshot.cards);
-            Set<Long> activeCardIds = activeCardIds(snapshot.cards);
-            int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeNoteIds);
-            int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeCardIds);
-            long syncId = insertSyncRun(db, startedAt, finishedAt, "success", snapshot, imports, null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
+            ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
+            int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeIndex.noteIds);
+            int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeIndex.cardIds);
+            long syncId = insertSyncRun(db, startedAt, finishedAt, "success", activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
             db.delete("source_cards", null, null);
             db.delete("source_notes", null, null);
             db.delete("dashboard_rows", null, null);
@@ -83,7 +82,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
             Map<Long, Records.Note> notesById = snapshot.notesById();
             for (Records.Note note : snapshot.notes) {
-                if (hasActiveCard(snapshot.cards, note.noteId)) {
+                if (activeIndex.noteIds.contains(note.noteId)) {
                     ContentValues values = new ContentValues();
                     values.put("note_id", note.noteId);
                     values.put("model_name", note.modelName);
@@ -496,26 +495,15 @@ public final class LocalStore extends SQLiteOpenHelper {
         getWritableDatabase().insertWithOnConflict("settings", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
-    private long insertSyncRun(SQLiteDatabase db, long startedAt, long finishedAt, String status, Records.CollectionSnapshot snapshot, List<Records.SuspendedImport> imports, String errorCode, String errorMessage, String removalMessage, int deletedNotes, int deletedCards) {
-        int activeCards = 0;
-        int suspended = 0;
-        Set<Long> activeNotes = new HashSet<>();
-        for (Records.Card card : snapshot.cards) {
-            if (card.suspended) {
-                suspended++;
-            } else {
-                activeCards++;
-                activeNotes.add(card.noteId);
-            }
-        }
+    private long insertSyncRun(SQLiteDatabase db, long startedAt, long finishedAt, String status, ActiveCardIndex activeIndex, int importCount, String errorCode, String errorMessage, String removalMessage, int deletedNotes, int deletedCards) {
         ContentValues values = new ContentValues();
         values.put("started_at", startedAt);
         values.put("finished_at", finishedAt);
         values.put("status", status);
-        values.put("active_notes_count", activeNotes.size());
-        values.put("active_cards_count", activeCards);
-        values.put("suspended_cards_archived_count", suspended);
-        values.put("suspended_kanji_imported_count", imports.size());
+        values.put("active_notes_count", activeIndex.noteIds.size());
+        values.put("active_cards_count", activeIndex.activeCardCount);
+        values.put("suspended_cards_archived_count", activeIndex.suspendedCardCount);
+        values.put("suspended_kanji_imported_count", importCount);
         values.put("deleted_notes_count", deletedNotes);
         values.put("deleted_cards_count", deletedCards);
         values.put("error_code", errorCode);
@@ -623,24 +611,21 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
-    private Set<Long> activeNoteIds(List<Records.Card> cards) {
-        Set<Long> ids = new HashSet<>();
+    private ActiveCardIndex activeCardIndex(List<Records.Card> cards) {
+        Set<Long> noteIds = new HashSet<>();
+        Set<Long> cardIds = new HashSet<>();
+        int activeCardCount = 0;
+        int suspendedCardCount = 0;
         for (Records.Card card : cards) {
-            if (!card.suspended) {
-                ids.add(card.noteId);
+            if (card.suspended) {
+                suspendedCardCount++;
+            } else {
+                activeCardCount++;
+                noteIds.add(card.noteId);
+                cardIds.add(card.cardId);
             }
         }
-        return ids;
-    }
-
-    private Set<Long> activeCardIds(List<Records.Card> cards) {
-        Set<Long> ids = new HashSet<>();
-        for (Records.Card card : cards) {
-            if (!card.suspended) {
-                ids.add(card.cardId);
-            }
-        }
-        return ids;
+        return new ActiveCardIndex(noteIds, cardIds, activeCardCount, suspendedCardCount);
     }
 
     private int countDeletedExisting(SQLiteDatabase db, String table, String idColumn, Set<Long> currentIds) {
@@ -656,15 +641,6 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return missing;
-    }
-
-    private boolean hasActiveCard(List<Records.Card> cards, long noteId) {
-        for (Records.Card card : cards) {
-            if (card.noteId == noteId && !card.suspended) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static final class MutableSuspendedImport {
@@ -683,6 +659,20 @@ public final class LocalStore extends SQLiteOpenHelper {
 
         private Records.SuspendedImport build() {
             return new Records.SuspendedImport(kanji, rank, rankKnown, cutoff, sources);
+        }
+    }
+
+    private static final class ActiveCardIndex {
+        private final Set<Long> noteIds;
+        private final Set<Long> cardIds;
+        private final int activeCardCount;
+        private final int suspendedCardCount;
+
+        private ActiveCardIndex(Set<Long> noteIds, Set<Long> cardIds, int activeCardCount, int suspendedCardCount) {
+            this.noteIds = noteIds;
+            this.cardIds = cardIds;
+            this.activeCardCount = activeCardCount;
+            this.suspendedCardCount = suspendedCardCount;
         }
     }
 
