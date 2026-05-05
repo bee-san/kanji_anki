@@ -38,7 +38,7 @@ public final class ApkContentProviderInstrumentedTest {
 
     @Test
     public void opensCachedApkReadOnly() throws Exception {
-        File apk = new File(updatesDir, "kanji-anki-test.apk");
+        File apk = new File(updatesDir, "kani-test.apk");
         try (FileOutputStream output = new FileOutputStream(apk)) {
             output.write(new byte[]{1, 2, 3});
         }
@@ -51,7 +51,7 @@ public final class ApkContentProviderInstrumentedTest {
 
     @Test(expected = FileNotFoundException.class)
     public void rejectsWriteMode() throws Exception {
-        context.getContentResolver().openFileDescriptor(ApkContentProvider.uriFor(context, "kanji-anki-test.apk"), "w");
+        context.getContentResolver().openFileDescriptor(ApkContentProvider.uriFor(context, "kani-test.apk"), "w");
     }
 
     @Test(expected = FileNotFoundException.class)

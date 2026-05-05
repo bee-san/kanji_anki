@@ -1,6 +1,6 @@
-# Kanji Anki
+# Kani
 
-Kanji Anki is a native Android companion for a single AnkiDroid collection. It syncs live `Kiku` notes from AnkiDroid, archives suspended trouble cards locally, derives weak kanji from real examples, runs a small bridge SRS, and updates itself from GitHub Releases.
+Kani is a native Android companion for a single AnkiDroid collection. It syncs live `Kiku` notes from AnkiDroid, archives suspended trouble cards locally, derives weak kanji from real examples, runs a small bridge SRS, and updates itself from GitHub Releases.
 
 The runtime is Android-first. There is no Python server, fixture runtime, polling loop, or background sync.
 
@@ -24,10 +24,10 @@ gradle :core:test :app:assembleDebug
 Release builds require signing environment variables:
 
 ```bash
-KANJI_ANKI_SIGNING_STORE_FILE=/path/to/release.jks
-KANJI_ANKI_SIGNING_STORE_PASSWORD=...
-KANJI_ANKI_SIGNING_KEY_ALIAS=...
-KANJI_ANKI_SIGNING_KEY_PASSWORD=...
+KANI_SIGNING_STORE_FILE=/path/to/release.jks
+KANI_SIGNING_STORE_PASSWORD=...
+KANI_SIGNING_KEY_ALIAS=...
+KANI_SIGNING_KEY_PASSWORD=...
 gradle :app:assembleRelease
 ```
 

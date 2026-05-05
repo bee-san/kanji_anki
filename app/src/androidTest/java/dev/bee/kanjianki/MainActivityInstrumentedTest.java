@@ -80,7 +80,7 @@ public final class MainActivityInstrumentedTest {
                 assertNotNull(content);
                 assertTrue(content.getWidth() >= 0);
                 assertTrue(content.getHeight() >= 0);
-                assertHasText(activity, "Kanji Anki");
+                assertHasText(activity, "Kani");
                 assertHasText(activity, "Sync AnkiDroid");
             });
         }
