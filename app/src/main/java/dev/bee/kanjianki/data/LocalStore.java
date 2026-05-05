@@ -26,6 +26,12 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
     private static final int DEFAULT_AUTO_SYNC_MINUTE = DEFAULT_REMINDER_MINUTE;
+    private static final String KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled";
+    private static final String KEY_AUTO_UPDATE_LAST_CHECK_AT = "auto_update_last_check_at";
+    private static final String KEY_AUTO_UPDATE_LAST_RESULT = "auto_update_last_result";
+    private static final String KEY_AUTO_UPDATE_LAST_VERSION = "auto_update_last_version";
+    private static final String KEY_AUTO_UPDATE_PENDING_APK = "auto_update_pending_apk";
+    private static final String KEY_AUTO_UPDATE_PENDING_MESSAGE = "auto_update_pending_message";
 
     public LocalStore(Context context) {
         super(context.getApplicationContext(), DB_NAME, null, DB_VERSION);
@@ -406,6 +412,19 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    public String getStringSetting(String key, String fallback) {
+        Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return fallback;
+            }
+            String value = string(cursor, "value");
+            return value == null ? fallback : value;
+        } finally {
+            cursor.close();
+        }
+    }
+
     public double getDoubleSetting(String key, double fallback) {
         Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1");
         try {
@@ -428,6 +447,10 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public void putLongSetting(String key, long value) {
         putSetting(key, Long.toString(value));
+    }
+
+    public void putStringSetting(String key, String value) {
+        putSetting(key, value == null ? "" : value);
     }
 
     public void putDoubleSetting(String key, double value) {
@@ -512,6 +535,49 @@ public final class LocalStore extends SQLiteOpenHelper {
             putLongSetting("auto_sync_last_attempt_at", normalized.lastAttemptAt);
             putLongSetting("auto_sync_last_success_at", normalized.lastSuccessAt);
             putLongSetting("auto_sync_next_run_at", normalized.nextRunAt);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public AutoUpdateStatus autoUpdateStatus() {
+        return new AutoUpdateStatus(
+                getIntSetting(KEY_AUTO_UPDATE_ENABLED, 1) == 1,
+                getLongSetting(KEY_AUTO_UPDATE_LAST_CHECK_AT, 0L),
+                getStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, "No automatic update check has run yet."),
+                getStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, ""),
+                getStringSetting(KEY_AUTO_UPDATE_PENDING_APK, ""),
+                getStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, "")
+        );
+    }
+
+    public void saveAutoUpdateEnabled(boolean enabled) {
+        putIntSetting(KEY_AUTO_UPDATE_ENABLED, enabled ? 1 : 0);
+    }
+
+    public void recordAutoUpdateResult(long checkedAt, String result, String version, String pendingApkName, String pendingMessage) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putLongSetting(KEY_AUTO_UPDATE_LAST_CHECK_AT, checkedAt);
+            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, result == null ? "" : result);
+            putStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, version == null ? "" : version);
+            putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, pendingApkName == null ? "" : pendingApkName);
+            putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, pendingMessage == null ? "" : pendingMessage);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void clearPendingAutoUpdate(String result) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, result == null ? "" : result);
+            putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, "");
+            putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, "");
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -1025,6 +1091,28 @@ public final class LocalStore extends SQLiteOpenHelper {
 
         public String displayTime() {
             return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+        }
+    }
+
+    public static final class AutoUpdateStatus {
+        public final boolean enabled;
+        public final long lastCheckAtMillis;
+        public final String lastResult;
+        public final String lastVersion;
+        public final String pendingApkName;
+        public final String pendingMessage;
+
+        private AutoUpdateStatus(boolean enabled, long lastCheckAtMillis, String lastResult, String lastVersion, String pendingApkName, String pendingMessage) {
+            this.enabled = enabled;
+            this.lastCheckAtMillis = lastCheckAtMillis;
+            this.lastResult = lastResult == null ? "" : lastResult;
+            this.lastVersion = lastVersion == null ? "" : lastVersion;
+            this.pendingApkName = pendingApkName == null ? "" : pendingApkName;
+            this.pendingMessage = pendingMessage == null ? "" : pendingMessage;
+        }
+
+        public boolean hasPendingUpdate() {
+            return !pendingApkName.isEmpty();
         }
     }
 

@@ -1,13 +1,19 @@
 package dev.bee.kanjianki.update;
 
+import android.annotation.SuppressLint;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 
 import dev.bee.kanjianki.BuildConfig;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.data.LocalStore;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,66 +21,108 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.util.Locale;
 
 public final class GitHubUpdater {
+    private static final String API_BASE = "https://api.github.com/repos/";
+
     private final Context context;
 
     public GitHubUpdater(Context context) {
         this.context = context.getApplicationContext();
     }
 
-    public UpdateResult checkDownloadAndPrepareInstaller() {
+    public UpdateResult checkDownloadAndInstall(UpdateSource source) {
+        long checkedAt = System.currentTimeMillis();
         try {
-            String api = "https://api.github.com/repos/" + BuildConfig.RELEASE_OWNER + "/" + BuildConfig.RELEASE_REPO + "/releases/latest";
+            String api = API_BASE + BuildConfig.RELEASE_OWNER + "/" + BuildConfig.RELEASE_REPO + "/releases/latest";
             String json = getText(api);
             Records.ReleaseInfo latest = GitHubReleaseParser.parseLatest(json);
             if (!GitHubReleaseParser.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName)) {
-                return new UpdateResult(false, "Already on " + BuildConfig.VERSION_NAME + ".", null, false);
+                return recordResult(
+                        checkedAt,
+                        new UpdateResult(false, "Already on " + BuildConfig.VERSION_NAME + ".", null, false, false),
+                        latest.tagName,
+                        "",
+                        ""
+                );
             }
-            Records.ReleaseAsset apk = latest.apkAsset();
-            if (apk == null) {
-                return new UpdateResult(false, "Latest release has no APK asset.", null, false);
+
+            UpdatePolicy.AssetSelection assets = UpdatePolicy.selectAssets(latest);
+            if (!assets.ok) {
+                return recordResult(checkedAt, UpdateResult.failed(assets.message), latest.tagName, "", "");
             }
-            Records.ReleaseAsset sha = latest.checksumAssetFor(apk.name);
-            if (sha == null) {
-                return new UpdateResult(false, "Latest release has no SHA-256 checksum asset.", null, false);
-            }
-            String expected = GitHubReleaseParser.parseSha256(getText(sha.downloadUrl));
-            if (expected.isEmpty()) {
-                return new UpdateResult(false, "Checksum asset does not contain a SHA-256 digest.", null, false);
-            }
-            File apkFile = new File(context.getCacheDir(), "updates/" + apk.name);
-            File parent = apkFile.getParentFile();
-            if (parent != null && !parent.exists()) {
-                parent.mkdirs();
-            }
-            download(apk.downloadUrl, apkFile);
-            String actual = sha256(apkFile);
-            if (!expected.equalsIgnoreCase(actual)) {
+
+            String expected = GitHubReleaseParser.parseSha256(getText(assets.checksum.downloadUrl));
+            String safeApkName = safeFileName(assets.apk.name);
+            File apkFile = cachedApkFile(safeApkName);
+            download(assets.apk.downloadUrl, apkFile);
+
+            UpdatePolicy.ValidationResult checksum = UpdatePolicy.validateChecksum(expected, sha256(apkFile));
+            if (!checksum.ok) {
                 apkFile.delete();
-                return new UpdateResult(false, "Checksum mismatch. Install blocked.", null, false);
+                return recordResult(checkedAt, UpdateResult.failed(checksum.message), latest.tagName, "", "");
             }
-            if (!context.getPackageManager().canRequestPackageInstalls()) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                        .setData(Uri.parse("package:" + context.getPackageName()))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                return new UpdateResult(true, "APK verified. Grant install permission to continue.", intent, true);
+
+            ApkMetadata metadata = inspectApk(apkFile);
+            UpdatePolicy.ValidationResult archive = UpdatePolicy.validatePackageMetadata(
+                    context.getPackageName(),
+                    BuildConfig.VERSION_NAME,
+                    latest.tagName,
+                    metadata.packageName,
+                    metadata.versionName
+            );
+            if (!archive.ok) {
+                apkFile.delete();
+                return recordResult(checkedAt, UpdateResult.failed(archive.message), latest.tagName, "", "");
             }
-            Intent install = new Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(ApkContentProvider.uriFor(context, apkFile.getName()), "application/vnd.android.package-archive")
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            return new UpdateResult(true, "APK verified. Installer is ready.", install, false);
+
+            return installVerifiedApk(checkedAt, latest.tagName, apkFile, source);
         } catch (Exception error) {
-            return new UpdateResult(false, "Update check failed: " + readableMessage(error), null, false);
+            return recordResult(checkedAt, UpdateResult.failed("Update check failed: " + readableMessage(error)), "", "", "");
         }
     }
 
-    static String readableMessage(Throwable error) {
+    public UpdateResult installCachedPendingUpdate(UpdateSource source) {
+        long checkedAt = System.currentTimeMillis();
+        LocalStore.AutoUpdateStatus status;
+        LocalStore store = new LocalStore(context);
+        try {
+            status = store.autoUpdateStatus();
+        } finally {
+            store.close();
+        }
+        try {
+            if (!status.hasPendingUpdate()) {
+                return recordResult(checkedAt, UpdateResult.failed("No verified APK is waiting to install."), status.lastVersion, "", "");
+            }
+            File apkFile = cachedApkFile(status.pendingApkName);
+            if (!apkFile.isFile()) {
+                return recordResult(checkedAt, UpdateResult.failed("Verified APK cache is missing. Check again to download it."), status.lastVersion, "", "");
+            }
+            ApkMetadata metadata = inspectApk(apkFile);
+            UpdatePolicy.ValidationResult archive = UpdatePolicy.validatePackageMetadata(
+                    context.getPackageName(),
+                    BuildConfig.VERSION_NAME,
+                    status.lastVersion,
+                    metadata.packageName,
+                    metadata.versionName
+            );
+            if (!archive.ok) {
+                apkFile.delete();
+                return recordResult(checkedAt, UpdateResult.failed(archive.message), status.lastVersion, "", "");
+            }
+            return installVerifiedApk(checkedAt, status.lastVersion, apkFile, source);
+        } catch (Exception error) {
+            return recordResult(checkedAt, UpdateResult.failed("Update install failed: " + readableMessage(error)), status.lastVersion, status.pendingApkName, status.pendingMessage);
+        }
+    }
+
+    public static String readableMessage(Throwable error) {
         if (error == null) {
             return "unknown error";
         }
@@ -83,6 +131,103 @@ public final class GitHubUpdater {
             return message;
         }
         return error.getClass().getSimpleName();
+    }
+
+    private UpdateResult installVerifiedApk(long checkedAt, String version, File apkFile, UpdateSource source) throws Exception {
+        if (!context.getPackageManager().canRequestPackageInstalls()) {
+            Intent permission = installPermissionIntent(context);
+            String message = "APK verified. Grant install permission to continue.";
+            UpdateResult result = new UpdateResult(true, message, permission, true, false);
+            notifyIfAutomatic(source, version, message);
+            return recordResult(checkedAt, result, version, apkFile.getName(), message);
+        }
+
+        startPackageInstaller(apkFile, version, source);
+        String message = "APK verified. Android installer started.";
+        return recordResult(checkedAt, new UpdateResult(true, message, null, false, false), version, apkFile.getName(), "");
+    }
+
+    private void notifyIfAutomatic(UpdateSource source, String version, String message) {
+        if (source == UpdateSource.AUTOMATIC) {
+            UpdateNotifier.showPendingUpdate(context, version, message);
+        }
+    }
+
+    private UpdateResult recordResult(long checkedAt, UpdateResult result, String version, String pendingApkName, String pendingMessage) {
+        try (LocalStore store = new LocalStore(context)) {
+            store.recordAutoUpdateResult(checkedAt, result.message, version, pendingApkName, pendingMessage);
+        }
+        return result;
+    }
+
+    @SuppressLint("NewApi")
+    private void startPackageInstaller(File apkFile, String version, UpdateSource source) throws Exception {
+        PackageInstaller installer = context.getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(context.getPackageName());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        }
+
+        int sessionId = installer.createSession(params);
+        PackageInstaller.Session session = null;
+        boolean committed = false;
+        try {
+            session = installer.openSession(sessionId);
+            try (InputStream input = new BufferedInputStream(new java.io.FileInputStream(apkFile));
+                 OutputStream output = session.openWrite("kani-update.apk", 0, apkFile.length())) {
+                byte[] buffer = new byte[32_768];
+                int read;
+                while ((read = input.read(buffer)) >= 0) {
+                    output.write(buffer, 0, read);
+                }
+                session.fsync(output);
+            }
+            Intent callback = PackageInstallStatusReceiver.callbackIntent(context, apkFile.getName(), version, source);
+            PendingIntent pending = PendingIntent.getBroadcast(
+                    context,
+                    sessionId,
+                    callback,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+            session.commit(pending.getIntentSender());
+            committed = true;
+        } finally {
+            if (session != null) {
+                session.close();
+            }
+            if (!committed) {
+                installer.abandonSession(sessionId);
+            }
+        }
+    }
+
+    private ApkMetadata inspectApk(File apkFile) {
+        @SuppressWarnings("deprecation")
+        PackageInfo info = context.getPackageManager().getPackageArchiveInfo(apkFile.getAbsolutePath(), 0);
+        if (info == null) {
+            return new ApkMetadata("", "");
+        }
+        return new ApkMetadata(info.packageName == null ? "" : info.packageName, info.versionName == null ? "" : info.versionName);
+    }
+
+    private File cachedApkFile(String name) throws IOException {
+        File updates = new File(context.getCacheDir(), "updates");
+        if (!updates.exists() && !updates.mkdirs()) {
+            throw new IOException("Could not create update cache.");
+        }
+        return new File(updates, safeFileName(name));
+    }
+
+    private static String safeFileName(String name) {
+        String safe = new File(name == null ? "" : name).getName();
+        return safe.isEmpty() ? "kani-update.apk" : safe;
+    }
+
+    public static Intent installPermissionIntent(Context context) {
+        return new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                .setData(Uri.parse("package:" + context.getPackageName()))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     }
 
     private static String getText(String url) throws Exception {
@@ -164,17 +309,39 @@ public final class GitHubUpdater {
         return out.toString();
     }
 
+    public enum UpdateSource {
+        MANUAL,
+        AUTOMATIC,
+        CACHED
+    }
+
     public static final class UpdateResult {
         public final boolean success;
         public final String message;
         public final Intent intent;
         public final boolean needsInstallPermission;
+        public final boolean retryable;
 
-        private UpdateResult(boolean success, String message, Intent intent, boolean needsInstallPermission) {
+        private UpdateResult(boolean success, String message, Intent intent, boolean needsInstallPermission, boolean retryable) {
             this.success = success;
             this.message = message;
             this.intent = intent;
             this.needsInstallPermission = needsInstallPermission;
+            this.retryable = retryable;
+        }
+
+        private static UpdateResult failed(String message) {
+            return new UpdateResult(false, message, null, false, false);
+        }
+    }
+
+    private static final class ApkMetadata {
+        final String packageName;
+        final String versionName;
+
+        private ApkMetadata(String packageName, String versionName) {
+            this.packageName = packageName;
+            this.versionName = versionName;
         }
     }
 }
