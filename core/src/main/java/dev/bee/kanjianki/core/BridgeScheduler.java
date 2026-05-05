@@ -91,7 +91,7 @@ public final class BridgeScheduler {
             if ("retired".equals(item.state) || item.dueAtMillis > nowMillis) {
                 continue;
             }
-            if (best == null || item.dueAtMillis < best.dueAtMillis) {
+            if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
                 best = item;
             }
         }
@@ -114,6 +114,41 @@ public final class BridgeScheduler {
         Records.DashboardRow row = rowByKanji.get(best.kanji);
         String prompt = row == null ? best.kanji : row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, true, prompt);
+    }
+
+    private static int compareDueItems(
+            Records.StudyItem left,
+            Records.StudyItem right,
+            Map<String, Records.DashboardRow> rowByKanji
+    ) {
+        int priority = Integer.compare(duePriority(left), duePriority(right));
+        if (priority != 0) {
+            return priority;
+        }
+        int due = Long.compare(left.dueAtMillis, right.dueAtMillis);
+        if (due != 0) {
+            return due;
+        }
+        int weakness = Integer.compare(rowWeakness(right, rowByKanji), rowWeakness(left, rowByKanji));
+        if (weakness != 0) {
+            return weakness;
+        }
+        return left.kanji.compareTo(right.kanji);
+    }
+
+    private static int duePriority(Records.StudyItem item) {
+        if ("learning".equals(item.state) || (item.totalReviews > 0 && item.learningStep < 2)) {
+            return 0;
+        }
+        if ("review".equals(item.state) || item.totalReviews > 0) {
+            return 1;
+        }
+        return 2;
+    }
+
+    private static int rowWeakness(Records.StudyItem item, Map<String, Records.DashboardRow> rowByKanji) {
+        Records.DashboardRow row = rowByKanji.get(item.kanji);
+        return row == null ? 0 : row.weaknessScore;
     }
 
     public Records.ReviewResult applyReview(
