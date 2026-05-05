@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Kanji Anki</string>
-    <string name="writing_passed">Writing passed</string>
-    <string name="manual_override">Manual override</string>
     <string name="copied_anki_search">Copied Anki search</string>
+    <string name="next_rating">Next: %1$s</string>
 </resources>

@@ -1,17 +1,15 @@
 package dev.bee.kanjianki;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -22,12 +20,10 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.WindowInsets;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -37,16 +33,33 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.study.HintPolicy;
+import dev.bee.kanjianki.core.study.InkPoint;
+import dev.bee.kanjianki.core.study.InkStroke;
+import dev.bee.kanjianki.core.study.RecognitionCandidate;
+import dev.bee.kanjianki.core.study.StrokeGuide;
+import dev.bee.kanjianki.core.study.StrokeGuideParser;
+import dev.bee.kanjianki.core.study.WritingAnalysis;
+import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
+import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.study.CapturedStroke;
+import dev.bee.kanjianki.study.CapturedWriting;
+import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
+import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,14 +81,29 @@ public final class MainActivity extends Activity {
     private LinearLayout content;
     private Records.StudySession activeSession;
     private DrawingPadView drawingPad;
-    private CheckBox writingPassed;
-    private CheckBox manualOverride;
+    private TextView studyStatus;
+    private Button checkWritingButton;
+    private Button downloadModelButton;
+    private Button manualOverrideButton;
+    private Button nextAfterPassButton;
+    private Button practiceWithGuideButton;
+    private Button advanceGuideButton;
+    private WritingAnalysis activeAnalysis;
+    private boolean checkingWriting;
+    private boolean writingModelDownloaded;
+    private boolean writingModelStatusKnown;
+    private int hintsUsed;
+    private int currentPracticeLevel;
+    private Map<String, StrokeGuide> strokeGuides;
+    private WritingRecognizer writingRecognizer;
+    private static AnkiDroidGateway ankiDroidGatewayForTests;
+    private static WritingRecognizer writingRecognizerForTests;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         store = new LocalStore(this);
-        gateway = new AnkiDroidGateway(this);
+        gateway = ankiDroidGatewayForTests == null ? new AnkiDroidGateway(this) : ankiDroidGatewayForTests;
         requestAnkiPermissionIfNeeded();
         renderHome();
     }
@@ -83,7 +111,18 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         io.shutdownNow();
+        if (writingRecognizer != null && writingRecognizer != writingRecognizerForTests) {
+            writingRecognizer.close();
+        }
         super.onDestroy();
+    }
+
+    public static void setWritingRecognizerForTests(WritingRecognizer recognizer) {
+        writingRecognizerForTests = recognizer;
+    }
+
+    public static void setAnkiDroidGatewayForTests(AnkiDroidGateway gateway) {
+        ankiDroidGatewayForTests = gateway;
     }
 
     private void requestAnkiPermissionIfNeeded() {
@@ -329,59 +368,154 @@ public final class MainActivity extends Activity {
 
     private void renderSession(Records.StudySession session) {
         content.removeAllViews();
-        content.addView(text("Study now", 30, INK, true));
-        LinearLayout stage = band(session.writingRequired ? CORAL : TEAL);
-        stage.addView(text(session.item.kanji, 88, Color.WHITE, true));
+        activeAnalysis = null;
+        checkingWriting = false;
+        hintsUsed = 0;
+        currentPracticeLevel = Math.max(0, Math.min(3, session.item.writingLevel));
+
+        content.addView(text("Write the kanji", 30, INK, true));
+        LinearLayout stage = band(CORAL);
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
         if (session.row != null) {
-            stage.addView(text(session.row.primaryMeaning, 18, Color.WHITE, false));
+            String prompt = session.row.primaryMeaning.isEmpty() ? session.prompt : session.row.primaryMeaning;
+            stage.addView(text("Prompt: " + prompt, 19, Color.WHITE, true));
+            if (!session.row.reading.isEmpty()) {
+                stage.addView(text("Reading cue: " + session.row.reading, 15, Color.WHITE, false));
+            }
             stage.addView(text(session.row.reasonText, 15, Color.WHITE, false));
+        } else {
+            stage.addView(text(session.prompt, 17, Color.WHITE, false));
         }
         content.addView(stage);
 
-        if (session.row != null) {
-            for (Records.Example example : session.row.examples) {
-                content.addView(exampleView(example));
-            }
-        }
+        content.addView(sectionTitle("Writing"));
+        studyStatus = text(guideLabel(currentPracticeLevel), 16, MUTED, false);
+        content.addView(studyStatus);
+        StrokeGuide guide = strokeGuide(session.item.kanji);
+        drawingPad = new DrawingPadView(this);
+        drawingPad.setTarget(session.item.kanji);
+        drawingPad.setGuide(guide, currentPracticeLevel, false);
+        content.addView(drawingPad, new LinearLayout.LayoutParams(-1, dp(330)));
 
-        if (session.writingRequired) {
-            content.addView(sectionTitle("Writing"));
-            content.addView(text(guideLabel(session.item.writingLevel), 16, MUTED, false));
-            drawingPad = new DrawingPadView(this);
-            content.addView(drawingPad, new LinearLayout.LayoutParams(-1, dp(220)));
-            LinearLayout checks = new LinearLayout(this);
-            checks.setOrientation(LinearLayout.VERTICAL);
-            writingPassed = new CheckBox(this);
-            writingPassed.setText(R.string.writing_passed);
-            manualOverride = new CheckBox(this);
-            manualOverride.setText(R.string.manual_override);
-            checks.addView(writingPassed);
-            checks.addView(manualOverride);
-            content.addView(checks);
-            Button clear = secondaryButton("Clear drawing");
-            clear.setOnClickListener(v -> drawingPad.clear());
-            content.addView(clear);
-        }
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        Button clear = secondaryButton("Clear canvas");
+        clear.setOnClickListener(v -> {
+            drawingPad.clear();
+            activeAnalysis = null;
+            setStudyStatus(guideLabel(currentPracticeLevel), MUTED);
+            updateResultActions();
+        });
+        actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
+        advanceGuideButton = secondaryButton(stageAdvanceButtonText(currentPracticeLevel, guide));
+        advanceGuideButton.setOnClickListener(v -> advanceWritingStage());
+        actions.addView(advanceGuideButton, new LinearLayout.LayoutParams(0, dp(58), 1));
+        content.addView(actions);
 
-        LinearLayout ratings = new LinearLayout(this);
-        ratings.setOrientation(LinearLayout.HORIZONTAL);
-        for (String rating : new String[]{"again", "hard", "good", "easy"}) {
-            Button button = secondaryButton(rating);
-            button.setOnClickListener(v -> submitReview(rating));
-            ratings.addView(button, new LinearLayout.LayoutParams(0, dp(58), 1));
-        }
-        content.addView(ratings);
+        checkWritingButton = primaryButton("Check writing", CORAL);
+        checkWritingButton.setOnClickListener(v -> checkWriting());
+        content.addView(checkWritingButton);
+
+        downloadModelButton = secondaryButton("Download Japanese writing model");
+        downloadModelButton.setOnClickListener(v -> downloadWritingModel());
+        content.addView(downloadModelButton);
+
+        nextAfterPassButton = primaryButton("Next", TEAL);
+        nextAfterPassButton.setOnClickListener(v -> submitReview(activeAnalysis == null ? "again" : activeAnalysis.rating, false));
+        content.addView(nextAfterPassButton);
+
+        manualOverrideButton = secondaryButton("I know this was right");
+        manualOverrideButton.setOnClickListener(v -> submitReview("good", true));
+        content.addView(manualOverrideButton);
+
+        practiceWithGuideButton = secondaryButton("Practice with guide");
+        practiceWithGuideButton.setOnClickListener(v -> {
+            currentPracticeLevel = 0;
+            hintsUsed++;
+            activeAnalysis = null;
+            drawingPad.clear();
+            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
+            setStudyStatus(guideLabel(currentPracticeLevel), MUTED);
+            updateResultActions();
+        });
+        content.addView(practiceWithGuideButton);
+
+        updateResultActions();
+        refreshWritingModelStatus();
     }
 
-    private void submitReview(String rating) {
+    private void checkWriting() {
+        if (activeSession == null) {
+            return;
+        }
+        if (drawingPad == null || !drawingPad.hasInk()) {
+            activeAnalysis = WritingAnalysisEngine.noInk();
+            showAnalysis(activeAnalysis);
+            return;
+        }
+        if (checkingWriting) {
+            return;
+        }
+        Records.StudySession session = activeSession;
+        String token = session.token;
+        String target = session.item.kanji;
+        CapturedWriting captured;
+        WritingSample sample;
+        try {
+            captured = drawingPad.capturedWriting();
+            sample = drawingPad.writingSample();
+        } catch (IllegalArgumentException error) {
+            activeAnalysis = WritingAnalysisEngine.noInk();
+            showAnalysis(activeAnalysis);
+            return;
+        }
+        StrokeGuide guide = strokeGuide(target);
+        checkingWriting = true;
+        checkWritingButton.setEnabled(false);
+        updateResultActions();
+        setStudyStatus("Checking handwriting...", MUTED);
+        WritingRecognizer recognizer = writingRecognizer();
+        if (recognizer == null) {
+            activeAnalysis = WritingAnalysisEngine.modelUnavailable("Japanese writing model is unavailable on this device.");
+            checkingWriting = false;
+            showAnalysis(activeAnalysis);
+            return;
+        }
+        recognizer.modelStatus().whenComplete((status, statusError) -> {
+            if (statusError != null || status == null || !status.downloaded) {
+                main.post(() -> {
+                    if (!isActiveToken(token)) {
+                        return;
+                    }
+                    checkingWriting = false;
+                    activeAnalysis = WritingAnalysisEngine.modelUnavailable("Download the Japanese writing model before automatic checks.");
+                    writingModelDownloaded = false;
+                    writingModelStatusKnown = true;
+                    showAnalysis(activeAnalysis);
+                });
+                return;
+            }
+            recognizer.recognize(captured).whenComplete((result, error) -> main.post(() -> {
+                if (!isActiveToken(token)) {
+                    return;
+                }
+                checkingWriting = false;
+                if (error != null) {
+                    activeAnalysis = WritingAnalysisEngine.recognitionError(error.getMessage());
+                } else {
+                    activeAnalysis = WritingAnalysisEngine.analyze(target, sample, guide, candidates(result));
+                }
+                showAnalysis(activeAnalysis);
+            }));
+        });
+    }
+
+    private void submitReview(String rating, boolean override) {
         if (activeSession == null) {
             return;
         }
         boolean writingRequired = activeSession.writingRequired;
-        boolean drawn = drawingPad != null && drawingPad.hasInk();
-        boolean passed = !writingRequired || (writingPassed != null && writingPassed.isChecked() && drawn);
-        boolean override = manualOverride != null && manualOverride.isChecked();
+        boolean passed = !writingRequired || (activeAnalysis != null && activeAnalysis.writingPassed);
         Records.ReviewRequest request = new Records.ReviewRequest(
                 activeSession.item.kanji,
                 activeSession.token,
@@ -389,7 +523,7 @@ public final class MainActivity extends Activity {
                 writingRequired,
                 passed,
                 override,
-                0
+                hintsUsed
         );
         BridgeScheduler scheduler = new BridgeScheduler();
         Set<String> consumed = new HashSet<>(store.consumedTokens());
@@ -406,6 +540,250 @@ public final class MainActivity extends Activity {
         }
         Toast.makeText(this, result.message + " Rating: " + result.appliedRating, Toast.LENGTH_SHORT).show();
         renderStudy();
+    }
+
+    private void advanceWritingStage() {
+        if (drawingPad == null || activeSession == null) {
+            return;
+        }
+        int next = nextPracticeLevel(currentPracticeLevel, strokeGuide(activeSession.item.kanji));
+        if (next != currentPracticeLevel) {
+            if (next == 3 || currentPracticeLevel == 3) {
+                drawingPad.clear();
+                activeAnalysis = null;
+            }
+            currentPracticeLevel = next;
+            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
+            setStudyStatus(guideLabel(currentPracticeLevel), MUTED);
+            if (advanceGuideButton != null) {
+                advanceGuideButton.setText(stageAdvanceButtonText(currentPracticeLevel, strokeGuide(activeSession.item.kanji)));
+            }
+            updateResultActions();
+        }
+    }
+
+    private int nextPracticeLevel(int level, StrokeGuide guide) {
+        if (level <= 0) {
+            return 1;
+        }
+        if (level == 1 && guide != null && guide.strokeCount() >= 3) {
+            return 2;
+        }
+        return 3;
+    }
+
+    private String stageAdvanceButtonText(int level, StrokeGuide guide) {
+        int next = nextPracticeLevel(level, guide);
+        if (next == 1) {
+            return "Fade guide";
+        }
+        if (next == 2) {
+            return "Take away strokes";
+        }
+        return "Clear and check";
+    }
+
+    private void showAnalysis(WritingAnalysis analysis) {
+        if (drawingPad != null && activeSession != null) {
+            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, true);
+        }
+        int color = analysis.writingPassed ? TEAL : CORAL;
+        String candidates = candidateText(analysis.candidates);
+        setStudyStatus(analysis.message + (candidates.isEmpty() ? "" : "\nRecognizer: " + candidates), color);
+        updateResultActions();
+    }
+
+    private void updateResultActions() {
+        boolean hasResult = activeAnalysis != null;
+        boolean passed = hasResult && activeAnalysis.writingPassed;
+        boolean submittable = activeAnalysis != null && canSubmitAnalysis(activeAnalysis);
+        if (checkWritingButton != null) {
+            boolean readyToCheck = currentPracticeLevel == 3 || hasResult;
+            checkWritingButton.setVisibility(!passed && readyToCheck ? View.VISIBLE : View.GONE);
+            checkWritingButton.setEnabled(!checkingWriting);
+            checkWritingButton.setText(checkingWriting ? "Checking..." : "Check writing");
+        }
+        if (downloadModelButton != null) {
+            downloadModelButton.setVisibility(writingModelStatusKnown && writingModelDownloaded ? View.GONE : View.VISIBLE);
+        }
+        if (nextAfterPassButton != null) {
+            nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
+            if (submittable) {
+                nextAfterPassButton.setText(getString(R.string.next_rating, activeAnalysis.rating));
+            }
+        }
+        if (manualOverrideButton != null) {
+            manualOverrideButton.setVisibility(hasResult && canManualOverride(activeAnalysis) ? View.VISIBLE : View.GONE);
+        }
+        if (practiceWithGuideButton != null) {
+            practiceWithGuideButton.setVisibility(hasResult && !passed && canPracticeAfterAnalysis(activeAnalysis) ? View.VISIBLE : View.GONE);
+        }
+        if (advanceGuideButton != null) {
+            advanceGuideButton.setVisibility(currentPracticeLevel == 3 ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private boolean canSubmitAnalysis(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case PASS:
+            case CLOSE:
+            case WRONG:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean canManualOverride(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case WRONG:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean canPracticeAfterAnalysis(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case WRONG:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void setStudyStatus(String value, int color) {
+        if (studyStatus != null) {
+            studyStatus.setText(value);
+            studyStatus.setTextColor(color);
+        }
+    }
+
+    private void refreshWritingModelStatus() {
+        writingModelStatusKnown = false;
+        writingModelDownloaded = false;
+        updateResultActions();
+        String token = activeSession == null ? null : activeSession.token;
+        WritingRecognizer recognizer = writingRecognizer();
+        if (recognizer == null) {
+            writingModelStatusKnown = true;
+            setStudyStatus(guideLabel(currentPracticeLevel) + "\nAutomatic checks are unavailable on this device.", CORAL);
+            updateResultActions();
+            return;
+        }
+        recognizer.modelStatus().whenComplete((status, error) -> main.post(() -> {
+            if (token == null || !isActiveToken(token)) {
+                return;
+            }
+            writingModelStatusKnown = true;
+            writingModelDownloaded = error == null && status != null && status.downloaded;
+            updateResultActions();
+            if (activeAnalysis != null || checkingWriting) {
+                return;
+            }
+            if (error != null || status == null) {
+                setStudyStatus(guideLabel(currentPracticeLevel) + "\nUnable to read ML Kit model status.", CORAL);
+            } else if (!status.downloaded) {
+                setStudyStatus(guideLabel(currentPracticeLevel) + "\nJapanese writing model is not downloaded yet.", CORAL);
+            } else {
+                setStudyStatus(guideLabel(currentPracticeLevel) + "\nJapanese writing model ready.", MUTED);
+            }
+        }));
+    }
+
+    private void downloadWritingModel() {
+        String token = activeSession == null ? null : activeSession.token;
+        WritingRecognizer recognizer = writingRecognizer();
+        if (recognizer == null) {
+            setStudyStatus("Japanese writing model is unavailable on this device.", CORAL);
+            return;
+        }
+        setStudyStatus("Downloading Japanese writing model...", MUTED);
+        recognizer.downloadModel().whenComplete((status, error) -> main.post(() -> {
+            if (token != null && !isActiveToken(token)) {
+                return;
+            }
+            if (error != null) {
+                writingModelStatusKnown = true;
+                writingModelDownloaded = false;
+                setStudyStatus("Model download failed: " + error.getMessage(), CORAL);
+            } else {
+                writingModelStatusKnown = true;
+                writingModelDownloaded = true;
+                setStudyStatus("Japanese writing model ready.", TEAL);
+            }
+            updateResultActions();
+        }));
+    }
+
+    private boolean isActiveToken(String token) {
+        return activeSession != null && activeSession.token.equals(token);
+    }
+
+    private WritingRecognizer writingRecognizer() {
+        if (writingRecognizerForTests != null) {
+            return writingRecognizerForTests;
+        }
+        if (writingRecognizer != null) {
+            return writingRecognizer;
+        }
+        try {
+            writingRecognizer = new MlKitJapaneseWritingRecognizer(io);
+            return writingRecognizer;
+        } catch (RuntimeException error) {
+            return null;
+        }
+    }
+
+    private List<RecognitionCandidate> candidates(WritingRecognizer.RecognitionResult result) {
+        List<RecognitionCandidate> out = new ArrayList<>();
+        if (result == null) {
+            return out;
+        }
+        for (WritingRecognizer.Candidate candidate : result.candidates) {
+            out.add(new RecognitionCandidate(candidate.text, candidate.score));
+        }
+        return out;
+    }
+
+    private String candidateText(List<RecognitionCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return "nothing clear";
+        }
+        List<String> values = new ArrayList<>();
+        for (int i = 0; i < Math.min(3, candidates.size()); i++) {
+            values.add(candidates.get(i).text);
+        }
+        return String.join(", ", values);
+    }
+
+    private StrokeGuide strokeGuide(String kanji) {
+        if (strokeGuides == null) {
+            strokeGuides = loadStrokeGuides();
+        }
+        return strokeGuides.get(kanji);
+    }
+
+    private Map<String, StrokeGuide> loadStrokeGuides() {
+        try (InputStream in = getResources().openRawResource(R.raw.kanji_strokes);
+             InputStreamReader reader = new InputStreamReader(in)) {
+            return StrokeGuideParser.parse(reader);
+        } catch (Exception error) {
+            return new HashMap<>();
+        }
     }
 
     private void renderUpdate() {
@@ -604,27 +982,27 @@ public final class MainActivity extends Activity {
 
     private String labelForTask(String task) {
         if ("context_writing".equals(task)) {
-            return "Context production";
+            return "Writing recall";
         }
         if ("confusable_recognition".equals(task)) {
-            return "Confusable recognition";
+            return "Writing recall";
         }
         if ("sampled_handwriting".equals(task)) {
-            return "Sampled handwriting";
+            return "Blind handwriting";
         }
-        return "Recognition";
+        return "Writing recall";
     }
 
     private String guideLabel(int level) {
         switch (level) {
             case 0:
-                return "Trace: copy the shape deliberately before rating.";
+                return "Trace the numbered strokes. This guided pass is practice only.";
             case 1:
-                return "Outline: use the examples, then write from memory.";
+                return "Use the faint guide, then move to a clean check.";
             case 2:
-                return "Minimal hints: glance once, then write blind.";
+                return "Only the next strokes are hinted. Finish the shape from memory.";
             default:
-                return "Blind recall: write first, check after.";
+                return "Blind check: write on a clean canvas before checking.";
         }
     }
 
@@ -645,28 +1023,84 @@ public final class MainActivity extends Activity {
     public static final class DrawingPadView extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint grid = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint guidePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint markerText = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final List<Path> paths = new ArrayList<>();
+        private final List<List<CapturedStroke.Point>> committedStrokes = new ArrayList<>();
+        private final List<CapturedStroke.Point> currentPoints = new ArrayList<>();
         private Path current;
+        private StrokeGuide guide;
+        private int guideLevel = 3;
+        private boolean revealGuide;
+        private String target = "";
+        private int activePointerId = -1;
 
         public DrawingPadView(Context context) {
             super(context);
             setBackgroundColor(Color.WHITE);
             paint.setColor(INK);
-            paint.setStrokeWidth(10f);
+            paint.setStrokeWidth(12f);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeJoin(Paint.Join.ROUND);
             grid.setColor(Color.rgb(244, 199, 225));
             grid.setStrokeWidth(2f);
+            guidePaint.setStyle(Paint.Style.STROKE);
+            guidePaint.setStrokeCap(Paint.Cap.ROUND);
+            guidePaint.setStrokeJoin(Paint.Join.ROUND);
+            markerPaint.setStyle(Paint.Style.FILL);
+            markerText.setTextAlign(Paint.Align.CENTER);
+            markerText.setTypeface(Typeface.DEFAULT_BOLD);
+            outlinePaint.setStyle(Paint.Style.STROKE);
+            outlinePaint.setStrokeWidth(5f);
+            outlinePaint.setTextAlign(Paint.Align.CENTER);
+            outlinePaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
         }
 
         public boolean hasInk() {
-            return !paths.isEmpty();
+            return !committedStrokes.isEmpty();
         }
 
         public void clear() {
             paths.clear();
+            committedStrokes.clear();
+            currentPoints.clear();
+            current = null;
+            activePointerId = -1;
             invalidate();
+        }
+
+        public void setTarget(String target) {
+            this.target = target == null ? "" : target;
+        }
+
+        public void setGuide(StrokeGuide guide, int level, boolean revealGuide) {
+            this.guide = guide;
+            this.guideLevel = Math.max(0, Math.min(3, level));
+            this.revealGuide = revealGuide;
+            invalidate();
+        }
+
+        public CapturedWriting capturedWriting() {
+            List<CapturedStroke> strokes = new ArrayList<>();
+            for (List<CapturedStroke.Point> points : committedStrokes) {
+                strokes.add(new CapturedStroke(points));
+            }
+            return new CapturedWriting(strokes, (float) getWidth(), (float) getHeight(), "");
+        }
+
+        public WritingSample writingSample() {
+            List<InkStroke> strokes = new ArrayList<>();
+            for (List<CapturedStroke.Point> points : committedStrokes) {
+                List<InkPoint> inkPoints = new ArrayList<>();
+                for (CapturedStroke.Point point : points) {
+                    inkPoints.add(new InkPoint(point.x, point.y, point.timestampMillis == null ? 0L : point.timestampMillis));
+                }
+                strokes.add(new InkStroke(inkPoints));
+            }
+            return new WritingSample(strokes, (float) getWidth(), (float) getHeight());
         }
 
         @Override
@@ -676,6 +1110,8 @@ public final class MainActivity extends Activity {
             float h = getHeight();
             canvas.drawLine(w / 2f, 0, w / 2f, h, grid);
             canvas.drawLine(0, h / 2f, w, h / 2f, grid);
+            canvas.drawLine(0, h * 0.72f, w, h * 0.72f, grid);
+            drawGuide(canvas, w, h);
             for (Path path : paths) {
                 canvas.drawPath(path, paint);
             }
@@ -689,24 +1125,40 @@ public final class MainActivity extends Activity {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     performClick();
+                    requestParentIntercept(false);
+                    activePointerId = event.getPointerId(0);
                     current = new Path();
-                    current.moveTo(event.getX(), event.getY());
+                    current.moveTo(event.getX(0), event.getY(0));
+                    currentPoints.clear();
+                    appendPoint(event.getX(0), event.getY(0), event.getEventTime(), false);
                     invalidate();
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     if (current != null) {
-                        current.lineTo(event.getX(), event.getY());
+                        requestParentIntercept(false);
+                        int pointerIndex = activePointerIndex(event);
+                        if (pointerIndex < 0) {
+                            return true;
+                        }
+                        for (int i = 0; i < event.getHistorySize(); i++) {
+                            appendPoint(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i), event.getHistoricalEventTime(i), true);
+                        }
+                        appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
                         invalidate();
+                    }
+                    return true;
+                case MotionEvent.ACTION_POINTER_UP:
+                    if (current != null && event.getPointerId(event.getActionIndex()) == activePointerId) {
+                        finishStroke(event, event.getActionIndex());
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     if (current != null) {
-                        current.lineTo(event.getX(), event.getY());
-                        paths.add(current);
-                        current = null;
-                        invalidate();
+                        int pointerIndex = activePointerIndex(event);
+                        finishStroke(event, pointerIndex < 0 ? 0 : pointerIndex);
                     }
+                    requestParentIntercept(true);
                     return true;
                 default:
                     return true;
@@ -717,6 +1169,89 @@ public final class MainActivity extends Activity {
         public boolean performClick() {
             super.performClick();
             return true;
+        }
+
+        private void requestParentIntercept(boolean allow) {
+            ViewParent parent = getParent();
+            if (parent != null) {
+                parent.requestDisallowInterceptTouchEvent(!allow);
+            }
+        }
+
+        private int activePointerIndex(MotionEvent event) {
+            if (activePointerId < 0) {
+                return event.getPointerCount() == 0 ? -1 : 0;
+            }
+            return event.findPointerIndex(activePointerId);
+        }
+
+        private void finishStroke(MotionEvent event, int pointerIndex) {
+            if (pointerIndex >= 0 && pointerIndex < event.getPointerCount()) {
+                appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
+            }
+            if (!currentPoints.isEmpty()) {
+                paths.add(current);
+                committedStrokes.add(new ArrayList<>(currentPoints));
+            }
+            currentPoints.clear();
+            current = null;
+            activePointerId = -1;
+            invalidate();
+        }
+
+        private void appendPoint(float x, float y, long timestamp, boolean drawLine) {
+            CapturedStroke.Point last = currentPoints.isEmpty() ? null : currentPoints.get(currentPoints.size() - 1);
+            if (last != null && Math.abs(last.x - x) < 0.5f && Math.abs(last.y - y) < 0.5f) {
+                return;
+            }
+            currentPoints.add(new CapturedStroke.Point(x, y, timestamp));
+            if (drawLine && current != null) {
+                current.lineTo(x, y);
+            }
+        }
+
+        private void drawGuide(Canvas canvas, float width, float height) {
+            if (guide != null && !guide.isEmpty()) {
+                List<HintPolicy.StrokeHint> hints = HintPolicy.hintsFor(guide, guideLevel, committedStrokes.size(), revealGuide);
+                for (HintPolicy.StrokeHint hint : hints) {
+                    if (!hint.visible || hint.stroke.points.size() < 2) {
+                        continue;
+                    }
+                    Path path = new Path();
+                    InkPoint first = hint.stroke.points.get(0);
+                    path.moveTo(first.x * width, first.y * height);
+                    for (int i = 1; i < hint.stroke.points.size(); i++) {
+                        InkPoint point = hint.stroke.points.get(i);
+                        path.lineTo(point.x * width, point.y * height);
+                    }
+                    guidePaint.setColor(hint.current ? CORAL : Color.rgb(111, 74, 39));
+                    guidePaint.setAlpha(Math.round((hint.current ? 220 : 160) * hint.alpha));
+                    guidePaint.setStrokeWidth(hint.current ? 14f : 9f);
+                    canvas.drawPath(path, guidePaint);
+                    drawStartMarker(canvas, first.x * width, first.y * height, hint.strokeIndex + 1, hint.current);
+                }
+            } else if ((guideLevel < 3 || revealGuide) && !target.isEmpty()) {
+                outlinePaint.setColor(Color.argb(revealGuide ? 120 : 72, 111, 74, 39));
+                outlinePaint.setTextSize(Math.min(width, height) * 0.62f);
+                Rect bounds = new Rect();
+                outlinePaint.getTextBounds(target, 0, target.length(), bounds);
+                Path outline = new Path();
+                outlinePaint.getTextPath(target, 0, target.length(), width / 2f - bounds.exactCenterX(), height * 0.68f, outline);
+                canvas.drawPath(outline, outlinePaint);
+            }
+        }
+
+        private void drawStartMarker(Canvas canvas, float x, float y, int number, boolean active) {
+            markerPaint.setColor(Color.argb(230, 255, 255, 255));
+            canvas.drawCircle(x, y, 17f, markerPaint);
+            markerPaint.setStyle(Paint.Style.STROKE);
+            markerPaint.setStrokeWidth(3f);
+            markerPaint.setColor(active ? CORAL : Color.rgb(111, 74, 39));
+            canvas.drawCircle(x, y, 17f, markerPaint);
+            markerPaint.setStyle(Paint.Style.FILL);
+            markerText.setTextSize(18f);
+            markerText.setColor(active ? CORAL : Color.rgb(111, 74, 39));
+            canvas.drawText(Integer.toString(number), x, y - (markerText.descent() + markerText.ascent()) / 2f, markerText);
         }
     }
 }
