@@ -23,7 +23,8 @@ import java.util.Set;
 
 public final class AnkiDroidGateway implements CollectionGateway {
     private static final char FIELD_SEPARATOR = '\u001f';
-    private static final String ARCHIVED_TAG = "kanji_anki_archived";
+    private static final String ARCHIVED_TAG = "kani_archived";
+    private static final String LEGACY_ARCHIVED_TAG = "kanji_anki_archived";
     private static final String[] CARD_COLUMNS_WITH_SCHEDULER = {
             "note_id",
             "ord",
@@ -64,7 +65,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return new ProviderStatus(true, granted, granted, target.authority, target.permission,
                 granted
                         ? "AnkiDroid is ready for live Kiku sync."
-                        : "Allow AnkiDroid access so Kanji Anki can read your live collection.");
+                        : "Allow AnkiDroid access so Kani can read your live collection.");
     }
 
     public Records.CollectionSnapshot readCollection(Records.Settings settings) throws SyncException {
@@ -155,7 +156,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 cursor.close();
             }
         }
-        if (!Arrays.asList(tags.split("\\s+")).contains(ARCHIVED_TAG)) {
+        if (!isArchivedTagPresent(Arrays.asList(tags.split("\\s+")))) {
             tags = (tags + " " + ARCHIVED_TAG).trim();
         }
         ContentValues values = new ContentValues();
@@ -277,9 +278,13 @@ public final class AnkiDroidGateway implements CollectionGateway {
         List<String> values = splitFields(value(cursor, "flds"));
         Map<String, String> fieldMap = selectedFields(mapping, values, settings);
         List<String> tags = splitTags(value(cursor, "tags"));
-        if (!tags.contains(ARCHIVED_TAG)) {
+        if (!isArchivedTagPresent(tags)) {
             notes.put(noteId, new Records.Note(noteId, mapping.name, fieldMap, tags));
         }
+    }
+
+    private static boolean isArchivedTagPresent(List<String> tags) {
+        return tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG);
     }
 
     private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {

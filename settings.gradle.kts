@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KanjiAnki"
+rootProject.name = "Kani"
 include(":core")
 include(":app")

@@ -219,7 +219,7 @@ public final class MainActivity extends Activity {
 
     private void renderHome() {
         base("home");
-        TextView title = text("Kanji Anki", 42, INK, true);
+        TextView title = text("Kani", 42, INK, true);
         title.setLetterSpacing(0);
         content.addView(title);
         content.addView(text("Write the kanji your Kiku reviews keep exposing.", 18, MUTED, false));
@@ -276,7 +276,7 @@ public final class MainActivity extends Activity {
     private void confirmSync() {
         new AlertDialog.Builder(this)
                 .setTitle("Sync and archive imported cards?")
-                .setMessage("Kanji Anki reads your Kiku cards from AnkiDroid. Suspended cards copied into writing practice may be tagged kanji_anki_archived in AnkiDroid after they are safely stored here, so they do not keep returning as new problems.")
+                .setMessage("Kani reads your Kiku cards from AnkiDroid. Suspended cards copied into writing practice may be tagged as archived in AnkiDroid after they are safely stored here, so they do not keep returning as new problems.")
                 .setPositiveButton("Sync and tag archive", (dialog, which) -> runSync())
                 .setNegativeButton("Cancel", null)
                 .show();
