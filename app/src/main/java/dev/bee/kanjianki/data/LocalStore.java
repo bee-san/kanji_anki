@@ -580,6 +580,47 @@ public final class LocalStore extends SQLiteOpenHelper {
         return new StudyStreak(current, best, studiedToday, reviewsToday, lastStudyAt);
     }
 
+    public StudyImpactStats studyImpactStats() {
+        Cursor cursor = getReadableDatabase().query(
+                "review_log",
+                new String[]{"kanji", "writing_required", "writing_passed", "manual_override"},
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        Set<String> reviewedKanji = new HashSet<>();
+        int total = 0;
+        int writingRequired = 0;
+        int writingPassed = 0;
+        int writingFailed = 0;
+        int manualOverrides = 0;
+        try {
+            while (cursor.moveToNext()) {
+                total++;
+                reviewedKanji.add(string(cursor, "kanji"));
+                boolean required = integer(cursor, "writing_required") == 1;
+                boolean passed = integer(cursor, "writing_passed") == 1;
+                boolean override = integer(cursor, "manual_override") == 1;
+                if (required) {
+                    writingRequired++;
+                    if (passed) {
+                        writingPassed++;
+                    } else if (!override) {
+                        writingFailed++;
+                    }
+                }
+                if (override) {
+                    manualOverrides++;
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return new StudyImpactStats(total, reviewedKanji.size(), writingRequired, writingPassed, writingFailed, manualOverrides);
+    }
+
     private static long localDayStart(long millis) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(millis);
@@ -888,6 +929,24 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.studiedToday = studiedToday;
             this.reviewsToday = reviewsToday;
             this.lastStudyAtMillis = lastStudyAtMillis;
+        }
+    }
+
+    public static final class StudyImpactStats {
+        public final int totalReviews;
+        public final int distinctReviewedKanji;
+        public final int writingRequired;
+        public final int writingPassed;
+        public final int writingFailed;
+        public final int manualOverrides;
+
+        public StudyImpactStats(int totalReviews, int distinctReviewedKanji, int writingRequired, int writingPassed, int writingFailed, int manualOverrides) {
+            this.totalReviews = totalReviews;
+            this.distinctReviewedKanji = distinctReviewedKanji;
+            this.writingRequired = writingRequired;
+            this.writingPassed = writingPassed;
+            this.writingFailed = writingFailed;
+            this.manualOverrides = manualOverrides;
         }
     }
 }

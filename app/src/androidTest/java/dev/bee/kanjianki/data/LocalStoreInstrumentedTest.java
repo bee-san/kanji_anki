@@ -145,6 +145,13 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, stats.good);
         assertEquals(2, stats.writingRequired);
         assertEquals(1, stats.writingFailed);
+        LocalStore.StudyImpactStats impact = store.studyImpactStats();
+        assertEquals(2, impact.totalReviews);
+        assertEquals(2, impact.distinctReviewedKanji);
+        assertEquals(2, impact.writingRequired);
+        assertEquals(1, impact.writingPassed);
+        assertEquals(1, impact.writingFailed);
+        assertEquals(0, impact.manualOverrides);
 
         Records.SchedulerParameters tuned = Records.SchedulerParameters.defaults()
                 .withAdjustment(0.40, 1.10, 1.80, 2.80, 5000L, 30);
