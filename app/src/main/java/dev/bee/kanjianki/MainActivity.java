@@ -89,6 +89,7 @@ public final class MainActivity extends Activity {
     private Button nextAfterPassButton;
     private Button practiceWithGuideButton;
     private Button advanceGuideButton;
+    private View studyAnswerPanel;
     private WritingAnalysis activeAnalysis;
     private boolean checkingWriting;
     private boolean writingModelDownloaded;
@@ -393,6 +394,43 @@ public final class MainActivity extends Activity {
         return box;
     }
 
+    private View learningPanel(Records.StudySession session) {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+        box.addView(text("Meet the kanji", 22, INK, true));
+        TextView glyph = text(session.item.kanji, 84, INK, true);
+        glyph.setGravity(Gravity.CENTER);
+        box.addView(glyph, new LinearLayout.LayoutParams(-1, dp(104)));
+        if (session.row != null) {
+            box.addView(text("Meaning: " + rowMeaning(session.row), 17, INK, true));
+            if (!session.row.reading.isEmpty()) {
+                box.addView(text("Reading: " + session.row.reading, 16, TEAL, true));
+            }
+            Records.Example example = firstExample(session.row);
+            if (example != null) {
+                box.addView(text("Example: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 16, INK, true));
+                if (!example.meaning.isEmpty()) {
+                    box.addView(text(cleanLearnerText(example.meaning, "", 96), 14, MUTED, false));
+                }
+            }
+        } else {
+            box.addView(text(session.prompt, 16, MUTED, false));
+        }
+        box.addView(text("Copy it until the shape feels familiar, then start the memory check.", 14, MUTED, false));
+        return box;
+    }
+
+    private Records.Example firstExample(Records.DashboardRow row) {
+        if (row == null || row.examples.isEmpty()) {
+            return null;
+        }
+        for (Records.Example example : row.examples) {
+            if ("active".equals(example.sourceType)) {
+                return example;
+            }
+        }
+        return row.examples.get(0);
+    }
+
     private void renderStudy() {
         base("study");
         List<Records.DashboardRow> rows = store.dashboardRows();
@@ -472,15 +510,17 @@ public final class MainActivity extends Activity {
         LinearLayout stage = band(CORAL);
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
         if (session.row != null) {
-            stage.addView(text("Clue: " + sessionClue(session), 17, Color.WHITE, false));
+            stage.addView(text("Meaning cue: " + sessionClue(session), 17, Color.WHITE, false));
             if (!session.row.reading.isEmpty()) {
                 stage.addView(text("Reading cue: " + session.row.reading, 15, Color.WHITE, false));
             }
-            stage.addView(text(session.row.reasonText, 15, Color.WHITE, false));
+            stage.addView(text("Why this is due: " + session.row.reasonText, 15, Color.WHITE, false));
         } else {
             stage.addView(text(session.prompt, 17, Color.WHITE, false));
         }
         content.addView(stage);
+        studyAnswerPanel = learningPanel(session);
+        content.addView(studyAnswerPanel);
 
         content.addView(sectionTitle("Writing"));
         studyStatus = text(guideLabel(currentPracticeLevel), 16, MUTED, false);
@@ -669,12 +709,12 @@ public final class MainActivity extends Activity {
     private String stageAdvanceButtonText(int level, StrokeGuide guide) {
         int next = nextPracticeLevel(level, guide);
         if (next == 1) {
-            return "I traced it";
+            return "I copied it";
         }
         if (next == 2) {
             return "Try with less help";
         }
-        return "Write from memory";
+        return "Start memory check";
     }
 
     private void showAnalysis(WritingAnalysis analysis) {
@@ -714,6 +754,28 @@ public final class MainActivity extends Activity {
         }
         if (advanceGuideButton != null) {
             advanceGuideButton.setVisibility(currentPracticeLevel == 3 ? View.GONE : View.VISIBLE);
+        }
+        if (studyAnswerPanel != null) {
+            studyAnswerPanel.setVisibility(shouldShowLearningPanel(activeAnalysis) ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private boolean shouldShowLearningPanel(WritingAnalysis analysis) {
+        if (currentPracticeLevel < 3) {
+            return true;
+        }
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case PASS:
+            case CLOSE:
+            case WRONG:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -1178,13 +1240,19 @@ public final class MainActivity extends Activity {
 
     private String labelForTask(String task) {
         if ("targeted_writing".equals(task)) {
-            return "Practice this kanji";
+            return "Learn this kanji";
         }
         if ("context_writing".equals(task)) {
-            return "Clue to writing";
+            return "Learn this kanji";
+        }
+        if ("guided_writing".equals(task)) {
+            return "Copy the shape";
+        }
+        if ("blind_writing".equals(task)) {
+            return "Memory check";
         }
         if ("confusable_recognition".equals(task)) {
-            return "Clue to writing";
+            return "Learn the shape";
         }
         if ("sampled_handwriting".equals(task)) {
             return "Memory check";
@@ -1195,13 +1263,13 @@ public final class MainActivity extends Activity {
     private String guideLabel(int level) {
         switch (level) {
             case 0:
-                return "Step 1 of 4: trace the numbered strokes. This guided pass is practice only.";
+                return "Step 1 of 4: look at the kanji above, then trace the numbered strokes.";
             case 1:
-                return "Step 2 of 4: copy with the faint guide.";
+                return "Step 2 of 4: copy with the faint guide while the kanji is still visible.";
             case 2:
-                return "Step 3 of 4: only the current stroke is hinted.";
+                return "Step 3 of 4: only the current stroke is hinted. Use the panel if you need it.";
             default:
-                return "Step 4 of 4: write from memory, then check.";
+                return "Step 4 of 4: the answer is hidden. Write from memory, then check.";
         }
     }
 
