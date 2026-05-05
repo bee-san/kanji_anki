@@ -846,6 +846,26 @@ public final class MainActivity extends Activity {
         mapping.addView(text("Kiku fields", 22, Color.WHITE, true));
         mapping.addView(text("Expression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, Color.WHITE, false));
         content.addView(mapping);
+
+        LinearLayout attribution = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        attribution.addView(text("Stroke data", 22, INK, true));
+        attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
+        content.addView(attribution);
+    }
+
+    private String kanjiVgAttribution() {
+        try (InputStream in = getResources().openRawResource(R.raw.kanjivg_attribution);
+             InputStreamReader reader = new InputStreamReader(in)) {
+            StringBuilder out = new StringBuilder();
+            char[] buffer = new char[1024];
+            int read;
+            while ((read = reader.read(buffer)) != -1) {
+                out.append(buffer, 0, read);
+            }
+            return out.toString().trim();
+        } catch (Exception error) {
+            return "KanjiVG stroke data, CC BY-SA 3.0.";
+        }
     }
 
     private void runUpdate() {
