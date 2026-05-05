@@ -54,6 +54,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,7 +89,7 @@ public final class MainActivity extends Activity {
     private Button manualOverrideButton;
     private Button nextAfterPassButton;
     private Button practiceWithGuideButton;
-    private Button advanceGuideButton;
+    private Button hintButton;
     private View studyAnswerPanel;
     private WritingAnalysis activeAnalysis;
     private boolean checkingWriting;
@@ -184,7 +185,7 @@ public final class MainActivity extends Activity {
         nav.setBackgroundColor(INK);
         nav.addView(navButton("Home", selected.equals("home"), this::renderHome));
         nav.addView(navButton("Study", selected.equals("study"), this::renderStudy));
-        nav.addView(navButton("Kanji", selected.equals("kanji"), this::renderKanjiList));
+        nav.addView(navButton("Queue", selected.equals("kanji"), this::renderKanjiList));
         nav.addView(navButton("Settings", selected.equals("settings"), this::renderSettings));
         nav.addView(navButton("Update", selected.equals("update"), this::renderUpdate));
         return nav;
@@ -251,9 +252,14 @@ public final class MainActivity extends Activity {
         if (rows.isEmpty()) {
             emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need writing practice.");
         } else {
-            content.addView(sectionTitle("Next kanji to repair"));
-            for (int i = 0; i < Math.min(5, rows.size()); i++) {
-                content.addView(rowView(rows.get(i)));
+            long now = System.currentTimeMillis();
+            List<QueueEntry> entries = queuedEntries(rows, refreshStudyQueue(rows, now), now);
+            content.addView(sectionTitle("Your active kanji queue"));
+            if (entries.isEmpty()) {
+                emptyState("Queue resting", "Sync has candidate kanji, but nothing is currently admitted for writing practice.");
+            }
+            for (int i = 0; i < Math.min(5, entries.size()); i++) {
+                content.addView(queueRowView(entries.get(i), now));
             }
         }
     }
@@ -306,21 +312,126 @@ public final class MainActivity extends Activity {
 
     private void renderKanjiList() {
         base("kanji");
-        content.addView(text("Kanji to repair", 34, INK, true));
-        content.addView(text("Tap a row to see why it was picked, then practice it or continue the queue.", 16, MUTED, false));
+        content.addView(text("Practice queue", 34, INK, true));
+        content.addView(text("Only kanji admitted from your AnkiDroid problem cards appear here. New candidates wait behind the daily and active queue caps.", 16, MUTED, false));
         addSpace(12);
         List<Records.DashboardRow> rows = store.dashboardRows();
         if (rows.isEmpty()) {
-            emptyState("No kanji yet", "Sync from AnkiDroid first.");
+            emptyState("No queued kanji yet", "Sync from AnkiDroid first. The app will build a personal writing queue from your own Kiku cards.");
             return;
         }
-        for (Records.DashboardRow row : rows) {
-            content.addView(rowView(row));
+        long now = System.currentTimeMillis();
+        List<Records.StudyItem> items = refreshStudyQueue(rows, now);
+        List<QueueEntry> entries = queuedEntries(rows, items, now);
+        int due = new BridgeScheduler().dueCount(items, now);
+
+        LinearLayout summary = band(BLUE);
+        summary.addView(text(countText(entries.size(), "active kanji", "active kanji"), 24, Color.WHITE, true));
+        summary.addView(text(countText(due, "due now", "due now") + ". " + countText(Math.max(0, rows.size() - entries.size()), "candidate waiting to join later", "candidates waiting to join later") + ".", 16, Color.WHITE, false));
+        summary.addView(text("Study mixes due items and brings misses back soon.", 15, Color.WHITE, false));
+        content.addView(summary);
+
+        if (entries.isEmpty()) {
+            emptyState("Queue resting", "Your synced candidates are either retired or waiting for the active queue to open up.");
+            return;
+        }
+        for (QueueEntry entry : entries) {
+            content.addView(queueRowView(entry, now));
         }
     }
 
-    private View rowView(Records.DashboardRow row) {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+    private List<Records.StudyItem> refreshStudyQueue(List<Records.DashboardRow> rows, long now) {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, store.studyItems(), settings(), now, startOfDay(now));
+        store.replaceStudyItems(seeded);
+        return seeded;
+    }
+
+    private List<QueueEntry> queuedEntries(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
+        for (Records.DashboardRow row : rows) {
+            rowByKanji.put(row.kanji, row);
+        }
+        List<QueueEntry> entries = new ArrayList<>();
+        for (Records.StudyItem item : items) {
+            if ("retired".equals(item.state)) {
+                continue;
+            }
+            Records.DashboardRow row = rowByKanji.get(item.kanji);
+            if (row != null) {
+                entries.add(new QueueEntry(row, item));
+            }
+        }
+        entries.sort(Comparator
+                .comparingInt((QueueEntry entry) -> entry.item.dueAtMillis <= now ? 0 : 1)
+                .thenComparingLong(entry -> entry.item.dueAtMillis)
+                .thenComparingInt(entry -> stateRank(entry.item.state))
+                .thenComparingInt(entry -> -entry.row.weaknessScore)
+                .thenComparing(entry -> entry.row.kanji));
+        return entries;
+    }
+
+    private int stateRank(String state) {
+        if ("learning".equals(state)) {
+            return 0;
+        }
+        if ("new".equals(state)) {
+            return 1;
+        }
+        if ("review".equals(state)) {
+            return 2;
+        }
+        return 3;
+    }
+
+    private int rowColor(Records.StudyItem item, long now) {
+        if (item.dueAtMillis <= now) {
+            return CORAL;
+        }
+        if ("learning".equals(item.state)) {
+            return BLUE;
+        }
+        return Color.rgb(246, 202, 225);
+    }
+
+    private String queueStatusText(Records.StudyItem item, long now) {
+        String state = "new".equals(item.state) ? "new problem" : item.state;
+        return state + " · " + dueText(item.dueAtMillis, now);
+    }
+
+    private String dueText(long dueAt, long now) {
+        if (dueAt <= now) {
+            return "due now";
+        }
+        long delta = dueAt - now;
+        long minutes = Math.max(1L, delta / 60_000L);
+        if (minutes < 60L) {
+            return "due in " + minutes + " min";
+        }
+        long hours = Math.max(1L, delta / 3_600_000L);
+        if (hours < 24L) {
+            return "due in " + hours + " hr";
+        }
+        return "due " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(dueAt));
+    }
+
+    private String helpLabel(int writingLevel) {
+        switch (Math.max(0, Math.min(3, writingLevel))) {
+            case 0:
+                return "trace";
+            case 1:
+                return "guided";
+            case 2:
+                return "cue";
+            default:
+                return "memory";
+        }
+    }
+
+    private View queueRowView(QueueEntry entry, long now) {
+        Records.DashboardRow row = entry.row;
+        Records.StudyItem item = entry.item;
+        LinearLayout box = panelBox(Color.WHITE, rowColor(item, now));
         box.setOnClickListener(v -> renderDetail(row.kanji));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
@@ -330,16 +441,40 @@ public final class MainActivity extends Activity {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(rowMeaning(row), 19, INK, true));
+        copy.addView(text(queueStatusText(item, now), 14, MUTED, false));
+        copy.addView(text(sourceEvidenceText(row), 14, INK, true));
         copy.addView(text(row.reasonText, 14, MUTED, false));
         top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(top);
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.addView(chip("priority " + row.weaknessScore, CORAL));
-        chips.addView(chip(countText(row.suspendedExampleCount, "missed example", "missed examples"), BLUE));
-        chips.addView(chip(countText(row.matureSupportCount, "known example", "known examples"), TEAL));
+        chips.addView(chip(item.dueAtMillis <= now ? "due now" : "resting", item.dueAtMillis <= now ? CORAL : BLUE));
+        chips.addView(chip(item.state, TEAL));
+        chips.addView(chip("help " + helpLabel(item.writingLevel), BLUE));
         box.addView(chips);
         return box;
+    }
+
+    private String sourceEvidenceText(Records.DashboardRow row) {
+        String active = "";
+        String suspended = "";
+        for (Records.Example example : row.examples) {
+            if (active.isEmpty() && "active".equals(example.sourceType)) {
+                active = example.expression;
+            } else if (suspended.isEmpty() && "suspended".equals(example.sourceType)) {
+                suspended = example.expression;
+            }
+        }
+        if (!active.isEmpty() && !suspended.isEmpty()) {
+            return "From " + active + " · missed " + suspended;
+        }
+        if (!active.isEmpty()) {
+            return "From " + active;
+        }
+        if (!suspended.isEmpty()) {
+            return "Missed " + suspended;
+        }
+        return "From your AnkiDroid sync";
     }
 
     private void renderDetail(String kanji) {
@@ -360,7 +495,7 @@ public final class MainActivity extends Activity {
         why.addView(text(row.reasonText, 17, Color.WHITE, false));
         why.addView(text("Anki browser: " + row.browserSearch, 14, Color.WHITE, false));
         content.addView(why);
-        Button practice = primaryButton("Practice this kanji", CORAL);
+        Button practice = primaryButton("Review this now", CORAL);
         practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
         content.addView(practice);
         Button copy = secondaryButton("Copy Anki search");
@@ -396,7 +531,7 @@ public final class MainActivity extends Activity {
 
     private View learningPanel(Records.StudySession session) {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        box.addView(text("Meet the kanji", 22, INK, true));
+        box.addView(text("Reference", 22, INK, true));
         TextView glyph = text(session.item.kanji, 84, INK, true);
         glyph.setGravity(Gravity.CENTER);
         box.addView(glyph, new LinearLayout.LayoutParams(-1, dp(104)));
@@ -415,7 +550,7 @@ public final class MainActivity extends Activity {
         } else {
             box.addView(text(session.prompt, 16, MUTED, false));
         }
-        box.addView(text("Copy it until the shape feels familiar, then start the memory check.", 14, MUTED, false));
+        box.addView(text("Draw it in the square below. The checker will save the result and the next card will keep the queue moving.", 14, MUTED, false));
         return box;
     }
 
@@ -440,9 +575,9 @@ public final class MainActivity extends Activity {
             return;
         }
         BridgeScheduler scheduler = new BridgeScheduler();
-        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, store.studyItems(), settings(), System.currentTimeMillis(), startOfDay(System.currentTimeMillis()));
-        store.replaceStudyItems(seeded);
-        activeSession = scheduler.nextSession(seeded, rows, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        List<Records.StudyItem> seeded = refreshStudyQueue(rows, now);
+        activeSession = scheduler.nextSession(seeded, rows, now);
         if (activeSession == null) {
             content.addView(text("Queue resting", 34, INK, true));
             content.addView(text("No kanji is due right now.", 18, MUTED, false));
@@ -466,8 +601,7 @@ public final class MainActivity extends Activity {
         }
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = System.currentTimeMillis();
-        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, store.studyItems(), settings(), now, startOfDay(now));
-        store.replaceStudyItems(seeded);
+        List<Records.StudyItem> seeded = refreshStudyQueue(rows, now);
         Records.StudyItem item = findStudyItem(seeded, kanji);
         if (item == null) {
             item = new Records.StudyItem(
@@ -504,9 +638,9 @@ public final class MainActivity extends Activity {
         activeAnalysis = null;
         checkingWriting = false;
         hintsUsed = 0;
-        currentPracticeLevel = Math.max(0, Math.min(3, session.item.writingLevel));
+        currentPracticeLevel = initialPracticeLevel(session);
 
-        content.addView(text("Writing practice", 30, INK, true));
+        content.addView(text("Draw this kanji", 30, INK, true));
         LinearLayout stage = band(CORAL);
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
         if (session.row != null) {
@@ -541,9 +675,9 @@ public final class MainActivity extends Activity {
             updateResultActions();
         });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
-        advanceGuideButton = secondaryButton(stageAdvanceButtonText(currentPracticeLevel, guide));
-        advanceGuideButton.setOnClickListener(v -> advanceWritingStage());
-        actions.addView(advanceGuideButton, new LinearLayout.LayoutParams(0, dp(58), 1));
+        hintButton = secondaryButton("Hint");
+        hintButton.setOnClickListener(v -> showWritingHint());
+        actions.addView(hintButton, new LinearLayout.LayoutParams(0, dp(58), 1));
         content.addView(actions);
 
         checkWritingButton = primaryButton("Check my writing", CORAL);
@@ -562,7 +696,7 @@ public final class MainActivity extends Activity {
         manualOverrideButton.setOnClickListener(v -> submitReview("good", true));
         content.addView(manualOverrideButton);
 
-        practiceWithGuideButton = secondaryButton("Show guide and try again");
+        practiceWithGuideButton = secondaryButton("Try again with full guide");
         practiceWithGuideButton.setOnClickListener(v -> {
             currentPracticeLevel = 0;
             hintsUsed++;
@@ -648,12 +782,13 @@ public final class MainActivity extends Activity {
         if (activeSession == null) {
             return;
         }
+        String adjustedRating = adjustedRatingForHelp(rating, override);
         boolean writingRequired = activeSession.writingRequired;
         boolean passed = !writingRequired || (activeAnalysis != null && activeAnalysis.writingPassed);
         Records.ReviewRequest request = new Records.ReviewRequest(
                 activeSession.item.kanji,
                 activeSession.token,
-                rating,
+                adjustedRating,
                 writingRequired,
                 passed,
                 override,
@@ -676,45 +811,43 @@ public final class MainActivity extends Activity {
         renderStudy();
     }
 
-    private void advanceWritingStage() {
+    private int initialPracticeLevel(Records.StudySession session) {
+        int stored = Math.max(0, Math.min(3, session.item.writingLevel));
+        if (isRecallTask(session)) {
+            return 3;
+        }
+        if ("targeted_writing".equals(session.taskType) || session.item.totalReviews == 0 || session.item.learningStep == 0) {
+            return Math.min(stored, 1);
+        }
+        if ("guided_writing".equals(session.taskType)) {
+            return Math.min(Math.max(1, stored), 2);
+        }
+        return stored;
+    }
+
+    private String adjustedRatingForHelp(String rating, boolean override) {
+        if (override || activeAnalysis == null || !activeAnalysis.writingPassed) {
+            return rating;
+        }
+        if ("easy".equals(rating) && (currentPracticeLevel < 3 || hintsUsed > 0)) {
+            return "good";
+        }
+        return rating;
+    }
+
+    private void showWritingHint() {
         if (drawingPad == null || activeSession == null) {
             return;
         }
-        int next = nextPracticeLevel(currentPracticeLevel, strokeGuide(activeSession.item.kanji));
-        if (next != currentPracticeLevel) {
-            if (next == 3 || currentPracticeLevel == 3) {
-                drawingPad.clear();
-                activeAnalysis = null;
-            }
-            currentPracticeLevel = next;
-            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
-            setStudyStatus(guideLabel(currentPracticeLevel), MUTED);
-            if (advanceGuideButton != null) {
-                advanceGuideButton.setText(stageAdvanceButtonText(currentPracticeLevel, strokeGuide(activeSession.item.kanji)));
-            }
-            updateResultActions();
+        if (currentPracticeLevel > 0) {
+            currentPracticeLevel--;
         }
-    }
-
-    private int nextPracticeLevel(int level, StrokeGuide guide) {
-        if (level <= 0) {
-            return 1;
-        }
-        if (level == 1 && guide != null && guide.strokeCount() >= 3) {
-            return 2;
-        }
-        return 3;
-    }
-
-    private String stageAdvanceButtonText(int level, StrokeGuide guide) {
-        int next = nextPracticeLevel(level, guide);
-        if (next == 1) {
-            return "I copied it";
-        }
-        if (next == 2) {
-            return "Try with less help";
-        }
-        return "Start memory check";
+        hintsUsed++;
+        activeAnalysis = null;
+        drawingPad.clear();
+        drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
+        setStudyStatus(guideLabel(currentPracticeLevel) + "\nHint used. The stroke guide is visible, and this attempt will not be graded as easy.", MUTED);
+        updateResultActions();
     }
 
     private void showAnalysis(WritingAnalysis analysis) {
@@ -732,8 +865,7 @@ public final class MainActivity extends Activity {
         boolean passed = hasResult && activeAnalysis.writingPassed;
         boolean submittable = activeAnalysis != null && canSubmitAnalysis(activeAnalysis);
         if (checkWritingButton != null) {
-            boolean readyToCheck = currentPracticeLevel == 3 || hasResult;
-            checkWritingButton.setVisibility(!passed && readyToCheck ? View.VISIBLE : View.GONE);
+            checkWritingButton.setVisibility(!passed ? View.VISIBLE : View.GONE);
             checkWritingButton.setEnabled(!checkingWriting);
             checkWritingButton.setText(checkingWriting ? "Checking..." : "Check my writing");
         }
@@ -743,7 +875,7 @@ public final class MainActivity extends Activity {
         if (nextAfterPassButton != null) {
             nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
             if (submittable) {
-                nextAfterPassButton.setText(nextReviewButtonText(activeAnalysis.rating));
+                nextAfterPassButton.setText(nextReviewButtonText(adjustedRatingForHelp(activeAnalysis.rating, false)));
             }
         }
         if (manualOverrideButton != null) {
@@ -752,8 +884,9 @@ public final class MainActivity extends Activity {
         if (practiceWithGuideButton != null) {
             practiceWithGuideButton.setVisibility(hasResult && !passed && canPracticeAfterAnalysis(activeAnalysis) ? View.VISIBLE : View.GONE);
         }
-        if (advanceGuideButton != null) {
-            advanceGuideButton.setVisibility(currentPracticeLevel == 3 ? View.GONE : View.VISIBLE);
+        if (hintButton != null) {
+            hintButton.setVisibility(!passed && currentPracticeLevel > 0 ? View.VISIBLE : View.GONE);
+            hintButton.setText(currentPracticeLevel == 3 ? "Hint" : "More help");
         }
         if (studyAnswerPanel != null) {
             studyAnswerPanel.setVisibility(shouldShowLearningPanel(activeAnalysis) ? View.VISIBLE : View.GONE);
@@ -761,22 +894,36 @@ public final class MainActivity extends Activity {
     }
 
     private boolean shouldShowLearningPanel(WritingAnalysis analysis) {
-        if (currentPracticeLevel < 3) {
-            return true;
-        }
-        if (analysis == null) {
-            return false;
+        if (analysis == null || analysis.status == WritingAnalysis.Status.NO_INK) {
+            return activeSession != null && isTeachingTask(activeSession) && currentPracticeLevel < 3;
         }
         switch (analysis.status) {
             case PASS:
             case CLOSE:
             case WRONG:
+            case MODEL_UNAVAILABLE:
             case NO_STROKE_DATA:
             case RECOGNITION_ERROR:
                 return true;
             default:
                 return false;
         }
+    }
+
+    private boolean isTeachingTask(Records.StudySession session) {
+        if (session == null) {
+            return false;
+        }
+        return "context_writing".equals(session.taskType)
+                || "guided_writing".equals(session.taskType)
+                || ("targeted_writing".equals(session.taskType) && session.item.learningStep < 2);
+    }
+
+    private boolean isRecallTask(Records.StudySession session) {
+        if (session == null) {
+            return false;
+        }
+        return "blind_writing".equals(session.taskType) || "sampled_handwriting".equals(session.taskType);
     }
 
     private boolean canSubmitAnalysis(WritingAnalysis analysis) {
@@ -787,6 +934,9 @@ public final class MainActivity extends Activity {
             case PASS:
             case CLOSE:
             case WRONG:
+            case MODEL_UNAVAILABLE:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
                 return true;
             default:
                 return false;
@@ -799,6 +949,7 @@ public final class MainActivity extends Activity {
         }
         switch (analysis.status) {
             case WRONG:
+            case MODEL_UNAVAILABLE:
             case NO_STROKE_DATA:
             case RECOGNITION_ERROR:
                 return true;
@@ -813,6 +964,7 @@ public final class MainActivity extends Activity {
         }
         switch (analysis.status) {
             case WRONG:
+            case MODEL_UNAVAILABLE:
             case NO_STROKE_DATA:
             case RECOGNITION_ERROR:
                 return true;
@@ -853,7 +1005,7 @@ public final class MainActivity extends Activity {
             if (error != null || status == null) {
                 setStudyStatus(guideLabel(currentPracticeLevel) + "\nUnable to read handwriting checker status.", CORAL);
             } else if (!status.downloaded) {
-                setStudyStatus(guideLabel(currentPracticeLevel) + "\nDownload the handwriting checker before the final check.", CORAL);
+                setStudyStatus(guideLabel(currentPracticeLevel) + "\nDownload the handwriting checker before automatic checks.", CORAL);
             } else {
                 setStudyStatus(guideLabel(currentPracticeLevel) + "\nHandwriting checker ready.", MUTED);
             }
@@ -1240,13 +1392,13 @@ public final class MainActivity extends Activity {
 
     private String labelForTask(String task) {
         if ("targeted_writing".equals(task)) {
-            return "Learn this kanji";
+            return "Focused practice";
         }
         if ("context_writing".equals(task)) {
-            return "Learn this kanji";
+            return "New problem kanji";
         }
         if ("guided_writing".equals(task)) {
-            return "Copy the shape";
+            return "Guided review";
         }
         if ("blind_writing".equals(task)) {
             return "Memory check";
@@ -1263,24 +1415,24 @@ public final class MainActivity extends Activity {
     private String guideLabel(int level) {
         switch (level) {
             case 0:
-                return "Step 1 of 4: look at the kanji above, then trace the numbered strokes.";
+                return "Trace the numbered strokes, then check. This is a learning attempt.";
             case 1:
-                return "Step 2 of 4: copy with the faint guide while the kanji is still visible.";
+                return "Copy the faint stroke guide, then check.";
             case 2:
-                return "Step 3 of 4: only the current stroke is hinted. Use the panel if you need it.";
+                return "Write with only the current stroke hinted, then check.";
             default:
-                return "Step 4 of 4: the answer is hidden. Write from memory, then check.";
+                return "Write from memory, then check. Use Hint if you are stuck.";
         }
     }
 
     private String nextReviewButtonText(String rating) {
         if ("again".equals(rating)) {
-            return "Save miss";
+            return "Next card (bring this back soon)";
         }
         if ("hard".equals(rating)) {
-            return "Save and review soon";
+            return "Next card (review soon)";
         }
-        return "Save and continue";
+        return "Next card";
     }
 
     private String targetRevealText(WritingAnalysis analysis) {
@@ -1291,6 +1443,7 @@ public final class MainActivity extends Activity {
             case PASS:
             case CLOSE:
             case WRONG:
+            case MODEL_UNAVAILABLE:
             case NO_STROKE_DATA:
             case RECOGNITION_ERROR:
                 return "\nTarget: " + activeSession.item.kanji;
@@ -1310,6 +1463,16 @@ public final class MainActivity extends Activity {
     private static final class SpaceView extends View {
         private SpaceView(Context context) {
             super(context);
+        }
+    }
+
+    private static final class QueueEntry {
+        final Records.DashboardRow row;
+        final Records.StudyItem item;
+
+        QueueEntry(Records.DashboardRow row, Records.StudyItem item) {
+            this.row = row;
+            this.item = item;
         }
     }
 
