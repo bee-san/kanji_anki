@@ -320,10 +320,16 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
         Set<Long> suspendedNoteIds = querySuspendedNoteIds(target, settings);
         List<Records.Card> cards = new ArrayList<>();
+        boolean schedulerColumnsSupported = true;
         for (Long noteId : noteIds) {
+            if (!schedulerColumnsSupported) {
+                cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_MINIMAL));
+                continue;
+            }
             try {
                 cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_WITH_SCHEDULER));
             } catch (Throwable unsupportedSchedulerColumns) {
+                schedulerColumnsSupported = false;
                 cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_MINIMAL));
             }
         }
