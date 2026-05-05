@@ -1,0 +1,11 @@
+KanjiVG stroke data
+
+The compact stroke guides bundled with this app are generated from KanjiVG.
+
+KanjiVG copyright (C) 2009-2025 Ulrich Apel.
+KanjiVG is released under the Creative Commons Attribution-Share Alike 3.0
+license.
+
+Project: https://kanjivg.tagaini.net
+License: https://creativecommons.org/licenses/by-sa/3.0/
+Generated source release: https://github.com/KanjiVG/kanjivg/releases/tag/r20250816

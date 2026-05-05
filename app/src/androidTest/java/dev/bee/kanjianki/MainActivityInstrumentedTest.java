@@ -15,6 +15,10 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.study.InkPoint;
+import dev.bee.kanjianki.core.study.InkStroke;
+import dev.bee.kanjianki.core.study.StrokeGuide;
+import dev.bee.kanjianki.core.study.StrokeGuideParser;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
@@ -25,6 +29,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -176,7 +182,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Fade guide");
             clickText(scenario, "Take away strokes");
             clickText(scenario, "Clear and check");
-            scenario.onActivity(activity -> drawPullRadical(activity));
+            scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check writing");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Recognized cleanly");
@@ -206,7 +212,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Fade guide");
             clickText(scenario, "Take away strokes");
             clickText(scenario, "Clear and check");
-            scenario.onActivity(activity -> drawPullRadical(activity));
+            scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check writing");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "That did not look like the target kanji yet");
@@ -236,7 +242,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Fade guide");
             clickText(scenario, "Take away strokes");
             clickText(scenario, "Clear and check");
-            scenario.onActivity(activity -> drawPullRadical(activity));
+            scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check writing");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "That did not look like the target kanji yet");
@@ -401,27 +407,38 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private static void drawPullRadical(MainActivity activity) {
+    private static void drawGuideKanji(MainActivity activity, String kanji) {
         MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
         assertNotNull(pad);
         pad.layout(0, 0, 1000, 1000);
-        float[][] strokes = new float[][]{
-                {240f, 180f, 240f, 840f},
-                {100f, 380f, 390f, 320f},
-                {440f, 160f, 780f, 160f},
-                {610f, 170f, 550f, 460f},
-                {430f, 460f, 820f, 460f},
-                {540f, 480f, 390f, 820f},
-                {660f, 490f, 830f, 820f}
-        };
+        StrokeGuide guide = strokeGuide(activity, kanji);
+        assertNotNull(guide);
         long now = System.currentTimeMillis();
-        for (int i = 0; i < strokes.length; i++) {
-            float[] stroke = strokes[i];
-            pad.onTouchEvent(MotionEvent.obtain(now, now + i * 30L, MotionEvent.ACTION_DOWN, stroke[0], stroke[1], 0));
-            pad.onTouchEvent(MotionEvent.obtain(now, now + i * 30L + 10L, MotionEvent.ACTION_MOVE, (stroke[0] + stroke[2]) / 2f, (stroke[1] + stroke[3]) / 2f, 0));
-            pad.onTouchEvent(MotionEvent.obtain(now, now + i * 30L + 20L, MotionEvent.ACTION_UP, stroke[2], stroke[3], 0));
+        int strokeIndex = 0;
+        for (InkStroke stroke : guide.strokes) {
+            if (stroke.points.size() < 2) {
+                continue;
+            }
+            InkPoint first = stroke.points.get(0);
+            pad.onTouchEvent(MotionEvent.obtain(now, now + strokeIndex * 40L, MotionEvent.ACTION_DOWN, first.x * 1000f, first.y * 1000f, 0));
+            for (int i = 1; i < stroke.points.size() - 1; i++) {
+                InkPoint point = stroke.points.get(i);
+                pad.onTouchEvent(MotionEvent.obtain(now, now + strokeIndex * 40L + i, MotionEvent.ACTION_MOVE, point.x * 1000f, point.y * 1000f, 0));
+            }
+            InkPoint last = stroke.points.get(stroke.points.size() - 1);
+            pad.onTouchEvent(MotionEvent.obtain(now, now + strokeIndex * 40L + 30L, MotionEvent.ACTION_UP, last.x * 1000f, last.y * 1000f, 0));
+            strokeIndex++;
         }
         assertTrue(pad.hasInk());
+    }
+
+    private static StrokeGuide strokeGuide(MainActivity activity, String kanji) {
+        try (InputStream in = activity.getResources().openRawResource(R.raw.kanji_strokes);
+             InputStreamReader reader = new InputStreamReader(in)) {
+            return StrokeGuideParser.parse(reader).get(kanji);
+        } catch (Exception error) {
+            throw new AssertionError(error);
+        }
     }
 
     private static <T extends View> T findType(View root, Class<T> type) {
