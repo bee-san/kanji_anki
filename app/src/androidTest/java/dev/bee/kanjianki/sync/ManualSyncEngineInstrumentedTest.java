@@ -17,7 +17,9 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -56,10 +58,27 @@ public final class ManualSyncEngineInstrumentedTest {
 
         assertTrue(result.success);
         assertEquals("cleanup done", result.message);
-        assertFalse(store.dashboardRows().isEmpty());
+        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.StudyItem> items = store.studyItems();
+        assertFalse(rows.isEmpty());
         assertFalse(store.suspendedImports().isEmpty());
-        assertFalse(store.studyItems().isEmpty());
+        assertFalse(items.isEmpty());
         assertEquals("success", store.latestSync().status);
+
+        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
+        for (Records.DashboardRow row : rows) {
+            rowByKanji.put(row.kanji, row);
+        }
+        boolean activeStudyItem = false;
+        for (Records.StudyItem item : items) {
+            if ("retired".equals(item.state)) {
+                continue;
+            }
+            activeStudyItem = true;
+            assertTrue("Active study item must still have current Anki evidence: " + item.kanji, rowByKanji.containsKey(item.kanji));
+        }
+        assertTrue(activeStudyItem);
+        assertTrue("The fake suspended problem card should create at least one suspended-evidence row.", hasSuspendedEvidence(rows));
     }
 
     @Test
@@ -85,6 +104,15 @@ public final class ManualSyncEngineInstrumentedTest {
         Records.Card activeCard = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, settings.matureDays + 5, 12, 0, false);
         Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true);
         return new Records.CollectionSnapshot(Arrays.asList(active, suspended), Arrays.asList(activeCard, suspendedCard));
+    }
+
+    private boolean hasSuspendedEvidence(List<Records.DashboardRow> rows) {
+        for (Records.DashboardRow row : rows) {
+            if (row.suspendedExampleCount > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Records.Note note(long id, String expression, String reading, String meaning, String sentence) {

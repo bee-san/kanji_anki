@@ -20,57 +20,53 @@ public final class BridgeScheduler {
             long nowMillis,
             long startOfDayMillis
     ) {
+        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
+        for (Records.DashboardRow row : rows) {
+            rowByKanji.put(row.kanji, row);
+        }
+
         Map<String, Records.StudyItem> byKanji = new HashMap<>();
+        List<Records.StudyItem> out = new ArrayList<>();
         int activeCount = 0;
         int newToday = 0;
         for (Records.StudyItem item : existing) {
-            byKanji.put(item.kanji, item);
+            Records.DashboardRow row = rowByKanji.get(item.kanji);
+            Records.StudyItem current = item;
             if (!"retired".equals(item.state)) {
-                activeCount++;
+                if (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && item.totalReviews > 0)) {
+                    current = retiredCopy(item);
+                }
             }
-            if (item.createdAtMillis >= startOfDayMillis) {
-                newToday++;
+            byKanji.put(current.kanji, current);
+            out.add(current);
+            if (!"retired".equals(current.state)) {
+                activeCount++;
+                if (current.createdAtMillis >= startOfDayMillis) {
+                    newToday++;
+                }
             }
         }
 
-        List<Records.StudyItem> out = new ArrayList<>(existing);
         for (Records.DashboardRow row : rows) {
             Records.StudyItem current = byKanji.get(row.kanji);
             if (current != null) {
-                if (row.matureSupportCount >= settings.matureSupportThreshold && row.suspendedExampleCount == 0 && current.totalReviews > 0) {
+                if ("retired".equals(current.state)
+                        && row.matureSupportCount < settings.matureSupportThreshold
+                        && activeCount < settings.activeQueueCap
+                        && newToday < settings.newPerDay) {
+                    Records.StudyItem reopened = newStudyItem(row.kanji, nowMillis);
                     out.remove(current);
-                    out.add(new Records.StudyItem(
-                            current.kanji,
-                            "retired",
-                            current.dueAtMillis,
-                            current.stability,
-                            current.difficulty,
-                            current.totalReviews,
-                            current.lapses,
-                            current.learningStep,
-                            current.writingLevel,
-                            null,
-                            current.createdAtMillis
-                    ));
+                    out.add(reopened);
+                    byKanji.put(row.kanji, reopened);
+                    activeCount++;
+                    newToday++;
                 }
                 continue;
             }
             if (activeCount >= settings.activeQueueCap || newToday >= settings.newPerDay) {
                 continue;
             }
-            out.add(new Records.StudyItem(
-                    row.kanji,
-                    "new",
-                    nowMillis,
-                    0.4,
-                    5.0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    null,
-                    nowMillis
-            ));
+            out.add(newStudyItem(row.kanji, nowMillis));
             activeCount++;
             newToday++;
         }
@@ -91,6 +87,9 @@ public final class BridgeScheduler {
             if ("retired".equals(item.state) || item.dueAtMillis > nowMillis) {
                 continue;
             }
+            if (!rowByKanji.containsKey(item.kanji)) {
+                continue;
+            }
             if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
                 best = item;
             }
@@ -98,6 +97,7 @@ public final class BridgeScheduler {
         if (best == null) {
             return null;
         }
+        Records.DashboardRow row = rowByKanji.get(best.kanji);
         String token = best.activeToken == null || best.activeToken.isEmpty()
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
@@ -111,9 +111,40 @@ public final class BridgeScheduler {
         } else {
             taskType = "blind_writing";
         }
-        Records.DashboardRow row = rowByKanji.get(best.kanji);
-        String prompt = row == null ? best.kanji : row.reasonText;
+        String prompt = row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, true, prompt);
+    }
+
+    private Records.StudyItem retiredCopy(Records.StudyItem item) {
+        return new Records.StudyItem(
+                item.kanji,
+                "retired",
+                item.dueAtMillis,
+                item.stability,
+                item.difficulty,
+                item.totalReviews,
+                item.lapses,
+                item.learningStep,
+                item.writingLevel,
+                null,
+                item.createdAtMillis
+        );
+    }
+
+    private Records.StudyItem newStudyItem(String kanji, long nowMillis) {
+        return new Records.StudyItem(
+                kanji,
+                "new",
+                nowMillis,
+                0.4,
+                5.0,
+                0,
+                0,
+                0,
+                0,
+                null,
+                nowMillis
+        );
     }
 
     private static int compareDueItems(

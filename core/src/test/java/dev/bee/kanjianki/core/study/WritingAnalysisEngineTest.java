@@ -3,7 +3,9 @@ package dev.bee.kanjianki.core.study;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -32,6 +34,35 @@ public class WritingAnalysisEngineTest {
 
         assertFalse(analysis.writingPassed);
         assertTrue(analysis.failed());
+    }
+
+    @Test
+    public void missingStrokeGuideStillPassesRecognitionOnlyMatch() {
+        WritingAnalysis analysis = WritingAnalysisEngine.analyze(
+                "鿃",
+                sample(),
+                new StrokeGuide("鿃", Collections.emptyList()),
+                Arrays.asList(new RecognitionCandidate("鿃", 0.93f))
+        );
+
+        assertTrue(analysis.writingPassed);
+        assertEquals(WritingAnalysis.Status.CLOSE, analysis.status);
+        assertEquals("good", analysis.rating);
+        assertTrue(analysis.message.contains("Stroke order could not be checked"));
+    }
+
+    @Test
+    public void missingStrokeGuideDoesNotPassWrongRecognition() {
+        WritingAnalysis analysis = WritingAnalysisEngine.analyze(
+                "鿃",
+                sample(),
+                new StrokeGuide("鿃", Collections.emptyList()),
+                Arrays.asList(new RecognitionCandidate("提", 0.93f))
+        );
+
+        assertFalse(analysis.writingPassed);
+        assertEquals(WritingAnalysis.Status.NO_STROKE_DATA, analysis.status);
+        assertTrue(analysis.message.contains("I could not read that as the target kanji"));
     }
 
     private StrokeGuide guide() {
