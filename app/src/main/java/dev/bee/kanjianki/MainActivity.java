@@ -57,6 +57,7 @@ import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
 import dev.bee.kanjianki.sync.SyncSettings;
+import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.io.InputStream;
@@ -76,6 +77,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
+    public static final String EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE";
     private static final int REQUEST_POST_NOTIFICATIONS = 704;
     private static final int BG = Color.rgb(255, 247, 251);
     private static final int INK = Color.rgb(45, 22, 53);
@@ -116,6 +118,7 @@ public final class MainActivity extends Activity {
     private LocalStore.ReminderSettings pendingReminderSettings;
     private static AnkiDroidGateway ankiDroidGatewayForTests;
     private static WritingRecognizer writingRecognizerForTests;
+    private static Boolean installPermissionForTests;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,7 +128,15 @@ public final class MainActivity extends Activity {
         requestAnkiPermissionIfNeeded();
         ReminderScheduler.schedule(this);
         AutoSyncScheduler.schedule(this);
-        renderHome();
+        AutoUpdateScheduler.schedule(this);
+        handleLaunchIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleLaunchIntent(intent);
     }
 
     @Override
@@ -146,6 +157,18 @@ public final class MainActivity extends Activity {
 
     public static void setAnkiDroidGatewayForTests(AnkiDroidGateway gateway) {
         ankiDroidGatewayForTests = gateway;
+    }
+
+    public static void setInstallPermissionForTests(Boolean allowed) {
+        installPermissionForTests = allowed;
+    }
+
+    private void handleLaunchIntent(Intent intent) {
+        if (intent != null && intent.getBooleanExtra(EXTRA_OPEN_UPDATE, false)) {
+            renderUpdate();
+        } else {
+            renderHome();
+        }
     }
 
     private void requestAnkiPermissionIfNeeded() {
@@ -1664,10 +1687,76 @@ public final class MainActivity extends Activity {
     private void renderUpdate() {
         base("settings");
         content.addView(text("GitHub updater", 34, INK, true));
-        content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases and opens Android's installer when an APK is ready.", 16, MUTED, false));
+        content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.", 16, MUTED, false));
+        content.addView(autoUpdatePanel());
+
         Button button = primaryButton("Check for update", BLUE);
-        button.setOnClickListener(v -> runUpdate());
+        button.setOnClickListener(v -> runUpdate(false));
         content.addView(button);
+    }
+
+    private LinearLayout autoUpdatePanel() {
+        LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
+        boolean canInstall = canInstallUpdates();
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        box.addView(text("Automatic updates", 23, INK, true));
+        box.addView(text(status.enabled ? "On: checks about once a day" : "Off", 18, status.enabled ? TEAL : MUTED, true));
+        box.addView(text("Last check: " + autoUpdateLastCheckText(status), 15, MUTED, false));
+        box.addView(text("Last result: " + status.lastResult, 15, MUTED, false));
+        box.addView(text("Install permission: " + (canInstall ? "Ready" : "Missing"), 15, canInstall ? TEAL : CORAL, true));
+
+        if (status.hasPendingUpdate()) {
+            box.addView(text("Verified APK ready: " + versionText(status.lastVersion), 18, CORAL, true));
+            String pending = status.pendingMessage.isEmpty() ? "Android needs confirmation before Kani can replace itself." : status.pendingMessage;
+            box.addView(text(pending, 15, MUTED, false));
+            if (canInstall) {
+                Button install = primaryButton("Install verified update", CORAL);
+                install.setOnClickListener(v -> runUpdate(true));
+                box.addView(install);
+            }
+        }
+
+        if (!canInstall) {
+            Button permission = secondaryButton("Set up app installs");
+            permission.setOnClickListener(v -> startActivity(GitHubUpdater.installPermissionIntent(this)));
+            box.addView(permission);
+        }
+
+        Button toggle = secondaryButton(status.enabled ? "Turn off automatic updates" : "Turn on automatic updates");
+        toggle.setOnClickListener(v -> {
+            store.saveAutoUpdateEnabled(!status.enabled);
+            if (status.enabled) {
+                AutoUpdateScheduler.cancel(this);
+                Toast.makeText(this, "Automatic updates turned off.", Toast.LENGTH_SHORT).show();
+            } else {
+                AutoUpdateScheduler.schedule(this);
+                Toast.makeText(this, "Automatic updates turned on.", Toast.LENGTH_SHORT).show();
+            }
+            renderUpdate();
+        });
+        box.addView(toggle);
+        return box;
+    }
+
+    private String autoUpdateLastCheckText(LocalStore.AutoUpdateStatus status) {
+        if (status.lastCheckAtMillis <= 0L) {
+            return "not yet";
+        }
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date(status.lastCheckAtMillis));
+    }
+
+    private String versionText(String version) {
+        if (version == null || version.trim().isEmpty()) {
+            return "unknown version";
+        }
+        return version.replaceFirst("^v", "");
+    }
+
+    private boolean canInstallUpdates() {
+        if (installPermissionForTests != null) {
+            return installPermissionForTests;
+        }
+        return getPackageManager().canRequestPackageInstalls();
     }
 
     private void renderSettings() {
@@ -1858,9 +1947,8 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout updateSettingsPanel() {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
-        box.addView(text("App updates", 23, INK, true));
-        box.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases and opens Android's installer when an APK is ready.", 15, MUTED, false));
+        LinearLayout box = autoUpdatePanel();
+        box.addView(text("App updates", 23, INK, true), 0);
         Button update = primaryButton("Check for app update", BLUE);
         update.setOnClickListener(v -> renderUpdate());
         box.addView(update);
@@ -1942,12 +2030,15 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void runUpdate() {
+    private void runUpdate(boolean cachedPending) {
         base("settings");
-        content.addView(text("Checking release", 32, INK, true));
-        content.addView(text("Downloading metadata and verifying assets.", 16, MUTED, false));
+        content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
+        content.addView(text(cachedPending ? "Using the verified APK already cached by Kani." : "Downloading metadata and verifying assets.", 16, MUTED, false));
         io.execute(() -> {
-            GitHubUpdater.UpdateResult result = new GitHubUpdater(this).checkDownloadAndPrepareInstaller();
+            GitHubUpdater updater = new GitHubUpdater(this);
+            GitHubUpdater.UpdateResult result = cachedPending
+                    ? updater.installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+                    : updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL);
             main.post(() -> {
                 Toast.makeText(this, result.message, Toast.LENGTH_LONG).show();
                 if (result.intent != null) {

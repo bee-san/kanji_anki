@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.database.sqlite.SQLiteDatabaseLockedException;
 import android.graphics.Rect;
 import android.net.Uri;
@@ -41,6 +42,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -85,13 +88,16 @@ public final class MainActivityInstrumentedTest {
         context.deleteDatabase("kanji_anki_simple.db");
         MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
         MainActivity.setWritingRecognizerForTests(null);
+        MainActivity.setInstallPermissionForTests(null);
     }
 
     @After
     public void tearDown() {
         MainActivity.setAnkiDroidGatewayForTests(null);
         MainActivity.setWritingRecognizerForTests(null);
+        MainActivity.setInstallPermissionForTests(null);
         context.deleteDatabase("kanji_anki_simple.db");
+        deleteRecursively(new File(context.getCacheDir(), "updates"));
     }
 
     @Test
@@ -184,6 +190,56 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "GitHub updater");
                 assertHasText(activity, "Current version");
                 assertHasText(activity, "Check for update");
+            });
+        }
+    }
+
+    @Test
+    public void testUpdateScreenShowsAutomaticStatusAndInstallPermissionFlow() {
+        MainActivity.setInstallPermissionForTests(false);
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            waitForText(scenario, "Automatic updates");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "On: checks about once a day");
+                assertHasText(activity, "Last check: not yet");
+                assertHasText(activity, "Install permission: Missing");
+                assertHasText(activity, "Set up app installs");
+                assertHasText(activity, "Turn off automatic updates");
+            });
+        }
+    }
+
+    @Test
+    public void testUpdateScreenSurfacesCachedPendingUpdate() throws Exception {
+        File updatesDir = new File(context.getCacheDir(), "updates");
+        assertTrue(updatesDir.mkdirs() || updatesDir.isDirectory());
+        try (FileOutputStream output = new FileOutputStream(new File(updatesDir, "kani-test.apk"))) {
+            output.write(new byte[]{1, 2, 3});
+        }
+        LocalStore store = new LocalStore(context);
+        try {
+            store.recordAutoUpdateResult(
+                    System.currentTimeMillis(),
+                    "Android needs confirmation to finish installing.",
+                    "v9.9.9",
+                    "kani-test.apk",
+                    "Android needs confirmation before Kani can replace itself."
+            );
+        } finally {
+            store.close();
+        }
+        MainActivity.setInstallPermissionForTests(true);
+
+        Intent openUpdate = new Intent(context, MainActivity.class)
+                .putExtra(MainActivity.EXTRA_OPEN_UPDATE, true);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(openUpdate)) {
+            waitForText(scenario, "Verified APK ready: 9.9.9");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Install permission: Ready");
+                assertHasText(activity, "Install verified update");
+                assertHasText(activity, "Android needs confirmation before Kani can replace itself.");
             });
         }
     }
@@ -1200,6 +1256,21 @@ public final class MainActivityInstrumentedTest {
             }
         }
         return null;
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        file.delete();
     }
 
     private static final class FakeWritingRecognizer implements WritingRecognizer {
