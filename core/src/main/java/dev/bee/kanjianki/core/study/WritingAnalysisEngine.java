@@ -8,7 +8,7 @@ public final class WritingAnalysisEngine {
     }
 
     public static WritingAnalysis noInk() {
-        return new WritingAnalysis(WritingAnalysis.Status.NO_INK, "again", false, "Write the kanji before checking.", Collections.emptyList(), null);
+        return new WritingAnalysis(WritingAnalysis.Status.NO_INK, "again", false, "Write in the square before checking.", Collections.emptyList(), null);
     }
 
     public static WritingAnalysis modelUnavailable(String message) {
@@ -16,7 +16,7 @@ public final class WritingAnalysisEngine {
     }
 
     public static WritingAnalysis recognitionError(String message) {
-        return new WritingAnalysis(WritingAnalysis.Status.RECOGNITION_ERROR, "again", false, message, Collections.emptyList(), null);
+        return new WritingAnalysis(WritingAnalysis.Status.RECOGNITION_ERROR, "again", false, "The handwriting checker could not read this attempt. Try once more.", Collections.emptyList(), null);
     }
 
     public static WritingAnalysis analyze(String target, WritingSample sample, StrokeGuide guide, List<RecognitionCandidate> candidates) {
@@ -29,18 +29,18 @@ public final class WritingAnalysisEngine {
         }
         RecognitionMatch match = match(target, candidates);
         if (!match.recognized) {
-            return new WritingAnalysis(WritingAnalysis.Status.WRONG, "again", false, "That did not look like the target kanji yet.", candidates, order);
+            return new WritingAnalysis(WritingAnalysis.Status.WRONG, "again", false, "I could not read that as the target kanji yet.", candidates, order);
         }
         if (!order.acceptable) {
             return new WritingAnalysis(WritingAnalysis.Status.WRONG, "again", false, order.message, candidates, order);
         }
         if (!order.clean) {
-            return new WritingAnalysis(WritingAnalysis.Status.CLOSE, "hard", true, "Recognized the kanji. Stroke order is close, so give it one more guided pass.", candidates, order);
+            return new WritingAnalysis(WritingAnalysis.Status.CLOSE, "hard", true, "Readable, but the stroke path needs one more careful pass.", candidates, order);
         }
         if (match.topCandidate) {
-            return new WritingAnalysis(WritingAnalysis.Status.PASS, "easy", true, "Recognized cleanly with matching stroke order.", candidates, order);
+            return new WritingAnalysis(WritingAnalysis.Status.PASS, "easy", true, "Clean match.", candidates, order);
         }
-        return new WritingAnalysis(WritingAnalysis.Status.PASS, "good", true, "Recognized the kanji. Keep tightening stroke order.", candidates, order);
+        return new WritingAnalysis(WritingAnalysis.Status.PASS, "good", true, "Matched the kanji. Keep tightening the stroke path.", candidates, order);
     }
 
     private static RecognitionMatch match(String target, List<RecognitionCandidate> candidates) {

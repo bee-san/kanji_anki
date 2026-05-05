@@ -32,7 +32,7 @@ public class KanjiAnalyzerTest {
         assertEquals("謎", top.kanji);
         assertEquals(1, top.suspendedExampleCount);
         assertEquals("suspended_archive", top.reasonCode);
-        assertTrue(top.reasonText.contains("local suspended"));
+        assertTrue(top.reasonText.contains("writing-practice target"));
         assertEquals("note:Kiku Expression:*謎*", top.browserSearch);
     }
 

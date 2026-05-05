@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">Kanji Anki</string>
     <string name="copied_anki_search">Copied Anki search</string>
-    <string name="next_rating">Next: %1$s</string>
 </resources>
