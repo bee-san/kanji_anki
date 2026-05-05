@@ -418,40 +418,6 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void renderKanjiList() {
-        base("home");
-        content.addView(text("Practice queue", 34, INK, true));
-        content.addView(text("Only kanji Kani pulled from your AnkiDroid Kiku cards appear here. Suspended misses and low-support active cards become practice candidates.", 16, MUTED, false));
-        addSpace(12);
-        List<Records.DashboardRow> rows = store.dashboardRows();
-        if (rows.isEmpty()) {
-            emptyState("No queued kanji yet", "Sync from AnkiDroid first. The app will build a personal writing queue from your own Kiku cards.");
-            return;
-        }
-        long now = System.currentTimeMillis();
-        List<Records.StudyItem> items = studyQueue(rows, now, false);
-        List<QueueEntry> entries = queuedEntries(rows, items, now);
-        int due = dueEntryCount(entries, now);
-
-        LinearLayout summary = band(BLUE);
-        summary.addView(text(countText(entries.size(), "active kanji", "active kanji"), 24, Color.WHITE, true));
-        summary.addView(text(countText(due, "due now", "due now") + ". " + countText(Math.max(0, rows.size() - entries.size()), "candidate waiting to join later", "candidates waiting to join later") + ".", 16, Color.WHITE, false));
-        summary.addView(text(queueCapText() + ". Study mixes recall, font checks, and writing repairs.", 15, Color.WHITE, false));
-        content.addView(summary);
-
-        Button study = primaryButton("Study now", CORAL);
-        study.setOnClickListener(v -> renderStudy());
-        content.addView(study);
-
-        if (entries.isEmpty()) {
-            emptyState("No active practice yet", "Study now will admit the next candidate if your daily and active queue caps allow it.");
-            return;
-        }
-        for (QueueEntry entry : entries) {
-            content.addView(queueRowView(entry, now));
-        }
-    }
-
     private void renderStats() {
         base("stats");
         content.addView(text("Stats", 34, INK, true));
