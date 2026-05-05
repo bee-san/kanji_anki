@@ -32,7 +32,8 @@ public final class AutoSyncScheduler {
             store.markAutoSyncScheduled(0L);
             return;
         }
-        long triggerAt = nextTriggerMillis(settings, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        long triggerAt = nextTriggerMillis(settings, now, store.hasSuccessfulSyncSince(localDayStart(now)));
         scheduleAt(context, store, triggerAt);
     }
 
@@ -47,6 +48,10 @@ public final class AutoSyncScheduler {
     }
 
     static long nextTriggerMillis(LocalStore.AutoSyncSettings settings, long now) {
+        return nextTriggerMillis(settings, now, false);
+    }
+
+    static long nextTriggerMillis(LocalStore.AutoSyncSettings settings, long now, boolean alreadySyncedToday) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(now);
         calendar.set(Calendar.HOUR_OF_DAY, settings.hour);
@@ -54,16 +59,27 @@ public final class AutoSyncScheduler {
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         long trigger = calendar.getTimeInMillis();
-        if (trigger <= now) {
+        if (trigger <= now || alreadySyncedToday) {
             calendar.add(Calendar.DAY_OF_YEAR, 1);
             trigger = calendar.getTimeInMillis();
         }
         return trigger;
     }
 
+    private static long localDayStart(long now) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(now);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
     private static void scheduleAt(Context context, LocalStore store, long triggerAt) {
         JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         if (scheduler == null) {
+            store.markAutoSyncScheduled(0L);
             return;
         }
         long delay = Math.max(MIN_DELAY_MILLIS, triggerAt - System.currentTimeMillis());

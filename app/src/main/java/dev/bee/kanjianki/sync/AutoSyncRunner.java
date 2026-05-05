@@ -35,6 +35,7 @@ public final class AutoSyncRunner {
             AnkiDroidGateway.ProviderStatus provider = ((AnkiDroidGateway) gateway).status();
             if (!provider.canSync) {
                 store.recordAutoSyncAttempt(now, false);
+                store.saveFailedSync(now, now, "config_error", "permanent", provider.message);
                 return Result.failed(provider.message);
             }
         }

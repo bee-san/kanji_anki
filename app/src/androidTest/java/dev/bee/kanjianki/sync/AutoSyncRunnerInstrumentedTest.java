@@ -103,6 +103,26 @@ public final class AutoSyncRunnerInstrumentedTest {
     }
 
     @Test
+    public void autoSyncProviderReadinessFailureRecordsSyncFailure() {
+        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
+
+        AutoSyncRunner.Result result = new AutoSyncRunner(
+                context,
+                store,
+                AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_auto_sync_provider")
+        ).run(now);
+
+        assertTrue(result.ran);
+        assertFalse(result.success);
+        assertEquals(now, store.autoSyncSettings().lastAttemptAt);
+        LocalStore.SyncStatus sync = store.latestSync();
+        assertNotNull(sync);
+        assertEquals("config_error", sync.status);
+        assertTrue(sync.errorMessage.contains("AnkiDroid"));
+    }
+
+    @Test
     public void schedulerMovesPastTimesToTomorrow() {
         Calendar calendar = Calendar.getInstance();
         calendar.set(2026, Calendar.JANUARY, 12, 18, 0, 0);
@@ -111,6 +131,7 @@ public final class AutoSyncRunnerInstrumentedTest {
 
         LocalStore.AutoSyncSettings futureToday = new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L);
         assertEquals(now + 60L * 60L * 1000L, AutoSyncScheduler.nextTriggerMillis(futureToday, now));
+        assertEquals(now + 25L * 60L * 60L * 1000L, AutoSyncScheduler.nextTriggerMillis(futureToday, now, true));
 
         LocalStore.AutoSyncSettings pastToday = new LocalStore.AutoSyncSettings(true, true, 17, 0, 0L, 0L, 0L);
         calendar.add(Calendar.DAY_OF_YEAR, 1);
