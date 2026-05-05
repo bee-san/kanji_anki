@@ -101,6 +101,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("kanji_examples"));
         assertEquals("拉", store.dashboardRows().get(0).kanji);
+        assertTrue(store.hasSuccessfulSyncSince(1500L));
+        assertFalse(store.hasSuccessfulSyncSince(2500L));
         List<Records.SuspendedImport> storedImports = store.suspendedImports();
         assertEquals(1, storedImports.size());
         assertEquals("拉", storedImports.get(0).kanji);
@@ -127,6 +129,33 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(8, reminder.hour);
         assertEquals(30, reminder.minute);
         assertEquals("08:30", reminder.displayTime());
+
+        LocalStore.AutoSyncSettings autoDefaults = store.autoSyncSettings();
+        assertFalse(autoDefaults.configured);
+        assertFalse(autoDefaults.enabled);
+        assertEquals(19, autoDefaults.hour);
+        assertEquals(0, autoDefaults.minute);
+        assertTrue(store.activateAutoSyncAfterFirstSuccess());
+        assertFalse(store.activateAutoSyncAfterFirstSuccess());
+        LocalStore.AutoSyncSettings activeAuto = store.autoSyncSettings();
+        assertTrue(activeAuto.configured);
+        assertTrue(activeAuto.enabled);
+        assertEquals("19:00", activeAuto.displayTime());
+        store.recordAutoSyncAttempt(5000L, false);
+        LocalStore.AutoSyncSettings failedAuto = store.autoSyncSettings();
+        assertEquals(5000L, failedAuto.lastAttemptAt);
+        assertEquals(0L, failedAuto.lastSuccessAt);
+        store.recordAutoSyncAttempt(6000L, true);
+        store.markAutoSyncScheduled(9000L);
+        LocalStore.AutoSyncSettings successfulAuto = store.autoSyncSettings();
+        assertEquals(6000L, successfulAuto.lastAttemptAt);
+        assertEquals(6000L, successfulAuto.lastSuccessAt);
+        assertEquals(9000L, successfulAuto.nextRunAt);
+        store.setAutoSyncEnabled(false);
+        LocalStore.AutoSyncSettings disabledAuto = store.autoSyncSettings();
+        assertTrue(disabledAuto.configured);
+        assertFalse(disabledAuto.enabled);
+
         List<String> tokens = store.consumedTokens();
         assertEquals(1, tokens.size());
         assertEquals("token-1", tokens.get(0));
