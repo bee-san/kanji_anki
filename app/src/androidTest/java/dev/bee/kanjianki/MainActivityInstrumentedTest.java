@@ -148,19 +148,30 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Practice this kanji");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Writing practice");
-                assertHasText(activity, "Practice this kanji");
-                assertHasText(activity, "Clue: ramen radical gap");
+                assertHasText(activity, "Learn this kanji");
+                assertHasText(activity, "Meaning cue: ramen radical gap");
+                assertHasText(activity, "Meet the kanji");
+                assertHasText(activity, "Meaning: ramen radical gap");
+                assertHasText(activity, "Reading: ら");
+                assertHasText(activity, "Example: 拉麺  らーめん");
                 assertHasText(activity, "Step 1 of 4");
-                assertHasText(activity, "I traced it");
-                assertNoText(activity, "拉麺");
+                assertHasText(activity, "I copied it");
+                assertHasText(activity, "拉麺");
             });
 
-            clickText(scenario, "I traced it");
+            clickText(scenario, "I copied it");
             clickText(scenario, "Try with less help");
-            clickText(scenario, "Write from memory");
+            clickText(scenario, "Start memory check");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Step 4 of 4");
+                assertNoText(activity, "Meet the kanji");
+                assertNoText(activity, "拉麺");
+            });
             clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Write in the square before checking");
+                assertNoText(activity, "Meet the kanji");
+                assertNoText(activity, "拉麺");
                 assertNoText(activity, "Mark right anyway");
                 assertNoText(activity, "Save miss");
             });
@@ -181,9 +192,9 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "I traced it");
+            clickText(scenario, "I copied it");
             clickText(scenario, "Try with less help");
-            clickText(scenario, "Write from memory");
+            clickText(scenario, "Start memory check");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
@@ -212,9 +223,9 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "I traced it");
+            clickText(scenario, "I copied it");
             clickText(scenario, "Try with less help");
-            clickText(scenario, "Write from memory");
+            clickText(scenario, "Start memory check");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
@@ -243,9 +254,9 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "I traced it");
+            clickText(scenario, "I copied it");
             clickText(scenario, "Try with less help");
-            clickText(scenario, "Write from memory");
+            clickText(scenario, "Start memory check");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
