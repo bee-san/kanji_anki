@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import dev.bee.kanjianki.sync.AutoSyncScheduler;
+import dev.bee.kanjianki.update.AutoUpdateScheduler;
 
 public final class BootReminderReceiver extends BroadcastReceiver {
     @Override
@@ -16,6 +17,7 @@ public final class BootReminderReceiver extends BroadcastReceiver {
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
             ReminderScheduler.schedule(context);
             AutoSyncScheduler.schedule(context);
+            AutoUpdateScheduler.schedule(context);
         }
     }
 }
