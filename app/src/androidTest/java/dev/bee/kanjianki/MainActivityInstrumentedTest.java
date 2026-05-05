@@ -104,6 +104,8 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Sync AnkiDroid");
                 assertHasText(activity, "Study streak");
                 assertHasText(activity, "No streak yet");
+                assertNoText(activity, "Queue");
+                assertNoText(activity, "Update");
             });
         }
     }
@@ -141,12 +143,6 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Sync from AnkiDroid first");
             });
 
-            clickText(scenario, "Queue");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Practice queue");
-                assertHasText(activity, "No queued kanji yet");
-            });
-
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Stats");
@@ -159,6 +155,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Rarity cutoff");
                 assertHasText(activity, "Default: 3000");
                 assertHasText(activity, "Daily reminder");
+                assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
             });
             clickText(scenario, "4000");
@@ -179,7 +176,7 @@ public final class MainActivityInstrumentedTest {
                 store.close();
             }
 
-            clickText(scenario, "Update");
+            clickText(scenario, "Check for app update");
             waitForText(scenario, "GitHub updater");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "GitHub updater");
@@ -232,10 +229,8 @@ public final class MainActivityInstrumentedTest {
     public void testKanjiDetailCopyAndStudyReviewFlow() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Queue");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Practice queue");
-                assertHasText(activity, "1 active kanji");
+                assertHasText(activity, "Your active kanji queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");
             });
@@ -310,7 +305,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testQueueShowsActivePracticeKanjiNotEveryCandidate() {
+    public void testHomeQueuePreviewShowsActivePracticeKanjiNotEveryCandidate() {
         Records.DashboardRow active = dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards");
         Records.DashboardRow retired = dashboardRow("謎", "mystery unused", "なぞ", "Already covered by known cards");
         seedDashboard(Arrays.asList(active, retired));
@@ -325,9 +320,8 @@ public final class MainActivityInstrumentedTest {
         }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Queue");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "1 active kanji");
+                assertHasText(activity, "Your active kanji queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");
                 assertNoText(activity, "mystery unused");
@@ -337,13 +331,11 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testBrowsingQueueDoesNotAdmitNewStudyItems() {
+    public void testBrowsingHomeQueuePreviewDoesNotAdmitNewStudyItems() {
         seedDashboardRowsOnly(Collections.singletonList(dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards")));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Queue");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "0 active kanji");
-                assertHasText(activity, "1 candidate waiting to join later");
+                assertHasText(activity, "No active practice yet");
                 assertHasText(activity, "Study now");
             });
 
@@ -357,10 +349,9 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testLearnNextProblemKanjiFromQueueAdmitsStudyItem() {
+    public void testLearnNextProblemKanjiFromHomeAdmitsStudyItem() {
         seedDashboardRowsOnly(Collections.singletonList(dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards")));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Queue");
             clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Recall this kanji");
@@ -381,7 +372,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testQueueOrderMatchesReviewFirstStudySelection() {
+    public void testHomeQueuePreviewOrderMatchesReviewFirstStudySelection() {
         Records.DashboardRow newRow = dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards");
         Records.DashboardRow reviewRow = dashboardRow("謎", "mystery radical gap", "なぞ", "Missed in mature cards");
         seedDashboard(Arrays.asList(newRow, reviewRow));
@@ -396,7 +387,6 @@ public final class MainActivityInstrumentedTest {
         }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Queue");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Study now");
                 assertTrue(textTop(activity, "mystery radical gap") < textTop(activity, "ramen radical gap"));

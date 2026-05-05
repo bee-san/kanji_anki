@@ -228,10 +228,8 @@ public final class MainActivity extends Activity {
         nav.setBackgroundColor(INK);
         nav.addView(navButton("Home", selected.equals("home"), this::renderHome));
         nav.addView(navButton("Study", selected.equals("study"), this::renderStudy));
-        nav.addView(navButton("Queue", selected.equals("kanji"), this::renderKanjiList));
         nav.addView(navButton("Stats", selected.equals("stats"), this::renderStats));
         nav.addView(navButton("Settings", selected.equals("settings"), this::renderSettings));
-        nav.addView(navButton("Update", selected.equals("update"), this::renderUpdate));
         return nav;
     }
 
@@ -406,7 +404,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderKanjiList() {
-        base("kanji");
+        base("home");
         content.addView(text("Practice queue", 34, INK, true));
         content.addView(text("Only kanji Kani pulled from your AnkiDroid Kiku cards appear here. Suspended misses and low-support active cards become practice candidates.", 16, MUTED, false));
         addSpace(12);
@@ -760,7 +758,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderDetail(String kanji) {
-        base("kanji");
+        base("home");
         Records.DashboardRow row = store.rowForKanji(kanji);
         if (row == null) {
             emptyState("Kanji not found", "This row may have disappeared after a sync.");
@@ -1683,7 +1681,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderUpdate() {
-        base("update");
+        base("settings");
         content.addView(text("GitHub updater", 34, INK, true));
         content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases and opens Android's installer when an APK is ready.", 16, MUTED, false));
         Button button = primaryButton("Check for update", BLUE);
@@ -1739,6 +1737,7 @@ public final class MainActivity extends Activity {
         content.addView(box);
 
         content.addView(reminderSettingsPanel());
+        content.addView(updateSettingsPanel());
 
         LinearLayout mapping = band(BLUE);
         mapping.addView(text("Kiku fields used for clues", 22, Color.WHITE, true));
@@ -1806,6 +1805,16 @@ public final class MainActivity extends Activity {
         } else if (!ReminderScheduler.hasRuntimeNotificationPermission(this)) {
             box.addView(text("Android will ask for notification permission before turning this on.", 14, CORAL, false));
         }
+        return box;
+    }
+
+    private LinearLayout updateSettingsPanel() {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        box.addView(text("App updates", 23, INK, true));
+        box.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases and opens Android's installer when an APK is ready.", 15, MUTED, false));
+        Button update = primaryButton("Check for app update", BLUE);
+        update.setOnClickListener(v -> renderUpdate());
+        box.addView(update);
         return box;
     }
 
@@ -1885,7 +1894,7 @@ public final class MainActivity extends Activity {
     }
 
     private void runUpdate() {
-        base("update");
+        base("settings");
         content.addView(text("Checking release", 32, INK, true));
         content.addView(text("Downloading metadata and verifying assets.", 16, MUTED, false));
         io.execute(() -> {
