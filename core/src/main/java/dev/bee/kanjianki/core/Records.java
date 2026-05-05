@@ -504,11 +504,6 @@ public final class Records {
                     return asset;
                 }
             }
-            for (ReleaseAsset asset : assets) {
-                if (asset.name.endsWith(".sha256")) {
-                    return asset;
-                }
-            }
             return null;
         }
     }

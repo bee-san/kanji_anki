@@ -70,4 +70,18 @@ public class GitHubReleaseParserTest {
                 GitHubReleaseParser.parseSha256("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  app.apk")
         );
     }
+
+    @Test
+    public void checksumAssetMustMatchApkName() {
+        Records.ReleaseInfo info = new Records.ReleaseInfo(
+                "v0.3.3",
+                "https://example/release",
+                java.util.Arrays.asList(
+                        new Records.ReleaseAsset("kani-android-0.3.3.apk", "https://example/apk"),
+                        new Records.ReleaseAsset("other.apk.sha256", "https://example/sha")
+                )
+        );
+
+        assertEquals(null, info.checksumAssetFor("kani-android-0.3.3.apk"));
+    }
 }
