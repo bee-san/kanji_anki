@@ -19,27 +19,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-apk:
+  metadata:
+    name: Release metadata
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.meta.outputs.release_tag }}
+      version_name: ${{ steps.meta.outputs.version_name }}
+      version_code: ${{ steps.meta.outputs.version_code }}
+      apk_name: ${{ steps.meta.outputs.apk_name }}
+      checksum_name: ${{ steps.meta.outputs.checksum_name }}
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.4.1"
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-
       - name: Compute release metadata
         id: meta
         run: |
@@ -70,6 +60,60 @@ jobs:
             echo "checksum_name=${checksum_name}"
           } >> "${GITHUB_OUTPUT}"
 
+  validate:
+    name: Validate release
+    runs-on: ubuntu-latest
+    needs: metadata
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.4.1"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Test and lint
+        run: gradle :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
+
+  assemble-apk:
+    name: Assemble signed APK
+    runs-on: ubuntu-latest
+    needs: metadata
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.4.1"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses >/dev/null
@@ -85,13 +129,10 @@ jobs:
           printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
           echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
 
-      - name: Test and lint
-        run: gradle :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
-
       - name: Assemble signed release APK
         env:
-          KANJI_ANKI_VERSION_NAME: ${{ steps.meta.outputs.version_name }}
-          KANJI_ANKI_VERSION_CODE: ${{ steps.meta.outputs.version_code }}
+          KANJI_ANKI_VERSION_NAME: ${{ needs.metadata.outputs.version_name }}
+          KANJI_ANKI_VERSION_CODE: ${{ needs.metadata.outputs.version_code }}
           KANJI_ANKI_SIGNING_STORE_FILE: ${{ steps.signing.outputs.keystore_path }}
           KANJI_ANKI_SIGNING_STORE_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_STORE_PASSWORD }}
           KANJI_ANKI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
@@ -107,8 +148,8 @@ jobs:
             exit 1
           fi
 
-          apk_path="${RUNNER_TEMP}/${{ steps.meta.outputs.apk_name }}"
-          sha_path="${RUNNER_TEMP}/${{ steps.meta.outputs.checksum_name }}"
+          apk_path="${RUNNER_TEMP}/${{ needs.metadata.outputs.apk_name }}"
+          sha_path="${RUNNER_TEMP}/${{ needs.metadata.outputs.checksum_name }}"
           cp "${source_apk}" "${apk_path}"
           sha256sum "${apk_path}" > "${sha_path}"
 
@@ -120,18 +161,38 @@ jobs:
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: android-release-${{ steps.meta.outputs.version_name }}
+          name: android-release-${{ needs.metadata.outputs.version_name }}
           path: |
             ${{ steps.assets.outputs.apk_path }}
             ${{ steps.assets.outputs.sha_path }}
+
+  publish-release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs:
+      - metadata
+      - validate
+      - assemble-apk
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v7
+        with:
+          name: android-release-${{ needs.metadata.outputs.version_name }}
+          path: ${{ runner.temp }}/release-assets
 
       - name: Publish GitHub release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          release_tag="${{ steps.meta.outputs.release_tag }}"
-          apk_path="${{ steps.assets.outputs.apk_path }}"
-          sha_path="${{ steps.assets.outputs.sha_path }}"
+          release_tag="${{ needs.metadata.outputs.release_tag }}"
+          apk_path="${RUNNER_TEMP}/release-assets/${{ needs.metadata.outputs.apk_name }}"
+          sha_path="${RUNNER_TEMP}/release-assets/${{ needs.metadata.outputs.checksum_name }}"
+
+          if [[ ! -f "${apk_path}" || ! -f "${sha_path}" ]]; then
+            echo "::error::Downloaded release assets are missing."
+            exit 1
+          fi
 
           if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release upload "${release_tag}" "${apk_path}" "${sha_path}" --clobber --repo "${GITHUB_REPOSITORY}"
