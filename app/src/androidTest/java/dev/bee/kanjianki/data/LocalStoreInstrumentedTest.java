@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -153,6 +154,59 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1.80, loaded.goodMultiplier, 0.001);
         assertEquals(5000L, loaded.lastAdjustedAtMillis);
         assertEquals(30, loaded.lastAdjustmentReviewCount);
+    }
+
+    @Test
+    public void testStudyStreakCountsConsecutiveLocalReviewDays() {
+        long today = localDayStart(System.currentTimeMillis());
+        long yesterday = moveLocalDays(today, -1);
+        long twoDaysAgo = moveLocalDays(today, -2);
+        long fiveDaysAgo = moveLocalDays(today, -5);
+
+        store.saveReview(review("拉", "token-five"), "good", fiveDaysAgo + 60_000L);
+        store.saveReview(review("提", "token-two"), "good", twoDaysAgo + 60_000L);
+        store.saveReview(review("謎", "token-yesterday"), "hard", yesterday + 60_000L);
+        store.saveReview(review("麺", "token-today-a"), "good", today + 60_000L);
+        store.saveReview(review("確", "token-today-b"), "easy", today + 120_000L);
+
+        LocalStore.StudyStreak streak = store.studyStreak(today + 3_600_000L);
+        assertEquals(3, streak.currentDays);
+        assertEquals(3, streak.bestDays);
+        assertTrue(streak.studiedToday);
+        assertEquals(2, streak.reviewsToday);
+        assertEquals(today + 120_000L, streak.lastStudyAtMillis);
+
+        LocalStore.StudyStreak tomorrow = store.studyStreak(moveLocalDays(today, 1) + 3_600_000L);
+        assertEquals(3, tomorrow.currentDays);
+        assertEquals(3, tomorrow.bestDays);
+        assertFalse(tomorrow.studiedToday);
+        assertEquals(0, tomorrow.reviewsToday);
+
+        LocalStore.StudyStreak afterMiss = store.studyStreak(moveLocalDays(today, 2) + 3_600_000L);
+        assertEquals(0, afterMiss.currentDays);
+        assertEquals(3, afterMiss.bestDays);
+        assertFalse(afterMiss.studiedToday);
+    }
+
+    private Records.ReviewRequest review(String kanji, String token) {
+        return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
+    }
+
+    private static long localDayStart(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private static long moveLocalDays(long localDayStart, int days) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(localDayStart);
+        calendar.add(Calendar.DAY_OF_YEAR, days);
+        return calendar.getTimeInMillis();
     }
 
     private int count(String table) {

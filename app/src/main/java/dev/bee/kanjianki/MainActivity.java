@@ -274,6 +274,10 @@ public final class MainActivity extends Activity {
         content.addView(hero);
         addSpace(18);
 
+        long now = System.currentTimeMillis();
+        content.addView(streakPanel(store.studyStreak(now)));
+        addSpace(10);
+
         List<Records.DashboardRow> rows = store.dashboardRows();
         if (rows.isEmpty()) {
             Button syncButton = primaryButton("Sync AnkiDroid", TEAL);
@@ -293,7 +297,6 @@ public final class MainActivity extends Activity {
         if (rows.isEmpty()) {
             emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need writing practice.");
         } else {
-            long now = System.currentTimeMillis();
             List<QueueEntry> entries = queuedEntries(rows, studyQueue(rows, now, false), now);
             content.addView(sectionTitle("Your active kanji queue"));
             if (entries.isEmpty()) {
@@ -303,6 +306,39 @@ public final class MainActivity extends Activity {
                 content.addView(queueRowView(entries.get(i), now));
             }
         }
+    }
+
+    private LinearLayout streakPanel(LocalStore.StudyStreak streak) {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(255, 219, 103));
+        box.addView(text("Study streak", 22, INK, true));
+        box.addView(text(streakHeadline(streak), 25, streak.currentDays > 0 ? CORAL : MUTED, true));
+        box.addView(text(streakBody(streak), 15, MUTED, false));
+        return box;
+    }
+
+    private String streakHeadline(LocalStore.StudyStreak streak) {
+        if (streak.currentDays <= 0) {
+            return "No streak yet";
+        }
+        return streak.currentDays + "-day streak";
+    }
+
+    private String streakBody(LocalStore.StudyStreak streak) {
+        String best = streak.bestDays > 0 ? " Best: " + streakDayCount(streak.bestDays) + "." : "";
+        if (streak.currentDays <= 0) {
+            if (streak.lastStudyAtMillis <= 0L) {
+                return "Study one problem kanji to start." + best;
+            }
+            return "Start a new streak today. Last studied " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(streak.lastStudyAtMillis)) + "." + best;
+        }
+        if (streak.studiedToday) {
+            return "Today is done. " + countText(streak.reviewsToday, "card studied today", "cards studied today") + "." + best;
+        }
+        return "Study one problem kanji today to keep it alive." + best;
+    }
+
+    private String streakDayCount(int days) {
+        return days + " " + (days == 1 ? "day" : "days");
     }
 
     private void confirmSync() {
@@ -917,15 +953,17 @@ public final class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         Records.SchedulerParameters parameters = store.schedulerParameters();
         Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters);
+        LocalStore.StudyStreak streak = null;
         if (!result.duplicate) {
             store.saveStudyItem(result.item);
             store.saveReview(request, result.appliedRating, now);
+            streak = store.studyStreak(now);
             Records.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
             if (tuned.lastAdjustedAtMillis != parameters.lastAdjustedAtMillis || tuned.lastAdjustmentReviewCount != parameters.lastAdjustmentReviewCount) {
                 store.saveSchedulerParameters(tuned);
             }
         }
-        Toast.makeText(this, reviewToast(result), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, reviewToast(result, streak), Toast.LENGTH_SHORT).show();
         renderStudy();
     }
 
@@ -1177,14 +1215,15 @@ public final class MainActivity extends Activity {
         return activeSession != null && activeSession.token.equals(token);
     }
 
-    private String reviewToast(Records.ReviewResult result) {
+    private String reviewToast(Records.ReviewResult result, LocalStore.StudyStreak streak) {
         if (result.duplicate) {
             return "Already saved.";
         }
+        String streakText = streak == null || streak.currentDays <= 0 ? "" : " " + streakHeadline(streak) + ".";
         if ("again".equals(result.appliedRating)) {
-            return "Saved. This kanji will come back soon.";
+            return "Saved. This kanji will come back soon." + streakText;
         }
-        return "Saved.";
+        return "Saved." + streakText;
     }
 
     private WritingRecognizer writingRecognizer() {
