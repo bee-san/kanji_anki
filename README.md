@@ -2,11 +2,12 @@
 
 Kani is a native Android companion for a single AnkiDroid collection. It syncs live `Kiku` notes from AnkiDroid, archives suspended trouble cards locally, derives weak kanji from real examples, runs a small bridge SRS, and updates itself from GitHub Releases.
 
-The runtime is Android-first. There is no Python server, fixture runtime, polling loop, or background sync.
+The runtime is Android-first. There is no Python server, fixture runtime, or polling loop. After the first successful manual sync, Kani schedules one background AnkiDroid sync per local day.
 
 ## Product Contract
 
 - Manual sync reads AnkiDroid's exported flashcard provider.
+- Daily auto sync starts after the first successful manual sync and uses the same provider sync path.
 - The expected note type is `Kiku`, with the `Mining` card template.
 - Required fields are `Expression`, `ExpressionReading`, `MainDefinition`, `Sentence`, `Frequency`, and `FreqSort`.
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.
