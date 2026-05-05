@@ -102,17 +102,28 @@ public final class BridgeScheduler {
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
         String taskType;
+        boolean writingRequired;
         if (best.totalReviews == 0 || best.learningStep == 0) {
-            taskType = "context_writing";
+            taskType = best.totalReviews == 0 ? "meaning_flashcard" : "font_recognition";
+            writingRequired = false;
         } else if (best.learningStep == 1) {
             taskType = "guided_writing";
+            writingRequired = true;
+        } else if (best.totalReviews % 5 == 0) {
+            taskType = "font_recognition";
+            writingRequired = false;
+        } else if (best.totalReviews % 5 == 1) {
+            taskType = "meaning_flashcard";
+            writingRequired = false;
         } else if (best.totalReviews % 3 == 0) {
             taskType = "sampled_handwriting";
+            writingRequired = true;
         } else {
             taskType = "blind_writing";
+            writingRequired = true;
         }
         String prompt = row.reasonText;
-        return new Records.StudySession(best.withToken(token), row, token, taskType, true, prompt);
+        return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
     }
 
     private Records.StudyItem retiredCopy(Records.StudyItem item) {

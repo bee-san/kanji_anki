@@ -256,7 +256,7 @@ public final class MainActivity extends Activity {
         TextView title = text("Kani", 42, INK, true);
         title.setLetterSpacing(0);
         content.addView(title);
-        content.addView(text("Write the kanji your Kiku reviews keep exposing.", 18, MUTED, false));
+        content.addView(text("Recognise and write the kanji your Kiku reviews keep exposing.", 18, MUTED, false));
         addSpace(18);
 
         LocalStore.SyncStatus sync = store.latestSync();
@@ -272,7 +272,7 @@ public final class MainActivity extends Activity {
         } else {
             hero.addView(text("Sync once to find the kanji your Anki reviews keep exposing.", 16, Color.WHITE, false));
         }
-        hero.addView(text("Study admits a small active set so the queue stays focused.", 14, Color.WHITE, false));
+        hero.addView(text("Study starts with recall, then uses writing when a problem kanji needs repair.", 14, Color.WHITE, false));
         content.addView(hero);
         addSpace(18);
 
@@ -297,7 +297,7 @@ public final class MainActivity extends Activity {
 
         addSpace(16);
         if (rows.isEmpty()) {
-            emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need writing practice.");
+            emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need focused recall and writing practice.");
         } else {
             List<QueueEntry> entries = queuedEntries(rows, studyQueue(rows, now, false), now);
             content.addView(sectionTitle("Your active kanji queue"));
@@ -422,7 +422,7 @@ public final class MainActivity extends Activity {
         LinearLayout summary = band(BLUE);
         summary.addView(text(countText(entries.size(), "active kanji", "active kanji"), 24, Color.WHITE, true));
         summary.addView(text(countText(due, "due now", "due now") + ". " + countText(Math.max(0, rows.size() - entries.size()), "candidate waiting to join later", "candidates waiting to join later") + ".", 16, Color.WHITE, false));
-        summary.addView(text(queueCapText() + ". Study mixes due items and brings misses back soon.", 15, Color.WHITE, false));
+        summary.addView(text(queueCapText() + ". Study mixes recall, font checks, and writing repairs.", 15, Color.WHITE, false));
         content.addView(summary);
 
         Button study = primaryButton("Study now", CORAL);
@@ -861,8 +861,8 @@ public final class MainActivity extends Activity {
         base("study");
         List<Records.DashboardRow> rows = store.dashboardRows();
         if (rows.isEmpty()) {
-            content.addView(text("Writing practice", 34, INK, true));
-            emptyState("Nothing to write yet", "Sync from AnkiDroid first. Study opens once the app finds kanji to repair.");
+            content.addView(text("Study practice", 34, INK, true));
+            emptyState("Nothing to study yet", "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.");
             return;
         }
         BridgeScheduler scheduler = new BridgeScheduler();
@@ -886,7 +886,7 @@ public final class MainActivity extends Activity {
         List<Records.DashboardRow> rows = store.dashboardRows();
         Records.DashboardRow row = findRow(rows, kanji);
         if (row == null) {
-            content.addView(text("Writing practice", 34, INK, true));
+            content.addView(text("Study practice", 34, INK, true));
             emptyState("Kanji not available", "This row may have changed after sync.");
             return;
         }
@@ -916,8 +916,8 @@ public final class MainActivity extends Activity {
                 item.withToken(token),
                 row,
                 token,
-                "targeted_writing",
-                true,
+                "targeted_flashcard",
+                false,
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
         store.saveStudyItem(activeSession.item);
@@ -925,6 +925,40 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSession(Records.StudySession session) {
+        if (session.writingRequired) {
+            renderWritingSession(session);
+        } else {
+            renderFlashcardSession(session);
+        }
+    }
+
+    private void renderFlashcardSession(Records.StudySession session) {
+        content.removeAllViews();
+        activeAnalysis = null;
+        checkingWriting = false;
+        hintsUsed = 0;
+        currentPracticeLevel = 0;
+        drawingPad = null;
+
+        content.addView(text(flashcardTitle(session), 30, INK, true));
+        LinearLayout stage = band(CORAL);
+        stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
+        if (isFontRecognitionTask(session)) {
+            stage.addView(text("Recognise the shape across fonts, then reveal the Anki clue.", 15, Color.WHITE, false));
+        } else {
+            stage.addView(text("Try to recall the kanji before seeing it. If it does not come back, write it once.", 15, Color.WHITE, false));
+        }
+        content.addView(stage);
+
+        content.addView(flashcardPromptPanel(session));
+        studyAnswerPanel = flashcardAnswerPanel(session);
+        studyAnswerPanel.setVisibility(View.GONE);
+        content.addView(studyAnswerPanel);
+
+        buildFlashcardActionBar(false);
+    }
+
+    private void renderWritingSession(Records.StudySession session) {
         content.removeAllViews();
         activeAnalysis = null;
         checkingWriting = false;
@@ -941,6 +975,8 @@ public final class MainActivity extends Activity {
                     stage.addView(text("Reading: " + session.row.reading, 15, Color.WHITE, false));
                 }
                 stage.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, Color.WHITE, false));
+            } else if ("repair_writing".equals(session.taskType)) {
+                stage.addView(text("This is the same card. Write it once with the guide before moving on.", 15, Color.WHITE, false));
             } else {
                 stage.addView(text("Learn it from the reference, trace it, then check.", 15, Color.WHITE, false));
             }
@@ -963,6 +999,154 @@ public final class MainActivity extends Activity {
         buildStudyActionBar();
         updateResultActions();
         refreshWritingModelStatus();
+    }
+
+    private String flashcardTitle(Records.StudySession session) {
+        return isFontRecognitionTask(session) ? "Recognise this kanji" : "Recall this kanji";
+    }
+
+    private View flashcardPromptPanel(Records.StudySession session) {
+        LinearLayout box = panelBox(Color.WHITE, TEAL);
+        box.addView(text("Front", 19, INK, true));
+        if (isFontRecognitionTask(session)) {
+            box.addView(fontVariantRow(session.item.kanji));
+            box.addView(text("What does it mean in your Anki deck?", 15, MUTED, false));
+            return box;
+        }
+        box.addView(text("Meaning: " + sessionClue(session), 18, INK, true));
+        if (session.row != null && !session.row.reading.isEmpty()) {
+            box.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
+        }
+        box.addView(text("Answer hidden until reveal.", 14, MUTED, false));
+        return box;
+    }
+
+    private View fontVariantRow(String kanji) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        row.addView(fontVariantTile(kanji, "Print", Typeface.SERIF), new LinearLayout.LayoutParams(0, dp(120), 1));
+        row.addView(fontVariantTile(kanji, "Sans", Typeface.DEFAULT), new LinearLayout.LayoutParams(0, dp(120), 1));
+        row.addView(fontVariantTile(kanji, "Block", Typeface.MONOSPACE), new LinearLayout.LayoutParams(0, dp(120), 1));
+        return row;
+    }
+
+    private View fontVariantTile(String kanji, String label, Typeface typeface) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(dp(4), dp(6), dp(4), dp(6));
+        tile.setBackground(panel(Color.rgb(255, 247, 251), Color.rgb(246, 202, 225), dp(8)));
+        TextView glyph = text(kanji, 50, INK, true);
+        glyph.setTypeface(typeface, Typeface.BOLD);
+        glyph.setGravity(Gravity.CENTER);
+        tile.addView(glyph, new LinearLayout.LayoutParams(-1, 0, 1));
+        TextView caption = text(label, 12, MUTED, false);
+        caption.setGravity(Gravity.CENTER);
+        tile.addView(caption);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(120), 1);
+        lp.setMargins(dp(3), dp(4), dp(3), dp(4));
+        tile.setLayoutParams(lp);
+        return tile;
+    }
+
+    private View flashcardAnswerPanel(Records.StudySession session) {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+        box.addView(text("Answer", 19, INK, true));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView glyph = text(session.item.kanji, 76, INK, true);
+        glyph.setGravity(Gravity.CENTER);
+        row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
+
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        if (session.row != null) {
+            details.addView(text("Meaning: " + rowMeaning(session.row), 16, INK, true));
+            if (!session.row.reading.isEmpty()) {
+                details.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
+            }
+            Records.Example example = firstExample(session.row);
+            if (example != null) {
+                details.addView(text("From: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 15, INK, true));
+                if (!example.meaning.isEmpty()) {
+                    details.addView(text(cleanLearnerText(example.meaning, "", 80), 13, MUTED, false));
+                }
+            }
+        } else {
+            details.addView(text(session.prompt, 15, MUTED, false));
+        }
+        row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+        box.addView(row);
+        box.addView(text("If it did not come back quickly, write it once with guides.", 13, MUTED, false));
+        return box;
+    }
+
+    private void buildFlashcardActionBar(boolean revealed) {
+        if (studyActionBar == null) {
+            return;
+        }
+        studyActionBar.removeAllViews();
+        studyActionBar.setVisibility(View.VISIBLE);
+
+        resultStatus = text(
+                revealed
+                        ? "Choose from recall, not recognition-after-reveal."
+                        : "Reveal first. A miss becomes one guided writing repair.",
+                15,
+                MUTED,
+                false
+        );
+        studyActionBar.addView(resultStatus);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        if (!revealed) {
+            Button reveal = primaryButton("Reveal", CORAL);
+            reveal.setOnClickListener(v -> {
+                if (studyAnswerPanel != null) {
+                    studyAnswerPanel.setVisibility(View.VISIBLE);
+                }
+                buildFlashcardActionBar(true);
+            });
+            actions.addView(reveal, new LinearLayout.LayoutParams(0, dp(62), 1));
+        } else {
+            Button known = primaryButton("I knew it", TEAL);
+            known.setOnClickListener(v -> submitReview("good", false));
+            actions.addView(known, new LinearLayout.LayoutParams(0, dp(62), 1));
+
+            Button write = primaryButton("Write it", CORAL);
+            write.setOnClickListener(v -> startWritingRepairSession());
+            actions.addView(write, new LinearLayout.LayoutParams(0, dp(62), 1));
+        }
+        studyActionBar.addView(actions);
+    }
+
+    private void startWritingRepairSession() {
+        if (activeSession == null) {
+            return;
+        }
+        Records.StudySession previous = activeSession;
+        activeSession = new Records.StudySession(
+                previous.item,
+                previous.row,
+                previous.token,
+                "repair_writing",
+                true,
+                previous.prompt
+        );
+        renderWritingSession(activeSession);
+        hintsUsed = Math.max(1, hintsUsed);
+        currentPracticeLevel = 0;
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        if (drawingPad != null) {
+            drawingPad.setGuide(guide, currentPracticeLevel, false);
+        }
+        setStudyStatus(guideLabel(currentPracticeLevel, guide) + "\nMissed recall. Write it once with the guide; this counts as the same review.", MUTED);
+        updateResultActions();
     }
 
     private void buildStudyActionBar() {
@@ -1144,7 +1328,10 @@ public final class MainActivity extends Activity {
         if (isRecallTask(session)) {
             return 3;
         }
-        if ("targeted_writing".equals(session.taskType) || session.item.totalReviews == 0 || session.item.learningStep == 0) {
+        if ("targeted_writing".equals(session.taskType)
+                || "repair_writing".equals(session.taskType)
+                || session.item.totalReviews == 0
+                || session.item.learningStep == 0) {
             return Math.min(stored, 1);
         }
         if ("guided_writing".equals(session.taskType)) {
@@ -1251,6 +1438,7 @@ public final class MainActivity extends Activity {
         }
         return "context_writing".equals(session.taskType)
                 || "guided_writing".equals(session.taskType)
+                || "repair_writing".equals(session.taskType)
                 || ("targeted_writing".equals(session.taskType) && session.item.learningStep < 2);
     }
 
@@ -1259,6 +1447,10 @@ public final class MainActivity extends Activity {
             return false;
         }
         return "blind_writing".equals(session.taskType) || "sampled_handwriting".equals(session.taskType);
+    }
+
+    private boolean isFontRecognitionTask(Records.StudySession session) {
+        return session != null && "font_recognition".equals(session.taskType);
     }
 
     private boolean canSubmitAnalysis(WritingAnalysis analysis) {
@@ -1858,6 +2050,18 @@ public final class MainActivity extends Activity {
     }
 
     private String labelForTask(String task) {
+        if ("targeted_flashcard".equals(task)) {
+            return "Focused recall";
+        }
+        if ("meaning_flashcard".equals(task)) {
+            return "Quick recall";
+        }
+        if ("font_recognition".equals(task)) {
+            return "Font check";
+        }
+        if ("repair_writing".equals(task)) {
+            return "Write to repair";
+        }
         if ("targeted_writing".equals(task)) {
             return "Focused practice";
         }
@@ -1876,7 +2080,7 @@ public final class MainActivity extends Activity {
         if ("sampled_handwriting".equals(task)) {
             return "Memory check";
         }
-        return "Writing practice";
+        return "Study";
     }
 
     private String queueCapText() {

@@ -72,8 +72,24 @@ public class BridgeSchedulerTest {
         Records.StudySession session = scheduler.nextSession(Arrays.asList(item("裂")), Arrays.asList(row("裂", 10)), 1000L);
 
         assertNotNull(session);
-        assertTrue(session.writingRequired);
-        assertEquals("context_writing", session.taskType);
+        assertFalse(session.writingRequired);
+        assertEquals("meaning_flashcard", session.taskType);
+    }
+
+    @Test
+    public void lapsedKanjiReturnsAsFontRecognitionBeforeMoreWriting() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem lapsed = new Records.StudyItem("裂", "learning", 0L, 0.3, 6.0, 1, 1, 0, 0, null, 0L);
+
+        Records.StudySession session = scheduler.nextSession(
+                Collections.singletonList(lapsed),
+                Collections.singletonList(row("裂", 10)),
+                1000L
+        );
+
+        assertNotNull(session);
+        assertFalse(session.writingRequired);
+        assertEquals("font_recognition", session.taskType);
     }
 
     @Test
@@ -91,6 +107,7 @@ public class BridgeSchedulerTest {
         assertNotNull(session);
         assertEquals("謎", session.item.kanji);
         assertEquals("blind_writing", session.taskType);
+        assertTrue(session.writingRequired);
     }
 
     @Test
@@ -193,19 +210,20 @@ public class BridgeSchedulerTest {
 
         Records.ReviewResult first = scheduler.applyReview(
                 item("裂").withToken("t1"),
-                new Records.ReviewRequest("裂", "t1", "good", true, true, false, 0),
+                new Records.ReviewRequest("裂", "t1", "good", false, false, false, 0),
                 consumed,
                 0L
         );
         assertEquals("learning", first.item.state);
         assertEquals(1, first.item.learningStep);
-        assertEquals(1, first.item.writingLevel);
+        assertEquals(0, first.item.writingLevel);
         assertEquals(600_000L, first.item.dueAtMillis);
         assertNull(scheduler.nextSession(Collections.singletonList(first.item), rows, 599_999L));
 
         Records.StudySession dueLearning = scheduler.nextSession(Collections.singletonList(first.item), rows, 600_000L);
         assertNotNull(dueLearning);
         assertEquals("guided_writing", dueLearning.taskType);
+        assertTrue(dueLearning.writingRequired);
 
         Records.ReviewResult second = scheduler.applyReview(
                 first.item.withToken("t2"),
@@ -215,7 +233,7 @@ public class BridgeSchedulerTest {
         );
         assertEquals("review", second.item.state);
         assertEquals(2, second.item.learningStep);
-        assertEquals(2, second.item.writingLevel);
+        assertEquals(1, second.item.writingLevel);
 
         Records.StudyItem dueReview = new Records.StudyItem(
                 second.item.kanji,
@@ -239,7 +257,7 @@ public class BridgeSchedulerTest {
         assertEquals("learning", miss.item.state);
         assertEquals(1, miss.item.lapses);
         assertEquals(0, miss.item.learningStep);
-        assertEquals(1, miss.item.writingLevel);
+        assertEquals(0, miss.item.writingLevel);
         assertEquals(1_500_000L, miss.item.dueAtMillis);
     }
 
