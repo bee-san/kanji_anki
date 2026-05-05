@@ -184,7 +184,7 @@ public final class MainActivityInstrumentedTest {
                 store.close();
             }
 
-            clickText(scenario, "Check for app update");
+            clickText(scenario, "Open updater");
             waitForText(scenario, "GitHub updater");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "GitHub updater");

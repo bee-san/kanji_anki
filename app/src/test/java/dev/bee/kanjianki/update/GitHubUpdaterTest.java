@@ -65,6 +65,14 @@ public final class GitHubUpdaterTest {
     }
 
     @Test
+    public void rejectsEmptyChecksumDigestBeforeApkDownload() {
+        UpdatePolicy.ValidationResult result = UpdatePolicy.validateExpectedChecksum("");
+
+        assertFalse(result.ok);
+        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message);
+    }
+
+    @Test
     public void acceptsExpectedPackageNameAndNewerVersion() {
         UpdatePolicy.ValidationResult result = UpdatePolicy.validatePackageMetadata(
                 "dev.bee.kanjianki",
@@ -112,5 +120,13 @@ public final class GitHubUpdaterTest {
         assertTrue(mapped.pendingUserAction);
         assertFalse(mapped.success);
         assertEquals("Android needs confirmation to finish installing.", mapped.message);
+    }
+
+    @Test
+    public void startsInstallConfirmationForManualAndCachedSourcesOnly() {
+        assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.MANUAL));
+        assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.CACHED));
+        assertFalse(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.AUTOMATIC));
+        assertFalse(UpdatePolicy.shouldLaunchInstallConfirmation(null));
     }
 }

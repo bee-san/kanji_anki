@@ -1688,18 +1688,18 @@ public final class MainActivity extends Activity {
         base("settings");
         content.addView(text("GitHub updater", 34, INK, true));
         content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.", 16, MUTED, false));
-        content.addView(autoUpdatePanel());
+        content.addView(autoUpdatePanel("Automatic updates"));
 
         Button button = primaryButton("Check for update", BLUE);
         button.setOnClickListener(v -> runUpdate(false));
         content.addView(button);
     }
 
-    private LinearLayout autoUpdatePanel() {
+    private LinearLayout autoUpdatePanel(String title) {
         LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
         boolean canInstall = canInstallUpdates();
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
-        box.addView(text("Automatic updates", 23, INK, true));
+        box.addView(text(title, 23, INK, true));
         box.addView(text(status.enabled ? "On: checks about once a day" : "Off", 18, status.enabled ? TEAL : MUTED, true));
         box.addView(text("Last check: " + autoUpdateLastCheckText(status), 15, MUTED, false));
         box.addView(text("Last result: " + status.lastResult, 15, MUTED, false));
@@ -1947,9 +1947,8 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout updateSettingsPanel() {
-        LinearLayout box = autoUpdatePanel();
-        box.addView(text("App updates", 23, INK, true), 0);
-        Button update = primaryButton("Check for app update", BLUE);
+        LinearLayout box = autoUpdatePanel("App updates");
+        Button update = primaryButton("Open updater", BLUE);
         update.setOnClickListener(v -> renderUpdate());
         box.addView(update);
         return box;

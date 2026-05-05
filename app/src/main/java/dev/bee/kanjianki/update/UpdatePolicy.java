@@ -26,13 +26,25 @@ final class UpdatePolicy {
     }
 
     static ValidationResult validateChecksum(String expected, String actual) {
-        if (expected == null || expected.trim().isEmpty()) {
-            return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
+        ValidationResult expectedResult = validateExpectedChecksum(expected);
+        if (!expectedResult.ok) {
+            return expectedResult;
         }
-        if (actual == null || !expected.equalsIgnoreCase(actual)) {
+        String normalizedExpected = expected.trim();
+        if (actual == null || !normalizedExpected.equalsIgnoreCase(actual.trim())) {
             return ValidationResult.failure("Checksum mismatch. Install blocked.");
         }
         return ValidationResult.success("Checksum verified.");
+    }
+
+    static ValidationResult validateExpectedChecksum(String expected) {
+        if (expected == null || expected.trim().isEmpty()) {
+            return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
+        }
+        if (!expected.trim().matches("(?i)[0-9a-f]{64}")) {
+            return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
+        }
+        return ValidationResult.success("Checksum digest found.");
     }
 
     static ValidationResult validatePackageMetadata(
@@ -67,6 +79,10 @@ final class UpdatePolicy {
         }
         String suffix = message == null || message.trim().isEmpty() ? "" : ": " + message.trim();
         return new InstallCallback(false, false, "Install failed" + suffix + ".");
+    }
+
+    static boolean shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource source) {
+        return source == GitHubUpdater.UpdateSource.MANUAL || source == GitHubUpdater.UpdateSource.CACHED;
     }
 
     private static String normalizeVersion(String version) {

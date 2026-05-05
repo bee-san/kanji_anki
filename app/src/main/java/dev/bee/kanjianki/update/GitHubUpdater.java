@@ -58,6 +58,11 @@ public final class GitHubUpdater {
             }
 
             String expected = GitHubReleaseParser.parseSha256(getText(assets.checksum.downloadUrl));
+            UpdatePolicy.ValidationResult expectedDigest = UpdatePolicy.validateExpectedChecksum(expected);
+            if (!expectedDigest.ok) {
+                return recordResult(checkedAt, UpdateResult.failed(expectedDigest.message), latest.tagName, "", "");
+            }
+
             String safeApkName = safeFileName(assets.apk.name);
             File apkFile = cachedApkFile(safeApkName);
             download(assets.apk.downloadUrl, apkFile);

@@ -7,6 +7,8 @@ import android.content.pm.PackageInstaller;
 
 import dev.bee.kanjianki.data.LocalStore;
 
+import java.io.File;
+
 public final class PackageInstallStatusReceiver extends BroadcastReceiver {
     static final String ACTION_INSTALL_STATUS = "dev.bee.kanjianki.action.INSTALL_STATUS";
     private static final String EXTRA_APK_NAME = "dev.bee.kanjianki.extra.APK_NAME";
@@ -28,12 +30,14 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
 
         try (LocalStore store = new LocalStore(context)) {
             if (mapped.success) {
+                deleteCachedApk(context, apkName);
                 store.recordAutoUpdateResult(now, mapped.message, version, "", "");
             } else if (mapped.pendingUserAction) {
                 String message = mapped.message;
                 store.recordAutoUpdateResult(now, message, version, apkName, message);
                 handlePendingUserAction(context, intent, source, version, message);
             } else {
+                deleteCachedApk(context, apkName);
                 store.recordAutoUpdateResult(now, mapped.message, version, "", "");
             }
         }
@@ -50,12 +54,23 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
     @SuppressWarnings("deprecation")
     private static void handlePendingUserAction(Context context, Intent intent, GitHubUpdater.UpdateSource source, String version, String message) {
         Intent confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT);
-        if (source == GitHubUpdater.UpdateSource.MANUAL && confirmation != null) {
+        if (confirmation != null && UpdatePolicy.shouldLaunchInstallConfirmation(source)) {
             confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(confirmation);
             return;
         }
         UpdateNotifier.showPendingUpdate(context, version, message);
+    }
+
+    private static void deleteCachedApk(Context context, String apkName) {
+        if (apkName == null || apkName.trim().isEmpty()) {
+            return;
+        }
+        File updatesDir = new File(context.getCacheDir(), "updates");
+        File cached = new File(updatesDir, new File(apkName).getName());
+        if (cached.isFile()) {
+            cached.delete();
+        }
     }
 
     private static GitHubUpdater.UpdateSource sourceFrom(String raw) {
