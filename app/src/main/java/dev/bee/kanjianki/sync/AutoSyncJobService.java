@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.sync;
 
+import android.annotation.SuppressLint;
 import android.app.job.JobParameters;
 import android.app.job.JobService;
 
@@ -9,6 +10,7 @@ import dev.bee.kanjianki.data.LocalStore;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@SuppressLint("SpecifyJobSchedulerIdRange")
 public final class AutoSyncJobService extends JobService {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private volatile boolean stopped;
