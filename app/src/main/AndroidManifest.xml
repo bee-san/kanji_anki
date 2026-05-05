@@ -5,6 +5,8 @@
     </queries>
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
     <uses-permission android:name="com.ichi2.anki.debug.permission.READ_WRITE_DATABASE" />
@@ -30,5 +32,18 @@
             android:authorities="${applicationId}.apk"
             android:exported="false"
             android:grantUriPermissions="true" />
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".reminders.BootReminderReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
