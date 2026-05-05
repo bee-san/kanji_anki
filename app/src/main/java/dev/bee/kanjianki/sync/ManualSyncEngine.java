@@ -18,8 +18,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ManualSyncEngine {
+    private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
+
     private final Context context;
     private final LocalStore store;
     private final CollectionGateway gateway;
@@ -33,6 +36,17 @@ public final class ManualSyncEngine {
     }
 
     public SyncResult run() {
+        if (!RUNNING.compareAndSet(false, true)) {
+            return SyncResult.skipped("Sync already running.");
+        }
+        try {
+            return runLocked();
+        } finally {
+            RUNNING.set(false);
+        }
+    }
+
+    private SyncResult runLocked() {
         long started = System.currentTimeMillis();
         try {
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
@@ -55,7 +69,7 @@ public final class ManualSyncEngine {
                     startOfDay(finished)
             );
             store.replaceStudyItems(seeded);
-            return new SyncResult(true, rows.size(), imports.size(), removal.message);
+            return new SyncResult(true, false, rows.size(), imports.size(), removal.message);
         } catch (AnkiDroidGateway.SyncException error) {
             long finished = System.currentTimeMillis();
             store.saveFailedSync(
@@ -65,11 +79,11 @@ public final class ManualSyncEngine {
                     error.permanent ? "permanent" : "retryable",
                     error.getMessage()
             );
-            return new SyncResult(false, 0, 0, error.getMessage());
+            return new SyncResult(false, false, 0, 0, error.getMessage());
         } catch (Throwable error) {
             long finished = System.currentTimeMillis();
             store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.getMessage());
-            return new SyncResult(false, 0, 0, error.getMessage());
+            return new SyncResult(false, false, 0, 0, error.getMessage());
         }
     }
 
@@ -133,15 +147,21 @@ public final class ManualSyncEngine {
 
     public static final class SyncResult {
         public final boolean success;
+        public final boolean skipped;
         public final int dashboardRows;
         public final int importedSuspendedKanji;
         public final String message;
 
-        private SyncResult(boolean success, int dashboardRows, int importedSuspendedKanji, String message) {
+        private SyncResult(boolean success, boolean skipped, int dashboardRows, int importedSuspendedKanji, String message) {
             this.success = success;
+            this.skipped = skipped;
             this.dashboardRows = dashboardRows;
             this.importedSuspendedKanji = importedSuspendedKanji;
             this.message = message;
+        }
+
+        private static SyncResult skipped(String message) {
+            return new SyncResult(false, true, 0, 0, message);
         }
     }
 }
