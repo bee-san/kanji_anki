@@ -15,8 +15,9 @@ The `_id is unknown` / `queue _id is unknown` fix was validated with:
 - The app permission `com.ichi2.anki.permission.READ_WRITE_DATABASE` granted to
   `dev.bee.kanjianki`.
 - Full Android instrumentation with `kanjiLiveAnkiDroid=true`.
-- The actual app button path: tap `Sync AnkiDroid now`, then wait for a
-  successful sync row and non-empty dashboard/study queue.
+- The actual app button path: tap `Sync AnkiDroid`, confirm
+  `Sync and tag archive`, then wait for a successful sync row and non-empty
+  dashboard/study queue.
 - Local production gate: JVM tests, Android test compilation, lint, and signed
   release APK assembly.
 - GitHub Actions release workflow for tag `v0.3.6`.
@@ -129,8 +130,8 @@ OK (20 tests)
 Important live tests:
 
 - `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`
-  taps the real `Sync AnkiDroid now` button and verifies a successful sync,
-  dashboard rows, and study items.
+  taps `Sync AnkiDroid`, confirms `Sync and tag archive`, and verifies a
+  successful sync, dashboard rows, and study items.
 - `RealAnkiDroidLiveProviderInstrumentedTest.manualSyncReadsUserKikuCollectionThroughRealAnkiDroid`
   reads the copied Kiku collection through the real AnkiDroid provider and
   asserts at least 7,000 Kiku notes/cards plus real scheduler state.

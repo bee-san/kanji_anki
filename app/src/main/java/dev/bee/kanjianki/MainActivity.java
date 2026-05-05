@@ -1,6 +1,7 @@
 package dev.bee.kanjianki;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -81,9 +82,11 @@ public final class MainActivity extends Activity {
     private AnkiDroidGateway gateway;
     private LinearLayout root;
     private LinearLayout content;
+    private LinearLayout studyActionBar;
     private Records.StudySession activeSession;
     private DrawingPadView drawingPad;
     private TextView studyStatus;
+    private TextView resultStatus;
     private Button checkWritingButton;
     private Button downloadModelButton;
     private Button manualOverrideButton;
@@ -155,6 +158,12 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        studyActionBar = new LinearLayout(this);
+        studyActionBar.setOrientation(LinearLayout.VERTICAL);
+        studyActionBar.setPadding(dp(12), dp(8), dp(12), dp(8));
+        studyActionBar.setBackground(panel(Color.WHITE, Color.rgb(246, 202, 225), 0));
+        studyActionBar.setVisibility(View.GONE);
+        root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nav = nav(selected, 0);
         root.addView(nav, new LinearLayout.LayoutParams(-1, dp(78)));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
@@ -235,8 +244,8 @@ public final class MainActivity extends Activity {
 
         List<Records.DashboardRow> rows = store.dashboardRows();
         if (rows.isEmpty()) {
-            Button syncButton = primaryButton("Sync from AnkiDroid", TEAL);
-            syncButton.setOnClickListener(v -> runSync());
+            Button syncButton = primaryButton("Sync AnkiDroid", TEAL);
+            syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
         } else {
             Button studyButton = primaryButton("Start writing practice", CORAL);
@@ -244,7 +253,7 @@ public final class MainActivity extends Activity {
             content.addView(studyButton);
 
             Button syncAgainButton = secondaryButton("Sync again");
-            syncAgainButton.setOnClickListener(v -> runSync());
+            syncAgainButton.setOnClickListener(v -> confirmSync());
             content.addView(syncAgainButton);
         }
 
@@ -253,7 +262,7 @@ public final class MainActivity extends Activity {
             emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need writing practice.");
         } else {
             long now = System.currentTimeMillis();
-            List<QueueEntry> entries = queuedEntries(rows, refreshStudyQueue(rows, now), now);
+            List<QueueEntry> entries = queuedEntries(rows, studyQueue(rows, now, false), now);
             content.addView(sectionTitle("Your active kanji queue"));
             if (entries.isEmpty()) {
                 emptyState("Queue resting", "Sync has candidate kanji, but nothing is currently admitted for writing practice.");
@@ -264,10 +273,19 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void confirmSync() {
+        new AlertDialog.Builder(this)
+                .setTitle("Sync and archive imported cards?")
+                .setMessage("Kanji Anki reads your Kiku cards from AnkiDroid. Suspended cards copied into writing practice may be tagged kanji_anki_archived in AnkiDroid after they are safely stored here, so they do not keep returning as new problems.")
+                .setPositiveButton("Sync and tag archive", (dialog, which) -> runSync())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
     private void runSync() {
         base("home");
         content.addView(text("Syncing AnkiDroid", 34, INK, true));
-        content.addView(text("Building your writing queue from the latest Kiku cards.", 17, MUTED, false));
+        content.addView(text("Reading your latest Kiku cards, copying problem kanji locally, and tagging imported suspended cards as archived when AnkiDroid allows it.", 17, MUTED, false));
         io.execute(() -> {
             ManualSyncEngine.SyncResult result = new ManualSyncEngine(this, store, gateway, settings()).run();
             main.post(() -> {
@@ -302,7 +320,7 @@ public final class MainActivity extends Activity {
             error.addView(text(result.message == null || result.message.isEmpty() ? "Try again after checking AnkiDroid permissions." : result.message, 16, Color.WHITE, false));
             content.addView(error);
             Button retry = primaryButton("Try sync again", TEAL);
-            retry.setOnClickListener(v -> runSync());
+            retry.setOnClickListener(v -> confirmSync());
             content.addView(retry);
             Button home = secondaryButton("Back home");
             home.setOnClickListener(v -> renderHome());
@@ -321,7 +339,7 @@ public final class MainActivity extends Activity {
             return;
         }
         long now = System.currentTimeMillis();
-        List<Records.StudyItem> items = refreshStudyQueue(rows, now);
+        List<Records.StudyItem> items = studyQueue(rows, now, false);
         List<QueueEntry> entries = queuedEntries(rows, items, now);
         int due = new BridgeScheduler().dueCount(items, now);
 
@@ -330,6 +348,10 @@ public final class MainActivity extends Activity {
         summary.addView(text(countText(due, "due now", "due now") + ". " + countText(Math.max(0, rows.size() - entries.size()), "candidate waiting to join later", "candidates waiting to join later") + ".", 16, Color.WHITE, false));
         summary.addView(text("Study mixes due items and brings misses back soon.", 15, Color.WHITE, false));
         content.addView(summary);
+
+        Button study = primaryButton(due > 0 ? "Review due now" : (entries.isEmpty() ? "Learn next problem kanji" : "Start writing practice"), CORAL);
+        study.setOnClickListener(v -> renderStudy());
+        content.addView(study);
 
         if (entries.isEmpty()) {
             emptyState("Queue resting", "Your synced candidates are either retired or waiting for the active queue to open up.");
@@ -340,7 +362,10 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private List<Records.StudyItem> refreshStudyQueue(List<Records.DashboardRow> rows, long now) {
+    private List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist) {
+        if (!persist) {
+            return store.studyItems();
+        }
         BridgeScheduler scheduler = new BridgeScheduler();
         List<Records.StudyItem> seeded = scheduler.seedQueue(rows, store.studyItems(), settings(), now, startOfDay(now));
         store.replaceStudyItems(seeded);
@@ -364,8 +389,8 @@ public final class MainActivity extends Activity {
         }
         entries.sort(Comparator
                 .comparingInt((QueueEntry entry) -> entry.item.dueAtMillis <= now ? 0 : 1)
-                .thenComparingLong(entry -> entry.item.dueAtMillis)
                 .thenComparingInt(entry -> stateRank(entry.item.state))
+                .thenComparingLong(entry -> entry.item.dueAtMillis)
                 .thenComparingInt(entry -> -entry.row.weaknessScore)
                 .thenComparing(entry -> entry.row.kanji));
         return entries;
@@ -375,10 +400,10 @@ public final class MainActivity extends Activity {
         if ("learning".equals(state)) {
             return 0;
         }
-        if ("new".equals(state)) {
+        if ("review".equals(state)) {
             return 1;
         }
-        if ("review".equals(state)) {
+        if ("new".equals(state)) {
             return 2;
         }
         return 3;
@@ -531,26 +556,36 @@ public final class MainActivity extends Activity {
 
     private View learningPanel(Records.StudySession session) {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        box.addView(text("Reference", 22, INK, true));
-        TextView glyph = text(session.item.kanji, 84, INK, true);
+        box.addView(text("Reference", 19, INK, true));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView glyph = text(session.item.kanji, 72, INK, true);
         glyph.setGravity(Gravity.CENTER);
-        box.addView(glyph, new LinearLayout.LayoutParams(-1, dp(104)));
+        row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
+
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
         if (session.row != null) {
-            box.addView(text("Meaning: " + rowMeaning(session.row), 17, INK, true));
+            details.addView(text("Meaning: " + rowMeaning(session.row), 16, INK, true));
             if (!session.row.reading.isEmpty()) {
-                box.addView(text("Reading: " + session.row.reading, 16, TEAL, true));
+                details.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
             }
             Records.Example example = firstExample(session.row);
             if (example != null) {
-                box.addView(text("Example: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 16, INK, true));
+                details.addView(text("Example: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 15, INK, true));
                 if (!example.meaning.isEmpty()) {
-                    box.addView(text(cleanLearnerText(example.meaning, "", 96), 14, MUTED, false));
+                    details.addView(text(cleanLearnerText(example.meaning, "", 80), 13, MUTED, false));
                 }
             }
         } else {
-            box.addView(text(session.prompt, 16, MUTED, false));
+            details.addView(text(session.prompt, 15, MUTED, false));
         }
-        box.addView(text("Draw it in the square below. The checker will save the result and the next card will keep the queue moving.", 14, MUTED, false));
+        row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+        box.addView(row);
+        box.addView(text("Trace it below, then check.", 13, MUTED, false));
         return box;
     }
 
@@ -576,7 +611,7 @@ public final class MainActivity extends Activity {
         }
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = System.currentTimeMillis();
-        List<Records.StudyItem> seeded = refreshStudyQueue(rows, now);
+        List<Records.StudyItem> seeded = studyQueue(rows, now, true);
         activeSession = scheduler.nextSession(seeded, rows, now);
         if (activeSession == null) {
             content.addView(text("Queue resting", 34, INK, true));
@@ -601,7 +636,7 @@ public final class MainActivity extends Activity {
         }
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = System.currentTimeMillis();
-        List<Records.StudyItem> seeded = refreshStudyQueue(rows, now);
+        List<Records.StudyItem> seeded = studyQueue(rows, now, true);
         Records.StudyItem item = findStudyItem(seeded, kanji);
         if (item == null) {
             item = new Records.StudyItem(
@@ -644,11 +679,15 @@ public final class MainActivity extends Activity {
         LinearLayout stage = band(CORAL);
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
         if (session.row != null) {
-            stage.addView(text("Meaning cue: " + sessionClue(session), 17, Color.WHITE, false));
-            if (!session.row.reading.isEmpty()) {
-                stage.addView(text("Reading cue: " + session.row.reading, 15, Color.WHITE, false));
+            if (isRecallTask(session)) {
+                stage.addView(text("Prompt: " + sessionClue(session), 17, Color.WHITE, false));
+                if (!session.row.reading.isEmpty()) {
+                    stage.addView(text("Reading: " + session.row.reading, 15, Color.WHITE, false));
+                }
+                stage.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, Color.WHITE, false));
+            } else {
+                stage.addView(text("Learn it from the reference, trace it, then check.", 15, Color.WHITE, false));
             }
-            stage.addView(text("Why this is due: " + session.row.reasonText, 15, Color.WHITE, false));
         } else {
             stage.addView(text(session.prompt, 17, Color.WHITE, false));
         }
@@ -657,13 +696,29 @@ public final class MainActivity extends Activity {
         content.addView(studyAnswerPanel);
 
         content.addView(sectionTitle("Writing"));
-        studyStatus = text(guideLabel(currentPracticeLevel), 16, MUTED, false);
-        content.addView(studyStatus);
         StrokeGuide guide = strokeGuide(session.item.kanji);
+        studyStatus = text(guideLabel(currentPracticeLevel, guide), 16, MUTED, false);
+        content.addView(studyStatus);
         drawingPad = new DrawingPadView(this);
         drawingPad.setTarget(session.item.kanji);
         drawingPad.setGuide(guide, currentPracticeLevel, false);
-        content.addView(drawingPad, new LinearLayout.LayoutParams(-1, dp(330)));
+        content.addView(drawingPad, new LinearLayout.LayoutParams(-1, studyPadHeight()));
+
+        buildStudyActionBar();
+        updateResultActions();
+        refreshWritingModelStatus();
+    }
+
+    private void buildStudyActionBar() {
+        if (studyActionBar == null) {
+            return;
+        }
+        studyActionBar.removeAllViews();
+        studyActionBar.setVisibility(View.VISIBLE);
+
+        resultStatus = text("", 16, MUTED, false);
+        resultStatus.setVisibility(View.GONE);
+        studyActionBar.addView(resultStatus);
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
@@ -671,30 +726,35 @@ public final class MainActivity extends Activity {
         clear.setOnClickListener(v -> {
             drawingPad.clear();
             activeAnalysis = null;
-            setStudyStatus(guideLabel(currentPracticeLevel), MUTED);
+            setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)), MUTED);
             updateResultActions();
         });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
         hintButton = secondaryButton("Hint");
         hintButton.setOnClickListener(v -> showWritingHint());
         actions.addView(hintButton, new LinearLayout.LayoutParams(0, dp(58), 1));
-        content.addView(actions);
+        studyActionBar.addView(actions);
 
-        checkWritingButton = primaryButton("Check my writing", CORAL);
+        LinearLayout primaryActions = new LinearLayout(this);
+        primaryActions.setOrientation(LinearLayout.HORIZONTAL);
+        checkWritingButton = primaryButton("Check", CORAL);
         checkWritingButton.setOnClickListener(v -> checkWriting());
-        content.addView(checkWritingButton);
+        primaryActions.addView(checkWritingButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        downloadModelButton = secondaryButton("Download handwriting checker");
+        downloadModelButton = secondaryButton("Download checker");
         downloadModelButton.setOnClickListener(v -> downloadWritingModel());
-        content.addView(downloadModelButton);
+        primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
         nextAfterPassButton = primaryButton("Next", TEAL);
         nextAfterPassButton.setOnClickListener(v -> submitReview(activeAnalysis == null ? "again" : activeAnalysis.rating, false));
-        content.addView(nextAfterPassButton);
+        primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
+        studyActionBar.addView(primaryActions);
 
+        LinearLayout fallbackActions = new LinearLayout(this);
+        fallbackActions.setOrientation(LinearLayout.HORIZONTAL);
         manualOverrideButton = secondaryButton("Mark right anyway");
         manualOverrideButton.setOnClickListener(v -> submitReview("good", true));
-        content.addView(manualOverrideButton);
+        fallbackActions.addView(manualOverrideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
 
         practiceWithGuideButton = secondaryButton("Try again with full guide");
         practiceWithGuideButton.setOnClickListener(v -> {
@@ -703,13 +763,23 @@ public final class MainActivity extends Activity {
             activeAnalysis = null;
             drawingPad.clear();
             drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
-            setStudyStatus(guideLabel(currentPracticeLevel), MUTED);
+            setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nFresh guided try. Draw it again, then check.", MUTED);
             updateResultActions();
         });
-        content.addView(practiceWithGuideButton);
+        fallbackActions.addView(practiceWithGuideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
+        studyActionBar.addView(fallbackActions);
+    }
 
-        updateResultActions();
-        refreshWritingModelStatus();
+    private int studyPadHeight() {
+        float density = getResources().getDisplayMetrics().density;
+        int screenDp = Math.round(getResources().getDisplayMetrics().heightPixels / density);
+        if (screenDp < 700) {
+            return dp(220);
+        }
+        if (screenDp < 820) {
+            return dp(235);
+        }
+        return dp(250);
     }
 
     private void checkWriting() {
@@ -844,9 +914,8 @@ public final class MainActivity extends Activity {
         }
         hintsUsed++;
         activeAnalysis = null;
-        drawingPad.clear();
         drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
-        setStudyStatus(guideLabel(currentPracticeLevel) + "\nHint used. The stroke guide is visible, and this attempt will not be graded as easy.", MUTED);
+        setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nHint used. Your ink stayed on the canvas; erase only if you want a fresh try.", MUTED);
         updateResultActions();
     }
 
@@ -856,7 +925,9 @@ public final class MainActivity extends Activity {
         }
         int color = analysis.writingPassed ? TEAL : CORAL;
         String candidates = candidateText(analysis.candidates);
-        setStudyStatus(analysis.message + targetRevealText(analysis) + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates), color);
+        String message = analysis.message + targetRevealText(analysis) + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates);
+        setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)), MUTED);
+        setResultStatus(message, color);
         updateResultActions();
     }
 
@@ -867,7 +938,7 @@ public final class MainActivity extends Activity {
         if (checkWritingButton != null) {
             checkWritingButton.setVisibility(!passed ? View.VISIBLE : View.GONE);
             checkWritingButton.setEnabled(!checkingWriting);
-            checkWritingButton.setText(checkingWriting ? "Checking..." : "Check my writing");
+            checkWritingButton.setText(checkingWriting ? "Checking..." : "Check");
         }
         if (downloadModelButton != null) {
             downloadModelButton.setVisibility(writingModelStatusKnown && writingModelDownloaded ? View.GONE : View.VISIBLE);
@@ -891,9 +962,15 @@ public final class MainActivity extends Activity {
         if (studyAnswerPanel != null) {
             studyAnswerPanel.setVisibility(shouldShowLearningPanel(activeAnalysis) ? View.VISIBLE : View.GONE);
         }
+        if (resultStatus != null && !hasResult) {
+            resultStatus.setVisibility(View.GONE);
+        }
     }
 
     private boolean shouldShowLearningPanel(WritingAnalysis analysis) {
+        if (activeSession != null && isRecallTask(activeSession)) {
+            return false;
+        }
         if (analysis == null || analysis.status == WritingAnalysis.Status.NO_INK) {
             return activeSession != null && isTeachingTask(activeSession) && currentPracticeLevel < 3;
         }
@@ -978,6 +1055,17 @@ public final class MainActivity extends Activity {
             studyStatus.setText(value);
             studyStatus.setTextColor(color);
         }
+        if (resultStatus != null && activeAnalysis == null) {
+            resultStatus.setVisibility(View.GONE);
+        }
+    }
+
+    private void setResultStatus(String value, int color) {
+        if (resultStatus != null) {
+            resultStatus.setText(value);
+            resultStatus.setTextColor(color);
+            resultStatus.setVisibility(View.VISIBLE);
+        }
     }
 
     private void refreshWritingModelStatus() {
@@ -988,7 +1076,7 @@ public final class MainActivity extends Activity {
         WritingRecognizer recognizer = writingRecognizer();
         if (recognizer == null) {
             writingModelStatusKnown = true;
-            setStudyStatus(guideLabel(currentPracticeLevel) + "\nAutomatic handwriting checks are unavailable on this device.", CORAL);
+            setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nAutomatic handwriting checks are unavailable on this device.", CORAL);
             updateResultActions();
             return;
         }
@@ -1003,11 +1091,11 @@ public final class MainActivity extends Activity {
                 return;
             }
             if (error != null || status == null) {
-                setStudyStatus(guideLabel(currentPracticeLevel) + "\nUnable to read handwriting checker status.", CORAL);
+                setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nUnable to read handwriting checker status.", CORAL);
             } else if (!status.downloaded) {
-                setStudyStatus(guideLabel(currentPracticeLevel) + "\nDownload the handwriting checker before automatic checks.", CORAL);
+                setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nDownload the handwriting checker before automatic checks.", CORAL);
             } else {
-                setStudyStatus(guideLabel(currentPracticeLevel) + "\nHandwriting checker ready.", MUTED);
+                setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nHandwriting checker ready.", MUTED);
             }
         }));
     }
@@ -1412,7 +1500,14 @@ public final class MainActivity extends Activity {
         return "Writing practice";
     }
 
-    private String guideLabel(int level) {
+    private String guideLabel(int level, StrokeGuide guide) {
+        boolean hasGuide = guide != null && !guide.isEmpty();
+        if (!hasGuide) {
+            if (level >= 3) {
+                return "Write from memory, then check. No numbered stroke guide is bundled for this kanji yet.";
+            }
+            return "No numbered stroke guide is bundled for this kanji yet. Use the reference, draw it, then check. Stroke-order feedback will be limited.";
+        }
         switch (level) {
             case 0:
                 return "Trace the numbered strokes, then check. This is a learning attempt.";
@@ -1426,12 +1521,6 @@ public final class MainActivity extends Activity {
     }
 
     private String nextReviewButtonText(String rating) {
-        if ("again".equals(rating)) {
-            return "Next card (bring this back soon)";
-        }
-        if ("hard".equals(rating)) {
-            return "Next card (review soon)";
-        }
         return "Next card";
     }
 

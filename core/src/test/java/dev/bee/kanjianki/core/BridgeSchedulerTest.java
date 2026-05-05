@@ -76,6 +76,23 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void nextSessionPrioritizesDueReviewsBeforeNewCards() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem newProblem = new Records.StudyItem("裂", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L);
+        Records.StudyItem dueReview = new Records.StudyItem("謎", "review", 500L, 1.8, 4.8, 2, 0, 2, 3, null, 0L);
+
+        Records.StudySession session = scheduler.nextSession(
+                Arrays.asList(newProblem, dueReview),
+                Arrays.asList(row("裂", 30), row("謎", 20)),
+                1000L
+        );
+
+        assertNotNull(session);
+        assertEquals("謎", session.item.kanji);
+        assertEquals("blind_writing", session.taskType);
+    }
+
+    @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 3.0, 5.0, 3, 0, 2, 1, "token-1", 0);
