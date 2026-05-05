@@ -112,7 +112,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
         assertEquals(0, providerInt("topLevelCardsQueries"));
-        assertEquals(2, providerInt("schedulerProjectionRejects"));
+        assertEquals(1, providerInt("schedulerProjectionRejects"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
         assertEquals(0, providerInt("explicitIdProjectionQueries"));
     }
@@ -129,8 +129,8 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
         assertEquals(0, providerInt("topLevelCardsQueries"));
-        assertEquals(2, providerInt("schedulerProjectionRejects"));
-        assertEquals(4, providerInt("perNoteCardsQueries"));
+        assertEquals(1, providerInt("schedulerProjectionRejects"));
+        assertEquals(3, providerInt("perNoteCardsQueries"));
         assertEquals(0, providerInt("explicitIdProjectionQueries"));
     }
 
