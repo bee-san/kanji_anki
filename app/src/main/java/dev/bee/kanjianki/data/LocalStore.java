@@ -24,6 +24,8 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final int DB_VERSION = 1;
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
+    private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
+    private static final int DEFAULT_AUTO_SYNC_MINUTE = DEFAULT_REMINDER_MINUTE;
 
     public LocalStore(Context context) {
         super(context.getApplicationContext(), DB_NAME, null, DB_VERSION);
@@ -354,6 +356,24 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    public boolean hasSuccessfulSyncSince(long finishedAtMillis) {
+        Cursor cursor = getReadableDatabase().query(
+                "sync_runs",
+                new String[]{"id"},
+                "status=? AND finished_at>=?",
+                new String[]{"success", Long.toString(finishedAtMillis)},
+                null,
+                null,
+                "id DESC",
+                "1"
+        );
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
     public int getIntSetting(String key, int fallback) {
         Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1");
         try {
@@ -430,6 +450,68 @@ public final class LocalStore extends SQLiteOpenHelper {
             putIntSetting("reminder_enabled", normalized.enabled ? 1 : 0);
             putIntSetting("reminder_hour", normalized.hour);
             putIntSetting("reminder_minute", normalized.minute);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public AutoSyncSettings autoSyncSettings() {
+        return new AutoSyncSettings(
+                getIntSetting("auto_sync_configured", 0) == 1,
+                getIntSetting("auto_sync_enabled", 0) == 1,
+                getIntSetting("auto_sync_hour", DEFAULT_AUTO_SYNC_HOUR),
+                getIntSetting("auto_sync_minute", DEFAULT_AUTO_SYNC_MINUTE),
+                getLongSetting("auto_sync_last_attempt_at", 0L),
+                getLongSetting("auto_sync_last_success_at", 0L),
+                getLongSetting("auto_sync_next_run_at", 0L)
+        ).normalized();
+    }
+
+    public boolean activateAutoSyncAfterFirstSuccess() {
+        AutoSyncSettings current = autoSyncSettings();
+        if (current.configured) {
+            return false;
+        }
+        saveAutoSyncSettings(new AutoSyncSettings(true, true, current.hour, current.minute, current.lastAttemptAt, current.lastSuccessAt, current.nextRunAt));
+        return true;
+    }
+
+    public void setAutoSyncEnabled(boolean enabled) {
+        AutoSyncSettings current = autoSyncSettings();
+        saveAutoSyncSettings(new AutoSyncSettings(true, enabled, current.hour, current.minute, current.lastAttemptAt, current.lastSuccessAt, current.nextRunAt));
+    }
+
+    public void markAutoSyncScheduled(long nextRunAt) {
+        putLongSetting("auto_sync_next_run_at", nextRunAt);
+    }
+
+    public void recordAutoSyncAttempt(long attemptedAt, boolean success) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putLongSetting("auto_sync_last_attempt_at", attemptedAt);
+            if (success) {
+                putLongSetting("auto_sync_last_success_at", attemptedAt);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void saveAutoSyncSettings(AutoSyncSettings settings) {
+        AutoSyncSettings normalized = settings.normalized();
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putIntSetting("auto_sync_configured", normalized.configured ? 1 : 0);
+            putIntSetting("auto_sync_enabled", normalized.enabled ? 1 : 0);
+            putIntSetting("auto_sync_hour", normalized.hour);
+            putIntSetting("auto_sync_minute", normalized.minute);
+            putLongSetting("auto_sync_last_attempt_at", normalized.lastAttemptAt);
+            putLongSetting("auto_sync_last_success_at", normalized.lastSuccessAt);
+            putLongSetting("auto_sync_next_run_at", normalized.nextRunAt);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -909,6 +991,36 @@ public final class LocalStore extends SQLiteOpenHelper {
             int normalizedHour = Math.max(0, Math.min(23, hour));
             int normalizedMinute = Math.max(0, Math.min(59, minute));
             return new ReminderSettings(enabled, normalizedHour, normalizedMinute);
+        }
+
+        public String displayTime() {
+            return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+        }
+    }
+
+    public static final class AutoSyncSettings {
+        public final boolean configured;
+        public final boolean enabled;
+        public final int hour;
+        public final int minute;
+        public final long lastAttemptAt;
+        public final long lastSuccessAt;
+        public final long nextRunAt;
+
+        public AutoSyncSettings(boolean configured, boolean enabled, int hour, int minute, long lastAttemptAt, long lastSuccessAt, long nextRunAt) {
+            this.configured = configured;
+            this.enabled = enabled;
+            this.hour = hour;
+            this.minute = minute;
+            this.lastAttemptAt = lastAttemptAt;
+            this.lastSuccessAt = lastSuccessAt;
+            this.nextRunAt = nextRunAt;
+        }
+
+        private AutoSyncSettings normalized() {
+            int normalizedHour = Math.max(0, Math.min(23, hour));
+            int normalizedMinute = Math.max(0, Math.min(59, minute));
+            return new AutoSyncSettings(configured, configured && enabled, normalizedHour, normalizedMinute, Math.max(0L, lastAttemptAt), Math.max(0L, lastSuccessAt), Math.max(0L, nextRunAt));
         }
 
         public String displayTime() {

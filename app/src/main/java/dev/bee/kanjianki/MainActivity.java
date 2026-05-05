@@ -54,7 +54,9 @@ import dev.bee.kanjianki.study.CapturedStroke;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
 import dev.bee.kanjianki.study.WritingRecognizer;
+import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
+import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.io.InputStream;
@@ -122,6 +124,7 @@ public final class MainActivity extends Activity {
         gateway = ankiDroidGatewayForTests == null ? new AnkiDroidGateway(this) : ankiDroidGatewayForTests;
         requestAnkiPermissionIfNeeded();
         ReminderScheduler.schedule(this);
+        AutoSyncScheduler.schedule(this);
         renderHome();
     }
 
@@ -357,6 +360,10 @@ public final class MainActivity extends Activity {
         content.addView(text("Reading Kiku cards, saving missed kanji locally, and updating archived suspended cards when AnkiDroid allows it.", 17, MUTED, false));
         io.execute(() -> {
             ManualSyncEngine.SyncResult result = new ManualSyncEngine(this, store, gateway, settings()).run();
+            if (result.success) {
+                store.activateAutoSyncAfterFirstSuccess();
+                AutoSyncScheduler.schedule(this);
+            }
             main.post(() -> {
                 renderSyncResult(result);
             });
@@ -365,7 +372,15 @@ public final class MainActivity extends Activity {
 
     private void renderSyncResult(ManualSyncEngine.SyncResult result) {
         base("home");
-        if (result.success) {
+        if (result.skipped) {
+            content.addView(text("Sync already running", 34, INK, true));
+            LinearLayout info = band(BLUE);
+            info.addView(text(result.message == null || result.message.isEmpty() ? "Kani is already reading AnkiDroid." : result.message, 17, Color.WHITE, false));
+            content.addView(info);
+            Button home = secondaryButton("Back home");
+            home.setOnClickListener(v -> renderHome());
+            content.addView(home);
+        } else if (result.success) {
             content.addView(text("Sync complete", 34, INK, true));
             LinearLayout summary = band(TEAL);
             long now = System.currentTimeMillis();
@@ -1737,6 +1752,7 @@ public final class MainActivity extends Activity {
         content.addView(box);
 
         content.addView(reminderSettingsPanel());
+        content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
 
         LinearLayout mapping = band(BLUE);
@@ -1806,6 +1822,73 @@ public final class MainActivity extends Activity {
             box.addView(text("Android will ask for notification permission before turning this on.", 14, CORAL, false));
         }
         return box;
+    }
+
+    private LinearLayout autoSyncSettingsPanel() {
+        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        box.addView(text("Daily Anki sync", 23, INK, true));
+        box.addView(text(autoSyncStatus(auto), 17, auto.enabled ? TEAL : MUTED, true));
+        box.addView(text(autoSyncDetail(auto), 15, MUTED, false));
+        if (auto.configured) {
+            if (auto.enabled) {
+                Button off = secondaryButton("Turn off daily sync");
+                off.setOnClickListener(v -> {
+                    store.setAutoSyncEnabled(false);
+                    AutoSyncScheduler.cancel(this);
+                    Toast.makeText(this, "Daily Anki sync turned off.", Toast.LENGTH_SHORT).show();
+                    renderSettings();
+                });
+                box.addView(off);
+            } else {
+                Button on = primaryButton("Turn on daily sync", TEAL);
+                on.setOnClickListener(v -> {
+                    store.setAutoSyncEnabled(true);
+                    AutoSyncScheduler.schedule(this);
+                    Toast.makeText(this, "Daily Anki sync turned on.", Toast.LENGTH_SHORT).show();
+                    renderSettings();
+                });
+                box.addView(on);
+            }
+        }
+        return box;
+    }
+
+    private String autoSyncStatus(LocalStore.AutoSyncSettings auto) {
+        if (!auto.configured) {
+            return "Starts after first successful sync";
+        }
+        if (auto.enabled) {
+            return "On around " + auto.displayTime();
+        }
+        return "Off";
+    }
+
+    private String autoSyncDetail(LocalStore.AutoSyncSettings auto) {
+        if (!auto.configured) {
+            return "Manual sync once, then Kani will keep itself refreshed once per day.";
+        }
+        List<String> details = new ArrayList<>();
+        if (auto.lastSuccessAt > 0L) {
+            details.add("Last auto success " + shortDateTime(auto.lastSuccessAt));
+        }
+        if (auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt) {
+            details.add("Last auto attempt " + shortDateTime(auto.lastAttemptAt));
+        }
+        if (auto.enabled && auto.nextRunAt > 0L) {
+            details.add("Next scheduled " + shortDateTime(auto.nextRunAt));
+        }
+        if (details.isEmpty()) {
+            return auto.enabled
+                    ? "Scheduled once per local day. Android may batch the exact time."
+                    : "Daily background sync is paused.";
+        }
+        return String.join(". ", details) + ".";
+    }
+
+    private String shortDateTime(long millis) {
+        Date date = new Date(millis);
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(date);
     }
 
     private LinearLayout updateSettingsPanel() {
@@ -1910,23 +1993,7 @@ public final class MainActivity extends Activity {
     }
 
     private Records.Settings settings() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        int cutoff = store == null ? defaults.suspendedRankCutoff : store.getIntSetting("suspended_rank_cutoff", defaults.suspendedRankCutoff);
-        return new Records.Settings(
-                defaults.modelName,
-                defaults.templateName,
-                defaults.expressionField,
-                defaults.readingField,
-                defaults.meaningField,
-                defaults.sentenceField,
-                defaults.frequencyField,
-                defaults.frequencySortField,
-                defaults.matureDays,
-                defaults.matureSupportThreshold,
-                cutoff,
-                defaults.activeQueueCap,
-                defaults.newPerDay
-        );
+        return SyncSettings.fromStore(store);
     }
 
     private LinearLayout band(int color) {

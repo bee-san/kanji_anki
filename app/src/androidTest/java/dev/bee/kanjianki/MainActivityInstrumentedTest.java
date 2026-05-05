@@ -6,6 +6,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabaseLockedException;
 import android.graphics.Rect;
+import android.net.Uri;
 import android.os.Build;
 import android.os.SystemClock;
 import android.view.MotionEvent;
@@ -23,6 +24,7 @@ import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
@@ -785,6 +787,29 @@ public final class MainActivityInstrumentedTest {
             assertNotNull(status);
             assertEquals("config_error", status.status);
             assertTrue(status.errorMessage.contains("AnkiDroid"));
+        }
+    }
+
+    @Test
+    public void testManualSyncButtonEnablesDailyAutoSyncAfterSuccess() throws Exception {
+        MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
+        context.getContentResolver().call(Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY), "reset", null, null);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Sync AnkiDroid");
+            clickText(scenario, "Sync cards");
+            LocalStore.SyncStatus status = waitForLatestSync();
+            assertNotNull(status);
+            assertEquals("success", status.status);
+
+            LocalStore store = new LocalStore(context);
+            try {
+                LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+                assertTrue(auto.configured);
+                assertTrue(auto.enabled);
+                assertTrue(auto.nextRunAt > System.currentTimeMillis());
+            } finally {
+                store.close();
+            }
         }
     }
 
