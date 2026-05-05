@@ -102,23 +102,18 @@ public final class BridgeScheduler {
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
         String taskType;
-        boolean writing;
         if (best.totalReviews == 0 || best.learningStep == 0) {
             taskType = "context_writing";
-            writing = true;
         } else if (best.learningStep == 1) {
-            taskType = "confusable_recognition";
-            writing = false;
+            taskType = "guided_writing";
         } else if (best.totalReviews % 3 == 0) {
             taskType = "sampled_handwriting";
-            writing = true;
         } else {
-            taskType = "recognition";
-            writing = false;
+            taskType = "blind_writing";
         }
         Records.DashboardRow row = rowByKanji.get(best.kanji);
         String prompt = row == null ? best.kanji : row.reasonText;
-        return new Records.StudySession(best.withToken(token), row, token, taskType, writing, prompt);
+        return new Records.StudySession(best.withToken(token), row, token, taskType, true, prompt);
     }
 
     public Records.ReviewResult applyReview(
