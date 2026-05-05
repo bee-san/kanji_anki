@@ -73,7 +73,7 @@ public final class MainActivityInstrumentedTest {
                 assertTrue(content.getWidth() >= 0);
                 assertTrue(content.getHeight() >= 0);
                 assertHasText(activity, "Kanji Anki");
-                assertHasText(activity, "Sync AnkiDroid now");
+                assertHasText(activity, "Sync from AnkiDroid");
             });
         }
     }
@@ -83,19 +83,19 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Nothing to study yet");
-                assertHasText(activity, "Run a manual sync first");
+                assertHasText(activity, "Nothing to write yet");
+                assertHasText(activity, "Sync from AnkiDroid first");
             });
 
             clickText(scenario, "Kanji");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Weak kanji");
-                assertHasText(activity, "No rows");
+                assertHasText(activity, "Kanji to repair");
+                assertHasText(activity, "No kanji yet");
             });
 
-            clickText(scenario, "Prefs");
+            clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Suspended kanji rank cutoff");
+                assertHasText(activity, "Rarity cutoff");
                 assertHasText(activity, "Default: 3000");
             });
             clickText(scenario, "4000");
@@ -123,7 +123,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Kanji");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Weak kanji");
+                assertHasText(activity, "Kanji to repair");
                 assertHasText(activity, "ramen radical gap");
             });
 
@@ -131,6 +131,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Why it is here");
                 assertHasText(activity, "Imported from suspended cards");
+                assertHasText(activity, "Practice this kanji");
                 assertHasText(activity, "Copy Anki search");
             });
 
@@ -144,23 +145,24 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Copied Anki search");
             });
 
-            clickText(scenario, "Study");
+            clickText(scenario, "Practice this kanji");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Write the kanji");
-                assertHasText(activity, "Prompt: ramen radical gap");
-                assertHasText(activity, "Trace the numbered strokes");
-                assertHasText(activity, "Fade guide");
+                assertHasText(activity, "Writing practice");
+                assertHasText(activity, "Practice this kanji");
+                assertHasText(activity, "Clue: ramen radical gap");
+                assertHasText(activity, "Step 1 of 4");
+                assertHasText(activity, "I traced it");
                 assertNoText(activity, "拉麺");
             });
 
-            clickText(scenario, "Fade guide");
-            clickText(scenario, "Take away strokes");
-            clickText(scenario, "Clear and check");
-            clickText(scenario, "Check writing");
+            clickText(scenario, "I traced it");
+            clickText(scenario, "Try with less help");
+            clickText(scenario, "Write from memory");
+            clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Write the kanji before checking");
-                assertNoText(activity, "I know this was right");
-                assertNoText(activity, "Next: again");
+                assertHasText(activity, "Write in the square before checking");
+                assertNoText(activity, "Mark right anyway");
+                assertNoText(activity, "Save miss");
             });
 
             LocalStore store = new LocalStore(context);
@@ -179,16 +181,17 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "Fade guide");
-            clickText(scenario, "Take away strokes");
-            clickText(scenario, "Clear and check");
+            clickText(scenario, "I traced it");
+            clickText(scenario, "Try with less help");
+            clickText(scenario, "Write from memory");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
-            clickText(scenario, "Check writing");
+            clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Recognized cleanly");
-                assertHasText(activity, "Next: easy");
+                assertHasText(activity, "Clean match");
+                assertHasText(activity, "Target: 拉");
+                assertHasText(activity, "Save and continue");
             });
-            clickText(scenario, "Next: easy");
+            clickText(scenario, "Save and continue");
 
             LocalStore store = new LocalStore(context);
             try {
@@ -209,16 +212,17 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "Fade guide");
-            clickText(scenario, "Take away strokes");
-            clickText(scenario, "Clear and check");
+            clickText(scenario, "I traced it");
+            clickText(scenario, "Try with less help");
+            clickText(scenario, "Write from memory");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
-            clickText(scenario, "Check writing");
+            clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "That did not look like the target kanji yet");
-                assertHasText(activity, "Next: again");
+                assertHasText(activity, "I could not read that as the target kanji yet");
+                assertHasText(activity, "Target: 拉");
+                assertHasText(activity, "Save miss");
             });
-            clickText(scenario, "Next: again");
+            clickText(scenario, "Save miss");
 
             LocalStore store = new LocalStore(context);
             try {
@@ -239,16 +243,16 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "Fade guide");
-            clickText(scenario, "Take away strokes");
-            clickText(scenario, "Clear and check");
+            clickText(scenario, "I traced it");
+            clickText(scenario, "Try with less help");
+            clickText(scenario, "Write from memory");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
-            clickText(scenario, "Check writing");
+            clickText(scenario, "Check my writing");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "That did not look like the target kanji yet");
-                assertHasText(activity, "I know this was right");
+                assertHasText(activity, "I could not read that as the target kanji yet");
+                assertHasText(activity, "Mark right anyway");
             });
-            clickText(scenario, "I know this was right");
+            clickText(scenario, "Mark right anyway");
 
             LocalStore store = new LocalStore(context);
             try {
@@ -286,7 +290,7 @@ public final class MainActivityInstrumentedTest {
         );
         MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_anki"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Sync AnkiDroid now");
+            clickText(scenario, "Sync from AnkiDroid");
             LocalStore.SyncStatus status = waitForLatestSync();
             assertNotNull(status);
             assertEquals("config_error", status.status);
@@ -298,7 +302,7 @@ public final class MainActivityInstrumentedTest {
     public void testManualSyncButtonWorksAgainstLiveAnkiDroid() throws Exception {
         Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", liveAnkiDroidEnabled());
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Sync AnkiDroid now");
+            clickText(scenario, "Sync from AnkiDroid");
             LocalStore.SyncStatus status = waitForLatestSync(2400);
             assertNotNull(status);
             assertEquals("success", status.status);
@@ -326,7 +330,7 @@ public final class MainActivityInstrumentedTest {
                     return status;
                 }
             } catch (SQLiteDatabaseLockedException busy) {
-                // The live sync button test polls while the app is committing a large collection mirror.
+                // The live sync button test polls while the app is committing a large collection import.
             } finally {
                 store.close();
             }

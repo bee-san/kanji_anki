@@ -127,16 +127,16 @@ public final class KanjiAnalyzer {
             String reasonText;
             if (suspended > 0) {
                 reasonCode = "suspended_archive";
-                reasonText = suspended + " local suspended example" + (suspended == 1 ? "" : "s") + " pulled this kanji into the bridge queue.";
+                reasonText = suspended + " missed example" + (suspended == 1 ? "" : "s") + " made this a writing-practice target.";
             } else if (supportDeficit > 0) {
                 reasonCode = "weak_support";
-                reasonText = "Only " + mature + " mature active example" + (mature == 1 ? "" : "s") + " support this kanji.";
+                reasonText = "Only " + mature + " known example" + (mature == 1 ? "" : "s") + " support this kanji.";
             } else if (lapses > 0) {
                 reasonCode = "anki_lapses";
-                reasonText = "Active Anki cards containing this kanji have " + lapses + " lapse" + (lapses == 1 ? "" : "s") + ".";
+                reasonText = "Your active Anki cards containing this kanji have " + lapses + " lapse" + (lapses == 1 ? "" : "s") + ".";
             } else {
                 reasonCode = "watch";
-                reasonText = "This kanji is present in the active mirror and is available for details.";
+                reasonText = "This kanji appears in your active cards and is ready for examples.";
             }
             return new Records.DashboardRow(
                     kanji,
