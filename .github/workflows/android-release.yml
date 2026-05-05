@@ -148,10 +148,12 @@ jobs:
             exit 1
           fi
 
-          apk_path="${RUNNER_TEMP}/${{ needs.metadata.outputs.apk_name }}"
-          sha_path="${RUNNER_TEMP}/${{ needs.metadata.outputs.checksum_name }}"
+          apk_name="${{ needs.metadata.outputs.apk_name }}"
+          checksum_name="${{ needs.metadata.outputs.checksum_name }}"
+          apk_path="${RUNNER_TEMP}/${apk_name}"
+          sha_path="${RUNNER_TEMP}/${checksum_name}"
           cp "${source_apk}" "${apk_path}"
-          sha256sum "${apk_path}" > "${sha_path}"
+          (cd "${RUNNER_TEMP}" && sha256sum "${apk_name}") > "${sha_path}"
 
           {
             echo "apk_path=${apk_path}"
