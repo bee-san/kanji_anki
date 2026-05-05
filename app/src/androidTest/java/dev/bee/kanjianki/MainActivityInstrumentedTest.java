@@ -147,6 +147,13 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "No queued kanji yet");
             });
 
+            clickText(scenario, "Stats");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Stats");
+                assertHasText(activity, "Anki impact");
+                assertHasText(activity, "Sync AnkiDroid to connect Kani stats to your Kiku cards");
+            });
+
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Rarity cutoff");
@@ -178,6 +185,45 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "GitHub updater");
                 assertHasText(activity, "Current version");
                 assertHasText(activity, "Check for update");
+            });
+        }
+    }
+
+    @Test
+    public void testStatsConnectsKaniPracticeToAnkiImpact() {
+        Records.DashboardRow active = dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards");
+        Records.DashboardRow supported = dashboardRow("謎", "mystery radical gap", "なぞ", "Enough mature Anki cards now support it", 2);
+        seedDashboard(Arrays.asList(active, supported));
+        long now = System.currentTimeMillis();
+        LocalStore store = new LocalStore(context);
+        try {
+            store.replaceStudyItems(Arrays.asList(
+                    new Records.StudyItem("拉", "learning", 0L, 0.9, 5.0, 1, 0, 1, 1, null, now),
+                    new Records.StudyItem("謎", "retired", now + 86_400_000L, 2.5, 4.0, 3, 0, 2, 3, null, now - 86_400_000L)
+            ));
+            store.saveReview(review("拉", "stats-good"), "good", now - 7_200_000L);
+            store.saveReview(new Records.ReviewRequest("謎", "stats-again", "again", true, false, false, 0), "again", now - 3_600_000L);
+        } finally {
+            store.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Stats");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Anki impact");
+                assertHasText(activity, "2 problem kanji found from AnkiDroid");
+                assertHasText(activity, "2 active Anki example links");
+                assertHasText(activity, "2 suspended miss links");
+                assertHasText(activity, "Kani writing");
+                assertHasText(activity, "2 writing reviews");
+                assertHasText(activity, "2 kanji studied");
+                assertHasText(activity, "50% automatic pass rate");
+                assertHasText(activity, "1 miss caught");
+                assertHasText(activity, "Now practicing");
+                assertHasText(activity, "1 active kanji");
+                assertHasText(activity, "1 due now");
+                assertHasText(activity, "2 mature Anki support links");
+                assertHasText(activity, "1 kanji resting in Kani");
             });
         }
     }
@@ -757,6 +803,10 @@ public final class MainActivityInstrumentedTest {
     }
 
     private Records.DashboardRow dashboardRow(String kanji, String meaning, String reading, String reasonText) {
+        return dashboardRow(kanji, meaning, reading, reasonText, 0);
+    }
+
+    private Records.DashboardRow dashboardRow(String kanji, String meaning, String reading, String reasonText, int matureSupportCount) {
         Records.Example active = new Records.Example("active", 10L, 1L, kanji.equals("拉") ? "拉麺" : kanji + "語", kanji.equals("拉") ? "らーめん" : reading, meaning, kanji + "を見た。", false, 1);
         Records.Example suspended = new Records.Example("suspended", 20L, 2L, kanji.equals("拉") ? "拉致" : kanji + "例", kanji.equals("拉") ? "らち" : reading, "archive example", kanji + "を練習した。", false, 0);
         return new Records.DashboardRow(
@@ -770,7 +820,7 @@ public final class MainActivityInstrumentedTest {
                 reasonText,
                 1,
                 1,
-                0,
+                matureSupportCount,
                 Arrays.asList(active, suspended)
         );
     }

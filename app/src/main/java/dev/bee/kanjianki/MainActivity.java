@@ -82,6 +82,7 @@ public final class MainActivity extends Activity {
     private static final int TEAL = Color.rgb(0, 174, 181);
     private static final int GOLD = Color.rgb(255, 214, 64);
     private static final int BLUE = Color.rgb(110, 92, 230);
+    private static final long DAY_MILLIS = 86_400_000L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -227,6 +228,7 @@ public final class MainActivity extends Activity {
         nav.addView(navButton("Home", selected.equals("home"), this::renderHome));
         nav.addView(navButton("Study", selected.equals("study"), this::renderStudy));
         nav.addView(navButton("Queue", selected.equals("kanji"), this::renderKanjiList));
+        nav.addView(navButton("Stats", selected.equals("stats"), this::renderStats));
         nav.addView(navButton("Settings", selected.equals("settings"), this::renderSettings));
         nav.addView(navButton("Update", selected.equals("update"), this::renderUpdate));
         return nav;
@@ -238,7 +240,7 @@ public final class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setSingleLine(true);
         button.setIncludeFontPadding(false);
-        button.setTextSize(13);
+        button.setTextSize(12);
         button.setGravity(Gravity.CENTER);
         button.setTextColor(active ? INK : Color.WHITE);
         button.setBackground(panel(active ? GOLD : Color.TRANSPARENT, active ? GOLD : Color.rgb(70, 70, 70), dp(18)));
@@ -434,6 +436,176 @@ public final class MainActivity extends Activity {
         for (QueueEntry entry : entries) {
             content.addView(queueRowView(entry, now));
         }
+    }
+
+    private void renderStats() {
+        base("stats");
+        content.addView(text("Stats", 34, INK, true));
+        content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then steps back when sync shows enough support.", 16, MUTED, false));
+        addSpace(10);
+
+        long now = System.currentTimeMillis();
+        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.StudyItem> items = store.studyItems();
+        List<QueueEntry> entries = queuedEntries(rows, items, now);
+        LocalStore.SyncStatus sync = store.latestSync();
+        LocalStore.StudyImpactStats impact = store.studyImpactStats();
+        Records.ReviewStats week = store.reviewStatsSince(now - 7 * DAY_MILLIS);
+        LocalStore.StudyStreak streak = store.studyStreak(now);
+
+        content.addView(ankiImpactPanel(sync, rows));
+        content.addView(sectionTitle("Learning"));
+        content.addView(statPanel(
+                "Kani writing",
+                impact.totalReviews == 0 ? "No writing reviews yet" : countText(impact.totalReviews, "writing review", "writing reviews"),
+                countText(impact.distinctReviewedKanji, "kanji studied", "kanji studied") + ". " + countText(impact.manualOverrides, "manual override", "manual overrides") + ".",
+                CORAL
+        ));
+        content.addView(statPanel(
+                "Recall quality",
+                automaticPassText(impact),
+                recallQualityBody(impact),
+                BLUE
+        ));
+        content.addView(statPanel(
+                "Daily rhythm",
+                streakHeadline(streak),
+                streak.studiedToday
+                        ? countText(streak.reviewsToday, "writing review today", "writing reviews today") + ". Best: " + streakDayCount(streak.bestDays) + "."
+                        : "Study one problem kanji today to keep it alive.",
+                GOLD
+        ));
+
+        content.addView(sectionTitle("Anki Bridge"));
+        int due = dueEntryCount(entries, now);
+        int waiting = Math.max(0, rows.size() - entries.size());
+        int matureSupport = matureSupportCount(rows);
+        int retired = retiredItemCount(items);
+        content.addView(statPanel(
+                "Now practicing",
+                countText(entries.size(), "active kanji", "active kanji"),
+                countText(due, "due now", "due now") + ". " + countText(waiting, "candidate waiting behind the cap", "candidates waiting behind the cap") + ".",
+                TEAL
+        ));
+        content.addView(statPanel(
+                "Retired back to Anki",
+                countText(retired, "kanji resting in Kani", "kanji resting in Kani"),
+                countText(matureSupport, "mature Anki support link", "mature Anki support links") + ". Retired means Kani can stop drilling when synced Anki evidence has caught up.",
+                BLUE
+        ));
+        content.addView(statPanel(
+                "Last 7 days",
+                week.total == 0 ? "No reviews this week" : countText(week.total, "writing review", "writing reviews"),
+                weeklyReviewBody(week),
+                CORAL
+        ));
+
+        LinearLayout meaning = band(GOLD);
+        meaning.addView(text("What this means", 24, INK, true));
+        meaning.addView(text(statsMeaning(sync, rows, impact, matureSupport, retired), 16, INK, false));
+        content.addView(meaning);
+    }
+
+    private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows) {
+        LinearLayout box = band(TEAL);
+        box.addView(text("Anki impact", 26, Color.WHITE, true));
+        if (sync == null) {
+            box.addView(text("Sync AnkiDroid to connect Kani stats to your Kiku cards.", 16, Color.WHITE, false));
+            box.addView(text("After sync, this page shows which problem kanji came from Anki, which misses became writing practice, and where Anki has mature support.", 15, Color.WHITE, false));
+            return box;
+        }
+        box.addView(text(countText(rows.size(), "problem kanji found from AnkiDroid", "problem kanji found from AnkiDroid"), 22, Color.WHITE, true));
+        box.addView(text(countText(activeEvidenceCount(rows), "active Anki example link", "active Anki example links") + " and " + countText(suspendedEvidenceCount(rows), "suspended miss link", "suspended miss links") + " explain why they are here.", 15, Color.WHITE, false));
+        box.addView(text(latestSyncText(sync), 14, Color.WHITE, false));
+        return box;
+    }
+
+    private LinearLayout statPanel(String title, String value, String body, int stroke) {
+        LinearLayout box = panelBox(Color.WHITE, stroke);
+        box.addView(text(title, 18, MUTED, true));
+        box.addView(text(value, 25, INK, true));
+        box.addView(text(body, 15, MUTED, false));
+        return box;
+    }
+
+    private String automaticPassText(LocalStore.StudyImpactStats impact) {
+        if (impact.writingRequired == 0) {
+            return "No automatic checks yet";
+        }
+        return Math.round(100.0 * impact.writingPassed / impact.writingRequired) + "% automatic pass rate";
+    }
+
+    private String recallQualityBody(LocalStore.StudyImpactStats impact) {
+        if (impact.totalReviews == 0) {
+            return "Misses caught during handwriting checks will show here after you study.";
+        }
+        return countText(impact.writingFailed, "miss caught", "misses caught") + " before they could stay vague in Anki.";
+    }
+
+    private String weeklyReviewBody(Records.ReviewStats week) {
+        if (week.total == 0) {
+            return "Recent misses and passes will show here after you study.";
+        }
+        return countText(week.again, "miss", "misses") + ", " + countText(week.hard, "shaky pass", "shaky passes") + ", " + countText(week.good + week.easy, "solid pass", "solid passes") + ".";
+    }
+
+    private String latestSyncText(LocalStore.SyncStatus sync) {
+        if (!"success".equals(sync.status)) {
+            return "Latest sync is blocked: " + sync.errorMessage;
+        }
+        String when = sync.finishedAt > 0L
+                ? DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(sync.finishedAt))
+                : "latest sync";
+        return "Latest sync " + when + ": "
+                + countText(sync.activeCards, "active Anki card checked", "active Anki cards checked")
+                + ", " + countText(sync.suspendedCards, "suspended card archived", "suspended cards archived") + ".";
+    }
+
+    private String statsMeaning(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows, LocalStore.StudyImpactStats impact, int matureSupport, int retired) {
+        if (sync == null || rows.isEmpty()) {
+            return "Start with an AnkiDroid sync. Kani will only count kanji that came from your own Kiku cards, so these stats stay tied to the deck you actually review.";
+        }
+        if (impact.totalReviews == 0) {
+            return "Kani has found problem kanji in Anki. Study one and this page will start showing writing reviews, caught misses, and whether Anki later has enough mature support to let that kanji rest.";
+        }
+        if (retired > 0 || matureSupport > 0) {
+            return "You are turning Anki pain points into focused writing reps. Mature Anki support and resting Kani items are the strongest signs that the bridge is working.";
+        }
+        return "You are writing kanji that came from Anki misses or weak support. Keep syncing after Anki reviews; Kani will watch for mature support and stop drilling kanji that Anki has recovered.";
+    }
+
+    private int activeEvidenceCount(List<Records.DashboardRow> rows) {
+        int total = 0;
+        for (Records.DashboardRow row : rows) {
+            total += row.activeExampleCount;
+        }
+        return total;
+    }
+
+    private int suspendedEvidenceCount(List<Records.DashboardRow> rows) {
+        int total = 0;
+        for (Records.DashboardRow row : rows) {
+            total += row.suspendedExampleCount;
+        }
+        return total;
+    }
+
+    private int matureSupportCount(List<Records.DashboardRow> rows) {
+        int total = 0;
+        for (Records.DashboardRow row : rows) {
+            total += row.matureSupportCount;
+        }
+        return total;
+    }
+
+    private int retiredItemCount(List<Records.StudyItem> items) {
+        int total = 0;
+        for (Records.StudyItem item : items) {
+            if ("retired".equals(item.state)) {
+                total++;
+            }
+        }
+        return total;
     }
 
     private List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist) {
