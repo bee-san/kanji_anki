@@ -40,15 +40,20 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintPolicy;
+import dev.bee.kanjianki.core.study.HintProgression;
+import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
+import dev.bee.kanjianki.core.study.StudyRating;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideParser;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
+import dev.bee.kanjianki.core.study.WritingRatingMapper;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
@@ -92,6 +97,8 @@ public final class MainActivity extends Activity {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private final HintProgression hintProgression = new HintProgression();
+    private final WritingRatingMapper writingRatingMapper = new WritingRatingMapper();
     private LocalStore store;
     private AnkiDroidGateway gateway;
     private LinearLayout root;
@@ -116,6 +123,7 @@ public final class MainActivity extends Activity {
     private boolean activeFlashcardMissed;
     private int hintsUsed;
     private int currentPracticeLevel;
+    private HintState currentHintState = HintState.initial();
     private Map<String, StrokeGuide> strokeGuides;
     private WritingRecognizer writingRecognizer;
     private LocalStore.ReminderSettings pendingReminderSettings;
@@ -1051,7 +1059,7 @@ public final class MainActivity extends Activity {
         activeAnalysis = null;
         checkingWriting = false;
         hintsUsed = 0;
-        currentPracticeLevel = 0;
+        setHintState(HintState.initial());
         drawingPad = null;
 
         content.addView(text(flashcardTitle(session), 30, INK, true));
@@ -1077,7 +1085,7 @@ public final class MainActivity extends Activity {
         activeAnalysis = null;
         checkingWriting = false;
         hintsUsed = 0;
-        currentPracticeLevel = initialPracticeLevel(session);
+        setHintState(initialHintState(session));
 
         content.addView(text("Draw this kanji", 30, INK, true));
         LinearLayout stage = band(CORAL);
@@ -1103,12 +1111,12 @@ public final class MainActivity extends Activity {
 
         content.addView(sectionTitle("Writing"));
         StrokeGuide guide = strokeGuide(session.item.kanji);
-        studyStatus = text(guideLabel(currentPracticeLevel, guide), 16, MUTED, false);
+        studyStatus = text(guideLabel(currentHintState, guide), 16, MUTED, false);
         content.addView(studyStatus);
         drawingPad = new DrawingPadView(this);
         drawingPad.setTarget(session.item.kanji);
         drawingPad.setInkEditListener(this::handleDrawingEdited);
-        drawingPad.setGuide(guide, currentPracticeLevel, false);
+        drawingPad.setGuide(guide, currentHintState, false);
         content.addView(drawingPad, new LinearLayout.LayoutParams(-1, studyPadHeight()));
 
         buildStudyActionBar();
@@ -1256,10 +1264,10 @@ public final class MainActivity extends Activity {
         );
         renderWritingSession(activeSession);
         hintsUsed = Math.max(1, hintsUsed);
-        currentPracticeLevel = 0;
+        setHintState(hintProgression.afterReview(HintState.fromWritingLevel(previous.item.writingLevel), false, 0));
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         if (drawingPad != null) {
-            drawingPad.setGuide(guide, currentPracticeLevel, false);
+            drawingPad.setGuide(guide, currentHintState, false);
         }
         setStudyStatus(guideStatusPrefix(guide) + "\nWrite it once with the guide.", MUTED);
         updateResultActions();
@@ -1282,7 +1290,7 @@ public final class MainActivity extends Activity {
         clear.setOnClickListener(v -> {
             drawingPad.clear();
             activeAnalysis = null;
-            setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)), MUTED);
+            setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)), MUTED);
             updateResultActions();
         });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
@@ -1318,12 +1326,12 @@ public final class MainActivity extends Activity {
 
         practiceWithGuideButton = secondaryButton("Try again with full guide");
         practiceWithGuideButton.setOnClickListener(v -> {
-            currentPracticeLevel = 0;
+            setHintState(HintState.initial());
             hintsUsed++;
             activeAnalysis = null;
             drawingPad.clear();
-            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
-            setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nFresh guided try. Draw it again, then check.", MUTED);
+            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentHintState, false);
+            setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\nFresh guided try. Draw it again, then check.", MUTED);
             updateResultActions();
         });
         fallbackActions.addView(practiceWithGuideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
@@ -1347,7 +1355,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (drawingPad == null || !drawingPad.hasInk()) {
-            activeAnalysis = WritingAnalysisEngine.noInk();
+            activeAnalysis = WritingAnalysisEngine.noInk(currentHintState.level(), hintsUsed);
             showAnalysis(activeAnalysis);
             return;
         }
@@ -1363,7 +1371,7 @@ public final class MainActivity extends Activity {
             captured = drawingPad.capturedWriting();
             sample = drawingPad.writingSample();
         } catch (IllegalArgumentException error) {
-            activeAnalysis = WritingAnalysisEngine.noInk();
+            activeAnalysis = WritingAnalysisEngine.noInk(currentHintState.level(), hintsUsed);
             showAnalysis(activeAnalysis);
             return;
         }
@@ -1374,7 +1382,7 @@ public final class MainActivity extends Activity {
         setStudyStatus("Checking handwriting...", MUTED);
         WritingRecognizer recognizer = writingRecognizer();
         if (recognizer == null) {
-            activeAnalysis = WritingAnalysisEngine.modelUnavailable("The handwriting checker is unavailable on this device.");
+            activeAnalysis = WritingAnalysisEngine.modelUnavailable("The handwriting checker is unavailable on this device.", currentHintState.level(), hintsUsed);
             checkingWriting = false;
             showAnalysis(activeAnalysis);
             return;
@@ -1386,7 +1394,7 @@ public final class MainActivity extends Activity {
                         return;
                     }
                     checkingWriting = false;
-                    activeAnalysis = WritingAnalysisEngine.modelUnavailable("Download the handwriting checker before automatic checks.");
+                    activeAnalysis = WritingAnalysisEngine.modelUnavailable("Download the handwriting checker before automatic checks.", currentHintState.level(), hintsUsed);
                     writingModelDownloaded = false;
                     writingModelStatusKnown = true;
                     showAnalysis(activeAnalysis);
@@ -1399,9 +1407,9 @@ public final class MainActivity extends Activity {
                 }
                 checkingWriting = false;
                 if (error != null) {
-                    activeAnalysis = WritingAnalysisEngine.recognitionError(error.getMessage());
+                    activeAnalysis = WritingAnalysisEngine.recognitionError(error.getMessage(), currentHintState.level(), hintsUsed);
                 } else {
-                    activeAnalysis = WritingAnalysisEngine.analyze(target, sample, guide, candidates(result));
+                    activeAnalysis = WritingAnalysisEngine.analyze(target, sample, guide, candidates(result), currentHintState.level(), hintsUsed);
                 }
                 showAnalysis(activeAnalysis);
             }));
@@ -1412,15 +1420,19 @@ public final class MainActivity extends Activity {
         if (activeSession == null) {
             return;
         }
-        String adjustedRating = adjustedRatingForHelp(rating, override);
         boolean writingRequired = activeSession.writingRequired;
         boolean passed = !writingRequired || (activeAnalysis != null && activeAnalysis.writingPassed);
+        StudyRating requestedRating = StudyRating.fromCode(rating);
+        StudyRating mappedRating = writingRatingMapper.applyRequestedRating(requestedRating, writingRequired, activeAnalysis, override);
+        String adjustedRating = adjustedRatingForHelp(mappedRating.code(), override);
+        boolean cleanWriting = activeAnalysis != null && activeAnalysis.status == WritingAnalysis.Status.PASS;
         Records.ReviewRequest request = new Records.ReviewRequest(
                 activeSession.item.kanji,
                 activeSession.token,
                 adjustedRating,
                 writingRequired,
                 passed,
+                cleanWriting,
                 override,
                 hintsUsed
         );
@@ -1443,32 +1455,25 @@ public final class MainActivity extends Activity {
         renderStudy();
     }
 
-    private int initialPracticeLevel(Records.StudySession session) {
+    private HintState initialHintState(Records.StudySession session) {
         int stored = Math.max(0, Math.min(3, session.item.writingLevel));
-        if (isRecallTask(session)) {
-            return 3;
-        }
         if ("targeted_writing".equals(session.taskType)
                 || "repair_writing".equals(session.taskType)
                 || session.item.totalReviews == 0
                 || session.item.learningStep == 0) {
-            return Math.min(stored, 1);
+            return HintState.fromWritingLevel(Math.min(stored, 1));
         }
-        if ("guided_writing".equals(session.taskType)) {
-            return Math.min(Math.max(1, stored), 2);
-        }
-        return stored;
+        return HintState.fromWritingLevel(stored);
+    }
+
+    private void setHintState(HintState state) {
+        currentHintState = state == null ? HintState.initial() : state;
+        currentPracticeLevel = currentHintState.level().writingLevel();
     }
 
     private String adjustedRatingForHelp(String rating, boolean override) {
         if (activeFlashcardMissed && "repair_writing".equals(activeSession.taskType) && passingRating(rating)) {
             return "hard";
-        }
-        if (override || activeAnalysis == null || !activeAnalysis.writingPassed) {
-            return rating;
-        }
-        if ("easy".equals(rating) && (currentPracticeLevel < 3 || hintsUsed > 0)) {
-            return "good";
         }
         return rating;
     }
@@ -1478,7 +1483,7 @@ public final class MainActivity extends Activity {
     }
 
     private String guideStatusPrefix(StrokeGuide guide) {
-        return guideLabel(currentPracticeLevel, guide) + flashcardRepairNote();
+        return guideLabel(currentHintState, guide) + flashcardRepairNote();
     }
 
     private String flashcardRepairNote() {
@@ -1492,20 +1497,22 @@ public final class MainActivity extends Activity {
         if (drawingPad == null || activeSession == null) {
             return;
         }
-        if (currentPracticeLevel > 0) {
-            currentPracticeLevel--;
-        }
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        setHintState(hintProgression.revealNext(currentHintState, guide));
         hintsUsed++;
         activeAnalysis = null;
-        drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, false);
-        setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nHint used. Your ink stayed on the canvas; erase only if you want a fresh try.", MUTED);
+        drawingPad.setGuide(guide, currentHintState, false);
+        setStudyStatus(guideLabel(currentHintState, guide) + "\nHint used. One current stroke hinted; your ink stayed on the canvas.", MUTED);
         updateResultActions();
     }
 
     private void showAnalysis(WritingAnalysis analysis) {
         StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
+        if (shouldIncreaseSupportAfterAnalysis(analysis)) {
+            setHintState(hintProgression.afterWriting(currentHintState, analysis));
+        }
         if (drawingPad != null && activeSession != null) {
-            drawingPad.setGuide(guide, currentPracticeLevel, true);
+            drawingPad.setGuide(guide, currentHintState, true);
             if (canReplayAnalysis(analysis, guide)) {
                 drawingPad.captureReplaySnapshot();
                 drawingPad.startReplay();
@@ -1515,12 +1522,12 @@ public final class MainActivity extends Activity {
         }
         int color = analysis.writingPassed ? TEAL : CORAL;
         String candidates = candidateText(analysis.candidates);
-        String message = analysis.message + targetRevealText(analysis) + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates);
+        String message = analysis.message + attemptProgressText(analysis) + targetRevealText(analysis) + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates);
         String diagnosis = diagnosisText(analysis);
         if (!diagnosis.isEmpty()) {
             message += "\n" + diagnosis;
         }
-        setStudyStatus(guideLabel(currentPracticeLevel, guide), MUTED);
+        setStudyStatus(guideLabel(currentHintState, guide), MUTED);
         setResultStatus(message, color);
         updateResultActions();
     }
@@ -1528,11 +1535,13 @@ public final class MainActivity extends Activity {
     private void updateResultActions() {
         boolean hasResult = activeAnalysis != null;
         boolean passed = hasResult && activeAnalysis.writingPassed;
+        boolean messyPass = hasResult && activeAnalysis.status == WritingAnalysis.Status.CLOSE;
         boolean submittable = activeAnalysis != null && canSubmitAnalysis(activeAnalysis);
         if (checkWritingButton != null) {
-            checkWritingButton.setVisibility(!passed ? View.VISIBLE : View.GONE);
+            checkWritingButton.setVisibility(!passed || messyPass ? View.VISIBLE : View.GONE);
             checkWritingButton.setEnabled(!checkingWriting);
-            checkWritingButton.setText(checkingWriting ? "Checking..." : "Check");
+            checkWritingButton.setText(checkingWriting ? "Checking..." : (messyPass ? "Try cleaner" : "Check"));
+            checkWritingButton.setOnClickListener(messyPass ? v -> startCleanerRetry() : v -> checkWriting());
         }
         if (downloadModelButton != null) {
             downloadModelButton.setVisibility(writingModelStatusKnown && writingModelDownloaded ? View.GONE : View.VISIBLE);
@@ -1554,7 +1563,7 @@ public final class MainActivity extends Activity {
             replayButton.setVisibility(hasResult && drawingPad != null && drawingPad.hasReplaySnapshot() && canReplayAnalysis(activeAnalysis, guide) ? View.VISIBLE : View.GONE);
         }
         if (hintButton != null) {
-            hintButton.setVisibility(!passed && currentPracticeLevel > 0 ? View.VISIBLE : View.GONE);
+            hintButton.setVisibility(!passed && canRevealMoreHelp() ? View.VISIBLE : View.GONE);
             hintButton.setText(currentPracticeLevel == 3 ? "Hint" : "More help");
         }
         if (studyAnswerPanel != null) {
@@ -1595,13 +1604,50 @@ public final class MainActivity extends Activity {
                 || ("targeted_writing".equals(session.taskType) && session.item.learningStep < 2);
     }
 
+    private boolean canRevealMoreHelp() {
+        if (activeSession == null || currentHintState == null || currentHintState.level() == HintLevel.TRACE) {
+            return false;
+        }
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        return guide == null || guide.isEmpty() || currentHintState.level() == HintLevel.OUTLINE || currentHintState.revealedStrokeCount() < guide.strokeCount();
+    }
+
+    private boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case WRONG:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void startCleanerRetry() {
+        if (drawingPad == null || activeSession == null) {
+            return;
+        }
+        activeAnalysis = null;
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        drawingPad.clear();
+        drawingPad.setGuide(guide, currentHintState, false);
+        setStudyStatus(guideLabel(currentHintState, guide) + "\nTry cleaner. Keep the same help level and draw it carefully once more.", MUTED);
+        if (resultStatus != null) {
+            resultStatus.setVisibility(View.GONE);
+        }
+        updateResultActions();
+    }
+
     private void replayWritingAnalysis() {
         if (drawingPad == null || activeSession == null) {
             return;
         }
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         if (canReplayAnalysis(activeAnalysis, guide)) {
-            drawingPad.setGuide(guide, currentPracticeLevel, true);
+            drawingPad.setGuide(guide, currentHintState, true);
             drawingPad.startReplay();
         }
     }
@@ -1612,7 +1658,7 @@ public final class MainActivity extends Activity {
         }
         activeAnalysis = null;
         drawingPad.clearReplaySnapshot();
-        setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nUpdated ink. Check again when ready.", MUTED);
+        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\nUpdated ink. Check again when ready.", MUTED);
         if (resultStatus != null) {
             resultStatus.setVisibility(View.GONE);
         }
@@ -2466,20 +2512,26 @@ public final class MainActivity extends Activity {
     }
 
     private String guideLabel(int level, StrokeGuide guide) {
+        return guideLabel(HintState.fromWritingLevel(level), guide);
+    }
+
+    private String guideLabel(HintState state, StrokeGuide guide) {
+        HintLevel level = state == null ? HintLevel.TRACE : state.level();
         boolean hasGuide = guide != null && !guide.isEmpty();
         if (!hasGuide) {
-            if (level >= 3) {
+            if (level == HintLevel.BLIND) {
                 return "Write from memory, then check. No numbered stroke guide is bundled for this kanji yet.";
             }
             return "No numbered stroke guide is bundled for this kanji yet. Use the reference, draw it, then check. Stroke-order feedback will be limited.";
         }
         switch (level) {
-            case 0:
+            case TRACE:
                 return "Trace the numbered strokes, then check. This is a learning attempt.";
-            case 1:
-                return "Copy the faint stroke guide, then check.";
-            case 2:
+            case OUTLINE:
+                return "Copy the faint outline; the current stroke is emphasized.";
+            case MINIMAL:
                 return "Write with only the current stroke hinted, then check.";
+            case BLIND:
             default:
                 return "Write from memory, then check. Use Hint if you are stuck.";
         }
@@ -2489,7 +2541,46 @@ public final class MainActivity extends Activity {
         if (analysis != null && !analysis.writingPassed) {
             return "Save miss";
         }
+        if (analysis != null && analysis.status == WritingAnalysis.Status.CLOSE) {
+            return "Save hard";
+        }
         return "Next card";
+    }
+
+    private String attemptProgressText(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return "";
+        }
+        if (analysis.status == WritingAnalysis.Status.PASS && analysis.hintsUsed() == 0) {
+            HintState next = hintProgression.afterWriting(HintState.fromWritingLevel(analysis.hintLevel().writingLevel()), analysis);
+            if (next.level() != analysis.hintLevel()) {
+                return "\nNext writing review will have less help: " + stageLabel(next.level()) + ".";
+            }
+        }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return "\nTry cleaner for a cleaner pass, or Save hard to keep this help level.";
+        }
+        if (shouldIncreaseSupportAfterAnalysis(analysis) && activeSession != null) {
+            HintState next = hintProgression.afterWriting(HintState.fromWritingLevel(activeSession.item.writingLevel), analysis);
+            if (next.level() != HintLevel.fromWritingLevel(activeSession.item.writingLevel)) {
+                return "\nNext try will use more support: " + stageLabel(next.level()) + ".";
+            }
+        }
+        return "";
+    }
+
+    private String stageLabel(HintLevel level) {
+        switch (level) {
+            case TRACE:
+                return "Trace";
+            case OUTLINE:
+                return "Outline";
+            case MINIMAL:
+                return "Minimal";
+            case BLIND:
+            default:
+                return "Blind";
+        }
     }
 
     private String targetRevealText(WritingAnalysis analysis) {
@@ -2548,6 +2639,7 @@ public final class MainActivity extends Activity {
         private Path current;
         private StrokeGuide guide;
         private int guideLevel = 3;
+        private HintState guideState = HintState.fromWritingLevel(3);
         private boolean revealGuide;
         private boolean replayOverlayVisible;
         private long replayStartedAtMillis;
@@ -2607,8 +2699,13 @@ public final class MainActivity extends Activity {
         }
 
         public void setGuide(StrokeGuide guide, int level, boolean revealGuide) {
+            setGuide(guide, HintState.fromWritingLevel(level), revealGuide);
+        }
+
+        public void setGuide(StrokeGuide guide, HintState state, boolean revealGuide) {
             this.guide = guide;
-            this.guideLevel = Math.max(0, Math.min(3, level));
+            this.guideState = state == null ? HintState.fromWritingLevel(3) : state;
+            this.guideLevel = guideState.level().writingLevel();
             this.revealGuide = revealGuide;
             if (!revealGuide || guide == null || guide.isEmpty()) {
                 replayOverlayVisible = false;
@@ -2793,7 +2890,7 @@ public final class MainActivity extends Activity {
 
         private void drawGuide(Canvas canvas, float width, float height) {
             if (guide != null && !guide.isEmpty()) {
-                List<HintPolicy.StrokeHint> hints = HintPolicy.hintsFor(guide, guideLevel, committedStrokes.size(), revealGuide);
+                List<HintPolicy.StrokeHint> hints = HintPolicy.hintsFor(guide, guideState, committedStrokes.size(), revealGuide);
                 for (HintPolicy.StrokeHint hint : hints) {
                     if (!hint.visible || hint.stroke.points.size() < 2) {
                         continue;
@@ -2809,7 +2906,7 @@ public final class MainActivity extends Activity {
                     guidePaint.setAlpha(Math.round((hint.current ? 220 : 160) * hint.alpha));
                     guidePaint.setStrokeWidth(hint.current ? 14f : 9f);
                     canvas.drawPath(path, guidePaint);
-                    drawStartMarker(canvas, first.x * width, first.y * height, hint.strokeIndex + 1, hint.current);
+                    drawStartMarker(canvas, first.x * width, first.y * height, hint.strokeIndex + 1, hint.current, hint.numberVisible);
                 }
             } else if ((guideLevel < 3 || revealGuide) && !target.isEmpty()) {
                 outlinePaint.setColor(Color.argb(revealGuide ? 120 : 72, 111, 74, 39));
@@ -2881,7 +2978,7 @@ public final class MainActivity extends Activity {
             canvas.drawPath(path, replayPaint);
         }
 
-        private void drawStartMarker(Canvas canvas, float x, float y, int number, boolean active) {
+        private void drawStartMarker(Canvas canvas, float x, float y, int number, boolean active, boolean numberVisible) {
             markerPaint.setColor(Color.argb(230, 255, 255, 255));
             canvas.drawCircle(x, y, 17f, markerPaint);
             markerPaint.setStyle(Paint.Style.STROKE);
@@ -2889,6 +2986,10 @@ public final class MainActivity extends Activity {
             markerPaint.setColor(active ? CORAL : Color.rgb(111, 74, 39));
             canvas.drawCircle(x, y, 17f, markerPaint);
             markerPaint.setStyle(Paint.Style.FILL);
+            if (!numberVisible) {
+                canvas.drawCircle(x, y, active ? 5f : 3.5f, markerPaint);
+                return;
+            }
             markerText.setTextSize(18f);
             markerText.setColor(active ? CORAL : Color.rgb(111, 74, 39));
             canvas.drawText(Integer.toString(number), x, y - (markerText.descent() + markerText.ascent()) / 2f, markerText);

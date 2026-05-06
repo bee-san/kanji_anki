@@ -502,7 +502,7 @@ public final class MainActivityInstrumentedTest {
         LocalStore store = new LocalStore(context);
         try {
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 2, 0, 2, 2, null, 0L)
+                    new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
             ));
         } finally {
             store.close();
@@ -576,6 +576,8 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Stroke 1: likely wrong direction");
                 assertHasText(activity, "Recognized, but the stroke path was messy");
+                assertHasText(activity, "Try cleaner");
+                assertHasText(activity, "Save hard");
                 assertHasText(activity, "Replay");
             });
         }
@@ -775,7 +777,8 @@ public final class MainActivityInstrumentedTest {
             try {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
-                assertEquals(1, stats.good);
+                assertEquals(0, stats.good);
+                assertEquals(1, stats.hard);
                 assertEquals(1, stats.writingRequired);
                 assertEquals(0, stats.writingFailed);
                 List<Records.StudyItem> items = store.studyItems();
@@ -784,7 +787,7 @@ public final class MainActivityInstrumentedTest {
                 assertEquals("拉", item.kanji);
                 assertEquals("review", item.state);
                 assertEquals(2, item.totalReviews);
-                assertEquals(2, item.learningStep);
+                assertEquals(1, item.learningStep);
                 assertEquals(1, item.writingLevel);
                 assertTrue(item.activeToken == null || item.activeToken.isEmpty());
             } finally {
@@ -794,8 +797,63 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testHintAssistedCleanWritingHoldsFadeLevel() {
+        seedDueWritingItem(2);
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "More help");
+            scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
+            clickText(scenario, "Check");
+            waitForText(scenario, "Clean match");
+            clickText(scenario, "Next card");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.hard);
+                List<Records.StudyItem> items = store.studyItems();
+                assertEquals(1, items.size());
+                assertEquals(2, items.get(0).writingLevel);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testMessyRecognizedWritingCanBeSavedHardWithoutAdvancingFade() {
+        seedDueWritingItem(2);
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
+            clickText(scenario, "Check");
+            waitForText(scenario, "Try cleaner");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Try cleaner");
+                assertHasText(activity, "Save hard");
+            });
+            clickText(scenario, "Save hard");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.hard);
+                List<Records.StudyItem> items = store.studyItems();
+                assertEquals(1, items.size());
+                assertEquals(2, items.get(0).writingLevel);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
     public void testWrongRecognitionCanBeLoggedAsFailedAttempt() {
-        seedDueWritingItem();
+        seedDueWritingItem(2);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
@@ -815,6 +873,10 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, stats.again);
                 assertEquals(1, stats.writingRequired);
                 assertEquals(1, stats.writingFailed);
+                List<Records.StudyItem> items = store.studyItems();
+                assertEquals(1, items.size());
+                assertEquals("learning", items.get(0).state);
+                assertEquals(1, items.get(0).writingLevel);
             } finally {
                 store.close();
             }
@@ -1031,11 +1093,15 @@ public final class MainActivityInstrumentedTest {
     }
 
     private void seedDueWritingItem() {
+        seedDueWritingItem(0);
+    }
+
+    private void seedDueWritingItem(int writingLevel) {
         seedDashboard();
         LocalStore store = new LocalStore(context);
         try {
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "learning", 0L, 0.9, 5.0, 1, 0, 1, 0, null, 0L)
+                    new Records.StudyItem("拉", "learning", 0L, 0.9, 5.0, 1, 0, 1, writingLevel, null, 0L)
             ));
         } finally {
             store.close();
