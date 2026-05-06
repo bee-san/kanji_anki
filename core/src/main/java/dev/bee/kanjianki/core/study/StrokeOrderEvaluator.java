@@ -23,10 +23,17 @@ public final class StrokeOrderEvaluator {
         Bounds sampleBounds = Bounds.forSample(sample);
         float shapeScore = 0f;
         float weakestStrokeScore = compared == 0 ? 0f : 1f;
+        StrokeDiagnosis.Builder diagnosis = StrokeDiagnosis.builder();
         for (int i = 0; i < compared; i++) {
-            float score = strokeScore(guide.strokes.get(i), sample.strokes.get(i), sampleBounds, guideBounds);
-            shapeScore += score;
-            weakestStrokeScore = Math.min(weakestStrokeScore, score);
+            StrokeComparison expectedComparison = compare(guide.strokes.get(i), sample.strokes.get(i), sampleBounds, guideBounds);
+            shapeScore += expectedComparison.score;
+            weakestStrokeScore = Math.min(weakestStrokeScore, expectedComparison.score);
+            diagnoseComparedStroke(guide, sample.strokes.get(i), i, sampleBounds, guideBounds, expectedComparison, diagnosis);
+        }
+        if (actual < expected) {
+            for (int i = actual; i < expected; i++) {
+                diagnosis.add(StrokeDiagnosis.Label.MISSING_STROKE, i + 1);
+            }
         }
         shapeScore = compared == 0 ? 0f : shapeScore / compared;
         float score = clamp((countScore * 0.45f) + (shapeScore * 0.55f));
@@ -35,16 +42,59 @@ public final class StrokeOrderEvaluator {
         String message = clean ? "Stroke path looks clean."
                 : acceptable ? "Readable path, but some strokes look shaky."
                 : "The stroke count or order does not match the guide yet.";
-        return new StrokeOrderResult(acceptable, clean, score, message);
+        return new StrokeOrderResult(acceptable, clean, score, message, false, diagnosis.build());
     }
 
-    private static float strokeScore(InkStroke guideStroke, InkStroke sampleStroke, Bounds sampleBounds, Bounds guideBounds) {
+    private static void diagnoseComparedStroke(
+            StrokeGuide guide,
+            InkStroke sampleStroke,
+            int expectedIndex,
+            Bounds sampleBounds,
+            Bounds guideBounds,
+            StrokeComparison expectedComparison,
+            StrokeDiagnosis.Builder diagnosis
+    ) {
+        BestStrokeMatch best = bestGuideMatch(guide, sampleStroke, sampleBounds, guideBounds);
+        boolean wrongOrder = best.index >= 0
+                && best.index != expectedIndex
+                && best.directionlessScore >= 0.72f
+                && best.directionlessScore - expectedComparison.directionlessScore() >= 0.18f;
+        if (wrongOrder) {
+            diagnosis.add(StrokeDiagnosis.Label.WRONG_ORDER, expectedIndex + 1);
+            return;
+        }
+        boolean wrongDirection = expectedComparison.reversedScore >= 0.70f
+                && expectedComparison.reversedScore - expectedComparison.directScore >= 0.25f;
+        if (wrongDirection) {
+            diagnosis.add(StrokeDiagnosis.Label.WRONG_DIRECTION, expectedIndex + 1);
+            return;
+        }
+        if (expectedComparison.score < 0.50f && expectedComparison.directionlessScore() < 0.65f) {
+            diagnosis.add(StrokeDiagnosis.Label.ROUGH_SHAPE, expectedIndex + 1);
+        }
+    }
+
+    private static BestStrokeMatch bestGuideMatch(StrokeGuide guide, InkStroke sampleStroke, Bounds sampleBounds, Bounds guideBounds) {
+        int bestIndex = -1;
+        float bestScore = 0f;
+        for (int i = 0; i < guide.strokes.size(); i++) {
+            StrokeComparison comparison = compare(guide.strokes.get(i), sampleStroke, sampleBounds, guideBounds);
+            float score = comparison.directionlessScore();
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+        return new BestStrokeMatch(bestIndex, bestScore);
+    }
+
+    private static StrokeComparison compare(InkStroke guideStroke, InkStroke sampleStroke, Bounds sampleBounds, Bounds guideBounds) {
         InkPoint guideStart = guideStroke.start();
         InkPoint guideEnd = guideStroke.end();
         InkPoint sampleStart = normalized(sampleStroke.start(), sampleBounds, guideBounds);
         InkPoint sampleEnd = normalized(sampleStroke.end(), sampleBounds, guideBounds);
         if (guideStart == null || guideEnd == null || sampleStart == null || sampleEnd == null) {
-            return 0f;
+            return new StrokeComparison(0f, 0f, 0f);
         }
         float startDistance = distance(guideStart, sampleStart);
         float endDistance = distance(guideEnd, sampleEnd);
@@ -52,7 +102,8 @@ public final class StrokeOrderEvaluator {
         float reverseStartDistance = distance(guideStart, sampleEnd);
         float reverseEndDistance = distance(guideEnd, sampleStart);
         float reversed = Math.max(0f, 1f - ((reverseStartDistance + reverseEndDistance) / 1.2f));
-        return reversed > direct ? direct * 0.55f : direct;
+        float score = reversed > direct ? direct * 0.55f : direct;
+        return new StrokeComparison(direct, reversed, score);
     }
 
     private static InkPoint normalized(InkPoint point, Bounds source, Bounds target) {
@@ -80,21 +131,53 @@ public final class StrokeOrderEvaluator {
         public final float score;
         public final String message;
         public final boolean missingGuide;
+        public final StrokeDiagnosis diagnosis;
 
         private StrokeOrderResult(boolean acceptable, boolean clean, float score, String message) {
-            this(acceptable, clean, score, message, false);
+            this(acceptable, clean, score, message, false, StrokeDiagnosis.empty());
         }
 
-        private StrokeOrderResult(boolean acceptable, boolean clean, float score, String message, boolean missingGuide) {
+        private StrokeOrderResult(boolean acceptable, boolean clean, float score, String message, boolean missingGuide, StrokeDiagnosis diagnosis) {
             this.acceptable = acceptable;
             this.clean = clean;
             this.score = score;
             this.message = message;
             this.missingGuide = missingGuide;
+            this.diagnosis = diagnosis == null ? StrokeDiagnosis.empty() : diagnosis;
+        }
+
+        public StrokeOrderResult withDiagnosis(StrokeDiagnosis diagnosis) {
+            return new StrokeOrderResult(acceptable, clean, score, message, missingGuide, diagnosis);
         }
 
         private static StrokeOrderResult missing() {
-            return new StrokeOrderResult(false, false, 0f, "No stroke-order guide is available for this kanji.", true);
+            return new StrokeOrderResult(false, false, 0f, "No stroke-order guide is available for this kanji.", true, StrokeDiagnosis.empty());
+        }
+    }
+
+    private static final class StrokeComparison {
+        final float directScore;
+        final float reversedScore;
+        final float score;
+
+        private StrokeComparison(float directScore, float reversedScore, float score) {
+            this.directScore = directScore;
+            this.reversedScore = reversedScore;
+            this.score = score;
+        }
+
+        float directionlessScore() {
+            return Math.max(directScore, reversedScore);
+        }
+    }
+
+    private static final class BestStrokeMatch {
+        final int index;
+        final float directionlessScore;
+
+        private BestStrokeMatch(int index, float directionlessScore) {
+            this.index = index;
+            this.directionlessScore = directionlessScore;
         }
     }
 

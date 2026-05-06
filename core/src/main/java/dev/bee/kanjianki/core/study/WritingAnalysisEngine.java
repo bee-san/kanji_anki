@@ -42,6 +42,7 @@ public final class WritingAnalysisEngine {
             return new WritingAnalysis(WritingAnalysis.Status.WRONG, "again", false, order.message, candidates, order);
         }
         if (!order.clean) {
+            order = order.withDiagnosis(order.diagnosis.plus(StrokeDiagnosis.Label.RECOGNIZED_BUT_MESSY, 0));
             return new WritingAnalysis(WritingAnalysis.Status.CLOSE, "hard", true, "Readable, but the stroke path needs one more careful pass.", candidates, order);
         }
         if (match.topCandidate) {
