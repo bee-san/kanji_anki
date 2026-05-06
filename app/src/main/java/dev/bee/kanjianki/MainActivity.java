@@ -1272,13 +1272,35 @@ public final class MainActivity extends Activity {
     }
 
     private View fontVariantRow(String kanji) {
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        grid.setGravity(Gravity.CENTER);
+
+        LinearLayout firstRow = fontVariantLine();
+        firstRow.addView(fontVariantTile(kanji, "Print", Typeface.SERIF), fontVariantTileParams());
+        firstRow.addView(fontVariantTile(kanji, "Sans", Typeface.DEFAULT), fontVariantTileParams());
+        firstRow.addView(fontVariantTile(kanji, "Block", Typeface.MONOSPACE), fontVariantTileParams());
+        grid.addView(firstRow, new LinearLayout.LayoutParams(-1, dp(112)));
+
+        LinearLayout secondRow = fontVariantLine();
+        secondRow.addView(fontVariantTile(kanji, "Klee", fontResource(R.font.klee_one_regular, Typeface.DEFAULT)), fontVariantTileParams());
+        secondRow.addView(fontVariantTile(kanji, "Kaisei", fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF)), fontVariantTileParams());
+        grid.addView(secondRow, new LinearLayout.LayoutParams(-1, dp(112)));
+
+        return grid;
+    }
+
+    private LinearLayout fontVariantLine() {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
-        row.addView(fontVariantTile(kanji, "Print", Typeface.SERIF), new LinearLayout.LayoutParams(0, dp(120), 1));
-        row.addView(fontVariantTile(kanji, "Sans", Typeface.DEFAULT), new LinearLayout.LayoutParams(0, dp(120), 1));
-        row.addView(fontVariantTile(kanji, "Block", Typeface.MONOSPACE), new LinearLayout.LayoutParams(0, dp(120), 1));
         return row;
+    }
+
+    private LinearLayout.LayoutParams fontVariantTileParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(104), 1);
+        lp.setMargins(dp(3), dp(4), dp(3), dp(4));
+        return lp;
     }
 
     private View fontVariantTile(String kanji, String label, Typeface typeface) {
@@ -1294,10 +1316,15 @@ public final class MainActivity extends Activity {
         TextView caption = text(label, 12, MUTED, false);
         caption.setGravity(Gravity.CENTER);
         tile.addView(caption);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(120), 1);
-        lp.setMargins(dp(3), dp(4), dp(3), dp(4));
-        tile.setLayoutParams(lp);
         return tile;
+    }
+
+    private Typeface fontResource(int fontRes, Typeface fallback) {
+        try {
+            return getResources().getFont(fontRes);
+        } catch (RuntimeException e) {
+            return fallback;
+        }
     }
 
     private View flashcardAnswerPanel(Records.StudySession session) {
