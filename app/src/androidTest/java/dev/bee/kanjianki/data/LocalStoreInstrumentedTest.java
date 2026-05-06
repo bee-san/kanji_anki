@@ -242,6 +242,10 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "suppressed_at"));
         assertTrue(hasColumn("study_items", "mature_interval_days"));
         assertTrue(hasColumn("study_items", "answer_signature"));
+        assertTrue(hasColumn("study_items", "kanji_meaning_memory"));
+        assertTrue(hasColumn("study_items", "font_meaning_memory"));
+        assertTrue(hasColumn("study_items", "word_reading_memory"));
+        assertTrue(hasColumn("study_items", "writing_remediation_memory"));
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
@@ -254,6 +258,10 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(0L, timeline.currentStudyItem.suppressedAtMillis);
         assertEquals(0, timeline.currentStudyItem.matureIntervalDays);
         assertEquals("", timeline.currentStudyItem.answerSignature);
+        assertEquals(1, timeline.currentStudyItem.kanjiMeaningMemory.totalReviews);
+        assertEquals(0, timeline.currentStudyItem.fontMeaningMemory.totalReviews);
+        assertEquals(0, timeline.currentStudyItem.wordReadingMemory.totalReviews);
+        assertEquals(0, timeline.currentStudyItem.writingRemediationMemory.totalReviews);
         assertTrue(hasTimelineType(timeline, "first_seen"));
         assertTrue(hasTimelineType(timeline, "weak_support_seen"));
         assertTrue(hasTimelineType(timeline, "review_passed"));

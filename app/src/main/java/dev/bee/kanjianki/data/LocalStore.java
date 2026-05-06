@@ -24,7 +24,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 5;
+    private static final int DB_VERSION = 6;
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -51,7 +51,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
-        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
@@ -85,6 +85,12 @@ public final class LocalStore extends SQLiteOpenHelper {
             addNullableColumn(db, "study_items", "suppressed_at", "INTEGER NOT NULL DEFAULT 0");
             addNullableColumn(db, "study_items", "mature_interval_days", "INTEGER NOT NULL DEFAULT 0");
             addNullableColumn(db, "study_items", "answer_signature", "TEXT NOT NULL DEFAULT ''");
+        }
+        if (oldVersion < 6) {
+            addNullableColumn(db, "study_items", "kanji_meaning_memory", "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, "study_items", "font_meaning_memory", "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, "study_items", "word_reading_memory", "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, "study_items", "writing_remediation_memory", "TEXT NOT NULL DEFAULT ''");
         }
     }
 
@@ -1598,33 +1604,75 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("suppressed_at", item.suppressedAtMillis);
         values.put("mature_interval_days", item.matureIntervalDays);
         values.put("answer_signature", item.answerSignature);
+        values.put("kanji_meaning_memory", item.kanjiMeaningMemory.encode());
+        values.put("font_meaning_memory", item.fontMeaningMemory.encode());
+        values.put("word_reading_memory", item.wordReadingMemory.encode());
+        values.put("writing_remediation_memory", item.writingRemediationMemory.encode());
         values.put("active_token", item.activeToken);
         values.put("created_at", item.createdAtMillis);
         db.insertWithOnConflict("study_items", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     private Records.StudyItem readStudyItem(Cursor cursor) {
+        String state = string(cursor, "state");
+        long dueAt = longValue(cursor, "due_at");
+        double stability = cursor.getDouble(cursor.getColumnIndexOrThrow("stability"));
+        double difficulty = cursor.getDouble(cursor.getColumnIndexOrThrow("difficulty"));
+        int totalReviews = integer(cursor, "total_reviews");
+        int lapses = integer(cursor, "lapses");
+        int learningStep = integer(cursor, "learning_step");
+        int recognitionStage = integer(cursor, "recognition_stage");
+        boolean writingRemediationPending = integer(cursor, "writing_remediation_pending") == 1;
+        int matureIntervalDays = integer(cursor, "mature_interval_days");
+        Records.TaskMemory kanjiFallback = taskMemoryFallback(0, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+        Records.TaskMemory fontFallback = taskMemoryFallback(1, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+        Records.TaskMemory wordFallback = taskMemoryFallback(2, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+        Records.TaskMemory writingFallback = writingRemediationPending
+                ? Records.TaskMemory.fromStudyFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
+                : Records.TaskMemory.initial();
         return new Records.StudyItem(
                 string(cursor, "kanji"),
-                string(cursor, "state"),
-                longValue(cursor, "due_at"),
-                cursor.getDouble(cursor.getColumnIndexOrThrow("stability")),
-                cursor.getDouble(cursor.getColumnIndexOrThrow("difficulty")),
-                integer(cursor, "total_reviews"),
-                integer(cursor, "lapses"),
-                integer(cursor, "learning_step"),
+                state,
+                dueAt,
+                stability,
+                difficulty,
+                totalReviews,
+                lapses,
+                learningStep,
                 integer(cursor, "writing_level"),
-                integer(cursor, "recognition_stage"),
+                recognitionStage,
                 integer(cursor, "consecutive_failed_recognition_days"),
                 longValue(cursor, "last_failed_recognition_day"),
-                integer(cursor, "writing_remediation_pending") == 1,
+                writingRemediationPending,
                 string(cursor, "suppressed_by_task_type"),
                 longValue(cursor, "suppressed_at"),
-                integer(cursor, "mature_interval_days"),
+                matureIntervalDays,
                 string(cursor, "answer_signature"),
                 string(cursor, "active_token"),
-                longValue(cursor, "created_at")
+                longValue(cursor, "created_at"),
+                Records.TaskMemory.decode(string(cursor, "kanji_meaning_memory"), kanjiFallback),
+                Records.TaskMemory.decode(string(cursor, "font_meaning_memory"), fontFallback),
+                Records.TaskMemory.decode(string(cursor, "word_reading_memory"), wordFallback),
+                Records.TaskMemory.decode(string(cursor, "writing_remediation_memory"), writingFallback)
         );
+    }
+
+    private Records.TaskMemory taskMemoryFallback(
+            int memoryStage,
+            int recognitionStage,
+            String state,
+            long dueAtMillis,
+            double stability,
+            double difficulty,
+            int totalReviews,
+            int lapses,
+            int learningStep,
+            int matureIntervalDays
+    ) {
+        if (Math.max(0, Math.min(2, recognitionStage)) == memoryStage) {
+            return Records.TaskMemory.fromStudyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+        }
+        return Records.TaskMemory.initial();
     }
 
     private long firstImportedAt(SQLiteDatabase db, String kanji, long fallback) {
