@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -112,27 +113,35 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionRotatesTaskShape() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudySession session = scheduler.nextSession(Arrays.asList(item("裂")), Arrays.asList(row("裂", 10)), 1000L);
+        Records.StudySession simple = scheduler.nextSession(Arrays.asList(item("裂", 0)), Arrays.asList(row("裂", 10)), 1000L);
+        Records.StudySession font = scheduler.nextSession(Arrays.asList(item("謎", 1)), Arrays.asList(row("謎", 10)), 1000L);
+        Records.StudySession word = scheduler.nextSession(Arrays.asList(item("示", 2)), Arrays.asList(row("示", 10)), 1000L);
 
-        assertNotNull(session);
-        assertFalse(session.writingRequired);
-        assertEquals("meaning_flashcard", session.taskType);
+        assertNotNull(simple);
+        assertNotNull(font);
+        assertNotNull(word);
+        assertFalse(simple.writingRequired);
+        assertFalse(font.writingRequired);
+        assertFalse(word.writingRequired);
+        assertEquals("kanji_meaning", simple.taskType);
+        assertEquals("font_meaning", font.taskType);
+        assertEquals("word_reading", word.taskType);
     }
 
     @Test
-    public void lapsedKanjiReturnsAsFontRecognitionBeforeMoreWriting() {
+    public void pendingRemediationRoutesToWritingTask() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem lapsed = new Records.StudyItem("裂", "learning", 0L, 0.3, 6.0, 1, 1, 0, 0, null, 0L);
+        Records.StudyItem pending = new Records.StudyItem("裂", "learning", 0L, 0.3, 6.0, 3, 3, 0, 0, 0, 3, 0L, true, null, 0L);
 
         Records.StudySession session = scheduler.nextSession(
-                Collections.singletonList(lapsed),
+                Collections.singletonList(pending),
                 Collections.singletonList(row("裂", 10)),
                 1000L
         );
 
         assertNotNull(session);
-        assertFalse(session.writingRequired);
-        assertEquals("font_recognition", session.taskType);
+        assertTrue(session.writingRequired);
+        assertEquals("writing_remediation", session.taskType);
     }
 
     @Test
@@ -149,8 +158,8 @@ public class BridgeSchedulerTest {
 
         assertNotNull(session);
         assertEquals("謎", session.item.kanji);
-        assertEquals("blind_writing", session.taskType);
-        assertTrue(session.writingRequired);
+        assertEquals("kanji_meaning", session.taskType);
+        assertFalse(session.writingRequired);
     }
 
     @Test
@@ -297,62 +306,183 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public void reviewSequenceLearnsThenReviewsAndMissReturnsSoon() {
+    public void recognitionPassesMoveUpAndCeilingHolds() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        List<Records.DashboardRow> rows = Collections.singletonList(row("裂", 30));
         HashSet<String> consumed = new HashSet<>();
 
         Records.ReviewResult first = scheduler.applyReview(
-                item("裂").withToken("t1"),
+                item("裂", 0).withToken("t1"),
                 new Records.ReviewRequest("裂", "t1", "good", false, false, false, 0),
                 consumed,
-                0L
+                1000L
         );
-        assertEquals("learning", first.item.state);
-        assertEquals(1, first.item.learningStep);
-        assertEquals(0, first.item.writingLevel);
-        assertEquals(600_000L, first.item.dueAtMillis);
-        assertNull(scheduler.nextSession(Collections.singletonList(first.item), rows, 599_999L));
-
-        Records.StudySession dueLearning = scheduler.nextSession(Collections.singletonList(first.item), rows, 600_000L);
-        assertNotNull(dueLearning);
-        assertEquals("guided_writing", dueLearning.taskType);
-        assertTrue(dueLearning.writingRequired);
+        assertEquals(1, first.item.recognitionStage);
+        assertEquals(0, first.item.consecutiveFailedRecognitionDays);
+        assertFalse(first.item.writingRemediationPending);
 
         Records.ReviewResult second = scheduler.applyReview(
                 first.item.withToken("t2"),
-                new Records.ReviewRequest("裂", "t2", "good", true, true, false, 0),
+                new Records.ReviewRequest("裂", "t2", "good", false, false, false, 0),
                 consumed,
-                600_000L
+                first.item.dueAtMillis
         );
-        assertEquals("review", second.item.state);
-        assertEquals(2, second.item.learningStep);
-        assertEquals(1, second.item.writingLevel);
+        assertEquals(2, second.item.recognitionStage);
 
-        Records.StudyItem dueReview = new Records.StudyItem(
-                second.item.kanji,
-                second.item.state,
-                900_000L,
-                second.item.stability,
-                second.item.difficulty,
-                second.item.totalReviews,
-                second.item.lapses,
-                second.item.learningStep,
-                second.item.writingLevel,
-                "t3",
-                second.item.createdAtMillis
-        );
-        Records.ReviewResult miss = scheduler.applyReview(
-                dueReview,
-                new Records.ReviewRequest("裂", "t3", "again", true, false, false, 0),
+        Records.ReviewResult third = scheduler.applyReview(
+                second.item.withToken("t3"),
+                new Records.ReviewRequest("裂", "t3", "hard", false, false, false, 0),
                 consumed,
-                900_000L
+                second.item.dueAtMillis
         );
-        assertEquals("learning", miss.item.state);
-        assertEquals(1, miss.item.lapses);
-        assertEquals(0, miss.item.learningStep);
-        assertEquals(0, miss.item.writingLevel);
-        assertEquals(1_500_000L, miss.item.dueAtMillis);
+        assertEquals(2, third.item.recognitionStage);
+    }
+
+    @Test
+    public void recognitionFailsMoveDownAndFloorHolds() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        long today = localDayStart(System.currentTimeMillis()) + 60_000L;
+
+        Records.ReviewResult fromWord = scheduler.applyReview(
+                item("裂", 2).withToken("t1"),
+                new Records.ReviewRequest("裂", "t1", "again", false, false, false, 0),
+                consumed,
+                today
+        );
+        assertEquals(1, fromWord.item.recognitionStage);
+
+        Records.ReviewResult fromFont = scheduler.applyReview(
+                item("裂", 1).withToken("t2"),
+                new Records.ReviewRequest("裂", "t2", "again", false, false, false, 0),
+                consumed,
+                today
+        );
+        assertEquals(0, fromFont.item.recognitionStage);
+
+        Records.ReviewResult fromFloor = scheduler.applyReview(
+                item("裂", 0).withToken("t3"),
+                new Records.ReviewRequest("裂", "t3", "again", false, false, false, 0),
+                consumed,
+                today
+        );
+        assertEquals(0, fromFloor.item.recognitionStage);
+    }
+
+    @Test
+    public void recognitionMissDaysDeduplicateSameDayAndPassResets() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        long today = localDayStart(System.currentTimeMillis()) + 60_000L;
+        long tomorrow = today + 86_400_000L;
+
+        Records.ReviewResult first = scheduler.applyReview(
+                item("裂", 1).withToken("t1"),
+                new Records.ReviewRequest("裂", "t1", "again", false, false, false, 0),
+                consumed,
+                today
+        );
+        Records.ReviewResult sameDay = scheduler.applyReview(
+                first.item.withToken("t2"),
+                new Records.ReviewRequest("裂", "t2", "again", false, false, false, 0),
+                consumed,
+                today + 3_600_000L
+        );
+        assertEquals(1, sameDay.item.consecutiveFailedRecognitionDays);
+
+        Records.ReviewResult nextDay = scheduler.applyReview(
+                sameDay.item.withToken("t3"),
+                new Records.ReviewRequest("裂", "t3", "again", false, false, false, 0),
+                consumed,
+                tomorrow
+        );
+        assertEquals(2, nextDay.item.consecutiveFailedRecognitionDays);
+
+        Records.ReviewResult pass = scheduler.applyReview(
+                nextDay.item.withToken("t4"),
+                new Records.ReviewRequest("裂", "t4", "good", false, false, false, 0),
+                consumed,
+                tomorrow + 3_600_000L
+        );
+        assertEquals(0, pass.item.consecutiveFailedRecognitionDays);
+        assertEquals(0L, pass.item.lastFailedRecognitionDayMillis);
+        assertFalse(pass.item.writingRemediationPending);
+    }
+
+    @Test
+    public void recognitionMissThresholdMakesNextDueSessionWritingRemediation() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        long today = localDayStart(System.currentTimeMillis()) + 60_000L;
+        Records.Settings thresholdTwo = settingsWithWritingThreshold(2);
+
+        Records.ReviewResult first = scheduler.applyReview(
+                item("裂", 0).withToken("t1"),
+                new Records.ReviewRequest("裂", "t1", "again", false, false, false, 0),
+                consumed,
+                today,
+                Records.SchedulerParameters.defaults(),
+                thresholdTwo
+        );
+        Records.ReviewResult second = scheduler.applyReview(
+                first.item.withToken("t2"),
+                new Records.ReviewRequest("裂", "t2", "again", false, false, false, 0),
+                consumed,
+                today + 86_400_000L,
+                Records.SchedulerParameters.defaults(),
+                thresholdTwo
+        );
+
+        assertTrue(second.item.writingRemediationPending);
+        Records.StudySession session = scheduler.nextSession(
+                Collections.singletonList(second.item),
+                Collections.singletonList(row("裂", 30)),
+                second.item.dueAtMillis
+        );
+        assertNotNull(session);
+        assertEquals("writing_remediation", session.taskType);
+        assertTrue(session.writingRequired);
+    }
+
+    @Test
+    public void writingRemediationFailPersistsAndPassRestartsLadder() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyItem pending = new Records.StudyItem("裂", "learning", 0L, 0.8, 5.5, 3, 2, 0, 1, 2, 3, localDayStart(System.currentTimeMillis()), true, "fail", 0L);
+
+        Records.ReviewResult fail = scheduler.applyReview(
+                pending,
+                new Records.ReviewRequest("裂", "fail", "good", true, false, false, 0),
+                consumed,
+                1000L
+        );
+        assertTrue(fail.item.writingRemediationPending);
+
+        Records.ReviewResult pass = scheduler.applyReview(
+                fail.item.withToken("pass"),
+                new Records.ReviewRequest("裂", "pass", "good", true, true, true, false, 0),
+                consumed,
+                fail.item.dueAtMillis
+        );
+        assertFalse(pass.item.writingRemediationPending);
+        assertEquals(0, pass.item.recognitionStage);
+        assertEquals(0, pass.item.consecutiveFailedRecognitionDays);
+    }
+
+    @Test
+    public void manualOverrideClearsWritingRemediationWithWeakRating() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem pending = new Records.StudyItem("裂", "learning", 0L, 0.8, 5.5, 3, 2, 0, 1, 1, 3, localDayStart(System.currentTimeMillis()), true, "override", 0L);
+
+        Records.ReviewResult result = scheduler.applyReview(
+                pending,
+                new Records.ReviewRequest("裂", "override", "good", true, false, true, 0),
+                new HashSet<>(),
+                1000L
+        );
+
+        assertEquals("hard", result.appliedRating);
+        assertFalse(result.item.writingRemediationPending);
+        assertEquals(0, result.item.recognitionStage);
     }
 
     @Test
@@ -370,7 +500,41 @@ public class BridgeSchedulerTest {
     }
 
     private Records.StudyItem item(String kanji) {
-        return new Records.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, null, 0);
+        return item(kanji, 0);
+    }
+
+    private Records.StudyItem item(String kanji, int recognitionStage) {
+        return new Records.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, recognitionStage, 0, 0L, false, null, 0);
+    }
+
+    private Records.Settings settingsWithWritingThreshold(int days) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankCutoff,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                days
+        );
+    }
+
+    private static long localDayStart(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
     }
 
     private Records.StudyItem findItem(List<Records.StudyItem> items, String kanji) {

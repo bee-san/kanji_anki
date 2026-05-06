@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.sync.SyncSettings;
 
 import org.junit.After;
 import org.junit.Before;
@@ -167,7 +168,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionThreeMigrationPreservesV1DataBackfillsTimelineAndAddsFsrsColumns() {
+    public void testVersionFourMigrationPreservesV1DataBackfillsTimelineAndAddsStudyLadderColumns() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -233,10 +234,18 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("source_cards", "fsrs_difficulty"));
         assertTrue(hasColumn("source_cards", "fsrs_retrievability"));
         assertTrue(hasColumn("kanji_examples", "fsrs_stability"));
+        assertTrue(hasColumn("study_items", "recognition_stage"));
+        assertTrue(hasColumn("study_items", "consecutive_failed_recognition_days"));
+        assertTrue(hasColumn("study_items", "last_failed_recognition_day"));
+        assertTrue(hasColumn("study_items", "writing_remediation_pending"));
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
         assertNotNull(timeline.currentStudyItem);
+        assertEquals(0, timeline.currentStudyItem.recognitionStage);
+        assertEquals(0, timeline.currentStudyItem.consecutiveFailedRecognitionDays);
+        assertEquals(0L, timeline.currentStudyItem.lastFailedRecognitionDayMillis);
+        assertFalse(timeline.currentStudyItem.writingRemediationPending);
         assertTrue(hasTimelineType(timeline, "first_seen"));
         assertTrue(hasTimelineType(timeline, "weak_support_seen"));
         assertTrue(hasTimelineType(timeline, "review_passed"));
@@ -251,6 +260,9 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
         assertEquals(3000, store.getIntSetting("suspended_rank_cutoff", 1000));
+        assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
+        store.putIntSetting("writing_trigger_miss_days", 4);
+        assertEquals(4, SyncSettings.fromStore(store).writingTriggerMissDays);
         LocalStore.ReminderSettings defaults = store.reminderSettings();
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);

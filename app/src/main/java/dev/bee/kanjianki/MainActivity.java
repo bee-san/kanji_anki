@@ -122,7 +122,6 @@ public final class MainActivity extends Activity {
     private boolean checkingWriting;
     private boolean writingModelDownloaded;
     private boolean writingModelStatusKnown;
-    private boolean activeFlashcardMissed;
     private boolean continueAllKanjiSession;
     private int hintsUsed;
     private int currentPracticeLevel;
@@ -752,19 +751,6 @@ public final class MainActivity extends Activity {
         return "due " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(dueAt));
     }
 
-    private String helpLabel(int writingLevel) {
-        switch (Math.max(0, Math.min(3, writingLevel))) {
-            case 0:
-                return "trace";
-            case 1:
-                return "guided";
-            case 2:
-                return "cue";
-            default:
-                return "memory";
-        }
-    }
-
     private View queueRowView(QueueEntry entry, long now) {
         Records.DashboardRow row = entry.row;
         Records.StudyItem item = entry.item;
@@ -787,9 +773,25 @@ public final class MainActivity extends Activity {
         chips.setOrientation(LinearLayout.HORIZONTAL);
         chips.addView(chip(item.dueAtMillis <= now ? "due now" : "resting", item.dueAtMillis <= now ? CORAL : BLUE));
         chips.addView(chip(item.state, TEAL));
-        chips.addView(chip("help " + helpLabel(item.writingLevel), BLUE));
+        chips.addView(chip(recognitionStageLabel(item), BLUE));
+        if (item.writingRemediationPending) {
+            chips.addView(chip("writing repair", CORAL));
+        } else if (item.consecutiveFailedRecognitionDays > 0) {
+            chips.addView(chip("miss days " + item.consecutiveFailedRecognitionDays, BLUE));
+        }
         box.addView(chips);
         return box;
+    }
+
+    private String recognitionStageLabel(Records.StudyItem item) {
+        switch (Math.max(0, Math.min(2, item.recognitionStage))) {
+            case 1:
+                return "font -> meaning";
+            case 2:
+                return "word -> reading";
+            default:
+                return "kanji -> meaning";
+        }
     }
 
     private String sourceEvidenceText(Records.DashboardRow row) {
@@ -1111,20 +1113,34 @@ public final class MainActivity extends Activity {
         String token = item.activeToken == null || item.activeToken.isEmpty()
                 ? item.kanji + "-" + UUID.randomUUID()
                 : item.activeToken;
+        String taskType = taskTypeForStudyItem(item);
         activeSession = new Records.StudySession(
                 item.withToken(token),
                 row,
                 token,
-                "targeted_flashcard",
-                false,
+                taskType,
+                item.writingRemediationPending,
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
         store.saveStudyItem(activeSession.item);
         renderSession(activeSession);
     }
 
+    private String taskTypeForStudyItem(Records.StudyItem item) {
+        if (item.writingRemediationPending) {
+            return "writing_remediation";
+        }
+        switch (Math.max(0, Math.min(2, item.recognitionStage))) {
+            case 1:
+                return "font_meaning";
+            case 2:
+                return "word_reading";
+            default:
+                return "kanji_meaning";
+        }
+    }
+
     private void renderSession(Records.StudySession session) {
-        activeFlashcardMissed = false;
         if (session.writingRequired) {
             renderWritingSession(session);
         } else {
@@ -1145,8 +1161,10 @@ public final class MainActivity extends Activity {
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
         if (isFontRecognitionTask(session)) {
             stage.addView(text("Recognise the shape across fonts, then reveal the Anki clue.", 15, Color.WHITE, false));
+        } else if (isWordReadingTask(session)) {
+            stage.addView(text("Read the source word before revealing the answer.", 15, Color.WHITE, false));
         } else {
-            stage.addView(text("Try to recall the kanji before seeing it. If it does not come back, write it once.", 15, Color.WHITE, false));
+            stage.addView(text("Name the meaning before revealing the answer.", 15, Color.WHITE, false));
         }
         content.addView(stage);
 
@@ -1175,8 +1193,8 @@ public final class MainActivity extends Activity {
                     stage.addView(text("Reading: " + session.row.reading, 15, Color.WHITE, false));
                 }
                 stage.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, Color.WHITE, false));
-            } else if ("repair_writing".equals(session.taskType)) {
-                stage.addView(text("This is the same card. Write it once with the guide before moving on.", 15, Color.WHITE, false));
+            } else if ("writing_remediation".equals(session.taskType)) {
+                stage.addView(text("Recognition has missed on multiple days. Write it once with the guide before returning to recognition.", 15, Color.WHITE, false));
             } else {
                 stage.addView(text("Learn it from the reference, trace it, then check.", 15, Color.WHITE, false));
             }
@@ -1203,7 +1221,10 @@ public final class MainActivity extends Activity {
     }
 
     private String flashcardTitle(Records.StudySession session) {
-        return isFontRecognitionTask(session) ? "Recognise this kanji" : "Recall this kanji";
+        if (isWordReadingTask(session)) {
+            return "Read this word";
+        }
+        return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
     }
 
     private View flashcardPromptPanel(Records.StudySession session) {
@@ -1214,10 +1235,15 @@ public final class MainActivity extends Activity {
             box.addView(text("What does it mean in your Anki deck?", 15, MUTED, false));
             return box;
         }
-        box.addView(text("Meaning: " + sessionClue(session), 18, INK, true));
-        if (session.row != null && !session.row.reading.isEmpty()) {
-            box.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
+        if (isWordReadingTask(session)) {
+            box.addView(text(wordPrompt(session), 34, INK, true));
+            box.addView(text("What is the reading?", 15, MUTED, false));
+            return box;
         }
+        TextView glyph = text(session.item.kanji, 84, INK, true);
+        glyph.setGravity(Gravity.CENTER);
+        box.addView(glyph, new LinearLayout.LayoutParams(-1, dp(118)));
+        box.addView(text("What does it mean?", 15, MUTED, false));
         box.addView(text("Answer hidden until reveal.", 14, MUTED, false));
         return box;
     }
@@ -1282,7 +1308,7 @@ public final class MainActivity extends Activity {
         }
         row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(row);
-        box.addView(text("If it did not come back quickly, write it once with guides.", 13, MUTED, false));
+        box.addView(text("Misses move the ladder down. After enough missed days, Kani switches this kanji to writing repair.", 13, MUTED, false));
         return box;
     }
 
@@ -1295,8 +1321,8 @@ public final class MainActivity extends Activity {
 
         resultStatus = text(
                 revealed
-                        ? "Choose from recall, not recognition-after-reveal."
-                        : "Reveal first. A miss becomes one guided writing repair.",
+                        ? "Choose from what you knew before reveal."
+                        : "Reveal first. Misses count toward writing repair only once per day.",
                 15,
                 MUTED,
                 false
@@ -1320,35 +1346,10 @@ public final class MainActivity extends Activity {
             actions.addView(known, new LinearLayout.LayoutParams(0, dp(62), 1));
 
             Button write = primaryButton("I missed it", CORAL);
-            write.setOnClickListener(v -> startWritingRepairSession());
+            write.setOnClickListener(v -> submitReview("again", false));
             actions.addView(write, new LinearLayout.LayoutParams(0, dp(62), 1));
         }
         studyActionBar.addView(actions);
-    }
-
-    private void startWritingRepairSession() {
-        if (activeSession == null) {
-            return;
-        }
-        Records.StudySession previous = activeSession;
-        activeFlashcardMissed = true;
-        activeSession = new Records.StudySession(
-                previous.item,
-                previous.row,
-                previous.token,
-                "repair_writing",
-                true,
-                previous.prompt
-        );
-        renderWritingSession(activeSession);
-        hintsUsed = Math.max(1, hintsUsed);
-        setHintState(hintProgression.afterReview(HintState.fromWritingLevel(previous.item.writingLevel), false, 0));
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        if (drawingPad != null) {
-            drawingPad.setGuide(guide, currentHintState, false);
-        }
-        setStudyStatus(guideStatusPrefix(guide) + "\nWrite it once with the guide.", MUTED);
-        updateResultActions();
     }
 
     private void buildStudyActionBar() {
@@ -1502,12 +1503,11 @@ public final class MainActivity extends Activity {
         boolean passed = !writingRequired || (activeAnalysis != null && activeAnalysis.writingPassed);
         StudyRating requestedRating = StudyRating.fromCode(rating);
         StudyRating mappedRating = writingRatingMapper.applyRequestedRating(requestedRating, writingRequired, activeAnalysis, override);
-        String adjustedRating = adjustedRatingForHelp(mappedRating.code(), override);
         boolean cleanWriting = activeAnalysis != null && activeAnalysis.status == WritingAnalysis.Status.PASS;
         Records.ReviewRequest request = new Records.ReviewRequest(
                 activeSession.item.kanji,
                 activeSession.token,
-                adjustedRating,
+                mappedRating.code(),
                 writingRequired,
                 passed,
                 cleanWriting,
@@ -1518,7 +1518,7 @@ public final class MainActivity extends Activity {
         Set<String> consumed = new HashSet<>(store.consumedTokens());
         long now = System.currentTimeMillis();
         Records.SchedulerParameters parameters = store.schedulerParameters();
-        Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters);
+        Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters, settings());
         LocalStore.StudyStreak streak = null;
         if (!result.duplicate) {
             store.saveStudyItem(result.item);
@@ -1536,7 +1536,7 @@ public final class MainActivity extends Activity {
     private HintState initialHintState(Records.StudySession session) {
         int stored = Math.max(0, Math.min(3, session.item.writingLevel));
         if ("targeted_writing".equals(session.taskType)
-                || "repair_writing".equals(session.taskType)
+                || "writing_remediation".equals(session.taskType)
                 || session.item.totalReviews == 0
                 || session.item.learningStep == 0) {
             return HintState.fromWritingLevel(Math.min(stored, 1));
@@ -1549,26 +1549,8 @@ public final class MainActivity extends Activity {
         currentPracticeLevel = currentHintState.level().writingLevel();
     }
 
-    private String adjustedRatingForHelp(String rating, boolean override) {
-        if (activeFlashcardMissed && "repair_writing".equals(activeSession.taskType) && passingRating(rating)) {
-            return "hard";
-        }
-        return rating;
-    }
-
-    private boolean passingRating(String rating) {
-        return "good".equals(rating) || "easy".equals(rating);
-    }
-
     private String guideStatusPrefix(StrokeGuide guide) {
-        return guideLabel(currentHintState, guide) + flashcardRepairNote();
-    }
-
-    private String flashcardRepairNote() {
-        if (activeFlashcardMissed && activeSession != null && "repair_writing".equals(activeSession.taskType)) {
-            return "\nMissed recall. A clean repair is still logged as hard.";
-        }
-        return "";
+        return guideLabel(currentHintState, guide);
     }
 
     private void showWritingHint() {
@@ -1678,7 +1660,7 @@ public final class MainActivity extends Activity {
         }
         return "context_writing".equals(session.taskType)
                 || "guided_writing".equals(session.taskType)
-                || "repair_writing".equals(session.taskType)
+                || "writing_remediation".equals(session.taskType)
                 || ("targeted_writing".equals(session.taskType) && session.item.learningStep < 2);
     }
 
@@ -1821,7 +1803,11 @@ public final class MainActivity extends Activity {
     }
 
     private boolean isFontRecognitionTask(Records.StudySession session) {
-        return session != null && "font_recognition".equals(session.taskType);
+        return session != null && ("font_meaning".equals(session.taskType) || "font_recognition".equals(session.taskType));
+    }
+
+    private boolean isWordReadingTask(Records.StudySession session) {
+        return session != null && "word_reading".equals(session.taskType);
     }
 
     private boolean canSubmitAnalysis(WritingAnalysis analysis) {
@@ -1955,6 +1941,9 @@ public final class MainActivity extends Activity {
             return "Already saved.";
         }
         String streakText = streak == null || streak.currentDays <= 0 ? "" : " " + streakHeadline(streak) + ".";
+        if (result.item.writingRemediationPending) {
+            return "Saved. Writing repair is next for this kanji." + streakText;
+        }
         if ("again".equals(result.appliedRating)) {
             return "Saved. This kanji will come back soon." + streakText;
         }
@@ -2155,6 +2144,7 @@ public final class MainActivity extends Activity {
         content.addView(box);
 
         content.addView(workloadSettingsPanel());
+        content.addView(writingTriggerSettingsPanel(current));
         content.addView(reminderSettingsPanel());
         content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
@@ -2213,6 +2203,48 @@ public final class MainActivity extends Activity {
         save.setOnClickListener(v -> {
             store.saveAdaptiveLoadWorkPercent(selected[0]);
             Toast.makeText(this, "Workload saved. Study uses the new adaptive focus.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
+    }
+
+    private LinearLayout writingTriggerSettingsPanel(Records.Settings current) {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        box.addView(text("Writing repair trigger", 23, INK, true));
+        box.addView(text("Kani starts writing only after this many separate missed recognition days for the same kanji.", 15, MUTED, false));
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.format(Locale.ROOT, "%d", current.writingTriggerMissDays));
+        input.setTextSize(22);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        box.addView(input, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        LinearLayout quick = new LinearLayout(this);
+        quick.setOrientation(LinearLayout.HORIZONTAL);
+        for (int value : new int[]{2, 3, 4}) {
+            Button preset = secondaryButton(value + " days");
+            preset.setOnClickListener(v -> input.setText(String.format(Locale.ROOT, "%d", value)));
+            quick.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
+        }
+        box.addView(quick);
+
+        Button save = primaryButton("Save writing trigger", TEAL);
+        save.setOnClickListener(v -> {
+            int value;
+            try {
+                value = Integer.parseInt(input.getText().toString().trim());
+            } catch (NumberFormatException error) {
+                Toast.makeText(this, "Enter a number of missed days.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (value < 1 || value > 14) {
+                Toast.makeText(this, "Use 1 to 14 missed days.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            store.putIntSetting("writing_trigger_miss_days", value);
+            Toast.makeText(this, "Writing trigger saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
@@ -2578,6 +2610,14 @@ public final class MainActivity extends Activity {
         return cleanLearnerText(raw, session.prompt, 96);
     }
 
+    private String wordPrompt(Records.StudySession session) {
+        Records.Example example = session == null ? null : firstExample(session.row);
+        if (example != null && !example.expression.isEmpty()) {
+            return example.expression;
+        }
+        return session == null ? "" : session.item.kanji;
+    }
+
     private String cleanLearnerText(String raw, String fallback, int maxChars) {
         String value = raw == null ? "" : raw;
         value = value.replaceAll("\\[[0-9]{4}-[0-9]{2}-[0-9]{2}\\]", " ");
@@ -2625,6 +2665,18 @@ public final class MainActivity extends Activity {
     private String labelForTask(String task) {
         if ("targeted_flashcard".equals(task)) {
             return "Focused recall";
+        }
+        if ("kanji_meaning".equals(task)) {
+            return "Kanji -> meaning";
+        }
+        if ("font_meaning".equals(task)) {
+            return "Font -> meaning";
+        }
+        if ("word_reading".equals(task)) {
+            return "Word -> reading";
+        }
+        if ("writing_remediation".equals(task)) {
+            return "Writing repair";
         }
         if ("meaning_flashcard".equals(task)) {
             return "Quick recall";

@@ -165,6 +165,8 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Default: 3000");
                 assertHasText(activity, "Daily workload");
                 assertHasText(activity, "Pareto: up to 5 kanji");
+                assertHasText(activity, "Writing repair trigger");
+                assertHasText(activity, "missed recognition days");
                 assertHasText(activity, "Daily reminder");
                 assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
@@ -175,6 +177,8 @@ public final class MainActivityInstrumentedTest {
                 slider.setProgress(70);
             });
             clickText(scenario, "Save workload");
+            clickText(scenario, "4 days");
+            clickText(scenario, "Save writing trigger");
             clickText(scenario, "4000");
             clickText(scenario, "Save cutoff");
             clickText(scenario, "Morning 08:00");
@@ -185,6 +189,7 @@ public final class MainActivityInstrumentedTest {
             LocalStore store = new LocalStore(context);
             try {
                 assertEquals(70, store.adaptiveLoadWorkPercent());
+                assertEquals(4, store.getIntSetting("writing_trigger_miss_days", 3));
                 assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 3000));
                 LocalStore.ReminderSettings reminder = store.reminderSettings();
                 assertTrue(reminder.enabled);

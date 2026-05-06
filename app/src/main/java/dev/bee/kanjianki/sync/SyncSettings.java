@@ -12,6 +12,9 @@ public final class SyncSettings {
         int cutoff = store == null
                 ? defaults.suspendedRankCutoff
                 : store.getIntSetting("suspended_rank_cutoff", defaults.suspendedRankCutoff);
+        int writingTriggerMissDays = store == null
+                ? defaults.writingTriggerMissDays
+                : store.getIntSetting("writing_trigger_miss_days", defaults.writingTriggerMissDays);
         return new Records.Settings(
                 defaults.modelName,
                 defaults.templateName,
@@ -25,7 +28,8 @@ public final class SyncSettings {
                 defaults.matureSupportThreshold,
                 cutoff,
                 defaults.activeQueueCap,
-                defaults.newPerDay
+                defaults.newPerDay,
+                writingTriggerMissDays
         );
     }
 }

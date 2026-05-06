@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class Records {
+    public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
+
     private Records() {
     }
 
@@ -25,6 +27,7 @@ public final class Records {
         public final int suspendedRankCutoff;
         public final int activeQueueCap;
         public final int newPerDay;
+        public final int writingTriggerMissDays;
 
         public Settings(
                 String modelName,
@@ -41,6 +44,40 @@ public final class Records {
                 int activeQueueCap,
                 int newPerDay
         ) {
+            this(
+                    modelName,
+                    templateName,
+                    expressionField,
+                    readingField,
+                    meaningField,
+                    sentenceField,
+                    frequencyField,
+                    frequencySortField,
+                    matureDays,
+                    matureSupportThreshold,
+                    suspendedRankCutoff,
+                    activeQueueCap,
+                    newPerDay,
+                    DEFAULT_WRITING_TRIGGER_MISS_DAYS
+            );
+        }
+
+        public Settings(
+                String modelName,
+                String templateName,
+                String expressionField,
+                String readingField,
+                String meaningField,
+                String sentenceField,
+                String frequencyField,
+                String frequencySortField,
+                int matureDays,
+                int matureSupportThreshold,
+                int suspendedRankCutoff,
+                int activeQueueCap,
+                int newPerDay,
+                int writingTriggerMissDays
+        ) {
             this.modelName = modelName;
             this.templateName = templateName;
             this.expressionField = expressionField;
@@ -54,6 +91,7 @@ public final class Records {
             this.suspendedRankCutoff = suspendedRankCutoff;
             this.activeQueueCap = activeQueueCap;
             this.newPerDay = newPerDay;
+            this.writingTriggerMissDays = Math.max(1, writingTriggerMissDays);
         }
 
         public static Settings kikuDefaults() {
@@ -421,6 +459,10 @@ public final class Records {
         public final int lapses;
         public final int learningStep;
         public final int writingLevel;
+        public final int recognitionStage;
+        public final int consecutiveFailedRecognitionDays;
+        public final long lastFailedRecognitionDayMillis;
+        public final boolean writingRemediationPending;
         public final String activeToken;
         public final long createdAtMillis;
 
@@ -437,6 +479,42 @@ public final class Records {
                 String activeToken,
                 long createdAtMillis
         ) {
+            this(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    0,
+                    0,
+                    0L,
+                    false,
+                    activeToken,
+                    createdAtMillis
+            );
+        }
+
+        public StudyItem(
+                String kanji,
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int writingLevel,
+                int recognitionStage,
+                int consecutiveFailedRecognitionDays,
+                long lastFailedRecognitionDayMillis,
+                boolean writingRemediationPending,
+                String activeToken,
+                long createdAtMillis
+        ) {
             this.kanji = kanji;
             this.state = state;
             this.dueAtMillis = dueAtMillis;
@@ -446,12 +524,32 @@ public final class Records {
             this.lapses = lapses;
             this.learningStep = learningStep;
             this.writingLevel = writingLevel;
+            this.recognitionStage = Math.max(0, Math.min(2, recognitionStage));
+            this.consecutiveFailedRecognitionDays = Math.max(0, consecutiveFailedRecognitionDays);
+            this.lastFailedRecognitionDayMillis = Math.max(0L, lastFailedRecognitionDayMillis);
+            this.writingRemediationPending = writingRemediationPending;
             this.activeToken = activeToken;
             this.createdAtMillis = createdAtMillis;
         }
 
         public StudyItem withToken(String token) {
-            return new StudyItem(kanji, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, writingLevel, token, createdAtMillis);
+            return new StudyItem(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    token,
+                    createdAtMillis
+            );
         }
     }
 

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,6 +13,7 @@ import java.util.UUID;
 public final class BridgeScheduler {
     private static final long MINUTE = 60_000L;
     private static final long DAY = 86_400_000L;
+    private static final int MAX_RECOGNITION_STAGE = 2;
 
     public List<Records.StudyItem> seedQueue(
             List<Records.DashboardRow> rows,
@@ -154,24 +156,12 @@ public final class BridgeScheduler {
                 : best.activeToken;
         String taskType;
         boolean writingRequired;
-        if (best.totalReviews == 0 || best.learningStep == 0) {
-            taskType = best.totalReviews == 0 ? "meaning_flashcard" : "font_recognition";
-            writingRequired = false;
-        } else if (best.learningStep == 1) {
-            taskType = "guided_writing";
-            writingRequired = true;
-        } else if (best.totalReviews % 5 == 0) {
-            taskType = "font_recognition";
-            writingRequired = false;
-        } else if (best.totalReviews % 5 == 1) {
-            taskType = "meaning_flashcard";
-            writingRequired = false;
-        } else if (best.totalReviews % 3 == 0) {
-            taskType = "sampled_handwriting";
+        if (best.writingRemediationPending) {
+            taskType = "writing_remediation";
             writingRequired = true;
         } else {
-            taskType = "blind_writing";
-            writingRequired = true;
+            taskType = recognitionTaskType(best.recognitionStage);
+            writingRequired = false;
         }
         String prompt = row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
@@ -203,6 +193,10 @@ public final class BridgeScheduler {
                 item.lapses,
                 item.learningStep,
                 item.writingLevel,
+                item.recognitionStage,
+                item.consecutiveFailedRecognitionDays,
+                item.lastFailedRecognitionDayMillis,
+                item.writingRemediationPending,
                 null,
                 item.createdAtMillis
         );
@@ -219,6 +213,10 @@ public final class BridgeScheduler {
                 0,
                 0,
                 0,
+                0,
+                0,
+                0L,
+                false,
                 null,
                 nowMillis
         );
@@ -245,6 +243,9 @@ public final class BridgeScheduler {
     }
 
     private static int duePriority(Records.StudyItem item) {
+        if (item.writingRemediationPending) {
+            return 0;
+        }
         if ("learning".equals(item.state) || (item.totalReviews > 0 && item.learningStep < 2)) {
             return 0;
         }
@@ -265,7 +266,7 @@ public final class BridgeScheduler {
             Set<String> consumedTokens,
             long nowMillis
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, Records.SchedulerParameters.defaults());
+        return applyReview(item, request, consumedTokens, nowMillis, Records.SchedulerParameters.defaults(), Records.Settings.kikuDefaults());
     }
 
     public Records.ReviewResult applyReview(
@@ -275,8 +276,22 @@ public final class BridgeScheduler {
             long nowMillis,
             Records.SchedulerParameters parameters
     ) {
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, Records.Settings.kikuDefaults());
+    }
+
+    public Records.ReviewResult applyReview(
+            Records.StudyItem item,
+            Records.ReviewRequest request,
+            Set<String> consumedTokens,
+            long nowMillis,
+            Records.SchedulerParameters parameters,
+            Records.Settings settings
+    ) {
         if (parameters == null) {
             parameters = Records.SchedulerParameters.defaults();
+        }
+        if (settings == null) {
+            settings = Records.Settings.kikuDefaults();
         }
         if (consumedTokens.contains(request.token)) {
             return new Records.ReviewResult(item, "duplicate", true, "Review token already consumed.");
@@ -286,7 +301,10 @@ public final class BridgeScheduler {
         }
         consumedTokens.add(request.token);
         String rating = normalizeRating(request.rating);
-        if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
+        boolean writingRemediationReview = request.writingRequired && item.writingRemediationPending;
+        if (writingRemediationReview && request.manualOverride) {
+            rating = "hard";
+        } else if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
             rating = "again";
         }
         boolean writingReviewCanMoveHelp = request.writingRequired && !request.manualOverride;
@@ -300,6 +318,10 @@ public final class BridgeScheduler {
         int lapses = item.lapses;
         int step = item.learningStep;
         int writingLevel = item.writingLevel;
+        int recognitionStage = item.recognitionStage;
+        int failedRecognitionDays = item.consecutiveFailedRecognitionDays;
+        long lastFailedRecognitionDay = item.lastFailedRecognitionDayMillis;
+        boolean writingRemediationPending = item.writingRemediationPending;
         double stability = item.stability;
         double difficulty = item.difficulty;
         long due;
@@ -342,6 +364,31 @@ public final class BridgeScheduler {
         } else if (cleanWritingPass) {
             writingLevel = Math.min(3, writingLevel + 1);
         }
+        if (!request.writingRequired) {
+            if ("again".equals(rating)) {
+                recognitionStage = Math.max(0, recognitionStage - 1);
+                long today = localDayStart(nowMillis);
+                if (failedRecognitionDays <= 0 || lastFailedRecognitionDay != today) {
+                    failedRecognitionDays++;
+                    lastFailedRecognitionDay = today;
+                }
+                writingRemediationPending = failedRecognitionDays >= settings.writingTriggerMissDays;
+            } else {
+                recognitionStage = Math.min(MAX_RECOGNITION_STAGE, recognitionStage + 1);
+                failedRecognitionDays = 0;
+                lastFailedRecognitionDay = 0L;
+                writingRemediationPending = false;
+            }
+        } else if (writingRemediationReview) {
+            if (request.manualOverride || request.writingPassed) {
+                recognitionStage = 0;
+                failedRecognitionDays = 0;
+                lastFailedRecognitionDay = 0L;
+                writingRemediationPending = false;
+            } else {
+                writingRemediationPending = true;
+            }
+        }
 
         Records.StudyItem updated = new Records.StudyItem(
                 item.kanji,
@@ -353,6 +400,10 @@ public final class BridgeScheduler {
                 lapses,
                 step,
                 writingLevel,
+                recognitionStage,
+                failedRecognitionDays,
+                lastFailedRecognitionDay,
+                writingRemediationPending,
                 null,
                 item.createdAtMillis
         );
@@ -396,5 +447,26 @@ public final class BridgeScheduler {
         double retentionFactor = Math.log(parameters.targetRetention) / Math.log(0.90);
         double days = Math.max(1.0, stability * retentionFactor);
         return Math.round(days * DAY);
+    }
+
+    private static String recognitionTaskType(int stage) {
+        switch (Math.max(0, Math.min(MAX_RECOGNITION_STAGE, stage))) {
+            case 1:
+                return "font_meaning";
+            case 2:
+                return "word_reading";
+            default:
+                return "kanji_meaning";
+        }
+    }
+
+    private static long localDayStart(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
     }
 }
