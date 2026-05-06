@@ -651,24 +651,49 @@ public class BridgeSchedulerTest {
         );
         Records.StudyItem differentSignatureLower = item("裂", 0)
                 .withAnswerSignature("裂|烈火|れっか|raging fire");
+        Records.DashboardRow matureRow = rowWithExample("裂", 30, "suspended", "裂ける", "さける", "split");
+        Records.DashboardRow lowerRow = rowWithExample("裂", 30, "active", "烈火", "れっか", "raging fire");
+        List<Records.DashboardRow> rows = Arrays.asList(matureRow, lowerRow);
 
         List<Records.StudyItem> active = scheduler.activeQueueItems(
                 Arrays.asList(matureWord, differentSignatureLower),
-                Collections.singletonList(row("裂", 30)),
+                rows,
                 2000L,
                 null
         );
         Records.StudySession session = scheduler.nextSession(
                 Arrays.asList(matureWord, differentSignatureLower),
-                Collections.singletonList(row("裂", 30)),
+                rows,
                 2000L
         );
 
         assertTrue(active.contains(differentSignatureLower));
-        assertEquals(1, scheduler.dueCount(Arrays.asList(matureWord, differentSignatureLower), Collections.singletonList(row("裂", 30)), 2000L));
+        assertEquals(1, scheduler.dueCount(Arrays.asList(matureWord, differentSignatureLower), rows, 2000L));
         assertNotNull(session);
         assertEquals("kanji_meaning", session.taskType);
         assertEquals("裂|烈火|れっか|raging fire", session.item.answerSignature);
+    }
+
+    @Test
+    public void seedQueueKeepsSeparateAnswerSignaturesForSameKanji() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.DashboardRow oldTarget = rowWithExample("裂", 30, "suspended", "裂ける", "さける", "split");
+        Records.DashboardRow newTarget = rowWithExample("裂", 30, "active", "破裂", "はれつ", "burst");
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Arrays.asList(oldTarget, newTarget),
+                Collections.singletonList(new Records.StudyItem("裂", "review", 0L, 2.0, 4.0, 2, 0, 2, 1, null, 0L)
+                        .withAnswerSignature("裂|裂ける|さける|split")),
+                Records.Settings.kikuDefaults(),
+                1000L,
+                0L
+        );
+
+        assertEquals(2, items.size());
+        assertNotNull(findItemBySignature(items, "裂|裂ける|さける|split"));
+        assertNotNull(findItemBySignature(items, "裂|破裂|はれつ|burst"));
+        List<Records.StudyItem> active = scheduler.activeQueueItems(items, Arrays.asList(oldTarget, newTarget), 1000L, null);
+        assertEquals(2, active.size());
     }
 
     @Test
@@ -751,6 +776,15 @@ public class BridgeSchedulerTest {
             }
         }
         throw new AssertionError("Missing study item for " + kanji);
+    }
+
+    private Records.StudyItem findItemBySignature(List<Records.StudyItem> items, String answerSignature) {
+        for (Records.StudyItem item : items) {
+            if (item.answerSignature.equals(answerSignature)) {
+                return item;
+            }
+        }
+        throw new AssertionError("Missing study item for " + answerSignature);
     }
 
     private Records.DashboardRow row(String kanji, int score) {

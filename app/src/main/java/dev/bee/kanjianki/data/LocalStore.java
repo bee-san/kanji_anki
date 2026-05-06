@@ -24,7 +24,8 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 6;
+    private static final int DB_VERSION = 7;
+    private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -51,7 +52,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
-        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL)");
+        db.execSQL(STUDY_ITEMS_TABLE_SQL);
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
@@ -92,6 +93,18 @@ public final class LocalStore extends SQLiteOpenHelper {
             addNullableColumn(db, "study_items", "word_reading_memory", "TEXT NOT NULL DEFAULT ''");
             addNullableColumn(db, "study_items", "writing_remediation_memory", "TEXT NOT NULL DEFAULT ''");
         }
+        if (oldVersion < 7) {
+            rebuildStudyItemsWithAnswerSignatureKey(db);
+        }
+    }
+
+    private void rebuildStudyItemsWithAnswerSignatureKey(SQLiteDatabase db) {
+        db.execSQL("DROP INDEX IF EXISTS idx_study_due");
+        db.execSQL("ALTER TABLE study_items RENAME TO study_items_old");
+        db.execSQL(STUDY_ITEMS_TABLE_SQL);
+        db.execSQL("INSERT OR REPLACE INTO study_items (kanji, state, due_at, stability, difficulty, total_reviews, lapses, learning_step, writing_level, recognition_stage, consecutive_failed_recognition_days, last_failed_recognition_day, writing_remediation_pending, suppressed_by_task_type, suppressed_at, mature_interval_days, answer_signature, kanji_meaning_memory, font_meaning_memory, word_reading_memory, writing_remediation_memory, active_token, created_at) SELECT kanji, state, due_at, stability, difficulty, total_reviews, lapses, learning_step, writing_level, recognition_stage, consecutive_failed_recognition_days, last_failed_recognition_day, writing_remediation_pending, suppressed_by_task_type, suppressed_at, mature_interval_days, COALESCE(answer_signature, ''), kanji_meaning_memory, font_meaning_memory, word_reading_memory, writing_remediation_memory, active_token, created_at FROM study_items_old");
+        db.execSQL("DROP TABLE study_items_old");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON study_items(state, due_at)");
     }
 
     public long saveSuccessfulSync(
@@ -1160,7 +1173,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     ) {
         int target = settings == null ? Records.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
         for (Records.StudyItem item : currentItems) {
-            StudySnapshot previous = previousItems.get(item.kanji);
+            StudySnapshot previous = previousItems.get(studyFamilyKey(item.kanji, item.answerSignature));
             if (previous == null) {
                 continue;
             }
@@ -1186,7 +1199,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                         row == null ? null : row.weaknessScore,
                         mature,
                         syncId,
-                        "retired:" + item.kanji + ":" + syncId
+                        "retired:" + studyTimelineKey(item) + ":" + syncId
                 );
             } else if ("retired".equals(previous.state) && !"retired".equals(item.state)) {
                 Integer mature = row == null ? null : row.matureSupportCount;
@@ -1208,7 +1221,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                         row == null ? null : row.weaknessScore,
                         mature,
                         syncId,
-                        "reopened:" + item.kanji + ":" + syncId
+                        "reopened:" + studyTimelineKey(item) + ":" + syncId
                 );
             }
         }
@@ -1301,7 +1314,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private Records.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("study_items", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query("study_items", null, "kanji=?", new String[]{kanji}, null, null, "state='retired' ASC, due_at ASC", "1");
         try {
             return cursor.moveToFirst() ? readStudyItem(cursor) : null;
         } finally {
@@ -1415,10 +1428,12 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Map<String, StudySnapshot> studySnapshots(SQLiteDatabase db) {
         Map<String, StudySnapshot> items = new HashMap<>();
-        Cursor cursor = db.query("study_items", new String[]{"kanji", "state"}, null, null, null, null, null);
+        Cursor cursor = db.query("study_items", new String[]{"kanji", "answer_signature", "state"}, null, null, null, null, null);
         try {
             while (cursor.moveToNext()) {
-                items.put(string(cursor, "kanji"), new StudySnapshot(string(cursor, "kanji"), string(cursor, "state")));
+                String kanji = string(cursor, "kanji");
+                String answerSignature = string(cursor, "answer_signature");
+                items.put(studyFamilyKey(kanji, answerSignature), new StudySnapshot(kanji, answerSignature, string(cursor, "state")));
             }
         } finally {
             cursor.close();
@@ -1779,12 +1794,22 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private static final class StudySnapshot {
         private final String kanji;
+        private final String answerSignature;
         private final String state;
 
-        private StudySnapshot(String kanji, String state) {
+        private StudySnapshot(String kanji, String answerSignature, String state) {
             this.kanji = kanji;
+            this.answerSignature = answerSignature == null ? "" : answerSignature;
             this.state = state == null ? "" : state;
         }
+    }
+
+    private static String studyFamilyKey(String kanji, String answerSignature) {
+        return kanji + "\u0000" + (answerSignature == null ? "" : answerSignature);
+    }
+
+    private static String studyTimelineKey(Records.StudyItem item) {
+        return item.kanji + ":" + Integer.toHexString((item.answerSignature == null ? "" : item.answerSignature).hashCode());
     }
 
     private static String fieldsJson(Map<String, String> fields) {

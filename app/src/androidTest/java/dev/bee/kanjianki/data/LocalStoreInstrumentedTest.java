@@ -278,7 +278,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(3000, store.getIntSetting("suspended_rank_cutoff", 1000));
         assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
         store.putIntSetting("writing_trigger_miss_days", 4);
-        assertEquals(4, SyncSettings.fromStore(store).writingTriggerMissDays);
+        assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
         LocalStore.ReminderSettings defaults = store.reminderSettings();
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);
@@ -327,6 +327,27 @@ public final class LocalStoreInstrumentedTest {
         store.saveReview(request, "easy", 4000L);
         assertEquals(1, store.consumedTokens().size());
         assertEquals(1, store.studiedKanjiSince(0L).size());
+    }
+
+    @Test
+    public void testStudyItemsPersistSeparateAnswerSignaturesForSameKanji() {
+        Records.StudyItem oldWord = new Records.StudyItem("拉", "review", 1000L, 2.0, 4.0, 2, 0, 2, 1, null, 1000L)
+                .withAnswerSignature("拉|拉麺|らーめん|ramen");
+        Records.StudyItem newWord = new Records.StudyItem("拉", "new", 2000L, 0.4, 5.0, 0, 0, 0, 0, null, 2000L)
+                .withAnswerSignature("拉|拉致|らち|abduction");
+
+        store.replaceStudyItems(Arrays.asList(oldWord, newWord));
+        List<Records.StudyItem> items = store.studyItems();
+
+        assertEquals(2, items.size());
+        assertEquals("拉|拉麺|らーめん|ramen", items.get(0).answerSignature);
+        assertEquals("拉|拉致|らち|abduction", items.get(1).answerSignature);
+
+        store.saveStudyItem(oldWord.withSuppression("word_reading", 3000L, 31));
+        items = store.studyItems();
+        assertEquals(2, items.size());
+        assertEquals("word_reading", items.get(0).suppressedByTaskType);
+        assertEquals("", items.get(1).suppressedByTaskType);
     }
 
     @Test

@@ -65,17 +65,28 @@ public final class BridgeScheduler {
     ) {
         int activeQueueCap = allKanjiMode ? Integer.MAX_VALUE : settings.activeQueueCap;
         int admissionLimit = allKanjiMode ? Integer.MAX_VALUE : Math.max(0, newAdmissionLimit);
-        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
+        Map<String, Records.DashboardRow> rowByFamily = new HashMap<>();
+        Map<String, List<Records.DashboardRow>> rowsByKanji = new HashMap<>();
         for (Records.DashboardRow row : allRows) {
-            rowByKanji.put(row.kanji, row);
+            rowByFamily.put(rowFamilyKey(row), row);
+            List<Records.DashboardRow> familyRows = rowsByKanji.get(row.kanji);
+            if (familyRows == null) {
+                familyRows = new ArrayList<>();
+                rowsByKanji.put(row.kanji, familyRows);
+            }
+            familyRows.add(row);
         }
 
-        Map<String, Records.StudyItem> byKanji = new HashMap<>();
+        Map<String, Records.StudyItem> byFamily = new HashMap<>();
         List<Records.StudyItem> out = new ArrayList<>();
         int activeCount = 0;
         int newToday = 0;
         for (Records.StudyItem item : existing) {
-            Records.DashboardRow row = rowByKanji.get(item.kanji);
+            Records.DashboardRow row = rowByFamily.get(familyKey(item));
+            List<Records.DashboardRow> familyRows = rowsByKanji.get(item.kanji);
+            if (row == null && familyRows != null && (item.answerSignature.isEmpty() || familyRows.size() == 1)) {
+                row = familyRows.get(0);
+            }
             Records.StudyItem current = item;
             if (row != null) {
                 current = alignAnswerSignature(current, row, nowMillis);
@@ -85,7 +96,7 @@ public final class BridgeScheduler {
                     current = retiredCopy(current);
                 }
             }
-            byKanji.put(current.kanji, current);
+            byFamily.put(familyKey(current), current);
             out.add(current);
             if (!"retired".equals(current.state)) {
                 activeCount++;
@@ -96,7 +107,8 @@ public final class BridgeScheduler {
         }
 
         for (Records.DashboardRow row : admissionRows) {
-            Records.StudyItem current = byKanji.get(row.kanji);
+            String rowKey = rowFamilyKey(row);
+            Records.StudyItem current = byFamily.get(rowKey);
             if (current != null) {
                 if ("retired".equals(current.state)
                         && row.matureSupportCount < settings.matureSupportThreshold
@@ -105,7 +117,7 @@ public final class BridgeScheduler {
                     Records.StudyItem reopened = newStudyItem(row.kanji, nowMillis, answerSignature(row));
                     out.remove(current);
                     out.add(reopened);
-                    byKanji.put(row.kanji, reopened);
+                    byFamily.put(rowKey, reopened);
                     activeCount++;
                     newToday++;
                 }
@@ -534,8 +546,10 @@ public final class BridgeScheduler {
             Set<String> allowedKanji
     ) {
         Set<String> currentRows = new HashSet<>();
+        Set<String> currentFamilies = new HashSet<>();
         for (Records.DashboardRow row : rows) {
             currentRows.add(row.kanji);
+            currentFamilies.add(rowFamilyKey(row));
         }
         Map<String, List<Records.StudyItem>> byFamily = new HashMap<>();
         for (Records.StudyItem item : items) {
@@ -545,7 +559,7 @@ public final class BridgeScheduler {
             if (allowedKanji != null && !allowedKanji.contains(item.kanji)) {
                 continue;
             }
-            if (!currentRows.contains(item.kanji)) {
+            if (!currentFamilies.contains(familyKey(item)) && !(item.answerSignature.isEmpty() && currentRows.contains(item.kanji))) {
                 continue;
             }
             String familyKey = familyKey(item);
@@ -645,7 +659,15 @@ public final class BridgeScheduler {
     }
 
     private static String familyKey(Records.StudyItem item) {
-        return item.kanji + "\u0000" + (item.answerSignature == null ? "" : item.answerSignature);
+        return familyKey(item.kanji, item.answerSignature);
+    }
+
+    private static String rowFamilyKey(Records.DashboardRow row) {
+        return familyKey(row.kanji, answerSignature(row));
+    }
+
+    private static String familyKey(String kanji, String answerSignature) {
+        return kanji + "\u0000" + (answerSignature == null ? "" : answerSignature);
     }
 
     private static boolean sameAnswerSignature(Records.StudyItem left, Records.StudyItem right) {
