@@ -2123,7 +2123,7 @@ public final class MainActivity extends Activity {
         base("settings");
         Records.Settings current = settings();
         content.addView(text("Settings", 34, INK, true));
-        content.addView(text("Tune which Kiku cards become writing practice and when Kani reminds you.", 16, MUTED, false));
+        content.addView(text("Tune FSRS retention, which Kiku cards enter practice, and when Kani reminds you.", 16, MUTED, false));
         addSpace(12);
 
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
@@ -2167,7 +2167,7 @@ public final class MainActivity extends Activity {
         content.addView(box);
 
         content.addView(workloadSettingsPanel());
-        content.addView(writingTriggerSettingsPanel(current));
+        content.addView(retentionSettingsPanel());
         content.addView(reminderSettingsPanel());
         content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
@@ -2232,46 +2232,73 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private LinearLayout writingTriggerSettingsPanel(Records.Settings current) {
+    private LinearLayout retentionSettingsPanel() {
+        Records.SchedulerParameters current = store.schedulerParameters();
+        final int[] selected = new int[]{retentionPercent(current.targetRetention)};
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
-        box.addView(text("Writing repair trigger", 23, INK, true));
-        box.addView(text("Kani starts writing only after this many separate missed recognition days for the same kanji.", 15, MUTED, false));
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        input.setText(String.format(Locale.ROOT, "%d", current.writingTriggerMissDays));
-        input.setTextSize(22);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        box.addView(input, new LinearLayout.LayoutParams(-1, dp(58)));
+        box.addView(text("FSRS retention", 23, INK, true));
+        TextView status = text(retentionStatusText(selected[0]), 17, TEAL, true);
+        box.addView(status);
+        box.addView(text("Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.", 15, MUTED, false));
+
+        SeekBar slider = new SeekBar(this);
+        slider.setMax(17);
+        slider.setProgress(selected[0] - 80);
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                selected[0] = 80 + progress;
+                status.setText(retentionStatusText(selected[0]));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        box.addView(slider, new LinearLayout.LayoutParams(-1, dp(56)));
 
         LinearLayout quick = new LinearLayout(this);
         quick.setOrientation(LinearLayout.HORIZONTAL);
-        for (int value : new int[]{2, 3, 4}) {
-            Button preset = secondaryButton(value + " days");
-            preset.setOnClickListener(v -> input.setText(String.format(Locale.ROOT, "%d", value)));
+        for (int value : new int[]{85, 90, 95}) {
+            Button preset = secondaryButton(value + "%");
+            preset.setOnClickListener(v -> {
+                selected[0] = value;
+                slider.setProgress(value - 80);
+                status.setText(retentionStatusText(selected[0]));
+            });
             quick.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
         }
         box.addView(quick);
 
-        Button save = primaryButton("Save writing trigger", TEAL);
+        Button save = primaryButton("Save retention", TEAL);
         save.setOnClickListener(v -> {
-            int value;
-            try {
-                value = Integer.parseInt(input.getText().toString().trim());
-            } catch (NumberFormatException error) {
-                Toast.makeText(this, "Enter a number of missed days.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (value < 1 || value > 14) {
-                Toast.makeText(this, "Use 1 to 14 missed days.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            store.putIntSetting("writing_trigger_miss_days", value);
-            Toast.makeText(this, "Writing trigger saved.", Toast.LENGTH_SHORT).show();
+            Records.SchedulerParameters latest = store.schedulerParameters();
+            store.saveSchedulerParameters(new Records.SchedulerParameters(
+                    selected[0] / 100.0,
+                    latest.againMultiplier,
+                    latest.hardMultiplier,
+                    latest.goodMultiplier,
+                    latest.easyMultiplier,
+                    latest.lastAdjustedAtMillis,
+                    latest.lastAdjustmentReviewCount
+            ));
+            Toast.makeText(this, "FSRS retention saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
         return box;
+    }
+
+    private int retentionPercent(double retention) {
+        return Math.max(80, Math.min(97, (int) Math.round(retention * 100.0)));
+    }
+
+    private String retentionStatusText(int retentionPercent) {
+        return "Desired retention: " + retentionPercent + "%";
     }
 
     private LinearLayout reminderSettingsPanel() {

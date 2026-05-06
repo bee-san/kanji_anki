@@ -165,8 +165,8 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Default: 3000");
                 assertHasText(activity, "Daily workload");
                 assertHasText(activity, "Pareto: up to 5 kanji");
-                assertHasText(activity, "Writing repair trigger");
-                assertHasText(activity, "missed recognition days");
+                assertHasText(activity, "FSRS retention");
+                assertHasText(activity, "Desired retention: 90%");
                 assertHasText(activity, "Daily reminder");
                 assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
@@ -177,8 +177,8 @@ public final class MainActivityInstrumentedTest {
                 slider.setProgress(70);
             });
             clickText(scenario, "Save workload");
-            clickText(scenario, "4 days");
-            clickText(scenario, "Save writing trigger");
+            clickText(scenario, "95%");
+            clickText(scenario, "Save retention");
             clickText(scenario, "4000");
             clickText(scenario, "Save cutoff");
             clickText(scenario, "Morning 08:00");
@@ -189,7 +189,7 @@ public final class MainActivityInstrumentedTest {
             LocalStore store = new LocalStore(context);
             try {
                 assertEquals(70, store.adaptiveLoadWorkPercent());
-                assertEquals(4, store.getIntSetting("writing_trigger_miss_days", 3));
+                assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
                 assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 3000));
                 LocalStore.ReminderSettings reminder = store.reminderSettings();
                 assertTrue(reminder.enabled);
@@ -696,7 +696,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testMissedRecognitionAtThresholdQueuesWritingRemediation() {
+    public void testMissedRecognitionUsesInternalWritingThreshold() {
         seedDashboard();
         LocalStore initialStore = new LocalStore(context);
         try {
@@ -717,7 +717,7 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(0, stats.writingRequired);
                 List<Records.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
-                assertTrue(items.get(0).writingRemediationPending);
+                assertFalse(items.get(0).writingRemediationPending);
                 assertEquals(0, items.get(0).recognitionStage);
                 assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
             } finally {
