@@ -14,6 +14,10 @@ public final class BridgeScheduler {
     private static final long MINUTE = 60_000L;
     private static final long DAY = 86_400_000L;
     private static final int MAX_RECOGNITION_STAGE = 2;
+    public static final String TASK_KANJI_MEANING = "kanji_meaning";
+    public static final String TASK_FONT_MEANING = "font_meaning";
+    public static final String TASK_WORD_READING = "word_reading";
+    public static final String TASK_WRITING_REMEDIATION = "writing_remediation";
 
     public List<Records.StudyItem> seedQueue(
             List<Records.DashboardRow> rows,
@@ -73,9 +77,12 @@ public final class BridgeScheduler {
         for (Records.StudyItem item : existing) {
             Records.DashboardRow row = rowByKanji.get(item.kanji);
             Records.StudyItem current = item;
+            if (row != null) {
+                current = alignAnswerSignature(current, row, nowMillis);
+            }
             if (!"retired".equals(item.state)) {
-                if (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && item.totalReviews > 0)) {
-                    current = retiredCopy(item);
+                if (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0)) {
+                    current = retiredCopy(current);
                 }
             }
             byKanji.put(current.kanji, current);
@@ -95,7 +102,7 @@ public final class BridgeScheduler {
                         && row.matureSupportCount < settings.matureSupportThreshold
                         && activeCount < activeQueueCap
                         && newToday < admissionLimit) {
-                    Records.StudyItem reopened = newStudyItem(row.kanji, nowMillis);
+                    Records.StudyItem reopened = newStudyItem(row.kanji, nowMillis, answerSignature(row));
                     out.remove(current);
                     out.add(reopened);
                     byKanji.put(row.kanji, reopened);
@@ -107,7 +114,7 @@ public final class BridgeScheduler {
             if (activeCount >= activeQueueCap || newToday >= admissionLimit) {
                 continue;
             }
-            out.add(newStudyItem(row.kanji, nowMillis));
+            out.add(newStudyItem(row.kanji, nowMillis, answerSignature(row)));
             activeCount++;
             newToday++;
         }
@@ -133,14 +140,8 @@ public final class BridgeScheduler {
             rowByKanji.put(row.kanji, row);
         }
         Records.StudyItem best = null;
-        for (Records.StudyItem item : items) {
-            if ("retired".equals(item.state) || item.dueAtMillis > nowMillis) {
-                continue;
-            }
-            if (allowedKanji != null && !allowedKanji.contains(item.kanji)) {
-                continue;
-            }
-            if (!rowByKanji.containsKey(item.kanji)) {
+        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, allowedKanji)) {
+            if (item.dueAtMillis > nowMillis) {
                 continue;
             }
             if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
@@ -157,7 +158,7 @@ public final class BridgeScheduler {
         String taskType;
         boolean writingRequired;
         if (best.writingRemediationPending) {
-            taskType = "writing_remediation";
+            taskType = TASK_WRITING_REMEDIATION;
             writingRequired = true;
         } else {
             taskType = recognitionTaskType(best.recognitionStage);
@@ -197,12 +198,16 @@ public final class BridgeScheduler {
                 item.consecutiveFailedRecognitionDays,
                 item.lastFailedRecognitionDayMillis,
                 item.writingRemediationPending,
+                item.suppressedByTaskType,
+                item.suppressedAtMillis,
+                item.matureIntervalDays,
+                item.answerSignature,
                 null,
                 item.createdAtMillis
         );
     }
 
-    private Records.StudyItem newStudyItem(String kanji, long nowMillis) {
+    private Records.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature) {
         return new Records.StudyItem(
                 kanji,
                 "new",
@@ -218,7 +223,40 @@ public final class BridgeScheduler {
                 0L,
                 false,
                 null,
+                0L,
+                0,
+                answerSignature,
+                null,
                 nowMillis
+        );
+    }
+
+    private Records.StudyItem alignAnswerSignature(Records.StudyItem item, Records.DashboardRow row, long nowMillis) {
+        String signature = answerSignature(row);
+        if (signature.isEmpty() || item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
+            return item.withAnswerSignature(signature);
+        }
+        int fallbackStage = Math.max(0, item.recognitionStage - 1);
+        return new Records.StudyItem(
+                item.kanji,
+                "retired".equals(item.state) ? item.state : "learning",
+                "retired".equals(item.state) ? item.dueAtMillis : nowMillis,
+                item.stability,
+                item.difficulty,
+                item.totalReviews,
+                item.lapses,
+                item.learningStep,
+                item.writingLevel,
+                fallbackStage,
+                item.consecutiveFailedRecognitionDays,
+                item.lastFailedRecognitionDayMillis,
+                item.writingRemediationPending,
+                null,
+                0L,
+                0,
+                signature,
+                null,
+                item.createdAtMillis
         );
     }
 
@@ -302,6 +340,9 @@ public final class BridgeScheduler {
         consumedTokens.add(request.token);
         String rating = normalizeRating(request.rating);
         boolean writingRemediationReview = request.writingRequired && item.writingRemediationPending;
+        String reviewedTaskType = item.writingRemediationPending
+                ? TASK_WRITING_REMEDIATION
+                : recognitionTaskType(item.recognitionStage);
         if (writingRemediationReview && request.manualOverride) {
             rating = "hard";
         } else if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
@@ -325,6 +366,7 @@ public final class BridgeScheduler {
         double stability = item.stability;
         double difficulty = item.difficulty;
         long due;
+        int scheduledIntervalDays;
         String state;
 
         switch (rating) {
@@ -334,6 +376,7 @@ public final class BridgeScheduler {
                 stability = Math.max(0.2, stability * parameters.againMultiplier);
                 difficulty = Math.min(10.0, difficulty + 0.7);
                 due = nowMillis + 10 * MINUTE;
+                scheduledIntervalDays = 0;
                 state = "learning";
                 break;
             case "hard":
@@ -341,13 +384,16 @@ public final class BridgeScheduler {
                 stability = Math.max(0.5, stability * parameters.hardMultiplier);
                 difficulty = Math.min(10.0, difficulty + 0.2);
                 due = nowMillis + DAY;
+                scheduledIntervalDays = 1;
                 state = "review";
                 break;
             case "easy":
                 step = 2;
                 stability = Math.max(2.5, stability * parameters.easyMultiplier);
                 difficulty = Math.max(1.0, difficulty - 0.35);
-                due = nowMillis + reviewInterval(stability, parameters);
+                long easyInterval = reviewInterval(stability, parameters);
+                scheduledIntervalDays = intervalDays(easyInterval);
+                due = nowMillis + easyInterval;
                 state = "review";
                 break;
             case "good":
@@ -355,7 +401,9 @@ public final class BridgeScheduler {
                 step = Math.min(2, step + 1);
                 stability = Math.max(1.0, stability * parameters.goodMultiplier);
                 difficulty = Math.max(1.0, difficulty - 0.1);
-                due = step < 2 ? nowMillis + 10 * MINUTE : nowMillis + reviewInterval(stability, parameters);
+                long goodInterval = step < 2 ? 10 * MINUTE : reviewInterval(stability, parameters);
+                scheduledIntervalDays = step < 2 ? 0 : intervalDays(goodInterval);
+                due = nowMillis + goodInterval;
                 state = step < 2 ? "learning" : "review";
                 break;
         }
@@ -390,6 +438,21 @@ public final class BridgeScheduler {
             }
         }
 
+        String suppressedByTaskType = item.suppressedByTaskType;
+        long suppressedAtMillis = item.suppressedAtMillis;
+        int matureIntervalDays = scheduledIntervalDays;
+        if ("again".equals(rating)) {
+            suppressedByTaskType = "";
+            suppressedAtMillis = 0L;
+            matureIntervalDays = 0;
+        } else if (dominatesLowerSiblings(reviewedTaskType)
+                && item.totalReviews > 0
+                && item.dueAtMillis <= nowMillis
+                && scheduledIntervalDays >= settings.matureDays) {
+            suppressedByTaskType = reviewedTaskType;
+            suppressedAtMillis = nowMillis;
+        }
+
         Records.StudyItem updated = new Records.StudyItem(
                 item.kanji,
                 state,
@@ -404,6 +467,10 @@ public final class BridgeScheduler {
                 failedRecognitionDays,
                 lastFailedRecognitionDay,
                 writingRemediationPending,
+                suppressedByTaskType,
+                suppressedAtMillis,
+                matureIntervalDays,
+                item.answerSignature,
                 null,
                 item.createdAtMillis
         );
@@ -418,6 +485,54 @@ public final class BridgeScheduler {
             }
         }
         return count;
+    }
+
+    public int dueCount(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis) {
+        int count = 0;
+        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, null)) {
+            if (item.dueAtMillis <= nowMillis) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public List<Records.StudyItem> activeQueueItems(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            Set<String> allowedKanji
+    ) {
+        Set<String> currentRows = new HashSet<>();
+        for (Records.DashboardRow row : rows) {
+            currentRows.add(row.kanji);
+        }
+        Map<String, List<Records.StudyItem>> byKanji = new HashMap<>();
+        for (Records.StudyItem item : items) {
+            if ("retired".equals(item.state)) {
+                continue;
+            }
+            if (allowedKanji != null && !allowedKanji.contains(item.kanji)) {
+                continue;
+            }
+            if (!currentRows.contains(item.kanji)) {
+                continue;
+            }
+            List<Records.StudyItem> family = byKanji.get(item.kanji);
+            if (family == null) {
+                family = new ArrayList<>();
+                byKanji.put(item.kanji, family);
+            }
+            family.add(item);
+        }
+        List<Records.StudyItem> out = new ArrayList<>();
+        for (List<Records.StudyItem> family : byKanji.values()) {
+            Records.StudyItem active = activeFamilyItem(family, nowMillis);
+            if (active != null) {
+                out.add(active);
+            }
+        }
+        return out;
     }
 
     public Set<String> tokenSet(List<String> tokens) {
@@ -452,12 +567,111 @@ public final class BridgeScheduler {
     private static String recognitionTaskType(int stage) {
         switch (Math.max(0, Math.min(MAX_RECOGNITION_STAGE, stage))) {
             case 1:
-                return "font_meaning";
+                return TASK_FONT_MEANING;
             case 2:
-                return "word_reading";
+                return TASK_WORD_READING;
             default:
-                return "kanji_meaning";
+                return TASK_KANJI_MEANING;
         }
+    }
+
+    private static Records.StudyItem activeFamilyItem(List<Records.StudyItem> family, long nowMillis) {
+        Records.StudyItem best = null;
+        for (Records.StudyItem item : family) {
+            if (suppressedByMatureSibling(item, family)) {
+                continue;
+            }
+            if (best == null || compareFamilyActivity(item, best, nowMillis) < 0) {
+                best = item;
+            }
+        }
+        return best;
+    }
+
+    private static int compareFamilyActivity(Records.StudyItem left, Records.StudyItem right, long nowMillis) {
+        int rank = Integer.compare(-taskRank(left), -taskRank(right));
+        if (rank != 0) {
+            return rank;
+        }
+        int due = Integer.compare(left.dueAtMillis <= nowMillis ? 0 : 1, right.dueAtMillis <= nowMillis ? 0 : 1);
+        if (due != 0) {
+            return due;
+        }
+        return Long.compare(left.dueAtMillis, right.dueAtMillis);
+    }
+
+    private static boolean suppressedByMatureSibling(Records.StudyItem item, List<Records.StudyItem> family) {
+        for (Records.StudyItem sibling : family) {
+            if (sibling.suppressedByTaskType == null || sibling.suppressedByTaskType.isEmpty()) {
+                continue;
+            }
+            int dominantRank = taskRank(sibling.suppressedByTaskType);
+            if (taskRank(item) < dominantRank) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int taskRank(Records.StudyItem item) {
+        if (item.writingRemediationPending) {
+            return 3;
+        }
+        return Math.max(0, Math.min(MAX_RECOGNITION_STAGE, item.recognitionStage));
+    }
+
+    private static int taskRank(String taskType) {
+        if (TASK_WRITING_REMEDIATION.equals(taskType)) {
+            return 3;
+        }
+        if (TASK_WORD_READING.equals(taskType)) {
+            return 2;
+        }
+        if (TASK_FONT_MEANING.equals(taskType)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static boolean dominatesLowerSiblings(String taskType) {
+        return TASK_FONT_MEANING.equals(taskType) || TASK_WORD_READING.equals(taskType);
+    }
+
+    private static int intervalDays(long intervalMillis) {
+        return Math.max(0, (int) Math.round((double) intervalMillis / DAY));
+    }
+
+    private static String answerSignature(Records.DashboardRow row) {
+        if (row == null) {
+            return "";
+        }
+        Records.Example example = null;
+        for (Records.Example candidate : row.examples) {
+            if ("suspended".equals(candidate.sourceType)) {
+                example = candidate;
+                break;
+            }
+            if (example == null && "active".equals(candidate.sourceType)) {
+                example = candidate;
+            }
+        }
+        if (example == null && !row.examples.isEmpty()) {
+            example = row.examples.get(0);
+        }
+        String expression = example == null ? "" : example.expression;
+        String reading = example == null ? row.reading : example.reading;
+        String meaning = example == null ? row.primaryMeaning : example.meaning;
+        return normalizeSignature(row.kanji) + "|"
+                + normalizeSignature(expression) + "|"
+                + normalizeSignature(reading) + "|"
+                + normalizeSignature(meaning);
+    }
+
+    private static String normalizeSignature(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ");
     }
 
     private static long localDayStart(long millis) {

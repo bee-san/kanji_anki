@@ -463,6 +463,10 @@ public final class Records {
         public final int consecutiveFailedRecognitionDays;
         public final long lastFailedRecognitionDayMillis;
         public final boolean writingRemediationPending;
+        public final String suppressedByTaskType;
+        public final long suppressedAtMillis;
+        public final int matureIntervalDays;
+        public final String answerSignature;
         public final String activeToken;
         public final long createdAtMillis;
 
@@ -493,6 +497,10 @@ public final class Records {
                     0,
                     0L,
                     false,
+                    null,
+                    0L,
+                    0,
+                    "",
                     activeToken,
                     createdAtMillis
             );
@@ -515,6 +523,50 @@ public final class Records {
                 String activeToken,
                 long createdAtMillis
         ) {
+            this(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    null,
+                    0L,
+                    0,
+                    "",
+                    activeToken,
+                    createdAtMillis
+            );
+        }
+
+        public StudyItem(
+                String kanji,
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int writingLevel,
+                int recognitionStage,
+                int consecutiveFailedRecognitionDays,
+                long lastFailedRecognitionDayMillis,
+                boolean writingRemediationPending,
+                String suppressedByTaskType,
+                long suppressedAtMillis,
+                int matureIntervalDays,
+                String answerSignature,
+                String activeToken,
+                long createdAtMillis
+        ) {
             this.kanji = kanji;
             this.state = state;
             this.dueAtMillis = dueAtMillis;
@@ -528,6 +580,10 @@ public final class Records {
             this.consecutiveFailedRecognitionDays = Math.max(0, consecutiveFailedRecognitionDays);
             this.lastFailedRecognitionDayMillis = Math.max(0L, lastFailedRecognitionDayMillis);
             this.writingRemediationPending = writingRemediationPending;
+            this.suppressedByTaskType = suppressedByTaskType == null ? "" : suppressedByTaskType;
+            this.suppressedAtMillis = Math.max(0L, suppressedAtMillis);
+            this.matureIntervalDays = Math.max(0, matureIntervalDays);
+            this.answerSignature = answerSignature == null ? "" : answerSignature;
             this.activeToken = activeToken;
             this.createdAtMillis = createdAtMillis;
         }
@@ -547,7 +603,59 @@ public final class Records {
                     consecutiveFailedRecognitionDays,
                     lastFailedRecognitionDayMillis,
                     writingRemediationPending,
+                    suppressedByTaskType,
+                    suppressedAtMillis,
+                    matureIntervalDays,
+                    answerSignature,
                     token,
+                    createdAtMillis
+            );
+        }
+
+        public StudyItem withSuppression(String suppressedByTaskType, long suppressedAtMillis, int matureIntervalDays) {
+            return new StudyItem(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    suppressedByTaskType,
+                    suppressedAtMillis,
+                    matureIntervalDays,
+                    answerSignature,
+                    activeToken,
+                    createdAtMillis
+            );
+        }
+
+        public StudyItem withAnswerSignature(String answerSignature) {
+            return new StudyItem(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    suppressedByTaskType,
+                    suppressedAtMillis,
+                    matureIntervalDays,
+                    answerSignature,
+                    activeToken,
                     createdAtMillis
             );
         }
