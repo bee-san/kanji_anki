@@ -16,14 +16,13 @@ import android.os.Build;
 import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.util.Calendar;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public final class ReminderScheduler {
     public static final String ACTION_DAILY_REMINDER = "dev.bee.kanjianki.action.DAILY_REMINDER";
@@ -193,17 +192,7 @@ public final class ReminderScheduler {
     }
 
     private static int currentDueCount(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
-        Set<String> currentRows = new HashSet<>();
-        for (Records.DashboardRow row : rows) {
-            currentRows.add(row.kanji);
-        }
-        int count = 0;
-        for (Records.StudyItem item : items) {
-            if (!"retired".equals(item.state) && item.dueAtMillis <= now && currentRows.contains(item.kanji)) {
-                count++;
-            }
-        }
-        return count;
+        return new BridgeScheduler().dueCount(items, rows, now);
     }
 
     private static final class ReminderCopy {

@@ -24,7 +24,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 4;
+    private static final int DB_VERSION = 5;
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -51,7 +51,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
-        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, active_token TEXT, created_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
@@ -79,6 +79,12 @@ public final class LocalStore extends SQLiteOpenHelper {
             addNullableColumn(db, "study_items", "consecutive_failed_recognition_days", "INTEGER NOT NULL DEFAULT 0");
             addNullableColumn(db, "study_items", "last_failed_recognition_day", "INTEGER NOT NULL DEFAULT 0");
             addNullableColumn(db, "study_items", "writing_remediation_pending", "INTEGER NOT NULL DEFAULT 0");
+        }
+        if (oldVersion < 5) {
+            addNullableColumn(db, "study_items", "suppressed_by_task_type", "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, "study_items", "suppressed_at", "INTEGER NOT NULL DEFAULT 0");
+            addNullableColumn(db, "study_items", "mature_interval_days", "INTEGER NOT NULL DEFAULT 0");
+            addNullableColumn(db, "study_items", "answer_signature", "TEXT NOT NULL DEFAULT ''");
         }
     }
 
@@ -1588,6 +1594,10 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("consecutive_failed_recognition_days", item.consecutiveFailedRecognitionDays);
         values.put("last_failed_recognition_day", item.lastFailedRecognitionDayMillis);
         values.put("writing_remediation_pending", item.writingRemediationPending ? 1 : 0);
+        values.put("suppressed_by_task_type", item.suppressedByTaskType);
+        values.put("suppressed_at", item.suppressedAtMillis);
+        values.put("mature_interval_days", item.matureIntervalDays);
+        values.put("answer_signature", item.answerSignature);
         values.put("active_token", item.activeToken);
         values.put("created_at", item.createdAtMillis);
         db.insertWithOnConflict("study_items", null, values, SQLiteDatabase.CONFLICT_REPLACE);
@@ -1608,6 +1618,10 @@ public final class LocalStore extends SQLiteOpenHelper {
                 integer(cursor, "consecutive_failed_recognition_days"),
                 longValue(cursor, "last_failed_recognition_day"),
                 integer(cursor, "writing_remediation_pending") == 1,
+                string(cursor, "suppressed_by_task_type"),
+                longValue(cursor, "suppressed_at"),
+                integer(cursor, "mature_interval_days"),
+                string(cursor, "answer_signature"),
                 string(cursor, "active_token"),
                 longValue(cursor, "created_at")
         );

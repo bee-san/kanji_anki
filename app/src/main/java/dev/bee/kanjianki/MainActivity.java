@@ -678,10 +678,8 @@ public final class MainActivity extends Activity {
             }
         }
         List<QueueEntry> entries = new ArrayList<>();
-        for (Records.StudyItem item : items) {
-            if ("retired".equals(item.state)) {
-                continue;
-            }
+        BridgeScheduler scheduler = new BridgeScheduler();
+        for (Records.StudyItem item : scheduler.activeQueueItems(items, rows, now, null)) {
             Records.DashboardRow row = rowByKanji.get(item.kanji);
             if (row != null) {
                 entries.add(new QueueEntry(row, item));
@@ -776,6 +774,8 @@ public final class MainActivity extends Activity {
         chips.addView(chip(recognitionStageLabel(item), BLUE));
         if (item.writingRemediationPending) {
             chips.addView(chip("writing repair", CORAL));
+        } else if (!item.suppressedByTaskType.isEmpty()) {
+            chips.addView(chip("lower prompts hidden", TEAL));
         } else if (item.consecutiveFailedRecognitionDays > 0) {
             chips.addView(chip("miss days " + item.consecutiveFailedRecognitionDays, BLUE));
         }
@@ -994,7 +994,7 @@ public final class MainActivity extends Activity {
             if (!session.row.reading.isEmpty()) {
                 details.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
             }
-            Records.Example example = firstExample(session.row);
+            Records.Example example = exampleForSession(session);
             if (example != null) {
                 details.addView(text("Example: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 15, INK, true));
                 if (!example.meaning.isEmpty()) {
@@ -1020,6 +1020,29 @@ public final class MainActivity extends Activity {
             }
         }
         return row.examples.get(0);
+    }
+
+    private Records.Example wordReadingExample(Records.DashboardRow row) {
+        if (row == null || row.examples.isEmpty()) {
+            return null;
+        }
+        Records.Example active = null;
+        for (Records.Example example : row.examples) {
+            if ("suspended".equals(example.sourceType)) {
+                return example;
+            }
+            if (active == null && "active".equals(example.sourceType)) {
+                active = example;
+            }
+        }
+        return active == null ? row.examples.get(0) : active;
+    }
+
+    private Records.Example exampleForSession(Records.StudySession session) {
+        if (isWordReadingTask(session)) {
+            return wordReadingExample(session.row);
+        }
+        return firstExample(session == null ? null : session.row);
     }
 
     private void renderStudy() {
@@ -1296,7 +1319,7 @@ public final class MainActivity extends Activity {
             if (!session.row.reading.isEmpty()) {
                 details.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
             }
-            Records.Example example = firstExample(session.row);
+            Records.Example example = exampleForSession(session);
             if (example != null) {
                 details.addView(text("From: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 15, INK, true));
                 if (!example.meaning.isEmpty()) {
@@ -2611,7 +2634,7 @@ public final class MainActivity extends Activity {
     }
 
     private String wordPrompt(Records.StudySession session) {
-        Records.Example example = session == null ? null : firstExample(session.row);
+        Records.Example example = session == null ? null : wordReadingExample(session.row);
         if (example != null && !example.expression.isEmpty()) {
             return example.expression;
         }
