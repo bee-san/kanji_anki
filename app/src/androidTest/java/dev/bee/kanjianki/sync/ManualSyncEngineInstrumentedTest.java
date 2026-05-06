@@ -82,6 +82,23 @@ public final class ManualSyncEngineInstrumentedTest {
     }
 
     @Test
+    public void successfulSyncUsesAdaptiveWorkloadForNewAdmissions() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        store.saveAdaptiveLoadWorkPercent(0);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(
+                context,
+                store,
+                new FakeGateway(manyProblemSnapshot(settings), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
+                settings
+        ).run();
+
+        assertTrue(result.success);
+        assertTrue(result.adaptiveSummary.contains("Very little"));
+        assertEquals(1, activeStudyItemCount(store.studyItems()));
+    }
+
+    @Test
     public void failedSyncPersistsConfigError() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
@@ -104,6 +121,30 @@ public final class ManualSyncEngineInstrumentedTest {
         Records.Card activeCard = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, settings.matureDays + 5, 12, 0, false);
         Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true);
         return new Records.CollectionSnapshot(Arrays.asList(active, suspended), Arrays.asList(activeCard, suspendedCard));
+    }
+
+    private Records.CollectionSnapshot manyProblemSnapshot(Records.Settings settings) {
+        Records.Note first = note(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
+        Records.Note second = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
+        Records.Note third = note(3L, "裂ける", "さける", "split", "裂ける音。");
+        return new Records.CollectionSnapshot(
+                Arrays.asList(first, second, third),
+                Arrays.asList(
+                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 12, 2, false),
+                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 12, 1, false),
+                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 3, 12, 0, false)
+                )
+        );
+    }
+
+    private int activeStudyItemCount(List<Records.StudyItem> items) {
+        int count = 0;
+        for (Records.StudyItem item : items) {
+            if (!"retired".equals(item.state)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private boolean hasSuspendedEvidence(List<Records.DashboardRow> rows) {
