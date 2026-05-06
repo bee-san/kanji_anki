@@ -766,40 +766,147 @@ public final class MainActivity extends Activity {
 
     private void renderDetail(String kanji) {
         base("home");
-        Records.DashboardRow row = store.rowForKanji(kanji);
-        if (row == null) {
+        Records.KanjiRecoveryTimeline timeline = store.timelineForKanji(kanji);
+        Records.DashboardRow row = timeline.currentRow;
+        if (row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
             emptyState("Kanji not found", "This row may have disappeared after a sync.");
             return;
         }
-        TextView glyph = text(row.kanji, 92, INK, true);
+        String displayKanji = row == null ? kanji : row.kanji;
+        TextView glyph = text(displayKanji, 92, INK, true);
         glyph.setGravity(Gravity.CENTER);
         content.addView(glyph);
-        content.addView(text(rowMeaning(row), 25, INK, true));
-        content.addView(text(row.reading, 20, TEAL, true));
+        if (row == null) {
+            content.addView(text("Historical recovery", 25, INK, true));
+        } else {
+            content.addView(text(rowMeaning(row), 25, INK, true));
+            content.addView(text(row.reading, 20, TEAL, true));
+        }
         addSpace(10);
         LinearLayout why = band(BLUE);
         why.addView(text("Why it is here", 22, Color.WHITE, true));
-        why.addView(text(row.reasonText, 17, Color.WHITE, false));
-        why.addView(text("Anki browser: " + row.browserSearch, 14, Color.WHITE, false));
-        content.addView(why);
-        Button practice = primaryButton("Review this now", CORAL);
-        practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
-        content.addView(practice);
-        Button copy = secondaryButton("Copy Anki search");
-        copy.setOnClickListener(v -> {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", row.browserSearch));
-            if (v instanceof Button) {
-                ((Button) v).setText(R.string.copied_anki_search);
-            }
-            Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
-        });
-        content.addView(copy);
-        addSpace(12);
-        content.addView(sectionTitle("Examples"));
-        for (Records.Example example : row.examples) {
-            content.addView(exampleView(example));
+        if (row == null) {
+            why.addView(text("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.", 17, Color.WHITE, false));
+        } else {
+            why.addView(text(row.reasonText, 17, Color.WHITE, false));
+            why.addView(text("Anki browser: " + row.browserSearch, 14, Color.WHITE, false));
         }
+        content.addView(why);
+        if (row != null) {
+            Button practice = primaryButton("Review this now", CORAL);
+            practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
+            content.addView(practice);
+            Button copy = secondaryButton("Copy Anki search");
+            copy.setOnClickListener(v -> {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", row.browserSearch));
+                if (v instanceof Button) {
+                    ((Button) v).setText(R.string.copied_anki_search);
+                }
+                Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
+            });
+            content.addView(copy);
+        }
+        addSpace(12);
+        addRecoveryTimeline(timeline);
+        if (row != null) {
+            addSpace(12);
+            content.addView(sectionTitle("Examples"));
+            for (Records.Example example : row.examples) {
+                content.addView(exampleView(example));
+            }
+        }
+    }
+
+    private void addRecoveryTimeline(Records.KanjiRecoveryTimeline timeline) {
+        content.addView(sectionTitle("Recovery timeline"));
+        content.addView(timelineStatusCard(timeline));
+        if (timeline.events.isEmpty()) {
+            content.addView(text("Timeline will fill in after the next sync or review.", 15, MUTED, false));
+            return;
+        }
+        for (Records.KanjiTimelineEvent event : timeline.events) {
+            content.addView(timelineEventView(event));
+        }
+    }
+
+    private View timelineStatusCard(Records.KanjiRecoveryTimeline timeline) {
+        int color = timelineStatusColor(timeline);
+        LinearLayout box = panelBox(Color.WHITE, color);
+        box.addView(text(timelineStatusText(timeline), 20, INK, true));
+        Records.DashboardRow row = timeline.currentRow;
+        if (row != null) {
+            box.addView(text(String.format(Locale.ROOT, "Mature support %d / target %d", row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
+        } else {
+            box.addView(text("No active Anki evidence in the latest local sync.", 15, MUTED, false));
+        }
+        return box;
+    }
+
+    private String timelineStatusText(Records.KanjiRecoveryTimeline timeline) {
+        Records.StudyItem item = timeline.currentStudyItem;
+        if (item != null && "retired".equals(item.state)) {
+            return "Retired by Anki support";
+        }
+        if (item != null && item.dueAtMillis > System.currentTimeMillis()) {
+            return "Resting until review";
+        }
+        if (timeline.currentRow == null) {
+            return "Retired by Anki support";
+        }
+        return "Active repair";
+    }
+
+    private int timelineStatusColor(Records.KanjiRecoveryTimeline timeline) {
+        Records.StudyItem item = timeline.currentStudyItem;
+        if (item != null && "retired".equals(item.state)) {
+            return TEAL;
+        }
+        if (item != null && item.dueAtMillis > System.currentTimeMillis()) {
+            return BLUE;
+        }
+        return CORAL;
+    }
+
+    private View timelineEventView(Records.KanjiTimelineEvent event) {
+        LinearLayout box = panelBox(Color.WHITE, timelineEventColor(event.eventType));
+        box.addView(text(timelineDate(event.occurredAtMillis), 13, MUTED, false));
+        box.addView(text(event.title, 18, INK, true));
+        if (!event.detail.isEmpty()) {
+            box.addView(text(event.detail, 15, MUTED, false));
+        }
+        String source = timelineSourceLine(event);
+        if (!source.isEmpty()) {
+            box.addView(text(source, 14, INK, true));
+        }
+        return box;
+    }
+
+    private int timelineEventColor(String eventType) {
+        if ("review_failed".equals(eventType) || "support_dropped".equals(eventType) || "reopened".equals(eventType)) {
+            return CORAL;
+        }
+        if ("review_passed".equals(eventType) || "support_improved".equals(eventType) || "retired".equals(eventType)) {
+            return TEAL;
+        }
+        return BLUE;
+    }
+
+    private String timelineDate(long occurredAt) {
+        if (occurredAt <= 0L) {
+            return "Unknown time";
+        }
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date(occurredAt));
+    }
+
+    private String timelineSourceLine(Records.KanjiTimelineEvent event) {
+        if (event.sourceExpression.isEmpty()) {
+            return "";
+        }
+        if (event.sourceReading.isEmpty()) {
+            return "Source: " + event.sourceExpression;
+        }
+        return "Source: " + event.sourceExpression + "  " + event.sourceReading;
     }
 
     private View exampleView(Records.Example example) {
