@@ -486,6 +486,117 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void matureWordReadingSuppressesLowerContextSiblings() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem word = new Records.StudyItem("裂", "review", 0L, 10.0, 4.0, 3, 0, 2, 2, 2, 0, 0L, false, "word", 0L);
+
+        Records.ReviewResult result = scheduler.applyReview(
+                word,
+                new Records.ReviewRequest("裂", "word", "easy", false, false, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+
+        assertEquals("word_reading", result.item.suppressedByTaskType);
+        assertTrue(result.item.matureIntervalDays >= Records.Settings.kikuDefaults().matureDays);
+        List<Records.StudyItem> active = scheduler.activeQueueItems(
+                Arrays.asList(item("裂", 0), item("裂", 1), result.item),
+                Collections.singletonList(row("裂", 30)),
+                2000L,
+                null
+        );
+        assertEquals(1, active.size());
+        assertEquals(2, active.get(0).recognitionStage);
+        assertEquals(0, scheduler.dueCount(Arrays.asList(item("裂", 0), item("裂", 1), result.item), Collections.singletonList(row("裂", 30)), 2000L));
+        assertNull(scheduler.nextSession(Arrays.asList(item("裂", 0), item("裂", 1), result.item), Collections.singletonList(row("裂", 30)), 2000L));
+    }
+
+    @Test
+    public void immaturePromotedWordReadingHidesLowerSiblingsWithoutPermanentSuppression() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem font = new Records.StudyItem("裂", "review", 0L, 0.7, 4.0, 2, 0, 1, 1, 1, 0, 0L, false, "font", 0L);
+
+        Records.ReviewResult promoted = scheduler.applyReview(
+                font,
+                new Records.ReviewRequest("裂", "font", "good", false, false, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+
+        assertEquals(2, promoted.item.recognitionStage);
+        assertEquals("", promoted.item.suppressedByTaskType);
+        assertTrue(promoted.item.matureIntervalDays < Records.Settings.kikuDefaults().matureDays);
+        List<Records.StudyItem> active = scheduler.activeQueueItems(
+                Arrays.asList(item("裂", 0), promoted.item),
+                Collections.singletonList(row("裂", 30)),
+                2000L,
+                null
+        );
+        assertEquals(1, active.size());
+        assertEquals(2, active.get(0).recognitionStage);
+        assertEquals(0, scheduler.dueCount(Arrays.asList(item("裂", 0), promoted.item), Collections.singletonList(row("裂", 30)), 2000L));
+    }
+
+    @Test
+    public void againOnDominatingSiblingClearsSuppression() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem suppressed = item("裂", 2)
+                .withSuppression("word_reading", 1000L, 31)
+                .withToken("again");
+
+        Records.ReviewResult result = scheduler.applyReview(
+                suppressed,
+                new Records.ReviewRequest("裂", "again", "again", false, false, false, 0),
+                new HashSet<>(),
+                2000L
+        );
+
+        assertEquals("", result.item.suppressedByTaskType);
+        assertEquals(0L, result.item.suppressedAtMillis);
+        assertEquals(0, result.item.matureIntervalDays);
+        assertEquals(1, result.item.recognitionStage);
+    }
+
+    @Test
+    public void anchorResetClearsSuppressionForChangedAnswerSignature() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem oldWord = item("裂", 2)
+                .withSuppression("word_reading", 1000L, 31)
+                .withAnswerSignature("裂|古語|こご|old word");
+        Records.DashboardRow changed = rowWithExample("裂", 30, "suspended", "裂ける", "さける", "split");
+
+        List<Records.StudyItem> seeded = scheduler.seedQueue(
+                Collections.singletonList(changed),
+                Collections.singletonList(oldWord),
+                Records.Settings.kikuDefaults(),
+                5000L,
+                0L
+        );
+
+        Records.StudyItem item = findItem(seeded, "裂");
+        assertEquals("", item.suppressedByTaskType);
+        assertEquals(0L, item.suppressedAtMillis);
+        assertEquals(0, item.matureIntervalDays);
+        assertEquals(1, item.recognitionStage);
+        assertEquals(5000L, item.dueAtMillis);
+        assertEquals("裂|裂ける|さける|split", item.answerSignature);
+    }
+
+    @Test
+    public void onlyOneSiblingPerKanjiFamilyCanBeActive() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        List<Records.StudyItem> siblings = Arrays.asList(item("裂", 0), item("裂", 1), item("裂", 2));
+
+        List<Records.StudyItem> active = scheduler.activeQueueItems(siblings, Collections.singletonList(row("裂", 30)), 1000L, null);
+        Records.StudySession session = scheduler.nextSession(siblings, Collections.singletonList(row("裂", 30)), 1000L);
+
+        assertEquals(1, active.size());
+        assertEquals(2, active.get(0).recognitionStage);
+        assertNotNull(session);
+        assertEquals("word_reading", session.taskType);
+    }
+
+    @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 3.0, 5.0, 3, 0, 2, 1, "token-1", 0);
@@ -555,5 +666,11 @@ public class BridgeSchedulerTest {
 
     private Records.DashboardRow row(String kanji, int score) {
         return new Records.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, new ArrayList<>());
+    }
+
+    private Records.DashboardRow rowWithExample(String kanji, int score, String sourceType, String expression, String reading, String meaning) {
+        ArrayList<Records.Example> examples = new ArrayList<>();
+        examples.add(new Records.Example(sourceType, 1L, 1L, expression, reading, meaning, "", false, 0));
+        return new Records.DashboardRow(kanji, 900, meaning, reading, "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, examples);
     }
 }
