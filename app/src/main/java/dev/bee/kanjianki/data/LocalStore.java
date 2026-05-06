@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.TextUtil;
 
@@ -510,6 +511,17 @@ public final class LocalStore extends SQLiteOpenHelper {
         putSetting(key, String.format(Locale.ROOT, "%.4f", value));
     }
 
+    public int adaptiveLoadWorkPercent() {
+        return AdaptiveLoadPlanner.snapWorkloadPercent(getIntSetting(
+                AdaptiveLoadPlanner.SETTING_KEY,
+                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT
+        ));
+    }
+
+    public void saveAdaptiveLoadWorkPercent(int percent) {
+        putIntSetting(AdaptiveLoadPlanner.SETTING_KEY, AdaptiveLoadPlanner.snapWorkloadPercent(percent));
+    }
+
     public ReminderSettings reminderSettings() {
         return new ReminderSettings(
                 getIntSetting("reminder_enabled", 0) == 1,
@@ -820,6 +832,29 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return new StudyImpactStats(total, reviewedKanji.size(), writingRequired, writingPassed, writingFailed, manualOverrides);
+    }
+
+    public Set<String> studiedKanjiSince(long sinceMillis) {
+        Cursor cursor = getReadableDatabase().query(
+                true,
+                "review_log",
+                new String[]{"kanji"},
+                "reviewed_at>=?",
+                new String[]{Long.toString(sinceMillis)},
+                null,
+                null,
+                null,
+                null
+        );
+        Set<String> kanji = new HashSet<>();
+        try {
+            while (cursor.moveToNext()) {
+                kanji.add(string(cursor, "kanji"));
+            }
+        } finally {
+            cursor.close();
+        }
+        return kanji;
     }
 
     private void createTimelineTables(SQLiteDatabase db) {

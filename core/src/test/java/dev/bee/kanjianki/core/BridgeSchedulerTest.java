@@ -208,6 +208,57 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void adaptivePlanLimitsNewAdmissionsToFocusSet() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.AdaptiveLoadPlan plan = new Records.AdaptiveLoadPlan(
+                20,
+                1,
+                1,
+                Collections.singletonList("謎"),
+                1,
+                false,
+                "focus"
+        );
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Arrays.asList(row("裂", 50), row("謎", 10)),
+                Collections.emptyList(),
+                Records.Settings.kikuDefaults(),
+                1000L,
+                0L,
+                plan
+        );
+
+        assertEquals(1, items.size());
+        assertEquals("謎", items.get(0).kanji);
+    }
+
+    @Test
+    public void allKanjiAdaptivePlanAdmitsEveryCandidate() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.AdaptiveLoadPlan plan = new Records.AdaptiveLoadPlan(
+                100,
+                3,
+                3,
+                Arrays.asList("裂", "謎", "示"),
+                3,
+                true,
+                "all"
+        );
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Arrays.asList(row("裂", 50), row("謎", 10), row("示", 5)),
+                Collections.emptyList(),
+                new Records.Settings("Kiku", "Mining", "Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort", 21, 2, 3000, 1, 1),
+                1000L,
+                0L,
+                plan
+        );
+
+        assertEquals(3, items.size());
+    }
+
+    @Test
     public void nextSessionSkipsItemsWithoutCurrentDashboardRows() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem stale = new Records.StudyItem("古", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L);

@@ -5,6 +5,7 @@ import android.content.Context;
 import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ManualSyncEngine {
@@ -61,15 +63,18 @@ public final class ManualSyncEngine {
             store.updateSyncRemovalMessage(syncId, removal.message);
 
             BridgeScheduler scheduler = new BridgeScheduler();
+            List<Records.StudyItem> currentItems = store.studyItems();
+            Records.AdaptiveLoadPlan plan = adaptivePlan(rows, currentItems, finished);
             List<Records.StudyItem> seeded = scheduler.seedQueue(
                     rows,
-                    store.studyItems(),
+                    currentItems,
                     settings,
                     finished,
-                    startOfDay(finished)
+                    startOfDay(finished),
+                    plan
             );
             store.replaceStudyItems(seeded, syncId, finished, settings);
-            return new SyncResult(true, false, rows.size(), imports.size(), removal.message);
+            return new SyncResult(true, false, rows.size(), imports.size(), removal.message, plan.status);
         } catch (AnkiDroidGateway.SyncException error) {
             long finished = System.currentTimeMillis();
             store.saveFailedSync(
@@ -79,12 +84,28 @@ public final class ManualSyncEngine {
                     error.permanent ? "permanent" : "retryable",
                     error.getMessage()
             );
-            return new SyncResult(false, false, 0, 0, error.getMessage());
+            return new SyncResult(false, false, 0, 0, error.getMessage(), "");
         } catch (Throwable error) {
             long finished = System.currentTimeMillis();
             store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.getMessage());
-            return new SyncResult(false, false, 0, 0, error.getMessage());
+            return new SyncResult(false, false, 0, 0, error.getMessage(), "");
         }
+    }
+
+    private Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long nowMillis) {
+        AdaptiveLoadPlanner planner = new AdaptiveLoadPlanner();
+        long dayStart = startOfDay(nowMillis);
+        Set<String> studiedToday = store.studiedKanjiSince(dayStart);
+        return planner.plan(
+                rows,
+                items,
+                store.reviewStatsSince(nowMillis - 7 * 86_400_000L),
+                store.studyStreak(nowMillis).currentDays,
+                studiedToday,
+                store.adaptiveLoadWorkPercent(),
+                nowMillis,
+                settings
+        );
     }
 
     public JitenKanjiRanks loadRanks() throws Exception {
@@ -151,17 +172,19 @@ public final class ManualSyncEngine {
         public final int dashboardRows;
         public final int importedSuspendedKanji;
         public final String message;
+        public final String adaptiveSummary;
 
-        private SyncResult(boolean success, boolean skipped, int dashboardRows, int importedSuspendedKanji, String message) {
+        private SyncResult(boolean success, boolean skipped, int dashboardRows, int importedSuspendedKanji, String message, String adaptiveSummary) {
             this.success = success;
             this.skipped = skipped;
             this.dashboardRows = dashboardRows;
             this.importedSuspendedKanji = importedSuspendedKanji;
             this.message = message;
+            this.adaptiveSummary = adaptiveSummary == null ? "" : adaptiveSummary;
         }
 
         private static SyncResult skipped(String message) {
-            return new SyncResult(false, true, 0, 0, message);
+            return new SyncResult(false, true, 0, 0, message, "");
         }
     }
 }

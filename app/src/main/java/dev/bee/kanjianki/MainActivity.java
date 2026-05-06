@@ -37,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
@@ -121,6 +122,7 @@ public final class MainActivity extends Activity {
     private boolean writingModelDownloaded;
     private boolean writingModelStatusKnown;
     private boolean activeFlashcardMissed;
+    private boolean continueAllKanjiSession;
     private int hintsUsed;
     private int currentPracticeLevel;
     private HintState currentHintState = HintState.initial();
@@ -323,7 +325,7 @@ public final class MainActivity extends Activity {
             content.addView(syncButton);
         } else {
             Button studyButton = primaryButton("Study now", CORAL);
-            studyButton.setOnClickListener(v -> renderStudy());
+            studyButton.setOnClickListener(v -> startFocusedStudy());
             content.addView(studyButton);
 
             Button syncAgainButton = secondaryButton("Sync again");
@@ -431,8 +433,8 @@ public final class MainActivity extends Activity {
             content.addView(summary);
             if (result.dashboardRows > 0) {
                 Button study = primaryButton("Study now", CORAL);
-                study.setOnClickListener(v -> renderStudy());
-                content.addView(study);
+            study.setOnClickListener(v -> startFocusedStudy());
+            content.addView(study);
             }
             Button home = secondaryButton("Back home");
             home.setOnClickListener(v -> renderHome());
@@ -623,11 +625,17 @@ public final class MainActivity extends Activity {
     }
 
     private List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist) {
+        return studyQueue(rows, now, persist, null);
+    }
+
+    private List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist, Records.AdaptiveLoadPlan plan) {
+        List<Records.StudyItem> currentItems = store.studyItems();
         if (!persist) {
-            return store.studyItems();
+            return currentItems;
         }
         BridgeScheduler scheduler = new BridgeScheduler();
-        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, store.studyItems(), settings(), now, startOfDay(now));
+        Records.AdaptiveLoadPlan effectivePlan = plan == null ? adaptivePlan(rows, currentItems, now) : plan;
+        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan);
         store.replaceStudyItems(seeded);
         return seeded;
     }
@@ -988,9 +996,19 @@ public final class MainActivity extends Activity {
         }
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = System.currentTimeMillis();
-        List<Records.StudyItem> seeded = studyQueue(rows, now, true);
-        activeSession = scheduler.nextSession(seeded, rows, now);
+        List<Records.StudyItem> beforeSeed = store.studyItems();
+        Records.AdaptiveLoadPlan plan = adaptivePlan(rows, beforeSeed, now);
+        List<Records.StudyItem> seeded = studyQueue(rows, now, true, plan);
+        Records.AdaptiveLoadPlan seededPlan = adaptivePlan(rows, seeded, now);
+        Set<String> focus = continueAllKanjiSession || seededPlan.allKanjiMode
+                ? null
+                : new HashSet<>(seededPlan.focusKanji);
+        activeSession = scheduler.nextSession(seeded, rows, now, focus);
         if (activeSession == null) {
+            if (!continueAllKanjiSession && seededPlan.focusComplete()) {
+                renderFocusDone(seededPlan);
+                return;
+            }
             content.addView(text("Nothing due now", 34, INK, true));
             content.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 18, MUTED, false));
             Button back = primaryButton("Back home", TEAL);
@@ -1000,6 +1018,32 @@ public final class MainActivity extends Activity {
         }
         store.saveStudyItem(activeSession.item);
         renderSession(activeSession);
+    }
+
+    private void renderFocusDone(Records.AdaptiveLoadPlan plan) {
+        content.addView(text("Today's focus done", 34, INK, true));
+        content.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 18, MUTED, false));
+        LinearLayout summary = band(TEAL);
+        summary.addView(text("Today's Pareto focus: 0 left / " + plan.target, 22, Color.WHITE, true));
+        summary.addView(text(plan.status, 15, Color.WHITE, false));
+        content.addView(summary);
+        Button keepGoing = primaryButton("Continue all kanji", CORAL);
+        keepGoing.setOnClickListener(v -> {
+            continueAllKanjiSession = true;
+            renderStudy();
+        });
+        content.addView(keepGoing);
+        Button back = secondaryButton("Back home");
+        back.setOnClickListener(v -> {
+            continueAllKanjiSession = false;
+            renderHome();
+        });
+        content.addView(back);
+    }
+
+    private void startFocusedStudy() {
+        continueAllKanjiSession = false;
+        renderStudy();
     }
 
     private void renderStudyForKanji(String kanji) {
@@ -2320,6 +2364,19 @@ public final class MainActivity extends Activity {
 
     private Records.Settings settings() {
         return SyncSettings.fromStore(store);
+    }
+
+    private Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        return new AdaptiveLoadPlanner().plan(
+                rows,
+                items,
+                store.reviewStatsSince(now - 7 * DAY_MILLIS),
+                store.studyStreak(now).currentDays,
+                store.studiedKanjiSince(startOfDay(now)),
+                store.adaptiveLoadWorkPercent(),
+                now,
+                settings()
+        );
     }
 
     private LinearLayout band(int color) {

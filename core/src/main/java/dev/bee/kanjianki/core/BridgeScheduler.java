@@ -20,8 +20,47 @@ public final class BridgeScheduler {
             long nowMillis,
             long startOfDayMillis
     ) {
+        return seedQueueInternal(rows, rows, existing, settings, nowMillis, startOfDayMillis, settings.newPerDay, false);
+    }
+
+    public List<Records.StudyItem> seedQueue(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> existing,
+            Records.Settings settings,
+            long nowMillis,
+            long startOfDayMillis,
+            Records.AdaptiveLoadPlan plan
+    ) {
+        if (plan == null) {
+            return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis);
+        }
+        List<Records.DashboardRow> admissionRows = plan.allKanjiMode ? rows : rowsForFocus(rows, plan.focusKanji);
+        return seedQueueInternal(
+                rows,
+                admissionRows,
+                existing,
+                settings,
+                nowMillis,
+                startOfDayMillis,
+                plan.newAdmissionLimit,
+                plan.allKanjiMode
+        );
+    }
+
+    private List<Records.StudyItem> seedQueueInternal(
+            List<Records.DashboardRow> allRows,
+            List<Records.DashboardRow> admissionRows,
+            List<Records.StudyItem> existing,
+            Records.Settings settings,
+            long nowMillis,
+            long startOfDayMillis,
+            int newAdmissionLimit,
+            boolean allKanjiMode
+    ) {
+        int activeQueueCap = allKanjiMode ? Integer.MAX_VALUE : settings.activeQueueCap;
+        int admissionLimit = allKanjiMode ? Integer.MAX_VALUE : Math.max(0, newAdmissionLimit);
         Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
-        for (Records.DashboardRow row : rows) {
+        for (Records.DashboardRow row : allRows) {
             rowByKanji.put(row.kanji, row);
         }
 
@@ -47,13 +86,13 @@ public final class BridgeScheduler {
             }
         }
 
-        for (Records.DashboardRow row : rows) {
+        for (Records.DashboardRow row : admissionRows) {
             Records.StudyItem current = byKanji.get(row.kanji);
             if (current != null) {
                 if ("retired".equals(current.state)
                         && row.matureSupportCount < settings.matureSupportThreshold
-                        && activeCount < settings.activeQueueCap
-                        && newToday < settings.newPerDay) {
+                        && activeCount < activeQueueCap
+                        && newToday < admissionLimit) {
                     Records.StudyItem reopened = newStudyItem(row.kanji, nowMillis);
                     out.remove(current);
                     out.add(reopened);
@@ -63,7 +102,7 @@ public final class BridgeScheduler {
                 }
                 continue;
             }
-            if (activeCount >= settings.activeQueueCap || newToday >= settings.newPerDay) {
+            if (activeCount >= activeQueueCap || newToday >= admissionLimit) {
                 continue;
             }
             out.add(newStudyItem(row.kanji, nowMillis));
@@ -78,6 +117,15 @@ public final class BridgeScheduler {
     }
 
     public Records.StudySession nextSession(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis) {
+        return nextSession(items, rows, nowMillis, null);
+    }
+
+    public Records.StudySession nextSession(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            Set<String> allowedKanji
+    ) {
         Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
         for (Records.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
@@ -85,6 +133,9 @@ public final class BridgeScheduler {
         Records.StudyItem best = null;
         for (Records.StudyItem item : items) {
             if ("retired".equals(item.state) || item.dueAtMillis > nowMillis) {
+                continue;
+            }
+            if (allowedKanji != null && !allowedKanji.contains(item.kanji)) {
                 continue;
             }
             if (!rowByKanji.containsKey(item.kanji)) {
@@ -124,6 +175,21 @@ public final class BridgeScheduler {
         }
         String prompt = row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
+    }
+
+    private List<Records.DashboardRow> rowsForFocus(List<Records.DashboardRow> rows, List<String> focusKanji) {
+        Map<String, Records.DashboardRow> byKanji = new HashMap<>();
+        for (Records.DashboardRow row : rows) {
+            byKanji.put(row.kanji, row);
+        }
+        List<Records.DashboardRow> out = new ArrayList<>();
+        for (String kanji : focusKanji) {
+            Records.DashboardRow row = byKanji.get(kanji);
+            if (row != null) {
+                out.add(row);
+            }
+        }
+        return out;
     }
 
     private Records.StudyItem retiredCopy(Records.StudyItem item) {

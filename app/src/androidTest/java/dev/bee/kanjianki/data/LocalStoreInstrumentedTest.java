@@ -255,6 +255,9 @@ public final class LocalStoreInstrumentedTest {
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);
         assertEquals(0, defaults.minute);
+        assertEquals(20, store.adaptiveLoadWorkPercent());
+        store.saveAdaptiveLoadWorkPercent(23);
+        assertEquals(25, store.adaptiveLoadWorkPercent());
 
         store.saveReminderSettings(new LocalStore.ReminderSettings(true, 8, 30));
         LocalStore.ReminderSettings reminder = store.reminderSettings();
@@ -295,6 +298,7 @@ public final class LocalStoreInstrumentedTest {
 
         store.saveReview(request, "easy", 4000L);
         assertEquals(1, store.consumedTokens().size());
+        assertEquals(1, store.studiedKanjiSince(0L).size());
     }
 
     @Test
@@ -337,13 +341,15 @@ public final class LocalStoreInstrumentedTest {
         store.saveReview(review("謎", "token-yesterday"), "hard", yesterday + 60_000L);
         store.saveReview(review("麺", "token-today-a"), "good", today + 60_000L);
         store.saveReview(review("確", "token-today-b"), "easy", today + 120_000L);
+        store.saveReview(review("確", "token-today-c"), "hard", today + 180_000L);
 
         LocalStore.StudyStreak streak = store.studyStreak(today + 3_600_000L);
         assertEquals(3, streak.currentDays);
         assertEquals(3, streak.bestDays);
         assertTrue(streak.studiedToday);
-        assertEquals(2, streak.reviewsToday);
-        assertEquals(today + 120_000L, streak.lastStudyAtMillis);
+        assertEquals(3, streak.reviewsToday);
+        assertEquals(today + 180_000L, streak.lastStudyAtMillis);
+        assertEquals(2, store.studiedKanjiSince(today).size());
 
         LocalStore.StudyStreak tomorrow = store.studyStreak(moveLocalDays(today, 1) + 3_600_000L);
         assertEquals(3, tomorrow.currentDays);
