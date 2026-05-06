@@ -350,6 +350,7 @@ public final class MainActivityInstrumentedTest {
                 assertNoText(activity, "Mark right anyway");
                 assertNoText(activity, "Next card");
                 assertNoText(activity, "It saw: nothing clear");
+                assertNoText(activity, "Replay");
             });
 
             LocalStore store = new LocalStore(context);
@@ -536,6 +537,40 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Next card");
                 assertNoText(activity, "Reference");
                 assertEquals(1, countText(activity.findViewById(android.R.id.content), "Clean match"));
+            });
+        }
+    }
+
+    @Test
+    public void testDiagnosisTextAndReplayAppearAfterCheck() {
+        seedDueWritingItem();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
+            clickText(scenario, "Check");
+            waitForText(scenario, "likely wrong direction");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Stroke 1: likely wrong direction");
+                assertHasText(activity, "Recognized, but the stroke path was messy");
+                assertHasText(activity, "Replay");
+            });
+        }
+    }
+
+    @Test
+    public void testReplayHiddenWhenStrokeGuideMissing() {
+        seedDashboard(Collections.singletonList(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards")));
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("鿃"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Reveal");
+            clickText(scenario, "I missed it");
+            scenario.onActivity(MainActivityInstrumentedTest::drawFreeformStroke);
+            clickText(scenario, "Check");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Stroke order could not be checked");
+                assertNoText(activity, "Replay");
             });
         }
     }
@@ -745,15 +780,20 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
-            scenario.onActivity(activity -> assertHasText(activity, "Try again with full guide"));
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Try again with full guide");
+                assertHasText(activity, "Replay");
+            });
             clickText(scenario, "Try again with full guide");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Fresh guided try");
                 assertNoText(activity, "I could not read that as the target kanji yet");
                 assertNoText(activity, "Next card");
+                assertNoText(activity, "Replay");
                 MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
                 assertNotNull(pad);
                 assertFalse(pad.hasInk());
+                assertFalse(pad.isReplayOverlayVisibleForTests());
             });
         }
     }
@@ -1131,6 +1171,53 @@ public final class MainActivityInstrumentedTest {
             sendTouch(pad, now, now + strokeIndex * 40L + 30L, MotionEvent.ACTION_UP, last.x * 1000f, last.y * 1000f);
             strokeIndex++;
         }
+        assertTrue(pad.hasInk());
+    }
+
+    private static void drawGuideKanjiWithFirstStrokeReversed(MainActivity activity, String kanji) {
+        MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+        assertNotNull(pad);
+        pad.layout(0, 0, 1000, 1000);
+        StrokeGuide guide = strokeGuide(activity, kanji);
+        assertNotNull(guide);
+        long now = System.currentTimeMillis();
+        int strokeIndex = 0;
+        for (InkStroke stroke : guide.strokes) {
+            if (stroke.points.size() < 2) {
+                continue;
+            }
+            if (strokeIndex == 0) {
+                InkPoint last = stroke.points.get(stroke.points.size() - 1);
+                sendTouch(pad, now, now, MotionEvent.ACTION_DOWN, last.x * 1000f, last.y * 1000f);
+                for (int i = stroke.points.size() - 2; i > 0; i--) {
+                    InkPoint point = stroke.points.get(i);
+                    sendTouch(pad, now, now + (stroke.points.size() - i), MotionEvent.ACTION_MOVE, point.x * 1000f, point.y * 1000f);
+                }
+                InkPoint first = stroke.points.get(0);
+                sendTouch(pad, now, now + 30L, MotionEvent.ACTION_UP, first.x * 1000f, first.y * 1000f);
+            } else {
+                InkPoint first = stroke.points.get(0);
+                sendTouch(pad, now, now + strokeIndex * 40L, MotionEvent.ACTION_DOWN, first.x * 1000f, first.y * 1000f);
+                for (int i = 1; i < stroke.points.size() - 1; i++) {
+                    InkPoint point = stroke.points.get(i);
+                    sendTouch(pad, now, now + strokeIndex * 40L + i, MotionEvent.ACTION_MOVE, point.x * 1000f, point.y * 1000f);
+                }
+                InkPoint last = stroke.points.get(stroke.points.size() - 1);
+                sendTouch(pad, now, now + strokeIndex * 40L + 30L, MotionEvent.ACTION_UP, last.x * 1000f, last.y * 1000f);
+            }
+            strokeIndex++;
+        }
+        assertTrue(pad.hasInk());
+    }
+
+    private static void drawFreeformStroke(MainActivity activity) {
+        MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+        assertNotNull(pad);
+        pad.layout(0, 0, 1000, 1000);
+        long now = System.currentTimeMillis();
+        sendTouch(pad, now, now, MotionEvent.ACTION_DOWN, 240f, 240f);
+        sendTouch(pad, now, now + 16L, MotionEvent.ACTION_MOVE, 520f, 460f);
+        sendTouch(pad, now, now + 32L, MotionEvent.ACTION_UP, 760f, 640f);
         assertTrue(pad.hasInk());
     }
 
