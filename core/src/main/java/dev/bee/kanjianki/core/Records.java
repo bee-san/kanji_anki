@@ -133,6 +133,9 @@ public final class Records {
         public final int reps;
         public final int lapses;
         public final boolean suspended;
+        public final Double fsrsStability;
+        public final Double fsrsDifficulty;
+        public final Double fsrsRetrievability;
 
         public Card(
                 long cardId,
@@ -147,6 +150,25 @@ public final class Records {
                 int lapses,
                 boolean suspended
         ) {
+            this(cardId, noteId, ord, deckName, queue, type, due, intervalDays, reps, lapses, suspended, null, null, null);
+        }
+
+        public Card(
+                long cardId,
+                long noteId,
+                int ord,
+                String deckName,
+                int queue,
+                int type,
+                int due,
+                int intervalDays,
+                int reps,
+                int lapses,
+                boolean suspended,
+                Double fsrsStability,
+                Double fsrsDifficulty,
+                Double fsrsRetrievability
+        ) {
             this.cardId = cardId;
             this.noteId = noteId;
             this.ord = ord;
@@ -158,6 +180,9 @@ public final class Records {
             this.reps = reps;
             this.lapses = lapses;
             this.suspended = suspended;
+            this.fsrsStability = fsrsStability;
+            this.fsrsDifficulty = fsrsDifficulty;
+            this.fsrsRetrievability = fsrsRetrievability;
         }
 
         public boolean mature(int matureDays) {
@@ -233,8 +258,32 @@ public final class Records {
         public final String sentence;
         public final boolean mature;
         public final int lapses;
+        public final int intervalDays;
+        public final int reps;
+        public final Double fsrsStability;
+        public final Double fsrsDifficulty;
+        public final Double fsrsRetrievability;
 
         public Example(String sourceType, long cardId, long noteId, String expression, String reading, String meaning, String sentence, boolean mature, int lapses) {
+            this(sourceType, cardId, noteId, expression, reading, meaning, sentence, mature, lapses, 0, 0, null, null, null);
+        }
+
+        public Example(
+                String sourceType,
+                long cardId,
+                long noteId,
+                String expression,
+                String reading,
+                String meaning,
+                String sentence,
+                boolean mature,
+                int lapses,
+                int intervalDays,
+                int reps,
+                Double fsrsStability,
+                Double fsrsDifficulty,
+                Double fsrsRetrievability
+        ) {
             this.sourceType = sourceType;
             this.cardId = cardId;
             this.noteId = noteId;
@@ -244,6 +293,11 @@ public final class Records {
             this.sentence = sentence;
             this.mature = mature;
             this.lapses = lapses;
+            this.intervalDays = intervalDays;
+            this.reps = reps;
+            this.fsrsStability = fsrsStability;
+            this.fsrsDifficulty = fsrsDifficulty;
+            this.fsrsRetrievability = fsrsRetrievability;
         }
     }
 
@@ -556,6 +610,38 @@ public final class Records {
             this.appliedRating = appliedRating;
             this.duplicate = duplicate;
             this.message = message;
+        }
+    }
+
+    public static final class AdaptiveLoadPlan {
+        public final int workloadPercent;
+        public final int target;
+        public final int remaining;
+        public final List<String> focusKanji;
+        public final int newAdmissionLimit;
+        public final boolean allKanjiMode;
+        public final String status;
+
+        public AdaptiveLoadPlan(
+                int workloadPercent,
+                int target,
+                int remaining,
+                List<String> focusKanji,
+                int newAdmissionLimit,
+                boolean allKanjiMode,
+                String status
+        ) {
+            this.workloadPercent = workloadPercent;
+            this.target = target;
+            this.remaining = remaining;
+            this.focusKanji = Collections.unmodifiableList(new ArrayList<>(focusKanji));
+            this.newAdmissionLimit = newAdmissionLimit;
+            this.allKanjiMode = allKanjiMode;
+            this.status = status == null ? "" : status;
+        }
+
+        public boolean focusComplete() {
+            return !allKanjiMode && target > 0 && remaining <= 0;
         }
     }
 
