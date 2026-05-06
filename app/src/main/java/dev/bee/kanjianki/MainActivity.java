@@ -1000,6 +1000,7 @@ public final class MainActivity extends Activity {
         content.addView(studyStatus);
         drawingPad = new DrawingPadView(this);
         drawingPad.setTarget(session.item.kanji);
+        drawingPad.setInkEditListener(this::handleDrawingEdited);
         drawingPad.setGuide(guide, currentPracticeLevel, false);
         content.addView(drawingPad, new LinearLayout.LayoutParams(-1, studyPadHeight()));
 
@@ -1399,9 +1400,10 @@ public final class MainActivity extends Activity {
         if (drawingPad != null && activeSession != null) {
             drawingPad.setGuide(guide, currentPracticeLevel, true);
             if (canReplayAnalysis(analysis, guide)) {
+                drawingPad.captureReplaySnapshot();
                 drawingPad.startReplay();
             } else {
-                drawingPad.stopReplay();
+                drawingPad.clearReplaySnapshot();
             }
         }
         int color = analysis.writingPassed ? TEAL : CORAL;
@@ -1442,7 +1444,7 @@ public final class MainActivity extends Activity {
         }
         if (replayButton != null) {
             StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
-            replayButton.setVisibility(hasResult && canReplayAnalysis(activeAnalysis, guide) ? View.VISIBLE : View.GONE);
+            replayButton.setVisibility(hasResult && drawingPad != null && drawingPad.hasReplaySnapshot() && canReplayAnalysis(activeAnalysis, guide) ? View.VISIBLE : View.GONE);
         }
         if (hintButton != null) {
             hintButton.setVisibility(!passed && currentPracticeLevel > 0 ? View.VISIBLE : View.GONE);
@@ -1495,6 +1497,19 @@ public final class MainActivity extends Activity {
             drawingPad.setGuide(guide, currentPracticeLevel, true);
             drawingPad.startReplay();
         }
+    }
+
+    private void handleDrawingEdited() {
+        if (checkingWriting || activeAnalysis == null || activeSession == null || drawingPad == null) {
+            return;
+        }
+        activeAnalysis = null;
+        drawingPad.clearReplaySnapshot();
+        setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)) + "\nUpdated ink. Check again when ready.", MUTED);
+        if (resultStatus != null) {
+            resultStatus.setVisibility(View.GONE);
+        }
+        updateResultActions();
     }
 
     private boolean canReplayAnalysis(WritingAnalysis analysis, StrokeGuide guide) {
@@ -2421,6 +2436,7 @@ public final class MainActivity extends Activity {
         private final Paint replayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final List<Path> paths = new ArrayList<>();
         private final List<List<CapturedStroke.Point>> committedStrokes = new ArrayList<>();
+        private final List<List<CapturedStroke.Point>> replayStrokes = new ArrayList<>();
         private final List<CapturedStroke.Point> currentPoints = new ArrayList<>();
         private Path current;
         private StrokeGuide guide;
@@ -2428,6 +2444,7 @@ public final class MainActivity extends Activity {
         private boolean revealGuide;
         private boolean replayOverlayVisible;
         private long replayStartedAtMillis;
+        private Runnable inkEditListener;
         private String target = "";
         private int activePointerId = -1;
         private static final long REPLAY_DURATION_MILLIS = 950L;
@@ -2466,6 +2483,7 @@ public final class MainActivity extends Activity {
         public void clear() {
             paths.clear();
             committedStrokes.clear();
+            replayStrokes.clear();
             currentPoints.clear();
             current = null;
             activePointerId = -1;
@@ -2475,6 +2493,10 @@ public final class MainActivity extends Activity {
 
         public void setTarget(String target) {
             this.target = target == null ? "" : target;
+        }
+
+        public void setInkEditListener(Runnable listener) {
+            this.inkEditListener = listener;
         }
 
         public void setGuide(StrokeGuide guide, int level, boolean revealGuide) {
@@ -2489,7 +2511,7 @@ public final class MainActivity extends Activity {
         }
 
         public void startReplay() {
-            if (!hasInk()) {
+            if (replayStrokes.isEmpty()) {
                 return;
             }
             replayOverlayVisible = true;
@@ -2501,6 +2523,22 @@ public final class MainActivity extends Activity {
             replayOverlayVisible = false;
             replayStartedAtMillis = 0L;
             invalidate();
+        }
+
+        public void captureReplaySnapshot() {
+            replayStrokes.clear();
+            for (List<CapturedStroke.Point> stroke : committedStrokes) {
+                replayStrokes.add(new ArrayList<>(stroke));
+            }
+        }
+
+        public void clearReplaySnapshot() {
+            replayStrokes.clear();
+            stopReplay();
+        }
+
+        public boolean hasReplaySnapshot() {
+            return !replayStrokes.isEmpty();
         }
 
         public boolean isReplayOverlayVisibleForTests() {
@@ -2558,6 +2596,9 @@ public final class MainActivity extends Activity {
                 case MotionEvent.ACTION_DOWN:
                     performClick();
                     stopReplay();
+                    if (inkEditListener != null) {
+                        inkEditListener.run();
+                    }
                     requestParentIntercept(false);
                     activePointerId = event.getPointerId(0);
                     current = new Path();
@@ -2686,12 +2727,12 @@ public final class MainActivity extends Activity {
         }
 
         private void drawReplayStrokes(Canvas canvas, float progress) {
-            if (committedStrokes.isEmpty()) {
+            if (replayStrokes.isEmpty()) {
                 return;
             }
-            float position = Math.max(0f, Math.min(1f, progress)) * committedStrokes.size();
-            int fullStrokeCount = Math.min(committedStrokes.size(), (int) Math.floor(position));
-            for (int i = 0; i < committedStrokes.size(); i++) {
+            float position = Math.max(0f, Math.min(1f, progress)) * replayStrokes.size();
+            int fullStrokeCount = Math.min(replayStrokes.size(), (int) Math.floor(position));
+            for (int i = 0; i < replayStrokes.size(); i++) {
                 float strokeProgress;
                 if (i < fullStrokeCount) {
                     strokeProgress = 1f;
@@ -2700,7 +2741,7 @@ public final class MainActivity extends Activity {
                 } else {
                     break;
                 }
-                drawReplayStroke(canvas, committedStrokes.get(i), strokeProgress);
+                drawReplayStroke(canvas, replayStrokes.get(i), strokeProgress);
             }
         }
 

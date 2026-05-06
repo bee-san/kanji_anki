@@ -576,6 +576,32 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testDrawingAfterCheckClearsPriorReplayState() {
+        seedDueWritingItem();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
+            clickText(scenario, "Check");
+            waitForText(scenario, "Clean match");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Replay");
+                assertHasText(activity, "Next card");
+                drawFreeformStroke(activity);
+            });
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Updated ink");
+                assertNoText(activity, "Clean match");
+                assertNoText(activity, "Replay");
+                assertNoText(activity, "Next card");
+                MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+                assertNotNull(pad);
+                assertFalse(pad.hasReplaySnapshot());
+            });
+        }
+    }
+
+    @Test
     public void testBlindReviewMissRevealsRepairReference() {
         seedDashboard();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));

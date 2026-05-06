@@ -24,15 +24,22 @@ public final class StrokeOrderEvaluator {
         float shapeScore = 0f;
         float weakestStrokeScore = compared == 0 ? 0f : 1f;
         StrokeDiagnosis.Builder diagnosis = StrokeDiagnosis.builder();
+        boolean[] matchedGuideStrokes = new boolean[expected];
         for (int i = 0; i < compared; i++) {
             StrokeComparison expectedComparison = compare(guide.strokes.get(i), sample.strokes.get(i), sampleBounds, guideBounds);
             shapeScore += expectedComparison.score;
             weakestStrokeScore = Math.min(weakestStrokeScore, expectedComparison.score);
-            diagnoseComparedStroke(guide, sample.strokes.get(i), i, sampleBounds, guideBounds, expectedComparison, diagnosis);
+            BestStrokeMatch best = bestGuideMatch(guide, sample.strokes.get(i), sampleBounds, guideBounds);
+            if (best.index >= 0 && best.directionlessScore >= 0.65f) {
+                matchedGuideStrokes[best.index] = true;
+            }
+            diagnoseComparedStroke(i, expectedComparison, best, diagnosis);
         }
         if (actual < expected) {
-            for (int i = actual; i < expected; i++) {
-                diagnosis.add(StrokeDiagnosis.Label.MISSING_STROKE, i + 1);
+            for (int i = 0; i < matchedGuideStrokes.length; i++) {
+                if (!matchedGuideStrokes[i]) {
+                    diagnosis.add(StrokeDiagnosis.Label.MISSING_STROKE, i + 1);
+                }
             }
         }
         shapeScore = compared == 0 ? 0f : shapeScore / compared;
@@ -46,15 +53,11 @@ public final class StrokeOrderEvaluator {
     }
 
     private static void diagnoseComparedStroke(
-            StrokeGuide guide,
-            InkStroke sampleStroke,
             int expectedIndex,
-            Bounds sampleBounds,
-            Bounds guideBounds,
             StrokeComparison expectedComparison,
+            BestStrokeMatch best,
             StrokeDiagnosis.Builder diagnosis
     ) {
-        BestStrokeMatch best = bestGuideMatch(guide, sampleStroke, sampleBounds, guideBounds);
         boolean wrongOrder = best.index >= 0
                 && best.index != expectedIndex
                 && best.directionlessScore >= 0.72f

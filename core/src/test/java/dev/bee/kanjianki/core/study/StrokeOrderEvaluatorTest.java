@@ -58,6 +58,18 @@ public class StrokeOrderEvaluatorTest {
     }
 
     @Test
+    public void skippedMiddleStrokeReportsThatGuideStrokeMissing() {
+        StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(threeStrokeGuide(), sample(
+                stroke(10f, 10f, 90f, 10f),
+                stroke(10f, 50f, 90f, 50f)
+        ));
+
+        assertTrue(result.acceptable);
+        assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.MISSING_STROKE, 2));
+        assertFalse(result.diagnosis.hasLabel(StrokeDiagnosis.Label.MISSING_STROKE, 3));
+    }
+
+    @Test
     public void swappedStrokesReportWrongOrder() {
         StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(guide(), sample(
                 stroke(10f, 30f, 90f, 30f),
@@ -121,6 +133,17 @@ public class StrokeOrderEvaluatorTest {
                 Arrays.asList(
                         new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.1f, 0), new InkPoint(0.9f, 0.1f, 1))),
                         new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.3f, 0), new InkPoint(0.9f, 0.3f, 1)))
+                )
+        );
+    }
+
+    private StrokeGuide threeStrokeGuide() {
+        return new StrokeGuide(
+                "拉",
+                Arrays.asList(
+                        new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.1f, 0), new InkPoint(0.9f, 0.1f, 1))),
+                        new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.3f, 0), new InkPoint(0.9f, 0.3f, 1))),
+                        new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.5f, 0), new InkPoint(0.9f, 0.5f, 1)))
                 )
         );
     }
