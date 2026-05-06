@@ -333,9 +333,10 @@ public final class MainActivityInstrumentedTest {
 
             clickText(scenario, "Review this now");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Recall this kanji");
-                assertHasText(activity, "Focused recall");
+                assertHasText(activity, "Name this kanji");
+                assertHasText(activity, "Kanji -> meaning");
                 assertHasText(activity, "Answer hidden until reveal");
+                assertHasText(activity, "What does it mean?");
                 assertHasText(activity, "Reveal");
                 assertNoText(activity, "Example: 拉麺  らーめん");
                 assertNoText(activity, "From: 拉麺");
@@ -353,30 +354,16 @@ public final class MainActivityInstrumentedTest {
             });
 
             clickText(scenario, "I missed it");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Draw this kanji");
-                assertHasText(activity, "Write to repair");
-                assertHasText(activity, "This is the same card");
-                assertHasText(activity, "Reference");
-                assertHasText(activity, "Trace the numbered strokes");
-                assertHasText(activity, "Check");
-                assertHasText(activity, "拉麺");
-                assertNoText(activity, "I copied it");
-            });
-
-            clickText(scenario, "Check");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Write in the square before checking");
-                assertNoText(activity, "Mark right anyway");
-                assertNoText(activity, "Next card");
-                assertNoText(activity, "It saw: nothing clear");
-                assertNoText(activity, "Replay");
-            });
-
             LocalStore store = new LocalStore(context);
             try {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
-                assertEquals(0, stats.total);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.again);
+                assertEquals(0, stats.writingRequired);
+                List<Records.StudyItem> items = store.studyItems();
+                assertEquals(1, items.size());
+                assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
+                assertFalse(items.get(0).writingRemediationPending);
             } finally {
                 store.close();
             }
@@ -455,9 +442,9 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Recall this kanji");
-                assertHasText(activity, "Quick recall");
-                assertHasText(activity, "ramen radical gap");
+                assertHasText(activity, "Name this kanji");
+                assertHasText(activity, "Kanji -> meaning");
+                assertHasText(activity, "What does it mean?");
                 assertHasText(activity, "Reveal");
             });
 
@@ -495,19 +482,18 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Memory check");
-                assertHasText(activity, "Prompt: mystery radical gap");
+                assertHasText(activity, "Name this kanji");
+                assertHasText(activity, "Kanji -> meaning");
+                assertHasText(activity, "What does it mean?");
             });
         }
     }
 
     @Test
     public void testMissingStrokeGuideIsExplainedBeforeDrawing() {
-        seedDashboard(Collections.singletonList(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards")));
+        seedDueWritingItem(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards"), 0);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "Reveal");
-            clickText(scenario, "I missed it");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "No numbered stroke guide is bundled");
                 assertHasText(activity, "Stroke-order feedback will be limited");
@@ -517,29 +503,21 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testReviewStartsBlindAndHintDoesNotRevealReference() {
-        seedDashboard();
-        LocalStore store = new LocalStore(context);
-        try {
-            store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
-            ));
-        } finally {
-            store.close();
-        }
+    public void testWritingRepairHintPreservesInkAndReference() {
+        seedDueWritingItem(3);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Memory check");
-                assertHasText(activity, "Write from memory");
-                assertHasText(activity, "Hint");
-                assertNoText(activity, "Reference");
-                assertNoText(activity, "拉麺");
+                assertHasText(activity, "Writing repair");
+                assertHasText(activity, "Recognition has missed on multiple days");
+                assertHasText(activity, "Reference");
+                assertHasText(activity, "拉麺");
+                assertHasText(activity, "More help");
             });
 
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
-            clickText(scenario, "Hint");
+            clickText(scenario, "More help");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Hint used");
                 assertHasText(activity, "ink stayed on the canvas");
@@ -547,30 +525,22 @@ public final class MainActivityInstrumentedTest {
                 MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
                 assertNotNull(pad);
                 assertTrue(pad.hasInk());
-                assertNoText(activity, "Reference");
-                assertNoText(activity, "拉麺");
+                assertHasText(activity, "Reference");
+                assertHasText(activity, "拉麺");
             });
         }
     }
 
     @Test
-    public void testBlindReviewCheckDoesNotInsertReferenceAboveCanvas() {
-        seedDashboard();
+    public void testWritingRepairCheckKeepsSingleCleanMatchMessage() {
+        seedDueWritingItem(3);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
-        LocalStore store = new LocalStore(context);
-        try {
-            store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
-            ));
-        } finally {
-            store.close();
-        }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Memory check");
-                assertNoText(activity, "Reference");
+                assertHasText(activity, "Writing repair");
+                assertHasText(activity, "Reference");
                 drawGuideKanji(activity, "拉");
             });
             clickText(scenario, "Check");
@@ -578,7 +548,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Clean match");
                 assertHasText(activity, "Target: 拉");
                 assertHasText(activity, "Next card");
-                assertNoText(activity, "Reference");
+                assertHasText(activity, "Reference");
                 assertEquals(1, countText(activity.findViewById(android.R.id.content), "Clean match"));
             });
         }
@@ -605,12 +575,10 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testReplayHiddenWhenStrokeGuideMissing() {
-        seedDashboard(Collections.singletonList(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards")));
+        seedDueWritingItem(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards"), 0);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("鿃"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            clickText(scenario, "Reveal");
-            clickText(scenario, "I missed it");
             scenario.onActivity(MainActivityInstrumentedTest::drawFreeformStroke);
             clickText(scenario, "Check");
             scenario.onActivity(activity -> {
@@ -647,23 +615,15 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testBlindReviewMissRevealsRepairReference() {
-        seedDashboard();
+    public void testWritingRepairMissKeepsRepairReference() {
+        seedDueWritingItem(3);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
-        LocalStore store = new LocalStore(context);
-        try {
-            store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
-            ));
-        } finally {
-            store.close();
-        }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Memory check");
-                assertNoText(activity, "Reference");
+                assertHasText(activity, "Writing repair");
+                assertHasText(activity, "Reference");
                 drawGuideKanji(activity, "拉");
             });
             clickText(scenario, "Check");
@@ -679,17 +639,9 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testStudyLoopActionsArePinnedOutsideScrollableContent() {
-        seedDashboard();
+        seedDueWritingItem();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
-            scenario.onActivity(activity -> {
-                View root = activity.findViewById(android.R.id.content);
-                View reveal = findExactText(root, "Reveal");
-                assertNotNull(reveal);
-                assertFalse(hasAncestorOfType(reveal, ScrollView.class));
-            });
-            clickText(scenario, "Reveal");
-            clickText(scenario, "I missed it");
             scenario.onActivity(activity -> {
                 View root = activity.findViewById(android.R.id.content);
                 View check = findExactText(root, "Check");
@@ -708,8 +660,8 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Recall this kanji");
-                assertHasText(activity, "Quick recall");
+                assertHasText(activity, "Name this kanji");
+                assertHasText(activity, "Kanji -> meaning");
                 assertHasText(activity, "Answer hidden until reveal");
                 assertNoText(activity, "拉麺");
             });
@@ -736,6 +688,7 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, item.totalReviews);
                 assertEquals(1, item.learningStep);
                 assertEquals(0, item.writingLevel);
+                assertEquals(1, item.recognitionStage);
             } finally {
                 store.close();
             }
@@ -743,33 +696,30 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testMissedFlashcardRepairCapsCorrectWritingToHard() {
+    public void testMissedRecognitionAtThresholdQueuesWritingRemediation() {
         seedDashboard();
-        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+        LocalStore initialStore = new LocalStore(context);
+        try {
+            initialStore.putIntSetting("writing_trigger_miss_days", 1);
+        } finally {
+            initialStore.close();
+        }
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             clickText(scenario, "Reveal");
             clickText(scenario, "I missed it");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Write to repair");
-                assertHasText(activity, "clean repair is still logged as hard");
-                drawGuideKanji(activity, "拉");
-            });
-            clickText(scenario, "Check");
-            waitForText(scenario, "Clean match");
-            clickText(scenario, "Next card");
 
             LocalStore store = new LocalStore(context);
             try {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
-                assertEquals(0, stats.good);
-                assertEquals(1, stats.hard);
-                assertEquals(1, stats.writingRequired);
-                assertEquals(0, stats.writingFailed);
+                assertEquals(1, stats.again);
+                assertEquals(0, stats.writingRequired);
                 List<Records.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
-                assertEquals(0, items.get(0).writingLevel);
+                assertTrue(items.get(0).writingRemediationPending);
+                assertEquals(0, items.get(0).recognitionStage);
+                assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
             } finally {
                 store.close();
             }
@@ -1122,11 +1072,31 @@ public final class MainActivityInstrumentedTest {
     }
 
     private void seedDueWritingItem(int writingLevel) {
-        seedDashboard();
+        seedDueWritingItem(dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards"), writingLevel);
+    }
+
+    private void seedDueWritingItem(Records.DashboardRow row, int writingLevel) {
+        seedDashboard(Collections.singletonList(row));
         LocalStore store = new LocalStore(context);
         try {
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "learning", 0L, 0.9, 5.0, 1, 0, 1, writingLevel, null, 0L)
+                    new Records.StudyItem(
+                            row.kanji,
+                            "learning",
+                            0L,
+                            0.9,
+                            5.0,
+                            3,
+                            2,
+                            0,
+                            writingLevel,
+                            0,
+                            3,
+                            localDayStart(System.currentTimeMillis()),
+                            true,
+                            null,
+                            0L
+                    )
             ));
         } finally {
             store.close();

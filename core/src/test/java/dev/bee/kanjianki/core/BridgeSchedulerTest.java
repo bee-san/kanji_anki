@@ -373,7 +373,7 @@ public class BridgeSchedulerTest {
         BridgeScheduler scheduler = new BridgeScheduler();
         HashSet<String> consumed = new HashSet<>();
         long today = localDayStart(System.currentTimeMillis()) + 60_000L;
-        long tomorrow = today + 86_400_000L;
+        long tomorrow = moveLocalDays(localDayStart(today), 1) + 60_000L;
 
         Records.ReviewResult first = scheduler.applyReview(
                 item("裂", 1).withToken("t1"),
@@ -427,7 +427,7 @@ public class BridgeSchedulerTest {
                 first.item.withToken("t2"),
                 new Records.ReviewRequest("裂", "t2", "again", false, false, false, 0),
                 consumed,
-                today + 86_400_000L,
+                moveLocalDays(localDayStart(today), 1) + 60_000L,
                 Records.SchedulerParameters.defaults(),
                 thresholdTwo
         );
@@ -534,6 +534,13 @@ public class BridgeSchedulerTest {
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private static long moveLocalDays(long localDayStart, int days) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(localDayStart);
+        calendar.add(Calendar.DAY_OF_YEAR, days);
         return calendar.getTimeInMillis();
     }
 
