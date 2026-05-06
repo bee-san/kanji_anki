@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
@@ -84,6 +85,7 @@ public final class ManualSyncEngineInstrumentedTest {
     @Test
     public void successfulSyncUsesAdaptiveWorkloadForNewAdmissions() {
         Records.Settings settings = Records.Settings.kikuDefaults();
+        store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
         store.saveAdaptiveLoadWorkPercent(0);
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(

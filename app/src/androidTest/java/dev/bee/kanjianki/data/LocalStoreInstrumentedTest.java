@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -283,9 +284,14 @@ public final class LocalStoreInstrumentedTest {
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);
         assertEquals(0, defaults.minute);
+        assertEquals(AdaptiveLoadPlanner.MODE_AUTO, store.adaptiveLoadMode());
         assertEquals(20, store.adaptiveLoadWorkPercent());
+        store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
+        assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
         store.saveAdaptiveLoadWorkPercent(23);
         assertEquals(25, store.adaptiveLoadWorkPercent());
+        store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
+        assertEquals(AdaptiveLoadPlanner.MODE_AUTO, store.adaptiveLoadMode());
 
         store.saveReminderSettings(new LocalStore.ReminderSettings(true, 8, 30));
         LocalStore.ReminderSettings reminder = store.reminderSettings();

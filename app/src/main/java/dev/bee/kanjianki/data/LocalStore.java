@@ -553,6 +553,17 @@ public final class LocalStore extends SQLiteOpenHelper {
         putIntSetting(AdaptiveLoadPlanner.SETTING_KEY, AdaptiveLoadPlanner.snapWorkloadPercent(percent));
     }
 
+    public String adaptiveLoadMode() {
+        return AdaptiveLoadPlanner.normalizeWorkloadMode(getStringSetting(
+                AdaptiveLoadPlanner.MODE_SETTING_KEY,
+                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE
+        ));
+    }
+
+    public void saveAdaptiveLoadMode(String mode) {
+        putStringSetting(AdaptiveLoadPlanner.MODE_SETTING_KEY, AdaptiveLoadPlanner.normalizeWorkloadMode(mode));
+    }
+
     public ReminderSettings reminderSettings() {
         return new ReminderSettings(
                 getIntSetting("reminder_enabled", 0) == 1,

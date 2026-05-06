@@ -12,7 +12,12 @@ import java.util.Set;
 
 public final class AdaptiveLoadPlanner {
     public static final String SETTING_KEY = "adaptive_load_work_percent";
+    public static final String MODE_SETTING_KEY = "adaptive_load_mode";
+    public static final String MODE_AUTO = "auto";
+    public static final String MODE_MANUAL = "manual";
     public static final int DEFAULT_WORKLOAD_PERCENT = 20;
+    public static final String DEFAULT_WORKLOAD_MODE = MODE_AUTO;
+    private static final int AUTO_PARETO_CAP = 20;
 
     public Records.AdaptiveLoadPlan plan(
             List<Records.DashboardRow> rows,
@@ -33,6 +38,34 @@ public final class AdaptiveLoadPlanner {
             int currentStreakDays,
             Set<String> studiedToday,
             int workloadPercent,
+            String workloadMode,
+            long nowMillis,
+            Records.Settings settings
+    ) {
+        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, nowMillis, settings);
+    }
+
+    public Records.AdaptiveLoadPlan plan(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> items,
+            Records.ReviewStats recentStats,
+            int currentStreakDays,
+            Set<String> studiedToday,
+            int workloadPercent,
+            long nowMillis,
+            Records.Settings settings
+    ) {
+        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, MODE_MANUAL, nowMillis, settings);
+    }
+
+    private Records.AdaptiveLoadPlan planInternal(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> items,
+            Records.ReviewStats recentStats,
+            int currentStreakDays,
+            Set<String> studiedToday,
+            int workloadPercent,
+            String workloadMode,
             long nowMillis,
             Records.Settings settings
     ) {
@@ -42,6 +75,7 @@ public final class AdaptiveLoadPlanner {
         Set<String> studied = studiedToday == null ? Collections.emptySet() : studiedToday;
         Records.Settings effectiveSettings = settings == null ? Records.Settings.kikuDefaults() : settings;
         int snapped = snapWorkloadPercent(workloadPercent);
+        boolean autoMode = isAutoMode(workloadMode);
 
         Map<String, Records.StudyItem> itemByKanji = new HashMap<>();
         for (Records.StudyItem item : safeItems) {
@@ -56,21 +90,23 @@ public final class AdaptiveLoadPlanner {
 
         if (candidates.isEmpty()) {
             return new Records.AdaptiveLoadPlan(
+                    autoMode,
                     snapped,
                     0,
                     0,
                     Collections.emptyList(),
                     0,
-                    snapped >= 100,
+                    !autoMode && snapped >= 100,
                     "No current problem kanji."
             );
         }
 
-        boolean allKanji = snapped >= 100;
+        boolean allKanji = !autoMode && snapped >= 100;
         if (allKanji) {
             List<String> focus = kanjiList(candidates);
             int remaining = remainingCount(focus, itemByKanji, studied, nowMillis);
             return new Records.AdaptiveLoadPlan(
+                    false,
                     snapped,
                     focus.size(),
                     remaining,
@@ -81,9 +117,18 @@ public final class AdaptiveLoadPlanner {
             );
         }
 
-        int ceiling = targetCeiling(snapped);
-        int adjustedTarget = adjustedTarget(ceiling, stats, currentStreakDays, recoveryDueCount(candidates));
         int recoveryDue = recoveryDueCount(candidates);
+        int ceiling;
+        int adjustedTarget;
+        AutoTarget autoTarget = null;
+        if (autoMode) {
+            autoTarget = autoParetoTarget(candidates);
+            ceiling = Math.min(candidates.size(), AUTO_PARETO_CAP);
+            adjustedTarget = adjustedAutoTarget(autoTarget.target, ceiling, stats, currentStreakDays, recoveryDue);
+        } else {
+            ceiling = targetCeiling(snapped);
+            adjustedTarget = adjustedTarget(ceiling, stats, currentStreakDays, recoveryDue);
+        }
         int displayTarget = Math.max(adjustedTarget, recoveryDue);
         int newAdmissionLimit = Math.max(0, adjustedTarget - recoveryDue);
 
@@ -103,14 +148,25 @@ public final class AdaptiveLoadPlanner {
         List<String> focusKanji = new ArrayList<>(focus);
         int remaining = remainingCount(focusKanji, itemByKanji, studied, nowMillis);
         return new Records.AdaptiveLoadPlan(
+                autoMode,
                 snapped,
                 focusKanji.size(),
                 remaining,
                 focusKanji,
                 newAdmissionLimit,
                 false,
-                statusFor(snapped, adjustedTarget, ceiling, stats, recoveryDue)
+                autoMode
+                        ? autoStatusFor(adjustedTarget, autoTarget, stats, recoveryDue)
+                        : statusFor(snapped, adjustedTarget, ceiling, stats, recoveryDue)
         );
+    }
+
+    public static String normalizeWorkloadMode(String mode) {
+        return MODE_MANUAL.equals(mode) ? MODE_MANUAL : MODE_AUTO;
+    }
+
+    public static boolean isAutoMode(String mode) {
+        return MODE_AUTO.equals(normalizeWorkloadMode(mode));
     }
 
     public static int snapWorkloadPercent(int value) {
@@ -146,10 +202,19 @@ public final class AdaptiveLoadPlanner {
         return "All kanji";
     }
 
-    private static int adjustedTarget( int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
+    private static int adjustedTarget(int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
         int target = stats.total == 0
                 ? Math.min(3, ceiling)
                 : Math.max(1, Math.round(ceiling * 0.65f));
+        return adjustedTargetFromBase(target, ceiling, stats, currentStreakDays, recoveryDue);
+    }
+
+    private static int adjustedAutoTarget(int autoTarget, int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
+        int target = stats.total == 0 ? Math.min(3, autoTarget) : autoTarget;
+        return adjustedTargetFromBase(target, ceiling, stats, currentStreakDays, recoveryDue);
+    }
+
+    private static int adjustedTargetFromBase(int target, int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
         double missRate = stats.total == 0 ? 0.0 : stats.again / (double) stats.total;
         double hardRate = stats.total == 0 ? 0.0 : stats.hard / (double) stats.total;
         double writingFailureRate = stats.writingFailureRate();
@@ -175,6 +240,36 @@ public final class AdaptiveLoadPlanner {
             target += 1;
         }
         return Math.max(1, Math.min(ceiling, target));
+    }
+
+    private static AutoTarget autoParetoTarget(List<Candidate> candidates) {
+        int recoveryDue = recoveryDueCount(candidates);
+        List<Candidate> ranked = new ArrayList<>();
+        for (Candidate candidate : candidates) {
+            if (!candidate.recoveryDue) {
+                ranked.add(candidate);
+            }
+        }
+        if (ranked.isEmpty()) {
+            return new AutoTarget(Math.max(1, recoveryDue), false);
+        }
+
+        int fallback = Math.min(ranked.size(), targetCeiling(DEFAULT_WORKLOAD_PERCENT));
+        double top = ranked.get(0).priorityScore;
+        if (top <= 0.0) {
+            return new AutoTarget(Math.min(AUTO_PARETO_CAP, recoveryDue + fallback), false);
+        }
+        double absoluteDrop = Math.max(4.0, top * 0.15);
+        int scanLimit = Math.min(ranked.size() - 1, Math.max(0, AUTO_PARETO_CAP - recoveryDue - 1));
+        for (int i = 0; i < scanLimit; i++) {
+            double current = ranked.get(i).priorityScore;
+            double next = ranked.get(i + 1).priorityScore;
+            double drop = current - next;
+            if (current > 0.0 && next <= current * 0.70 && drop >= absoluteDrop) {
+                return new AutoTarget(Math.max(1, Math.min(AUTO_PARETO_CAP, recoveryDue + i + 1)), true);
+            }
+        }
+        return new AutoTarget(Math.max(1, Math.min(AUTO_PARETO_CAP, recoveryDue + fallback)), false);
     }
 
     private static int recoveryDueCount(List<Candidate> candidates) {
@@ -227,6 +322,27 @@ public final class AdaptiveLoadPlanner {
         return "Adaptive focus is set from recent misses, hard ratings, and writing results.";
     }
 
+    private static String autoStatusFor(int target, AutoTarget autoTarget, Records.ReviewStats stats, int recoveryDue) {
+        if (recoveryDue >= target) {
+            return "Due recovery fills today's auto Pareto focus, so new kanji wait.";
+        }
+        if (stats.total == 0) {
+            return autoTarget.dropFound
+                    ? "Auto Pareto found today's drop-off, then starts small until Kani has review history."
+                    : "Auto Pareto starts small until Kani has review history.";
+        }
+        if (!autoTarget.dropFound) {
+            return "Auto Pareto did not find a sharp drop-off, so Kani uses the small Pareto focus.";
+        }
+        if (target < autoTarget.target) {
+            return "Auto Pareto found today's drop-off, then recent review strain lowered the focus.";
+        }
+        if (target > autoTarget.target) {
+            return "Auto Pareto found today's drop-off and your steady streak allows one extra kanji.";
+        }
+        return "Auto Pareto uses today's problem-kanji drop-off.";
+    }
+
     private static boolean recoveryDue(Records.StudyItem item, long nowMillis) {
         if (item == null || "retired".equals(item.state)) {
             return false;
@@ -253,6 +369,7 @@ public final class AdaptiveLoadPlanner {
         private final int suspendedCount;
         private final int lapseScore;
         private final int supportDeficit;
+        private final double priorityScore;
 
         private Candidate(Records.DashboardRow row, Records.StudyItem item, long nowMillis, Records.Settings settings) {
             this.row = row;
@@ -261,6 +378,21 @@ public final class AdaptiveLoadPlanner {
             this.suspendedCount = row.suspendedExampleCount;
             this.lapseScore = lapseScore(row, item);
             this.supportDeficit = Math.max(0, settings.matureSupportThreshold - row.matureSupportCount);
+            this.priorityScore = row.weaknessScore
+                    + fsrsRisk
+                    + suspendedCount * 8.0
+                    + lapseScore * 2.0
+                    + supportDeficit * 4.0;
+        }
+    }
+
+    private static final class AutoTarget {
+        private final int target;
+        private final boolean dropFound;
+
+        private AutoTarget(int target, boolean dropFound) {
+            this.target = Math.max(1, target);
+            this.dropFound = dropFound;
         }
     }
 

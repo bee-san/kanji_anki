@@ -27,6 +27,7 @@ import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
@@ -164,13 +165,16 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Rarity cutoff");
                 assertHasText(activity, "Default: 3000");
                 assertHasText(activity, "Daily workload");
-                assertHasText(activity, "Pareto: up to 5 kanji");
+                assertHasText(activity, "Auto Pareto: waiting for problem kanji");
+                assertHasText(activity, "Use manual workload");
                 assertHasText(activity, "FSRS retention");
                 assertHasText(activity, "Desired retention: 90%");
                 assertHasText(activity, "Daily reminder");
                 assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
             });
+            clickText(scenario, "Use manual workload");
+            waitForText(scenario, "Pareto: up to 5 kanji");
             scenario.onActivity(activity -> {
                 SeekBar slider = findType(activity.findViewById(android.R.id.content), SeekBar.class);
                 assertNotNull(slider);
@@ -188,6 +192,7 @@ public final class MainActivityInstrumentedTest {
 
             LocalStore store = new LocalStore(context);
             try {
+                assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
                 assertEquals(70, store.adaptiveLoadWorkPercent());
                 assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
                 assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 3000));

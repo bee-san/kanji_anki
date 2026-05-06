@@ -103,6 +103,7 @@ public final class ManualSyncEngine {
                 store.studyStreak(nowMillis).currentDays,
                 studiedToday,
                 store.adaptiveLoadWorkPercent(),
+                store.adaptiveLoadMode(),
                 nowMillis,
                 settings
         );

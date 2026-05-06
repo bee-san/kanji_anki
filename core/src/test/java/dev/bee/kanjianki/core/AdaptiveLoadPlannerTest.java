@@ -204,6 +204,141 @@ public class AdaptiveLoadPlannerTest {
         assertEquals(1, dueAgain.remaining);
     }
 
+    @Test
+    public void autoWorkloadUsesFirstMajorParetoDropOff() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("強", 42, null, null, null, 3, 1),
+                        row("重", 38, null, null, null, 3, 1),
+                        row("軽", 10, null, null, null, 3, 1),
+                        row("薄", 8, null, null, null, 3, 1)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.autoMode);
+        assertEquals(2, plan.target);
+        assertEquals(Arrays.asList("強", "重"), plan.focusKanji);
+        assertTrue(plan.status.contains("drop-off"));
+    }
+
+    @Test
+    public void autoWorkloadFallsBackToSmallParetoFocusWhenCurveIsFlat() {
+        List<Records.DashboardRow> flat = Arrays.asList(
+                row("字0", 40, null, null, null, 3, 1),
+                row("字1", 38, null, null, null, 3, 1),
+                row("字2", 36, null, null, null, 3, 1),
+                row("字3", 34, null, null, null, 3, 1),
+                row("字4", 32, null, null, null, 3, 1),
+                row("字5", 30, null, null, null, 3, 1)
+        );
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                flat,
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertEquals(AdaptiveLoadPlanner.targetCeiling(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT), plan.target);
+        assertTrue(plan.status.contains("small Pareto focus"));
+    }
+
+    @Test
+    public void autoWorkloadIncludesDueRecoveryBeforeNewAdmissions() {
+        List<Records.StudyItem> due = Arrays.asList(
+                reviewed("復", 0L),
+                reviewed("習", 0L)
+        );
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("復", 9, null, null, null, 3, 1),
+                        row("習", 8, null, null, null, 3, 1),
+                        row("強", 42, null, null, null, 3, 1),
+                        row("重", 38, null, null, null, 3, 1),
+                        row("軽", 10, null, null, null, 3, 1)
+                ),
+                due,
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.focusKanji.contains("復"));
+        assertTrue(plan.focusKanji.contains("習"));
+        assertEquals(2, plan.newAdmissionLimit);
+    }
+
+    @Test
+    public void autoWorkloadStillShrinksWhenRecentReviewsAreRough() {
+        List<Records.DashboardRow> steep = Arrays.asList(
+                row("強", 42, null, null, null, 3, 1),
+                row("重", 38, null, null, null, 3, 1),
+                row("固", 36, null, null, null, 3, 1),
+                row("軽", 10, null, null, null, 3, 1)
+        );
+        Records.AdaptiveLoadPlan steady = planner().plan(
+                steep,
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+        Records.AdaptiveLoadPlan rough = planner().plan(
+                steep,
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 4, 2, 2, 0, 6, 3),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertTrue(rough.target < steady.target);
+    }
+
+    @Test
+    public void manualModeStillHonorsAllKanjiOverride() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                rows(8),
+                Collections.emptyList(),
+                new Records.ReviewStats(2, 0, 0, 2, 0, 2, 0),
+                2,
+                Collections.emptySet(),
+                100,
+                AdaptiveLoadPlanner.MODE_MANUAL,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertFalse(plan.autoMode);
+        assertTrue(plan.allKanjiMode);
+        assertEquals(8, plan.target);
+    }
+
     private AdaptiveLoadPlanner planner() {
         return new AdaptiveLoadPlanner();
     }

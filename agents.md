@@ -5,6 +5,20 @@ provider. Provider bugs can look fixed in unit tests while still failing on a
 real AnkiDroid install, so release fixes must include a live AnkiDroid emulator
 run when the change touches sync/provider behavior.
 
+## Gradle Command Note
+
+This repo currently does not include a checked-in `gradlew` wrapper. Run Gradle
+tasks from the repo root with the system `gradle` command, for example
+`gradle :core:test`.
+
+For Android tasks on this machine, prefer the prepared SDK under `/tmp` when no
+`local.properties` file is present:
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  gradle :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac
+```
+
 ## What Was Tested For v0.3.6
 
 The `_id is unknown` / `queue _id is unknown` fix was validated with:

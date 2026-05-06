@@ -1075,6 +1075,7 @@ public final class Records {
     }
 
     public static final class AdaptiveLoadPlan {
+        public final boolean autoMode;
         public final int workloadPercent;
         public final int target;
         public final int remaining;
@@ -1092,6 +1093,20 @@ public final class Records {
                 boolean allKanjiMode,
                 String status
         ) {
+            this(false, workloadPercent, target, remaining, focusKanji, newAdmissionLimit, allKanjiMode, status);
+        }
+
+        public AdaptiveLoadPlan(
+                boolean autoMode,
+                int workloadPercent,
+                int target,
+                int remaining,
+                List<String> focusKanji,
+                int newAdmissionLimit,
+                boolean allKanjiMode,
+                String status
+        ) {
+            this.autoMode = autoMode;
             this.workloadPercent = workloadPercent;
             this.target = target;
             this.remaining = remaining;

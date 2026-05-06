@@ -2202,12 +2202,32 @@ public final class MainActivity extends Activity {
 
     private LinearLayout workloadSettingsPanel() {
         int current = store.adaptiveLoadWorkPercent();
+        boolean autoMode = AdaptiveLoadPlanner.isAutoMode(store.adaptiveLoadMode());
         final int[] selected = new int[]{current};
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
         box.addView(text("Daily workload", 23, INK, true));
+
+        if (autoMode) {
+            long now = System.currentTimeMillis();
+            List<Records.DashboardRow> rows = store.dashboardRows();
+            Records.AdaptiveLoadPlan plan = rows.isEmpty()
+                    ? null
+                    : adaptivePlan(rows, store.studyItems(), now);
+            box.addView(text(autoWorkloadStatusText(plan), 17, TEAL, true));
+            box.addView(text("Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.", 15, MUTED, false));
+            Button manual = secondaryButton("Use manual workload");
+            manual.setOnClickListener(v -> {
+                store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
+                Toast.makeText(this, "Manual workload enabled.", Toast.LENGTH_SHORT).show();
+                renderSettings();
+            });
+            box.addView(manual);
+            return box;
+        }
+
         TextView status = text(workloadStatusText(selected[0]), 17, TEAL, true);
         box.addView(status);
-        box.addView(text("Kani picks a small focus set from your real problem kanji. This changes how much it admits today, not Anki's schedule.", 15, MUTED, false));
+        box.addView(text("Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.", 15, MUTED, false));
 
         SeekBar slider = new SeekBar(this);
         slider.setMax(100);
@@ -2241,11 +2261,19 @@ public final class MainActivity extends Activity {
 
         Button save = primaryButton("Save workload", TEAL);
         save.setOnClickListener(v -> {
+            store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
             store.saveAdaptiveLoadWorkPercent(selected[0]);
             Toast.makeText(this, "Workload saved. Study uses the new adaptive focus.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
+        Button automatic = secondaryButton("Use automatic Pareto");
+        automatic.setOnClickListener(v -> {
+            store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
+            Toast.makeText(this, "Automatic Pareto workload enabled.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(automatic);
         return box;
     }
 
@@ -2452,6 +2480,13 @@ public final class MainActivity extends Activity {
         return label + ": up to " + AdaptiveLoadPlanner.targetCeiling(snapped) + " kanji";
     }
 
+    private String autoWorkloadStatusText(Records.AdaptiveLoadPlan plan) {
+        if (plan == null || plan.target <= 0) {
+            return "Auto Pareto: waiting for problem kanji";
+        }
+        return "Auto Pareto: " + countText(plan.target, "kanji", "kanji") + " from today's drop-off";
+    }
+
     private LinearLayout updateSettingsPanel() {
         LinearLayout box = autoUpdatePanel("App updates");
         Button update = primaryButton("Open updater", BLUE);
@@ -2566,6 +2601,7 @@ public final class MainActivity extends Activity {
                 store.studyStreak(now).currentDays,
                 store.studiedKanjiSince(startOfDay(now)),
                 store.adaptiveLoadWorkPercent(),
+                store.adaptiveLoadMode(),
                 now,
                 settings()
         );
