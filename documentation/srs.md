@@ -39,6 +39,7 @@ Research basis:
 ## Data And UI
 
 - Add `suppressed_by_task_type`, `suppressed_at`, `mature_interval_days`, and `answer_signature` to ladder state.
+- Persist separate FSRS task memories for `kanji_meaning`, `font_meaning`, `word_reading`, and the `writing_remediation` overlay so maturity is never inferred from a different prompt shape.
 - Keep `matureDays` defaulted to `21`; do not add a new user setting unless the existing mature threshold becomes user-facing later.
 - Settings remains focused on FSRS desired retention. No missed-day trigger and no separate "hide siblings after X days" control.
 - Queue previews show only the active unsuppressed sibling for each kanji family.

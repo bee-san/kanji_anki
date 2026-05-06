@@ -538,6 +538,49 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void wordReadingMaturityUsesWordTaskMemoryOnly() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem word = new Records.StudyItem(
+                "裂",
+                "review",
+                0L,
+                20.0,
+                4.0,
+                7,
+                0,
+                2,
+                2,
+                2,
+                0,
+                0L,
+                false,
+                null,
+                0L,
+                0,
+                "裂|裂ける|さける|split",
+                "word",
+                0L,
+                Records.TaskMemory.fromStudyFields("review", 0L, 20.0, 4.0, 4, 0, 2, 31),
+                Records.TaskMemory.fromStudyFields("review", 0L, 20.0, 4.0, 3, 0, 2, 31),
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial()
+        );
+
+        Records.ReviewResult result = scheduler.applyReview(
+                word,
+                new Records.ReviewRequest("裂", "word", "easy", false, false, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+
+        assertEquals("", result.item.suppressedByTaskType);
+        assertTrue(result.item.matureIntervalDays < Records.Settings.kikuDefaults().matureDays);
+        assertEquals(1, result.item.wordReadingMemory.totalReviews);
+        assertEquals(4, result.item.kanjiMeaningMemory.totalReviews);
+        assertEquals(3, result.item.fontMeaningMemory.totalReviews);
+    }
+
+    @Test
     public void againOnDominatingSiblingClearsSuppression() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem suppressed = item("裂", 2)
@@ -580,6 +623,52 @@ public class BridgeSchedulerTest {
         assertEquals(1, item.recognitionStage);
         assertEquals(5000L, item.dueAtMillis);
         assertEquals("裂|裂ける|さける|split", item.answerSignature);
+    }
+
+    @Test
+    public void matureSiblingSuppressionDoesNotCrossAnswerSignatures() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem matureWord = new Records.StudyItem(
+                "裂",
+                "review",
+                1000L + 31L * 86_400_000L,
+                20.0,
+                4.0,
+                4,
+                0,
+                2,
+                2,
+                2,
+                0,
+                0L,
+                false,
+                "word_reading",
+                1000L,
+                31,
+                "裂|裂ける|さける|split",
+                null,
+                0L
+        );
+        Records.StudyItem differentSignatureLower = item("裂", 0)
+                .withAnswerSignature("裂|烈火|れっか|raging fire");
+
+        List<Records.StudyItem> active = scheduler.activeQueueItems(
+                Arrays.asList(matureWord, differentSignatureLower),
+                Collections.singletonList(row("裂", 30)),
+                2000L,
+                null
+        );
+        Records.StudySession session = scheduler.nextSession(
+                Arrays.asList(matureWord, differentSignatureLower),
+                Collections.singletonList(row("裂", 30)),
+                2000L
+        );
+
+        assertTrue(active.contains(differentSignatureLower));
+        assertEquals(1, scheduler.dueCount(Arrays.asList(matureWord, differentSignatureLower), Collections.singletonList(row("裂", 30)), 2000L));
+        assertNotNull(session);
+        assertEquals("kanji_meaning", session.taskType);
+        assertEquals("裂|烈火|れっか|raging fire", session.item.answerSignature);
     }
 
     @Test
