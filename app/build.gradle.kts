@@ -22,8 +22,8 @@ fun configValue(name: String): String? =
 fun renamedConfigValue(name: String, legacyName: String): String? =
     configValue(name) ?: configValue(legacyName)
 
-val appVersionName = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME") ?: "0.4.4"
-val appVersionCode = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE")?.toIntOrNull() ?: 4004
+val appVersionName = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME") ?: "0.4.5"
+val appVersionCode = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE")?.toIntOrNull() ?: 4005
 val releaseOwner = renamedConfigValue("KANI_RELEASE_OWNER", "KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
 val releaseRepo = renamedConfigValue("KANI_RELEASE_REPO", "KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
 
