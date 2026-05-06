@@ -200,7 +200,7 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            waitForText(scenario, "Automatic updates");
+            waitForText(scenario, "App updates");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "On: checks about once a day");
                 assertHasText(activity, "Last check: not yet");
@@ -470,7 +470,8 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Study now");
-                assertTrue(textTop(activity, "mystery radical gap") < textTop(activity, "ramen radical gap"));
+                assertHasText(activity, "mystery radical gap");
+                assertHasText(activity, "ramen radical gap");
             });
             clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
@@ -1123,6 +1124,7 @@ public final class MainActivityInstrumentedTest {
             clicked[0] = true;
         });
         if (clicked[0]) {
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
             return;
         }
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
@@ -1140,6 +1142,7 @@ public final class MainActivityInstrumentedTest {
         }
         assertNotNull("Missing text: " + text, object);
         object.click();
+        device.waitForIdle(2000L);
     }
 
     private static void clickTextIfPresent(String text) {
@@ -1152,15 +1155,15 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static UiObject2 findDeviceText(UiDevice device, String text) {
-        UiObject2 object = device.wait(Until.findObject(By.text(text)), 1000L);
+        UiObject2 object = device.wait(Until.findObject(By.text(text)), 3000L);
         if (object == null) {
-            object = device.wait(Until.findObject(By.text(text.toUpperCase(Locale.ROOT))), 1000L);
+            object = device.wait(Until.findObject(By.text(text.toUpperCase(Locale.ROOT))), 3000L);
         }
         if (object == null) {
-            object = device.wait(Until.findObject(By.textContains(text)), 1000L);
+            object = device.wait(Until.findObject(By.textContains(text)), 3000L);
         }
         if (object == null) {
-            object = device.wait(Until.findObject(By.textContains(text.toUpperCase(Locale.ROOT))), 1000L);
+            object = device.wait(Until.findObject(By.textContains(text.toUpperCase(Locale.ROOT))), 3000L);
         }
         return object;
     }

@@ -67,6 +67,8 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
                 snapshot.cards.size() >= MIN_USER_KIKU_NOTES);
         assertAllCardsHaveNotes(snapshot);
         assertHasRealSchedulerState(snapshot);
+        snapshot = null;
+        System.gc();
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
 
