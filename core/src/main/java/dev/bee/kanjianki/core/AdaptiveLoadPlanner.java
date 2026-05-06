@@ -86,7 +86,7 @@ public final class AdaptiveLoadPlanner {
         for (Records.DashboardRow row : safeRows) {
             candidates.add(new Candidate(row, itemByKanji.get(row.kanji), nowMillis, effectiveSettings));
         }
-        candidates.sort(CANDIDATE_ORDER);
+        candidates.sort(autoMode ? AUTO_CANDIDATE_ORDER : CANDIDATE_ORDER);
 
         if (candidates.isEmpty()) {
             return new Records.AdaptiveLoadPlan(
@@ -361,6 +361,11 @@ public final class AdaptiveLoadPlanner {
             .thenComparingInt((Candidate candidate) -> -candidate.supportDeficit)
             .thenComparingInt((Candidate candidate) -> -candidate.row.weaknessScore)
             .thenComparing(candidate -> candidate.row.kanji);
+
+    private static final Comparator<Candidate> AUTO_CANDIDATE_ORDER = Comparator
+            .comparingInt((Candidate candidate) -> candidate.recoveryDue ? 0 : 1)
+            .thenComparingDouble((Candidate candidate) -> -candidate.priorityScore)
+            .thenComparing(CANDIDATE_ORDER);
 
     private static final class Candidate {
         private final Records.DashboardRow row;

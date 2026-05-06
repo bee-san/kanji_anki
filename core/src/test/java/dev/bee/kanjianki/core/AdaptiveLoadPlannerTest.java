@@ -230,6 +230,29 @@ public class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    public void autoWorkloadOrdersDropOffByCompositePriorityScore() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("査", 1, 0.75, null, null, 3, 1),
+                        row("濃", 100, null, null, null, 3, 1),
+                        row("濁", 90, null, null, null, 3, 1),
+                        row("薄", 10, null, null, null, 3, 1)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertEquals(2, plan.target);
+        assertEquals(Arrays.asList("濃", "濁"), plan.focusKanji);
+    }
+
+    @Test
     public void autoWorkloadFallsBackToSmallParetoFocusWhenCurveIsFlat() {
         List<Records.DashboardRow> flat = Arrays.asList(
                 row("字0", 40, null, null, null, 3, 1),
