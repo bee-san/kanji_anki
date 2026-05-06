@@ -232,7 +232,7 @@ public final class AdaptiveLoadPlanner {
             return false;
         }
         if ("learning".equals(item.state)) {
-            return true;
+            return item.dueAtMillis <= nowMillis;
         }
         return item.totalReviews > 0 && item.dueAtMillis <= nowMillis;
     }
