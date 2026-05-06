@@ -9,9 +9,9 @@ public final class HintProgression {
             case BLIND:
                 return new HintVisibility(HintLevel.BLIND, false, false, false, false, false, revealed);
             case MINIMAL:
-                return new HintVisibility(HintLevel.MINIMAL, false, false, false, true, true, revealed);
+                return new HintVisibility(HintLevel.MINIMAL, false, false, false, true, true, Math.min(strokeCount, 1 + revealed));
             case OUTLINE:
-                return new HintVisibility(HintLevel.OUTLINE, false, true, true, true, true, revealed);
+                return new HintVisibility(HintLevel.OUTLINE, false, true, false, true, true, strokeCount);
             case TRACE:
             default:
                 return new HintVisibility(HintLevel.TRACE, true, true, true, true, true, strokeCount);
@@ -23,6 +23,12 @@ public final class HintProgression {
         int strokeCount = guide == null ? 0 : guide.strokeCount();
         if (safeState.level() == HintLevel.TRACE) {
             return new HintState(safeState.level(), strokeCount, 0);
+        }
+        if (safeState.level() == HintLevel.OUTLINE || strokeCount <= 0) {
+            return new HintState(safeState.level().previous(), 0, 0);
+        }
+        if (safeState.revealedStrokeCount() >= strokeCount) {
+            return new HintState(safeState.level().previous(), 0, 0);
         }
         return new HintState(
                 safeState.level(),
@@ -46,6 +52,13 @@ public final class HintProgression {
         if (analysis == null) {
             return afterReview(state, false, 0);
         }
-        return afterReview(state, analysis.passed(), analysis.hintsUsed());
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            HintState safeState = state == null ? HintState.initial() : state;
+            return new HintState(safeState.level(), 0, 0);
+        }
+        if (analysis.status != WritingAnalysis.Status.PASS) {
+            return afterReview(state, false, analysis.hintsUsed());
+        }
+        return afterReview(state, true, analysis.hintsUsed());
     }
 }

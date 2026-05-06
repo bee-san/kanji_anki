@@ -223,6 +223,12 @@ public final class BridgeScheduler {
         if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
             rating = "again";
         }
+        boolean writingReviewCanMoveHelp = request.writingRequired && !request.manualOverride;
+        boolean cleanWritingPass = writingReviewCanMoveHelp
+                && request.writingPassed
+                && request.writingClean
+                && request.hintsUsed <= 0;
+        boolean failedWriting = writingReviewCanMoveHelp && !request.writingPassed;
 
         int total = item.totalReviews + 1;
         int lapses = item.lapses;
@@ -237,7 +243,6 @@ public final class BridgeScheduler {
             case "again":
                 lapses++;
                 step = 0;
-                writingLevel = Math.max(0, writingLevel - 1);
                 stability = Math.max(0.2, stability * parameters.againMultiplier);
                 difficulty = Math.min(10.0, difficulty + 0.7);
                 due = nowMillis + 10 * MINUTE;
@@ -252,7 +257,6 @@ public final class BridgeScheduler {
                 break;
             case "easy":
                 step = 2;
-                writingLevel = Math.min(3, writingLevel + 1);
                 stability = Math.max(2.5, stability * parameters.easyMultiplier);
                 difficulty = Math.max(1.0, difficulty - 0.35);
                 due = nowMillis + reviewInterval(stability, parameters);
@@ -261,12 +265,16 @@ public final class BridgeScheduler {
             case "good":
             default:
                 step = Math.min(2, step + 1);
-                writingLevel = request.writingRequired && request.writingPassed ? Math.min(3, writingLevel + 1) : writingLevel;
                 stability = Math.max(1.0, stability * parameters.goodMultiplier);
                 difficulty = Math.max(1.0, difficulty - 0.1);
                 due = step < 2 ? nowMillis + 10 * MINUTE : nowMillis + reviewInterval(stability, parameters);
                 state = step < 2 ? "learning" : "review";
                 break;
+        }
+        if (failedWriting) {
+            writingLevel = Math.max(0, writingLevel - 1);
+        } else if (cleanWritingPass) {
+            writingLevel = Math.min(3, writingLevel + 1);
         }
 
         Records.StudyItem updated = new Records.StudyItem(

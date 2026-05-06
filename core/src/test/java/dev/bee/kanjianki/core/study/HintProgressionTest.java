@@ -55,6 +55,26 @@ public class HintProgressionTest {
     }
 
     @Test
+    public void messyRecognizedWritingHoldsCurrentLevel() {
+        HintProgression progression = new HintProgression();
+        WritingAnalysis messy = new WritingAnalysis(
+                WritingAnalysis.Status.CLOSE,
+                "hard",
+                true,
+                "messy",
+                null,
+                null,
+                HintLevel.MINIMAL,
+                0
+        );
+
+        HintState afterMessy = progression.afterWriting(HintState.fromWritingLevel(2), messy);
+
+        assertEquals(HintLevel.MINIMAL, afterMessy.level());
+        assertEquals(0, afterMessy.revealedStrokeCount());
+    }
+
+    @Test
     public void revealNextExposesOneStrokeForNonTraceLevels() {
         HintProgression progression = new HintProgression();
         StrokeGuide guide = guide();
@@ -65,6 +85,24 @@ public class HintProgressionTest {
 
         assertEquals(HintLevel.BLIND, revealed.level());
         assertEquals(1, visibility.visibleStrokeCount());
+    }
+
+    @Test
+    public void revealNextDropsToBroaderHelpOnlyAfterStrokeHintsAreExhausted() {
+        HintProgression progression = new HintProgression();
+        StrokeGuide guide = guide();
+
+        HintState one = progression.revealNext(HintState.fromWritingLevel(3), guide);
+        HintState two = progression.revealNext(one, guide);
+        HintState three = progression.revealNext(two, guide);
+        HintState broader = progression.revealNext(three, guide);
+
+        assertEquals(HintLevel.BLIND, one.level());
+        assertEquals(1, one.revealedStrokeCount());
+        assertEquals(HintLevel.BLIND, three.level());
+        assertEquals(3, three.revealedStrokeCount());
+        assertEquals(HintLevel.MINIMAL, broader.level());
+        assertEquals(0, broader.revealedStrokeCount());
     }
 
     private StrokeGuide guide() {

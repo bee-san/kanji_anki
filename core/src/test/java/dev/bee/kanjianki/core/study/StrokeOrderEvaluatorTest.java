@@ -115,7 +115,7 @@ public class StrokeOrderEvaluatorTest {
         assertTrue(analysis.strokeOrder.diagnosis.hasLabel(StrokeDiagnosis.Label.WRONG_DIRECTION, 1));
         assertTrue(analysis.writingPassed);
         assertEquals("hard", analysis.rating);
-        assertEquals(StudyRating.GOOD, new WritingRatingMapper().applyRequestedRating(StudyRating.GOOD, true, analysis, false));
+        assertEquals(StudyRating.HARD, new WritingRatingMapper().applyRequestedRating(StudyRating.GOOD, true, analysis, false));
     }
 
     @Test

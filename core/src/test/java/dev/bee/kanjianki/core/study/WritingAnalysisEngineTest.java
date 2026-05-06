@@ -65,6 +65,22 @@ public class WritingAnalysisEngineTest {
         assertTrue(analysis.message.contains("I could not read that as the target kanji"));
     }
 
+    @Test
+    public void analysisCarriesHintContextForRatingCaps() {
+        WritingAnalysis analysis = WritingAnalysisEngine.analyze(
+                "拉",
+                sample(),
+                guide(),
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                HintLevel.OUTLINE,
+                2
+        );
+
+        assertTrue(analysis.writingPassed);
+        assertEquals(HintLevel.OUTLINE, analysis.hintLevel());
+        assertEquals(2, analysis.hintsUsed());
+    }
+
     private StrokeGuide guide() {
         return new StrokeGuide(
                 "拉",

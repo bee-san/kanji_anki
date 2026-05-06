@@ -55,6 +55,69 @@ public class WritingRatingMapperTest {
     }
 
     @Test
+    public void traceOrHintAssistedWritingCapsAtHard() {
+        WritingRatingMapper mapper = new WritingRatingMapper();
+        WritingAnalysis trace = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "easy",
+                true,
+                "clean",
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                cleanStrokeOrder(),
+                HintLevel.TRACE,
+                0
+        );
+        WritingAnalysis hintedBlind = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "easy",
+                true,
+                "clean",
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                cleanStrokeOrder(),
+                HintLevel.BLIND,
+                1
+        );
+
+        assertEquals(StudyRating.HARD, mapper.applyRequestedRating(StudyRating.EASY, true, trace, false));
+        assertEquals(StudyRating.HARD, mapper.applyRequestedRating(StudyRating.EASY, true, hintedBlind, false));
+    }
+
+    @Test
+    public void outlineWritingCapsEasyAtGood() {
+        WritingRatingMapper mapper = new WritingRatingMapper();
+        WritingAnalysis outline = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "easy",
+                true,
+                "clean",
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                cleanStrokeOrder(),
+                HintLevel.OUTLINE,
+                0
+        );
+
+        assertEquals(StudyRating.GOOD, mapper.applyRequestedRating(StudyRating.EASY, true, outline, false));
+    }
+
+    @Test
+    public void messyRecognizedWritingCapsAtHard() {
+        WritingRatingMapper mapper = new WritingRatingMapper();
+        WritingAnalysis messy = new WritingAnalysis(
+                WritingAnalysis.Status.CLOSE,
+                "hard",
+                true,
+                "messy",
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                cleanStrokeOrder(),
+                HintLevel.BLIND,
+                0
+        );
+
+        assertEquals(StudyRating.HARD, mapper.suggestedRating(messy));
+        assertEquals(StudyRating.HARD, mapper.applyRequestedRating(StudyRating.EASY, true, messy, false));
+    }
+
+    @Test
     public void recognitionOnlySessionLeavesRatingUnchanged() {
         WritingRatingMapper mapper = new WritingRatingMapper();
 

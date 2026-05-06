@@ -21,6 +21,9 @@ public final class WritingRatingMapper {
         if (analysis == null || !analysis.passed()) {
             return StudyRating.AGAIN;
         }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return StudyRating.HARD;
+        }
         double confidence = analysis.confidenceScore();
         if (confidence >= 0.92 && analysis.hintLevel() == HintLevel.BLIND && analysis.hintsUsed() == 0) {
             return StudyRating.EASY;
@@ -34,6 +37,9 @@ public final class WritingRatingMapper {
     public StudyRating maxAllowedRating(WritingAnalysis analysis) {
         if (analysis == null || !analysis.passed()) {
             return StudyRating.AGAIN;
+        }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return StudyRating.HARD;
         }
         if (analysis.hintsUsed() > 0 || analysis.hintLevel() == HintLevel.TRACE) {
             return StudyRating.HARD;

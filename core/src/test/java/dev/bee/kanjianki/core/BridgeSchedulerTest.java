@@ -29,7 +29,7 @@ public class BridgeSchedulerTest {
     @Test
     public void writingFailureCapsGoodRatingToAgain() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = item("裂").withToken("token-1");
+        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0);
         Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "good", true, false, false, 0);
 
         Records.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
@@ -37,18 +37,61 @@ public class BridgeSchedulerTest {
         assertEquals("again", result.appliedRating);
         assertEquals("learning", result.item.state);
         assertEquals(1, result.item.lapses);
+        assertEquals(1, result.item.writingLevel);
     }
 
     @Test
     public void manualOverrideAllowsWritingRating() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = item("裂").withToken("token-1");
+        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0);
         Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "good", true, false, true, 0);
 
         Records.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
 
         assertEquals("good", result.appliedRating);
         assertFalse(result.duplicate);
+        assertEquals(2, result.item.writingLevel);
+    }
+
+    @Test
+    public void writingHelpOnlyChangesAfterWritingReviews() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0);
+        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "easy", false, false, false, 0);
+
+        Records.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
+
+        assertEquals("easy", result.appliedRating);
+        assertEquals(2, result.item.writingLevel);
+    }
+
+    @Test
+    public void cleanWritingAdvancesHintAssistedAndMessyWritingHold() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 1, "clean", 0);
+
+        Records.ReviewResult clean = scheduler.applyReview(
+                item,
+                new Records.ReviewRequest("裂", "clean", "hard", true, true, true, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+        Records.ReviewResult hinted = scheduler.applyReview(
+                new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 1, "hinted", 0),
+                new Records.ReviewRequest("裂", "hinted", "good", true, true, true, false, 1),
+                new HashSet<>(),
+                1000L
+        );
+        Records.ReviewResult messy = scheduler.applyReview(
+                new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 1, "messy", 0),
+                new Records.ReviewRequest("裂", "messy", "hard", true, true, false, false, 0),
+                new HashSet<>(),
+                1000L
+        );
+
+        assertEquals(2, clean.item.writingLevel);
+        assertEquals(1, hinted.item.writingLevel);
+        assertEquals(1, messy.item.writingLevel);
     }
 
     @Test

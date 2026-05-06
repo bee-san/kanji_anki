@@ -425,15 +425,39 @@ public final class Records {
         public final String rating;
         public final boolean writingRequired;
         public final boolean writingPassed;
+        public final boolean writingClean;
         public final boolean manualOverride;
         public final int hintsUsed;
 
         public ReviewRequest(String kanji, String token, String rating, boolean writingRequired, boolean writingPassed, boolean manualOverride, int hintsUsed) {
+            this(
+                    kanji,
+                    token,
+                    rating,
+                    writingRequired,
+                    writingPassed,
+                    writingPassed && ("good".equals(rating) || "easy".equals(rating)),
+                    manualOverride,
+                    hintsUsed
+            );
+        }
+
+        public ReviewRequest(
+                String kanji,
+                String token,
+                String rating,
+                boolean writingRequired,
+                boolean writingPassed,
+                boolean writingClean,
+                boolean manualOverride,
+                int hintsUsed
+        ) {
             this.kanji = kanji;
             this.token = token;
             this.rating = rating;
             this.writingRequired = writingRequired;
             this.writingPassed = writingPassed;
+            this.writingClean = writingClean;
             this.manualOverride = manualOverride;
             this.hintsUsed = hintsUsed;
         }
