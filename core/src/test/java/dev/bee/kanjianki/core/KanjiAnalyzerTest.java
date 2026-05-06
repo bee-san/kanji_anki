@@ -67,10 +67,12 @@ public class KanjiAnalyzerTest {
         );
 
         List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, Arrays.asList(), ranks, settings);
+        Records.DashboardRow weak = find(rows, "弱");
+        Records.DashboardRow strong = find(rows, "強");
 
         assertEquals("弱", rows.get(0).kanji);
-        assertEquals("fsrs_weak_memory", rows.get(0).reasonCode);
-        assertTrue(rows.get(0).weaknessScore > rows.get(1).weaknessScore);
+        assertEquals("fsrs_weak_memory", weak.reasonCode);
+        assertTrue(weak.weaknessScore > strong.weaknessScore);
     }
 
     @Test
@@ -89,9 +91,11 @@ public class KanjiAnalyzerTest {
         );
 
         List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, Arrays.asList(), ranks, settings);
+        Records.DashboardRow shallow = find(rows, "浅");
+        Records.DashboardRow deep = find(rows, "深");
 
         assertEquals("浅", rows.get(0).kanji);
-        assertTrue(rows.get(0).weaknessScore > rows.get(1).weaknessScore);
+        assertTrue(shallow.weaknessScore > deep.weaknessScore);
     }
 
     private Records.Card card(
@@ -105,5 +109,14 @@ public class KanjiAnalyzerTest {
             Double fsrsRetrievability
     ) {
         return new Records.Card(cardId, noteId, 0, "Kiku", 2, 2, 0, intervalDays, reps, lapses, false, fsrsStability, fsrsDifficulty, fsrsRetrievability);
+    }
+
+    private Records.DashboardRow find(List<Records.DashboardRow> rows, String kanji) {
+        for (Records.DashboardRow row : rows) {
+            if (row.kanji.equals(kanji)) {
+                return row;
+            }
+        }
+        throw new AssertionError("Missing row for " + kanji);
     }
 }
