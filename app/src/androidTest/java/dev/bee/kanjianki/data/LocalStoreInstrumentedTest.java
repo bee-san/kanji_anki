@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data;
 
 import android.content.Context;
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -107,6 +108,132 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, storedImports.size());
         assertEquals("拉", storedImports.get(0).kanji);
         assertEquals(1, storedImports.get(0).sources.size());
+    }
+
+    @Test
+    public void testTimelineRecordsSuspendedImportOnceAcrossRepeatedSync() {
+        Records.DashboardRow row = row("拉", 0);
+        Records.SuspendedImport imported = suspendedImport("拉");
+
+        saveSingleRowSync(row, Collections.singletonList(imported), 2000L);
+        assertEquals(1, countTimelineType("拉", "first_seen"));
+        assertEquals(1, countTimelineType("拉", "suspended_imported"));
+        assertEquals(1, countTimelineType("拉", "weak_support_seen"));
+
+        saveSingleRowSync(row, Collections.singletonList(imported), 3000L);
+        assertEquals(1, countTimelineType("拉", "first_seen"));
+        assertEquals(1, countTimelineType("拉", "suspended_imported"));
+        assertEquals(1, countTimelineType("拉", "weak_support_seen"));
+    }
+
+    @Test
+    public void testTimelineRecordsSupportRetirementAndReopen() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        long firstSync = saveSingleRowSync(row("拉", 0), Collections.emptyList(), 2000L);
+        assertTrue(firstSync > 0L);
+        Records.StudyItem active = new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
+        store.replaceStudyItems(Collections.singletonList(active));
+
+        long retireSync = saveSingleRowSync(row("拉", settings.matureSupportThreshold), Collections.emptyList(), 3000L);
+        Records.StudyItem retired = new Records.StudyItem("拉", "retired", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
+        store.replaceStudyItems(Collections.singletonList(retired), retireSync, 3000L, settings);
+
+        long reopenSync = saveSingleRowSync(row("拉", 0), Collections.emptyList(), 4000L);
+        Records.StudyItem reopened = new Records.StudyItem("拉", "review", 0L, 1.8, 4.8, 1, 0, 2, 1, null, 1000L);
+        store.replaceStudyItems(Collections.singletonList(reopened), reopenSync, 4000L, settings);
+
+        Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        assertNotNull(timeline.currentRow);
+        assertNotNull(timeline.currentStudyItem);
+        assertEquals("review", timeline.currentStudyItem.state);
+        assertTrue(hasTimelineType(timeline, "support_improved"));
+        assertTrue(hasTimelineType(timeline, "retired"));
+        assertTrue(hasTimelineType(timeline, "support_dropped"));
+        assertTrue(hasTimelineType(timeline, "reopened"));
+    }
+
+    @Test
+    public void testTimelineReviewEventsMapPassFailAndManualOverride() {
+        store.saveReview(new Records.ReviewRequest("拉", "pass-token", "good", true, true, false, 0), "good", 1000L);
+        store.saveReview(new Records.ReviewRequest("拉", "fail-token", "good", true, false, false, 0), "again", 2000L);
+        store.saveReview(new Records.ReviewRequest("拉", "override-token", "good", true, false, true, 0), "good", 3000L);
+
+        Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        assertEquals(1, countTimelineType(timeline, "review_passed"));
+        assertEquals(1, countTimelineType(timeline, "review_failed"));
+        assertEquals(1, countTimelineType(timeline, "manual_override"));
+    }
+
+    @Test
+    public void testVersionTwoMigrationPreservesV1DataAndBackfillsTimeline() {
+        store.close();
+        context.deleteDatabase("kanji_anki_simple.db");
+        SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
+        try {
+            createLegacyV1Schema(db);
+            ContentValuesBuilder.insert(db, "dashboard_rows")
+                    .put("kanji", "拉")
+                    .put("jiten_rank", 3401)
+                    .put("primary_meaning", "ramen radical gap")
+                    .put("reading", "ら")
+                    .put("browser_search", "deck:Kiku 拉")
+                    .put("weakness_score", 88)
+                    .put("reason_code", "suspended_archive")
+                    .put("reason_text", "Imported from suspended cards")
+                    .put("active_example_count", 1)
+                    .put("suspended_example_count", 1)
+                    .put("mature_support_count", 0)
+                    .put("rebuilt_at", 2000L)
+                    .commit();
+            ContentValuesBuilder.insert(db, "kanji_examples")
+                    .put("kanji", "拉")
+                    .put("source_type", "active")
+                    .put("card_id", 10L)
+                    .put("note_id", 1L)
+                    .put("expression", "拉麺")
+                    .put("reading", "らーめん")
+                    .put("meaning", "ramen")
+                    .put("sentence", "拉麺を食べた。")
+                    .put("mature", 0)
+                    .put("lapses", 1)
+                    .commit();
+            ContentValuesBuilder.insert(db, "study_items")
+                    .put("kanji", "拉")
+                    .put("state", "review")
+                    .put("due_at", 0L)
+                    .put("stability", 1.8)
+                    .put("difficulty", 4.8)
+                    .put("total_reviews", 1)
+                    .put("lapses", 0)
+                    .put("learning_step", 2)
+                    .put("writing_level", 1)
+                    .put("active_token", "")
+                    .put("created_at", 1500L)
+                    .commit();
+            ContentValuesBuilder.insert(db, "review_log")
+                    .put("kanji", "拉")
+                    .put("token", "legacy-token")
+                    .put("rating", "good")
+                    .put("writing_required", 1)
+                    .put("writing_passed", 1)
+                    .put("manual_override", 0)
+                    .put("reviewed_at", 2500L)
+                    .commit();
+            db.setVersion(1);
+        } finally {
+            db.close();
+        }
+
+        store = new LocalStore(context);
+        assertEquals(1, count("dashboard_rows"));
+        assertEquals(1, count("review_log"));
+        assertTrue(count("kanji_timeline_events") >= 3);
+        Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        assertNotNull(timeline.currentRow);
+        assertNotNull(timeline.currentStudyItem);
+        assertTrue(hasTimelineType(timeline, "first_seen"));
+        assertTrue(hasTimelineType(timeline, "weak_support_seen"));
+        assertTrue(hasTimelineType(timeline, "review_passed"));
     }
 
     @Test
@@ -228,6 +355,78 @@ public final class LocalStoreInstrumentedTest {
         return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
     }
 
+    private long saveSingleRowSync(Records.DashboardRow row, List<Records.SuspendedImport> imports, long finishedAt) {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.Note note = note(1L, row.kanji + "語", row.reading, row.primaryMeaning, row.kanji + "を見た。");
+        Records.Card card = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false);
+        return store.saveSuccessfulSync(
+                new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
+                imports,
+                Collections.singletonList(row),
+                settings,
+                finishedAt - 500L,
+                finishedAt,
+                null
+        );
+    }
+
+    private Records.DashboardRow row(String kanji, int matureSupportCount) {
+        Records.Example active = new Records.Example("active", 10L, 1L, kanji + "語", "ら", "example", kanji + "を見た。", matureSupportCount > 0, 0);
+        return new Records.DashboardRow(
+                kanji,
+                3401,
+                "ramen radical gap",
+                "ら",
+                "deck:Kiku " + kanji,
+                88,
+                "suspended_archive",
+                "Imported from suspended cards",
+                1,
+                0,
+                matureSupportCount,
+                Collections.singletonList(active)
+        );
+    }
+
+    private Records.SuspendedImport suspendedImport(String kanji) {
+        Records.SuspendedSource source = new Records.SuspendedSource(kanji, 20L, 2L, kanji + "例", "ら", "archive example", kanji + "を練習した。");
+        return new Records.SuspendedImport(kanji, 3401, true, 3000, Collections.singletonList(source));
+    }
+
+    private int countTimelineType(String kanji, String eventType) {
+        return countTimelineType(store.timelineForKanji(kanji), eventType);
+    }
+
+    private int countTimelineType(Records.KanjiRecoveryTimeline timeline, String eventType) {
+        int count = 0;
+        for (Records.KanjiTimelineEvent event : timeline.events) {
+            if (eventType.equals(event.eventType)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasTimelineType(Records.KanjiRecoveryTimeline timeline, String eventType) {
+        return countTimelineType(timeline, eventType) > 0;
+    }
+
+    private void createLegacyV1Schema(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE sync_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
+        db.execSQL("CREATE TABLE source_notes (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE source_cards (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE suspended_archive (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, archived_at INTEGER NOT NULL, archived_sync_id INTEGER NOT NULL, restored_at INTEGER)");
+        db.execSQL("CREATE TABLE suspended_imports (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, rank_known INTEGER NOT NULL, cutoff_used INTEGER NOT NULL, first_imported_at INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
+        db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, active_token TEXT, created_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
+        db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
+        db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
+    }
+
     private static long localDayStart(long millis) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(millis);
@@ -265,5 +464,44 @@ public final class LocalStoreInstrumentedTest {
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
         return new Records.Note(id, "Kiku", fields, Collections.emptyList());
+    }
+
+    private static final class ContentValuesBuilder {
+        private final SQLiteDatabase db;
+        private final String table;
+        private final ContentValues values = new ContentValues();
+
+        private ContentValuesBuilder(SQLiteDatabase db, String table) {
+            this.db = db;
+            this.table = table;
+        }
+
+        private static ContentValuesBuilder insert(SQLiteDatabase db, String table) {
+            return new ContentValuesBuilder(db, table);
+        }
+
+        private ContentValuesBuilder put(String key, String value) {
+            values.put(key, value);
+            return this;
+        }
+
+        private ContentValuesBuilder put(String key, int value) {
+            values.put(key, value);
+            return this;
+        }
+
+        private ContentValuesBuilder put(String key, long value) {
+            values.put(key, value);
+            return this;
+        }
+
+        private ContentValuesBuilder put(String key, double value) {
+            values.put(key, value);
+            return this;
+        }
+
+        private void commit() {
+            db.insertOrThrow(table, null, values);
+        }
     }
 }

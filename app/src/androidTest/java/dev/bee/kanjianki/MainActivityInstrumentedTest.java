@@ -299,6 +299,10 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Imported from suspended cards");
                 assertHasText(activity, "Review this now");
                 assertHasText(activity, "Copy Anki search");
+                assertHasText(activity, "Recovery timeline");
+                assertHasText(activity, "Active repair");
+                assertHasText(activity, "Mature support 0 / target 2");
+                assertHasText(activity, "Kani started watching");
             });
 
             clickText(scenario, "Copy Anki search");
@@ -360,6 +364,24 @@ public final class MainActivityInstrumentedTest {
             } finally {
                 store.close();
             }
+        }
+    }
+
+    @Test
+    public void testKanjiDetailTimelineShowsReviewAfterStudy() {
+        seedDashboard();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Reveal");
+            clickText(scenario, "I knew it");
+            clickText(scenario, "Home");
+            clickText(scenario, "拉");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Recovery timeline");
+                assertHasText(activity, "Resting until review");
+                assertHasText(activity, "Review passed");
+                assertHasText(activity, "Recall review was rated good.");
+            });
         }
     }
 
