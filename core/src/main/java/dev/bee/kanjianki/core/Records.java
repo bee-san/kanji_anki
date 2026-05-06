@@ -290,6 +290,73 @@ public final class Records {
         }
     }
 
+    public static final class KanjiTimelineEvent {
+        public final long id;
+        public final String kanji;
+        public final long occurredAtMillis;
+        public final String eventType;
+        public final String title;
+        public final String detail;
+        public final String sourceExpression;
+        public final String sourceReading;
+        public final String rating;
+        public final boolean writingRequired;
+        public final boolean writingPassed;
+        public final boolean manualOverride;
+        public final Integer weaknessScore;
+        public final Integer matureSupportCount;
+        public final Long syncId;
+        public final String dedupeKey;
+
+        public KanjiTimelineEvent(
+                long id,
+                String kanji,
+                long occurredAtMillis,
+                String eventType,
+                String title,
+                String detail,
+                String sourceExpression,
+                String sourceReading,
+                String rating,
+                boolean writingRequired,
+                boolean writingPassed,
+                boolean manualOverride,
+                Integer weaknessScore,
+                Integer matureSupportCount,
+                Long syncId,
+                String dedupeKey
+        ) {
+            this.id = id;
+            this.kanji = kanji;
+            this.occurredAtMillis = occurredAtMillis;
+            this.eventType = eventType;
+            this.title = title;
+            this.detail = detail;
+            this.sourceExpression = sourceExpression == null ? "" : sourceExpression;
+            this.sourceReading = sourceReading == null ? "" : sourceReading;
+            this.rating = rating == null ? "" : rating;
+            this.writingRequired = writingRequired;
+            this.writingPassed = writingPassed;
+            this.manualOverride = manualOverride;
+            this.weaknessScore = weaknessScore;
+            this.matureSupportCount = matureSupportCount;
+            this.syncId = syncId;
+            this.dedupeKey = dedupeKey;
+        }
+    }
+
+    public static final class KanjiRecoveryTimeline {
+        public final DashboardRow currentRow;
+        public final StudyItem currentStudyItem;
+        public final List<KanjiTimelineEvent> events;
+
+        public KanjiRecoveryTimeline(DashboardRow currentRow, StudyItem currentStudyItem, List<KanjiTimelineEvent> events) {
+            this.currentRow = currentRow;
+            this.currentStudyItem = currentStudyItem;
+            this.events = Collections.unmodifiableList(new ArrayList<>(events));
+        }
+    }
+
     public static final class StudyItem {
         public final String kanji;
         public final String state;

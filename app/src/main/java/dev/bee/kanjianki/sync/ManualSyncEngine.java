@@ -68,7 +68,7 @@ public final class ManualSyncEngine {
                     finished,
                     startOfDay(finished)
             );
-            store.replaceStudyItems(seeded);
+            store.replaceStudyItems(seeded, syncId, finished, settings);
             return new SyncResult(true, false, rows.size(), imports.size(), removal.message);
         } catch (AnkiDroidGateway.SyncException error) {
             long finished = System.currentTimeMillis();

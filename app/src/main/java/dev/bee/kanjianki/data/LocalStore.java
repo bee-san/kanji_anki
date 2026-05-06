@@ -12,6 +12,8 @@ import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,7 +23,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -52,22 +54,15 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
+        createTimelineTables(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS settings");
-        db.execSQL("DROP TABLE IF EXISTS sync_runs");
-        db.execSQL("DROP TABLE IF EXISTS source_notes");
-        db.execSQL("DROP TABLE IF EXISTS source_cards");
-        db.execSQL("DROP TABLE IF EXISTS suspended_archive");
-        db.execSQL("DROP TABLE IF EXISTS suspended_imports");
-        db.execSQL("DROP TABLE IF EXISTS suspended_sources");
-        db.execSQL("DROP TABLE IF EXISTS dashboard_rows");
-        db.execSQL("DROP TABLE IF EXISTS kanji_examples");
-        db.execSQL("DROP TABLE IF EXISTS study_items");
-        db.execSQL("DROP TABLE IF EXISTS review_log");
-        onCreate(db);
+        if (oldVersion < 2) {
+            createTimelineTables(db);
+            backfillTimelineEvents(db);
+        }
     }
 
     public long saveSuccessfulSync(
@@ -82,6 +77,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
+            Map<String, RowSnapshot> previousRows = rowSnapshots(db);
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
             int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeIndex.noteIds);
             int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeIndex.cardIds);
@@ -170,6 +166,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             }
 
             saveRows(db, rows, finishedAt);
+            appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, finishedAt, settings);
             db.setTransactionSuccessful();
             return syncId;
         } finally {
@@ -230,12 +227,33 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public Records.DashboardRow rowForKanji(String kanji) {
-        for (Records.DashboardRow row : dashboardRows()) {
-            if (row.kanji.equals(kanji)) {
-                return row;
+        return readDashboardRow(getReadableDatabase(), kanji);
+    }
+
+    public Records.KanjiRecoveryTimeline timelineForKanji(String kanji) {
+        SQLiteDatabase db = getReadableDatabase();
+        Records.DashboardRow row = readDashboardRow(db, kanji);
+        Records.StudyItem item = studyItemForKanji(db, kanji);
+        List<Records.KanjiTimelineEvent> events = new ArrayList<>();
+        Cursor cursor = db.query(
+                "kanji_timeline_events",
+                null,
+                "kanji=?",
+                new String[]{kanji},
+                null,
+                null,
+                "occurred_at DESC, id DESC",
+                "50"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                events.add(readTimelineEvent(cursor));
             }
+        } finally {
+            cursor.close();
         }
-        return null;
+        Collections.reverse(events);
+        return new Records.KanjiRecoveryTimeline(row, item, events);
     }
 
     public List<Records.StudyItem> studyItems() {
@@ -299,12 +317,20 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public void replaceStudyItems(List<Records.StudyItem> items) {
+        replaceStudyItems(items, null, 0L, null);
+    }
+
+    public void replaceStudyItems(List<Records.StudyItem> items, Long syncId, long occurredAt, Records.Settings settings) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
+            Map<String, StudySnapshot> previous = syncId == null ? Collections.emptyMap() : studySnapshots(db);
             db.delete("study_items", null, null);
             for (Records.StudyItem item : items) {
                 upsertStudyItem(db, item);
+            }
+            if (syncId != null) {
+                appendStudyStateTimelineEvents(db, previous, items, syncId, occurredAt, settings);
             }
             db.setTransactionSuccessful();
         } finally {
@@ -317,6 +343,20 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            long inserted = insertReview(db, request, appliedRating, reviewedAt);
+            if (inserted != -1L) {
+                appendReviewTimelineEvent(db, request, appliedRating, reviewedAt, "review:" + request.token);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    private long insertReview(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt) {
         ContentValues values = new ContentValues();
         values.put("kanji", request.kanji);
         values.put("token", request.token);
@@ -325,7 +365,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("writing_passed", request.writingPassed ? 1 : 0);
         values.put("manual_override", request.manualOverride ? 1 : 0);
         values.put("reviewed_at", reviewedAt);
-        getWritableDatabase().insertWithOnConflict("review_log", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        return db.insertWithOnConflict("review_log", null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
     public List<String> consumedTokens() {
@@ -769,6 +809,592 @@ public final class LocalStore extends SQLiteOpenHelper {
         return new StudyImpactStats(total, reviewedKanji.size(), writingRequired, writingPassed, writingFailed, manualOverrides);
     }
 
+    private void createTimelineTables(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS kanji_timeline_events (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, occurred_at INTEGER NOT NULL, event_type TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, source_expression TEXT NOT NULL, source_reading TEXT NOT NULL, rating TEXT NOT NULL, writing_required INTEGER NOT NULL DEFAULT 0, writing_passed INTEGER NOT NULL DEFAULT 0, manual_override INTEGER NOT NULL DEFAULT 0, weakness_score INTEGER, mature_support_count INTEGER, sync_id INTEGER, dedupe_key TEXT NOT NULL)");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_timeline_dedupe ON kanji_timeline_events(dedupe_key)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_timeline_kanji_time ON kanji_timeline_events(kanji, occurred_at, id)");
+    }
+
+    private void backfillTimelineEvents(SQLiteDatabase db) {
+        Map<String, RowSnapshot> rows = rowSnapshots(db);
+
+        Cursor imports = db.query("suspended_imports", null, null, null, null, null, "first_imported_at ASC, kanji ASC");
+        try {
+            while (imports.moveToNext()) {
+                String kanji = string(imports, "kanji");
+                SourceSnapshot source = firstSuspendedSourceForKanji(db, kanji);
+                long importedAt = longValue(imports, "first_imported_at");
+                insertTimelineEvent(
+                        db,
+                        kanji,
+                        importedAt == 0L ? System.currentTimeMillis() : importedAt,
+                        "suspended_imported",
+                        "Imported from suspended Anki",
+                        "Kani recovered this kanji from a suspended AnkiDroid card.",
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        null,
+                        null,
+                        longValue(imports, "last_seen_sync_id"),
+                        "suspended_imported:" + kanji
+                );
+            }
+        } finally {
+            imports.close();
+        }
+
+        for (RowSnapshot row : rows.values()) {
+            insertTimelineEvent(
+                    db,
+                    row.kanji,
+                    row.rebuiltAt == 0L ? System.currentTimeMillis() : row.rebuiltAt,
+                    "first_seen",
+                    "Kani started watching",
+                    "This kanji entered Kani from local AnkiDroid evidence.",
+                    row.source.expression,
+                    row.source.reading,
+                    "",
+                    false,
+                    false,
+                    false,
+                    row.weaknessScore,
+                    row.matureSupportCount,
+                    null,
+                    "first_seen:" + row.kanji
+            );
+            insertTimelineEvent(
+                    db,
+                    row.kanji,
+                    row.rebuiltAt == 0L ? System.currentTimeMillis() : row.rebuiltAt,
+                    "weak_support_seen",
+                    "Weak support seen",
+                    supportDetail("Anki evidence still needs repair", row.matureSupportCount, Records.Settings.kikuDefaults().matureSupportThreshold),
+                    row.source.expression,
+                    row.source.reading,
+                    "",
+                    false,
+                    false,
+                    false,
+                    row.weaknessScore,
+                    row.matureSupportCount,
+                    null,
+                    "weak_support_seen:" + row.kanji + ":backfill"
+            );
+        }
+
+        Cursor study = db.query("study_items", null, null, null, null, null, "created_at ASC, kanji ASC");
+        try {
+            while (study.moveToNext()) {
+                String kanji = string(study, "kanji");
+                long createdAt = longValue(study, "created_at");
+                RowSnapshot row = rows.get(kanji);
+                SourceSnapshot source = row == null ? firstExampleForKanji(db, kanji) : row.source;
+                if (row == null) {
+                    insertTimelineEvent(
+                            db,
+                            kanji,
+                            createdAt == 0L ? System.currentTimeMillis() : createdAt,
+                            "first_seen",
+                            "Kani started watching",
+                            "This kanji has historical Kani study state.",
+                            source.expression,
+                            source.reading,
+                            "",
+                            false,
+                            false,
+                            false,
+                            null,
+                            null,
+                            null,
+                            "first_seen:" + kanji
+                    );
+                }
+                if ("retired".equals(string(study, "state"))) {
+                    Integer mature = row == null ? null : row.matureSupportCount;
+                    insertTimelineEvent(
+                            db,
+                            kanji,
+                            createdAt == 0L ? System.currentTimeMillis() : createdAt,
+                            "retired",
+                            "Retired by Anki support",
+                            mature == null
+                                    ? "Kani had already retired this repair before timeline tracking was added."
+                                    : supportDetail("Mature Anki support met the target", mature, Records.Settings.kikuDefaults().matureSupportThreshold),
+                            source.expression,
+                            source.reading,
+                            "",
+                            false,
+                            false,
+                            false,
+                            row == null ? null : row.weaknessScore,
+                            mature,
+                            null,
+                            "retired:" + kanji + ":backfill"
+                    );
+                }
+            }
+        } finally {
+            study.close();
+        }
+
+        Cursor reviews = db.query("review_log", null, null, null, null, null, "reviewed_at ASC, id ASC");
+        try {
+            while (reviews.moveToNext()) {
+                Records.ReviewRequest request = new Records.ReviewRequest(
+                        string(reviews, "kanji"),
+                        string(reviews, "token"),
+                        string(reviews, "rating"),
+                        integer(reviews, "writing_required") == 1,
+                        integer(reviews, "writing_passed") == 1,
+                        integer(reviews, "manual_override") == 1,
+                        0
+                );
+                appendReviewTimelineEvent(db, request, string(reviews, "rating"), longValue(reviews, "reviewed_at"), "review:" + request.token);
+            }
+        } finally {
+            reviews.close();
+        }
+    }
+
+    private void appendSyncTimelineEvents(
+            SQLiteDatabase db,
+            Map<String, RowSnapshot> previousRows,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            long syncId,
+            long occurredAt,
+            Records.Settings settings
+    ) {
+        int target = settings == null ? Records.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
+        for (Records.SuspendedImport imported : imports) {
+            SourceSnapshot source = sourceFromImport(imported);
+            insertTimelineEvent(
+                    db,
+                    imported.kanji,
+                    occurredAt,
+                    "suspended_imported",
+                    "Imported from suspended Anki",
+                    "Kani recovered this kanji from a suspended AnkiDroid card.",
+                    source.expression,
+                    source.reading,
+                    "",
+                    false,
+                    false,
+                    false,
+                    null,
+                    null,
+                    syncId,
+                    "suspended_imported:" + imported.kanji
+            );
+        }
+
+        for (Records.DashboardRow row : rows) {
+            RowSnapshot previous = previousRows.get(row.kanji);
+            SourceSnapshot source = sourceForRow(row);
+            insertTimelineEvent(
+                    db,
+                    row.kanji,
+                    occurredAt,
+                    "first_seen",
+                    "Kani started watching",
+                    "This kanji entered Kani from local AnkiDroid evidence.",
+                    source.expression,
+                    source.reading,
+                    "",
+                    false,
+                    false,
+                    false,
+                    row.weaknessScore,
+                    row.matureSupportCount,
+                    syncId,
+                    "first_seen:" + row.kanji
+            );
+            if (previous == null) {
+                insertTimelineEvent(
+                        db,
+                        row.kanji,
+                        occurredAt,
+                        "weak_support_seen",
+                        "Weak support seen",
+                        supportDetail("Anki evidence still needs repair", row.matureSupportCount, target),
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        row.weaknessScore,
+                        row.matureSupportCount,
+                        syncId,
+                        "weak_support_seen:" + row.kanji + ":" + syncId
+                );
+            } else if (row.matureSupportCount > previous.matureSupportCount) {
+                insertTimelineEvent(
+                        db,
+                        row.kanji,
+                        occurredAt,
+                        "support_improved",
+                        "Anki support improved",
+                        "Mature support rose from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        row.weaknessScore,
+                        row.matureSupportCount,
+                        syncId,
+                        "support_improved:" + row.kanji + ":" + syncId + ":" + previous.matureSupportCount + "-" + row.matureSupportCount
+                );
+            } else if (row.matureSupportCount < previous.matureSupportCount) {
+                insertTimelineEvent(
+                        db,
+                        row.kanji,
+                        occurredAt,
+                        "support_dropped",
+                        "Anki support dropped",
+                        "Mature support fell from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        row.weaknessScore,
+                        row.matureSupportCount,
+                        syncId,
+                        "support_dropped:" + row.kanji + ":" + syncId + ":" + previous.matureSupportCount + "-" + row.matureSupportCount
+                );
+            }
+        }
+    }
+
+    private void appendStudyStateTimelineEvents(
+            SQLiteDatabase db,
+            Map<String, StudySnapshot> previousItems,
+            List<Records.StudyItem> currentItems,
+            long syncId,
+            long occurredAt,
+            Records.Settings settings
+    ) {
+        int target = settings == null ? Records.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
+        for (Records.StudyItem item : currentItems) {
+            StudySnapshot previous = previousItems.get(item.kanji);
+            if (previous == null) {
+                continue;
+            }
+            RowSnapshot row = rowSnapshot(db, item.kanji);
+            SourceSnapshot source = row == null ? firstExampleForKanji(db, item.kanji) : row.source;
+            if (!"retired".equals(previous.state) && "retired".equals(item.state)) {
+                Integer mature = row == null ? null : row.matureSupportCount;
+                insertTimelineEvent(
+                        db,
+                        item.kanji,
+                        occurredAt,
+                        "retired",
+                        "Retired by Anki support",
+                        mature == null
+                                ? "No weak Anki evidence remained after sync, so Kani retired this repair."
+                                : supportDetail("Mature Anki support met the target", mature, target),
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        row == null ? null : row.weaknessScore,
+                        mature,
+                        syncId,
+                        "retired:" + item.kanji + ":" + syncId
+                );
+            } else if ("retired".equals(previous.state) && !"retired".equals(item.state)) {
+                Integer mature = row == null ? null : row.matureSupportCount;
+                insertTimelineEvent(
+                        db,
+                        item.kanji,
+                        occurredAt,
+                        "reopened",
+                        "Repair reopened",
+                        mature == null
+                                ? "Kani reopened this kanji after sync found weak evidence again."
+                                : supportDetail("Mature Anki support fell below target", mature, target),
+                        source.expression,
+                        source.reading,
+                        "",
+                        false,
+                        false,
+                        false,
+                        row == null ? null : row.weaknessScore,
+                        mature,
+                        syncId,
+                        "reopened:" + item.kanji + ":" + syncId
+                );
+            }
+        }
+    }
+
+    private void appendReviewTimelineEvent(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt, String dedupeKey) {
+        String eventType;
+        String title;
+        if (request.manualOverride) {
+            eventType = "manual_override";
+            title = "Manual override";
+        } else if ("again".equals(appliedRating) || (request.writingRequired && !request.writingPassed)) {
+            eventType = "review_failed";
+            title = "Review failed";
+        } else {
+            eventType = "review_passed";
+            title = "Review passed";
+        }
+        SourceSnapshot source = firstExampleForKanji(db, request.kanji);
+        RowSnapshot row = rowSnapshot(db, request.kanji);
+        insertTimelineEvent(
+                db,
+                request.kanji,
+                reviewedAt,
+                eventType,
+                title,
+                reviewDetail(request, appliedRating),
+                source.expression,
+                source.reading,
+                appliedRating,
+                request.writingRequired,
+                request.writingPassed,
+                request.manualOverride,
+                row == null ? null : row.weaknessScore,
+                row == null ? null : row.matureSupportCount,
+                null,
+                dedupeKey
+        );
+    }
+
+    private String reviewDetail(Records.ReviewRequest request, String appliedRating) {
+        if (request.manualOverride) {
+            return "Saved as " + appliedRating + " after manual confirmation.";
+        }
+        if ("again".equals(appliedRating)) {
+            return request.writingRequired
+                    ? "Writing missed; Kani scheduled another try."
+                    : "Recall missed; Kani scheduled another try.";
+        }
+        if (request.writingRequired) {
+            return request.writingPassed
+                    ? "Writing passed and was rated " + appliedRating + "."
+                    : "Writing was not passed and was rated " + appliedRating + ".";
+        }
+        return "Recall review was rated " + appliedRating + ".";
+    }
+
+    private String supportDetail(String prefix, int matureSupportCount, int target) {
+        return prefix + ": mature support " + matureSupportCount + " / target " + target + ".";
+    }
+
+    private Records.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("dashboard_rows", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return readDashboardRow(db, cursor);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Records.DashboardRow readDashboardRow(SQLiteDatabase db, Cursor cursor) {
+        String kanji = string(cursor, "kanji");
+        return new Records.DashboardRow(
+                kanji,
+                nullableInt(cursor, "jiten_rank"),
+                string(cursor, "primary_meaning"),
+                string(cursor, "reading"),
+                string(cursor, "browser_search"),
+                integer(cursor, "weakness_score"),
+                string(cursor, "reason_code"),
+                string(cursor, "reason_text"),
+                integer(cursor, "active_example_count"),
+                integer(cursor, "suspended_example_count"),
+                integer(cursor, "mature_support_count"),
+                examplesForKanji(db, kanji)
+        );
+    }
+
+    private Records.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("study_items", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            return cursor.moveToFirst() ? readStudyItem(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Records.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
+        return new Records.KanjiTimelineEvent(
+                longValue(cursor, "id"),
+                string(cursor, "kanji"),
+                longValue(cursor, "occurred_at"),
+                string(cursor, "event_type"),
+                string(cursor, "title"),
+                string(cursor, "detail"),
+                string(cursor, "source_expression"),
+                string(cursor, "source_reading"),
+                string(cursor, "rating"),
+                integer(cursor, "writing_required") == 1,
+                integer(cursor, "writing_passed") == 1,
+                integer(cursor, "manual_override") == 1,
+                nullableInt(cursor, "weakness_score"),
+                nullableInt(cursor, "mature_support_count"),
+                nullableLong(cursor, "sync_id"),
+                string(cursor, "dedupe_key")
+        );
+    }
+
+    private void insertTimelineEvent(
+            SQLiteDatabase db,
+            String kanji,
+            long occurredAt,
+            String eventType,
+            String title,
+            String detail,
+            String sourceExpression,
+            String sourceReading,
+            String rating,
+            boolean writingRequired,
+            boolean writingPassed,
+            boolean manualOverride,
+            Integer weaknessScore,
+            Integer matureSupportCount,
+            Long syncId,
+            String dedupeKey
+    ) {
+        ContentValues values = new ContentValues();
+        values.put("kanji", kanji);
+        values.put("occurred_at", occurredAt);
+        values.put("event_type", eventType == null ? "" : eventType);
+        values.put("title", title == null ? "" : title);
+        values.put("detail", detail == null ? "" : detail);
+        values.put("source_expression", sourceExpression == null ? "" : sourceExpression);
+        values.put("source_reading", sourceReading == null ? "" : sourceReading);
+        values.put("rating", rating == null ? "" : rating);
+        values.put("writing_required", writingRequired ? 1 : 0);
+        values.put("writing_passed", writingPassed ? 1 : 0);
+        values.put("manual_override", manualOverride ? 1 : 0);
+        if (weaknessScore == null) {
+            values.putNull("weakness_score");
+        } else {
+            values.put("weakness_score", weaknessScore);
+        }
+        if (matureSupportCount == null) {
+            values.putNull("mature_support_count");
+        } else {
+            values.put("mature_support_count", matureSupportCount);
+        }
+        if (syncId == null) {
+            values.putNull("sync_id");
+        } else {
+            values.put("sync_id", syncId);
+        }
+        values.put("dedupe_key", dedupeKey);
+        db.insertWithOnConflict("kanji_timeline_events", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    private Map<String, RowSnapshot> rowSnapshots(SQLiteDatabase db) {
+        Map<String, RowSnapshot> rows = new LinkedHashMap<>();
+        Cursor cursor = db.query("dashboard_rows", null, null, null, null, null, "kanji ASC");
+        try {
+            while (cursor.moveToNext()) {
+                RowSnapshot row = rowSnapshotFromCursor(db, cursor);
+                rows.put(row.kanji, row);
+            }
+        } finally {
+            cursor.close();
+        }
+        return rows;
+    }
+
+    private RowSnapshot rowSnapshot(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("dashboard_rows", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            return cursor.moveToFirst() ? rowSnapshotFromCursor(db, cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private RowSnapshot rowSnapshotFromCursor(SQLiteDatabase db, Cursor cursor) {
+        String kanji = string(cursor, "kanji");
+        return new RowSnapshot(
+                kanji,
+                integer(cursor, "weakness_score"),
+                integer(cursor, "mature_support_count"),
+                longValue(cursor, "rebuilt_at"),
+                firstExampleForKanji(db, kanji)
+        );
+    }
+
+    private Map<String, StudySnapshot> studySnapshots(SQLiteDatabase db) {
+        Map<String, StudySnapshot> items = new HashMap<>();
+        Cursor cursor = db.query("study_items", new String[]{"kanji", "state"}, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                items.put(string(cursor, "kanji"), new StudySnapshot(string(cursor, "kanji"), string(cursor, "state")));
+            }
+        } finally {
+            cursor.close();
+        }
+        return items;
+    }
+
+    private SourceSnapshot firstExampleForKanji(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("kanji_examples", new String[]{"expression", "reading"}, "kanji=?", new String[]{kanji}, null, null, "source_type ASC, id ASC", "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return SourceSnapshot.EMPTY;
+            }
+            return new SourceSnapshot(string(cursor, "expression"), string(cursor, "reading"));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private SourceSnapshot firstSuspendedSourceForKanji(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("suspended_sources", new String[]{"expression", "reading"}, "kanji=?", new String[]{kanji}, null, null, "card_id ASC", "1");
+        try {
+            if (!cursor.moveToFirst()) {
+                return SourceSnapshot.EMPTY;
+            }
+            return new SourceSnapshot(string(cursor, "expression"), string(cursor, "reading"));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private SourceSnapshot sourceFromImport(Records.SuspendedImport imported) {
+        if (imported.sources.isEmpty()) {
+            return SourceSnapshot.EMPTY;
+        }
+        Records.SuspendedSource source = imported.sources.get(0);
+        return new SourceSnapshot(source.expression, source.reading);
+    }
+
+    private SourceSnapshot sourceForRow(Records.DashboardRow row) {
+        Records.Example fallback = null;
+        for (Records.Example example : row.examples) {
+            if ("active".equals(example.sourceType)) {
+                return new SourceSnapshot(example.expression, example.reading);
+            }
+            if (fallback == null) {
+                fallback = example;
+            }
+        }
+        return fallback == null ? SourceSnapshot.EMPTY : new SourceSnapshot(fallback.expression, fallback.reading);
+    }
+
     private static long localDayStart(long millis) {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(millis);
@@ -979,6 +1605,44 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    private static final class SourceSnapshot {
+        private static final SourceSnapshot EMPTY = new SourceSnapshot("", "");
+
+        private final String expression;
+        private final String reading;
+
+        private SourceSnapshot(String expression, String reading) {
+            this.expression = expression == null ? "" : expression;
+            this.reading = reading == null ? "" : reading;
+        }
+    }
+
+    private static final class RowSnapshot {
+        private final String kanji;
+        private final int weaknessScore;
+        private final int matureSupportCount;
+        private final long rebuiltAt;
+        private final SourceSnapshot source;
+
+        private RowSnapshot(String kanji, int weaknessScore, int matureSupportCount, long rebuiltAt, SourceSnapshot source) {
+            this.kanji = kanji;
+            this.weaknessScore = weaknessScore;
+            this.matureSupportCount = matureSupportCount;
+            this.rebuiltAt = rebuiltAt;
+            this.source = source == null ? SourceSnapshot.EMPTY : source;
+        }
+    }
+
+    private static final class StudySnapshot {
+        private final String kanji;
+        private final String state;
+
+        private StudySnapshot(String kanji, String state) {
+            this.kanji = kanji;
+            this.state = state == null ? "" : state;
+        }
+    }
+
     private static String fieldsJson(Map<String, String> fields) {
         StringBuilder out = new StringBuilder("{");
         boolean first = true;
@@ -1006,6 +1670,11 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static Integer nullableInt(Cursor cursor, String column) {
         int index = cursor.getColumnIndex(column);
         return index < 0 || cursor.isNull(index) ? null : cursor.getInt(index);
+    }
+
+    private static Long nullableLong(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        return index < 0 || cursor.isNull(index) ? null : cursor.getLong(index);
     }
 
     private static long longValue(Cursor cursor, String column) {
