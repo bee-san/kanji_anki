@@ -203,7 +203,11 @@ public final class BridgeScheduler {
                 item.matureIntervalDays,
                 item.answerSignature,
                 null,
-                item.createdAtMillis
+                item.createdAtMillis,
+                item.kanjiMeaningMemory,
+                item.fontMeaningMemory,
+                item.wordReadingMemory,
+                item.writingRemediationMemory
         );
     }
 
@@ -237,26 +241,31 @@ public final class BridgeScheduler {
             return item.withAnswerSignature(signature);
         }
         int fallbackStage = Math.max(0, item.recognitionStage - 1);
+        boolean retired = "retired".equals(item.state);
         return new Records.StudyItem(
                 item.kanji,
-                "retired".equals(item.state) ? item.state : "learning",
-                "retired".equals(item.state) ? item.dueAtMillis : nowMillis,
-                item.stability,
-                item.difficulty,
-                item.totalReviews,
-                item.lapses,
-                item.learningStep,
+                retired ? item.state : "learning",
+                retired ? item.dueAtMillis : nowMillis,
+                retired ? item.stability : 0.4,
+                retired ? item.difficulty : 5.0,
+                retired ? item.totalReviews : 0,
+                retired ? item.lapses : 0,
+                retired ? item.learningStep : 0,
                 item.writingLevel,
                 fallbackStage,
-                item.consecutiveFailedRecognitionDays,
-                item.lastFailedRecognitionDayMillis,
-                item.writingRemediationPending,
+                retired ? item.consecutiveFailedRecognitionDays : 0,
+                retired ? item.lastFailedRecognitionDayMillis : 0L,
+                retired && item.writingRemediationPending,
                 null,
                 0L,
                 0,
                 signature,
                 null,
-                item.createdAtMillis
+                item.createdAtMillis,
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial()
         );
     }
 
@@ -355,16 +364,19 @@ public final class BridgeScheduler {
                 && request.hintsUsed <= 0;
         boolean failedWriting = writingReviewCanMoveHelp && !request.writingPassed;
 
+        Records.TaskMemory previousTaskMemory = item.memoryForTaskType(reviewedTaskType);
         int total = item.totalReviews + 1;
         int lapses = item.lapses;
-        int step = item.learningStep;
+        int taskTotal = previousTaskMemory.totalReviews + 1;
+        int taskLapses = previousTaskMemory.lapses;
+        int step = previousTaskMemory.learningStep;
         int writingLevel = item.writingLevel;
         int recognitionStage = item.recognitionStage;
         int failedRecognitionDays = item.consecutiveFailedRecognitionDays;
         long lastFailedRecognitionDay = item.lastFailedRecognitionDayMillis;
         boolean writingRemediationPending = item.writingRemediationPending;
-        double stability = item.stability;
-        double difficulty = item.difficulty;
+        double stability = previousTaskMemory.stability;
+        double difficulty = previousTaskMemory.difficulty;
         long due;
         int scheduledIntervalDays;
         String state;
@@ -372,6 +384,7 @@ public final class BridgeScheduler {
         switch (rating) {
             case "again":
                 lapses++;
+                taskLapses++;
                 step = 0;
                 stability = Math.max(0.2, stability * parameters.againMultiplier);
                 difficulty = Math.min(10.0, difficulty + 0.7);
@@ -446,8 +459,8 @@ public final class BridgeScheduler {
             suppressedAtMillis = 0L;
             matureIntervalDays = 0;
         } else if (dominatesLowerSiblings(reviewedTaskType)
-                && item.totalReviews > 0
-                && item.dueAtMillis <= nowMillis
+                && previousTaskMemory.totalReviews > 0
+                && previousTaskMemory.dueAtMillis <= nowMillis
                 && scheduledIntervalDays >= settings.matureDays) {
             suppressedByTaskType = reviewedTaskType;
             suppressedAtMillis = nowMillis;
@@ -472,7 +485,24 @@ public final class BridgeScheduler {
                 matureIntervalDays,
                 item.answerSignature,
                 null,
-                item.createdAtMillis
+                item.createdAtMillis,
+                item.kanjiMeaningMemory,
+                item.fontMeaningMemory,
+                item.wordReadingMemory,
+                item.writingRemediationMemory
+        ).withTaskMemory(
+                reviewedTaskType,
+                new Records.TaskMemory(
+                        state,
+                        due,
+                        round(stability),
+                        round(difficulty),
+                        taskTotal,
+                        taskLapses,
+                        step,
+                        rating,
+                        scheduledIntervalDays
+                )
         );
         return new Records.ReviewResult(updated, rating, false, "Review applied.");
     }
@@ -507,7 +537,7 @@ public final class BridgeScheduler {
         for (Records.DashboardRow row : rows) {
             currentRows.add(row.kanji);
         }
-        Map<String, List<Records.StudyItem>> byKanji = new HashMap<>();
+        Map<String, List<Records.StudyItem>> byFamily = new HashMap<>();
         for (Records.StudyItem item : items) {
             if ("retired".equals(item.state)) {
                 continue;
@@ -518,15 +548,16 @@ public final class BridgeScheduler {
             if (!currentRows.contains(item.kanji)) {
                 continue;
             }
-            List<Records.StudyItem> family = byKanji.get(item.kanji);
+            String familyKey = familyKey(item);
+            List<Records.StudyItem> family = byFamily.get(familyKey);
             if (family == null) {
                 family = new ArrayList<>();
-                byKanji.put(item.kanji, family);
+                byFamily.put(familyKey, family);
             }
             family.add(item);
         }
         List<Records.StudyItem> out = new ArrayList<>();
-        for (List<Records.StudyItem> family : byKanji.values()) {
+        for (List<Records.StudyItem> family : byFamily.values()) {
             Records.StudyItem active = activeFamilyItem(family, nowMillis);
             if (active != null) {
                 out.add(active);
@@ -606,11 +637,21 @@ public final class BridgeScheduler {
                 continue;
             }
             int dominantRank = taskRank(sibling.suppressedByTaskType);
-            if (taskRank(item) < dominantRank) {
+            if (taskRank(item) < dominantRank && sameAnswerSignature(item, sibling)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String familyKey(Records.StudyItem item) {
+        return item.kanji + "\u0000" + (item.answerSignature == null ? "" : item.answerSignature);
+    }
+
+    private static boolean sameAnswerSignature(Records.StudyItem left, Records.StudyItem right) {
+        String leftSignature = left.answerSignature == null ? "" : left.answerSignature;
+        String rightSignature = right.answerSignature == null ? "" : right.answerSignature;
+        return leftSignature.equals(rightSignature);
     }
 
     private static int taskRank(Records.StudyItem item) {

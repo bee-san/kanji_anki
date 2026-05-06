@@ -449,6 +449,95 @@ public final class Records {
         }
     }
 
+    public static final class TaskMemory {
+        public final String state;
+        public final long dueAtMillis;
+        public final double stability;
+        public final double difficulty;
+        public final int totalReviews;
+        public final int lapses;
+        public final int learningStep;
+        public final String lastRating;
+        public final int matureIntervalDays;
+
+        public TaskMemory(
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                String lastRating,
+                int matureIntervalDays
+        ) {
+            this.state = state == null || state.isEmpty() ? "new" : state;
+            this.dueAtMillis = Math.max(0L, dueAtMillis);
+            this.stability = stability;
+            this.difficulty = difficulty;
+            this.totalReviews = Math.max(0, totalReviews);
+            this.lapses = Math.max(0, lapses);
+            this.learningStep = Math.max(0, learningStep);
+            this.lastRating = lastRating == null ? "" : lastRating;
+            this.matureIntervalDays = Math.max(0, matureIntervalDays);
+        }
+
+        public static TaskMemory initial() {
+            return new TaskMemory("new", 0L, 0.4, 5.0, 0, 0, 0, "", 0);
+        }
+
+        public static TaskMemory fromStudyFields(
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int matureIntervalDays
+        ) {
+            return new TaskMemory(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, "", matureIntervalDays);
+        }
+
+        public String encode() {
+            return state + "\t"
+                    + dueAtMillis + "\t"
+                    + stability + "\t"
+                    + difficulty + "\t"
+                    + totalReviews + "\t"
+                    + lapses + "\t"
+                    + learningStep + "\t"
+                    + lastRating + "\t"
+                    + matureIntervalDays;
+        }
+
+        public static TaskMemory decode(String encoded, TaskMemory fallback) {
+            TaskMemory safeFallback = fallback == null ? initial() : fallback;
+            if (encoded == null || encoded.isEmpty()) {
+                return safeFallback;
+            }
+            String[] parts = encoded.split("\t", -1);
+            if (parts.length < 9) {
+                return safeFallback;
+            }
+            try {
+                return new TaskMemory(
+                        parts[0],
+                        Long.parseLong(parts[1]),
+                        Double.parseDouble(parts[2]),
+                        Double.parseDouble(parts[3]),
+                        Integer.parseInt(parts[4]),
+                        Integer.parseInt(parts[5]),
+                        Integer.parseInt(parts[6]),
+                        parts[7],
+                        Integer.parseInt(parts[8])
+                );
+            } catch (RuntimeException ignored) {
+                return safeFallback;
+            }
+        }
+    }
+
     public static final class StudyItem {
         public final String kanji;
         public final String state;
@@ -469,6 +558,10 @@ public final class Records {
         public final String answerSignature;
         public final String activeToken;
         public final long createdAtMillis;
+        public final TaskMemory kanjiMeaningMemory;
+        public final TaskMemory fontMeaningMemory;
+        public final TaskMemory wordReadingMemory;
+        public final TaskMemory writingRemediationMemory;
 
         public StudyItem(
                 String kanji,
@@ -567,6 +660,58 @@ public final class Records {
                 String activeToken,
                 long createdAtMillis
         ) {
+            this(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    suppressedByTaskType,
+                    suppressedAtMillis,
+                    matureIntervalDays,
+                    answerSignature,
+                    activeToken,
+                    createdAtMillis,
+                    seedMemoryForStage(0, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
+                    seedMemoryForStage(1, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
+                    seedMemoryForStage(2, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
+                    seedMemoryForWriting(writingRemediationPending, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
+            );
+        }
+
+        public StudyItem(
+                String kanji,
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int writingLevel,
+                int recognitionStage,
+                int consecutiveFailedRecognitionDays,
+                long lastFailedRecognitionDayMillis,
+                boolean writingRemediationPending,
+                String suppressedByTaskType,
+                long suppressedAtMillis,
+                int matureIntervalDays,
+                String answerSignature,
+                String activeToken,
+                long createdAtMillis,
+                TaskMemory kanjiMeaningMemory,
+                TaskMemory fontMeaningMemory,
+                TaskMemory wordReadingMemory,
+                TaskMemory writingRemediationMemory
+        ) {
             this.kanji = kanji;
             this.state = state;
             this.dueAtMillis = dueAtMillis;
@@ -586,6 +731,10 @@ public final class Records {
             this.answerSignature = answerSignature == null ? "" : answerSignature;
             this.activeToken = activeToken;
             this.createdAtMillis = createdAtMillis;
+            this.kanjiMeaningMemory = kanjiMeaningMemory == null ? TaskMemory.initial() : kanjiMeaningMemory;
+            this.fontMeaningMemory = fontMeaningMemory == null ? TaskMemory.initial() : fontMeaningMemory;
+            this.wordReadingMemory = wordReadingMemory == null ? TaskMemory.initial() : wordReadingMemory;
+            this.writingRemediationMemory = writingRemediationMemory == null ? TaskMemory.initial() : writingRemediationMemory;
         }
 
         public StudyItem withToken(String token) {
@@ -608,7 +757,11 @@ public final class Records {
                     matureIntervalDays,
                     answerSignature,
                     token,
-                    createdAtMillis
+                    createdAtMillis,
+                    kanjiMeaningMemory,
+                    fontMeaningMemory,
+                    wordReadingMemory,
+                    writingRemediationMemory
             );
         }
 
@@ -632,7 +785,11 @@ public final class Records {
                     matureIntervalDays,
                     answerSignature,
                     activeToken,
-                    createdAtMillis
+                    createdAtMillis,
+                    kanjiMeaningMemory,
+                    fontMeaningMemory,
+                    wordReadingMemory,
+                    writingRemediationMemory
             );
         }
 
@@ -656,8 +813,106 @@ public final class Records {
                     matureIntervalDays,
                     answerSignature,
                     activeToken,
-                    createdAtMillis
+                    createdAtMillis,
+                    kanjiMeaningMemory,
+                    fontMeaningMemory,
+                    wordReadingMemory,
+                    writingRemediationMemory
             );
+        }
+
+        public TaskMemory memoryForTaskType(String taskType) {
+            if ("writing_remediation".equals(taskType)) {
+                return writingRemediationMemory;
+            }
+            if ("word_reading".equals(taskType)) {
+                return wordReadingMemory;
+            }
+            if ("font_meaning".equals(taskType)) {
+                return fontMeaningMemory;
+            }
+            return kanjiMeaningMemory;
+        }
+
+        public StudyItem withTaskMemory(String taskType, TaskMemory memory) {
+            TaskMemory kanjiMemory = kanjiMeaningMemory;
+            TaskMemory fontMemory = fontMeaningMemory;
+            TaskMemory wordMemory = wordReadingMemory;
+            TaskMemory writingMemory = writingRemediationMemory;
+            if ("writing_remediation".equals(taskType)) {
+                writingMemory = memory;
+            } else if ("word_reading".equals(taskType)) {
+                wordMemory = memory;
+            } else if ("font_meaning".equals(taskType)) {
+                fontMemory = memory;
+            } else {
+                kanjiMemory = memory;
+            }
+            return withTaskMemories(kanjiMemory, fontMemory, wordMemory, writingMemory);
+        }
+
+        public StudyItem withTaskMemories(TaskMemory kanjiMemory, TaskMemory fontMemory, TaskMemory wordMemory, TaskMemory writingMemory) {
+            return new StudyItem(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    suppressedByTaskType,
+                    suppressedAtMillis,
+                    matureIntervalDays,
+                    answerSignature,
+                    activeToken,
+                    createdAtMillis,
+                    kanjiMemory,
+                    fontMemory,
+                    wordMemory,
+                    writingMemory
+            );
+        }
+
+        private static TaskMemory seedMemoryForStage(
+                int memoryStage,
+                int recognitionStage,
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int matureIntervalDays
+        ) {
+            int safeStage = Math.max(0, Math.min(2, recognitionStage));
+            if (safeStage != memoryStage) {
+                return TaskMemory.initial();
+            }
+            return TaskMemory.fromStudyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+        }
+
+        private static TaskMemory seedMemoryForWriting(
+                boolean writingRemediationPending,
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int matureIntervalDays
+        ) {
+            if (!writingRemediationPending) {
+                return TaskMemory.initial();
+            }
+            return TaskMemory.fromStudyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
         }
     }
 
