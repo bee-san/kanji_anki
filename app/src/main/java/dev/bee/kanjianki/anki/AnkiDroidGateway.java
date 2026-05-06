@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -528,7 +529,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             if (value == null) {
                 continue;
             }
-            String key = matcher.group(1).toLowerCase();
+            String key = matcher.group(1).toLowerCase(Locale.ROOT);
             if ("stability".equals(key) || "s".equals(key)) {
                 stability = value;
             } else if ("difficulty".equals(key) || "d".equals(key)) {
