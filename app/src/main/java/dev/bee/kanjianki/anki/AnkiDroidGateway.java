@@ -20,11 +20,31 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class AnkiDroidGateway implements CollectionGateway {
     private static final char FIELD_SEPARATOR = '\u001f';
     private static final String ARCHIVED_TAG = "kani_archived";
     private static final String LEGACY_ARCHIVED_TAG = "kanji_anki_archived";
+    private static final String[] CARD_COLUMNS_WITH_FSRS = {
+            "note_id",
+            "ord",
+            "deck_id",
+            "queue",
+            "type",
+            "due",
+            "interval",
+            "reps",
+            "lapses",
+            "fsrs_stability",
+            "fsrs_difficulty",
+            "fsrs_retrievability",
+            "stability",
+            "difficulty",
+            "retrievability",
+            "data"
+    };
     private static final String[] CARD_COLUMNS_WITH_SCHEDULER = {
             "note_id",
             "ord",
@@ -37,6 +57,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
             "lapses"
     };
     private static final String[] CARD_COLUMNS_MINIMAL = {"note_id", "ord", "deck_id"};
+    private static final Pattern FSRS_DATA_VALUE = Pattern.compile(
+            "(?:\"|')?(stability|difficulty|retrievability|s|d|r)(?:\"|')?\\s*[:=]\\s*\"?([-+]?[0-9]+(?:\\.[0-9]+)?)\"?",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private final Context context;
     private final ContentResolver resolver;
@@ -325,17 +349,27 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
         Set<Long> suspendedNoteIds = querySuspendedNoteIds(target, settings);
         List<Records.Card> cards = new ArrayList<>();
-        boolean schedulerColumnsSupported = true;
+        String[][] projections = new String[][]{
+                CARD_COLUMNS_WITH_FSRS,
+                CARD_COLUMNS_WITH_SCHEDULER,
+                CARD_COLUMNS_MINIMAL
+        };
+        int projectionIndex = 0;
         for (Long noteId : noteIds) {
-            if (!schedulerColumnsSupported) {
-                cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_MINIMAL));
-                continue;
-            }
-            try {
-                cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_WITH_SCHEDULER));
-            } catch (Throwable unsupportedSchedulerColumns) {
-                schedulerColumnsSupported = false;
-                cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, CARD_COLUMNS_MINIMAL));
+            boolean read = false;
+            while (!read && projectionIndex < projections.length) {
+                try {
+                    cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex]));
+                    read = true;
+                } catch (Throwable unsupportedColumns) {
+                    projectionIndex++;
+                    if (projectionIndex >= projections.length) {
+                        if (unsupportedColumns instanceof SyncException) {
+                            throw (SyncException) unsupportedColumns;
+                        }
+                        throw SyncException.retryable("AnkiDroid card projection failed: " + unsupportedColumns.getMessage(), unsupportedColumns);
+                    }
+                }
             }
         }
         return cards;
@@ -353,6 +387,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 boolean suspendedFromSearch = suspendedNoteIds.contains(noteId);
                 int queue = intValue(cursor, "queue", suspendedFromSearch ? -1 : 0);
                 boolean suspended = suspendedFromSearch || queue < 0;
+                FsrsMemoryState fsrs = fsrsMemoryState(cursor);
                 cards.add(new Records.Card(
                         longValue(cursor, "_id", noteId * 1000L + ord),
                         longValue(cursor, "note_id", noteId),
@@ -364,7 +399,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
                         intValue(cursor, "interval", 0),
                         intValue(cursor, "reps", 0),
                         intValue(cursor, "lapses", 0),
-                        suspended
+                        suspended,
+                        fsrs.stability,
+                        fsrs.difficulty,
+                        fsrs.retrievability
                 ));
             }
             return cards;
@@ -438,6 +476,90 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private static int intValue(Cursor cursor, String column, int fallback) {
         int index = cursor.getColumnIndex(column);
         return index < 0 || cursor.isNull(index) ? fallback : cursor.getInt(index);
+    }
+
+    private static FsrsMemoryState fsrsMemoryState(Cursor cursor) {
+        Double stability = firstDouble(cursor, "fsrs_stability", "stability");
+        Double difficulty = firstDouble(cursor, "fsrs_difficulty", "difficulty");
+        Double retrievability = firstDouble(cursor, "fsrs_retrievability", "retrievability");
+        if (stability != null || difficulty != null || retrievability != null) {
+            return new FsrsMemoryState(stability, difficulty, retrievability);
+        }
+        return parseFsrsData(value(cursor, "data"));
+    }
+
+    private static Double firstDouble(Cursor cursor, String... columns) {
+        for (String column : columns) {
+            Double value = doubleValue(cursor, column);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static Double doubleValue(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        if (index < 0 || cursor.isNull(index)) {
+            return null;
+        }
+        try {
+            String value = cursor.getString(index);
+            if (value == null || value.trim().isEmpty()) {
+                return null;
+            }
+            double parsed = Double.parseDouble(value.trim());
+            return Double.isNaN(parsed) || Double.isInfinite(parsed) ? null : parsed;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static FsrsMemoryState parseFsrsData(String data) {
+        if (data == null || data.trim().isEmpty()) {
+            return FsrsMemoryState.EMPTY;
+        }
+        Double stability = null;
+        Double difficulty = null;
+        Double retrievability = null;
+        Matcher matcher = FSRS_DATA_VALUE.matcher(data);
+        while (matcher.find()) {
+            Double value = parseDouble(matcher.group(2));
+            if (value == null) {
+                continue;
+            }
+            String key = matcher.group(1).toLowerCase();
+            if ("stability".equals(key) || "s".equals(key)) {
+                stability = value;
+            } else if ("difficulty".equals(key) || "d".equals(key)) {
+                difficulty = value;
+            } else if ("retrievability".equals(key) || "r".equals(key)) {
+                retrievability = value;
+            }
+        }
+        return new FsrsMemoryState(stability, difficulty, retrievability);
+    }
+
+    private static Double parseDouble(String value) {
+        try {
+            double parsed = Double.parseDouble(value);
+            return Double.isNaN(parsed) || Double.isInfinite(parsed) ? null : parsed;
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private static final class FsrsMemoryState {
+        private static final FsrsMemoryState EMPTY = new FsrsMemoryState(null, null, null);
+        private final Double stability;
+        private final Double difficulty;
+        private final Double retrievability;
+
+        private FsrsMemoryState(Double stability, Double difficulty, Double retrievability) {
+            this.stability = stability;
+            this.difficulty = difficulty;
+            this.retrievability = retrievability;
+        }
     }
 
     private static final class ModelMapping {

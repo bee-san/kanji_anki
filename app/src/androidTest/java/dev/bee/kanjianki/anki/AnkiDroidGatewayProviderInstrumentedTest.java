@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -56,6 +57,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(42, snapshot.cards.get(0).intervalDays);
         assertEquals(80, snapshot.cards.get(0).reps);
         assertEquals(3, snapshot.cards.get(0).lapses);
+        assertEquals(12.5, snapshot.cards.get(0).fsrsStability, 0.001);
+        assertEquals(7.0, snapshot.cards.get(0).fsrsDifficulty, 0.001);
+        assertEquals(0.42, snapshot.cards.get(0).fsrsRetrievability, 0.001);
         assertTrue(snapshot.cards.get(1).suspended);
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
@@ -112,7 +116,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
         assertEquals(0, providerInt("topLevelCardsQueries"));
-        assertEquals(1, providerInt("schedulerProjectionRejects"));
+        assertEquals(2, providerInt("schedulerProjectionRejects"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
         assertEquals(0, providerInt("explicitIdProjectionQueries"));
     }
@@ -129,9 +133,50 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
         assertEquals(0, providerInt("topLevelCardsQueries"));
-        assertEquals(1, providerInt("schedulerProjectionRejects"));
-        assertEquals(3, providerInt("perNoteCardsQueries"));
+        assertEquals(2, providerInt("schedulerProjectionRejects"));
+        assertEquals(4, providerInt("perNoteCardsQueries"));
         assertEquals(0, providerInt("explicitIdProjectionQueries"));
+    }
+
+    @Test
+    public void manualSyncFallsBackWhenFsrsColumnsAreUnsupported() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "rejectFsrsProjection", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.message, result.success);
+        assertEquals("success", store.latestSync().status);
+        assertFalse(store.dashboardRows().isEmpty());
+        assertEquals(1, providerInt("fsrsProjectionRejects"));
+        assertEquals(0, providerInt("schedulerProjectionRejects"));
+        assertEquals(2, providerInt("perNoteCardsQueries"));
+    }
+
+    @Test
+    public void unparseableFsrsDataDoesNotBlockProviderRead() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "unparseableFsrsData", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(2, snapshot.cards.size());
+        assertNull(snapshot.cards.get(0).fsrsStability);
+        assertNull(snapshot.cards.get(0).fsrsDifficulty);
+        assertNull(snapshot.cards.get(0).fsrsRetrievability);
+    }
+
+    @Test
+    public void parseableFsrsDataCanSupplyMemoryState() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "dataOnlyFsrs", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(12.5, snapshot.cards.get(0).fsrsStability, 0.001);
+        assertEquals(7.0, snapshot.cards.get(0).fsrsDifficulty, 0.001);
+        assertEquals(0.42, snapshot.cards.get(0).fsrsRetrievability, 0.001);
     }
 
     private void resetProvider() {

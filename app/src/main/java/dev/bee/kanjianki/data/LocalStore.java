@@ -23,7 +23,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -44,12 +44,12 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE sync_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
         db.execSQL("CREATE TABLE source_notes (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE source_cards (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE source_cards (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, last_seen_sync_id INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE suspended_archive (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, archived_at INTEGER NOT NULL, archived_sync_id INTEGER NOT NULL, restored_at INTEGER)");
         db.execSQL("CREATE TABLE suspended_imports (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, rank_known INTEGER NOT NULL, cutoff_used INTEGER NOT NULL, first_imported_at INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
         db.execSQL("CREATE TABLE study_items (kanji TEXT PRIMARY KEY, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, active_token TEXT, created_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
@@ -62,6 +62,16 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (oldVersion < 2) {
             createTimelineTables(db);
             backfillTimelineEvents(db);
+        }
+        if (oldVersion < 3) {
+            addNullableColumn(db, "source_cards", "fsrs_stability", "REAL");
+            addNullableColumn(db, "source_cards", "fsrs_difficulty", "REAL");
+            addNullableColumn(db, "source_cards", "fsrs_retrievability", "REAL");
+            addNullableColumn(db, "kanji_examples", "interval_days", "INTEGER NOT NULL DEFAULT 0");
+            addNullableColumn(db, "kanji_examples", "reps", "INTEGER NOT NULL DEFAULT 0");
+            addNullableColumn(db, "kanji_examples", "fsrs_stability", "REAL");
+            addNullableColumn(db, "kanji_examples", "fsrs_difficulty", "REAL");
+            addNullableColumn(db, "kanji_examples", "fsrs_retrievability", "REAL");
         }
     }
 
@@ -135,6 +145,9 @@ public final class LocalStore extends SQLiteOpenHelper {
                     values.put("interval_days", card.intervalDays);
                     values.put("reps", card.reps);
                     values.put("lapses", card.lapses);
+                    putNullableDouble(values, "fsrs_stability", card.fsrsStability);
+                    putNullableDouble(values, "fsrs_difficulty", card.fsrsDifficulty);
+                    putNullableDouble(values, "fsrs_retrievability", card.fsrsRetrievability);
                     values.put("last_seen_sync_id", syncId);
                     db.insertWithOnConflict("source_cards", null, values, SQLiteDatabase.CONFLICT_REPLACE);
                 }
@@ -815,6 +828,16 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_timeline_kanji_time ON kanji_timeline_events(kanji, occurred_at, id)");
     }
 
+    private void addNullableColumn(SQLiteDatabase db, String table, String column, String type) {
+        try {
+            db.execSQL("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+        } catch (RuntimeException error) {
+            if (error.getMessage() == null || !error.getMessage().contains("duplicate column")) {
+                throw error;
+            }
+        }
+    }
+
     private void backfillTimelineEvents(SQLiteDatabase db) {
         Map<String, RowSnapshot> rows = rowSnapshots(db);
 
@@ -1471,6 +1494,11 @@ public final class LocalStore extends SQLiteOpenHelper {
                 ex.put("sentence", example.sentence);
                 ex.put("mature", example.mature ? 1 : 0);
                 ex.put("lapses", example.lapses);
+                ex.put("interval_days", example.intervalDays);
+                ex.put("reps", example.reps);
+                putNullableDouble(ex, "fsrs_stability", example.fsrsStability);
+                putNullableDouble(ex, "fsrs_difficulty", example.fsrsDifficulty);
+                putNullableDouble(ex, "fsrs_retrievability", example.fsrsRetrievability);
                 db.insert("kanji_examples", null, ex);
             }
         }
@@ -1490,7 +1518,12 @@ public final class LocalStore extends SQLiteOpenHelper {
                         string(cursor, "meaning"),
                         string(cursor, "sentence"),
                         integer(cursor, "mature") == 1,
-                        integer(cursor, "lapses")
+                        integer(cursor, "lapses"),
+                        integer(cursor, "interval_days"),
+                        integer(cursor, "reps"),
+                        nullableDouble(cursor, "fsrs_stability"),
+                        nullableDouble(cursor, "fsrs_difficulty"),
+                        nullableDouble(cursor, "fsrs_retrievability")
                 ));
             }
         } finally {
@@ -1677,9 +1710,20 @@ public final class LocalStore extends SQLiteOpenHelper {
         return index < 0 || cursor.isNull(index) ? null : cursor.getLong(index);
     }
 
+    private static Double nullableDouble(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        return index < 0 || cursor.isNull(index) ? null : cursor.getDouble(index);
+    }
+
     private static long longValue(Cursor cursor, String column) {
         int index = cursor.getColumnIndex(column);
         return index < 0 || cursor.isNull(index) ? 0L : cursor.getLong(index);
+    }
+
+    private static void putNullableDouble(ContentValues values, String key, Double value) {
+        if (value != null) {
+            values.put(key, value);
+        }
     }
 
     public static final class SyncStatus {

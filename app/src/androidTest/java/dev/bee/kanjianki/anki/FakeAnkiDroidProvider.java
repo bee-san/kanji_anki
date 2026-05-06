@@ -15,9 +15,13 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     public static int perNoteCardsQueries;
     public static int explicitIdProjectionQueries;
     public static int schedulerProjectionRejects;
+    public static int fsrsProjectionRejects;
     public static String activeTags = "";
     public static String suspendedTags = "";
     public static boolean failSuspendedSearch;
+    public static boolean rejectFsrsProjection;
+    public static boolean dataOnlyFsrs;
+    public static boolean unparseableFsrsData;
     public static boolean rejectSchedulerProjection;
     public static boolean deferSchedulerProjectionFailure;
 
@@ -26,9 +30,13 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         perNoteCardsQueries = 0;
         explicitIdProjectionQueries = 0;
         schedulerProjectionRejects = 0;
+        fsrsProjectionRejects = 0;
         activeTags = "";
         suspendedTags = "";
         failSuspendedSearch = false;
+        rejectFsrsProjection = false;
+        dataOnlyFsrs = false;
+        unparseableFsrsData = false;
         rejectSchedulerProjection = false;
         deferSchedulerProjectionFailure = false;
     }
@@ -63,8 +71,27 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             result.putInt("value", schedulerProjectionRejects);
             return result;
         }
+        if ("fsrsProjectionRejects".equals(method)) {
+            result.putInt("value", fsrsProjectionRejects);
+            return result;
+        }
         if ("failSuspendedSearch".equals(method)) {
             failSuspendedSearch = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("rejectFsrsProjection".equals(method)) {
+            rejectFsrsProjection = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("unparseableFsrsData".equals(method)) {
+            unparseableFsrsData = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("dataOnlyFsrs".equals(method)) {
+            dataOnlyFsrs = true;
             result.putBoolean("ok", true);
             return result;
         }
@@ -95,6 +122,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             return notes(selection);
         }
         if (path.matches("/notes/\\d+/cards")) {
+            rejectFsrsProjection(projection);
             Cursor rejected = rejectedSchedulerProjectionCursor(uri, projection);
             if (rejected != null) {
                 return rejected;
@@ -104,9 +132,9 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             String[] columns = projection == null ? new String[]{"_id", "note_id", "ord", "deck_id", "card_name"} : projection;
             MatrixCursor cursor = new MatrixCursor(columns);
             if (noteId == 1L) {
-                addCardRow(cursor, columns, 10L, 1L, 0, "Kiku", "Mining", 2, 2, 12, 42, 80, 3);
+                addCardRow(cursor, columns, 10L, 1L, 0, "Kiku", "Mining", 2, 2, 12, 42, 80, 3, 12.5, 7.0, 0.42);
             } else if (noteId == 2L) {
-                addCardRow(cursor, columns, 20L, 2L, 0, "Kiku", "Mining", -1, 2, 0, 10, 5, 1);
+                addCardRow(cursor, columns, 20L, 2L, 0, "Kiku", "Mining", -1, 2, 0, 10, 5, 1, null, null, null);
             }
             return cursor;
         }
@@ -125,6 +153,24 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             if ("_id".equals(column)) {
                 explicitIdProjectionQueries++;
                 throw new IllegalArgumentException("_id is unknown");
+            }
+        }
+    }
+
+    private void rejectFsrsProjection(String[] projection) {
+        if (!rejectFsrsProjection || projection == null) {
+            return;
+        }
+        for (String column : projection) {
+            if ("fsrs_stability".equals(column)
+                    || "fsrs_difficulty".equals(column)
+                    || "fsrs_retrievability".equals(column)
+                    || "stability".equals(column)
+                    || "difficulty".equals(column)
+                    || "retrievability".equals(column)
+                    || "data".equals(column)) {
+                fsrsProjectionRejects++;
+                throw new IllegalArgumentException(column + " is not part of this fake provider");
             }
         }
     }
@@ -177,7 +223,10 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             int due,
             int interval,
             int reps,
-            int lapses
+            int lapses,
+            Double fsrsStability,
+            Double fsrsDifficulty,
+            Double fsrsRetrievability
     ) {
         Object[] row = new Object[columns.length];
         for (int i = 0; i < columns.length; i++) {
@@ -203,6 +252,14 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
                 row[i] = reps;
             } else if ("lapses".equals(columns[i])) {
                 row[i] = lapses;
+            } else if ("fsrs_stability".equals(columns[i]) || "stability".equals(columns[i])) {
+                row[i] = unparseableFsrsData || dataOnlyFsrs ? null : fsrsStability;
+            } else if ("fsrs_difficulty".equals(columns[i]) || "difficulty".equals(columns[i])) {
+                row[i] = unparseableFsrsData || dataOnlyFsrs ? null : fsrsDifficulty;
+            } else if ("fsrs_retrievability".equals(columns[i]) || "retrievability".equals(columns[i])) {
+                row[i] = unparseableFsrsData || dataOnlyFsrs ? null : fsrsRetrievability;
+            } else if ("data".equals(columns[i])) {
+                row[i] = unparseableFsrsData ? "{memory:'later'}" : "stability=12.5,difficulty=7.0,retrievability=0.42";
             } else {
                 row[i] = null;
             }

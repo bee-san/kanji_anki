@@ -52,7 +52,7 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.Note active = note(1L, "確認", "かくにん", "confirmation", "確認した。");
         Records.Note suspended = note(2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
-        Records.Card activeCard = new Records.Card(10L, 1L, 0, "例文マイニング", 2, 2, 0, 45, 12, 1, false);
+        Records.Card activeCard = new Records.Card(10L, 1L, 0, "例文マイニング", 2, 2, 0, 45, 12, 1, false, 18.5, 7.0, 0.48);
         Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "例文マイニング", -1, 0, 0, 0, 0, 0, true);
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(active, suspended),
@@ -60,7 +60,7 @@ public final class LocalStoreInstrumentedTest {
         );
         Records.SuspendedSource source = new Records.SuspendedSource("拉", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
         Records.SuspendedImport imported = new Records.SuspendedImport("拉", 3401, true, 3000, Collections.singletonList(source));
-        Records.Example example = new Records.Example("suspended", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。", false, 0);
+        Records.Example example = new Records.Example("suspended", 20L, 2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。", false, 0, 10, 5, 18.5, 7.0, 0.48);
         Records.DashboardRow row = new Records.DashboardRow(
                 "拉",
                 3401,
@@ -101,7 +101,9 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("suspended_sources"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("kanji_examples"));
+        assertSourceCardFsrs(18.5, 7.0, 0.48);
         assertEquals("拉", store.dashboardRows().get(0).kanji);
+        assertEquals(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability, 0.001);
         assertTrue(store.hasSuccessfulSyncSince(1500L));
         assertFalse(store.hasSuccessfulSyncSince(2500L));
         List<Records.SuspendedImport> storedImports = store.suspendedImports();
@@ -165,7 +167,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionTwoMigrationPreservesV1DataAndBackfillsTimeline() {
+    public void testVersionThreeMigrationPreservesV1DataBackfillsTimelineAndAddsFsrsColumns() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -227,6 +229,10 @@ public final class LocalStoreInstrumentedTest {
         store = new LocalStore(context);
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("review_log"));
+        assertTrue(hasColumn("source_cards", "fsrs_stability"));
+        assertTrue(hasColumn("source_cards", "fsrs_difficulty"));
+        assertTrue(hasColumn("source_cards", "fsrs_retrievability"));
+        assertTrue(hasColumn("kanji_examples", "fsrs_stability"));
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
@@ -450,6 +456,34 @@ public final class LocalStoreInstrumentedTest {
         try {
             assertTrue(cursor.moveToFirst());
             return cursor.getInt(0);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private void assertSourceCardFsrs(double stability, double difficulty, double retrievability) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM source_cards WHERE card_id=10", null);
+        try {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(stability, cursor.getDouble(0), 0.001);
+            assertEquals(difficulty, cursor.getDouble(1), 0.001);
+            assertEquals(retrievability, cursor.getDouble(2), 0.001);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private boolean hasColumn(String table, String column) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null);
+        try {
+            while (cursor.moveToNext()) {
+                if (column.equals(cursor.getString(cursor.getColumnIndexOrThrow("name")))) {
+                    return true;
+                }
+            }
+            return false;
         } finally {
             cursor.close();
         }
