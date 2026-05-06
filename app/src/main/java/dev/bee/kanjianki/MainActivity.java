@@ -21,6 +21,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -43,6 +44,7 @@ import dev.bee.kanjianki.core.study.HintPolicy;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
+import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideParser;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
@@ -104,6 +106,7 @@ public final class MainActivity extends Activity {
     private Button manualOverrideButton;
     private Button nextAfterPassButton;
     private Button practiceWithGuideButton;
+    private Button replayButton;
     private Button hintButton;
     private View studyAnswerPanel;
     private WritingAnalysis activeAnalysis;
@@ -1197,6 +1200,10 @@ public final class MainActivity extends Activity {
 
         LinearLayout fallbackActions = new LinearLayout(this);
         fallbackActions.setOrientation(LinearLayout.HORIZONTAL);
+        replayButton = secondaryButton("Replay");
+        replayButton.setOnClickListener(v -> replayWritingAnalysis());
+        fallbackActions.addView(replayButton, new LinearLayout.LayoutParams(0, dp(56), 1));
+
         manualOverrideButton = secondaryButton("Mark right anyway");
         manualOverrideButton.setOnClickListener(v -> submitReview("good", true));
         fallbackActions.addView(manualOverrideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
@@ -1388,13 +1395,23 @@ public final class MainActivity extends Activity {
     }
 
     private void showAnalysis(WritingAnalysis analysis) {
+        StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
         if (drawingPad != null && activeSession != null) {
-            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentPracticeLevel, true);
+            drawingPad.setGuide(guide, currentPracticeLevel, true);
+            if (canReplayAnalysis(analysis, guide)) {
+                drawingPad.startReplay();
+            } else {
+                drawingPad.stopReplay();
+            }
         }
         int color = analysis.writingPassed ? TEAL : CORAL;
         String candidates = candidateText(analysis.candidates);
         String message = analysis.message + targetRevealText(analysis) + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates);
-        setStudyStatus(guideLabel(currentPracticeLevel, strokeGuide(activeSession.item.kanji)), MUTED);
+        String diagnosis = diagnosisText(analysis);
+        if (!diagnosis.isEmpty()) {
+            message += "\n" + diagnosis;
+        }
+        setStudyStatus(guideLabel(currentPracticeLevel, guide), MUTED);
         setResultStatus(message, color);
         updateResultActions();
     }
@@ -1422,6 +1439,10 @@ public final class MainActivity extends Activity {
         }
         if (practiceWithGuideButton != null) {
             practiceWithGuideButton.setVisibility(hasResult && !passed && canPracticeAfterAnalysis(activeAnalysis) ? View.VISIBLE : View.GONE);
+        }
+        if (replayButton != null) {
+            StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
+            replayButton.setVisibility(hasResult && canReplayAnalysis(activeAnalysis, guide) ? View.VISIBLE : View.GONE);
         }
         if (hintButton != null) {
             hintButton.setVisibility(!passed && currentPracticeLevel > 0 ? View.VISIBLE : View.GONE);
@@ -1463,6 +1484,87 @@ public final class MainActivity extends Activity {
                 || "guided_writing".equals(session.taskType)
                 || "repair_writing".equals(session.taskType)
                 || ("targeted_writing".equals(session.taskType) && session.item.learningStep < 2);
+    }
+
+    private void replayWritingAnalysis() {
+        if (drawingPad == null || activeSession == null) {
+            return;
+        }
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        if (canReplayAnalysis(activeAnalysis, guide)) {
+            drawingPad.setGuide(guide, currentPracticeLevel, true);
+            drawingPad.startReplay();
+        }
+    }
+
+    private boolean canReplayAnalysis(WritingAnalysis analysis, StrokeGuide guide) {
+        if (analysis == null
+                || drawingPad == null
+                || !drawingPad.hasInk()
+                || guide == null
+                || guide.isEmpty()
+                || analysis.strokeOrder == null
+                || analysis.strokeOrder.missingGuide) {
+            return false;
+        }
+        switch (analysis.status) {
+            case NO_INK:
+            case MODEL_UNAVAILABLE:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private String diagnosisText(WritingAnalysis analysis) {
+        if (!canShowDiagnosis(analysis)) {
+            return "";
+        }
+        List<String> lines = new ArrayList<>();
+        for (StrokeDiagnosis.Entry entry : analysis.strokeOrder.diagnosis.entries) {
+            String line = diagnosisLine(entry);
+            if (!line.isEmpty()) {
+                lines.add(line);
+            }
+        }
+        return String.join("\n", lines);
+    }
+
+    private boolean canShowDiagnosis(WritingAnalysis analysis) {
+        if (analysis == null
+                || analysis.strokeOrder == null
+                || analysis.strokeOrder.missingGuide
+                || analysis.strokeOrder.diagnosis.isEmpty()) {
+            return false;
+        }
+        switch (analysis.status) {
+            case NO_INK:
+            case MODEL_UNAVAILABLE:
+            case NO_STROKE_DATA:
+            case RECOGNITION_ERROR:
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    private String diagnosisLine(StrokeDiagnosis.Entry entry) {
+        switch (entry.label) {
+            case WRONG_ORDER:
+                return "Stroke " + entry.strokeNumber + ": likely wrong order";
+            case WRONG_DIRECTION:
+                return "Stroke " + entry.strokeNumber + ": likely wrong direction";
+            case MISSING_STROKE:
+                return "Stroke " + entry.strokeNumber + ": may be missing";
+            case ROUGH_SHAPE:
+                return "Stroke " + entry.strokeNumber + ": shape looks rough";
+            case RECOGNIZED_BUT_MESSY:
+                return "Recognized, but the stroke path was messy";
+            default:
+                return "";
+        }
     }
 
     private boolean isRecallTask(Records.StudySession session) {
@@ -2316,6 +2418,7 @@ public final class MainActivity extends Activity {
         private final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint markerText = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint replayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final List<Path> paths = new ArrayList<>();
         private final List<List<CapturedStroke.Point>> committedStrokes = new ArrayList<>();
         private final List<CapturedStroke.Point> currentPoints = new ArrayList<>();
@@ -2323,8 +2426,11 @@ public final class MainActivity extends Activity {
         private StrokeGuide guide;
         private int guideLevel = 3;
         private boolean revealGuide;
+        private boolean replayOverlayVisible;
+        private long replayStartedAtMillis;
         private String target = "";
         private int activePointerId = -1;
+        private static final long REPLAY_DURATION_MILLIS = 950L;
 
         public DrawingPadView(Context context) {
             super(context);
@@ -2346,6 +2452,11 @@ public final class MainActivity extends Activity {
             outlinePaint.setStrokeWidth(5f);
             outlinePaint.setTextAlign(Paint.Align.CENTER);
             outlinePaint.setTypeface(Typeface.create(Typeface.SERIF, Typeface.BOLD));
+            replayPaint.setColor(BLUE);
+            replayPaint.setStrokeWidth(13f);
+            replayPaint.setStyle(Paint.Style.STROKE);
+            replayPaint.setStrokeCap(Paint.Cap.ROUND);
+            replayPaint.setStrokeJoin(Paint.Join.ROUND);
         }
 
         public boolean hasInk() {
@@ -2358,6 +2469,7 @@ public final class MainActivity extends Activity {
             currentPoints.clear();
             current = null;
             activePointerId = -1;
+            stopReplay();
             invalidate();
         }
 
@@ -2369,7 +2481,30 @@ public final class MainActivity extends Activity {
             this.guide = guide;
             this.guideLevel = Math.max(0, Math.min(3, level));
             this.revealGuide = revealGuide;
+            if (!revealGuide || guide == null || guide.isEmpty()) {
+                replayOverlayVisible = false;
+                replayStartedAtMillis = 0L;
+            }
             invalidate();
+        }
+
+        public void startReplay() {
+            if (!hasInk()) {
+                return;
+            }
+            replayOverlayVisible = true;
+            replayStartedAtMillis = SystemClock.uptimeMillis();
+            postInvalidateOnAnimation();
+        }
+
+        public void stopReplay() {
+            replayOverlayVisible = false;
+            replayStartedAtMillis = 0L;
+            invalidate();
+        }
+
+        public boolean isReplayOverlayVisibleForTests() {
+            return replayOverlayVisible;
         }
 
         public CapturedWriting capturedWriting() {
@@ -2401,8 +2536,16 @@ public final class MainActivity extends Activity {
             canvas.drawLine(0, h / 2f, w, h / 2f, grid);
             canvas.drawLine(0, h * 0.72f, w, h * 0.72f, grid);
             drawGuide(canvas, w, h);
-            for (Path path : paths) {
-                canvas.drawPath(path, paint);
+            if (replayOverlayVisible) {
+                float progress = replayProgress();
+                drawReplayStrokes(canvas, progress);
+                if (progress < 1f) {
+                    postInvalidateOnAnimation();
+                }
+            } else {
+                for (Path path : paths) {
+                    canvas.drawPath(path, paint);
+                }
             }
             if (current != null) {
                 canvas.drawPath(current, paint);
@@ -2414,6 +2557,7 @@ public final class MainActivity extends Activity {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     performClick();
+                    stopReplay();
                     requestParentIntercept(false);
                     activePointerId = event.getPointerId(0);
                     current = new Path();
@@ -2528,6 +2672,65 @@ public final class MainActivity extends Activity {
                 outlinePaint.getTextPath(target, 0, target.length(), width / 2f - bounds.exactCenterX(), height * 0.68f, outline);
                 canvas.drawPath(outline, outlinePaint);
             }
+        }
+
+        private float replayProgress() {
+            if (!replayOverlayVisible || replayStartedAtMillis <= 0L) {
+                return 1f;
+            }
+            long elapsed = Math.max(0L, SystemClock.uptimeMillis() - replayStartedAtMillis);
+            if (elapsed >= REPLAY_DURATION_MILLIS) {
+                return 1f;
+            }
+            return Math.max(0f, Math.min(1f, elapsed / (float) REPLAY_DURATION_MILLIS));
+        }
+
+        private void drawReplayStrokes(Canvas canvas, float progress) {
+            if (committedStrokes.isEmpty()) {
+                return;
+            }
+            float position = Math.max(0f, Math.min(1f, progress)) * committedStrokes.size();
+            int fullStrokeCount = Math.min(committedStrokes.size(), (int) Math.floor(position));
+            for (int i = 0; i < committedStrokes.size(); i++) {
+                float strokeProgress;
+                if (i < fullStrokeCount) {
+                    strokeProgress = 1f;
+                } else if (i == fullStrokeCount) {
+                    strokeProgress = position - fullStrokeCount;
+                } else {
+                    break;
+                }
+                drawReplayStroke(canvas, committedStrokes.get(i), strokeProgress);
+            }
+        }
+
+        private void drawReplayStroke(Canvas canvas, List<CapturedStroke.Point> points, float progress) {
+            if (points.isEmpty()) {
+                return;
+            }
+            CapturedStroke.Point first = points.get(0);
+            if (points.size() == 1 || progress <= 0.001f) {
+                canvas.drawCircle(first.x, first.y, replayPaint.getStrokeWidth() / 2f, replayPaint);
+                return;
+            }
+            float segmentPosition = Math.max(0f, Math.min(1f, progress)) * (points.size() - 1);
+            int lastWholeSegment = Math.min(points.size() - 1, (int) Math.floor(segmentPosition));
+            Path path = new Path();
+            path.moveTo(first.x, first.y);
+            for (int i = 1; i <= lastWholeSegment; i++) {
+                CapturedStroke.Point point = points.get(i);
+                path.lineTo(point.x, point.y);
+            }
+            if (lastWholeSegment < points.size() - 1) {
+                CapturedStroke.Point from = points.get(lastWholeSegment);
+                CapturedStroke.Point to = points.get(lastWholeSegment + 1);
+                float localProgress = segmentPosition - lastWholeSegment;
+                path.lineTo(
+                        from.x + ((to.x - from.x) * localProgress),
+                        from.y + ((to.y - from.y) * localProgress)
+                );
+            }
+            canvas.drawPath(path, replayPaint);
         }
 
         private void drawStartMarker(Canvas canvas, float x, float y, int number, boolean active) {
