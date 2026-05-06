@@ -13,6 +13,7 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
+import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -162,10 +163,18 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Rarity cutoff");
                 assertHasText(activity, "Default: 3000");
+                assertHasText(activity, "Daily workload");
+                assertHasText(activity, "Pareto: up to 5 kanji");
                 assertHasText(activity, "Daily reminder");
                 assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
             });
+            scenario.onActivity(activity -> {
+                SeekBar slider = findType(activity.findViewById(android.R.id.content), SeekBar.class);
+                assertNotNull(slider);
+                slider.setProgress(70);
+            });
+            clickText(scenario, "Save workload");
             clickText(scenario, "4000");
             clickText(scenario, "Save cutoff");
             clickText(scenario, "Morning 08:00");
@@ -175,6 +184,7 @@ public final class MainActivityInstrumentedTest {
 
             LocalStore store = new LocalStore(context);
             try {
+                assertEquals(70, store.adaptiveLoadWorkPercent());
                 assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 3000));
                 LocalStore.ReminderSettings reminder = store.reminderSettings();
                 assertTrue(reminder.enabled);
@@ -288,7 +298,8 @@ public final class MainActivityInstrumentedTest {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Your active kanji queue");
+                assertHasText(activity, "Today's Pareto focus");
+                assertHasText(activity, "Adaptive focus queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");
             });
@@ -374,6 +385,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Study");
             clickText(scenario, "Reveal");
             clickText(scenario, "I knew it");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Today's focus done");
+                assertHasText(activity, "Continue all kanji");
+            });
             clickText(scenario, "Home");
             clickText(scenario, "拉");
             scenario.onActivity(activity -> {
@@ -402,7 +417,7 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Your active kanji queue");
+                assertHasText(activity, "Adaptive focus queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");
                 assertNoText(activity, "mystery unused");
@@ -1007,6 +1022,11 @@ public final class MainActivityInstrumentedTest {
             LocalStore.SyncStatus status = waitForLatestSync();
             assertNotNull(status);
             assertEquals("success", status.status);
+            waitForText(scenario, "Sync complete");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Today's adaptive focus");
+                assertNoText(activity, "new per day");
+            });
 
             LocalStore store = new LocalStore(context);
             try {

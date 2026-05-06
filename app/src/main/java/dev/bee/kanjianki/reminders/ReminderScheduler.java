@@ -15,6 +15,7 @@ import android.os.Build;
 
 import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
@@ -160,10 +161,28 @@ public final class ReminderScheduler {
             if (rows.isEmpty()) {
                 return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
             }
-            int due = currentDueCount(rows, store.studyItems(), System.currentTimeMillis());
+            long now = System.currentTimeMillis();
+            List<Records.StudyItem> items = store.studyItems();
+            Records.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
+                    rows,
+                    items,
+                    store.reviewStatsSince(now - 7 * 86_400_000L),
+                    store.studyStreak(now).currentDays,
+                    store.studiedKanjiSince(now - (now % 86_400_000L)),
+                    store.adaptiveLoadWorkPercent(),
+                    now,
+                    Records.Settings.kikuDefaults()
+            );
+            if (plan.remaining > 0) {
+                return new ReminderCopy(
+                        "Kani focus is ready",
+                        String.format(Locale.ROOT, "%d focus kanji %s left today. Draw one now.", plan.remaining, plan.remaining == 1 ? "is" : "are")
+                );
+            }
+            int due = currentDueCount(rows, items, now);
             if (due > 0) {
                 return new ReminderCopy(
-                        "Kani study is due",
+                        "Kani recovery is due",
                         String.format(Locale.ROOT, "%d problem kanji %s ready. Draw one now.", due, due == 1 ? "is" : "are")
                 );
             }

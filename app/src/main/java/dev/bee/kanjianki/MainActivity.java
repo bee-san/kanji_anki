@@ -33,6 +33,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -315,10 +316,16 @@ public final class MainActivity extends Activity {
         addSpace(18);
 
         long now = System.currentTimeMillis();
+        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.StudyItem> homeItems = studyQueue(rows, now, false);
+        Records.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
         content.addView(streakPanel(store.studyStreak(now)));
         addSpace(10);
+        if (homePlan != null) {
+            content.addView(adaptiveFocusPanel(homePlan));
+            addSpace(10);
+        }
 
-        List<Records.DashboardRow> rows = store.dashboardRows();
         if (rows.isEmpty()) {
             Button syncButton = primaryButton("Sync AnkiDroid", TEAL);
             syncButton.setOnClickListener(v -> confirmSync());
@@ -337,10 +344,10 @@ public final class MainActivity extends Activity {
         if (rows.isEmpty()) {
             emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need focused recall and writing practice.");
         } else {
-            List<QueueEntry> entries = queuedEntries(rows, studyQueue(rows, now, false), now);
-            content.addView(sectionTitle("Your active kanji queue"));
+            List<QueueEntry> entries = queuedEntries(rows, homeItems, now, homePlan);
+            content.addView(sectionTitle("Adaptive focus queue"));
             if (entries.isEmpty()) {
-                emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji within your daily cap.");
+                emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.");
             }
             for (int i = 0; i < Math.min(5, entries.size()); i++) {
                 content.addView(queueRowView(entries.get(i), now));
@@ -353,6 +360,17 @@ public final class MainActivity extends Activity {
         box.addView(text("Study streak", 22, INK, true));
         box.addView(text(streakHeadline(streak), 25, streak.currentDays > 0 ? CORAL : MUTED, true));
         box.addView(text(streakBody(streak), 15, MUTED, false));
+        return box;
+    }
+
+    private LinearLayout adaptiveFocusPanel(Records.AdaptiveLoadPlan plan) {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        box.addView(text("Today's Pareto focus", 22, INK, true));
+        String headline = plan.allKanjiMode
+                ? "All current problem kanji"
+                : plan.remaining + " left / " + plan.target;
+        box.addView(text(headline, 25, plan.remaining > 0 ? CORAL : TEAL, true));
+        box.addView(text(plan.status, 15, MUTED, false));
         return box;
     }
 
@@ -421,9 +439,14 @@ public final class MainActivity extends Activity {
             LinearLayout summary = band(TEAL);
             long now = System.currentTimeMillis();
             List<Records.DashboardRow> rows = store.dashboardRows();
-            List<QueueEntry> entries = queuedEntries(rows, store.studyItems(), now);
+            List<Records.StudyItem> items = store.studyItems();
+            Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
+            List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
             summary.addView(text(countText(entries.size(), "kanji ready to study", "kanji ready to study"), 24, Color.WHITE, true));
-            summary.addView(text(countText(result.dashboardRows, "candidate found from Kiku", "candidates found from Kiku") + ". " + queueCapText() + ".", 16, Color.WHITE, false));
+            summary.addView(text(countText(result.dashboardRows, "candidate found from Kiku", "candidates found from Kiku") + ". " + adaptiveFocusText(plan) + ".", 16, Color.WHITE, false));
+            if (!result.adaptiveSummary.isEmpty()) {
+                summary.addView(text(result.adaptiveSummary, 15, Color.WHITE, false));
+            }
             if (result.importedSuspendedKanji > 0) {
                 summary.addView(text(countText(result.importedSuspendedKanji, "new archived suspended kanji added", "new archived suspended kanji added"), 15, Color.WHITE, false));
             }
@@ -433,8 +456,8 @@ public final class MainActivity extends Activity {
             content.addView(summary);
             if (result.dashboardRows > 0) {
                 Button study = primaryButton("Study now", CORAL);
-            study.setOnClickListener(v -> startFocusedStudy());
-            content.addView(study);
+                study.setOnClickListener(v -> startFocusedStudy());
+                content.addView(study);
             }
             Button home = secondaryButton("Back home");
             home.setOnClickListener(v -> renderHome());
@@ -463,7 +486,8 @@ public final class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         List<Records.DashboardRow> rows = store.dashboardRows();
         List<Records.StudyItem> items = store.studyItems();
-        List<QueueEntry> entries = queuedEntries(rows, items, now);
+        Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
+        List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
         LocalStore.SyncStatus sync = store.latestSync();
         LocalStore.StudyImpactStats impact = store.studyImpactStats();
         Records.ReviewStats week = store.reviewStatsSince(now - 7 * DAY_MILLIS);
@@ -494,13 +518,12 @@ public final class MainActivity extends Activity {
 
         content.addView(sectionTitle("Anki Bridge"));
         int due = dueEntryCount(entries, now);
-        int waiting = Math.max(0, rows.size() - entries.size());
         int matureSupport = matureSupportCount(rows);
         int retired = retiredItemCount(items);
         content.addView(statPanel(
                 "Now practicing",
                 countText(entries.size(), "active kanji", "active kanji"),
-                countText(due, "due now", "due now") + ". " + countText(waiting, "candidate waiting behind the cap", "candidates waiting behind the cap") + ".",
+                countText(due, "due now", "due now") + ". " + adaptiveFocusText(plan) + ".",
                 TEAL
         ));
         content.addView(statPanel(
@@ -641,9 +664,19 @@ public final class MainActivity extends Activity {
     }
 
     private List<QueueEntry> queuedEntries(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        return queuedEntries(rows, items, now, null);
+    }
+
+    private List<QueueEntry> queuedEntries(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now, Records.AdaptiveLoadPlan plan) {
         Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
         for (Records.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
+        }
+        Map<String, Integer> focusOrder = new HashMap<>();
+        if (plan != null) {
+            for (int i = 0; i < plan.focusKanji.size(); i++) {
+                focusOrder.put(plan.focusKanji.get(i), i);
+            }
         }
         List<QueueEntry> entries = new ArrayList<>();
         for (Records.StudyItem item : items) {
@@ -656,7 +689,8 @@ public final class MainActivity extends Activity {
             }
         }
         entries.sort(Comparator
-                .comparingInt((QueueEntry entry) -> entry.item.dueAtMillis <= now ? 0 : 1)
+                .comparingInt((QueueEntry entry) -> focusOrder.getOrDefault(entry.row.kanji, Integer.MAX_VALUE))
+                .thenComparingInt((QueueEntry entry) -> entry.item.dueAtMillis <= now ? 0 : 1)
                 .thenComparingInt(entry -> stateRank(entry.item.state))
                 .thenComparingLong(entry -> entry.item.dueAtMillis)
                 .thenComparingInt(entry -> -entry.row.weaknessScore)
@@ -2120,6 +2154,7 @@ public final class MainActivity extends Activity {
         box.addView(save);
         content.addView(box);
 
+        content.addView(workloadSettingsPanel());
         content.addView(reminderSettingsPanel());
         content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
@@ -2133,6 +2168,55 @@ public final class MainActivity extends Activity {
         attribution.addView(text("Stroke data", 22, INK, true));
         attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
         content.addView(attribution);
+    }
+
+    private LinearLayout workloadSettingsPanel() {
+        int current = store.adaptiveLoadWorkPercent();
+        final int[] selected = new int[]{current};
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        box.addView(text("Daily workload", 23, INK, true));
+        TextView status = text(workloadStatusText(selected[0]), 17, TEAL, true);
+        box.addView(status);
+        box.addView(text("Kani picks a small focus set from your real problem kanji. This changes how much it admits today, not Anki's schedule.", 15, MUTED, false));
+
+        SeekBar slider = new SeekBar(this);
+        slider.setMax(100);
+        slider.setProgress(current);
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                selected[0] = AdaptiveLoadPlanner.snapWorkloadPercent(progress);
+                status.setText(workloadStatusText(selected[0]));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                seekBar.setProgress(selected[0]);
+            }
+        });
+        box.addView(slider, new LinearLayout.LayoutParams(-1, dp(56)));
+
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.HORIZONTAL);
+        for (String label : new String[]{"Very little", "Pareto", "Balanced", "More", "All kanji"}) {
+            TextView item = text(label, 11, MUTED, false);
+            item.setGravity(Gravity.CENTER);
+            labels.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
+        }
+        box.addView(labels);
+
+        Button save = primaryButton("Save workload", TEAL);
+        save.setOnClickListener(v -> {
+            store.saveAdaptiveLoadWorkPercent(selected[0]);
+            Toast.makeText(this, "Workload saved. Study uses the new adaptive focus.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
     }
 
     private LinearLayout reminderSettingsPanel() {
@@ -2258,6 +2342,15 @@ public final class MainActivity extends Activity {
     private String shortDateTime(long millis) {
         Date date = new Date(millis);
         return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(date);
+    }
+
+    private String workloadStatusText(int percent) {
+        int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
+        String label = AdaptiveLoadPlanner.workloadLabel(snapped);
+        if (snapped >= 100) {
+            return label + ": all current problem kanji";
+        }
+        return label + ": up to " + AdaptiveLoadPlanner.targetCeiling(snapped) + " kanji";
     }
 
     private LinearLayout updateSettingsPanel() {
@@ -2563,9 +2656,14 @@ public final class MainActivity extends Activity {
         return "Study";
     }
 
-    private String queueCapText() {
-        Records.Settings settings = settings();
-        return "Kani admits " + settings.newPerDay + " new per day and keeps " + settings.activeQueueCap + " active";
+    private String adaptiveFocusText(Records.AdaptiveLoadPlan plan) {
+        if (plan == null || plan.target <= 0) {
+            return "Adaptive focus is waiting for sync";
+        }
+        if (plan.allKanjiMode) {
+            return "Adaptive focus is set to all current problem kanji";
+        }
+        return "Today's adaptive focus: " + plan.remaining + " left / " + plan.target;
     }
 
     private String guideLabel(int level, StrokeGuide guide) {
