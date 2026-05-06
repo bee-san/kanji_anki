@@ -10,7 +10,7 @@ public final class KaniApplication extends Application implements Configuration.
     @Override
     public Configuration getWorkManagerConfiguration() {
         return new Configuration.Builder()
-                .setJobSchedulerJobIdRange(10_000, 10_999)
+                .setJobSchedulerJobIdRange(10_000, 11_000)
                 .build();
     }
 }
