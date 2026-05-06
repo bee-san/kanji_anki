@@ -84,6 +84,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class MainActivity extends Activity {
     public static final String EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE";
@@ -1254,7 +1255,7 @@ public final class MainActivity extends Activity {
         LinearLayout box = panelBox(Color.WHITE, TEAL);
         box.addView(text("Front", 19, INK, true));
         if (isFontRecognitionTask(session)) {
-            box.addView(fontVariantRow(session.item.kanji));
+            box.addView(randomFontVariantCard(session.item.kanji), fontVariantCardParams());
             box.addView(text("What does it mean in your Anki deck?", 15, MUTED, false));
             return box;
         }
@@ -1271,35 +1272,24 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private View fontVariantRow(String kanji) {
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        grid.setGravity(Gravity.CENTER);
-
-        LinearLayout firstRow = fontVariantLine();
-        firstRow.addView(fontVariantTile(kanji, "Print", Typeface.SERIF), fontVariantTileParams());
-        firstRow.addView(fontVariantTile(kanji, "Sans", Typeface.DEFAULT), fontVariantTileParams());
-        firstRow.addView(fontVariantTile(kanji, "Block", Typeface.MONOSPACE), fontVariantTileParams());
-        grid.addView(firstRow, new LinearLayout.LayoutParams(-1, dp(112)));
-
-        LinearLayout secondRow = fontVariantLine();
-        secondRow.addView(fontVariantTile(kanji, "Klee", fontResource(R.font.klee_one_regular, Typeface.DEFAULT)), fontVariantTileParams());
-        secondRow.addView(fontVariantTile(kanji, "Kaisei", fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF)), fontVariantTileParams());
-        grid.addView(secondRow, new LinearLayout.LayoutParams(-1, dp(112)));
-
-        return grid;
+    private View randomFontVariantCard(String kanji) {
+        switch (ThreadLocalRandom.current().nextInt(5)) {
+            case 0:
+                return fontVariantTile(kanji, "Print", Typeface.SERIF);
+            case 1:
+                return fontVariantTile(kanji, "Sans", Typeface.DEFAULT);
+            case 2:
+                return fontVariantTile(kanji, "Block", Typeface.MONOSPACE);
+            case 3:
+                return fontVariantTile(kanji, "Klee", fontResource(R.font.klee_one_regular, Typeface.DEFAULT));
+            default:
+                return fontVariantTile(kanji, "Kaisei", fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF));
+        }
     }
 
-    private LinearLayout fontVariantLine() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-        return row;
-    }
-
-    private LinearLayout.LayoutParams fontVariantTileParams() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(104), 1);
-        lp.setMargins(dp(3), dp(4), dp(3), dp(4));
+    private LinearLayout.LayoutParams fontVariantCardParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(168));
+        lp.setMargins(0, dp(6), 0, dp(6));
         return lp;
     }
 
@@ -1307,9 +1297,9 @@ public final class MainActivity extends Activity {
         LinearLayout tile = new LinearLayout(this);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER);
-        tile.setPadding(dp(4), dp(6), dp(4), dp(6));
+        tile.setPadding(dp(8), dp(10), dp(8), dp(10));
         tile.setBackground(panel(Color.rgb(255, 247, 251), Color.rgb(246, 202, 225), dp(8)));
-        TextView glyph = text(kanji, 50, INK, true);
+        TextView glyph = text(kanji, 92, INK, true);
         glyph.setTypeface(typeface, Typeface.BOLD);
         glyph.setGravity(Gravity.CENTER);
         tile.addView(glyph, new LinearLayout.LayoutParams(-1, 0, 1));

@@ -1,6 +1,7 @@
 # Embedded Fonts
 
-Kani bundles these Japanese font variants for `font_meaning` study cards:
+Kani randomizes one font variant each time a `font_meaning` study card is
+shown. The bundled Japanese variants are:
 
 - Klee One Regular from Google Fonts.
 - Kaisei Tokumin Regular from Google Fonts.
