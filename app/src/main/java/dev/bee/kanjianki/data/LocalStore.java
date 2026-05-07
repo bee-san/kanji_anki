@@ -24,8 +24,9 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 7;
+    private static final int DB_VERSION = 8;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
+    private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -53,9 +54,11 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
         db.execSQL(STUDY_ITEMS_TABLE_SQL);
+        db.execSQL(LEARNING_REPEATS_TABLE_SQL);
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
+        db.execSQL("CREATE INDEX idx_learning_repeats_due ON learning_repeats(due_at)");
         createTimelineTables(db);
     }
 
@@ -95,6 +98,10 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
         if (oldVersion < 7) {
             rebuildStudyItemsWithAnswerSignatureKey(db);
+        }
+        if (oldVersion < 8) {
+            db.execSQL(LEARNING_REPEATS_TABLE_SQL);
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_learning_repeats_due ON learning_repeats(due_at)");
         }
     }
 
@@ -719,6 +726,98 @@ public final class LocalStore extends SQLiteOpenHelper {
         } finally {
             db.endTransaction();
         }
+    }
+
+    public Records.LearningStepSettings learningStepSettings() {
+        Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
+        List<Integer> newSteps = Records.LearningStepSettings.parseSteps(
+                getStringSetting("new_learning_steps_minutes", defaults.newStepsText()),
+                defaults.newStepsMinutes
+        );
+        List<Integer> reviewSteps = Records.LearningStepSettings.parseSteps(
+                getStringSetting("review_relearning_steps_minutes", defaults.reviewStepsText()),
+                defaults.reviewStepsMinutes
+        );
+        return new Records.LearningStepSettings(newSteps, reviewSteps);
+    }
+
+    public void saveLearningStepSettings(Records.LearningStepSettings settings) {
+        Records.LearningStepSettings normalized = settings == null ? Records.LearningStepSettings.defaults() : settings;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putStringSetting("new_learning_steps_minutes", normalized.newStepsText());
+            putStringSetting("review_relearning_steps_minutes", normalized.reviewStepsText());
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public void saveLearningRepeat(Records.LearningRepeat repeat) {
+        if (repeat == null || repeat.kanji.isEmpty() || repeat.taskType.isEmpty()) {
+            return;
+        }
+        ContentValues values = new ContentValues();
+        values.put("kanji", repeat.kanji);
+        values.put("answer_signature", repeat.answerSignature);
+        values.put("task_type", repeat.taskType);
+        values.put("repeat_type", repeat.repeatType);
+        values.put("step_index", repeat.stepIndex);
+        values.put("due_at", repeat.dueAtMillis);
+        values.put("active_token", repeat.activeToken);
+        values.put("created_at", repeat.createdAtMillis);
+        values.put("updated_at", repeat.updatedAtMillis);
+        getWritableDatabase().insertWithOnConflict("learning_repeats", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public void enqueueLearningRepeat(Records.StudyItem item, String taskType, String repeatType, int stepIndex, long dueAtMillis, long nowMillis) {
+        if (item == null || taskType == null || taskType.isEmpty()) {
+            return;
+        }
+        saveLearningRepeat(new Records.LearningRepeat(
+                item.kanji,
+                item.answerSignature,
+                taskType,
+                repeatType,
+                stepIndex,
+                dueAtMillis,
+                "",
+                nowMillis,
+                nowMillis
+        ));
+    }
+
+    public void clearLearningRepeat(Records.LearningRepeat repeat) {
+        if (repeat == null) {
+            return;
+        }
+        getWritableDatabase().delete(
+                "learning_repeats",
+                "kanji=? AND answer_signature=? AND task_type=?",
+                new String[]{repeat.kanji, repeat.answerSignature, repeat.taskType}
+        );
+    }
+
+    public List<Records.LearningRepeat> dueLearningRepeats(long nowMillis) {
+        List<Records.LearningRepeat> repeats = new ArrayList<>();
+        Cursor cursor = getReadableDatabase().query(
+                "learning_repeats",
+                null,
+                "due_at<=?",
+                new String[]{Long.toString(nowMillis)},
+                null,
+                null,
+                "due_at ASC, updated_at ASC"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                repeats.add(readLearningRepeat(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return repeats;
     }
 
     public Records.ReviewStats reviewStatsSince(long sinceMillis) {
@@ -1680,6 +1779,20 @@ public final class LocalStore extends SQLiteOpenHelper {
                 Records.TaskMemory.decode(string(cursor, "font_meaning_memory"), fontFallback),
                 Records.TaskMemory.decode(string(cursor, "word_reading_memory"), wordFallback),
                 Records.TaskMemory.decode(string(cursor, "writing_remediation_memory"), writingFallback)
+        );
+    }
+
+    private Records.LearningRepeat readLearningRepeat(Cursor cursor) {
+        return new Records.LearningRepeat(
+                string(cursor, "kanji"),
+                string(cursor, "answer_signature"),
+                string(cursor, "task_type"),
+                string(cursor, "repeat_type"),
+                integer(cursor, "step_index"),
+                longValue(cursor, "due_at"),
+                string(cursor, "active_token"),
+                longValue(cursor, "created_at"),
+                longValue(cursor, "updated_at")
         );
     }
 

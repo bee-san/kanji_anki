@@ -9,6 +9,8 @@ import java.util.Objects;
 
 public final class Records {
     public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
+    public static final String LEARNING_REPEAT_NEW = "new";
+    public static final String LEARNING_REPEAT_REVIEW = "review";
 
     private Records() {
     }
@@ -931,6 +933,156 @@ public final class Records {
             this.taskType = taskType;
             this.writingRequired = writingRequired;
             this.prompt = prompt;
+        }
+    }
+
+    public static final class LearningStepSettings {
+        public final List<Integer> newStepsMinutes;
+        public final List<Integer> reviewStepsMinutes;
+
+        public LearningStepSettings(List<Integer> newStepsMinutes, List<Integer> reviewStepsMinutes) {
+            this.newStepsMinutes = Collections.unmodifiableList(normalizeSteps(newStepsMinutes, defaultNewSteps()));
+            this.reviewStepsMinutes = Collections.unmodifiableList(normalizeSteps(reviewStepsMinutes, defaultReviewSteps()));
+        }
+
+        public static LearningStepSettings defaults() {
+            return new LearningStepSettings(defaultNewSteps(), defaultReviewSteps());
+        }
+
+        public static List<Integer> parseSteps(String value, List<Integer> fallback) {
+            List<Integer> parsed = tryParseSteps(value);
+            return parsed == null ? normalizeSteps(fallback, defaultNewSteps()) : parsed;
+        }
+
+        public static List<Integer> tryParseSteps(String value) {
+            if (value == null || value.trim().isEmpty()) {
+                return null;
+            }
+            String[] parts = value.trim().split("[,\\s]+");
+            List<Integer> parsed = new ArrayList<>();
+            for (String part : parts) {
+                if (part.isEmpty()) {
+                    continue;
+                }
+                Integer minutes = parseStepMinutes(part);
+                if (minutes == null || minutes <= 0) {
+                    return null;
+                }
+                parsed.add(minutes);
+            }
+            return parsed.isEmpty() ? null : normalizeSteps(parsed, defaultNewSteps());
+        }
+
+        public static String formatSteps(List<Integer> steps) {
+            List<Integer> normalized = normalizeSteps(steps, defaultNewSteps());
+            List<String> parts = new ArrayList<>();
+            for (int minutes : normalized) {
+                if (minutes >= 60 && minutes % 60 == 0) {
+                    parts.add((minutes / 60) + "h");
+                } else {
+                    parts.add(minutes + "m");
+                }
+            }
+            return String.join(", ", parts);
+        }
+
+        public String newStepsText() {
+            return formatSteps(newStepsMinutes);
+        }
+
+        public String reviewStepsText() {
+            return formatSteps(reviewStepsMinutes);
+        }
+
+        public static List<Integer> defaultNewSteps() {
+            List<Integer> out = new ArrayList<>();
+            out.add(1);
+            out.add(10);
+            return out;
+        }
+
+        public static List<Integer> defaultReviewSteps() {
+            List<Integer> out = new ArrayList<>();
+            out.add(10);
+            return out;
+        }
+
+        private static Integer parseStepMinutes(String raw) {
+            String value = raw.trim().toLowerCase();
+            int multiplier = 1;
+            if (value.endsWith("m")) {
+                value = value.substring(0, value.length() - 1);
+            } else if (value.endsWith("h")) {
+                value = value.substring(0, value.length() - 1);
+                multiplier = 60;
+            }
+            if (value.isEmpty()) {
+                return null;
+            }
+            try {
+                return Math.multiplyExact(Integer.parseInt(value), multiplier);
+            } catch (ArithmeticException | NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        private static List<Integer> normalizeSteps(List<Integer> steps, List<Integer> fallback) {
+            List<Integer> out = new ArrayList<>();
+            if (steps != null) {
+                for (Integer step : steps) {
+                    if (step == null || step <= 0) {
+                        out.clear();
+                        break;
+                    }
+                    out.add(step);
+                }
+            }
+            if (!out.isEmpty()) {
+                return out;
+            }
+            return fallback == null || fallback.isEmpty() ? defaultNewSteps() : new ArrayList<>(fallback);
+        }
+    }
+
+    public static final class LearningRepeat {
+        public final String kanji;
+        public final String answerSignature;
+        public final String taskType;
+        public final String repeatType;
+        public final int stepIndex;
+        public final long dueAtMillis;
+        public final String activeToken;
+        public final long createdAtMillis;
+        public final long updatedAtMillis;
+
+        public LearningRepeat(
+                String kanji,
+                String answerSignature,
+                String taskType,
+                String repeatType,
+                int stepIndex,
+                long dueAtMillis,
+                String activeToken,
+                long createdAtMillis,
+                long updatedAtMillis
+        ) {
+            this.kanji = kanji == null ? "" : kanji;
+            this.answerSignature = answerSignature == null ? "" : answerSignature;
+            this.taskType = taskType == null ? "" : taskType;
+            this.repeatType = LEARNING_REPEAT_REVIEW.equals(repeatType) ? LEARNING_REPEAT_REVIEW : LEARNING_REPEAT_NEW;
+            this.stepIndex = Math.max(0, stepIndex);
+            this.dueAtMillis = Math.max(0L, dueAtMillis);
+            this.activeToken = activeToken == null ? "" : activeToken;
+            this.createdAtMillis = Math.max(0L, createdAtMillis);
+            this.updatedAtMillis = Math.max(0L, updatedAtMillis);
+        }
+
+        public LearningRepeat withToken(String token, long updatedAtMillis) {
+            return new LearningRepeat(kanji, answerSignature, taskType, repeatType, stepIndex, dueAtMillis, token, createdAtMillis, updatedAtMillis);
+        }
+
+        public LearningRepeat withStep(int stepIndex, long dueAtMillis, long updatedAtMillis) {
+            return new LearningRepeat(kanji, answerSignature, taskType, repeatType, stepIndex, dueAtMillis, "", createdAtMillis, updatedAtMillis);
         }
     }
 
