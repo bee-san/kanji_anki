@@ -308,7 +308,7 @@ public final class MainActivityInstrumentedTest {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Today's Pareto focus");
+                assertHasText(activity, "Todayy's Focus");
                 assertHasText(activity, "Adaptive focus queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");

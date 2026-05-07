@@ -73,6 +73,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
@@ -301,7 +302,9 @@ public final class MainActivity extends Activity {
         LocalStore.SyncStatus sync = store.latestSync();
         AnkiDroidGateway.ProviderStatus provider = gateway.status();
         LinearLayout hero = band(provider.canSync ? TEAL : CORAL);
-        hero.addView(text(provider.canSync ? "Ready to sync" : "AnkiDroid needs attention", 26, Color.WHITE, true));
+        TextView syncHeadline = text(homeSyncHeadline(sync), 26, Color.WHITE, true);
+        syncHeadline.setOnClickListener(v -> confirmSync());
+        hero.addView(syncHeadline);
         hero.addView(text(provider.message, 16, Color.WHITE, false));
         if (sync != null) {
             hero.addView(text(sync.headline(), 16, Color.WHITE, false));
@@ -365,7 +368,7 @@ public final class MainActivity extends Activity {
 
     private LinearLayout adaptiveFocusPanel(Records.AdaptiveLoadPlan plan) {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        box.addView(text("Today's Pareto focus", 22, INK, true));
+        box.addView(text("Todayy's Focus", 22, INK, true));
         String headline = plan.allKanjiMode
                 ? "All current problem kanji"
                 : plan.remaining + " left / " + plan.target;
@@ -393,6 +396,39 @@ public final class MainActivity extends Activity {
             return "Streak logged today. " + countText(streak.reviewsToday, "writing review today", "writing reviews today") + "." + best;
         }
         return "Study one problem kanji today to keep it alive." + best;
+    }
+
+    private String homeSyncHeadline(LocalStore.SyncStatus sync) {
+        if (sync == null) {
+            return "Never synced";
+        }
+        String prefix = "success".equals(sync.status) ? "Last sync " : "Last sync attempt ";
+        return prefix + humanSyncTime(sync.finishedAt);
+    }
+
+    private String humanSyncTime(long timestampMillis) {
+        if (timestampMillis <= 0L) {
+            return "date unknown";
+        }
+        Date date = new Date(timestampMillis);
+        Calendar then = Calendar.getInstance();
+        then.setTime(date);
+        Calendar now = Calendar.getInstance();
+        DateFormat timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT);
+        if (sameLocalDay(then, now)) {
+            return "today at " + timeFormat.format(date);
+        }
+        now.add(Calendar.DAY_OF_YEAR, -1);
+        if (sameLocalDay(then, now)) {
+            return "yesterday at " + timeFormat.format(date);
+        }
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(date);
+    }
+
+    private boolean sameLocalDay(Calendar left, Calendar right) {
+        return left.get(Calendar.ERA) == right.get(Calendar.ERA)
+                && left.get(Calendar.YEAR) == right.get(Calendar.YEAR)
+                && left.get(Calendar.DAY_OF_YEAR) == right.get(Calendar.DAY_OF_YEAR);
     }
 
     private String streakDayCount(int days) {
@@ -1084,7 +1120,7 @@ public final class MainActivity extends Activity {
         content.addView(text("Today's focus done", 34, INK, true));
         content.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 18, MUTED, false));
         LinearLayout summary = band(TEAL);
-        summary.addView(text("Today's Pareto focus: 0 left / " + plan.target, 22, Color.WHITE, true));
+        summary.addView(text("Todayy's Focus: 0 left / " + plan.target, 22, Color.WHITE, true));
         summary.addView(text(plan.status, 15, Color.WHITE, false));
         content.addView(summary);
         Button keepGoing = primaryButton("Continue all kanji", CORAL);
@@ -1334,11 +1370,11 @@ public final class MainActivity extends Activity {
         if (session.row != null) {
             details.addView(text("Meaning: " + rowMeaning(session.row), 16, INK, true));
             if (!session.row.reading.isEmpty()) {
-                details.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
+                details.addView(text("Reading: " + hiraganaReading(session.row.reading), 15, TEAL, true));
             }
             Records.Example example = exampleForSession(session);
             if (example != null) {
-                details.addView(text("From: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 15, INK, true));
+                details.addView(text("From: " + example.expression + (example.reading.isEmpty() ? "" : "  " + hiraganaReading(example.reading)), 15, INK, true));
                 if (!example.meaning.isEmpty()) {
                     details.addView(text(cleanLearnerText(example.meaning, "", 80), 13, MUTED, false));
                 }
@@ -1348,8 +1384,20 @@ public final class MainActivity extends Activity {
         }
         row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(row);
-        box.addView(text("Misses move the ladder down. After enough missed days, Kani switches this kanji to writing repair.", 13, MUTED, false));
         return box;
+    }
+
+    private String hiraganaReading(String reading) {
+        StringBuilder converted = new StringBuilder(reading.length());
+        for (int i = 0; i < reading.length(); i++) {
+            char c = reading.charAt(i);
+            if (c >= 'ァ' && c <= 'ヶ') {
+                converted.append((char) (c - 0x60));
+            } else {
+                converted.append(c);
+            }
+        }
+        return converted.toString();
     }
 
     private void buildFlashcardActionBar(boolean revealed) {
@@ -1359,14 +1407,8 @@ public final class MainActivity extends Activity {
         studyActionBar.removeAllViews();
         studyActionBar.setVisibility(View.VISIBLE);
 
-        resultStatus = text(
-                revealed
-                        ? "Choose from what you knew before reveal."
-                        : "Reveal first. Misses count toward writing repair only once per day.",
-                15,
-                MUTED,
-                false
-        );
+        resultStatus = text("", 15, MUTED, false);
+        resultStatus.setVisibility(View.GONE);
         studyActionBar.addView(resultStatus);
 
         LinearLayout actions = new LinearLayout(this);
