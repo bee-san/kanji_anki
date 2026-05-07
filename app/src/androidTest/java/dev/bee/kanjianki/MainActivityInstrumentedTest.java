@@ -701,6 +701,41 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
+        seedDashboard();
+        LocalStore setup = new LocalStore(context);
+        try {
+            long now = System.currentTimeMillis();
+            Records.StudyItem repeatItem = new Records.StudyItem("拉", "learning", now + 86_400_000L, 0.4, 5.0, 1, 1, 0, 0, null, now)
+                    .withAnswerSignature("拉|拉致|らち|archive example");
+            setup.enqueueLearningRepeat(repeatItem, "kanji_meaning", Records.LEARNING_REPEAT_NEW, 0, now - 1_000L, now - 2_000L);
+        } finally {
+            setup.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Learning step 1 / 2. Practice only.");
+                assertHasText(activity, "Reveal");
+            });
+
+            clickText(scenario, "Reveal");
+            clickText(scenario, "I knew it");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                assertEquals(0, store.reviewStatsSince(0L).total);
+                List<Records.LearningRepeat> repeats = store.dueLearningRepeats(System.currentTimeMillis() + 11 * 60_000L);
+                assertEquals(1, repeats.size());
+                assertEquals(1, repeats.get(0).stepIndex);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
     public void testMissedRecognitionUsesInternalWritingThreshold() {
         seedDashboard();
         LocalStore initialStore = new LocalStore(context);

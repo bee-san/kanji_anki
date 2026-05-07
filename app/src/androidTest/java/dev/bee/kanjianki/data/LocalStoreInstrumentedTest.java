@@ -385,6 +385,35 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testLearningStepSettingsAndRepeatsPersist() {
+        store.saveLearningStepSettings(new Records.LearningStepSettings(
+                Arrays.asList(2, 15),
+                Collections.singletonList(20)
+        ));
+        Records.LearningStepSettings settings = store.learningStepSettings();
+        assertEquals(Arrays.asList(2, 15), settings.newStepsMinutes);
+        assertEquals(Collections.singletonList(20), settings.reviewStepsMinutes);
+
+        Records.StudyItem item = new Records.StudyItem("拉", "learning", 5000L, 0.4, 5.0, 1, 1, 0, 0, null, 1000L)
+                .withAnswerSignature("拉|拉麺|らーめん|ramen");
+        store.enqueueLearningRepeat(item, "kanji_meaning", Records.LEARNING_REPEAT_NEW, 0, 2000L, 1000L);
+        List<Records.LearningRepeat> due = store.dueLearningRepeats(2500L);
+        assertEquals(1, due.size());
+        assertEquals("拉", due.get(0).kanji);
+        assertEquals("kanji_meaning", due.get(0).taskType);
+        assertEquals(0, due.get(0).stepIndex);
+
+        store.saveLearningRepeat(due.get(0).withStep(1, 4000L, 3000L));
+        assertTrue(store.dueLearningRepeats(3500L).isEmpty());
+        due = store.dueLearningRepeats(4500L);
+        assertEquals(1, due.size());
+        assertEquals(1, due.get(0).stepIndex);
+
+        store.clearLearningRepeat(due.get(0));
+        assertTrue(store.dueLearningRepeats(5000L).isEmpty());
+    }
+
+    @Test
     public void testStudyStreakCountsConsecutiveLocalReviewDays() {
         long today = localDayStart(System.currentTimeMillis());
         long yesterday = moveLocalDays(today, -1);

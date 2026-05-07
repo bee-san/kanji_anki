@@ -109,6 +109,7 @@ public final class MainActivity extends Activity {
     private LinearLayout content;
     private LinearLayout studyActionBar;
     private Records.StudySession activeSession;
+    private Records.LearningRepeat activeLearningRepeat;
     private DrawingPadView drawingPad;
     private TextView studyStatus;
     private TextView resultStatus;
@@ -1099,6 +1100,12 @@ public final class MainActivity extends Activity {
         Set<String> focus = continueAllKanjiSession || seededPlan.allKanjiMode
                 ? null
                 : new HashSet<>(seededPlan.focusKanji);
+        Records.LearningRepeat repeat = nextDueLearningRepeat(rows, seeded, now);
+        if (repeat != null) {
+            renderLearningRepeat(repeat, rows, seeded, now);
+            return;
+        }
+        activeLearningRepeat = null;
         activeSession = scheduler.nextSession(seeded, rows, now, focus);
         if (activeSession == null) {
             if (!continueAllKanjiSession && seededPlan.focusComplete()) {
@@ -1113,6 +1120,45 @@ public final class MainActivity extends Activity {
             return;
         }
         store.saveStudyItem(activeSession.item);
+        renderSession(activeSession);
+    }
+
+    private Records.LearningRepeat nextDueLearningRepeat(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        for (Records.LearningRepeat repeat : store.dueLearningRepeats(now)) {
+            Records.DashboardRow row = findRow(rows, repeat.kanji);
+            Records.StudyItem item = findStudyItem(items, repeat);
+            if (row == null || item == null || "retired".equals(item.state)) {
+                store.clearLearningRepeat(repeat);
+                continue;
+            }
+            if ("writing_remediation".equals(repeat.taskType) && !item.writingRemediationPending) {
+                store.clearLearningRepeat(repeat);
+                continue;
+            }
+            return repeat;
+        }
+        return null;
+    }
+
+    private void renderLearningRepeat(Records.LearningRepeat repeat, List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        Records.DashboardRow row = findRow(rows, repeat.kanji);
+        Records.StudyItem item = findStudyItem(items, repeat);
+        if (row == null || item == null) {
+            store.clearLearningRepeat(repeat);
+            renderStudy();
+            return;
+        }
+        String token = repeat.activeToken.isEmpty() ? repeat.kanji + "-repeat-" + UUID.randomUUID() : repeat.activeToken;
+        activeLearningRepeat = repeat.withToken(token, now);
+        store.saveLearningRepeat(activeLearningRepeat);
+        activeSession = new Records.StudySession(
+                item.withToken(token),
+                row,
+                token,
+                repeat.taskType,
+                "writing_remediation".equals(repeat.taskType),
+                row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
+        );
         renderSession(activeSession);
     }
 
@@ -1182,6 +1228,7 @@ public final class MainActivity extends Activity {
                 item.writingRemediationPending,
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
+        activeLearningRepeat = null;
         store.saveStudyItem(activeSession.item);
         renderSession(activeSession);
     }
@@ -1219,6 +1266,9 @@ public final class MainActivity extends Activity {
         content.addView(text(flashcardTitle(session), 30, INK, true));
         LinearLayout stage = band(CORAL);
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
+        if (activeLearningRepeat != null) {
+            stage.addView(text(learningRepeatLine(activeLearningRepeat), 15, Color.WHITE, false));
+        }
         if (isFontRecognitionTask(session)) {
             stage.addView(text("Recognise the shape across fonts, then reveal the Anki clue.", 15, Color.WHITE, false));
         } else if (isWordReadingTask(session)) {
@@ -1246,6 +1296,9 @@ public final class MainActivity extends Activity {
         content.addView(text("Draw this kanji", 30, INK, true));
         LinearLayout stage = band(CORAL);
         stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
+        if (activeLearningRepeat != null) {
+            stage.addView(text(learningRepeatLine(activeLearningRepeat), 15, Color.WHITE, false));
+        }
         if (session.row != null) {
             if (isRecallTask(session)) {
                 stage.addView(text("Prompt: " + sessionClue(session), 17, Color.WHITE, false));
@@ -1278,6 +1331,14 @@ public final class MainActivity extends Activity {
         buildStudyActionBar();
         updateResultActions();
         refreshWritingModelStatus();
+    }
+
+    private String learningRepeatLine(Records.LearningRepeat repeat) {
+        Records.LearningStepSettings settings = store.learningStepSettings();
+        int total = Records.LEARNING_REPEAT_REVIEW.equals(repeat.repeatType)
+                ? settings.reviewStepsMinutes.size()
+                : settings.newStepsMinutes.size();
+        return "Learning step " + Math.min(total, repeat.stepIndex + 1) + " / " + Math.max(1, total) + ". Practice only.";
     }
 
     private String flashcardTitle(Records.StudySession session) {
@@ -1596,6 +1657,10 @@ public final class MainActivity extends Activity {
                 override,
                 hintsUsed
         );
+        if (activeLearningRepeat != null) {
+            submitLearningRepeat(request, mappedRating.code());
+            return;
+        }
         BridgeScheduler scheduler = new BridgeScheduler();
         Set<String> consumed = new HashSet<>(store.consumedTokens());
         long now = System.currentTimeMillis();
@@ -1603,8 +1668,11 @@ public final class MainActivity extends Activity {
         Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters, settings());
         LocalStore.StudyStreak streak = null;
         if (!result.duplicate) {
-            store.saveStudyItem(result.item);
+            String repeatType = learningRepeatTypeForReview(activeSession.item, request, result.appliedRating);
+            Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, now);
+            store.saveStudyItem(itemToSave);
             store.saveReview(request, result.appliedRating, now);
+            enqueueLearningRepeatIfNeeded(itemToSave, activeSession.taskType, repeatType, now);
             streak = store.studyStreak(now);
             Records.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
             if (tuned.lastAdjustedAtMillis != parameters.lastAdjustedAtMillis || tuned.lastAdjustmentReviewCount != parameters.lastAdjustmentReviewCount) {
@@ -1613,6 +1681,120 @@ public final class MainActivity extends Activity {
         }
         Toast.makeText(this, reviewToast(result, streak), Toast.LENGTH_SHORT).show();
         renderStudy();
+    }
+
+    private void submitLearningRepeat(Records.ReviewRequest request, String rating) {
+        Records.LearningRepeat repeat = activeLearningRepeat;
+        if (repeat == null || activeSession == null || !repeat.activeToken.equals(request.token)) {
+            Toast.makeText(this, "Learning repeat already changed.", Toast.LENGTH_SHORT).show();
+            renderStudy();
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Records.LearningStepSettings settings = store.learningStepSettings();
+        List<Integer> steps = Records.LEARNING_REPEAT_REVIEW.equals(repeat.repeatType)
+                ? settings.reviewStepsMinutes
+                : settings.newStepsMinutes;
+        if (steps.isEmpty()) {
+            store.clearLearningRepeat(repeat);
+            Toast.makeText(this, "Learning repeat cleared.", Toast.LENGTH_SHORT).show();
+            renderStudy();
+            return;
+        }
+        int nextStep;
+        if ("again".equals(rating)) {
+            nextStep = 0;
+        } else if ("hard".equals(rating)) {
+            nextStep = Math.min(repeat.stepIndex, steps.size() - 1);
+        } else {
+            nextStep = repeat.stepIndex + 1;
+            if (nextStep >= steps.size()) {
+                store.clearLearningRepeat(repeat);
+                activeLearningRepeat = null;
+                Toast.makeText(this, "Learning repeat complete.", Toast.LENGTH_SHORT).show();
+                renderStudy();
+                return;
+            }
+        }
+        long dueAt = now + steps.get(nextStep) * 60_000L;
+        store.saveLearningRepeat(repeat.withStep(nextStep, dueAt, now));
+        Toast.makeText(this, "Learning repeat " + dueText(dueAt, now) + ".", Toast.LENGTH_SHORT).show();
+        renderStudy();
+    }
+
+    private String learningRepeatTypeForReview(Records.StudyItem originalItem, Records.ReviewRequest request, String appliedRating) {
+        boolean newCard = originalItem != null && originalItem.totalReviews <= 0;
+        if (newCard) {
+            return "easy".equals(appliedRating) ? null : Records.LEARNING_REPEAT_NEW;
+        }
+        boolean failed = "again".equals(appliedRating)
+                || (request.writingRequired && !request.writingPassed && !request.manualOverride);
+        return failed ? Records.LEARNING_REPEAT_REVIEW : null;
+    }
+
+    private void enqueueLearningRepeatIfNeeded(Records.StudyItem item, String taskType, String repeatType, long now) {
+        if (repeatType == null) {
+            return;
+        }
+        Records.LearningStepSettings settings = store.learningStepSettings();
+        List<Integer> steps = Records.LEARNING_REPEAT_REVIEW.equals(repeatType)
+                ? settings.reviewStepsMinutes
+                : settings.newStepsMinutes;
+        if (steps.isEmpty()) {
+            return;
+        }
+        store.enqueueLearningRepeat(item, taskType, repeatType, 0, now + steps.get(0) * 60_000L, now);
+    }
+
+    private Records.StudyItem deferSameDaySrsDue(Records.StudyItem item, long now) {
+        if (item == null || item.dueAtMillis <= now || !sameLocalDay(item.dueAtMillis, now)) {
+            return item;
+        }
+        long due = nextLocalDayStart(now);
+        return new Records.StudyItem(
+                item.kanji,
+                item.state,
+                due,
+                item.stability,
+                item.difficulty,
+                item.totalReviews,
+                item.lapses,
+                item.learningStep,
+                item.writingLevel,
+                item.recognitionStage,
+                item.consecutiveFailedRecognitionDays,
+                item.lastFailedRecognitionDayMillis,
+                item.writingRemediationPending,
+                item.suppressedByTaskType,
+                item.suppressedAtMillis,
+                item.matureIntervalDays,
+                item.answerSignature,
+                item.activeToken,
+                item.createdAtMillis,
+                item.kanjiMeaningMemory,
+                item.fontMeaningMemory,
+                item.wordReadingMemory,
+                item.writingRemediationMemory
+        );
+    }
+
+    private boolean sameLocalDay(long leftMillis, long rightMillis) {
+        Calendar left = Calendar.getInstance();
+        left.setTimeInMillis(leftMillis);
+        Calendar right = Calendar.getInstance();
+        right.setTimeInMillis(rightMillis);
+        return sameLocalDay(left, right);
+    }
+
+    private long nextLocalDayStart(long now) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(now);
+        calendar.add(Calendar.DAY_OF_YEAR, 1);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
     }
 
     private HintState initialHintState(Records.StudySession session) {
@@ -2076,6 +2258,18 @@ public final class MainActivity extends Activity {
         return null;
     }
 
+    private Records.StudyItem findStudyItem(List<Records.StudyItem> items, Records.LearningRepeat repeat) {
+        if (repeat == null) {
+            return null;
+        }
+        for (Records.StudyItem item : items) {
+            if (item.kanji.equals(repeat.kanji) && item.answerSignature.equals(repeat.answerSignature)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
     private String candidateText(List<RecognitionCandidate> candidates) {
         if (candidates == null || candidates.isEmpty()) {
             return "";
@@ -2227,6 +2421,7 @@ public final class MainActivity extends Activity {
 
         content.addView(workloadSettingsPanel());
         content.addView(retentionSettingsPanel());
+        content.addView(learningStepsSettingsPanel());
         content.addView(reminderSettingsPanel());
         content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
@@ -2317,6 +2512,63 @@ public final class MainActivity extends Activity {
         });
         box.addView(automatic);
         return box;
+    }
+
+    private LinearLayout learningStepsSettingsPanel() {
+        Records.LearningStepSettings current = store.learningStepSettings();
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+        box.addView(text("Learning steps", 23, INK, true));
+        box.addView(text("New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.", 15, MUTED, false));
+
+        EditText newSteps = stepInput(current.newStepsText());
+        EditText reviewSteps = stepInput(current.reviewStepsText());
+        box.addView(text("New cards", 15, INK, true));
+        box.addView(newSteps, new LinearLayout.LayoutParams(-1, dp(58)));
+        box.addView(text("Review misses", 15, INK, true));
+        box.addView(reviewSteps, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        LinearLayout presets = new LinearLayout(this);
+        presets.setOrientation(LinearLayout.HORIZONTAL);
+        Button ankiDefault = secondaryButton("Anki default");
+        ankiDefault.setOnClickListener(v -> {
+            Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
+            newSteps.setText(defaults.newStepsText());
+            reviewSteps.setText(defaults.reviewStepsText());
+        });
+        presets.addView(ankiDefault, new LinearLayout.LayoutParams(0, dp(54), 1));
+        Button sameSteps = secondaryButton("Both 1m 10m");
+        sameSteps.setOnClickListener(v -> {
+            Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
+            newSteps.setText(defaults.newStepsText());
+            reviewSteps.setText(defaults.newStepsText());
+        });
+        presets.addView(sameSteps, new LinearLayout.LayoutParams(0, dp(54), 1));
+        box.addView(presets);
+
+        Button save = primaryButton("Save learning steps", TEAL);
+        save.setOnClickListener(v -> {
+            List<Integer> parsedNew = Records.LearningStepSettings.tryParseSteps(newSteps.getText().toString());
+            List<Integer> parsedReview = Records.LearningStepSettings.tryParseSteps(reviewSteps.getText().toString());
+            if (parsedNew == null || parsedReview == null) {
+                Toast.makeText(this, "Use steps like 1m, 10m, or 1h.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            store.saveLearningStepSettings(new Records.LearningStepSettings(parsedNew, parsedReview));
+            Toast.makeText(this, "Learning steps saved.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
+    }
+
+    private EditText stepInput(String value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setText(value);
+        input.setTextSize(20);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        return input;
     }
 
     private LinearLayout retentionSettingsPanel() {
