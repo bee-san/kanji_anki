@@ -145,6 +145,40 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testBrowseKanjiShowsDetailAndSuspensionControls() {
+        seedDashboardRowsOnly(Collections.singletonList(dashboardRow("拉", "ramen radical gap", "らーめん", "Needs writing practice")));
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Browse Kanji");
+            });
+            clickText(scenario, "Browse Kanji");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "ramen radical gap");
+                assertNoText(activity, "SUSPENDED");
+            });
+            clickText(scenario, "ramen radical gap");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Back to Browse Kanji");
+                assertHasText(activity, "Local inventory");
+                assertHasText(activity, "Review this now");
+                assertHasText(activity, "Suspend locally");
+            });
+            clickText(scenario, "Suspend locally");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "SUSPENDED");
+                assertHasText(activity, "Unsuspend locally");
+                assertNoText(activity, "Review this now");
+            });
+            clickText(scenario, "Unsuspend locally");
+            scenario.onActivity(activity -> {
+                assertNoText(activity, "SUSPENDED");
+                assertHasText(activity, "Review this now");
+            });
+        }
+    }
+
+    @Test
     public void testNavigationSettingsAndEmptyStates() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");

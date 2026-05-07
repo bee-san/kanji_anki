@@ -64,9 +64,10 @@ public final class ManualSyncEngine {
 
             BridgeScheduler scheduler = new BridgeScheduler();
             List<Records.StudyItem> currentItems = store.studyItems();
-            Records.AdaptiveLoadPlan plan = adaptivePlan(rows, currentItems, finished);
+            List<Records.DashboardRow> activeRows = activeRows(rows, store.locallySuspendedKanji());
+            Records.AdaptiveLoadPlan plan = adaptivePlan(activeRows, currentItems, finished);
             List<Records.StudyItem> seeded = scheduler.seedQueue(
-                    rows,
+                    activeRows,
                     currentItems,
                     settings,
                     finished,
@@ -90,6 +91,19 @@ public final class ManualSyncEngine {
             store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.getMessage());
             return new SyncResult(false, false, 0, 0, error.getMessage(), "");
         }
+    }
+
+    private List<Records.DashboardRow> activeRows(List<Records.DashboardRow> rows, Set<String> suspendedKanji) {
+        if (suspendedKanji.isEmpty()) {
+            return rows;
+        }
+        List<Records.DashboardRow> out = new ArrayList<>();
+        for (Records.DashboardRow row : rows) {
+            if (!suspendedKanji.contains(row.kanji)) {
+                out.add(row);
+            }
+        }
+        return out;
     }
 
     private Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long nowMillis) {

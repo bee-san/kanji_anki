@@ -8,6 +8,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -722,6 +723,32 @@ public class BridgeSchedulerTest {
         Records.ReviewResult longResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, longer);
 
         assertTrue(longResult.item.dueAtMillis > shortResult.item.dueAtMillis);
+    }
+
+    @Test
+    public void allowedKanjiFilterExcludesSuspendedKanjiFromActiveReview() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem suspended = new Records.StudyItem("裂", "review", 0, 1.0, 5.0, 1, 0, 2, 1, null, 0);
+        Records.StudyItem active = new Records.StudyItem("提", "review", 0, 1.0, 5.0, 1, 0, 2, 1, null, 0);
+        Set<String> allowed = new HashSet<>(Collections.singletonList("提"));
+
+        List<Records.StudyItem> activeItems = scheduler.activeQueueItems(
+                Arrays.asList(suspended, active),
+                Arrays.asList(row("裂", 30), row("提", 20)),
+                1000L,
+                allowed
+        );
+        Records.StudySession session = scheduler.nextSession(
+                Arrays.asList(suspended, active),
+                Arrays.asList(row("裂", 30), row("提", 20)),
+                1000L,
+                allowed
+        );
+
+        assertEquals(1, activeItems.size());
+        assertEquals("提", activeItems.get(0).kanji);
+        assertNotNull(session);
+        assertEquals("提", session.item.kanji);
     }
 
     private Records.StudyItem item(String kanji) {

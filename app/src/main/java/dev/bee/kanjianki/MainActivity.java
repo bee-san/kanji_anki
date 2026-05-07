@@ -320,7 +320,7 @@ public final class MainActivity extends Activity {
         addSpace(18);
 
         long now = System.currentTimeMillis();
-        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
         List<Records.StudyItem> homeItems = studyQueue(rows, now, false);
         Records.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
         content.addView(streakPanel(store.studyStreak(now)));
@@ -343,6 +343,9 @@ public final class MainActivity extends Activity {
             syncAgainButton.setOnClickListener(v -> confirmSync());
             content.addView(syncAgainButton);
         }
+        Button browse = secondaryButton("Browse Kanji");
+        browse.setOnClickListener(v -> renderBrowseKanji(""));
+        content.addView(browse);
 
         addSpace(16);
         if (rows.isEmpty()) {
@@ -475,7 +478,7 @@ public final class MainActivity extends Activity {
             content.addView(text("Sync complete", 34, INK, true));
             LinearLayout summary = band(TEAL);
             long now = System.currentTimeMillis();
-            List<Records.DashboardRow> rows = store.dashboardRows();
+            List<Records.DashboardRow> rows = store.activeDashboardRows();
             List<Records.StudyItem> items = store.studyItems();
             Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
             List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
@@ -521,7 +524,7 @@ public final class MainActivity extends Activity {
         addSpace(10);
 
         long now = System.currentTimeMillis();
-        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
         List<Records.StudyItem> items = store.studyItems();
         Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
         List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
@@ -855,19 +858,93 @@ public final class MainActivity extends Activity {
     }
 
     private void renderDetail(String kanji) {
+        renderDetail(kanji, false);
+    }
+
+    private void renderBrowseKanji(String query) {
+        base("home");
+        content.addView(text("Browse Kanji", 34, INK, true));
+        content.addView(text("Local kanji from synced Kani data and study history.", 16, MUTED, false));
+        addSpace(10);
+
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setText(query == null ? "" : query);
+        search.setHint("Search kanji, meaning, reading, or examples");
+        search.setTextSize(18);
+        content.addView(search, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        Button submit = primaryButton("Search", TEAL);
+        submit.setOnClickListener(v -> renderBrowseKanji(search.getText().toString()));
+        content.addView(submit);
+
+        List<Records.KanjiInventoryItem> items = store.searchKanjiInventory(query);
+        content.addView(sectionTitle(items.isEmpty() ? "No matches" : countText(items.size(), "kanji", "kanji")));
+        if (items.isEmpty()) {
+            emptyState("No local kanji found", "Sync AnkiDroid first, or try a different search.");
+            return;
+        }
+        for (Records.KanjiInventoryItem item : items) {
+            content.addView(browseKanjiRow(item, query == null ? "" : query));
+        }
+    }
+
+    private View browseKanjiRow(Records.KanjiInventoryItem item, String query) {
+        LinearLayout box = panelBox(Color.WHITE, item.suspended ? CORAL : TEAL);
+        box.setOnClickListener(v -> renderDetail(item.kanji, true));
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView glyph = text(item.kanji, 44, INK, true);
+        glyph.setGravity(Gravity.CENTER);
+        top.addView(glyph, new LinearLayout.LayoutParams(dp(74), dp(74)));
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.addView(text(item.primaryMeaning.isEmpty() ? "Meaning not stored yet" : item.primaryMeaning, 19, INK, true));
+        if (!item.readings.isEmpty()) {
+            copy.addView(text(item.readings, 14, TEAL, true));
+        }
+        copy.addView(text(countText(item.sourceCount, "local source", "local sources") + " · " + countText(item.exampleCount, "example", "examples"), 14, MUTED, false));
+        top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        box.addView(top);
+        if (item.suspended) {
+            LinearLayout chips = new LinearLayout(this);
+            chips.setOrientation(LinearLayout.HORIZONTAL);
+            chips.addView(chip("SUSPENDED", CORAL));
+            box.addView(chips);
+        }
+        return box;
+    }
+
+    private void renderDetail(String kanji, boolean fromBrowse) {
         base("home");
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji(kanji);
         Records.DashboardRow row = timeline.currentRow;
-        if (row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
+        Records.KanjiInventoryItem inventory = timeline.inventoryItem;
+        if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
             emptyState("Kanji not found", "This row may have disappeared after a sync.");
             return;
         }
-        String displayKanji = row == null ? kanji : row.kanji;
+        String displayKanji = row == null ? (inventory == null ? kanji : inventory.kanji) : row.kanji;
         TextView glyph = text(displayKanji, 92, INK, true);
         glyph.setGravity(Gravity.CENTER);
         content.addView(glyph);
+        if (fromBrowse) {
+            Button back = secondaryButton("Back to Browse Kanji");
+            back.setOnClickListener(v -> renderBrowseKanji(""));
+            content.addView(back);
+        }
+        boolean suspended = inventory != null && inventory.suspended;
+        if (suspended) {
+            LinearLayout chips = new LinearLayout(this);
+            chips.setOrientation(LinearLayout.HORIZONTAL);
+            chips.addView(chip("SUSPENDED", CORAL));
+            content.addView(chips);
+        }
         if (row == null) {
-            content.addView(text("Historical recovery", 25, INK, true));
+            content.addView(text(inventory == null || inventory.primaryMeaning.isEmpty() ? "Historical recovery" : inventory.primaryMeaning, 25, INK, true));
+            if (inventory != null && !inventory.readings.isEmpty()) {
+                content.addView(text(inventory.readings, 20, TEAL, true));
+            }
         } else {
             content.addView(text(rowMeaning(row), 25, INK, true));
             content.addView(text(row.reading, 20, TEAL, true));
@@ -877,26 +954,34 @@ public final class MainActivity extends Activity {
         why.addView(text("Why it is here", 22, Color.WHITE, true));
         if (row == null) {
             why.addView(text("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.", 17, Color.WHITE, false));
+            if (inventory != null && !inventory.browserSearch.isEmpty()) {
+                why.addView(text("Anki browser: " + inventory.browserSearch, 14, Color.WHITE, false));
+            }
         } else {
             why.addView(text(row.reasonText, 17, Color.WHITE, false));
             why.addView(text("Anki browser: " + row.browserSearch, 14, Color.WHITE, false));
         }
         content.addView(why);
-        if (row != null) {
+        if (inventory != null) {
+            content.addView(localInventoryPanel(inventory));
+        }
+        if (row != null && !suspended) {
             Button practice = primaryButton("Review this now", CORAL);
             practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
             content.addView(practice);
+        }
+        if (inventory != null && !inventory.browserSearch.isEmpty()) {
             Button copy = secondaryButton("Copy Anki search");
-            copy.setOnClickListener(v -> {
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", row.browserSearch));
-                if (v instanceof Button) {
-                    ((Button) v).setText(R.string.copied_anki_search);
-                }
-                Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
-            });
+            copy.setOnClickListener(v -> copyAnkiSearch(inventory.browserSearch, v));
             content.addView(copy);
         }
+        Button suspend = secondaryButton(suspended ? "Unsuspend locally" : "Suspend locally");
+        suspend.setOnClickListener(v -> {
+            store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
+            Toast.makeText(this, suspended ? "Kanji unsuspended." : "Kanji suspended locally.", Toast.LENGTH_SHORT).show();
+            renderDetail(displayKanji, fromBrowse);
+        });
+        content.addView(suspend);
         addSpace(12);
         addRecoveryTimeline(timeline);
         if (row != null) {
@@ -906,6 +991,28 @@ public final class MainActivity extends Activity {
                 content.addView(exampleView(example));
             }
         }
+    }
+
+    private View localInventoryPanel(Records.KanjiInventoryItem inventory) {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        box.addView(text("Local inventory", 19, INK, true));
+        box.addView(text(countText(inventory.sourceCount, "source note/card", "source notes/cards") + " · " + countText(inventory.exampleCount, "stored example", "stored examples"), 15, MUTED, false));
+        if (!inventory.browserSearch.isEmpty()) {
+            box.addView(text("Search: " + inventory.browserSearch, 14, MUTED, false));
+        }
+        if (inventory.lastSeenAtMillis > 0L) {
+            box.addView(text("Last seen locally " + shortDateTime(inventory.lastSeenAtMillis), 14, MUTED, false));
+        }
+        return box;
+    }
+
+    private void copyAnkiSearch(String browserSearch, View v) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", browserSearch));
+        if (v instanceof Button) {
+            ((Button) v).setText(R.string.copied_anki_search);
+        }
+        Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
     }
 
     private void addRecoveryTimeline(Records.KanjiRecoveryTimeline timeline) {
@@ -1085,7 +1192,7 @@ public final class MainActivity extends Activity {
 
     private void renderStudy() {
         base("study");
-        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
         if (rows.isEmpty()) {
             content.addView(text("Study practice", 34, INK, true));
             emptyState("Nothing to study yet", "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.");
@@ -1190,7 +1297,7 @@ public final class MainActivity extends Activity {
 
     private void renderStudyForKanji(String kanji) {
         base("study");
-        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
         Records.DashboardRow row = findRow(rows, kanji);
         if (row == null) {
             content.addView(text("Study practice", 34, INK, true));
@@ -2446,7 +2553,7 @@ public final class MainActivity extends Activity {
 
         if (autoMode) {
             long now = System.currentTimeMillis();
-            List<Records.DashboardRow> rows = store.dashboardRows();
+            List<Records.DashboardRow> rows = store.activeDashboardRows();
             Records.AdaptiveLoadPlan plan = rows.isEmpty()
                     ? null
                     : adaptivePlan(rows, store.studyItems(), now);

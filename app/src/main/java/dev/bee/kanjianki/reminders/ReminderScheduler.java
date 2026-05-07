@@ -156,7 +156,7 @@ public final class ReminderScheduler {
     private static ReminderCopy reminderCopy(Context context) {
         LocalStore store = new LocalStore(context);
         try {
-            List<Records.DashboardRow> rows = store.dashboardRows();
+            List<Records.DashboardRow> rows = store.activeDashboardRows();
             if (rows.isEmpty()) {
                 return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
             }

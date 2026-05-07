@@ -24,7 +24,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 8;
+    private static final int DB_VERSION = 9;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final int DEFAULT_REMINDER_HOUR = 19;
@@ -53,6 +53,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE suspended_sources (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
+        createKanjiInventoryTables(db);
         db.execSQL(STUDY_ITEMS_TABLE_SQL);
         db.execSQL(LEARNING_REPEATS_TABLE_SQL);
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
@@ -103,6 +104,16 @@ public final class LocalStore extends SQLiteOpenHelper {
             db.execSQL(LEARNING_REPEATS_TABLE_SQL);
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_learning_repeats_due ON learning_repeats(due_at)");
         }
+        if (oldVersion < 9) {
+            createKanjiInventoryTables(db);
+            backfillKanjiInventory(db, System.currentTimeMillis(), Records.Settings.kikuDefaults());
+        }
+    }
+
+    private void createKanjiInventoryTables(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS kanji_inventory (kanji TEXT PRIMARY KEY, primary_meaning TEXT NOT NULL, readings TEXT NOT NULL, browser_search TEXT NOT NULL, search_text TEXT NOT NULL, source_count INTEGER NOT NULL, example_count INTEGER NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS local_kanji_suspensions (kanji TEXT PRIMARY KEY, suspended_at INTEGER NOT NULL)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_kanji_inventory_search ON kanji_inventory(search_text)");
     }
 
     private void rebuildStudyItemsWithAnswerSignatureKey(SQLiteDatabase db) {
@@ -218,6 +229,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             }
 
             saveRows(db, rows, finishedAt);
+            rebuildKanjiInventory(db, snapshot, imports, rows, finishedAt, settings);
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, finishedAt, settings);
             db.setTransactionSuccessful();
             return syncId;
@@ -278,12 +290,105 @@ public final class LocalStore extends SQLiteOpenHelper {
         return rows;
     }
 
+    public List<Records.DashboardRow> activeDashboardRows() {
+        Set<String> suspended = locallySuspendedKanji();
+        if (suspended.isEmpty()) {
+            return dashboardRows();
+        }
+        List<Records.DashboardRow> out = new ArrayList<>();
+        for (Records.DashboardRow row : dashboardRows()) {
+            if (!suspended.contains(row.kanji)) {
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
     public Records.DashboardRow rowForKanji(String kanji) {
         return readDashboardRow(getReadableDatabase(), kanji);
     }
 
+    public Records.KanjiInventoryItem inventoryItemForKanji(String kanji) {
+        return readInventoryItem(getReadableDatabase(), kanji);
+    }
+
+    public List<Records.KanjiInventoryItem> searchKanjiInventory(String query) {
+        SQLiteDatabase db = getReadableDatabase();
+        String normalized = TextUtil.normalizeJapanese(query == null ? "" : query).toLowerCase(Locale.ROOT);
+        List<Records.KanjiInventoryItem> out = new ArrayList<>();
+        String selection = null;
+        String[] args = null;
+        if (!normalized.isEmpty()) {
+            selection = "search_text LIKE ?";
+            args = new String[]{"%" + normalized + "%"};
+        }
+        Cursor cursor = db.query(
+                "kanji_inventory",
+                null,
+                selection,
+                args,
+                null,
+                null,
+                "kanji ASC",
+                "300"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                out.add(readInventoryItem(db, cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    public Set<String> locallySuspendedKanji() {
+        Set<String> out = new HashSet<>();
+        Cursor cursor = getReadableDatabase().query("local_kanji_suspensions", new String[]{"kanji"}, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                out.add(string(cursor, "kanji"));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    public boolean isKanjiLocallySuspended(String kanji) {
+        Cursor cursor = getReadableDatabase().query("local_kanji_suspensions", new String[]{"kanji"}, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public void setKanjiLocallySuspended(String kanji, boolean suspended, long nowMillis) {
+        if (kanji == null || kanji.isEmpty()) {
+            return;
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            if (suspended) {
+                ContentValues values = new ContentValues();
+                values.put("kanji", kanji);
+                values.put("suspended_at", nowMillis);
+                db.insertWithOnConflict("local_kanji_suspensions", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                db.delete("learning_repeats", "kanji=?", new String[]{kanji});
+            } else {
+                db.delete("local_kanji_suspensions", "kanji=?", new String[]{kanji});
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     public Records.KanjiRecoveryTimeline timelineForKanji(String kanji) {
         SQLiteDatabase db = getReadableDatabase();
+        Records.KanjiInventoryItem inventoryItem = readInventoryItem(db, kanji);
         Records.DashboardRow row = readDashboardRow(db, kanji);
         Records.StudyItem item = studyItemForKanji(db, kanji);
         List<Records.KanjiTimelineEvent> events = new ArrayList<>();
@@ -305,7 +410,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         Collections.reverse(events);
-        return new Records.KanjiRecoveryTimeline(row, item, events);
+        return new Records.KanjiRecoveryTimeline(inventoryItem, row, item, events);
     }
 
     public List<Records.StudyItem> studyItems() {
@@ -1393,6 +1498,196 @@ public final class LocalStore extends SQLiteOpenHelper {
         return prefix + ": mature support " + matureSupportCount + " / target " + target + ".";
     }
 
+    private void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, Records.Settings settings) {
+        rebuildKanjiInventory(db, null, suspendedImportsFromDb(db), dashboardRowsFromDb(db), nowMillis, settings);
+    }
+
+    private List<Records.DashboardRow> dashboardRowsFromDb(SQLiteDatabase db) {
+        List<Records.DashboardRow> rows = new ArrayList<>();
+        Cursor cursor = db.query("dashboard_rows", null, null, null, null, null, "kanji ASC");
+        try {
+            while (cursor.moveToNext()) {
+                rows.add(readDashboardRow(db, cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return rows;
+    }
+
+    private List<Records.SuspendedImport> suspendedImportsFromDb(SQLiteDatabase db) {
+        Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();
+        Cursor cursor = db.query("suspended_imports", null, null, null, null, null, "jiten_rank ASC, kanji ASC");
+        try {
+            while (cursor.moveToNext()) {
+                String kanji = string(cursor, "kanji");
+                imports.put(kanji, new MutableSuspendedImport(
+                        kanji,
+                        nullableInt(cursor, "jiten_rank"),
+                        integer(cursor, "rank_known") == 1,
+                        integer(cursor, "cutoff_used")
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+        Cursor sources = db.query("suspended_sources", null, null, null, null, null, "kanji ASC, card_id ASC");
+        try {
+            while (sources.moveToNext()) {
+                MutableSuspendedImport imported = imports.get(string(sources, "kanji"));
+                if (imported != null) {
+                    imported.sources.add(new Records.SuspendedSource(
+                            imported.kanji,
+                            longValue(sources, "card_id"),
+                            longValue(sources, "note_id"),
+                            string(sources, "expression"),
+                            string(sources, "reading"),
+                            string(sources, "meaning"),
+                            string(sources, "sentence")
+                    ));
+                }
+            }
+        } finally {
+            sources.close();
+        }
+        List<Records.SuspendedImport> out = new ArrayList<>();
+        for (MutableSuspendedImport imported : imports.values()) {
+            out.add(imported.build());
+        }
+        return out;
+    }
+
+    private void rebuildKanjiInventory(
+            SQLiteDatabase db,
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            Records.Settings settings
+    ) {
+        Map<String, MutableKanjiInventoryItem> inventory = new LinkedHashMap<>();
+        if (snapshot != null) {
+            ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
+            for (Records.Note note : snapshot.notes) {
+                if (!activeIndex.noteIds.contains(note.noteId)) {
+                    continue;
+                }
+                String expression = TextUtil.normalizeJapanese(note.expression(settings));
+                String reading = TextUtil.normalizeJapanese(note.reading(settings));
+                String meaning = TextUtil.firstMeaningLine(note.meaning(settings));
+                String sentence = TextUtil.normalizeJapanese(note.sentence(settings));
+                addInventoryText(inventory, TextUtil.extractKanji(expression + " " + sentence), meaning, reading, expression, sentence);
+            }
+        }
+        for (Records.SuspendedImport imported : imports) {
+            MutableKanjiInventoryItem item = inventoryItem(inventory, imported.kanji);
+            for (Records.SuspendedSource source : imported.sources) {
+                item.add(source.meaning, source.reading, source.expression, source.sentence);
+            }
+        }
+        for (Records.DashboardRow row : rows) {
+            MutableKanjiInventoryItem item = inventoryItem(inventory, row.kanji);
+            item.add(row.primaryMeaning, row.reading, row.reasonText, row.browserSearch);
+            item.browserSearch = row.browserSearch;
+            for (Records.Example example : row.examples) {
+                item.exampleCount++;
+                item.add(example.meaning, example.reading, example.expression, example.sentence);
+            }
+        }
+        Cursor study = db.query("study_items", new String[]{"kanji"}, null, null, null, null, null);
+        try {
+            while (study.moveToNext()) {
+                inventoryItem(inventory, string(study, "kanji"));
+            }
+        } finally {
+            study.close();
+        }
+        Cursor reviews = db.query(true, "review_log", new String[]{"kanji"}, null, null, null, null, null, null);
+        try {
+            while (reviews.moveToNext()) {
+                inventoryItem(inventory, string(reviews, "kanji"));
+            }
+        } finally {
+            reviews.close();
+        }
+        Cursor timeline = db.query(true, "kanji_timeline_events", new String[]{"kanji"}, null, null, null, null, null, null);
+        try {
+            while (timeline.moveToNext()) {
+                inventoryItem(inventory, string(timeline, "kanji"));
+            }
+        } finally {
+            timeline.close();
+        }
+        for (MutableKanjiInventoryItem item : inventory.values()) {
+            if (item.kanji.isEmpty()) {
+                continue;
+            }
+            Records.KanjiInventoryItem previous = readInventoryItem(db, item.kanji);
+            ContentValues values = new ContentValues();
+            values.put("kanji", item.kanji);
+            values.put("primary_meaning", firstNonEmpty(item.primaryMeaning, previous == null ? "" : previous.primaryMeaning));
+            values.put("readings", item.readingsText(previous == null ? "" : previous.readings));
+            values.put("browser_search", firstNonEmpty(item.browserSearch, previous == null ? TextUtil.browserSearchForKanji(item.kanji, settings) : previous.browserSearch));
+            values.put("search_text", item.searchText(previous));
+            values.put("source_count", Math.max(item.sourceCount, previous == null ? 0 : previous.sourceCount));
+            values.put("example_count", Math.max(item.exampleCount, previous == null ? 0 : previous.exampleCount));
+            values.put("first_seen_at", previous == null ? nowMillis : previous.lastSeenAtMillis);
+            values.put("last_seen_at", nowMillis);
+            db.insertWithOnConflict("kanji_inventory", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    private void addInventoryText(Map<String, MutableKanjiInventoryItem> inventory, List<String> kanji, String meaning, String reading, String expression, String sentence) {
+        for (String glyph : kanji) {
+            inventoryItem(inventory, glyph).add(meaning, reading, expression, sentence);
+        }
+    }
+
+    private MutableKanjiInventoryItem inventoryItem(Map<String, MutableKanjiInventoryItem> inventory, String kanji) {
+        MutableKanjiInventoryItem item = inventory.get(kanji);
+        if (item == null) {
+            item = new MutableKanjiInventoryItem(kanji);
+            inventory.put(kanji, item);
+        }
+        return item;
+    }
+
+    private Records.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("kanji_inventory", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            return cursor.moveToFirst() ? readInventoryItem(db, cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Records.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, Cursor cursor) {
+        String kanji = string(cursor, "kanji");
+        return new Records.KanjiInventoryItem(
+                kanji,
+                string(cursor, "primary_meaning"),
+                string(cursor, "readings"),
+                string(cursor, "browser_search"),
+                integer(cursor, "source_count"),
+                integer(cursor, "example_count"),
+                isKanjiSuspended(db, kanji),
+                longValue(cursor, "last_seen_at")
+        );
+    }
+
+    private boolean isKanjiSuspended(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query("local_kanji_suspensions", new String[]{"kanji"}, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private static String firstNonEmpty(String first, String second) {
+        return first == null || first.isEmpty() ? (second == null ? "" : second) : first;
+    }
+
     private Records.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query("dashboard_rows", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
         try {
@@ -1885,6 +2180,58 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.cardIds = cardIds;
             this.activeCardCount = activeCardCount;
             this.suspendedCardCount = suspendedCardCount;
+        }
+    }
+
+    private static final class MutableKanjiInventoryItem {
+        private final String kanji;
+        private String primaryMeaning = "";
+        private String browserSearch = "";
+        private int sourceCount = 0;
+        private int exampleCount = 0;
+        private final Set<String> readings = new HashSet<>();
+        private final Set<String> searchParts = new HashSet<>();
+
+        private MutableKanjiInventoryItem(String kanji) {
+            this.kanji = kanji == null ? "" : kanji;
+            searchParts.add(this.kanji.toLowerCase(Locale.ROOT));
+        }
+
+        private void add(String meaning, String reading, String expression, String sentence) {
+            sourceCount++;
+            if (primaryMeaning.isEmpty() && meaning != null && !meaning.isEmpty()) {
+                primaryMeaning = meaning;
+            }
+            if (reading != null && !reading.isEmpty()) {
+                readings.add(reading);
+            }
+            addSearch(meaning);
+            addSearch(reading);
+            addSearch(expression);
+            addSearch(sentence);
+        }
+
+        private void addSearch(String value) {
+            String normalized = TextUtil.normalizeJapanese(value);
+            if (!normalized.isEmpty()) {
+                searchParts.add(normalized.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        private String readingsText(String previous) {
+            if (readings.isEmpty()) {
+                return previous == null ? "" : previous;
+            }
+            return String.join(" / ", readings);
+        }
+
+        private String searchText(Records.KanjiInventoryItem previous) {
+            if (previous != null) {
+                addSearch(previous.primaryMeaning);
+                addSearch(previous.readings);
+                addSearch(previous.browserSearch);
+            }
+            return String.join(" ", searchParts);
         }
     }
 

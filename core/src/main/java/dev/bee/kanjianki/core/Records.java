@@ -384,6 +384,37 @@ public final class Records {
         }
     }
 
+    public static final class KanjiInventoryItem {
+        public final String kanji;
+        public final String primaryMeaning;
+        public final String readings;
+        public final String browserSearch;
+        public final int sourceCount;
+        public final int exampleCount;
+        public final boolean suspended;
+        public final long lastSeenAtMillis;
+
+        public KanjiInventoryItem(
+                String kanji,
+                String primaryMeaning,
+                String readings,
+                String browserSearch,
+                int sourceCount,
+                int exampleCount,
+                boolean suspended,
+                long lastSeenAtMillis
+        ) {
+            this.kanji = kanji == null ? "" : kanji;
+            this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
+            this.readings = readings == null ? "" : readings;
+            this.browserSearch = browserSearch == null ? "" : browserSearch;
+            this.sourceCount = Math.max(0, sourceCount);
+            this.exampleCount = Math.max(0, exampleCount);
+            this.suspended = suspended;
+            this.lastSeenAtMillis = Math.max(0L, lastSeenAtMillis);
+        }
+    }
+
     public static final class KanjiTimelineEvent {
         public final long id;
         public final String kanji;
@@ -440,11 +471,17 @@ public final class Records {
     }
 
     public static final class KanjiRecoveryTimeline {
+        public final KanjiInventoryItem inventoryItem;
         public final DashboardRow currentRow;
         public final StudyItem currentStudyItem;
         public final List<KanjiTimelineEvent> events;
 
         public KanjiRecoveryTimeline(DashboardRow currentRow, StudyItem currentStudyItem, List<KanjiTimelineEvent> events) {
+            this(null, currentRow, currentStudyItem, events);
+        }
+
+        public KanjiRecoveryTimeline(KanjiInventoryItem inventoryItem, DashboardRow currentRow, StudyItem currentStudyItem, List<KanjiTimelineEvent> events) {
+            this.inventoryItem = inventoryItem;
             this.currentRow = currentRow;
             this.currentStudyItem = currentStudyItem;
             this.events = Collections.unmodifiableList(new ArrayList<>(events));

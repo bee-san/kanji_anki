@@ -115,6 +115,34 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testKanjiInventorySearchAndLocalSuspensionSurviveSyncRebuild() {
+        Records.DashboardRow row = row("拉", 0);
+        saveSingleRowSync(row, Collections.singletonList(suspendedImport("拉")), 2000L);
+
+        List<Records.KanjiInventoryItem> ramenMatches = store.searchKanjiInventory("ramen");
+        assertEquals(1, ramenMatches.size());
+        assertEquals("拉", ramenMatches.get(0).kanji);
+        assertFalse(ramenMatches.get(0).suspended);
+        assertEquals(1, store.activeDashboardRows().size());
+
+        store.setKanjiLocallySuspended("拉", true, 2500L);
+        Records.KanjiInventoryItem suspended = store.inventoryItemForKanji("拉");
+        assertNotNull(suspended);
+        assertTrue(suspended.suspended);
+        assertEquals(0, store.activeDashboardRows().size());
+        assertEquals("拉", store.searchKanjiInventory("拉").get(0).kanji);
+        assertTrue(store.searchKanjiInventory("拉").get(0).suspended);
+
+        saveSingleRowSync(row, Collections.emptyList(), 3000L);
+        assertTrue(store.inventoryItemForKanji("拉").suspended);
+        assertEquals(0, store.activeDashboardRows().size());
+
+        store.setKanjiLocallySuspended("拉", false, 3500L);
+        assertFalse(store.inventoryItemForKanji("拉").suspended);
+        assertEquals(1, store.activeDashboardRows().size());
+    }
+
+    @Test
     public void testTimelineRecordsSuspendedImportOnceAcrossRepeatedSync() {
         Records.DashboardRow row = row("拉", 0);
         Records.SuspendedImport imported = suspendedImport("拉");
