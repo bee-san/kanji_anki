@@ -9,15 +9,12 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -80,7 +77,6 @@ import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayDeque;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -396,15 +392,19 @@ public final class MainActivity extends Activity {
 
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = text("Kani", 54, INK, true);
+        TextView title = text("Kani", 48, INK, true);
         title.setLetterSpacing(0);
         copy.addView(title);
-        copy.addView(text("Your AnkiDroid companion app to cure kanji blindness", 18, MUTED, true));
+        copy.addView(text("Your AnkiDroid companion app to cure kanji blindness", 16, MUTED, true));
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
-        KaniMascotView mascot = new KaniMascotView(this);
-        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(128), dp(118));
-        mascotLp.setMargins(dp(8), 0, 0, 0);
+        ImageView mascot = new ImageView(this);
+        mascot.setImageResource(R.mipmap.ic_launcher_foreground);
+        mascot.setAdjustViewBounds(true);
+        mascot.setBackgroundColor(Color.TRANSPARENT);
+        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(110), dp(110));
+        mascotLp.setMargins(dp(10), 0, 0, 0);
         header.addView(mascot, mascotLp);
         return header;
     }
@@ -416,7 +416,7 @@ public final class MainActivity extends Activity {
         row.addView(metricCard(
                 R.drawable.ic_sync_24,
                 TEAL,
-                "Last sync",
+                "Sync",
                 homeSyncValue(sync),
                 provider.canSync && sync != null && "success".equals(sync.status) ? "Up to date" : "Tap to sync",
                 this::confirmSync
@@ -424,7 +424,7 @@ public final class MainActivity extends Activity {
         row.addView(metricCard(
                 R.drawable.ic_flame_24,
                 Color.rgb(247, 159, 0),
-                "Study streak",
+                "Streak",
                 streakHeadline(streak),
                 streak.bestDays > 0 ? "Best: " + streakDayCount(streak.bestDays) : "Start today",
                 null
@@ -432,7 +432,7 @@ public final class MainActivity extends Activity {
         row.addView(metricCard(
                 R.drawable.ic_target_24,
                 CORAL,
-                "Today's focus",
+                "Focus",
                 focusHeadline(plan),
                 focusMetricBody(plan),
                 null
@@ -442,30 +442,40 @@ public final class MainActivity extends Activity {
 
     private View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
         LinearLayout card = panelBox(Color.WHITE, softened(accent));
-        card.setPadding(dp(14), dp(16), dp(14), dp(16));
+        card.setPadding(dp(12), dp(14), dp(12), dp(14));
+        card.setGravity(Gravity.TOP);
+        card.setMinimumHeight(dp(164));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(accent);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(28), dp(28));
-        iconLp.setMargins(0, 0, 0, dp(10));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(24), dp(24));
+        iconLp.setMargins(0, 0, 0, dp(8));
         card.addView(icon, iconLp);
-        card.addView(text(label, 14, accent, true));
-        TextView valueText = text(value, 16, INK, true);
+
+        TextView labelText = text(label, 12, accent, true);
+        labelText.setIncludeFontPadding(false);
+        labelText.setSingleLine(true);
+        card.addView(labelText);
+
+        TextView valueText = text(value, 15, INK, true);
+        valueText.setIncludeFontPadding(false);
         valueText.setSingleLine(false);
         valueText.setMaxLines(2);
-        valueText.setPadding(0, dp(3), 0, dp(2));
+        valueText.setPadding(0, dp(6), 0, dp(4));
         card.addView(valueText);
-        TextView bodyText = text(compact(body, 20), 12, MUTED, false);
+
+        TextView bodyText = text(compact(body, 18), 11, MUTED, false);
+        bodyText.setIncludeFontPadding(false);
         bodyText.setSingleLine(false);
         bodyText.setMaxLines(2);
-        bodyText.setPadding(0, dp(1), 0, 0);
+        bodyText.setPadding(0, dp(3), 0, 0);
         card.addView(bodyText);
         if (action != null) {
             card.setClickable(true);
             card.setOnClickListener(v -> action.run());
         }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(146), 1);
-        lp.setMargins(dp(5), 0, dp(5), 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+        lp.setMargins(dp(4), 0, dp(4), 0);
         card.setLayoutParams(lp);
         return card;
     }
@@ -4022,91 +4032,6 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
-    }
-
-    private static final class KaniMascotView extends View {
-        private final Bitmap logo;
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final RectF target = new RectF();
-
-        private KaniMascotView(Context context) {
-            super(context);
-            logo = createTransparentMascot(BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher_foreground));
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            if (logo == null) {
-                return;
-            }
-            target.set(0f, 0f, getWidth(), getHeight());
-            canvas.drawBitmap(logo, null, target, paint);
-        }
-
-        private static Bitmap createTransparentMascot(Bitmap raw) {
-            if (raw == null) {
-                return null;
-            }
-            int left = Math.round(raw.getWidth() * 0.08f);
-            int top = Math.round(raw.getHeight() * 0.05f);
-            int right = Math.round(raw.getWidth() * 0.92f);
-            int bottom = Math.round(raw.getHeight() * 0.70f);
-            Bitmap crop = Bitmap.createBitmap(raw, left, top, right - left, bottom - top).copy(Bitmap.Config.ARGB_8888, true);
-            removeEdgeBackground(crop, crop.getPixel(0, 0));
-            return crop;
-        }
-
-        private static void removeEdgeBackground(Bitmap bitmap, int backgroundColor) {
-            int width = bitmap.getWidth();
-            int height = bitmap.getHeight();
-            boolean[] seen = new boolean[width * height];
-            ArrayDeque<Integer> pending = new ArrayDeque<>();
-            for (int x = 0; x < width; x++) {
-                enqueueBackground(bitmap, backgroundColor, seen, pending, x, 0);
-                enqueueBackground(bitmap, backgroundColor, seen, pending, x, height - 1);
-            }
-            for (int y = 1; y < height - 1; y++) {
-                enqueueBackground(bitmap, backgroundColor, seen, pending, 0, y);
-                enqueueBackground(bitmap, backgroundColor, seen, pending, width - 1, y);
-            }
-            while (!pending.isEmpty()) {
-                int packed = pending.removeFirst();
-                int x = packed % width;
-                int y = packed / width;
-                bitmap.setPixel(x, y, Color.TRANSPARENT);
-                enqueueBackground(bitmap, backgroundColor, seen, pending, x + 1, y);
-                enqueueBackground(bitmap, backgroundColor, seen, pending, x - 1, y);
-                enqueueBackground(bitmap, backgroundColor, seen, pending, x, y + 1);
-                enqueueBackground(bitmap, backgroundColor, seen, pending, x, y - 1);
-            }
-        }
-
-        private static void enqueueBackground(Bitmap bitmap, int backgroundColor, boolean[] seen, ArrayDeque<Integer> pending, int x, int y) {
-            int width = bitmap.getWidth();
-            int height = bitmap.getHeight();
-            if (x < 0 || y < 0 || x >= width || y >= height) {
-                return;
-            }
-            int index = y * width + x;
-            if (seen[index]) {
-                return;
-            }
-            seen[index] = true;
-            if (isBackgroundPixel(bitmap.getPixel(x, y), backgroundColor)) {
-                pending.add(index);
-            }
-        }
-
-        private static boolean isBackgroundPixel(int color, int backgroundColor) {
-            if (Color.alpha(color) < 16) {
-                return true;
-            }
-            int dr = Color.red(color) - Color.red(backgroundColor);
-            int dg = Color.green(color) - Color.green(backgroundColor);
-            int db = Color.blue(color) - Color.blue(backgroundColor);
-            return dr * dr + dg * dg + db * db < 1200;
-        }
     }
 
     private static final class SpaceView extends View {
