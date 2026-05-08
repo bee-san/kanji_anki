@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.update;
 
+import android.app.PendingIntent;
+
 import dev.bee.kanjianki.core.Records;
 
 import java.util.Arrays;
@@ -128,5 +130,14 @@ public final class GitHubUpdaterTest {
         assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.CACHED));
         assertFalse(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.AUTOMATIC));
         assertFalse(UpdatePolicy.shouldLaunchInstallConfirmation(null));
+    }
+
+    @Test
+    public void packageInstallerStatusReceiverIsMutable() {
+        int flags = GitHubUpdater.installStatusPendingIntentFlags();
+
+        assertTrue((flags & PendingIntent.FLAG_UPDATE_CURRENT) != 0);
+        assertTrue((flags & PendingIntent.FLAG_MUTABLE) != 0);
+        assertEquals(0, flags & PendingIntent.FLAG_IMMUTABLE);
     }
 }

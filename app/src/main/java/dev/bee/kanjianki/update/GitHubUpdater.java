@@ -193,7 +193,7 @@ public final class GitHubUpdater {
                     context,
                     sessionId,
                     callback,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                    installStatusPendingIntentFlags()
             );
             session.commit(pending.getIntentSender());
             committed = true;
@@ -205,6 +205,11 @@ public final class GitHubUpdater {
                 installer.abandonSession(sessionId);
             }
         }
+    }
+
+    static int installStatusPendingIntentFlags() {
+        // PackageInstaller adds status extras to this callback intent after commit().
+        return PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE;
     }
 
     private ApkMetadata inspectApk(File apkFile) {
