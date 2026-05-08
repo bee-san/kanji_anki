@@ -307,18 +307,6 @@ public final class MainActivity extends Activity {
         TextView syncHeadline = text(homeSyncHeadline(sync), 26, Color.WHITE, true);
         syncHeadline.setOnClickListener(v -> confirmSync());
         hero.addView(syncHeadline);
-        if (!provider.canSync) {
-            hero.addView(text(provider.message, 16, Color.WHITE, false));
-        }
-        if (sync != null) {
-            hero.addView(text(sync.headline(), 16, Color.WHITE, false));
-            if (!sync.removalMessage.isEmpty()) {
-                hero.addView(text(sync.removalMessage, 14, Color.WHITE, false));
-            }
-        } else {
-            hero.addView(text("Sync once to find the kanji your Anki reviews keep exposing.", 16, Color.WHITE, false));
-        }
-        hero.addView(text("Study starts with recall, then uses writing when a problem kanji needs repair.", 14, Color.WHITE, false));
         content.addView(hero);
         addSpace(18);
 
@@ -587,10 +575,6 @@ public final class MainActivity extends Activity {
                 weeklyReviewBody(week),
                 CORAL
         ));
-
-        LinearLayout meaning = band(GOLD);
-        meaning.addView(text(statsMeaning(sync, rows, impact, matureSupport, retired), 16, INK, false));
-        content.addView(meaning);
     }
 
     private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows) {
@@ -646,19 +630,6 @@ public final class MainActivity extends Activity {
         return "Latest sync " + when + ": "
                 + countText(sync.activeCards, "active Anki card checked", "active Anki cards checked")
                 + ", " + countText(sync.suspendedCards, "suspended card archived", "suspended cards archived") + ".";
-    }
-
-    private String statsMeaning(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows, LocalStore.StudyImpactStats impact, int matureSupport, int retired) {
-        if (sync == null || rows.isEmpty()) {
-            return "Start with an AnkiDroid sync. Kani will only count kanji that came from your own Kiku cards, so these stats stay tied to the deck you actually review.";
-        }
-        if (impact.totalReviews == 0) {
-            return "Kani has found problem kanji in Anki. Study one and this page will start showing writing reviews, caught misses, and whether Anki later has enough mature support to let that kanji rest.";
-        }
-        if (retired > 0 || matureSupport > 0) {
-            return "You are turning Anki pain points into focused writing reps. Mature Anki support and resting Kani items are the strongest signs that the bridge is working.";
-        }
-        return "You are writing kanji that came from Anki misses or weak support. Keep syncing after Anki reviews; Kani will watch for mature support and stop drilling kanji that Anki has recovered.";
     }
 
     private int activeEvidenceCount(List<Records.DashboardRow> rows) {

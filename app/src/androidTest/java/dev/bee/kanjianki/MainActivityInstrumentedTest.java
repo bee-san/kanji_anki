@@ -336,6 +336,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "2 mature Anki support links");
                 assertHasText(activity, "1 kanji resting in Kani");
                 assertNoText(activity, "What this means");
+                assertNoText(activity, "You are turning Anki pain points");
             });
         }
     }
@@ -1063,7 +1064,13 @@ public final class MainActivityInstrumentedTest {
                 + ", click to sync again";
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> assertHasText(activity, headline));
+            scenario.onActivity(activity -> {
+                assertHasText(activity, headline);
+                assertNoText(activity, "active cards checked");
+                assertNoText(activity, "suspended cards archived");
+                assertNoText(activity, "Study starts with recall");
+                assertNoText(activity, "Sync once to find");
+            });
             clickText(scenario, headline);
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Sync AnkiDroid?");
