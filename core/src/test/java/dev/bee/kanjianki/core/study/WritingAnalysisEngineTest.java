@@ -154,7 +154,7 @@ public class WritingAnalysisEngineTest {
 
         assertFalse(analysis.writingPassed);
         assertEquals(WritingAnalysis.Status.WRONG, analysis.status);
-        assertTrue(analysis.message.length() > 0);
+        assertFalse(analysis.message.isEmpty());
     }
 
     private StrokeGuide guide() {

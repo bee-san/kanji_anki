@@ -4038,12 +4038,7 @@ public final class MainActivity extends Activity {
                 if (child.getVisibility() == GONE) {
                     continue;
                 }
-                int outerHeight = child.getMeasuredHeight();
-                ViewGroup.LayoutParams rawLp = child.getLayoutParams();
-                if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
-                    outerHeight += marginLp.topMargin + marginLp.bottomMargin;
-                }
-                maxOuterHeight = Math.max(maxOuterHeight, outerHeight);
+                maxOuterHeight = Math.max(maxOuterHeight, measuredOuterHeight(child));
             }
             if (maxOuterHeight <= 0) {
                 return;
@@ -4055,25 +4050,39 @@ public final class MainActivity extends Activity {
             }
 
             for (int i = 0; i < childCount; i++) {
-                View child = getChildAt(i);
-                if (child.getVisibility() != GONE) {
-                    int childHeight = childAreaHeight;
-                    ViewGroup.LayoutParams rawLp = child.getLayoutParams();
-                    if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
-                        childHeight -= marginLp.topMargin + marginLp.bottomMargin;
-                    }
-                    if (childHeight > 0) {
-                        child.measure(
-                                View.MeasureSpec.makeMeasureSpec(child.getMeasuredWidth(), View.MeasureSpec.EXACTLY),
-                                View.MeasureSpec.makeMeasureSpec(childHeight, View.MeasureSpec.EXACTLY)
-                        );
-                    }
-                }
+                measureVisibleChild(getChildAt(i), childAreaHeight);
             }
 
             if (View.MeasureSpec.getMode(heightMeasureSpec) != View.MeasureSpec.EXACTLY) {
                 setMeasuredDimension(getMeasuredWidth(), getPaddingTop() + getPaddingBottom() + maxOuterHeight);
             }
+        }
+
+        private static int measuredOuterHeight(View child) {
+            int outerHeight = child.getMeasuredHeight();
+            ViewGroup.LayoutParams rawLp = child.getLayoutParams();
+            if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
+                outerHeight += marginLp.topMargin + marginLp.bottomMargin;
+            }
+            return outerHeight;
+        }
+
+        private static void measureVisibleChild(View child, int childAreaHeight) {
+            if (child.getVisibility() == GONE) {
+                return;
+            }
+            int childHeight = childAreaHeight;
+            ViewGroup.LayoutParams rawLp = child.getLayoutParams();
+            if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
+                childHeight -= marginLp.topMargin + marginLp.bottomMargin;
+            }
+            if (childHeight <= 0) {
+                return;
+            }
+            child.measure(
+                    View.MeasureSpec.makeMeasureSpec(child.getMeasuredWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(childHeight, View.MeasureSpec.EXACTLY)
+            );
         }
     }
 

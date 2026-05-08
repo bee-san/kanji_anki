@@ -390,8 +390,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 } catch (Throwable unsupportedColumns) {
                     projectionIndex++;
                     if (projectionIndex >= projections.length) {
-                        if (unsupportedColumns instanceof SyncFailure) {
-                            throw (SyncFailure) unsupportedColumns;
+                        if (unsupportedColumns instanceof SyncFailure syncFailure) {
+                            throw syncFailure;
                         }
                         throw SyncFailure.retryable("AnkiDroid card projection failed: " + unsupportedColumns.getMessage(), unsupportedColumns);
                     }
@@ -662,11 +662,11 @@ public final class AnkiDroidGateway implements CollectionGateway {
     public static final class SyncFailure extends Exception {
         private static final long serialVersionUID = 1L;
 
-        public final boolean permanent;
+        public final boolean permanentFailure;
 
         private SyncFailure(String message, boolean permanent, Throwable cause) {
             super(message, cause);
-            this.permanent = permanent;
+            this.permanentFailure = permanent;
         }
 
         public static SyncFailure permanent(String message) {

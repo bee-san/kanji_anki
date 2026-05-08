@@ -9,6 +9,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class SimilarKanjiIndexTest {
@@ -60,5 +61,21 @@ public final class SimilarKanjiIndexTest {
         assertEquals("拉", pairs.get(0).kanjiA);
         assertEquals("謎", pairs.get(0).kanjiB);
         assertTrue(index.pairsWithin(Collections.singletonList("拉")).isEmpty());
+    }
+
+    @Test
+    public void pairEqualityUsesCanonicalKanjiAndSource() {
+        SimilarKanjiIndex.Pair pair = SimilarKanjiIndex.Pair.canonical("麺", "拉", "fixture");
+        SimilarKanjiIndex.Pair same = SimilarKanjiIndex.Pair.canonical("拉", "麺", "fixture");
+        SimilarKanjiIndex.Pair differentSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", "other");
+        SimilarKanjiIndex.Pair differentKanji = SimilarKanjiIndex.Pair.canonical("拉", "謎", "fixture");
+
+        assertEquals(pair, pair);
+        assertEquals(pair, same);
+        assertEquals(pair.hashCode(), same.hashCode());
+        assertEquals(0, pair.compareTo(same));
+        assertNotEquals(pair, differentSource);
+        assertNotEquals(pair, differentKanji);
+        assertNotEquals(pair, "not a pair");
     }
 }

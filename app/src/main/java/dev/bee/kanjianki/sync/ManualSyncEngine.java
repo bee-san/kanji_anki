@@ -98,8 +98,8 @@ public final class ManualSyncEngine {
             store.saveFailedSync(
                     started,
                     finished,
-                    error.permanent ? "config_error" : "retryable_error",
-                    error.permanent ? "permanent" : "retryable",
+                    error.permanentFailure ? "config_error" : "retryable_error",
+                    error.permanentFailure ? "permanent" : "retryable",
                     error.getMessage()
             );
             return new SyncResult(false, false, 0, 0, error.getMessage(), "");

@@ -29,6 +29,8 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final int DB_VERSION = 11;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
+    private static final String STATUS_SUCCESS = "success";
+    private static final String COLUMN_FIRST_IMPORTED_AT = "first_imported_at";
     private static final int DEFAULT_REMINDER_HOUR = 19;
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
@@ -189,7 +191,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
             int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeIndex.noteIds);
             int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeIndex.cardIds);
-            long syncId = insertSyncRun(db, timing.startedAt, timing.finishedAt, "success", activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
+            long syncId = insertSyncRun(db, timing.startedAt, timing.finishedAt, STATUS_SUCCESS, activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
             db.delete("source_cards", null, null);
             db.delete("source_notes", null, null);
             db.delete("dashboard_rows", null, null);
@@ -259,7 +261,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 }
                 values.put("rank_known", imported.rankKnown ? 1 : 0);
                 values.put("cutoff_used", imported.cutoffUsed);
-                values.put("first_imported_at", firstImportedAt(db, imported.kanji, timing.finishedAt));
+                values.put(COLUMN_FIRST_IMPORTED_AT, firstImportedAt(db, imported.kanji, timing.finishedAt));
                 values.put("last_seen_sync_id", syncId);
                 db.insertWithOnConflict("suspended_imports", null, values, SQLiteDatabase.CONFLICT_REPLACE);
                 for (Records.SuspendedSource source : imported.sources) {
@@ -892,7 +894,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 "sync_runs",
                 new String[]{"id"},
                 "status=? AND finished_at>=?",
-                new String[]{"success", Long.toString(finishedAtMillis)},
+                new String[]{STATUS_SUCCESS, Long.toString(finishedAtMillis)},
                 null,
                 null,
                 "id DESC",
@@ -1482,7 +1484,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             while (imports.moveToNext()) {
                 String kanji = string(imports, "kanji");
                 SourceSnapshot source = firstSuspendedSourceForKanji(db, kanji);
-                long importedAt = longValue(imports, "first_imported_at");
+                long importedAt = longValue(imports, COLUMN_FIRST_IMPORTED_AT);
                 insertTimelineEvent(
                         db,
                         kanji,
@@ -2794,9 +2796,9 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private long firstImportedAt(SQLiteDatabase db, String kanji, long fallback) {
-        Cursor cursor = db.query("suspended_imports", new String[]{"first_imported_at"}, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query("suspended_imports", new String[]{COLUMN_FIRST_IMPORTED_AT}, "kanji=?", new String[]{kanji}, null, null, null, "1");
         try {
-            return cursor.moveToFirst() ? longValue(cursor, "first_imported_at") : fallback;
+            return cursor.moveToFirst() ? longValue(cursor, COLUMN_FIRST_IMPORTED_AT) : fallback;
         } finally {
             cursor.close();
         }
@@ -3060,7 +3062,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
 
         public String headline() {
-            if (!"success".equals(status)) {
+            if (!STATUS_SUCCESS.equals(status)) {
                 return "Sync blocked: " + errorMessage;
             }
             return String.format(Locale.ROOT, "%d active cards checked, %d suspended cards archived, %d rare kanji added", activeCards, suspendedCards, importedKanji);
