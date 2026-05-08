@@ -105,6 +105,11 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("suspended_sources"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("kanji_examples"));
+        assertEquals(2, count("sync_card_snapshots"));
+        assertEquals(2, count("sync_note_snapshots"));
+        assertTrue(count("sync_kanji_snapshots") >= 2);
+        assertHistoricalCardSnapshot(syncId, 10L, 0, 1, 12, 1, 18.5, 7.0, 0.48);
+        assertHistoricalKanjiSnapshot(syncId, "拉", 0, 1);
         assertSourceCardFsrs(18.5, 7.0, 0.48);
         assertEquals("拉", store.dashboardRows().get(0).kanji);
         assertEquals(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability, 0.001);
@@ -388,6 +393,13 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("similar_kanji_choice_state", "choice_signature"));
         assertTrue(hasColumn("similar_kanji_repair_queue", "repair_kanji"));
         assertTrue(hasColumn("similar_kanji_review_log", "selected_kanji"));
+        assertTrue(hasColumn("review_log", "task_type"));
+        assertTrue(hasColumn("review_log", "hints_used"));
+        assertTrue(hasColumn("review_log", "memory_before"));
+        assertTrue(hasColumn("review_log", "scheduler_state_after_json"));
+        assertTrue(hasColumn("sync_card_snapshots", "fsrs_difficulty"));
+        assertTrue(hasColumn("sync_note_snapshots", "extracted_kanji"));
+        assertTrue(hasColumn("sync_kanji_snapshots", "weakness_score"));
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
@@ -482,6 +494,70 @@ public final class LocalStoreInstrumentedTest {
         store.saveReview(request, "easy", 4000L);
         assertEquals(1, store.consumedTokens().size());
         assertEquals(1, store.studiedKanjiSince(0L).size());
+    }
+
+    @Test
+    public void testRichReviewHistoryStoresTaskContextAndSchedulerState() {
+        Records.StudyItem before = new Records.StudyItem(
+                "裂",
+                "review",
+                1000L,
+                2.0,
+                6.0,
+                3,
+                1,
+                2,
+                1,
+                "review-token",
+                500L
+        ).withAnswerSignature("裂|分裂|ぶんれつ|split");
+        Records.StudyItem after = new Records.StudyItem(
+                "裂",
+                "review",
+                90_000_000L,
+                4.0,
+                5.8,
+                4,
+                1,
+                2,
+                2,
+                null,
+                500L
+        ).withAnswerSignature("裂|分裂|ぶんれつ|split");
+        Records.ReviewRequest request = new Records.ReviewRequest(
+                "裂",
+                "review-token",
+                "good",
+                true,
+                true,
+                false,
+                false,
+                2,
+                "kanji_meaning",
+                "裂|分裂|ぶんれつ|split",
+                "Imported from suspended cards"
+        );
+
+        store.saveReview(request, "good", 4000L, before, after);
+
+        Cursor cursor = store.getReadableDatabase().rawQuery(
+                "SELECT task_type, answer_signature, prompt, hints_used, writing_clean, memory_before, memory_after, scheduler_state_after_json FROM review_log WHERE token=?",
+                new String[]{"review-token"}
+        );
+        try {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("kanji_meaning", cursor.getString(0));
+            assertEquals("裂|分裂|ぶんれつ|split", cursor.getString(1));
+            assertEquals("Imported from suspended cards", cursor.getString(2));
+            assertEquals(2, cursor.getInt(3));
+            assertEquals(0, cursor.getInt(4));
+            assertTrue(cursor.getString(5).contains("review"));
+            assertTrue(cursor.getString(6).contains("review"));
+            assertTrue(cursor.getString(7).contains("\"stability\":4.0"));
+            assertTrue(cursor.getString(7).contains("\"recognition_stage\":0"));
+        } finally {
+            cursor.close();
+        }
     }
 
     @Test
@@ -717,6 +793,41 @@ public final class LocalStoreInstrumentedTest {
             assertEquals(stability, cursor.getDouble(0), 0.001);
             assertEquals(difficulty, cursor.getDouble(1), 0.001);
             assertEquals(retrievability, cursor.getDouble(2), 0.001);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private void assertHistoricalCardSnapshot(long syncId, long cardId, int suspended, int mature, int reps, int lapses, double stability, double difficulty, double retrievability) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT suspended, mature, reps, lapses, fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM sync_card_snapshots WHERE sync_id=? AND card_id=?",
+                new String[]{Long.toString(syncId), Long.toString(cardId)}
+        );
+        try {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(suspended, cursor.getInt(0));
+            assertEquals(mature, cursor.getInt(1));
+            assertEquals(reps, cursor.getInt(2));
+            assertEquals(lapses, cursor.getInt(3));
+            assertEquals(stability, cursor.getDouble(4), 0.001);
+            assertEquals(difficulty, cursor.getDouble(5), 0.001);
+            assertEquals(retrievability, cursor.getDouble(6), 0.001);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private void assertHistoricalKanjiSnapshot(long syncId, String kanji, int activeCards, int suspendedCards) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT active_cards, suspended_cards FROM sync_kanji_snapshots WHERE sync_id=? AND kanji=?",
+                new String[]{Long.toString(syncId), kanji}
+        );
+        try {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(activeCards, cursor.getInt(0));
+            assertEquals(suspendedCards, cursor.getInt(1));
         } finally {
             cursor.close();
         }

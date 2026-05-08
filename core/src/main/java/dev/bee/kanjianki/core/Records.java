@@ -1325,6 +1325,9 @@ public final class Records {
         public final String kanji;
         public final String token;
         public final String rating;
+        public final String taskType;
+        public final String answerSignature;
+        public final String prompt;
         public final boolean writingRequired;
         public final boolean writingPassed;
         public final boolean writingClean;
@@ -1340,7 +1343,10 @@ public final class Records {
                     writingPassed,
                     writingPassed && ("good".equals(rating) || "easy".equals(rating)),
                     manualOverride,
-                    hintsUsed
+                    hintsUsed,
+                    "",
+                    "",
+                    ""
             );
         }
 
@@ -1354,9 +1360,40 @@ public final class Records {
                 boolean manualOverride,
                 int hintsUsed
         ) {
+            this(
+                    kanji,
+                    token,
+                    rating,
+                    writingRequired,
+                    writingPassed,
+                    writingClean,
+                    manualOverride,
+                    hintsUsed,
+                    "",
+                    "",
+                    ""
+            );
+        }
+
+        public ReviewRequest(
+                String kanji,
+                String token,
+                String rating,
+                boolean writingRequired,
+                boolean writingPassed,
+                boolean writingClean,
+                boolean manualOverride,
+                int hintsUsed,
+                String taskType,
+                String answerSignature,
+                String prompt
+        ) {
             this.kanji = kanji;
             this.token = token;
             this.rating = rating;
+            this.taskType = taskType == null ? "" : taskType;
+            this.answerSignature = answerSignature == null ? "" : answerSignature;
+            this.prompt = prompt == null ? "" : prompt;
             this.writingRequired = writingRequired;
             this.writingPassed = writingPassed;
             this.writingClean = writingClean;

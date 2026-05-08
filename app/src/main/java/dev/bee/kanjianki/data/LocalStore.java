@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,9 +28,10 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 11;
+    private static final int DB_VERSION = 12;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
+    private static final String REVIEW_LOG_TABLE_SQL = "CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
     private static final String STATUS_SUCCESS = "success";
     private static final String COLUMN_FIRST_IMPORTED_AT = "first_imported_at";
     private static final int DEFAULT_REMINDER_HOUR = 19;
@@ -62,11 +65,12 @@ public final class LocalStore extends SQLiteOpenHelper {
         createSimilarKanjiPracticeTables(db);
         db.execSQL(STUDY_ITEMS_TABLE_SQL);
         db.execSQL(LEARNING_REPEATS_TABLE_SQL);
-        db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
+        db.execSQL(REVIEW_LOG_TABLE_SQL);
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
         db.execSQL("CREATE INDEX idx_learning_repeats_due ON learning_repeats(due_at)");
         createTimelineTables(db);
+        createHistoricalSyncTables(db);
     }
 
     @Override
@@ -121,6 +125,11 @@ public final class LocalStore extends SQLiteOpenHelper {
             createSimilarKanjiPracticeTables(db);
             rebuildSimilarKanjiChoiceStates(db, System.currentTimeMillis());
         }
+        if (oldVersion < 12) {
+            createHistoricalSyncTables(db);
+            addRichReviewColumns(db);
+            backfillLatestHistoricalSync(db);
+        }
     }
 
     private void createKanjiInventoryTables(SQLiteDatabase db) {
@@ -142,6 +151,27 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_repair_due ON similar_kanji_repair_queue(status, due_at, created_at)");
         db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, selected_kanji TEXT NOT NULL, correct INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_review_log_target ON similar_kanji_review_log(target_kanji, reviewed_at)");
+    }
+
+    private void createHistoricalSyncTables(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS sync_card_snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, sync_id INTEGER NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, suspended INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, mature INTEGER NOT NULL)");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_card_snapshots_sync_card ON sync_card_snapshots(sync_id, card_id)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_card_snapshots_note ON sync_card_snapshots(sync_id, note_id)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS sync_note_snapshots (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, note_id INTEGER NOT NULL, model_name TEXT NOT NULL, deck_names TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, tags TEXT NOT NULL, fields_json TEXT NOT NULL, extracted_kanji TEXT NOT NULL, PRIMARY KEY (sync_id, note_id))");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_note_snapshots_kanji ON sync_note_snapshots(sync_id, extracted_kanji)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS sync_kanji_snapshots (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, kanji TEXT NOT NULL, active_cards INTEGER NOT NULL, suspended_cards INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, average_interval_days REAL NOT NULL, total_lapses INTEGER NOT NULL, total_reps INTEGER NOT NULL, fsrs_stability_avg REAL, fsrs_difficulty_avg REAL, fsrs_retrievability_avg REAL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, PRIMARY KEY (sync_id, kanji))");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_sync ON sync_kanji_snapshots(kanji, sync_id)");
+    }
+
+    private void addRichReviewColumns(SQLiteDatabase db) {
+        addNullableColumn(db, "review_log", "task_type", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, "review_log", "answer_signature", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, "review_log", "prompt", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, "review_log", "hints_used", "INTEGER NOT NULL DEFAULT 0");
+        addNullableColumn(db, "review_log", "writing_clean", "INTEGER NOT NULL DEFAULT 0");
+        addNullableColumn(db, "review_log", "memory_before", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, "review_log", "memory_after", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, "review_log", "scheduler_state_after_json", "TEXT NOT NULL DEFAULT ''");
     }
 
     private void rebuildStudyItemsWithAnswerSignatureKey(SQLiteDatabase db) {
@@ -192,12 +222,13 @@ public final class LocalStore extends SQLiteOpenHelper {
             int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeIndex.noteIds);
             int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeIndex.cardIds);
             long syncId = insertSyncRun(db, timing.startedAt, timing.finishedAt, STATUS_SUCCESS, activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
+            Map<Long, Records.Note> notesById = snapshot.notesById();
+            appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing);
             db.delete("source_cards", null, null);
             db.delete("source_notes", null, null);
             db.delete("dashboard_rows", null, null);
             db.delete("kanji_examples", null, null);
 
-            Map<Long, Records.Note> notesById = snapshot.notesById();
             for (Records.Note note : snapshot.notes) {
                 if (activeIndex.noteIds.contains(note.noteId)) {
                     ContentValues values = new ContentValues();
@@ -830,10 +861,14 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt) {
+        saveReview(request, appliedRating, reviewedAt, null, null);
+    }
+
+    public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt, Records.StudyItem beforeReview, Records.StudyItem afterReview) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            long inserted = insertReview(db, request, appliedRating, reviewedAt);
+            long inserted = insertReview(db, request, appliedRating, reviewedAt, beforeReview, afterReview);
             if (inserted != -1L) {
                 appendReviewTimelineEvent(db, request, appliedRating, reviewedAt, "review:" + request.token);
             }
@@ -843,7 +878,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
-    private long insertReview(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt) {
+    private long insertReview(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt, Records.StudyItem beforeReview, Records.StudyItem afterReview) {
         ContentValues values = new ContentValues();
         values.put("kanji", request.kanji);
         values.put("token", request.token);
@@ -852,7 +887,41 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("writing_passed", request.writingPassed ? 1 : 0);
         values.put("manual_override", request.manualOverride ? 1 : 0);
         values.put("reviewed_at", reviewedAt);
+        values.put("task_type", request.taskType);
+        values.put("answer_signature", request.answerSignature);
+        values.put("prompt", request.prompt);
+        values.put("hints_used", request.hintsUsed);
+        values.put("writing_clean", request.writingClean ? 1 : 0);
+        values.put("memory_before", taskMemoryText(beforeReview, request.taskType));
+        values.put("memory_after", taskMemoryText(afterReview, request.taskType));
+        values.put("scheduler_state_after_json", studyItemSchedulerJson(afterReview));
         return db.insertWithOnConflict("review_log", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    private String taskMemoryText(Records.StudyItem item, String taskType) {
+        if (item == null || taskType == null || taskType.isEmpty()) {
+            return "";
+        }
+        return item.memoryForTaskType(taskType).encode();
+    }
+
+    private String studyItemSchedulerJson(Records.StudyItem item) {
+        if (item == null) {
+            return "";
+        }
+        return "{"
+                + "\"state\":" + TextUtil.jsonQuote(item.state)
+                + ",\"due_at\":" + item.dueAtMillis
+                + ",\"stability\":" + item.stability
+                + ",\"difficulty\":" + item.difficulty
+                + ",\"total_reviews\":" + item.totalReviews
+                + ",\"lapses\":" + item.lapses
+                + ",\"learning_step\":" + item.learningStep
+                + ",\"writing_level\":" + item.writingLevel
+                + ",\"recognition_stage\":" + item.recognitionStage
+                + ",\"writing_remediation_pending\":" + (item.writingRemediationPending ? "true" : "false")
+                + ",\"mature_interval_days\":" + item.matureIntervalDays
+                + "}";
     }
 
     public List<String> consumedTokens() {
@@ -1435,6 +1504,39 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return new StudyImpactStats(total, reviewedKanji.size(), writingRequired, writingPassed, writingFailed, manualOverrides);
+    }
+
+    public KanjiImpactAnalyzer.Report kanjiImpactReport() {
+        SQLiteDatabase db = getReadableDatabase();
+        long latestSyncId = latestSuccessfulSyncId(db);
+        if (latestSyncId == 0L) {
+            return new KanjiImpactAnalyzer.Report(0, 0, 0, Collections.emptyList());
+        }
+        Map<String, KanjiImpactAnalyzer.MetricSnapshot> currentByKanji = kanjiMetricsForSync(db, latestSyncId);
+        Map<String, Integer> reviewCounts = reviewCountsByKanji(db);
+        Set<String> candidates = impactCandidateKanji(db, latestSyncId);
+        candidates.addAll(reviewCounts.keySet());
+        List<KanjiImpactAnalyzer.KanjiHistory> histories = new ArrayList<>();
+        for (String kanji : candidates) {
+            HistoricalKanjiSnapshot baseline = firstKanjiSnapshot(db, kanji);
+            KanjiImpactAnalyzer.MetricSnapshot current = currentByKanji.get(kanji);
+            SameCardMetrics sameCards = baseline == null || baseline.syncId == latestSyncId
+                    ? SameCardMetrics.EMPTY
+                    : sameCardMetrics(db, kanji, baseline.syncId, latestSyncId);
+            int commonCards = sameCards.current == null ? 0 : sameCards.current.totalCards();
+            int currentCards = current == null ? 0 : current.totalCards();
+            histories.add(new KanjiImpactAnalyzer.KanjiHistory(
+                    kanji,
+                    baseline == null ? null : baseline.metrics,
+                    current,
+                    sameCards.baseline,
+                    sameCards.current,
+                    commonCards,
+                    Math.max(0, currentCards - commonCards),
+                    reviewCounts.getOrDefault(kanji, 0)
+            ));
+        }
+        return new KanjiImpactAnalyzer().analyze(histories);
     }
 
     public Set<String> studiedKanjiSince(long sinceMillis) {
@@ -2663,6 +2765,472 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    private void appendHistoricalSyncSnapshots(
+            SQLiteDatabase db,
+            Records.CollectionSnapshot snapshot,
+            Map<Long, Records.Note> notesById,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            long syncId,
+            SyncTiming timing
+    ) {
+        createHistoricalSyncTables(db);
+        Map<Long, LinkedHashSet<String>> deckNamesByNote = deckNamesByNote(snapshot.cards);
+        Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
+
+        for (Records.Card card : snapshot.cards) {
+            Records.Note note = notesById.get(card.noteId);
+            if (note == null) {
+                continue;
+            }
+            ContentValues cardValues = new ContentValues();
+            cardValues.put("sync_id", syncId);
+            cardValues.put("started_at", timing.startedAt);
+            cardValues.put("finished_at", timing.finishedAt);
+            cardValues.put("card_id", card.cardId);
+            cardValues.put("note_id", card.noteId);
+            cardValues.put("deck_name", card.deckName);
+            cardValues.put("model_name", note.modelName);
+            cardValues.put("ord", card.ord);
+            cardValues.put("queue", card.queue);
+            cardValues.put("type", card.type);
+            cardValues.put("due", card.due);
+            cardValues.put("interval_days", card.intervalDays);
+            cardValues.put("reps", card.reps);
+            cardValues.put("lapses", card.lapses);
+            cardValues.put("suspended", card.suspended ? 1 : 0);
+            putNullableDouble(cardValues, "fsrs_stability", card.fsrsStability);
+            putNullableDouble(cardValues, "fsrs_difficulty", card.fsrsDifficulty);
+            putNullableDouble(cardValues, "fsrs_retrievability", card.fsrsRetrievability);
+            cardValues.put("mature", card.mature(settings.matureDays) ? 1 : 0);
+            db.insertWithOnConflict("sync_card_snapshots", null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
+
+            for (String kanji : extractedKanji(note, settings)) {
+                aggregateFor(aggregates, kanji).add(card, settings.matureDays);
+            }
+        }
+
+        for (Records.Note note : snapshot.notes) {
+            LinkedHashSet<String> decks = deckNamesByNote.get(note.noteId);
+            if (decks == null || decks.isEmpty()) {
+                continue;
+            }
+            String expression = TextUtil.normalizeJapanese(note.expression(settings));
+            String reading = TextUtil.normalizeJapanese(note.reading(settings));
+            String meaning = TextUtil.firstMeaningLine(note.meaning(settings));
+            String sentence = TextUtil.normalizeJapanese(note.sentence(settings));
+            ContentValues noteValues = new ContentValues();
+            noteValues.put("sync_id", syncId);
+            noteValues.put("finished_at", timing.finishedAt);
+            noteValues.put("note_id", note.noteId);
+            noteValues.put("model_name", note.modelName);
+            noteValues.put("deck_names", String.join(" ", decks));
+            noteValues.put("expression", expression);
+            noteValues.put("reading", reading);
+            noteValues.put("meaning", meaning);
+            noteValues.put("sentence", sentence);
+            noteValues.put("tags", String.join(" ", note.tags));
+            noteValues.put("fields_json", fieldsJson(note.fields));
+            noteValues.put("extracted_kanji", String.join("", TextUtil.extractKanji(expression + " " + sentence)));
+            db.insertWithOnConflict("sync_note_snapshots", null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+
+        overlayDashboardRows(aggregates, rows);
+        insertHistoricalKanjiAggregates(db, syncId, timing.finishedAt, aggregates);
+    }
+
+    private void backfillLatestHistoricalSync(SQLiteDatabase db) {
+        if (tableHasRows(db, "sync_kanji_snapshots")) {
+            return;
+        }
+        HistoricalSyncRun sync = latestSuccessfulSyncRun(db);
+        if (sync == null) {
+            return;
+        }
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Map<Long, HistoricalNoteSnapshot> notes = currentSourceNotes(db);
+        if (notes.isEmpty()) {
+            return;
+        }
+        Map<Long, LinkedHashSet<String>> deckNamesByNote = new LinkedHashMap<>();
+        Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
+        Cursor cards = db.query("source_cards", null, null, null, null, null, "card_id ASC");
+        try {
+            while (cards.moveToNext()) {
+                long noteId = longValue(cards, "note_id");
+                HistoricalNoteSnapshot note = notes.get(noteId);
+                if (note == null) {
+                    continue;
+                }
+                long cardId = longValue(cards, "card_id");
+                String deck = string(cards, "deck_name");
+                linkedSetFor(deckNamesByNote, noteId).add(deck);
+                int intervalDays = integer(cards, "interval_days");
+                int reps = integer(cards, "reps");
+                int lapses = integer(cards, "lapses");
+                boolean mature = intervalDays >= settings.matureDays;
+
+                ContentValues cardValues = new ContentValues();
+                cardValues.put("sync_id", sync.id);
+                cardValues.put("started_at", sync.startedAt);
+                cardValues.put("finished_at", sync.finishedAt);
+                cardValues.put("card_id", cardId);
+                cardValues.put("note_id", noteId);
+                cardValues.put("deck_name", deck);
+                cardValues.put("model_name", note.modelName);
+                cardValues.put("ord", integer(cards, "ord"));
+                cardValues.put("queue", integer(cards, "queue"));
+                cardValues.put("type", integer(cards, "type"));
+                cardValues.put("due", integer(cards, "due"));
+                cardValues.put("interval_days", intervalDays);
+                cardValues.put("reps", reps);
+                cardValues.put("lapses", lapses);
+                cardValues.put("suspended", 0);
+                putNullableDouble(cardValues, "fsrs_stability", nullableDouble(cards, "fsrs_stability"));
+                putNullableDouble(cardValues, "fsrs_difficulty", nullableDouble(cards, "fsrs_difficulty"));
+                putNullableDouble(cardValues, "fsrs_retrievability", nullableDouble(cards, "fsrs_retrievability"));
+                cardValues.put("mature", mature ? 1 : 0);
+                db.insertWithOnConflict("sync_card_snapshots", null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
+
+                for (String kanji : TextUtil.extractKanji(note.expression + " " + note.sentence)) {
+                    aggregateFor(aggregates, kanji).add(
+                            intervalDays,
+                            reps,
+                            lapses,
+                            false,
+                            mature,
+                            nullableDouble(cards, "fsrs_stability"),
+                            nullableDouble(cards, "fsrs_difficulty"),
+                            nullableDouble(cards, "fsrs_retrievability")
+                    );
+                }
+            }
+        } finally {
+            cards.close();
+        }
+        for (HistoricalNoteSnapshot note : notes.values()) {
+            LinkedHashSet<String> decks = deckNamesByNote.get(note.noteId);
+            if (decks == null || decks.isEmpty()) {
+                continue;
+            }
+            ContentValues noteValues = new ContentValues();
+            noteValues.put("sync_id", sync.id);
+            noteValues.put("finished_at", sync.finishedAt);
+            noteValues.put("note_id", note.noteId);
+            noteValues.put("model_name", note.modelName);
+            noteValues.put("deck_names", String.join(" ", decks));
+            noteValues.put("expression", note.expression);
+            noteValues.put("reading", note.reading);
+            noteValues.put("meaning", note.meaning);
+            noteValues.put("sentence", note.sentence);
+            noteValues.put("tags", note.tags);
+            noteValues.put("fields_json", note.fieldsJson);
+            noteValues.put("extracted_kanji", String.join("", TextUtil.extractKanji(note.expression + " " + note.sentence)));
+            db.insertWithOnConflict("sync_note_snapshots", null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+        overlayDashboardRows(aggregates, currentDashboardRows(db));
+        insertHistoricalKanjiAggregates(db, sync.id, sync.finishedAt, aggregates);
+    }
+
+    private Map<Long, LinkedHashSet<String>> deckNamesByNote(List<Records.Card> cards) {
+        Map<Long, LinkedHashSet<String>> out = new LinkedHashMap<>();
+        for (Records.Card card : cards) {
+            linkedSetFor(out, card.noteId).add(card.deckName);
+        }
+        return out;
+    }
+
+    private LinkedHashSet<String> linkedSetFor(Map<Long, LinkedHashSet<String>> map, long key) {
+        LinkedHashSet<String> values = map.get(key);
+        if (values == null) {
+            values = new LinkedHashSet<>();
+            map.put(key, values);
+        }
+        return values;
+    }
+
+    private List<String> extractedKanji(Records.Note note, Records.Settings settings) {
+        String expression = TextUtil.normalizeJapanese(note.expression(settings));
+        String sentence = TextUtil.normalizeJapanese(note.sentence(settings));
+        return TextUtil.extractKanji(expression + " " + sentence);
+    }
+
+    private HistoricalKanjiAggregate aggregateFor(Map<String, HistoricalKanjiAggregate> aggregates, String kanji) {
+        HistoricalKanjiAggregate aggregate = aggregates.get(kanji);
+        if (aggregate == null) {
+            aggregate = new HistoricalKanjiAggregate(kanji);
+            aggregates.put(kanji, aggregate);
+        }
+        return aggregate;
+    }
+
+    private void overlayDashboardRows(Map<String, HistoricalKanjiAggregate> aggregates, List<Records.DashboardRow> rows) {
+        for (Records.DashboardRow row : rows) {
+            HistoricalKanjiAggregate aggregate = aggregateFor(aggregates, row.kanji);
+            aggregate.weaknessScore = row.weaknessScore;
+            aggregate.reasonCode = row.reasonCode;
+            aggregate.activeExampleCount = Math.max(aggregate.activeExampleCount, row.activeExampleCount);
+            aggregate.suspendedExampleCount = Math.max(aggregate.suspendedExampleCount, row.suspendedExampleCount);
+            aggregate.matureSupportCount = Math.max(aggregate.matureSupportCount, row.matureSupportCount);
+        }
+    }
+
+    private void insertHistoricalKanjiAggregates(SQLiteDatabase db, long syncId, long finishedAt, Map<String, HistoricalKanjiAggregate> aggregates) {
+        for (HistoricalKanjiAggregate aggregate : aggregates.values()) {
+            if (aggregate.kanji.isEmpty()) {
+                continue;
+            }
+            ContentValues values = new ContentValues();
+            values.put("sync_id", syncId);
+            values.put("finished_at", finishedAt);
+            values.put("kanji", aggregate.kanji);
+            values.put("active_cards", aggregate.activeCards);
+            values.put("suspended_cards", aggregate.suspendedCards);
+            values.put("mature_support_count", aggregate.matureSupportCount);
+            values.put("average_interval_days", aggregate.averageIntervalDays());
+            values.put("total_lapses", aggregate.totalLapses);
+            values.put("total_reps", aggregate.totalReps);
+            putNullableDouble(values, "fsrs_stability_avg", aggregate.averageStability());
+            putNullableDouble(values, "fsrs_difficulty_avg", aggregate.averageDifficulty());
+            putNullableDouble(values, "fsrs_retrievability_avg", aggregate.averageRetrievability());
+            values.put("weakness_score", aggregate.weaknessScore);
+            values.put("reason_code", aggregate.reasonCode);
+            values.put("active_example_count", aggregate.activeExampleCount);
+            values.put("suspended_example_count", aggregate.suspendedExampleCount);
+            db.insertWithOnConflict("sync_kanji_snapshots", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    private boolean tableHasRows(SQLiteDatabase db, String table) {
+        Cursor cursor = db.rawQuery("SELECT 1 FROM " + table + " LIMIT 1", null);
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private HistoricalSyncRun latestSuccessfulSyncRun(SQLiteDatabase db) {
+        Cursor cursor = db.query(
+                "sync_runs",
+                new String[]{"id", "started_at", "finished_at"},
+                "status=?",
+                new String[]{STATUS_SUCCESS},
+                null,
+                null,
+                "id DESC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return new HistoricalSyncRun(
+                    longValue(cursor, "id"),
+                    longValue(cursor, "started_at"),
+                    longValue(cursor, "finished_at")
+            );
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Map<Long, HistoricalNoteSnapshot> currentSourceNotes(SQLiteDatabase db) {
+        Map<Long, HistoricalNoteSnapshot> notes = new LinkedHashMap<>();
+        Cursor cursor = db.query("source_notes", null, null, null, null, null, "note_id ASC");
+        try {
+            while (cursor.moveToNext()) {
+                long noteId = longValue(cursor, "note_id");
+                notes.put(noteId, new HistoricalNoteSnapshot(
+                        noteId,
+                        string(cursor, "model_name"),
+                        string(cursor, "expression"),
+                        string(cursor, "reading"),
+                        string(cursor, "meaning"),
+                        string(cursor, "sentence"),
+                        string(cursor, "tags"),
+                        string(cursor, "fields_json")
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+        return notes;
+    }
+
+    private List<Records.DashboardRow> currentDashboardRows(SQLiteDatabase db) {
+        List<Records.DashboardRow> rows = new ArrayList<>();
+        Cursor cursor = db.query("dashboard_rows", new String[]{"kanji"}, null, null, null, null, "kanji ASC");
+        try {
+            while (cursor.moveToNext()) {
+                Records.DashboardRow row = readDashboardRow(db, string(cursor, "kanji"));
+                if (row != null) {
+                    rows.add(row);
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return rows;
+    }
+
+    private long latestSuccessfulSyncId(SQLiteDatabase db) {
+        HistoricalSyncRun sync = latestSuccessfulSyncRun(db);
+        return sync == null ? 0L : sync.id;
+    }
+
+    private Map<String, Integer> reviewCountsByKanji(SQLiteDatabase db) {
+        Map<String, Integer> counts = new HashMap<>();
+        Cursor cursor = db.rawQuery("SELECT kanji, COUNT(*) AS review_count FROM review_log GROUP BY kanji", null);
+        try {
+            while (cursor.moveToNext()) {
+                counts.put(string(cursor, "kanji"), integer(cursor, "review_count"));
+            }
+        } finally {
+            cursor.close();
+        }
+        return counts;
+    }
+
+    private Set<String> impactCandidateKanji(SQLiteDatabase db, long latestSyncId) {
+        Set<String> candidates = new HashSet<>();
+        Cursor current = db.query(
+                "sync_kanji_snapshots",
+                new String[]{"kanji"},
+                "sync_id=? AND (weakness_score>0 OR reason_code<>'' OR active_example_count>0 OR suspended_example_count>0)",
+                new String[]{Long.toString(latestSyncId)},
+                null,
+                null,
+                null
+        );
+        try {
+            while (current.moveToNext()) {
+                candidates.add(string(current, "kanji"));
+            }
+        } finally {
+            current.close();
+        }
+        Cursor study = db.query(true, "study_items", new String[]{"kanji"}, null, null, null, null, null, null);
+        try {
+            while (study.moveToNext()) {
+                candidates.add(string(study, "kanji"));
+            }
+        } finally {
+            study.close();
+        }
+        Cursor imports = db.query(true, "suspended_imports", new String[]{"kanji"}, null, null, null, null, null, null);
+        try {
+            while (imports.moveToNext()) {
+                candidates.add(string(imports, "kanji"));
+            }
+        } finally {
+            imports.close();
+        }
+        return candidates;
+    }
+
+    private Map<String, KanjiImpactAnalyzer.MetricSnapshot> kanjiMetricsForSync(SQLiteDatabase db, long syncId) {
+        Map<String, KanjiImpactAnalyzer.MetricSnapshot> out = new LinkedHashMap<>();
+        Cursor cursor = db.query(
+                "sync_kanji_snapshots",
+                null,
+                "sync_id=?",
+                new String[]{Long.toString(syncId)},
+                null,
+                null,
+                "kanji ASC"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                out.put(string(cursor, "kanji"), readKanjiImpactMetric(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private HistoricalKanjiSnapshot firstKanjiSnapshot(SQLiteDatabase db, String kanji) {
+        Cursor cursor = db.query(
+                "sync_kanji_snapshots",
+                null,
+                "kanji=?",
+                new String[]{kanji},
+                null,
+                null,
+                "sync_id ASC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return new HistoricalKanjiSnapshot(longValue(cursor, "sync_id"), readKanjiImpactMetric(cursor));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private KanjiImpactAnalyzer.MetricSnapshot readKanjiImpactMetric(Cursor cursor) {
+        return new KanjiImpactAnalyzer.MetricSnapshot(
+                integer(cursor, "active_cards"),
+                integer(cursor, "suspended_cards"),
+                integer(cursor, "mature_support_count"),
+                cursor.getDouble(cursor.getColumnIndexOrThrow("average_interval_days")),
+                integer(cursor, "total_reps"),
+                integer(cursor, "total_lapses"),
+                nullableDouble(cursor, "fsrs_stability_avg"),
+                nullableDouble(cursor, "fsrs_difficulty_avg"),
+                nullableDouble(cursor, "fsrs_retrievability_avg")
+        );
+    }
+
+    private SameCardMetrics sameCardMetrics(SQLiteDatabase db, String kanji, long baselineSyncId, long currentSyncId) {
+        ImpactMetricBuilder baseline = new ImpactMetricBuilder();
+        ImpactMetricBuilder current = new ImpactMetricBuilder();
+        Cursor cursor = db.rawQuery(
+                "SELECT "
+                        + "b.interval_days AS b_interval_days, b.reps AS b_reps, b.lapses AS b_lapses, b.suspended AS b_suspended, b.mature AS b_mature, b.fsrs_stability AS b_fsrs_stability, b.fsrs_difficulty AS b_fsrs_difficulty, b.fsrs_retrievability AS b_fsrs_retrievability, "
+                        + "c.interval_days AS c_interval_days, c.reps AS c_reps, c.lapses AS c_lapses, c.suspended AS c_suspended, c.mature AS c_mature, c.fsrs_stability AS c_fsrs_stability, c.fsrs_difficulty AS c_fsrs_difficulty, c.fsrs_retrievability AS c_fsrs_retrievability "
+                        + "FROM sync_card_snapshots b "
+                        + "JOIN sync_card_snapshots c ON c.card_id=b.card_id "
+                        + "JOIN sync_note_snapshots nb ON nb.sync_id=b.sync_id AND nb.note_id=b.note_id "
+                        + "JOIN sync_note_snapshots nc ON nc.sync_id=c.sync_id AND nc.note_id=c.note_id "
+                        + "WHERE b.sync_id=? AND c.sync_id=? AND instr(nb.extracted_kanji, ?) > 0 AND instr(nc.extracted_kanji, ?) > 0",
+                new String[]{Long.toString(baselineSyncId), Long.toString(currentSyncId), kanji, kanji}
+        );
+        try {
+            while (cursor.moveToNext()) {
+                baseline.add(
+                        integer(cursor, "b_interval_days"),
+                        integer(cursor, "b_reps"),
+                        integer(cursor, "b_lapses"),
+                        integer(cursor, "b_suspended") == 1,
+                        integer(cursor, "b_mature") == 1,
+                        nullableDouble(cursor, "b_fsrs_stability"),
+                        nullableDouble(cursor, "b_fsrs_difficulty"),
+                        nullableDouble(cursor, "b_fsrs_retrievability")
+                );
+                current.add(
+                        integer(cursor, "c_interval_days"),
+                        integer(cursor, "c_reps"),
+                        integer(cursor, "c_lapses"),
+                        integer(cursor, "c_suspended") == 1,
+                        integer(cursor, "c_mature") == 1,
+                        nullableDouble(cursor, "c_fsrs_stability"),
+                        nullableDouble(cursor, "c_fsrs_difficulty"),
+                        nullableDouble(cursor, "c_fsrs_retrievability")
+                );
+            }
+        } finally {
+            cursor.close();
+        }
+        if (current.totalCards() == 0) {
+            return SameCardMetrics.EMPTY;
+        }
+        return new SameCardMetrics(baseline.build(), current.build());
+    }
+
     private List<Records.Example> examplesForKanji(SQLiteDatabase db, String kanji) {
         List<Records.Example> examples = new ArrayList<>();
         Cursor cursor = db.query("kanji_examples", null, "kanji=?", new String[]{kanji}, null, null, "source_type DESC, id ASC", "8");
@@ -2866,6 +3434,196 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.cardIds = cardIds;
             this.activeCardCount = activeCardCount;
             this.suspendedCardCount = suspendedCardCount;
+        }
+    }
+
+    private static final class HistoricalSyncRun {
+        private final long id;
+        private final long startedAt;
+        private final long finishedAt;
+
+        private HistoricalSyncRun(long id, long startedAt, long finishedAt) {
+            this.id = id;
+            this.startedAt = startedAt;
+            this.finishedAt = finishedAt;
+        }
+    }
+
+    private static final class HistoricalNoteSnapshot {
+        private final long noteId;
+        private final String modelName;
+        private final String expression;
+        private final String reading;
+        private final String meaning;
+        private final String sentence;
+        private final String tags;
+        private final String fieldsJson;
+
+        private HistoricalNoteSnapshot(
+                long noteId,
+                String modelName,
+                String expression,
+                String reading,
+                String meaning,
+                String sentence,
+                String tags,
+                String fieldsJson
+        ) {
+            this.noteId = noteId;
+            this.modelName = modelName == null ? "" : modelName;
+            this.expression = expression == null ? "" : expression;
+            this.reading = reading == null ? "" : reading;
+            this.meaning = meaning == null ? "" : meaning;
+            this.sentence = sentence == null ? "" : sentence;
+            this.tags = tags == null ? "" : tags;
+            this.fieldsJson = fieldsJson == null ? "" : fieldsJson;
+        }
+    }
+
+    private static final class HistoricalKanjiSnapshot {
+        private final long syncId;
+        private final KanjiImpactAnalyzer.MetricSnapshot metrics;
+
+        private HistoricalKanjiSnapshot(long syncId, KanjiImpactAnalyzer.MetricSnapshot metrics) {
+            this.syncId = syncId;
+            this.metrics = metrics;
+        }
+    }
+
+    private static final class SameCardMetrics {
+        private static final SameCardMetrics EMPTY = new SameCardMetrics(null, null);
+
+        private final KanjiImpactAnalyzer.MetricSnapshot baseline;
+        private final KanjiImpactAnalyzer.MetricSnapshot current;
+
+        private SameCardMetrics(KanjiImpactAnalyzer.MetricSnapshot baseline, KanjiImpactAnalyzer.MetricSnapshot current) {
+            this.baseline = baseline;
+            this.current = current;
+        }
+    }
+
+    private static final class ImpactMetricBuilder {
+        private final HistoricalKanjiAggregate aggregate = new HistoricalKanjiAggregate("");
+
+        private void add(
+                int intervalDays,
+                int reps,
+                int lapses,
+                boolean suspended,
+                boolean mature,
+                Double fsrsStability,
+                Double fsrsDifficulty,
+                Double fsrsRetrievability
+        ) {
+            aggregate.add(intervalDays, reps, lapses, suspended, mature, fsrsStability, fsrsDifficulty, fsrsRetrievability);
+        }
+
+        private int totalCards() {
+            return aggregate.activeCards + aggregate.suspendedCards;
+        }
+
+        private KanjiImpactAnalyzer.MetricSnapshot build() {
+            return new KanjiImpactAnalyzer.MetricSnapshot(
+                    aggregate.activeCards,
+                    aggregate.suspendedCards,
+                    aggregate.matureSupportCount,
+                    aggregate.averageIntervalDays(),
+                    aggregate.totalReps,
+                    aggregate.totalLapses,
+                    aggregate.averageStability(),
+                    aggregate.averageDifficulty(),
+                    aggregate.averageRetrievability()
+            );
+        }
+    }
+
+    private static final class HistoricalKanjiAggregate {
+        private final String kanji;
+        private int activeCards;
+        private int suspendedCards;
+        private int matureSupportCount;
+        private int totalLapses;
+        private int totalReps;
+        private int intervalCount;
+        private double intervalSum;
+        private int stabilityCount;
+        private double stabilitySum;
+        private int difficultyCount;
+        private double difficultySum;
+        private int retrievabilityCount;
+        private double retrievabilitySum;
+        private int weaknessScore;
+        private String reasonCode = "";
+        private int activeExampleCount;
+        private int suspendedExampleCount;
+
+        private HistoricalKanjiAggregate(String kanji) {
+            this.kanji = kanji == null ? "" : kanji;
+        }
+
+        private void add(Records.Card card, int matureDays) {
+            add(
+                    card.intervalDays,
+                    card.reps,
+                    card.lapses,
+                    card.suspended,
+                    card.mature(matureDays),
+                    card.fsrsStability,
+                    card.fsrsDifficulty,
+                    card.fsrsRetrievability
+            );
+        }
+
+        private void add(
+                int intervalDays,
+                int reps,
+                int lapses,
+                boolean suspended,
+                boolean mature,
+                Double fsrsStability,
+                Double fsrsDifficulty,
+                Double fsrsRetrievability
+        ) {
+            if (suspended) {
+                suspendedCards++;
+            } else {
+                activeCards++;
+            }
+            if (mature) {
+                matureSupportCount++;
+            }
+            totalLapses += Math.max(0, lapses);
+            totalReps += Math.max(0, reps);
+            intervalSum += Math.max(0, intervalDays);
+            intervalCount++;
+            if (fsrsStability != null) {
+                stabilitySum += fsrsStability;
+                stabilityCount++;
+            }
+            if (fsrsDifficulty != null) {
+                difficultySum += fsrsDifficulty;
+                difficultyCount++;
+            }
+            if (fsrsRetrievability != null) {
+                retrievabilitySum += fsrsRetrievability;
+                retrievabilityCount++;
+            }
+        }
+
+        private double averageIntervalDays() {
+            return intervalCount == 0 ? 0.0 : intervalSum / intervalCount;
+        }
+
+        private Double averageStability() {
+            return stabilityCount == 0 ? null : stabilitySum / stabilityCount;
+        }
+
+        private Double averageDifficulty() {
+            return difficultyCount == 0 ? null : difficultySum / difficultyCount;
+        }
+
+        private Double averageRetrievability() {
+            return retrievabilityCount == 0 ? null : retrievabilitySum / retrievabilityCount;
         }
     }
 

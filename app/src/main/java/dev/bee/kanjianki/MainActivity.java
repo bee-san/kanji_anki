@@ -47,6 +47,7 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
@@ -998,10 +999,11 @@ public final class MainActivity extends Activity {
         List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
         LocalStore.SyncStatus sync = store.latestSync();
         LocalStore.StudyImpactStats impact = store.studyImpactStats();
+        KanjiImpactAnalyzer.Report impactReport = store.kanjiImpactReport();
         Records.ReviewStats week = store.reviewStatsSince(now - 7 * DAY_MILLIS);
         LocalStore.StudyStreak streak = store.studyStreak(now);
 
-        content.addView(ankiImpactPanel(sync, rows));
+        content.addView(ankiImpactPanel(sync, rows, impactReport));
         content.addView(sectionTitle("Learning"));
         content.addView(statPanel(
                 "Kani writing",
@@ -1048,7 +1050,7 @@ public final class MainActivity extends Activity {
         ));
     }
 
-    private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows) {
+    private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows, KanjiImpactAnalyzer.Report impactReport) {
         LinearLayout box = band(TEAL);
         box.addView(text("Anki impact", 26, Color.WHITE, true));
         if (sync == null) {
@@ -1059,6 +1061,32 @@ public final class MainActivity extends Activity {
         box.addView(text(countText(rows.size(), "problem kanji found from AnkiDroid", "problem kanji found from AnkiDroid"), 22, Color.WHITE, true));
         box.addView(text(countText(activeEvidenceCount(rows), "active Anki example link", "active Anki example links") + " and " + countText(suspendedEvidenceCount(rows), "suspended miss link", "suspended miss links") + " explain why they are here.", 15, Color.WHITE, false));
         box.addView(text(latestSyncText(sync), 14, Color.WHITE, false));
+        if (impactReport == null || impactReport.empty()) {
+            box.addView(text("Impact history starts after the next successful sync.", 15, Color.WHITE, false));
+            return box;
+        }
+        box.addView(text(
+                countText(impactReport.helpedCount, "helped kanji", "helped kanji")
+                        + " · " + countText(impactReport.notHelpingCount, "not-helping-yet kanji", "not-helping-yet kanji")
+                        + " · " + countText(impactReport.needsMoreCardsCount, "needs-more-cards kanji", "needs-more-cards kanji"),
+                18,
+                Color.WHITE,
+                true
+        ));
+        int shown = 0;
+        for (KanjiImpactAnalyzer.Row row : impactReport.rows) {
+            if (shown >= 4) {
+                break;
+            }
+            box.addView(text(row.summary(), 15, Color.WHITE, false));
+            shown++;
+        }
+        if (impactReport.needsMoreCardsCount > 0) {
+            box.addView(text("Sparse data: immerse and mine more flashcards before judging those kanji.", 14, Color.WHITE, false));
+        }
+        if (impactReport.notHelpingCount > 0) {
+            box.addView(text("Negative data: Kani is not moving the needle yet for those kanji.", 14, Color.WHITE, false));
+        }
         return box;
     }
 
@@ -2482,7 +2510,10 @@ public final class MainActivity extends Activity {
                 passed,
                 cleanWriting,
                 override,
-                hintsUsed
+                hintsUsed,
+                activeSession.taskType,
+                activeSession.item.answerSignature,
+                activeSession.prompt
         );
         if (activeSimilarRepair != null) {
             submitSimilarWritingRepair(request);
@@ -2502,7 +2533,7 @@ public final class MainActivity extends Activity {
             String repeatType = learningRepeatTypeForReview(activeSession.item, request, result.appliedRating);
             Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, now);
             store.saveStudyItem(itemToSave);
-            store.saveReview(request, result.appliedRating, now);
+            store.saveReview(request, result.appliedRating, now, activeSession.item, result.item);
             enqueueLearningRepeatIfNeeded(itemToSave, activeSession.taskType, repeatType, now);
             streak = store.studyStreak(now);
             Records.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);

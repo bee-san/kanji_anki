@@ -370,6 +370,81 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testStatsShowsImpactHistoryBuckets() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.DashboardRow helped = dashboardRow("裂", "split", "れつ", "Kani started from weak Anki evidence", 0);
+        Records.DashboardRow notHelping = dashboardRow("提", "carry", "てい", "Kani is still seeing weak Anki evidence", 1);
+        Records.DashboardRow sparse = dashboardRow("麺", "noodle", "めん", "Not enough local Anki cards yet", 0);
+        long now = System.currentTimeMillis();
+        LocalStore store = new LocalStore(context);
+        try {
+            store.saveSuccessfulSync(
+                    new Records.CollectionSnapshot(
+                            Arrays.asList(
+                                    note(101L, "裂", "れつ", "split", "裂"),
+                                    note(201L, "提", "てい", "carry", "提"),
+                                    note(202L, "提", "てい", "carry", "提"),
+                                    note(301L, "麺", "めん", "noodle", "麺")
+                            ),
+                            Arrays.asList(
+                                    new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 10, 20, 7, false, null, 7.2, 0.62),
+                                    new Records.Card(2001L, 201L, 0, "Kiku", 2, 2, 0, 30, 20, 2, false, null, 5.0, 0.85),
+                                    new Records.Card(2002L, 202L, 0, "Kiku", 2, 2, 0, 30, 20, 2, false, null, 5.0, 0.85),
+                                    new Records.Card(3001L, 301L, 0, "Kiku", 2, 2, 0, 2, 1, 0, false, null, 5.0, 0.70)
+                            )
+                    ),
+                    Collections.emptyList(),
+                    Arrays.asList(helped, notHelping, sparse),
+                    settings,
+                    now - 20_000L,
+                    now - 10_000L,
+                    null
+            );
+            store.saveReview(review("裂", "impact-helped"), "good", now - 9_000L);
+            store.saveReview(review("提", "impact-flat"), "hard", now - 8_000L);
+            store.saveReview(review("麺", "impact-sparse"), "good", now - 7_000L);
+            store.saveSuccessfulSync(
+                    new Records.CollectionSnapshot(
+                            Arrays.asList(
+                                    note(101L, "裂", "れつ", "split", "裂"),
+                                    note(102L, "裂", "れつ", "split", "裂"),
+                                    note(201L, "提", "てい", "carry", "提"),
+                                    note(202L, "提", "てい", "carry", "提"),
+                                    note(301L, "麺", "めん", "noodle", "麺")
+                            ),
+                            Arrays.asList(
+                                    new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 42, 32, 4, false, null, 5.8, 0.84),
+                                    new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 45, 10, 0, false, null, 4.5, 0.90),
+                                    new Records.Card(2001L, 201L, 0, "Kiku", 2, 2, 0, 20, 20, 5, false, null, 6.2, 0.70),
+                                    new Records.Card(2002L, 202L, 0, "Kiku", 2, 2, 0, 20, 20, 5, false, null, 6.2, 0.70),
+                                    new Records.Card(3001L, 301L, 0, "Kiku", 2, 2, 0, 2, 1, 0, false, null, 5.0, 0.70)
+                            )
+                    ),
+                    Collections.emptyList(),
+                    Arrays.asList(helped, notHelping, sparse),
+                    settings,
+                    now - 5_000L,
+                    now,
+                    null
+            );
+        } finally {
+            store.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Stats");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "1 helped kanji");
+                assertHasText(activity, "1 not-helping-yet kanji");
+                assertHasText(activity, "1 needs-more-cards kanji");
+                assertHasText(activity, "裂: difficulty 7.2 -> 5.8, retention 62% -> 84%");
+                assertHasText(activity, "Sparse data: immerse and mine more flashcards before judging those kanji.");
+                assertHasText(activity, "Negative data: Kani is not moving the needle yet for those kanji.");
+            });
+        }
+    }
+
+    @Test
     public void testKanjiDetailCopyAndStudyReviewFlow() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
