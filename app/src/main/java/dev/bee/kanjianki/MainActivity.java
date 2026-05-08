@@ -80,6 +80,7 @@ import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayDeque;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -441,33 +442,53 @@ public final class MainActivity extends Activity {
 
     private View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
         LinearLayout card = panelBox(Color.WHITE, softened(accent));
-        card.setPadding(dp(12), dp(14), dp(12), dp(14));
+        card.setPadding(dp(14), dp(16), dp(14), dp(16));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(accent);
         LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(28), dp(28));
-        iconLp.setMargins(0, 0, 0, dp(8));
+        iconLp.setMargins(0, 0, 0, dp(10));
         card.addView(icon, iconLp);
         card.addView(text(label, 14, accent, true));
-        card.addView(text(value, 16, INK, true));
-        card.addView(text(compact(body, 24), 12, MUTED, false));
+        TextView valueText = text(value, 16, INK, true);
+        valueText.setSingleLine(false);
+        valueText.setMaxLines(2);
+        valueText.setPadding(0, dp(3), 0, dp(2));
+        card.addView(valueText);
+        TextView bodyText = text(compact(body, 20), 12, MUTED, false);
+        bodyText.setSingleLine(false);
+        bodyText.setMaxLines(2);
+        bodyText.setPadding(0, dp(1), 0, 0);
+        card.addView(bodyText);
         if (action != null) {
             card.setClickable(true);
             card.setOnClickListener(v -> action.run());
         }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(124), 1);
-        lp.setMargins(dp(4), 0, dp(4), 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(146), 1);
+        lp.setMargins(dp(5), 0, dp(5), 0);
         card.setLayoutParams(lp);
         return card;
     }
 
     private Button homeStudyButton() {
         Button button = primaryButton("Study now", CORAL);
-        button.setTextSize(24);
-        button.setMinHeight(dp(80));
-        button.setElevation(dp(5));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(80));
-        lp.setMargins(0, dp(16), 0, dp(14));
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] { Color.rgb(255, 96, 139), Color.rgb(255, 58, 112) }
+        );
+        background.setCornerRadius(dp(24));
+        background.setStroke(dp(2), Color.rgb(255, 190, 214));
+        button.setBackground(background);
+        button.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_sparkle_24, 0, 0, 0);
+        button.setCompoundDrawablePadding(dp(10));
+        button.setGravity(Gravity.CENTER);
+        button.setTextSize(26);
+        button.setMinHeight(dp(90));
+        button.setPadding(dp(12), 0, dp(12), dp(2));
+        button.setElevation(dp(9));
+        button.setTranslationZ(dp(2));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(90));
+        lp.setMargins(0, dp(20), 0, dp(16));
         button.setLayoutParams(lp);
         return button;
     }
@@ -4006,12 +4027,11 @@ public final class MainActivity extends Activity {
     private static final class KaniMascotView extends View {
         private final Bitmap logo;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
-        private final Rect source = new Rect();
         private final RectF target = new RectF();
 
         private KaniMascotView(Context context) {
             super(context);
-            logo = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher_foreground);
+            logo = createTransparentMascot(BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher_foreground));
         }
 
         @Override
@@ -4020,11 +4040,72 @@ public final class MainActivity extends Activity {
             if (logo == null) {
                 return;
             }
-            int width = logo.getWidth();
-            int height = logo.getHeight();
-            source.set(Math.round(width * 0.14f), Math.round(height * 0.11f), Math.round(width * 0.86f), Math.round(height * 0.68f));
             target.set(0f, 0f, getWidth(), getHeight());
-            canvas.drawBitmap(logo, source, target, paint);
+            canvas.drawBitmap(logo, null, target, paint);
+        }
+
+        private static Bitmap createTransparentMascot(Bitmap raw) {
+            if (raw == null) {
+                return null;
+            }
+            int left = Math.round(raw.getWidth() * 0.08f);
+            int top = Math.round(raw.getHeight() * 0.05f);
+            int right = Math.round(raw.getWidth() * 0.92f);
+            int bottom = Math.round(raw.getHeight() * 0.70f);
+            Bitmap crop = Bitmap.createBitmap(raw, left, top, right - left, bottom - top).copy(Bitmap.Config.ARGB_8888, true);
+            removeEdgeBackground(crop, crop.getPixel(0, 0));
+            return crop;
+        }
+
+        private static void removeEdgeBackground(Bitmap bitmap, int backgroundColor) {
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            boolean[] seen = new boolean[width * height];
+            ArrayDeque<Integer> pending = new ArrayDeque<>();
+            for (int x = 0; x < width; x++) {
+                enqueueBackground(bitmap, backgroundColor, seen, pending, x, 0);
+                enqueueBackground(bitmap, backgroundColor, seen, pending, x, height - 1);
+            }
+            for (int y = 1; y < height - 1; y++) {
+                enqueueBackground(bitmap, backgroundColor, seen, pending, 0, y);
+                enqueueBackground(bitmap, backgroundColor, seen, pending, width - 1, y);
+            }
+            while (!pending.isEmpty()) {
+                int packed = pending.removeFirst();
+                int x = packed % width;
+                int y = packed / width;
+                bitmap.setPixel(x, y, Color.TRANSPARENT);
+                enqueueBackground(bitmap, backgroundColor, seen, pending, x + 1, y);
+                enqueueBackground(bitmap, backgroundColor, seen, pending, x - 1, y);
+                enqueueBackground(bitmap, backgroundColor, seen, pending, x, y + 1);
+                enqueueBackground(bitmap, backgroundColor, seen, pending, x, y - 1);
+            }
+        }
+
+        private static void enqueueBackground(Bitmap bitmap, int backgroundColor, boolean[] seen, ArrayDeque<Integer> pending, int x, int y) {
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            if (x < 0 || y < 0 || x >= width || y >= height) {
+                return;
+            }
+            int index = y * width + x;
+            if (seen[index]) {
+                return;
+            }
+            seen[index] = true;
+            if (isBackgroundPixel(bitmap.getPixel(x, y), backgroundColor)) {
+                pending.add(index);
+            }
+        }
+
+        private static boolean isBackgroundPixel(int color, int backgroundColor) {
+            if (Color.alpha(color) < 16) {
+                return true;
+            }
+            int dr = Color.red(color) - Color.red(backgroundColor);
+            int dg = Color.green(color) - Color.green(backgroundColor);
+            int db = Color.blue(color) - Color.blue(backgroundColor);
+            return dr * dr + dg * dg + db * db < 1200;
         }
     }
 
