@@ -10,9 +10,39 @@
   </a>
 </p>
 
-Kani is a native Android companion for a single AnkiDroid collection. It finds
-problem kanji inside your `Kiku` notes, keeps the evidence local, and gives
-those kanji a focused writing-repair loop alongside AnkiDroid.
+Kani is an Ankidroid companion app for Japanese learners who find suffer from Kanji Blindness.
+
+Kani will:
+1. Identify problematic Kanji you repeatedly fail
+2. Work out _why_ you fail them (Completely unknown? Similar to other Kanji?)
+3. Gives you structured, personal flashcards to help you learn them
+
+# Features
+
+## Flashcards
+- FSRS for all Kani flashcards
+- Progressive ladder, if the Kanji is really hard we break it all the way down for you. If it's a bit hard but possible we show you easier flashcards.
+
+Here are some flashcard types you may see:
+- Hand-writing cards with Ringotan style fading away. Trace a Kanji, each time you get it right a stroke will fade away until you 100% mastered it.
+- Recognition, Kanji -> Meaning
+- Different font cards. Some cards will randomise their font to help you learn it across different fonts too
+- Word -> Reading , we take the word(s) with the Kanji you frequently fail in Ankidroid and show you them again so you can learn it this time
+- Similar Kanji. If you fail say 5 words and 2 Kanji are identified as problematic, Kani will be able to tell if its because they are similar to one another and we will help teach you how to tell them apart.
+
+Not another SRS app. Kani uses the Pareto principe to identify kanji actually worth doing that day.
+You know when you're doing Anki and it shows you 私 and you're just like... what was the point of that?
+
+Kani will pick up (by default) up to 5 Kanji that are the absolute best bang for your buck each day, using all the data we have from Ankidroid + your Kani reviews.
+
+No more wasting time. I want you to spend as little time in this app as possible to spend more time immersing.
+
+**todo**
+- similar kanji cards
+- writing similar kanji cards
+
+
+
 
 ## Install
 
