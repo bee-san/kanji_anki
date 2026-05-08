@@ -774,9 +774,10 @@ public final class MainActivity extends Activity {
     }
 
     private void confirmSync() {
+        Records.Settings current = settings();
         new AlertDialog.Builder(this)
                 .setTitle("Sync AnkiDroid?")
-                .setMessage("Kani will read your Kiku cards, copy problem kanji into writing practice, and mark imported suspended cards as archived after they are stored safely.")
+                .setMessage("Kani will read your " + current.modelName + " cards, copy problem kanji into writing practice, and mark imported suspended cards as archived after they are stored safely.")
                 .setPositiveButton("Sync cards", (dialog, which) -> runSync())
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -952,7 +953,7 @@ public final class MainActivity extends Activity {
             Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
             List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
             summary.addView(text(countText(entries.size(), "kanji ready to study", "kanji ready to study"), 24, Color.WHITE, true));
-            summary.addView(text(countText(result.dashboardRows, "candidate found from Kiku", "candidates found from Kiku") + ". " + adaptiveFocusText(plan) + ".", 16, Color.WHITE, false));
+            summary.addView(text(countText(result.dashboardRows, "candidate found from Anki", "candidates found from Anki") + ". " + adaptiveFocusText(plan) + ".", 16, Color.WHITE, false));
             if (!result.adaptiveSummary.isEmpty()) {
                 summary.addView(text(result.adaptiveSummary, 15, Color.WHITE, false));
             }
@@ -1054,7 +1055,7 @@ public final class MainActivity extends Activity {
         LinearLayout box = band(TEAL);
         box.addView(text("Anki impact", 26, Color.WHITE, true));
         if (sync == null) {
-            box.addView(text("Sync AnkiDroid to connect Kani stats to your Kiku cards.", 16, Color.WHITE, false));
+            box.addView(text("Sync AnkiDroid to connect Kani stats to your selected note type.", 16, Color.WHITE, false));
             box.addView(text("After sync, this page shows which problem kanji came from Anki, which misses became writing practice, and where Anki has mature support.", 15, Color.WHITE, false));
             return box;
         }
@@ -3257,8 +3258,10 @@ public final class MainActivity extends Activity {
         base("settings");
         Records.Settings current = settings();
         content.addView(text("Settings", 34, INK, true));
-        content.addView(text("Tune FSRS retention, which Kiku cards enter practice, and when Kani reminds you.", 16, MUTED, false));
+        content.addView(text("Tune FSRS retention, which Anki cards enter practice, and when Kani reminds you.", 16, MUTED, false));
         addSpace(12);
+
+        content.addView(noteTypeSettingsPanel(current));
 
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
         final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
@@ -3325,14 +3328,89 @@ public final class MainActivity extends Activity {
         content.addView(updateSettingsPanel());
 
         LinearLayout mapping = band(BLUE);
-        mapping.addView(text("Kiku fields used for clues", 22, Color.WHITE, true));
-        mapping.addView(text("Expression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, Color.WHITE, false));
+        mapping.addView(text("Fields used for clues", 22, Color.WHITE, true));
+        mapping.addView(text("The selected note type should include these Kiku-compatible fields:\nExpression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, Color.WHITE, false));
         content.addView(mapping);
 
         LinearLayout attribution = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
         attribution.addView(text("Stroke data", 22, INK, true));
         attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
         content.addView(attribution);
+    }
+
+    private LinearLayout noteTypeSettingsPanel(Records.Settings current) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        box.addView(text("Note type", 23, INK, true));
+        box.addView(text("Using " + current.modelName, 17, TEAL, true));
+        box.addView(text("Default: Kiku. Choose any AnkiDroid note type that uses the configured clue fields.", 15, MUTED, false));
+
+        EditText noteType = noteTypeInput(current.modelName);
+        box.addView(noteType, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        Button choose = secondaryButton("Choose from AnkiDroid");
+        choose.setOnClickListener(v -> chooseNoteType(noteType));
+        box.addView(choose);
+        Button kiku = secondaryButton("Use Kiku");
+        kiku.setOnClickListener(v -> noteType.setText(defaults.modelName));
+        box.addView(kiku);
+
+        Button save = primaryButton("Save note type", TEAL);
+        save.setOnClickListener(v -> {
+            String selected = noteType.getText().toString().trim();
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "Enter a note type name.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, selected);
+            Toast.makeText(this, "Note type saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
+    }
+
+    private EditText noteTypeInput(String value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setText(value == null || value.trim().isEmpty() ? Records.Settings.kikuDefaults().modelName : value.trim());
+        input.setHint(Records.Settings.kikuDefaults().modelName);
+        input.setTextSize(20);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        return input;
+    }
+
+    private void chooseNoteType(EditText input) {
+        Toast.makeText(this, "Reading AnkiDroid note types.", Toast.LENGTH_SHORT).show();
+        io.execute(() -> {
+            try {
+                List<AnkiDroidGateway.NoteType> noteTypes = gateway.noteTypes();
+                main.post(() -> showNoteTypeDialog(input, noteTypes));
+            } catch (Throwable error) {
+                String message = error.getMessage() == null || error.getMessage().trim().isEmpty()
+                        ? "Could not read AnkiDroid note types."
+                        : error.getMessage();
+                main.post(() -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private void showNoteTypeDialog(EditText input, List<AnkiDroidGateway.NoteType> noteTypes) {
+        if (noteTypes == null || noteTypes.isEmpty()) {
+            Toast.makeText(this, "No note types found in AnkiDroid.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        String[] labels = new String[noteTypes.size()];
+        for (int i = 0; i < noteTypes.size(); i++) {
+            AnkiDroidGateway.NoteType noteType = noteTypes.get(i);
+            labels[i] = noteType.name + " (" + countText(noteType.fields.size(), "field", "fields") + ")";
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Choose note type")
+                .setItems(labels, (dialog, which) -> input.setText(noteTypes.get(which).name))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private EditText rankInput(int value) {

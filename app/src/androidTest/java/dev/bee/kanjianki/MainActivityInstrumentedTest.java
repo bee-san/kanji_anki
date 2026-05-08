@@ -212,12 +212,16 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Stats");
                 assertHasText(activity, "Anki impact");
-                assertHasText(activity, "Sync AnkiDroid to connect Kani stats to your Kiku cards");
+                assertHasText(activity, "Sync AnkiDroid to connect Kani stats to your selected note type");
             });
 
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "Note type");
+                assertHasText(activity, "Using Kiku");
+                assertHasText(activity, "Choose from AnkiDroid");
+                assertHasText(activity, "Save note type");
                 assertHasText(activity, "Frequency range");
                 assertHasText(activity, "Default: 100-3000");
                 assertHasText(activity, "Min rank");

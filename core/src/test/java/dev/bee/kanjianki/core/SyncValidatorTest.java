@@ -15,6 +15,7 @@ public class SyncValidatorTest {
         assertTrue(SyncValidator.validateModelFields("Kiku", settings.requiredFields(), settings).isEmpty());
         assertEquals(1, SyncValidator.validateModelFields("Other", settings.requiredFields(), settings).size());
         assertTrue(SyncValidator.validateModelFields("Kiku", Arrays.asList("Expression"), settings).size() > 1);
+        assertTrue(SyncValidator.validateModelFields("Kiku", Arrays.asList("Expression"), settings).get(0).contains("Configured note type Kiku"));
     }
 
     @Test

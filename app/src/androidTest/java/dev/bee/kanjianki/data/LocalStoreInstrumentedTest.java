@@ -437,8 +437,13 @@ public final class LocalStoreInstrumentedTest {
         store = new LocalStore(context);
         assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 1000));
         Records.Settings legacyFrequency = SyncSettings.fromStore(store);
+        assertEquals("Kiku", legacyFrequency.modelName);
         assertEquals(100, legacyFrequency.suspendedRankMin);
         assertEquals(4000, legacyFrequency.suspendedRankMax);
+        store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, "Custom Japanese");
+        assertEquals("Custom Japanese", SyncSettings.fromStore(store).modelName);
+        store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, "   ");
+        assertEquals("Kiku", SyncSettings.fromStore(store).modelName);
         store.putIntSetting("suspended_rank_min", 250);
         store.putIntSetting("suspended_rank_max", 3000);
         Records.Settings rangeFrequency = SyncSettings.fromStore(store);

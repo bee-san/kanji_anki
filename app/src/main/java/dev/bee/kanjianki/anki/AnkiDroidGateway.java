@@ -16,6 +16,7 @@ import dev.bee.kanjianki.sync.SyncProgress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -90,8 +91,16 @@ public final class AnkiDroidGateway implements CollectionGateway {
         boolean granted = hasPermission(target.permission);
         return new ProviderStatus(true, granted, granted, target.authority, target.permission,
                 granted
-                        ? "AnkiDroid is ready for live Kiku sync."
+                        ? "AnkiDroid is ready for live note sync."
                         : "Allow AnkiDroid access so Kani can read your live collection.");
+    }
+
+    public List<NoteType> noteTypes() throws SyncFailure {
+        ProviderTarget target = requireProvider();
+        if (!hasPermission(target.permission)) {
+            throw SyncFailure.permanent("AnkiDroid permission is missing: " + target.permission);
+        }
+        return queryNoteTypes(target);
     }
 
     @Override
@@ -108,7 +117,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
         try {
             reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
-            ModelMapping mapping = findKikuModel(target, settings);
+            ModelMapping mapping = findConfiguredModel(target, settings);
             reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
             Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
             List<Records.Card> cards = queryCards(target, settings, notes.keySet(), reporter);
@@ -235,29 +244,40 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private ModelMapping findKikuModel(ProviderTarget target, Records.Settings settings) throws SyncFailure {
+    private ModelMapping findConfiguredModel(ProviderTarget target, Records.Settings settings) throws SyncFailure {
+        for (NoteType noteType : queryNoteTypes(target)) {
+            if (!noteType.name.equalsIgnoreCase(settings.modelName)) {
+                continue;
+            }
+            List<String> errors = SyncValidator.validateModelFields(noteType.name, noteType.fields, settings);
+            if (!errors.isEmpty()) {
+                throw SyncFailure.permanent(String.join("\n", errors));
+            }
+            return new ModelMapping(noteType.modelId, noteType.name, noteType.fields);
+        }
+        throw SyncFailure.permanent(settings.modelName + " note type was not found in AnkiDroid.");
+    }
+
+    private List<NoteType> queryNoteTypes(ProviderTarget target) throws SyncFailure {
         Cursor cursor = resolver.query(uriFor(target.authority, "models"), null, null, null, null);
         if (cursor == null) {
             throw SyncFailure.retryable("AnkiDroid returned no note model cursor.");
         }
+        List<NoteType> noteTypes = new ArrayList<>();
         try {
             while (cursor.moveToNext()) {
                 String name = value(cursor, "name");
-                if (!name.equalsIgnoreCase(settings.modelName)) {
-                    continue;
-                }
                 long id = longValue(cursor, "_id", 0);
                 List<String> fields = splitFields(value(cursor, "field_names"));
-                List<String> errors = SyncValidator.validateModelFields(name, fields, settings);
-                if (!errors.isEmpty()) {
-                    throw SyncFailure.permanent(String.join("\n", errors));
-                }
-                return new ModelMapping(id, name, fields);
+                noteTypes.add(new NoteType(id, name, fields));
             }
         } finally {
             cursor.close();
         }
-        throw SyncFailure.permanent("Kiku note type was not found in AnkiDroid.");
+        noteTypes.sort(Comparator
+                .comparing((NoteType noteType) -> !noteType.name.equalsIgnoreCase(Records.Settings.kikuDefaults().modelName))
+                .thenComparing(noteType -> noteType.name.toLowerCase(Locale.ROOT)));
+        return noteTypes;
     }
 
     private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
@@ -278,7 +298,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 null
         );
         if (cursor == null) {
-            throw SyncFailure.retryable("AnkiDroid returned no Kiku note cursor.");
+            throw SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
         }
         try {
             while (cursor.moveToNext()) {
@@ -305,7 +325,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 null
         );
         if (cursor == null) {
-            throw SyncFailure.retryable("AnkiDroid returned no Kiku note cursor.");
+            throw SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
         }
         try {
             while (cursor.moveToNext()) {
@@ -360,7 +380,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private void validateTemplateCards(List<Records.Card> cards, Records.Settings settings) throws SyncFailure {
         for (Records.Card card : cards) {
             if (card.ord != 0) {
-                throw SyncFailure.permanent(settings.modelName + " has card template ord " + card.ord + ". This app supports the " + settings.templateName + " template at ord 0 only.");
+                throw SyncFailure.permanent(settings.modelName + " has card template ord " + card.ord + ". This app supports only the first card template at ord 0.");
             }
         }
     }
@@ -644,6 +664,18 @@ public final class AnkiDroidGateway implements CollectionGateway {
             this.authority = authority;
             this.permission = permission;
             this.message = message;
+        }
+    }
+
+    public static final class NoteType {
+        public final long modelId;
+        public final String name;
+        public final List<String> fields;
+
+        private NoteType(long modelId, String name, List<String> fields) {
+            this.modelId = modelId;
+            this.name = name == null ? "" : name;
+            this.fields = Collections.unmodifiableList(new ArrayList<>(fields == null ? Collections.emptyList() : fields));
         }
     }
 

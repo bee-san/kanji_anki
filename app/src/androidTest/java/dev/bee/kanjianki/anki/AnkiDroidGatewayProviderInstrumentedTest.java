@@ -67,6 +67,18 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    public void listsAvailableNoteTypesWithKikuFirst() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        List<AnkiDroidGateway.NoteType> noteTypes = gateway.noteTypes();
+
+        assertEquals(2, noteTypes.size());
+        assertEquals("Kiku", noteTypes.get(0).name);
+        assertEquals("Custom Japanese", noteTypes.get(1).name);
+        assertTrue(noteTypes.get(1).fields.contains("Expression"));
+    }
+
+    @Test
     public void manualSyncWorksAgainstFakeAnkiDroidProviderContract() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);

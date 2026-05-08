@@ -18,7 +18,7 @@ public final class SyncValidator {
         Set<String> fieldSet = new LinkedHashSet<>(actualFields);
         for (String required : settings.requiredFields()) {
             if (!fieldSet.contains(required)) {
-                errors.add("Kiku note type is missing required field " + required + ".");
+                errors.add("Configured note type " + settings.modelName + " is missing required field " + required + ".");
             }
         }
         return errors;

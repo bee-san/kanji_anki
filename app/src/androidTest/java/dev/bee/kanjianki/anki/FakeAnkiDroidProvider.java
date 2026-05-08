@@ -116,6 +116,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         if ("/models".equals(path)) {
             MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "name", "field_names"});
             cursor.addRow(new Object[]{100L, "Kiku", fields("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort", "Glossary")});
+            cursor.addRow(new Object[]{200L, "Custom Japanese", fields("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort")});
             return cursor;
         }
         if ("/notes".equals(path) || "/notes_v2".equals(path)) {
