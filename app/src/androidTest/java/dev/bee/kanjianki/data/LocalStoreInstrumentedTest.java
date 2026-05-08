@@ -10,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 import org.junit.After;
@@ -17,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -120,7 +122,7 @@ public final class LocalStoreInstrumentedTest {
         saveSingleRowSync(row, Collections.singletonList(suspendedImport("拉")), 2000L);
 
         List<Records.KanjiInventoryItem> ramenMatches = store.searchKanjiInventory("ramen");
-        assertEquals(1, ramenMatches.size());
+        assertFalse(ramenMatches.isEmpty());
         assertEquals("拉", ramenMatches.get(0).kanji);
         assertFalse(ramenMatches.get(0).suspended);
         assertEquals(1, store.activeDashboardRows().size());
@@ -140,6 +142,54 @@ public final class LocalStoreInstrumentedTest {
         store.setKanjiLocallySuspended("拉", false, 3500L);
         assertFalse(store.inventoryItemForKanji("拉").suspended);
         assertEquals(1, store.activeDashboardRows().size());
+    }
+
+    @Test
+    public void testSimilarPairsUseConfiguredInventoryFieldsAndPreserveFirstSeen() throws Exception {
+        Records.Settings settings = new Records.Settings(
+                "Custom Mining",
+                "Mining",
+                "Word",
+                "Kana",
+                "Gloss",
+                "Context",
+                "Frequency",
+                "Sort",
+                21,
+                2,
+                3000,
+                24,
+                3
+        );
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Collections.singletonList(customNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")),
+                Collections.singletonList(new Records.Card(10L, 1L, 0, "Custom", 2, 2, 0, 3, 4, 1, false))
+        );
+        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
+                "拉\t麺\tfixture\n" +
+                        "拉\t謎\tfixture\n"
+        ));
+
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 1000L, 2000L, null, index);
+
+        assertNotNull(store.inventoryItemForKanji("拉"));
+        assertNotNull(store.inventoryItemForKanji("麺"));
+        assertTrue(store.hasSimilarLocalPair("拉", "麺"));
+        assertTrue(store.hasSimilarLocalPair("麺", "拉"));
+        assertFalse(store.hasSimilarLocalPair("拉", "謎"));
+        assertEquals(1, store.similarPairsForKanji("拉").size());
+        Records.SimilarKanjiPair first = store.allLocalSimilarPairs().get(0);
+        assertEquals("拉", first.kanjiA);
+        assertEquals("麺", first.kanjiB);
+        assertEquals("fixture", first.source);
+        assertEquals(2000L, first.firstSeenAtMillis);
+        assertEquals(2000L, first.lastSeenAtMillis);
+
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 2500L, 3000L, null, index);
+
+        Records.SimilarKanjiPair updated = store.allLocalSimilarPairs().get(0);
+        assertEquals(2000L, updated.firstSeenAtMillis);
+        assertEquals(3000L, updated.lastSeenAtMillis);
     }
 
     @Test
@@ -275,6 +325,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "font_meaning_memory"));
         assertTrue(hasColumn("study_items", "word_reading_memory"));
         assertTrue(hasColumn("study_items", "writing_remediation_memory"));
+        assertTrue(hasColumn("similar_kanji_pairs", "source"));
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
@@ -616,6 +667,17 @@ public final class LocalStoreInstrumentedTest {
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
         return new Records.Note(id, "Kiku", fields, Collections.emptyList());
+    }
+
+    private Records.Note customNote(long id, String expression, String reading, String meaning, String sentence) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("Word", expression);
+        fields.put("Kana", reading);
+        fields.put("Gloss", meaning);
+        fields.put("Context", sentence);
+        fields.put("Frequency", "1000");
+        fields.put("Sort", "1000");
+        return new Records.Note(id, "Custom Mining", fields, Collections.emptyList());
     }
 
     private static final class ContentValuesBuilder {

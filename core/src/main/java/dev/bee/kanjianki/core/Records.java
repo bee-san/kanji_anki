@@ -415,6 +415,22 @@ public final class Records {
         }
     }
 
+    public static final class SimilarKanjiPair {
+        public final String kanjiA;
+        public final String kanjiB;
+        public final String source;
+        public final long firstSeenAtMillis;
+        public final long lastSeenAtMillis;
+
+        public SimilarKanjiPair(String kanjiA, String kanjiB, String source, long firstSeenAtMillis, long lastSeenAtMillis) {
+            this.kanjiA = kanjiA == null ? "" : kanjiA;
+            this.kanjiB = kanjiB == null ? "" : kanjiB;
+            this.source = source == null ? "" : source;
+            this.firstSeenAtMillis = Math.max(0L, firstSeenAtMillis);
+            this.lastSeenAtMillis = Math.max(0L, lastSeenAtMillis);
+        }
+    }
+
     public static final class KanjiTimelineEvent {
         public final long id;
         public final String kanji;

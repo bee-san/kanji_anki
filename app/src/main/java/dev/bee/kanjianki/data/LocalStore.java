@@ -9,6 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 9;
+    private static final int DB_VERSION = 10;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final int DEFAULT_REMINDER_HOUR = 19;
@@ -54,6 +55,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE dashboard_rows (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
         createKanjiInventoryTables(db);
+        createSimilarKanjiTables(db);
         db.execSQL(STUDY_ITEMS_TABLE_SQL);
         db.execSQL(LEARNING_REPEATS_TABLE_SQL);
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
@@ -108,12 +110,21 @@ public final class LocalStore extends SQLiteOpenHelper {
             createKanjiInventoryTables(db);
             backfillKanjiInventory(db, System.currentTimeMillis(), Records.Settings.kikuDefaults());
         }
+        if (oldVersion < 10) {
+            createSimilarKanjiTables(db);
+        }
     }
 
     private void createKanjiInventoryTables(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS kanji_inventory (kanji TEXT PRIMARY KEY, primary_meaning TEXT NOT NULL, readings TEXT NOT NULL, browser_search TEXT NOT NULL, search_text TEXT NOT NULL, source_count INTEGER NOT NULL, example_count INTEGER NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS local_kanji_suspensions (kanji TEXT PRIMARY KEY, suspended_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_kanji_inventory_search ON kanji_inventory(search_text)");
+    }
+
+    private void createSimilarKanjiTables(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_pairs (kanji_a TEXT NOT NULL, kanji_b TEXT NOT NULL, source TEXT NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (kanji_a, kanji_b, source))");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_a ON similar_kanji_pairs(kanji_a)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_b ON similar_kanji_pairs(kanji_b)");
     }
 
     private void rebuildStudyItemsWithAnswerSignatureKey(SQLiteDatabase db) {
@@ -133,6 +144,19 @@ public final class LocalStore extends SQLiteOpenHelper {
             long startedAt,
             long finishedAt,
             AnkiDroidGateway.RemovalSummary removal
+    ) {
+        return saveSuccessfulSync(snapshot, imports, rows, settings, startedAt, finishedAt, removal, null);
+    }
+
+    public long saveSuccessfulSync(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            long startedAt,
+            long finishedAt,
+            AnkiDroidGateway.RemovalSummary removal,
+            SimilarKanjiIndex similarIndex
     ) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -230,6 +254,9 @@ public final class LocalStore extends SQLiteOpenHelper {
 
             saveRows(db, rows, finishedAt);
             rebuildKanjiInventory(db, snapshot, imports, rows, finishedAt, settings);
+            if (similarIndex != null) {
+                rebuildSimilarKanjiPairs(db, similarIndex, finishedAt);
+            }
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, finishedAt, settings);
             db.setTransactionSuccessful();
             return syncId;
@@ -340,6 +367,84 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return out;
+    }
+
+    public void rebuildSimilarKanjiPairs(SimilarKanjiIndex similarIndex, long nowMillis) {
+        if (similarIndex == null) {
+            return;
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            rebuildSimilarKanjiPairs(db, similarIndex, nowMillis);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public List<Records.SimilarKanjiPair> allLocalSimilarPairs() {
+        SQLiteDatabase db = getReadableDatabase();
+        List<Records.SimilarKanjiPair> out = new ArrayList<>();
+        Cursor cursor = db.query("similar_kanji_pairs", null, null, null, null, null, "kanji_a ASC, kanji_b ASC, source ASC");
+        try {
+            while (cursor.moveToNext()) {
+                out.add(readSimilarPair(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    public List<Records.SimilarKanjiPair> similarPairsForKanji(String kanji) {
+        String normalized = normalizeSingleKanji(kanji);
+        if (normalized.isEmpty()) {
+            return Collections.emptyList();
+        }
+        SQLiteDatabase db = getReadableDatabase();
+        List<Records.SimilarKanjiPair> out = new ArrayList<>();
+        Cursor cursor = db.query(
+                "similar_kanji_pairs",
+                null,
+                "kanji_a=? OR kanji_b=?",
+                new String[]{normalized, normalized},
+                null,
+                null,
+                "kanji_a ASC, kanji_b ASC, source ASC"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                out.add(readSimilarPair(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    public boolean hasSimilarLocalPair(String first, String second) {
+        String kanjiA = normalizeSingleKanji(first);
+        String kanjiB = normalizeSingleKanji(second);
+        if (kanjiA.isEmpty() || kanjiB.isEmpty() || kanjiA.equals(kanjiB)) {
+            return false;
+        }
+        String[] pair = canonicalSimilarPair(kanjiA, kanjiB);
+        Cursor cursor = getReadableDatabase().query(
+                "similar_kanji_pairs",
+                new String[]{"kanji_a"},
+                "kanji_a=? AND kanji_b=?",
+                pair,
+                null,
+                null,
+                null,
+                "1"
+        );
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
     }
 
     public Set<String> locallySuspendedKanji() {
@@ -1637,6 +1742,63 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    private void rebuildSimilarKanjiPairs(SQLiteDatabase db, SimilarKanjiIndex similarIndex, long nowMillis) {
+        Map<String, Long> firstSeenByPair = similarPairFirstSeen(db);
+        List<SimilarKanjiIndex.Pair> localPairs = similarIndex.pairsWithin(localInventoryKanji(db));
+        db.delete("similar_kanji_pairs", null, null);
+        for (SimilarKanjiIndex.Pair pair : localPairs) {
+            ContentValues values = new ContentValues();
+            values.put("kanji_a", pair.kanjiA);
+            values.put("kanji_b", pair.kanjiB);
+            values.put("source", pair.source);
+            values.put("first_seen_at", firstSeenByPair.getOrDefault(similarKey(pair.kanjiA, pair.kanjiB, pair.source), nowMillis));
+            values.put("last_seen_at", nowMillis);
+            db.insertWithOnConflict("similar_kanji_pairs", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    private Map<String, Long> similarPairFirstSeen(SQLiteDatabase db) {
+        Map<String, Long> out = new HashMap<>();
+        Cursor cursor = db.query("similar_kanji_pairs", new String[]{"kanji_a", "kanji_b", "source", "first_seen_at"}, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                out.put(
+                        similarKey(string(cursor, "kanji_a"), string(cursor, "kanji_b"), string(cursor, "source")),
+                        longValue(cursor, "first_seen_at")
+                );
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private Set<String> localInventoryKanji(SQLiteDatabase db) {
+        Set<String> out = new HashSet<>();
+        Cursor cursor = db.query("kanji_inventory", new String[]{"kanji"}, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                String kanji = normalizeSingleKanji(string(cursor, "kanji"));
+                if (!kanji.isEmpty()) {
+                    out.add(kanji);
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private Records.SimilarKanjiPair readSimilarPair(Cursor cursor) {
+        return new Records.SimilarKanjiPair(
+                string(cursor, "kanji_a"),
+                string(cursor, "kanji_b"),
+                string(cursor, "source"),
+                longValue(cursor, "first_seen_at"),
+                longValue(cursor, "last_seen_at")
+        );
+    }
+
     private void addInventoryText(Map<String, MutableKanjiInventoryItem> inventory, List<String> kanji, String meaning, String reading, String expression, String sentence) {
         for (String glyph : kanji) {
             inventoryItem(inventory, glyph).add(meaning, reading, expression, sentence);
@@ -1686,6 +1848,25 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private static String firstNonEmpty(String first, String second) {
         return first == null || first.isEmpty() ? (second == null ? "" : second) : first;
+    }
+
+    private static String normalizeSingleKanji(String value) {
+        String normalized = TextUtil.normalizeJapanese(value);
+        if (normalized.codePointCount(0, normalized.length()) != 1) {
+            return "";
+        }
+        return TextUtil.isKanji(normalized.codePointAt(0)) ? normalized : "";
+    }
+
+    private static String[] canonicalSimilarPair(String first, String second) {
+        if (first.compareTo(second) <= 0) {
+            return new String[]{first, second};
+        }
+        return new String[]{second, first};
+    }
+
+    private static String similarKey(String first, String second, String source) {
+        return first + "\u0000" + second + "\u0000" + source;
     }
 
     private Records.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {

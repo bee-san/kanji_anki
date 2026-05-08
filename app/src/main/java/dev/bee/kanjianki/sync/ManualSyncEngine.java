@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.SuspendedKanjiImporter;
 import dev.bee.kanjianki.data.LocalStore;
 
@@ -64,8 +65,9 @@ public final class ManualSyncEngine {
                     .importFrom(snapshot, settings);
             List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(store.suspendedImports(), imports);
             List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, analysisImports, ranks, settings);
+            SimilarKanjiIndex similarKanjiIndex = loadSimilarKanjiIndex();
             long finished = System.currentTimeMillis();
-            long syncId = store.saveSuccessfulSync(snapshot, imports, rows, settings, started, finished, null);
+            long syncId = store.saveSuccessfulSync(snapshot, imports, rows, settings, started, finished, null, similarKanjiIndex);
             AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot, progress);
             store.updateSyncRemovalMessage(syncId, removal.message);
 
@@ -133,6 +135,12 @@ public final class ManualSyncEngine {
     public JitenKanjiRanks loadRanks() throws Exception {
         try (InputStreamReader reader = new InputStreamReader(context.getResources().openRawResource(R.raw.jiten_kanji_rank), StandardCharsets.UTF_8)) {
             return JitenKanjiRanks.parseCsv(reader);
+        }
+    }
+
+    public SimilarKanjiIndex loadSimilarKanjiIndex() throws Exception {
+        try (InputStreamReader reader = new InputStreamReader(context.getResources().openRawResource(R.raw.similar_kanji), StandardCharsets.UTF_8)) {
+            return SimilarKanjiIndex.parseTsv(reader);
         }
     }
 
