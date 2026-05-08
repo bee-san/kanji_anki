@@ -19,6 +19,43 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   gradle :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac
 ```
 
+## CI And Static Analysis Notes
+
+SonarCloud and CodeQL both run on pushes to `main`. If you change either
+workflow, push it and watch the first GitHub Actions run to completion; local
+Gradle success alone is not enough to validate the service integration.
+
+Useful commands:
+
+```sh
+gh run list --repo bee-san/kanji_anki --limit 10
+gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
+```
+
+The CodeQL workflow uses manual Java/Kotlin analysis for this Android Gradle
+project. Keep the CodeQL build step after `github/codeql-action/init` as a
+forced clean compile:
+
+```sh
+gradle clean :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+```
+
+Do not simplify that to a normal compile. Gradle can mark the compile tasks
+up-to-date from cache, and then CodeQL fails with "this run didn't build any of
+it" because it saw no compiler activity to extract.
+
+For SonarCloud test assertions, avoid direct `assertFalse(value.equals(...))`
+because `java:S5785` asks for `assertNotEquals`. Also avoid `assertNotEquals`
+between intentionally different types because `java:S5845` reports it as a bug.
+If you need to cover the non-matching `equals` branch, assign the result to a
+boolean and assert on that boolean:
+
+```java
+Object nonPoint = "not a point";
+boolean equalsNonPoint = point.equals(nonPoint);
+assertFalse(equalsNonPoint);
+```
+
 ## What Was Tested For v0.3.6
 
 The `_id is unknown` / `queue _id is unknown` fix was validated with:
@@ -94,6 +131,24 @@ desktop collection directly.
    adb push "/home/bee/.local/share/Anki2/User 1/collection.anki2" \
      /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.anki2
    ```
+
+   If the provider smoke query returns `No result found` or AnkiDroid logs
+   `No write access to AnkiDroid directory`, inspect ownership:
+
+   ```sh
+   adb shell ls -ld /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid
+   ```
+
+   After a root/shell push, the copied `AnkiDroid` directory may be owned by
+   `shell` instead of the AnkiDroid app uid. Fix the emulator copy before
+   continuing:
+
+   ```sh
+   adb shell 'chown -R u0_aNNN:ext_data_rw /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid && chmod -R u+rwX,g+rwX /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid'
+   ```
+
+   Replace `u0_aNNN` with the owner of
+   `/storage/emulated/0/Android/data/com.ichi2.anki`.
 
 6. Point AnkiDroid at that copied collection path.
 
