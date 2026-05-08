@@ -146,7 +146,9 @@ public class RecordsValueCoverageTest {
 
         InkPoint point = new InkPoint(0.25f, 0.5f, 7L);
         assertEquals(new InkPoint(25f, 100f, 7L), point.scaled(100f, 200f));
-        assertNotEquals(point, "not a point");
+        Object nonPoint = "not a point";
+        boolean equalsNonPoint = point.equals(nonPoint);
+        assertFalse(equalsNonPoint);
         assertNotEquals(point, new InkPoint(0.25f, 0.6f, 7L));
         assertEquals(point.hashCode(), new InkPoint(0.25f, 0.5f, 7L).hashCode());
     }
