@@ -387,12 +387,12 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Meaning: ramen radical gap");
                 assertHasText(activity, "Reading: ら");
                 assertHasText(activity, "From: 拉麺  らーめん");
-                assertHasText(activity, "I knew it");
-                assertHasText(activity, "I missed it");
+                assertHasText(activity, "Fail");
+                assertHasText(activity, "Pass");
                 assertNoText(activity, "Check");
             });
 
-            clickText(scenario, "I missed it");
+            clickText(scenario, "Fail");
             LocalStore store = new LocalStore(context);
             try {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -415,7 +415,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             clickText(scenario, "Reveal");
-            clickText(scenario, "I knew it");
+            clickText(scenario, "Pass");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Today's focus done");
                 assertHasText(activity, "Continue all kanji");
@@ -708,10 +708,20 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Answer");
                 assertHasText(activity, "拉");
-                assertHasText(activity, "I knew it");
-                assertHasText(activity, "I missed it");
+                assertHasText(activity, "Fail");
+                assertHasText(activity, "Pass");
+                Rect failBounds = new Rect();
+                Rect passBounds = new Rect();
+                View root = activity.findViewById(android.R.id.content);
+                View fail = findExactText(root, "Fail");
+                View pass = findExactText(root, "Pass");
+                assertNotNull(fail);
+                assertNotNull(pass);
+                assertTrue(fail.getGlobalVisibleRect(failBounds));
+                assertTrue(pass.getGlobalVisibleRect(passBounds));
+                assertTrue("Fail should be left of Pass", failBounds.centerX() < passBounds.centerX());
             });
-            clickText(scenario, "I knew it");
+            clickText(scenario, "Pass");
 
             LocalStore store = new LocalStore(context);
             try {
@@ -755,7 +765,7 @@ public final class MainActivityInstrumentedTest {
             });
 
             clickText(scenario, "Reveal");
-            clickText(scenario, "I knew it");
+            clickText(scenario, "Pass");
 
             LocalStore store = new LocalStore(context);
             try {
@@ -781,7 +791,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             clickText(scenario, "Reveal");
-            clickText(scenario, "I missed it");
+            clickText(scenario, "Fail");
 
             LocalStore store = new LocalStore(context);
             try {

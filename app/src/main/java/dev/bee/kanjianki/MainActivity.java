@@ -1591,13 +1591,13 @@ public final class MainActivity extends Activity {
             });
             actions.addView(reveal, new LinearLayout.LayoutParams(0, dp(62), 1));
         } else {
-            Button known = primaryButton("I knew it", TEAL);
-            known.setOnClickListener(v -> submitReview("good", false));
-            actions.addView(known, new LinearLayout.LayoutParams(0, dp(62), 1));
+            Button fail = primaryButton("Fail", CORAL);
+            fail.setOnClickListener(v -> submitReview("again", false));
+            actions.addView(fail, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-            Button write = primaryButton("I missed it", CORAL);
-            write.setOnClickListener(v -> submitReview("again", false));
-            actions.addView(write, new LinearLayout.LayoutParams(0, dp(62), 1));
+            Button pass = primaryButton("Pass", TEAL);
+            pass.setOnClickListener(v -> submitReview("good", false));
+            actions.addView(pass, new LinearLayout.LayoutParams(0, dp(62), 1));
         }
         studyActionBar.addView(actions);
     }
