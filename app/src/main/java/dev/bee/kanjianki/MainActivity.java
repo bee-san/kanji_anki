@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
+import android.content.res.ColorStateList;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -17,6 +18,7 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -32,6 +34,7 @@ import android.view.ViewParent;
 import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -363,7 +366,7 @@ public final class MainActivity extends Activity {
             syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
         } else {
-            Button studyButton = homeStudyButton();
+            View studyButton = homeStudyCta();
             studyButton.setOnClickListener(v -> startFocusedStudy());
             content.addView(studyButton);
 
@@ -480,27 +483,83 @@ public final class MainActivity extends Activity {
         return card;
     }
 
-    private Button homeStudyButton() {
-        Button button = primaryButton("Study now", CORAL);
+    private View homeStudyCta() {
+        FrameLayout button = new FrameLayout(this);
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[] { Color.rgb(255, 96, 139), Color.rgb(255, 58, 112) }
+                new int[] { Color.rgb(255, 116, 156), Color.rgb(255, 58, 112) }
         );
         background.setCornerRadius(dp(24));
         background.setStroke(dp(2), Color.rgb(255, 190, 214));
-        button.setBackground(background);
-        button.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_sparkle_24, 0, 0, 0);
-        button.setCompoundDrawablePadding(dp(10));
-        button.setGravity(Gravity.CENTER);
-        button.setTextSize(26);
-        button.setMinHeight(dp(90));
-        button.setPadding(dp(12), 0, dp(12), dp(2));
+        GradientDrawable mask = new GradientDrawable();
+        mask.setColor(Color.WHITE);
+        mask.setCornerRadius(dp(24));
+        button.setBackground(new RippleDrawable(
+                ColorStateList.valueOf(Color.argb(38, 255, 255, 255)),
+                background,
+                mask
+        ));
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setContentDescription("Study now");
+        button.setMinimumHeight(dp(94));
         button.setElevation(dp(9));
         button.setTranslationZ(dp(2));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(90));
+        button.setClipToOutline(true);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = text("Study now", 26, Color.WHITE, true);
+        title.setIncludeFontPadding(false);
+        title.setLetterSpacing(0);
+        copy.addView(title);
+        TextView support = text("Start focused practice", 13, Color.rgb(255, 245, 250), true);
+        support.setIncludeFontPadding(false);
+        support.setSingleLine(true);
+        support.setPadding(0, dp(5), 0, 0);
+        copy.addView(support);
+        FrameLayout.LayoutParams copyLp = new FrameLayout.LayoutParams(-1, -1);
+        copyLp.setMargins(dp(26), 0, dp(92), 0);
+        button.addView(copy, copyLp);
+
+        FrameLayout arrowChip = new FrameLayout(this);
+        arrowChip.setBackground(panel(Color.WHITE, Color.WHITE, dp(25)));
+        arrowChip.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        ImageView arrow = new ImageView(this);
+        arrow.setImageResource(R.drawable.ic_arrow_forward_24);
+        arrow.setColorFilter(CORAL);
+        FrameLayout.LayoutParams arrowLp = new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER);
+        arrowChip.addView(arrow, arrowLp);
+        FrameLayout.LayoutParams chipLp = new FrameLayout.LayoutParams(dp(50), dp(50), Gravity.END | Gravity.CENTER_VERTICAL);
+        chipLp.setMargins(0, 0, dp(22), 0);
+        button.addView(arrowChip, chipLp);
+
+        ImageView topSparkle = decorativeSparkle(Color.WHITE, 18);
+        FrameLayout.LayoutParams topSparkleLp = new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.TOP | Gravity.END);
+        topSparkleLp.setMargins(0, dp(10), dp(78), 0);
+        button.addView(topSparkle, topSparkleLp);
+
+        ImageView bottomSparkle = decorativeSparkle(GOLD, 14);
+        FrameLayout.LayoutParams bottomSparkleLp = new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.BOTTOM | Gravity.START);
+        bottomSparkleLp.setMargins(dp(15), 0, 0, dp(14));
+        button.addView(bottomSparkle, bottomSparkleLp);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(94));
         lp.setMargins(0, dp(20), 0, dp(16));
         button.setLayoutParams(lp);
         return button;
+    }
+
+    private ImageView decorativeSparkle(int tint, int sizeDp) {
+        ImageView sparkle = new ImageView(this);
+        sparkle.setImageResource(R.drawable.ic_sparkle_24);
+        sparkle.setColorFilter(tint);
+        sparkle.setAlpha(0.9f);
+        sparkle.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        sparkle.setMaxWidth(dp(sizeDp));
+        sparkle.setMaxHeight(dp(sizeDp));
+        return sparkle;
     }
 
     private View homeActionRow() {
