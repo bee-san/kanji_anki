@@ -409,7 +409,7 @@ public final class MainActivity extends Activity {
             return "Never synced";
         }
         String prefix = "success".equals(sync.status) ? "Last sync " : "Last sync attempt ";
-        return prefix + humanSyncTime(sync.finishedAt);
+        return prefix + humanSyncTime(sync.finishedAt) + ", click to sync again";
     }
 
     private String humanSyncTime(long timestampMillis) {

@@ -48,10 +48,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -1052,6 +1054,24 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testLastSyncHeadlineInvitesAndStartsManualSync() {
+        long yesterday = moveLocalDays(localDayStart(System.currentTimeMillis()), -1) + 10 * 60 * 60 * 1000L;
+        saveSyncFinishedAt(yesterday);
+        String headline = "Last sync yesterday at "
+                + DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date(yesterday))
+                + ", click to sync again";
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> assertHasText(activity, headline));
+            clickText(scenario, headline);
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Sync AnkiDroid?");
+                assertHasText(activity, "Sync cards");
+            });
+        }
+    }
+
+    @Test
     public void testManualSyncButtonEnablesDailyAutoSyncAfterSuccess() throws Exception {
         MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY));
         context.getContentResolver().call(Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY), "reset", null, null);
@@ -1204,6 +1224,14 @@ public final class MainActivityInstrumentedTest {
     }
 
     private void seedDashboardRowsOnly(List<Records.DashboardRow> rows) {
+        saveSyncFinishedAt(2000L, rows);
+    }
+
+    private void saveSyncFinishedAt(long finishedAt) {
+        saveSyncFinishedAt(finishedAt, Collections.singletonList(dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards")));
+    }
+
+    private void saveSyncFinishedAt(long finishedAt, List<Records.DashboardRow> rows) {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.Note note = note(1L, "拉麺", "らーめん", "ramen radical gap", "拉麺を食べた。");
         Records.Card card = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false);
@@ -1214,8 +1242,8 @@ public final class MainActivityInstrumentedTest {
                     Collections.emptyList(),
                     rows,
                     settings,
-                    1000L,
-                    2000L,
+                    Math.max(0L, finishedAt - 1_000L),
+                    finishedAt,
                     null
             );
         } finally {
