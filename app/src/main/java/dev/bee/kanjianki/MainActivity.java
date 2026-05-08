@@ -289,7 +289,6 @@ public final class MainActivity extends Activity {
         nav.addView(navButton("Home", selected.equals("home"), this::renderHome));
         nav.addView(navButton("Study", selected.equals("study"), this::renderStudy));
         nav.addView(navButton("Stats", selected.equals("stats"), this::renderStats));
-        nav.addView(navButton("Settings", selected.equals("settings"), this::renderSettings));
         return nav;
     }
 
@@ -354,6 +353,9 @@ public final class MainActivity extends Activity {
         Button browse = secondaryButton("Browse Kanji");
         browse.setOnClickListener(v -> renderBrowseKanji(""));
         content.addView(browse);
+        Button settings = secondaryButton("Settings");
+        settings.setOnClickListener(v -> renderSettings());
+        content.addView(settings);
 
         addSpace(16);
         if (rows.isEmpty()) {

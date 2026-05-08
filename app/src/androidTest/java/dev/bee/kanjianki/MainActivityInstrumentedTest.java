@@ -116,6 +116,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Sync AnkiDroid");
                 assertHasText(activity, "Study streak");
                 assertHasText(activity, "No streak yet");
+                assertHasText(activity, "Settings");
                 assertNoText(activity, "Queue");
                 assertNoText(activity, "Update");
             });
@@ -196,6 +197,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Sync AnkiDroid to connect Kani stats to your Kiku cards");
             });
 
+            clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Rarity cutoff");
