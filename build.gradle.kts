@@ -3,6 +3,8 @@ plugins {
     id("org.sonarqube") version "7.3.0.8198"
 }
 
+fun rootPath(path: String): String = layout.projectDirectory.dir(path).asFile.absolutePath
+
 sonar {
     properties {
         property("sonar.projectKey", "bee-san_kanji_anki")
@@ -10,16 +12,16 @@ sonar {
         property(
             "sonar.java.binaries",
             listOf(
-                "core/build/classes/java/main",
-                "app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+                rootPath("core/build/classes/java/main"),
+                rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
             ).joinToString(",")
         )
         property(
             "sonar.java.test.binaries",
             listOf(
-                "core/build/classes/java/test",
-                "app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
-                "app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes",
+                rootPath("core/build/classes/java/test"),
+                rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
+                rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
             ).joinToString(",")
         )
     }
