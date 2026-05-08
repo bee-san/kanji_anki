@@ -9,6 +9,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.sync.SyncSettings;
@@ -56,8 +57,8 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.Note active = note(1L, "確認", "かくにん", "confirmation", "確認した。");
         Records.Note suspended = note(2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
-        Records.Card activeCard = new Records.Card(10L, 1L, 0, "例文マイニング", 2, 2, 0, 45, 12, 1, false, 18.5, 7.0, 0.48);
-        Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "例文マイニング", -1, 0, 0, 0, 0, 0, true);
+        Records.Card activeCard = new Records.Card(10L, 1L, 0, "101", "例文マイニング", 2, 2, 0, 45, 12, 1, false, 18.5, 7.0, 0.48);
+        Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "101", "例文マイニング", -1, 0, 0, 0, 0, 0, true, null, null, null);
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(active, suspended),
                 Arrays.asList(activeCard, suspendedCard)
@@ -109,6 +110,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(2, count("sync_note_snapshots"));
         assertTrue(count("sync_kanji_snapshots") >= 2);
         assertHistoricalCardSnapshot(syncId, 10L, 0, 1, 12, 1, 18.5, 7.0, 0.48);
+        assertHistoricalIdentitySnapshot(syncId, 10L, "101", "例文マイニング", 1001L, "101", "例文マイニング");
         assertHistoricalKanjiSnapshot(syncId, "拉", 0, 1);
         assertSourceCardFsrs(18.5, 7.0, 0.48);
         assertEquals("拉", store.dashboardRows().get(0).kanji);
@@ -397,7 +399,11 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("review_log", "hints_used"));
         assertTrue(hasColumn("review_log", "memory_before"));
         assertTrue(hasColumn("review_log", "scheduler_state_after_json"));
+        assertTrue(hasColumn("sync_card_snapshots", "deck_id"));
+        assertTrue(hasColumn("sync_card_snapshots", "model_id"));
         assertTrue(hasColumn("sync_card_snapshots", "fsrs_difficulty"));
+        assertTrue(hasColumn("sync_note_snapshots", "model_id"));
+        assertTrue(hasColumn("sync_note_snapshots", "deck_ids"));
         assertTrue(hasColumn("sync_note_snapshots", "extracted_kanji"));
         assertTrue(hasColumn("sync_kanji_snapshots", "weakness_score"));
         assertTrue(count("kanji_timeline_events") >= 3);
@@ -558,6 +564,76 @@ public final class LocalStoreInstrumentedTest {
         } finally {
             cursor.close();
         }
+    }
+
+    @Test
+    public void testKanjiImpactBaselineStartsWhenKaniStartsTracking() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.Note firstNote = note(101L, "裂語", "れつご", "split word", "裂語を見た。");
+        Records.Note secondNote = note(102L, "裂文", "れつぶん", "split sentence", "裂文を見た。");
+
+        store.saveSuccessfulSync(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(firstNote, secondNote),
+                        Arrays.asList(
+                                new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 80, 50, 0, false, null, 4.0, 0.95),
+                                new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 80, 50, 0, false, null, 4.0, 0.95)
+                        )
+                ),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                settings,
+                1000L,
+                2000L,
+                null
+        );
+
+        store.saveSuccessfulSync(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(firstNote, secondNote),
+                        Arrays.asList(
+                                new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 5, 20, 8, false, null, 7.2, 0.62),
+                                new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 5, 20, 8, false, null, 7.2, 0.62)
+                        )
+                ),
+                Collections.emptyList(),
+                Collections.singletonList(row("裂", 0)),
+                settings,
+                3000L,
+                4000L,
+                null
+        );
+
+        store.saveReview(review("裂", "impact-baseline"), "good", 4500L);
+
+        store.saveSuccessfulSync(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(firstNote, secondNote),
+                        Arrays.asList(
+                                new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 40, 30, 2, false, null, 5.8, 0.84),
+                                new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 40, 30, 2, false, null, 5.8, 0.84)
+                        )
+                ),
+                Collections.emptyList(),
+                Collections.singletonList(row("裂", 2)),
+                settings,
+                5000L,
+                6000L,
+                null
+        );
+
+        KanjiImpactAnalyzer.Report report = store.kanjiImpactReport();
+
+        assertEquals(1, report.helpedCount);
+        assertEquals(0, report.notHelpingCount);
+        assertEquals(1, report.rows.size());
+        KanjiImpactAnalyzer.Row impact = report.rows.get(0);
+        assertEquals("裂", impact.kanji);
+        assertEquals(KanjiImpactAnalyzer.BUCKET_HELPED, impact.bucket);
+        assertEquals(7.2, impact.baselineDifficulty, 0.001);
+        assertEquals(5.8, impact.currentDifficulty, 0.001);
+        assertEquals(0.62, impact.baselineRetention, 0.001);
+        assertEquals(0.84, impact.currentRetention, 0.001);
     }
 
     @Test
@@ -833,6 +909,35 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
+    private void assertHistoricalIdentitySnapshot(long syncId, long cardId, String deckId, String deckName, long modelId, String noteDeckIds, String noteDeckNames) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor card = db.rawQuery(
+                "SELECT deck_id, deck_name, model_id FROM sync_card_snapshots WHERE sync_id=? AND card_id=?",
+                new String[]{Long.toString(syncId), Long.toString(cardId)}
+        );
+        try {
+            assertTrue(card.moveToFirst());
+            assertEquals(deckId, card.getString(0));
+            assertEquals(deckName, card.getString(1));
+            assertEquals(modelId, card.getLong(2));
+        } finally {
+            card.close();
+        }
+
+        Cursor note = db.rawQuery(
+                "SELECT model_id, deck_ids, deck_names FROM sync_note_snapshots WHERE sync_id=? AND note_id=1",
+                new String[]{Long.toString(syncId)}
+        );
+        try {
+            assertTrue(note.moveToFirst());
+            assertEquals(modelId, note.getLong(0));
+            assertEquals(noteDeckIds, note.getString(1));
+            assertEquals(noteDeckNames, note.getString(2));
+        } finally {
+            note.close();
+        }
+    }
+
     private boolean hasColumn(String table, String column) {
         SQLiteDatabase db = store.getReadableDatabase();
         Cursor cursor = db.rawQuery("PRAGMA table_info(" + table + ")", null);
@@ -856,7 +961,7 @@ public final class LocalStoreInstrumentedTest {
         fields.put("Sentence", sentence);
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
-        return new Records.Note(id, "Kiku", fields, Collections.emptyList());
+        return new Records.Note(id, 1001L, "Kiku", fields, Collections.emptyList());
     }
 
     private Records.Note customNote(long id, String expression, String reading, String meaning, String sentence) {
@@ -867,7 +972,7 @@ public final class LocalStoreInstrumentedTest {
         fields.put("Context", sentence);
         fields.put("Frequency", "1000");
         fields.put("Sort", "1000");
-        return new Records.Note(id, "Custom Mining", fields, Collections.emptyList());
+        return new Records.Note(id, 2002L, "Custom Mining", fields, Collections.emptyList());
     }
 
     private static final class ContentValuesBuilder {

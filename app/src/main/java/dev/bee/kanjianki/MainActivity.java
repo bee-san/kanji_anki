@@ -2533,7 +2533,7 @@ public final class MainActivity extends Activity {
             String repeatType = learningRepeatTypeForReview(activeSession.item, request, result.appliedRating);
             Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, now);
             store.saveStudyItem(itemToSave);
-            store.saveReview(request, result.appliedRating, now, activeSession.item, result.item);
+            store.saveReview(request, result.appliedRating, now, activeSession.item, itemToSave);
             enqueueLearningRepeatIfNeeded(itemToSave, activeSession.taskType, repeatType, now);
             streak = store.studyStreak(now);
             Records.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);

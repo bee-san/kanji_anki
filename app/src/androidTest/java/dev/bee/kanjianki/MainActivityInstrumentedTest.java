@@ -1037,6 +1037,7 @@ public final class MainActivityInstrumentedTest {
                 assertFalse(items.get(0).writingRemediationPending);
                 assertEquals(0, items.get(0).recognitionStage);
                 assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
+                assertLatestReviewSchedulerStateContains(store, "\"due_at\":" + items.get(0).dueAtMillis);
             } finally {
                 store.close();
             }
@@ -1571,6 +1572,19 @@ public final class MainActivityInstrumentedTest {
         try {
             assertTrue(cursor.moveToFirst());
             return cursor.getInt(0);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private void assertLatestReviewSchedulerStateContains(LocalStore store, String expected) {
+        Cursor cursor = store.getReadableDatabase().rawQuery(
+                "SELECT scheduler_state_after_json FROM review_log ORDER BY id DESC LIMIT 1",
+                null
+        );
+        try {
+            assertTrue(cursor.moveToFirst());
+            assertTrue(cursor.getString(0).contains(expected));
         } finally {
             cursor.close();
         }

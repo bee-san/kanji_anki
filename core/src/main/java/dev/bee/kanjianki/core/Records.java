@@ -180,12 +180,18 @@ public final class Records {
 
     public static final class Note {
         public final long noteId;
+        public final long modelId;
         public final String modelName;
         public final Map<String, String> fields;
         public final List<String> tags;
 
         public Note(long noteId, String modelName, Map<String, String> fields, List<String> tags) {
+            this(noteId, 0L, modelName, fields, tags);
+        }
+
+        public Note(long noteId, long modelId, String modelName, Map<String, String> fields, List<String> tags) {
             this.noteId = noteId;
+            this.modelId = modelId;
             this.modelName = modelName;
             this.fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
             this.tags = Collections.unmodifiableList(new ArrayList<>(tags));
@@ -217,6 +223,7 @@ public final class Records {
         public final long cardId;
         public final long noteId;
         public final int ord;
+        public final String deckId;
         public final String deckName;
         public final int queue;
         public final int type;
@@ -261,9 +268,30 @@ public final class Records {
                 Double fsrsDifficulty,
                 Double fsrsRetrievability
         ) {
+            this(cardId, noteId, ord, deckName, deckName, queue, type, due, intervalDays, reps, lapses, suspended, fsrsStability, fsrsDifficulty, fsrsRetrievability);
+        }
+
+        public Card(
+                long cardId,
+                long noteId,
+                int ord,
+                String deckId,
+                String deckName,
+                int queue,
+                int type,
+                int due,
+                int intervalDays,
+                int reps,
+                int lapses,
+                boolean suspended,
+                Double fsrsStability,
+                Double fsrsDifficulty,
+                Double fsrsRetrievability
+        ) {
             this.cardId = cardId;
             this.noteId = noteId;
             this.ord = ord;
+            this.deckId = deckId == null ? "" : deckId;
             this.deckName = deckName;
             this.queue = queue;
             this.type = type;

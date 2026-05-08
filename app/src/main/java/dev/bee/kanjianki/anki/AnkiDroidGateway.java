@@ -322,7 +322,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         Map<String, String> fieldMap = selectedFields(mapping, values, settings);
         List<String> tags = splitTags(value(cursor, "tags"));
         if (!isArchivedTagPresent(tags)) {
-            notes.put(noteId, new Records.Note(noteId, mapping.name, fieldMap, tags));
+            notes.put(noteId, new Records.Note(noteId, mapping.modelId, mapping.name, fieldMap, tags));
         }
     }
 
@@ -424,11 +424,13 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 int queue = intValue(cursor, "queue", suspendedFromSearch ? -1 : 0);
                 boolean suspended = suspendedFromSearch || queue < 0;
                 FsrsMemoryState fsrs = fsrsMemoryState(cursor);
+                String deckId = value(cursor, "deck_id");
                 cards.add(new Records.Card(
                         longValue(cursor, "_id", noteId * 1000L + ord),
                         longValue(cursor, "note_id", noteId),
                         ord,
-                        value(cursor, "deck_id"),
+                        deckId,
+                        deckId,
                         queue,
                         intValue(cursor, "type", suspended ? 3 : 0),
                         intValue(cursor, "due", 0),

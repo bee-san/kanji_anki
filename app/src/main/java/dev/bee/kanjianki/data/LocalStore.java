@@ -28,7 +28,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 12;
+    private static final int DB_VERSION = 13;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final String REVIEW_LOG_TABLE_SQL = "CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
@@ -128,7 +128,12 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (oldVersion < 12) {
             createHistoricalSyncTables(db);
             addRichReviewColumns(db);
+            addHistoricalIdentityColumns(db);
             backfillLatestHistoricalSync(db);
+        }
+        if (oldVersion < 13) {
+            createHistoricalSyncTables(db);
+            addHistoricalIdentityColumns(db);
         }
     }
 
@@ -154,13 +159,22 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private void createHistoricalSyncTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS sync_card_snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, sync_id INTEGER NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, suspended INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, mature INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS sync_card_snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, sync_id INTEGER NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, deck_id TEXT NOT NULL DEFAULT '', deck_name TEXT NOT NULL, model_id INTEGER NOT NULL DEFAULT 0, model_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, suspended INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, mature INTEGER NOT NULL)");
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_card_snapshots_sync_card ON sync_card_snapshots(sync_id, card_id)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_card_snapshots_note ON sync_card_snapshots(sync_id, note_id)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS sync_note_snapshots (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, note_id INTEGER NOT NULL, model_name TEXT NOT NULL, deck_names TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, tags TEXT NOT NULL, fields_json TEXT NOT NULL, extracted_kanji TEXT NOT NULL, PRIMARY KEY (sync_id, note_id))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS sync_note_snapshots (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, note_id INTEGER NOT NULL, model_id INTEGER NOT NULL DEFAULT 0, model_name TEXT NOT NULL, deck_ids TEXT NOT NULL DEFAULT '', deck_names TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, tags TEXT NOT NULL, fields_json TEXT NOT NULL, extracted_kanji TEXT NOT NULL, PRIMARY KEY (sync_id, note_id))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_note_snapshots_kanji ON sync_note_snapshots(sync_id, extracted_kanji)");
         db.execSQL("CREATE TABLE IF NOT EXISTS sync_kanji_snapshots (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, kanji TEXT NOT NULL, active_cards INTEGER NOT NULL, suspended_cards INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, average_interval_days REAL NOT NULL, total_lapses INTEGER NOT NULL, total_reps INTEGER NOT NULL, fsrs_stability_avg REAL, fsrs_difficulty_avg REAL, fsrs_retrievability_avg REAL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, PRIMARY KEY (sync_id, kanji))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_sync ON sync_kanji_snapshots(kanji, sync_id)");
+    }
+
+    private void addHistoricalIdentityColumns(SQLiteDatabase db) {
+        addNullableColumn(db, "sync_card_snapshots", "deck_id", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, "sync_card_snapshots", "model_id", "INTEGER NOT NULL DEFAULT 0");
+        addNullableColumn(db, "sync_note_snapshots", "model_id", "INTEGER NOT NULL DEFAULT 0");
+        addNullableColumn(db, "sync_note_snapshots", "deck_ids", "TEXT NOT NULL DEFAULT ''");
+        db.execSQL("UPDATE sync_card_snapshots SET deck_id=deck_name WHERE deck_id=''");
+        db.execSQL("UPDATE sync_note_snapshots SET deck_ids=deck_names WHERE deck_ids=''");
     }
 
     private void addRichReviewColumns(SQLiteDatabase db) {
@@ -1518,7 +1532,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         candidates.addAll(reviewCounts.keySet());
         List<KanjiImpactAnalyzer.KanjiHistory> histories = new ArrayList<>();
         for (String kanji : candidates) {
-            HistoricalKanjiSnapshot baseline = firstKanjiSnapshot(db, kanji);
+            HistoricalKanjiSnapshot baseline = baselineKanjiSnapshot(db, kanji);
             KanjiImpactAnalyzer.MetricSnapshot current = currentByKanji.get(kanji);
             SameCardMetrics sameCards = baseline == null || baseline.syncId == latestSyncId
                     ? SameCardMetrics.EMPTY
@@ -2775,6 +2789,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             SyncTiming timing
     ) {
         createHistoricalSyncTables(db);
+        Map<Long, LinkedHashSet<String>> deckIdsByNote = deckIdsByNote(snapshot.cards);
         Map<Long, LinkedHashSet<String>> deckNamesByNote = deckNamesByNote(snapshot.cards);
         Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
 
@@ -2789,7 +2804,9 @@ public final class LocalStore extends SQLiteOpenHelper {
             cardValues.put("finished_at", timing.finishedAt);
             cardValues.put("card_id", card.cardId);
             cardValues.put("note_id", card.noteId);
+            cardValues.put("deck_id", card.deckId);
             cardValues.put("deck_name", card.deckName);
+            cardValues.put("model_id", note.modelId);
             cardValues.put("model_name", note.modelName);
             cardValues.put("ord", card.ord);
             cardValues.put("queue", card.queue);
@@ -2811,6 +2828,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
 
         for (Records.Note note : snapshot.notes) {
+            LinkedHashSet<String> deckIds = deckIdsByNote.get(note.noteId);
             LinkedHashSet<String> decks = deckNamesByNote.get(note.noteId);
             if (decks == null || decks.isEmpty()) {
                 continue;
@@ -2823,7 +2841,9 @@ public final class LocalStore extends SQLiteOpenHelper {
             noteValues.put("sync_id", syncId);
             noteValues.put("finished_at", timing.finishedAt);
             noteValues.put("note_id", note.noteId);
+            noteValues.put("model_id", note.modelId);
             noteValues.put("model_name", note.modelName);
+            noteValues.put("deck_ids", deckIds == null ? "" : String.join(" ", deckIds));
             noteValues.put("deck_names", String.join(" ", decks));
             noteValues.put("expression", expression);
             noteValues.put("reading", reading);
@@ -2852,6 +2872,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (notes.isEmpty()) {
             return;
         }
+        Map<Long, LinkedHashSet<String>> deckIdsByNote = new LinkedHashMap<>();
         Map<Long, LinkedHashSet<String>> deckNamesByNote = new LinkedHashMap<>();
         Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
         Cursor cards = db.query("source_cards", null, null, null, null, null, "card_id ASC");
@@ -2864,6 +2885,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 }
                 long cardId = longValue(cards, "card_id");
                 String deck = string(cards, "deck_name");
+                linkedSetFor(deckIdsByNote, noteId).add(deck);
                 linkedSetFor(deckNamesByNote, noteId).add(deck);
                 int intervalDays = integer(cards, "interval_days");
                 int reps = integer(cards, "reps");
@@ -2876,7 +2898,9 @@ public final class LocalStore extends SQLiteOpenHelper {
                 cardValues.put("finished_at", sync.finishedAt);
                 cardValues.put("card_id", cardId);
                 cardValues.put("note_id", noteId);
+                cardValues.put("deck_id", deck);
                 cardValues.put("deck_name", deck);
+                cardValues.put("model_id", note.modelId);
                 cardValues.put("model_name", note.modelName);
                 cardValues.put("ord", integer(cards, "ord"));
                 cardValues.put("queue", integer(cards, "queue"));
@@ -2909,6 +2933,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             cards.close();
         }
         for (HistoricalNoteSnapshot note : notes.values()) {
+            LinkedHashSet<String> deckIds = deckIdsByNote.get(note.noteId);
             LinkedHashSet<String> decks = deckNamesByNote.get(note.noteId);
             if (decks == null || decks.isEmpty()) {
                 continue;
@@ -2917,7 +2942,9 @@ public final class LocalStore extends SQLiteOpenHelper {
             noteValues.put("sync_id", sync.id);
             noteValues.put("finished_at", sync.finishedAt);
             noteValues.put("note_id", note.noteId);
+            noteValues.put("model_id", note.modelId);
             noteValues.put("model_name", note.modelName);
+            noteValues.put("deck_ids", deckIds == null ? "" : String.join(" ", deckIds));
             noteValues.put("deck_names", String.join(" ", decks));
             noteValues.put("expression", note.expression);
             noteValues.put("reading", note.reading);
@@ -2936,6 +2963,14 @@ public final class LocalStore extends SQLiteOpenHelper {
         Map<Long, LinkedHashSet<String>> out = new LinkedHashMap<>();
         for (Records.Card card : cards) {
             linkedSetFor(out, card.noteId).add(card.deckName);
+        }
+        return out;
+    }
+
+    private Map<Long, LinkedHashSet<String>> deckIdsByNote(List<Records.Card> cards) {
+        Map<Long, LinkedHashSet<String>> out = new LinkedHashMap<>();
+        for (Records.Card card : cards) {
+            linkedSetFor(out, card.noteId).add(card.deckId);
         }
         return out;
     }
@@ -3043,6 +3078,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 long noteId = longValue(cursor, "note_id");
                 notes.put(noteId, new HistoricalNoteSnapshot(
                         noteId,
+                        0L,
                         string(cursor, "model_name"),
                         string(cursor, "expression"),
                         string(cursor, "reading"),
@@ -3148,6 +3184,108 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return out;
+    }
+
+    private HistoricalKanjiSnapshot baselineKanjiSnapshot(SQLiteDatabase db, String kanji) {
+        long startedAt = firstKaniSignalAt(db, kanji);
+        if (startedAt <= 0L) {
+            return firstKanjiSnapshot(db, kanji);
+        }
+        HistoricalKanjiSnapshot atOrAfterStart = firstKanjiSnapshotAtOrAfter(db, kanji, startedAt);
+        if (atOrAfterStart != null) {
+            return atOrAfterStart;
+        }
+        return latestKanjiSnapshotAtOrBefore(db, kanji, startedAt);
+    }
+
+    private long firstKaniSignalAt(SQLiteDatabase db, String kanji) {
+        long first = minLongQuery(
+                db,
+                "SELECT MIN(occurred_at) FROM kanji_timeline_events WHERE kanji=?",
+                new String[]{kanji}
+        );
+        long firstReview = minLongQuery(
+                db,
+                "SELECT MIN(reviewed_at) FROM review_log WHERE kanji=?",
+                new String[]{kanji}
+        );
+        long firstStudyItem = minLongQuery(
+                db,
+                "SELECT MIN(created_at) FROM study_items WHERE kanji=?",
+                new String[]{kanji}
+        );
+        long firstSuspendedImport = minLongQuery(
+                db,
+                "SELECT MIN(first_imported_at) FROM suspended_imports WHERE kanji=?",
+                new String[]{kanji}
+        );
+        first = earliestPositive(first, firstReview);
+        first = earliestPositive(first, firstStudyItem);
+        return earliestPositive(first, firstSuspendedImport);
+    }
+
+    private long minLongQuery(SQLiteDatabase db, String sql, String[] args) {
+        Cursor cursor = db.rawQuery(sql, args);
+        try {
+            if (!cursor.moveToFirst() || cursor.isNull(0)) {
+                return 0L;
+            }
+            return cursor.getLong(0);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private long earliestPositive(long left, long right) {
+        if (left <= 0L) {
+            return Math.max(0L, right);
+        }
+        if (right <= 0L) {
+            return left;
+        }
+        return Math.min(left, right);
+    }
+
+    private HistoricalKanjiSnapshot firstKanjiSnapshotAtOrAfter(SQLiteDatabase db, String kanji, long startedAt) {
+        Cursor cursor = db.query(
+                "sync_kanji_snapshots",
+                null,
+                "kanji=? AND finished_at>=?",
+                new String[]{kanji, Long.toString(startedAt)},
+                null,
+                null,
+                "finished_at ASC, sync_id ASC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return new HistoricalKanjiSnapshot(longValue(cursor, "sync_id"), readKanjiImpactMetric(cursor));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private HistoricalKanjiSnapshot latestKanjiSnapshotAtOrBefore(SQLiteDatabase db, String kanji, long startedAt) {
+        Cursor cursor = db.query(
+                "sync_kanji_snapshots",
+                null,
+                "kanji=? AND finished_at<=?",
+                new String[]{kanji, Long.toString(startedAt)},
+                null,
+                null,
+                "finished_at DESC, sync_id DESC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return new HistoricalKanjiSnapshot(longValue(cursor, "sync_id"), readKanjiImpactMetric(cursor));
+        } finally {
+            cursor.close();
+        }
     }
 
     private HistoricalKanjiSnapshot firstKanjiSnapshot(SQLiteDatabase db, String kanji) {
@@ -3451,6 +3589,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private static final class HistoricalNoteSnapshot {
         private final long noteId;
+        private final long modelId;
         private final String modelName;
         private final String expression;
         private final String reading;
@@ -3461,6 +3600,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
         private HistoricalNoteSnapshot(
                 long noteId,
+                long modelId,
                 String modelName,
                 String expression,
                 String reading,
@@ -3470,6 +3610,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 String fieldsJson
         ) {
             this.noteId = noteId;
+            this.modelId = modelId;
             this.modelName = modelName == null ? "" : modelName;
             this.expression = expression == null ? "" : expression;
             this.reading = reading == null ? "" : reading;
