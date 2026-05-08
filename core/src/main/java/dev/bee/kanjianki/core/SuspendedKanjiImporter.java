@@ -8,11 +8,24 @@ import java.util.Map;
 
 public final class SuspendedKanjiImporter {
     private final JitenKanjiRanks ranks;
-    private final int cutoff;
+    private final int minRank;
+    private final int maxRank;
 
     public SuspendedKanjiImporter(JitenKanjiRanks ranks, int cutoff) {
+        this(ranks, Records.DEFAULT_SUSPENDED_RANK_MIN, cutoff);
+    }
+
+    public SuspendedKanjiImporter(JitenKanjiRanks ranks, int minRank, int maxRank) {
         this.ranks = ranks;
-        this.cutoff = cutoff;
+        int normalizedMin = Math.max(1, Math.min(20000, minRank));
+        int normalizedMax = Math.max(1, Math.min(20000, maxRank));
+        if (normalizedMin > normalizedMax) {
+            int swap = normalizedMin;
+            normalizedMin = normalizedMax;
+            normalizedMax = swap;
+        }
+        this.minRank = normalizedMin;
+        this.maxRank = normalizedMax;
     }
 
     public List<Records.SuspendedImport> importFrom(Records.CollectionSnapshot snapshot, Records.Settings settings) {
@@ -29,7 +42,7 @@ public final class SuspendedKanjiImporter {
             String expression = TextUtil.normalizeJapanese(note.expression(settings));
             for (String kanji : TextUtil.extractKanji(expression)) {
                 Integer rank = ranks.rankOf(kanji);
-                if (rank == null || rank > cutoff) {
+                if (rank != null && rank >= minRank && rank <= maxRank) {
                     sourcesByKanji.computeIfAbsent(kanji, ignored -> new ArrayList<>())
                             .add(new Records.SuspendedSource(
                                     kanji,
@@ -51,7 +64,7 @@ public final class SuspendedKanjiImporter {
                     entry.getKey(),
                     rank,
                     rank != null,
-                    cutoff,
+                    maxRank,
                     entry.getValue()
             ));
         }

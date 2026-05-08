@@ -3230,40 +3230,57 @@ public final class MainActivity extends Activity {
         addSpace(12);
 
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        box.addView(text("Rarity cutoff", 23, INK, true));
-        box.addView(text("Suspended cards are imported only when the kanji is rarer than this rank. Lower ranks are common. Default: 3000.", 15, MUTED, false));
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        input.setText(String.format(Locale.ROOT, "%d", current.suspendedRankCutoff));
-        input.setTextSize(22);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        box.addView(input, new LinearLayout.LayoutParams(-1, dp(58)));
+        final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
+        box.addView(text("Frequency range", 23, INK, true));
+        TextView status = text(frequencyRangeStatusText(selected[0], selected[1]), 17, TEAL, true);
+        box.addView(status);
+        box.addView(text("Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000.", 15, MUTED, false));
 
-        LinearLayout quick = new LinearLayout(this);
-        quick.setOrientation(LinearLayout.HORIZONTAL);
-        for (int value : new int[]{1000, 2000, 3000, 4000}) {
-            Button preset = secondaryButton(String.format(Locale.ROOT, "%d", value));
-            preset.setOnClickListener(v -> input.setText(String.format(Locale.ROOT, "%d", value)));
-            quick.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
-        }
-        box.addView(quick);
+        LinearLayout inputs = new LinearLayout(this);
+        inputs.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout minColumn = new LinearLayout(this);
+        minColumn.setOrientation(LinearLayout.VERTICAL);
+        minColumn.addView(text("Min rank", 15, INK, true));
+        EditText minInput = rankInput(selected[0]);
+        minColumn.addView(minInput, new LinearLayout.LayoutParams(-1, dp(58)));
+        inputs.addView(minColumn, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout maxColumn = new LinearLayout(this);
+        maxColumn.setOrientation(LinearLayout.VERTICAL);
+        maxColumn.setPadding(dp(10), 0, 0, 0);
+        maxColumn.addView(text("Max rank", 15, INK, true));
+        EditText maxInput = rankInput(selected[1]);
+        maxColumn.addView(maxInput, new LinearLayout.LayoutParams(-1, dp(58)));
+        inputs.addView(maxColumn, new LinearLayout.LayoutParams(0, -2, 1));
+        box.addView(inputs);
 
-        Button save = primaryButton("Save cutoff", TEAL);
+        box.addView(text("Minimum rank", 14, MUTED, true));
+        SeekBar minSlider = new SeekBar(this);
+        box.addView(minSlider, new LinearLayout.LayoutParams(-1, dp(56)));
+        box.addView(text("Maximum rank", 14, MUTED, true));
+        SeekBar maxSlider = new SeekBar(this);
+        box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
+        bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
+
+        Button save = primaryButton("Save frequency range", TEAL);
         save.setOnClickListener(v -> {
-            int value;
+            int minRank;
+            int maxRank;
             try {
-                value = Integer.parseInt(input.getText().toString().trim());
+                minRank = parseRankInput(minInput);
+                maxRank = parseRankInput(maxInput);
             } catch (NumberFormatException error) {
-                Toast.makeText(this, "Enter a numeric rank cutoff.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Enter numeric ranks.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (value < 1 || value > 20000) {
-                Toast.makeText(this, "Use a cutoff from 1 to 20000.", Toast.LENGTH_SHORT).show();
+            if (minRank < 1 || minRank > 20000 || maxRank < 1 || maxRank > 20000) {
+                Toast.makeText(this, "Use ranks from 1 to 20000.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.putIntSetting("suspended_rank_cutoff", value);
-            Toast.makeText(this, "Cutoff saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+            int normalizedMin = Math.min(minRank, maxRank);
+            int normalizedMax = Math.max(minRank, maxRank);
+            store.putIntSetting("suspended_rank_min", normalizedMin);
+            store.putIntSetting("suspended_rank_max", normalizedMax);
+            Toast.makeText(this, "Frequency range saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
             renderSettings();
         });
         box.addView(save);
@@ -3285,6 +3302,81 @@ public final class MainActivity extends Activity {
         attribution.addView(text("Stroke data", 22, INK, true));
         attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
         content.addView(attribution);
+    }
+
+    private EditText rankInput(int value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.format(Locale.ROOT, "%d", value));
+        input.setTextSize(22);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        return input;
+    }
+
+    private void bindRankSliders(
+            int[] selected,
+            TextView status,
+            EditText minInput,
+            EditText maxInput,
+            SeekBar minSlider,
+            SeekBar maxSlider
+    ) {
+        minSlider.setMax(19999);
+        maxSlider.setMax(19999);
+        minSlider.setProgress(rankSliderProgress(selected[0]));
+        maxSlider.setProgress(rankSliderProgress(selected[1]));
+
+        minSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                selected[0] = Math.min(rankFromSliderProgress(progress), selected[1]);
+                minInput.setText(String.format(Locale.ROOT, "%d", selected[0]));
+                status.setText(frequencyRangeStatusText(selected[0], selected[1]));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                seekBar.setProgress(rankSliderProgress(selected[0]));
+            }
+        });
+        maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                selected[1] = Math.max(rankFromSliderProgress(progress), selected[0]);
+                maxInput.setText(String.format(Locale.ROOT, "%d", selected[1]));
+                status.setText(frequencyRangeStatusText(selected[0], selected[1]));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                seekBar.setProgress(rankSliderProgress(selected[1]));
+            }
+        });
+    }
+
+    private int parseRankInput(EditText input) {
+        return Integer.parseInt(input.getText().toString().trim());
+    }
+
+    private int rankSliderProgress(int rank) {
+        return Math.max(0, Math.min(19999, rank - 1));
+    }
+
+    private int rankFromSliderProgress(int progress) {
+        return Math.max(1, Math.min(20000, progress + 1));
+    }
+
+    private String frequencyRangeStatusText(int minRank, int maxRank) {
+        return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank);
     }
 
     private LinearLayout workloadSettingsPanel() {

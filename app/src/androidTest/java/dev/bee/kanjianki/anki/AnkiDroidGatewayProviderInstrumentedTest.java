@@ -78,7 +78,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertFalse(store.dashboardRows().isEmpty());
         List<Records.SuspendedImport> imports = store.suspendedImports();
         assertEquals(1, imports.size());
-        assertEquals("笥", imports.get(0).kanji);
+        assertEquals("箱", imports.get(0).kanji);
         assertTrue(result.message.contains("tagged in AnkiDroid"));
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
@@ -98,7 +98,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertFalse(store.dashboardRows().isEmpty());
         List<Records.SuspendedImport> imports = store.suspendedImports();
         assertEquals(1, imports.size());
-        assertEquals("笥", imports.get(0).kanji);
+        assertEquals("箱", imports.get(0).kanji);
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
         assertEquals(0, providerInt("explicitIdProjectionQueries"));

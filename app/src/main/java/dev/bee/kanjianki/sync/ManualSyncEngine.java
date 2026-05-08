@@ -61,7 +61,7 @@ public final class ManualSyncEngine {
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
             progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
             JitenKanjiRanks ranks = loadRanks();
-            List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankCutoff)
+            List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
                     .importFrom(snapshot, settings);
             List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(store.suspendedImports(), imports);
             List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, analysisImports, ranks, settings);
@@ -169,9 +169,18 @@ public final class ManualSyncEngine {
 
     private void addImports(Map<String, MutableImport> byKanji, List<Records.SuspendedImport> imports) {
         for (Records.SuspendedImport imported : imports) {
+            if (!importInFrequencyRange(imported)) {
+                continue;
+            }
             MutableImport target = byKanji.computeIfAbsent(imported.kanji, ignored -> new MutableImport(imported));
             target.add(imported);
         }
+    }
+
+    private boolean importInFrequencyRange(Records.SuspendedImport imported) {
+        return imported.jitenRank != null
+                && imported.jitenRank >= settings.suspendedRankMin
+                && imported.jitenRank <= settings.suspendedRankMax;
     }
 
     private static final class MutableImport {

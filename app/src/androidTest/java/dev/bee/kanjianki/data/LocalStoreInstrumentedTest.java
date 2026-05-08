@@ -411,13 +411,21 @@ public final class LocalStoreInstrumentedTest {
 
     @Test
     public void testSettingsAndReviewTokensPersistAcrossStoreInstances() {
-        store.putIntSetting("suspended_rank_cutoff", 3000);
+        store.putIntSetting("suspended_rank_cutoff", 4000);
         Records.ReviewRequest request = new Records.ReviewRequest("拉", "token-1", "good", true, true, false, 0);
         store.saveReview(request, "good", 3000L);
         store.close();
 
         store = new LocalStore(context);
-        assertEquals(3000, store.getIntSetting("suspended_rank_cutoff", 1000));
+        assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 1000));
+        Records.Settings legacyFrequency = SyncSettings.fromStore(store);
+        assertEquals(100, legacyFrequency.suspendedRankMin);
+        assertEquals(4000, legacyFrequency.suspendedRankMax);
+        store.putIntSetting("suspended_rank_min", 250);
+        store.putIntSetting("suspended_rank_max", 3000);
+        Records.Settings rangeFrequency = SyncSettings.fromStore(store);
+        assertEquals(250, rangeFrequency.suspendedRankMin);
+        assertEquals(3000, rangeFrequency.suspendedRankMax);
         assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
         store.putIntSetting("writing_trigger_miss_days", 4);
         assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);

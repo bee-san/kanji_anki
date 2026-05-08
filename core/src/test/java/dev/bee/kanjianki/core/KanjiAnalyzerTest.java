@@ -13,7 +13,7 @@ public class KanjiAnalyzerTest {
     @Test
     public void buildsRowsFromActiveAndSuspendedCollectionEvidence() throws Exception {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,3600\n謎,3700\n"));
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,1500\n謎,1600\n"));
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
                         SuspendedKanjiImporterTest.note(1, "裂ける", "さける"),
@@ -24,7 +24,7 @@ public class KanjiAnalyzerTest {
                         SuspendedKanjiImporterTest.card(20, 2, true)
                 )
         );
-        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankCutoff).importFrom(snapshot, settings);
+        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax).importFrom(snapshot, settings);
 
         List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, imports, ranks, settings);
 

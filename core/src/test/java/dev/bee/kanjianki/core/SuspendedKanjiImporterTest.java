@@ -14,41 +14,46 @@ import static org.junit.Assert.assertFalse;
 
 public class SuspendedKanjiImporterTest {
     @Test
-    public void importsOnlyRanksWorseThanCutoffAndUnknownRanks() throws Exception {
+    public void importsOnlyKnownRanksInsideConfiguredRange() throws Exception {
         Records.Settings settings = Records.Settings.kikuDefaults();
+        assertEquals(100, settings.suspendedRankMin);
+        assertEquals(3000, settings.suspendedRankMax);
         assertEquals(3000, settings.suspendedRankCutoff);
-        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("Kanji,Rank\n日,1\n提,254\n示,237\n裂,3600\n"));
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("Kanji,Rank\n日,1\n提,99\n示,100\n裂,3000\n遅,3001\n"));
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
                         note(1, "提示", "ていじ"),
-                        note(2, "裂ける謎", "さける")
+                        note(2, "裂ける謎", "さける"),
+                        note(3, "遅い", "おそい")
                 ),
                 Arrays.asList(
                         card(10, 1, true),
-                        card(20, 2, true)
+                        card(20, 2, true),
+                        card(30, 3, true)
                 )
         );
 
-        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankCutoff).importFrom(snapshot, settings);
+        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax).importFrom(snapshot, settings);
 
         assertEquals(2, imports.size());
-        assertEquals("裂", imports.get(0).kanji);
-        assertEquals(Integer.valueOf(3600), imports.get(0).jitenRank);
-        assertEquals("謎", imports.get(1).kanji);
-        assertFalse(imports.get(1).rankKnown);
+        assertEquals("示", imports.get(0).kanji);
+        assertEquals(Integer.valueOf(100), imports.get(0).jitenRank);
+        assertEquals("裂", imports.get(1).kanji);
+        assertEquals(Integer.valueOf(3000), imports.get(1).jitenRank);
+        assertFalse(imports.stream().anyMatch(item -> "謎".equals(item.kanji)));
         assertEquals(20, imports.get(1).sources.get(0).cardId);
     }
 
     @Test
     public void deduplicatesKanjiButKeepsMultipleSourceCards() throws Exception {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,3900\n"));
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,2900\n"));
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(note(1, "裂ける", "さける"), note(2, "裂傷", "れっしょう")),
                 Arrays.asList(card(10, 1, true), card(20, 2, true))
         );
 
-        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankCutoff).importFrom(snapshot, settings);
+        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax).importFrom(snapshot, settings);
 
         assertEquals(2, imports.get(0).sources.size());
     }

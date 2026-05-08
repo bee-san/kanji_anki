@@ -865,7 +865,8 @@ public class BridgeSchedulerTest {
                 defaults.frequencySortField,
                 defaults.matureDays,
                 defaults.matureSupportThreshold,
-                defaults.suspendedRankCutoff,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
                 defaults.activeQueueCap,
                 defaults.newPerDay,
                 days

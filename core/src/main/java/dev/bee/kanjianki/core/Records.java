@@ -9,6 +9,8 @@ import java.util.Objects;
 
 public final class Records {
     public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
+    public static final int DEFAULT_SUSPENDED_RANK_MIN = 100;
+    public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
 
@@ -26,6 +28,8 @@ public final class Records {
         public final String frequencySortField;
         public final int matureDays;
         public final int matureSupportThreshold;
+        public final int suspendedRankMin;
+        public final int suspendedRankMax;
         public final int suspendedRankCutoff;
         public final int activeQueueCap;
         public final int newPerDay;
@@ -57,6 +61,7 @@ public final class Records {
                     frequencySortField,
                     matureDays,
                     matureSupportThreshold,
+                    DEFAULT_SUSPENDED_RANK_MIN,
                     suspendedRankCutoff,
                     activeQueueCap,
                     newPerDay,
@@ -80,6 +85,42 @@ public final class Records {
                 int newPerDay,
                 int writingTriggerMissDays
         ) {
+            this(
+                    modelName,
+                    templateName,
+                    expressionField,
+                    readingField,
+                    meaningField,
+                    sentenceField,
+                    frequencyField,
+                    frequencySortField,
+                    matureDays,
+                    matureSupportThreshold,
+                    DEFAULT_SUSPENDED_RANK_MIN,
+                    suspendedRankCutoff,
+                    activeQueueCap,
+                    newPerDay,
+                    writingTriggerMissDays
+            );
+        }
+
+        public Settings(
+                String modelName,
+                String templateName,
+                String expressionField,
+                String readingField,
+                String meaningField,
+                String sentenceField,
+                String frequencyField,
+                String frequencySortField,
+                int matureDays,
+                int matureSupportThreshold,
+                int suspendedRankMin,
+                int suspendedRankMax,
+                int activeQueueCap,
+                int newPerDay,
+                int writingTriggerMissDays
+        ) {
             this.modelName = modelName;
             this.templateName = templateName;
             this.expressionField = expressionField;
@@ -90,7 +131,16 @@ public final class Records {
             this.frequencySortField = frequencySortField;
             this.matureDays = matureDays;
             this.matureSupportThreshold = matureSupportThreshold;
-            this.suspendedRankCutoff = suspendedRankCutoff;
+            int normalizedMin = Math.max(1, Math.min(20000, suspendedRankMin));
+            int normalizedMax = Math.max(1, Math.min(20000, suspendedRankMax));
+            if (normalizedMin > normalizedMax) {
+                int swap = normalizedMin;
+                normalizedMin = normalizedMax;
+                normalizedMax = swap;
+            }
+            this.suspendedRankMin = normalizedMin;
+            this.suspendedRankMax = normalizedMax;
+            this.suspendedRankCutoff = normalizedMax;
             this.activeQueueCap = activeQueueCap;
             this.newPerDay = newPerDay;
             this.writingTriggerMissDays = Math.max(1, writingTriggerMissDays);
@@ -108,9 +158,11 @@ public final class Records {
                     "FreqSort",
                     21,
                     2,
-                    3000,
+                    DEFAULT_SUSPENDED_RANK_MIN,
+                    DEFAULT_SUSPENDED_RANK_MAX,
                     24,
-                    3
+                    3,
+                    DEFAULT_WRITING_TRIGGER_MISS_DAYS
             );
         }
 

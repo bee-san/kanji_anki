@@ -218,8 +218,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Rarity cutoff");
-                assertHasText(activity, "Default: 3000");
+                assertHasText(activity, "Frequency range");
+                assertHasText(activity, "Default: 100-3000");
+                assertHasText(activity, "Min rank");
+                assertHasText(activity, "Max rank");
                 assertHasText(activity, "Daily workload");
                 assertHasText(activity, "Auto Pareto: waiting for problem kanji");
                 assertHasText(activity, "Use manual workload");
@@ -229,18 +231,23 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
             });
+            scenario.onActivity(activity -> {
+                List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
+                assertTrue(sliders.size() >= 2);
+                sliders.get(0).setProgress(249);
+                sliders.get(1).setProgress(3499);
+            });
+            clickText(scenario, "Save frequency range");
             clickText(scenario, "Use manual workload");
             waitForText(scenario, "Pareto: up to 5 kanji");
             scenario.onActivity(activity -> {
-                SeekBar slider = findType(activity.findViewById(android.R.id.content), SeekBar.class);
-                assertNotNull(slider);
-                slider.setProgress(70);
+                List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
+                assertTrue(sliders.size() >= 3);
+                sliders.get(2).setProgress(70);
             });
             clickText(scenario, "Save workload");
             clickText(scenario, "95%");
             clickText(scenario, "Save retention");
-            clickText(scenario, "4000");
-            clickText(scenario, "Save cutoff");
             clickText(scenario, "Morning 08:00");
             clickText(scenario, "Enable reminder");
             clickTextIfPresent("Allow");
@@ -251,7 +258,8 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
                 assertEquals(70, store.adaptiveLoadWorkPercent());
                 assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
-                assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 3000));
+                assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
+                assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
                 LocalStore.ReminderSettings reminder = store.reminderSettings();
                 assertTrue(reminder.enabled);
                 assertEquals(8, reminder.hour);
@@ -1799,6 +1807,27 @@ public final class MainActivityInstrumentedTest {
             }
         }
         return null;
+    }
+
+    private static <T extends View> List<T> findTypes(View root, Class<T> type) {
+        List<T> results = new ArrayList<>();
+        collectTypes(root, type, results);
+        return results;
+    }
+
+    private static <T extends View> void collectTypes(View root, Class<T> type, List<T> results) {
+        if (root.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        if (type.isInstance(root)) {
+            results.add(type.cast(root));
+        }
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                collectTypes(group.getChildAt(i), type, results);
+            }
+        }
     }
 
     private static View clickableAncestor(View view) {

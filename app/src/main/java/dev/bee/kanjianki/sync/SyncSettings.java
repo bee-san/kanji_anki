@@ -9,9 +9,15 @@ public final class SyncSettings {
 
     public static Records.Settings fromStore(LocalStore store) {
         Records.Settings defaults = Records.Settings.kikuDefaults();
-        int cutoff = store == null
-                ? defaults.suspendedRankCutoff
-                : store.getIntSetting("suspended_rank_cutoff", defaults.suspendedRankCutoff);
+        int minRank = store == null
+                ? defaults.suspendedRankMin
+                : store.getIntSetting("suspended_rank_min", defaults.suspendedRankMin);
+        int maxRank = store == null
+                ? defaults.suspendedRankMax
+                : store.getIntSetting(
+                        "suspended_rank_max",
+                        store.getIntSetting("suspended_rank_cutoff", defaults.suspendedRankMax)
+                );
         return new Records.Settings(
                 defaults.modelName,
                 defaults.templateName,
@@ -23,7 +29,8 @@ public final class SyncSettings {
                 defaults.frequencySortField,
                 defaults.matureDays,
                 defaults.matureSupportThreshold,
-                cutoff,
+                minRank,
+                maxRank,
                 defaults.activeQueueCap,
                 defaults.newPerDay,
                 defaults.writingTriggerMissDays
