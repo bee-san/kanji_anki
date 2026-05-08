@@ -29,12 +29,18 @@ public final class ManualSyncEngine {
     private final LocalStore store;
     private final CollectionGateway gateway;
     private final Records.Settings settings;
+    private final SyncProgress.Listener progress;
 
     public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings) {
+        this(context, store, gateway, settings, SyncProgress.NONE);
+    }
+
+    public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings, SyncProgress.Listener progress) {
         this.context = context.getApplicationContext();
         this.store = store;
         this.gateway = gateway;
         this.settings = settings;
+        this.progress = progress == null ? SyncProgress.NONE : progress;
     }
 
     public SyncResult run() {
@@ -51,7 +57,8 @@ public final class ManualSyncEngine {
     private SyncResult runLocked() {
         long started = System.currentTimeMillis();
         try {
-            Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
+            Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
             JitenKanjiRanks ranks = loadRanks();
             List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankCutoff)
                     .importFrom(snapshot, settings);
@@ -59,7 +66,7 @@ public final class ManualSyncEngine {
             List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, analysisImports, ranks, settings);
             long finished = System.currentTimeMillis();
             long syncId = store.saveSuccessfulSync(snapshot, imports, rows, settings, started, finished, null);
-            AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot);
+            AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot, progress);
             store.updateSyncRemovalMessage(syncId, removal.message);
 
             BridgeScheduler scheduler = new BridgeScheduler();

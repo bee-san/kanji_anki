@@ -13,6 +13,7 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -26,6 +27,7 @@ import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
@@ -36,6 +38,7 @@ import dev.bee.kanjianki.core.study.StrokeGuideParser;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
+import dev.bee.kanjianki.sync.SyncProgress;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -59,6 +62,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -91,6 +95,7 @@ public final class MainActivityInstrumentedTest {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
         MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
+        MainActivity.setCollectionGatewayForTests(null);
         MainActivity.setWritingRecognizerForTests(null);
         MainActivity.setInstallPermissionForTests(null);
     }
@@ -98,6 +103,7 @@ public final class MainActivityInstrumentedTest {
     @After
     public void tearDown() {
         MainActivity.setAnkiDroidGatewayForTests(null);
+        MainActivity.setCollectionGatewayForTests(null);
         MainActivity.setWritingRecognizerForTests(null);
         MainActivity.setInstallPermissionForTests(null);
         context.deleteDatabase("kanji_anki_simple.db");
@@ -1058,6 +1064,40 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testManualSyncShowsLiveCardProgress() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.Note first = note(1L, "確認", "かくにん", "confirmation", "確認した。");
+        Records.Note second = note(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Arrays.asList(first, second),
+                Arrays.asList(
+                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, settings.matureDays + 5, 12, 0, false),
+                        new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true)
+                )
+        );
+        HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
+        MainActivity.setCollectionGatewayForTests(progressGateway);
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Sync AnkiDroid");
+            clickText(scenario, "Sync cards");
+            waitForText(scenario, "1 / 2 cards scanned");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Scanning cards");
+                ProgressBar bar = findType(activity.findViewById(android.R.id.content), ProgressBar.class);
+                assertNotNull(bar);
+                assertFalse(bar.isIndeterminate());
+                assertEquals(1000, bar.getMax());
+                assertEquals(500, bar.getProgress());
+            });
+            progressGateway.finish();
+            waitForText(scenario, "Sync complete");
+        } finally {
+            progressGateway.finish();
+        }
+    }
+
+    @Test
     public void testLastSyncHeadlineInvitesAndStartsManualSync() {
         long yesterday = moveLocalDays(localDayStart(System.currentTimeMillis()), -1) + 10 * 60 * 60 * 1000L;
         saveSyncFinishedAt(yesterday);
@@ -1293,6 +1333,50 @@ public final class MainActivityInstrumentedTest {
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
         return new Records.Note(id, "Kiku", fields, Collections.emptyList());
+    }
+
+    private static final class HoldingProgressGateway implements CollectionGateway {
+        private final Records.CollectionSnapshot snapshot;
+        private final CompletableFuture<Void> released = new CompletableFuture<>();
+
+        private HoldingProgressGateway(Records.CollectionSnapshot snapshot) {
+            this.snapshot = snapshot;
+        }
+
+        private void finish() {
+            released.complete(null);
+        }
+
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+            return snapshot;
+        }
+
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) {
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
+            progress.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size()));
+            progress.onSyncProgress(SyncProgress.cardsScanned(1, snapshot.cards.size()));
+            try {
+                released.get(5L, TimeUnit.SECONDS);
+            } catch (Exception ignored) {
+                // Let the test fail on UI assertions instead of blocking the sync thread indefinitely.
+            }
+            progress.onSyncProgress(SyncProgress.cardsScanned(snapshot.cards.size(), snapshot.cards.size()));
+            return snapshot;
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done");
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
+            return removeArchivedSuspendedCards(snapshot);
+        }
     }
 
     private static void clickText(ActivityScenario<MainActivity> scenario, String text) {

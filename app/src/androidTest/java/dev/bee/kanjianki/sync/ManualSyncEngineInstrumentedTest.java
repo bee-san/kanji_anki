@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -117,6 +118,31 @@ public final class ManualSyncEngineInstrumentedTest {
         assertEquals("Kiku note type was not found in AnkiDroid.", status.errorMessage);
     }
 
+    @Test
+    public void manualSyncReceivesOrderedProgressEvents() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        List<String> events = new ArrayList<>();
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(
+                context,
+                store,
+                new ProgressGateway(snapshot(settings), new AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done")),
+                settings,
+                progress -> events.add(progress.stage.name() + ":" + progress.scannedCards + "/" + progress.totalCards)
+        ).run();
+
+        assertTrue(result.success);
+        assertEquals(Arrays.asList(
+                "FINDING_NOTE_TYPE:0/-1",
+                "READING_NOTES:0/-1",
+                "SCANNING_CARDS:0/2",
+                "SCANNING_CARDS:1/2",
+                "SCANNING_CARDS:2/2",
+                "BUILDING_PRACTICE_QUEUE:0/-1",
+                "ARCHIVING_IMPORTED_CARDS:0/-1"
+        ), events);
+    }
+
     private Records.CollectionSnapshot snapshot(Records.Settings settings) {
         Records.Note active = note(1L, "確認", "かくにん", "confirmation", "確認した。");
         Records.Note suspended = note(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
@@ -198,6 +224,43 @@ public final class ManualSyncEngineInstrumentedTest {
         @Override
         public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
+        }
+    }
+
+    private static final class ProgressGateway implements CollectionGateway {
+        private final Records.CollectionSnapshot snapshot;
+        private final AnkiDroidGateway.RemovalSummary removal;
+
+        private ProgressGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+            this.snapshot = snapshot;
+            this.removal = removal;
+        }
+
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+            return snapshot;
+        }
+
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) {
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
+            progress.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size()));
+            for (int i = 0; i < snapshot.cards.size(); i++) {
+                progress.onSyncProgress(SyncProgress.cardsScanned(i + 1, snapshot.cards.size()));
+            }
+            return snapshot;
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return removal;
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
+            return removal;
         }
     }
 }
