@@ -751,6 +751,99 @@ public class BridgeSchedulerTest {
         assertEquals("提", session.item.kanji);
     }
 
+    @Test
+    public void nullAdaptivePlanUsesDefaultSeedingPath() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+
+        List<Records.StudyItem> items = scheduler.seedQueue(
+                Collections.singletonList(row("裂", 30)),
+                Collections.emptyList(),
+                Records.Settings.kikuDefaults(),
+                1000L,
+                0L,
+                null
+        );
+
+        assertEquals(1, items.size());
+        assertEquals("裂", items.get(0).kanji);
+    }
+
+    @Test
+    public void nextSessionReturnsNullWhenNothingDueOrAllowed() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem future = new Records.StudyItem("裂", "review", 2000L, 1.0, 5.0, 1, 0, 2, 1, null, 0);
+
+        assertNull(scheduler.nextSession(Collections.singletonList(future), Collections.singletonList(row("裂", 30)), 1000L));
+        assertNull(scheduler.nextSession(
+                Collections.singletonList(item("裂")),
+                Collections.singletonList(row("裂", 30)),
+                1000L,
+                Collections.singleton("提")
+        ));
+    }
+
+    @Test
+    public void tokenMismatchAndNullReviewInputsStaySafe() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem active = item("裂").withToken("expected");
+
+        Records.ReviewResult duplicate = scheduler.applyReview(
+                active,
+                new Records.ReviewRequest("裂", "actual", "easy", false, false, false, 0),
+                new HashSet<>(),
+                1000L,
+                null,
+                null
+        );
+        Records.ReviewResult normalized = scheduler.applyReview(
+                item("提"),
+                new Records.ReviewRequest("提", "token", null, false, false, false, 0),
+                new HashSet<>(),
+                1000L,
+                null,
+                null
+        );
+
+        assertTrue(duplicate.duplicate);
+        assertEquals("again", normalized.appliedRating);
+        assertEquals("learning", normalized.item.state);
+    }
+
+    @Test
+    public void activeQueueFiltersRetiredMissingAndSuppressedSiblings() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem retired = new Records.StudyItem("古", "retired", 0, 1.0, 5.0, 1, 0, 2, 1, null, 0);
+        Records.StudyItem missing = item("消");
+        Records.StudyItem matureWord = item("裂", 2).withSuppression(BridgeScheduler.TASK_WORD_READING, 1000L, 31);
+        Records.StudyItem lowerSibling = item("裂", 0);
+
+        List<Records.StudyItem> active = scheduler.activeQueueItems(
+                Arrays.asList(retired, missing, matureWord, lowerSibling),
+                Collections.singletonList(row("裂", 30)),
+                1000L,
+                null
+        );
+
+        assertEquals(1, active.size());
+        assertEquals(2, active.get(0).recognitionStage);
+    }
+
+    @Test
+    public void dueCountAndTokenSetCoverCollectionHelpers() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Set<String> tokens = scheduler.tokenSet(Arrays.asList("a", "b", "a"));
+
+        assertEquals(2, tokens.size());
+        assertEquals(1, scheduler.dueCount(
+                Arrays.asList(
+                        new Records.StudyItem("裂", "review", 0, 1.0, 5.0, 1, 0, 2, 1, null, 0),
+                        new Records.StudyItem("提", "retired", 0, 1.0, 5.0, 1, 0, 2, 1, null, 0),
+                        new Records.StudyItem("謎", "review", 2000L, 1.0, 5.0, 1, 0, 2, 1, null, 0)
+                ),
+                1000L
+        ));
+    }
+
     private Records.StudyItem item(String kanji) {
         return item(kanji, 0);
     }

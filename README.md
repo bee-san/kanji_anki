@@ -8,6 +8,9 @@
   <a href="https://github.com/bee-san/kanji_anki/releases">
     <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kanji_anki/total?style=for-the-badge&logo=github&label=downloads">
   </a>
+  <a href="https://github.com/bee-san/kanji_anki/actions/workflows/sonarqube.yml">
+    <img alt="Core class coverage 100%" src="https://img.shields.io/badge/core%20class%20coverage-100%25-brightgreen?style=for-the-badge&logo=gradle">
+  </a>
 </p>
 
 Kani is an Ankidroid companion app for Japanese learners who find suffer from Kanji Blindness.

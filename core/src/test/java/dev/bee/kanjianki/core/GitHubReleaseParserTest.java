@@ -59,8 +59,11 @@ public class GitHubReleaseParserTest {
     public void comparesSemverTags() {
         assertTrue(GitHubReleaseParser.isNewerSemver("0.3.0", "v0.3.1"));
         assertTrue(GitHubReleaseParser.isNewerSemver("0.3.9", "v0.4.0"));
+        assertTrue(GitHubReleaseParser.isNewerSemver("v0.9.9", "v1.0.0"));
         assertFalse(GitHubReleaseParser.isNewerSemver("0.3.1", "v0.3.1"));
         assertFalse(GitHubReleaseParser.isNewerSemver("0.4.0", "v0.3.9"));
+        assertFalse(GitHubReleaseParser.isNewerSemver(null, null));
+        assertFalse(GitHubReleaseParser.isNewerSemver("not-a-version", "also-bad"));
     }
 
     @Test
@@ -69,6 +72,8 @@ public class GitHubReleaseParserTest {
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 GitHubReleaseParser.parseSha256("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  app.apk")
         );
+        assertEquals("", GitHubReleaseParser.parseSha256(null));
+        assertEquals("", GitHubReleaseParser.parseSha256("not a digest"));
     }
 
     @Test
@@ -83,5 +88,69 @@ public class GitHubReleaseParserTest {
         );
 
         assertEquals(null, info.checksumAssetFor("kani-android-0.3.3.apk"));
+    }
+
+    @Test
+    public void malformedReleaseJsonFallsBackToEmptyValues() {
+        Records.ReleaseInfo empty = GitHubReleaseParser.parseLatest(null);
+
+        assertEquals("", empty.tagName);
+        assertEquals("", empty.htmlUrl);
+        assertTrue(empty.assets.isEmpty());
+
+        Records.ReleaseInfo malformed = GitHubReleaseParser.parseLatest(
+                "{"
+                        + "\"tag_name\":123,"
+                        + "\"html_url\" false,"
+                        + "\"assets\":\"not-an-array\","
+                        + "\"ignored\":[{\"name\":\"missing-url\"},{\"browser_download_url\":\"missing-name\"}]"
+                        + "}"
+        );
+
+        assertEquals("", malformed.tagName);
+        assertEquals("", malformed.htmlUrl);
+        assertTrue(malformed.assets.isEmpty());
+    }
+
+    @Test
+    public void parserHandlesEscapesBrokenUnicodeAndUnclosedStrings() {
+        Records.ReleaseInfo escaped = GitHubReleaseParser.parseLatest(
+                "{"
+                        + "\"tag_name\":\"v0.4.0\","
+                        + "\"html_url\":\"quote\\\" slash\\/ backslash\\\\ backspace\\b form\\f newline\\n return\\r tab\\t unicode\\"
+                        + "u62c9 bad\\"
+                        + "uZZZZ short\\"
+                        + "u12\","
+                        + "\"assets\":[{\"name\":\"kani.apk\",\"browser_download_url\":\"https:\\/\\/example\\/kani.apk\"}]"
+                        + "}"
+        );
+
+        assertEquals("v0.4.0", escaped.tagName);
+        assertTrue(escaped.htmlUrl.contains("unicode拉"));
+        assertTrue(escaped.htmlUrl.contains("bad\\uZZZZ"));
+        assertTrue(escaped.htmlUrl.contains("short\\u12"));
+
+        Records.ReleaseInfo unclosed = GitHubReleaseParser.parseLatest("{\"tag_name\":\"v0.4.1");
+
+        assertEquals("v0.4.1", unclosed.tagName);
+        assertTrue(unclosed.assets.isEmpty());
+    }
+
+    @Test
+    public void parserSkipsNestedStringsWhileFindingKeysAndObjects() {
+        Records.ReleaseInfo info = GitHubReleaseParser.parseLatest(
+                "{"
+                        + "\"assets\":["
+                        + "{\"name\":\"first.apk\",\"browser_download_url\":\"https://example/first\",\"meta\":{\"note\":\"brace } in string\"}},"
+                        + "{\"name\":\"second.apk.sha256\",\"browser_download_url\":\"https://example/second\"}"
+                        + "],"
+                        + "\"tag_name\":\"v0.4.2\","
+                        + "\"html_url\":\"https://example/release\""
+                        + "}"
+        );
+
+        assertEquals("v0.4.2", info.tagName);
+        assertEquals("first.apk", info.apkAsset().name);
+        assertEquals("https://example/second", info.checksumAssetFor("second.apk").downloadUrl);
     }
 }

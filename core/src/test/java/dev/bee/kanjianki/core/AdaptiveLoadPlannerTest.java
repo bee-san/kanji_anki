@@ -362,6 +362,95 @@ public class AdaptiveLoadPlannerTest {
         assertEquals(8, plan.target);
     }
 
+    @Test
+    public void nullInputsAndModeHelpersFallBackSafely() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                null,
+                null,
+                null,
+                0,
+                null,
+                17,
+                null,
+                1000L,
+                null
+        );
+
+        assertTrue(plan.autoMode);
+        assertEquals(15, plan.workloadPercent);
+        assertEquals(0, plan.target);
+        assertEquals("No current problem kanji.", plan.status);
+        assertEquals(AdaptiveLoadPlanner.MODE_AUTO, AdaptiveLoadPlanner.normalizeWorkloadMode("unexpected"));
+        assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, AdaptiveLoadPlanner.normalizeWorkloadMode(AdaptiveLoadPlanner.MODE_MANUAL));
+        assertTrue(AdaptiveLoadPlanner.isAutoMode(null));
+    }
+
+    @Test
+    public void workloadLabelsAndCeilingsCoverBoundaries() {
+        assertEquals(0, AdaptiveLoadPlanner.snapWorkloadPercent(-5));
+        assertEquals(95, AdaptiveLoadPlanner.snapWorkloadPercent(98));
+        assertEquals(100, AdaptiveLoadPlanner.snapWorkloadPercent(100));
+        assertEquals(Integer.MAX_VALUE, AdaptiveLoadPlanner.targetCeiling(100));
+        assertEquals("Very little", AdaptiveLoadPlanner.workloadLabel(0));
+        assertEquals("Pareto", AdaptiveLoadPlanner.workloadLabel(20));
+        assertEquals("Balanced", AdaptiveLoadPlanner.workloadLabel(50));
+        assertEquals("More", AdaptiveLoadPlanner.workloadLabel(95));
+        assertEquals("All kanji", AdaptiveLoadPlanner.workloadLabel(100));
+    }
+
+    @Test
+    public void autoModeCoversRecoveryAndSteadyStreakStatusBranches() {
+        List<Records.DashboardRow> steep = Arrays.asList(
+                row("強", 42, null, null, null, 3, 1),
+                row("重", 38, null, null, null, 3, 1),
+                row("軽", 10, null, null, null, 3, 1)
+        );
+        Records.AdaptiveLoadPlan recoveryOnly = planner().plan(
+                steep,
+                Arrays.asList(reviewed("強", 0L), reviewed("重", 0L), reviewed("軽", 0L)),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+        Records.AdaptiveLoadPlan steady = planner().plan(
+                steep,
+                Collections.emptyList(),
+                new Records.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                5,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertTrue(recoveryOnly.status.contains("Due recovery"));
+        assertTrue(steady.status.contains("steady streak"));
+    }
+
+    @Test
+    public void fsrsRiskCoversInvalidPercentAndMatureStabilityBranches() {
+        Records.DashboardRow percentRisk = row("百", 10, 75.0, 6.0, 2.0, 10, 5);
+        Records.DashboardRow invalidRisk = row("無", 50, 101.0, null, null, 3, 1);
+        Records.DashboardRow protectedMature = row("熟", 45, 0.95, 4.0, 50.0, 50, 10);
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(invalidRisk, protectedMature, percentRisk),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                0,
+                1000L
+        );
+
+        assertEquals("百", plan.focusKanji.get(0));
+    }
+
     private AdaptiveLoadPlanner planner() {
         return new AdaptiveLoadPlanner();
     }

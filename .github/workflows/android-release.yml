@@ -88,8 +88,8 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Test and lint
-        run: gradle :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
+      - name: Test, coverage, and lint
+        run: gradle :core:test :core:jacocoTestCoverageVerification :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
 
   assemble-apk:
     name: Assemble signed APK

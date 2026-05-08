@@ -53,6 +53,7 @@ jobs:
         run: >
           gradle
           :core:test
+          :core:jacocoTestCoverageVerification
           :app:testDebugUnitTest
           :app:compileDebugAndroidTestJavaWithJavac
           :app:lintDebug
