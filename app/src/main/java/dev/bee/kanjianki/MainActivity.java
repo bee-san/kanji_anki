@@ -306,7 +306,9 @@ public final class MainActivity extends Activity {
         TextView syncHeadline = text(homeSyncHeadline(sync), 26, Color.WHITE, true);
         syncHeadline.setOnClickListener(v -> confirmSync());
         hero.addView(syncHeadline);
-        hero.addView(text(provider.message, 16, Color.WHITE, false));
+        if (!provider.canSync) {
+            hero.addView(text(provider.message, 16, Color.WHITE, false));
+        }
         if (sync != null) {
             hero.addView(text(sync.headline(), 16, Color.WHITE, false));
             if (!sync.removalMessage.isEmpty()) {

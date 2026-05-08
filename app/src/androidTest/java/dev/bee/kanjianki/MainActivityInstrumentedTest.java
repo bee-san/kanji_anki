@@ -1065,6 +1065,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Today's adaptive focus");
                 assertNoText(activity, "new per day");
+                assertNoText(activity, "AnkiDroid is ready");
             });
 
             LocalStore store = new LocalStore(context);
