@@ -434,7 +434,7 @@ public final class MainActivity extends Activity {
                 CORAL,
                 "Focus",
                 focusHeadline(plan),
-                focusMetricBody(plan),
+                null,
                 null
         ));
         return row;
@@ -442,14 +442,13 @@ public final class MainActivity extends Activity {
 
     private View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
         LinearLayout card = panelBox(Color.WHITE, softened(accent));
-        card.setPadding(dp(12), dp(14), dp(12), dp(14));
+        card.setPadding(dp(11), dp(11), dp(11), dp(11));
         card.setGravity(Gravity.TOP);
-        card.setMinimumHeight(dp(164));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(accent);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(24), dp(24));
-        iconLp.setMargins(0, 0, 0, dp(8));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+        iconLp.setMargins(0, 0, 0, dp(5));
         card.addView(icon, iconLp);
 
         TextView labelText = text(label, 12, accent, true);
@@ -457,24 +456,25 @@ public final class MainActivity extends Activity {
         labelText.setSingleLine(true);
         card.addView(labelText);
 
-        TextView valueText = text(value, 15, INK, true);
+        TextView valueText = text(value, 14, INK, true);
         valueText.setIncludeFontPadding(false);
         valueText.setSingleLine(false);
         valueText.setMaxLines(2);
-        valueText.setPadding(0, dp(6), 0, dp(4));
+        valueText.setPadding(0, dp(5), 0, dp(2));
         card.addView(valueText);
 
-        TextView bodyText = text(compact(body, 18), 11, MUTED, false);
-        bodyText.setIncludeFontPadding(false);
-        bodyText.setSingleLine(false);
-        bodyText.setMaxLines(2);
-        bodyText.setPadding(0, dp(3), 0, 0);
-        card.addView(bodyText);
+        if (body != null && !body.isEmpty()) {
+            TextView bodyText = text(compact(body, 18), 11, MUTED, false);
+            bodyText.setIncludeFontPadding(false);
+            bodyText.setSingleLine(true);
+            bodyText.setPadding(0, dp(3), 0, 0);
+            card.addView(bodyText);
+        }
         if (action != null) {
             card.setClickable(true);
             card.setOnClickListener(v -> action.run());
         }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(136), 1);
         lp.setMargins(dp(4), 0, dp(4), 0);
         card.setLayoutParams(lp);
         return card;
@@ -539,16 +539,6 @@ public final class MainActivity extends Activity {
             return "All current";
         }
         return plan.remaining + " left / " + plan.target;
-    }
-
-    private String focusMetricBody(Records.AdaptiveLoadPlan plan) {
-        if (plan == null || plan.target <= 0) {
-            return "Sync first";
-        }
-        if (plan.allKanjiMode) {
-            return "All kanji";
-        }
-        return plan.target <= 5 ? "Small Pareto" : "Adaptive Pareto";
     }
 
     private View homeSectionHeader(String title, String actionLabel, Runnable action) {
