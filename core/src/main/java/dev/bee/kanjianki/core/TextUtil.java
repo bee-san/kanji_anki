@@ -73,7 +73,27 @@ public final class TextUtil {
     }
 
     public static String browserSearchForKanji(String kanji, Records.Settings settings) {
-        return String.format(Locale.ROOT, "note:%s %s:*%s*", settings.modelName, settings.expressionField, kanji);
+        return String.format(
+                Locale.ROOT,
+                "note:%s %s:*%s*",
+                ankiSearchToken(settings.modelName),
+                ankiSearchToken(settings.expressionField),
+                ankiSearchValue(kanji)
+        );
+    }
+
+    private static String ankiSearchToken(String value) {
+        String safe = ankiSearchValue(value == null ? "" : value.trim());
+        if (safe.matches("[A-Za-z0-9_\\-]+")) {
+            return safe;
+        }
+        return "\"" + safe + "\"";
+    }
+
+    private static String ankiSearchValue(String value) {
+        return (value == null ? "" : value)
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"");
     }
 
     public static String jsonQuote(String value) {

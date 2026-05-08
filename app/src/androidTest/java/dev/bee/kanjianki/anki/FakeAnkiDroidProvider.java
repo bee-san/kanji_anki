@@ -116,7 +116,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         if ("/models".equals(path)) {
             MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "name", "field_names"});
             cursor.addRow(new Object[]{100L, "Kiku", fields("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort", "Glossary")});
-            cursor.addRow(new Object[]{200L, "Custom Japanese", fields("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort")});
+            cursor.addRow(new Object[]{200L, "Custom Japanese", fields("Front", "Reading", "Back", "Example", "Frequency", "FrequencySort")});
             return cursor;
         }
         if ("/notes".equals(path) || "/notes_v2".equals(path)) {
@@ -132,10 +132,44 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             long noteId = Long.parseLong(uri.getPathSegments().get(1));
             String[] columns = projection == null ? new String[]{"_id", "note_id", "ord", "deck_id", "card_name"} : projection;
             MatrixCursor cursor = new MatrixCursor(columns);
-            if (noteId == 1L) {
-                addCardRow(cursor, columns, 10L, 1L, 0, "Kiku", "Mining", 2, 2, 12, 42, 80, 3, 12.5, 7.0, 0.42);
-            } else if (noteId == 2L) {
-                addCardRow(cursor, columns, 20L, 2L, 0, "Kiku", "Mining", -1, 2, 0, 10, 5, 1, null, null, null);
+            if (noteId == 1L || noteId == 101L) {
+                addCardRow(
+                        cursor,
+                        columns,
+                        noteId == 101L ? 110L : 10L,
+                        noteId,
+                        0,
+                        "Kiku",
+                        "Mining",
+                        2,
+                        2,
+                        12,
+                        42,
+                        80,
+                        3,
+                        12.5,
+                        7.0,
+                        0.42
+                );
+            } else if (noteId == 2L || noteId == 102L) {
+                addCardRow(
+                        cursor,
+                        columns,
+                        noteId == 102L ? 120L : 20L,
+                        noteId,
+                        0,
+                        "Kiku",
+                        "Mining",
+                        -1,
+                        2,
+                        0,
+                        10,
+                        5,
+                        1,
+                        null,
+                        null,
+                        null
+                );
             }
             return cursor;
         }
@@ -203,6 +237,14 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         boolean suspendedOnly = selection != null && selection.contains("is:suspended");
         if (suspendedOnly && failSuspendedSearch) {
             throw new IllegalArgumentException("queue _id is unknown");
+        }
+        boolean custom = selection != null && selection.contains("Custom Japanese");
+        if (custom) {
+            if (!suspendedOnly) {
+                cursor.addRow(new Object[]{101L, 200L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100"), activeTags});
+            }
+            cursor.addRow(new Object[]{102L, 200L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500"), suspendedTags});
+            return cursor;
         }
         if (!suspendedOnly) {
             cursor.addRow(new Object[]{1L, 100L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});

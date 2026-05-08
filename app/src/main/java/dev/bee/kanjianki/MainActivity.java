@@ -3347,12 +3347,40 @@ public final class MainActivity extends Activity {
 
         EditText noteType = noteTypeInput(current.modelName);
         box.addView(noteType, new LinearLayout.LayoutParams(-1, dp(58)));
+        EditText expressionField = fieldInput(current.expressionField);
+        EditText readingField = fieldInput(current.readingField);
+        EditText meaningField = fieldInput(current.meaningField);
+        EditText sentenceField = fieldInput(current.sentenceField);
+        EditText frequencyField = fieldInput(current.frequencyField);
+        EditText frequencySortField = fieldInput(current.frequencySortField);
+        addFieldMappingInput(box, "Expression field", expressionField);
+        addFieldMappingInput(box, "Reading field", readingField);
+        addFieldMappingInput(box, "Meaning field", meaningField);
+        addFieldMappingInput(box, "Sentence field", sentenceField);
+        addFieldMappingInput(box, "Frequency field", frequencyField);
+        addFieldMappingInput(box, "Frequency sort field", frequencySortField);
 
         Button choose = secondaryButton("Choose from AnkiDroid");
-        choose.setOnClickListener(v -> chooseNoteType(noteType));
+        choose.setOnClickListener(v -> chooseNoteType(
+                noteType,
+                expressionField,
+                readingField,
+                meaningField,
+                sentenceField,
+                frequencyField,
+                frequencySortField
+        ));
         box.addView(choose);
         Button kiku = secondaryButton("Use Kiku");
-        kiku.setOnClickListener(v -> noteType.setText(defaults.modelName));
+        kiku.setOnClickListener(v -> {
+            noteType.setText(defaults.modelName);
+            expressionField.setText(defaults.expressionField);
+            readingField.setText(defaults.readingField);
+            meaningField.setText(defaults.meaningField);
+            sentenceField.setText(defaults.sentenceField);
+            frequencyField.setText(defaults.frequencyField);
+            frequencySortField.setText(defaults.frequencySortField);
+        });
         box.addView(kiku);
 
         Button save = primaryButton("Save note type", TEAL);
@@ -3362,7 +3390,17 @@ public final class MainActivity extends Activity {
                 Toast.makeText(this, "Enter a note type name.", Toast.LENGTH_SHORT).show();
                 return;
             }
+            if (expressionField.getText().toString().trim().isEmpty()) {
+                Toast.makeText(this, "Choose the field that contains kanji.", Toast.LENGTH_SHORT).show();
+                return;
+            }
             store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, selected);
+            store.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, expressionField.getText().toString().trim());
+            store.putStringSetting(SyncSettings.READING_FIELD_SETTING_KEY, readingField.getText().toString().trim());
+            store.putStringSetting(SyncSettings.MEANING_FIELD_SETTING_KEY, meaningField.getText().toString().trim());
+            store.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, sentenceField.getText().toString().trim());
+            store.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, frequencyField.getText().toString().trim());
+            store.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, frequencySortField.getText().toString().trim());
             Toast.makeText(this, "Note type saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
             renderSettings();
         });
@@ -3381,12 +3419,44 @@ public final class MainActivity extends Activity {
         return input;
     }
 
-    private void chooseNoteType(EditText input) {
+    private EditText fieldInput(String value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setText(value == null ? "" : value.trim());
+        input.setTextSize(18);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        return input;
+    }
+
+    private void addFieldMappingInput(LinearLayout box, String label, EditText input) {
+        box.addView(text(label, 14, INK, true));
+        box.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
+    }
+
+    private void chooseNoteType(
+            EditText noteTypeInput,
+            EditText expressionField,
+            EditText readingField,
+            EditText meaningField,
+            EditText sentenceField,
+            EditText frequencyField,
+            EditText frequencySortField
+    ) {
         Toast.makeText(this, "Reading AnkiDroid note types.", Toast.LENGTH_SHORT).show();
         io.execute(() -> {
             try {
                 List<AnkiDroidGateway.NoteType> noteTypes = gateway.noteTypes();
-                main.post(() -> showNoteTypeDialog(input, noteTypes));
+                main.post(() -> showNoteTypeDialog(
+                        noteTypeInput,
+                        expressionField,
+                        readingField,
+                        meaningField,
+                        sentenceField,
+                        frequencyField,
+                        frequencySortField,
+                        noteTypes
+                ));
             } catch (Throwable error) {
                 String message = error.getMessage() == null || error.getMessage().trim().isEmpty()
                         ? "Could not read AnkiDroid note types."
@@ -3396,7 +3466,16 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void showNoteTypeDialog(EditText input, List<AnkiDroidGateway.NoteType> noteTypes) {
+    private void showNoteTypeDialog(
+            EditText noteTypeInput,
+            EditText expressionField,
+            EditText readingField,
+            EditText meaningField,
+            EditText sentenceField,
+            EditText frequencyField,
+            EditText frequencySortField,
+            List<AnkiDroidGateway.NoteType> noteTypes
+    ) {
         if (noteTypes == null || noteTypes.isEmpty()) {
             Toast.makeText(this, "No note types found in AnkiDroid.", Toast.LENGTH_LONG).show();
             return;
@@ -3408,9 +3487,48 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("Choose note type")
-                .setItems(labels, (dialog, which) -> input.setText(noteTypes.get(which).name))
+                .setItems(labels, (dialog, which) -> {
+                    AnkiDroidGateway.NoteType selected = noteTypes.get(which);
+                    noteTypeInput.setText(selected.name);
+                    applyFieldGuesses(selected, expressionField, readingField, meaningField, sentenceField, frequencyField, frequencySortField);
+                })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    private void applyFieldGuesses(
+            AnkiDroidGateway.NoteType noteType,
+            EditText expressionField,
+            EditText readingField,
+            EditText meaningField,
+            EditText sentenceField,
+            EditText frequencyField,
+            EditText frequencySortField
+    ) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        expressionField.setText(firstMatchingField(noteType.fields, defaults.expressionField, "Front", "Japanese", "Word", "Vocabulary", "Term"));
+        readingField.setText(firstMatchingField(noteType.fields, defaults.readingField, "Reading", "Kana", "Pronunciation"));
+        meaningField.setText(firstMatchingField(noteType.fields, defaults.meaningField, "Meaning", "Back", "Definition", "Glossary"));
+        sentenceField.setText(firstMatchingField(noteType.fields, defaults.sentenceField, "Context", "Example", "ExampleSentence"));
+        frequencyField.setText(firstMatchingField(noteType.fields, defaults.frequencyField, "Freq"));
+        frequencySortField.setText(firstMatchingField(noteType.fields, defaults.frequencySortField, "FrequencySort", defaults.frequencyField));
+        if (expressionField.getText().toString().trim().isEmpty() && !noteType.fields.isEmpty()) {
+            expressionField.setText(noteType.fields.get(0));
+        }
+        if (meaningField.getText().toString().trim().isEmpty() && noteType.fields.size() > 1) {
+            meaningField.setText(noteType.fields.get(1));
+        }
+    }
+
+    private String firstMatchingField(List<String> fields, String... candidates) {
+        for (String candidate : candidates) {
+            for (String field : fields) {
+                if (field.equalsIgnoreCase(candidate)) {
+                    return field;
+                }
+            }
+        }
+        return "";
     }
 
     private EditText rankInput(int value) {

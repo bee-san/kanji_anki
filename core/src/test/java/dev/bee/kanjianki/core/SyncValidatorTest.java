@@ -19,6 +19,30 @@ public class SyncValidatorTest {
     }
 
     @Test
+    public void ignoresBlankOptionalCustomFields() {
+        Records.Settings settings = new Records.Settings(
+                "Custom Japanese",
+                "Mining",
+                "Front",
+                "",
+                "Back",
+                "",
+                "",
+                "",
+                21,
+                2,
+                100,
+                3000,
+                24,
+                3,
+                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+        );
+
+        assertEquals(Arrays.asList("Front", "Back"), settings.requiredFields());
+        assertTrue(SyncValidator.validateModelFields("Custom Japanese", Arrays.asList("Front", "Back"), settings).isEmpty());
+    }
+
+    @Test
     public void classifiesProviderFailures() {
         assertEquals("permanent_permission", SyncValidator.classifyProviderFailure(new SecurityException("denied")));
         assertEquals("permanent_configuration", SyncValidator.classifyProviderFailure(new RuntimeException("missing field Expression")));

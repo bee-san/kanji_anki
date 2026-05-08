@@ -54,6 +54,39 @@ public final class AnkiDroidGatewayTest {
         assertFalse(fields.containsKey("Audio"));
     }
 
+    @Test
+    public void selectRequiredFieldsSkipsBlankOptionalCustomMappings() {
+        Records.Settings settings = new Records.Settings(
+                "Custom Japanese",
+                "Mining",
+                "Front",
+                "",
+                "Back",
+                "",
+                "",
+                "",
+                21,
+                2,
+                100,
+                3000,
+                24,
+                3,
+                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+        );
+
+        Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
+                Arrays.asList("Front", "Reading", "Back", "Example", "Frequency", "FrequencySort"),
+                Arrays.asList("確認", "かくにん", "confirmation", "確認した。", "123", "123"),
+                settings
+        );
+
+        assertEquals(2, fields.size());
+        assertEquals("確認", fields.get("Front"));
+        assertEquals("confirmation", fields.get("Back"));
+        assertFalse(fields.containsKey(""));
+        assertFalse(fields.containsKey("Reading"));
+    }
+
     private static String repeat(String value, int count) {
         StringBuilder builder = new StringBuilder(value.length() * count);
         for (int i = 0; i < count; i++) {

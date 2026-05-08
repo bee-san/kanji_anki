@@ -220,6 +220,10 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Note type");
                 assertHasText(activity, "Using Kiku");
+                assertHasText(activity, "Expression field");
+                assertHasText(activity, "Reading field");
+                assertHasText(activity, "Meaning field");
+                assertHasText(activity, "Frequency sort field");
                 assertHasText(activity, "Choose from AnkiDroid");
                 assertHasText(activity, "Save note type");
                 assertHasText(activity, "Frequency range");

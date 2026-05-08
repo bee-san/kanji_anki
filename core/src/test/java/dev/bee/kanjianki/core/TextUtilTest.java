@@ -24,6 +24,32 @@ public class TextUtilTest {
     }
 
     @Test
+    public void browserSearchQuotesCustomNoteTypeAndFieldNames() {
+        Records.Settings custom = new Records.Settings(
+                "Custom Japanese",
+                "Mining",
+                "Japanese Field",
+                "",
+                "Back",
+                "",
+                "",
+                "",
+                21,
+                2,
+                100,
+                3000,
+                24,
+                3,
+                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+        );
+
+        assertEquals(
+                "note:\"Custom Japanese\" \"Japanese Field\":*裂*",
+                TextUtil.browserSearchForKanji("裂", custom)
+        );
+    }
+
+    @Test
     public void jsonQuoteEscapesControlCharacters() {
         assertEquals("\"a\\n\\\"b\\\"\"", TextUtil.jsonQuote("a\n\"b\""));
     }

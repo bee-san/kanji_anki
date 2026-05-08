@@ -168,13 +168,19 @@ public final class Records {
 
         public List<String> requiredFields() {
             List<String> fields = new ArrayList<>();
-            fields.add(expressionField);
-            fields.add(readingField);
-            fields.add(meaningField);
-            fields.add(sentenceField);
-            fields.add(frequencyField);
-            fields.add(frequencySortField);
+            addRequiredField(fields, expressionField);
+            addRequiredField(fields, readingField);
+            addRequiredField(fields, meaningField);
+            addRequiredField(fields, sentenceField);
+            addRequiredField(fields, frequencyField);
+            addRequiredField(fields, frequencySortField);
             return fields;
+        }
+
+        private static void addRequiredField(List<String> fields, String value) {
+            if (value != null && !value.trim().isEmpty() && !fields.contains(value.trim())) {
+                fields.add(value.trim());
+            }
         }
     }
 

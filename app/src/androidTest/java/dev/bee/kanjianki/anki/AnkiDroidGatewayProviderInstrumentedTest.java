@@ -75,7 +75,24 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, noteTypes.size());
         assertEquals("Kiku", noteTypes.get(0).name);
         assertEquals("Custom Japanese", noteTypes.get(1).name);
-        assertTrue(noteTypes.get(1).fields.contains("Expression"));
+        assertTrue(noteTypes.get(1).fields.contains("Front"));
+        assertFalse(noteTypes.get(1).fields.contains("Expression"));
+    }
+
+    @Test
+    public void readsCustomNoteTypeWithMappedFields() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.Settings settings = customMappedSettings();
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
+
+        assertEquals(2, snapshot.notes.size());
+        assertEquals(2, snapshot.cards.size());
+        assertEquals("Custom Japanese", snapshot.notes.get(0).modelName);
+        assertEquals("確認", snapshot.notes.get(0).expression(settings));
+        assertEquals("かくにん", snapshot.notes.get(0).reading(settings));
+        assertEquals("confirmation", snapshot.notes.get(0).meaning(settings));
+        assertEquals("確認した。", snapshot.notes.get(0).sentence(settings));
     }
 
     @Test
@@ -202,5 +219,26 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     private Uri providerUri() {
         return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
+    }
+
+    private Records.Settings customMappedSettings() {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                "Custom Japanese",
+                defaults.templateName,
+                "Front",
+                "Reading",
+                "Back",
+                "Example",
+                "Frequency",
+                "FrequencySort",
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays
+        );
     }
 }
