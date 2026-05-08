@@ -410,7 +410,7 @@ public final class MainActivity extends Activity {
     }
 
     private View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, LocalStore.StudyStreak streak, Records.AdaptiveLoadPlan plan) {
-        LinearLayout row = new LinearLayout(this);
+        LinearLayout row = new EqualHeightRow(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBaselineAligned(false);
         row.addView(metricCard(
@@ -444,6 +444,7 @@ public final class MainActivity extends Activity {
         LinearLayout card = panelBox(Color.WHITE, softened(accent));
         card.setPadding(dp(11), dp(11), dp(11), dp(11));
         card.setGravity(Gravity.TOP);
+        card.setMinimumHeight(dp(136));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(accent);
@@ -474,7 +475,7 @@ public final class MainActivity extends Activity {
             card.setClickable(true);
             card.setOnClickListener(v -> action.run());
         }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(136), 1);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
         lp.setMargins(dp(4), 0, dp(4), 0);
         card.setLayoutParams(lp);
         return card;
@@ -4022,6 +4023,65 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class EqualHeightRow extends LinearLayout {
+        private EqualHeightRow(Context context) {
+            super(context);
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+
+            int maxOuterHeight = 0;
+            int childCount = getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() == GONE) {
+                    continue;
+                }
+                int outerHeight = child.getMeasuredHeight();
+                ViewGroup.LayoutParams rawLp = child.getLayoutParams();
+                if (rawLp instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams marginLp = (ViewGroup.MarginLayoutParams) rawLp;
+                    outerHeight += marginLp.topMargin + marginLp.bottomMargin;
+                }
+                maxOuterHeight = Math.max(maxOuterHeight, outerHeight);
+            }
+            if (maxOuterHeight <= 0) {
+                return;
+            }
+
+            int childAreaHeight = maxOuterHeight;
+            if (View.MeasureSpec.getMode(heightMeasureSpec) == View.MeasureSpec.EXACTLY) {
+                childAreaHeight = Math.max(0, View.MeasureSpec.getSize(heightMeasureSpec) - getPaddingTop() - getPaddingBottom());
+            }
+
+            for (int i = 0; i < childCount; i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() == GONE) {
+                    continue;
+                }
+                int childHeight = childAreaHeight;
+                ViewGroup.LayoutParams rawLp = child.getLayoutParams();
+                if (rawLp instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams marginLp = (ViewGroup.MarginLayoutParams) rawLp;
+                    childHeight -= marginLp.topMargin + marginLp.bottomMargin;
+                }
+                if (childHeight <= 0) {
+                    continue;
+                }
+                child.measure(
+                        View.MeasureSpec.makeMeasureSpec(child.getMeasuredWidth(), View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(childHeight, View.MeasureSpec.EXACTLY)
+                );
+            }
+
+            if (View.MeasureSpec.getMode(heightMeasureSpec) != View.MeasureSpec.EXACTLY) {
+                setMeasuredDimension(getMeasuredWidth(), getPaddingTop() + getPaddingBottom() + maxOuterHeight);
+            }
+        }
     }
 
     private static final class SpaceView extends View {
