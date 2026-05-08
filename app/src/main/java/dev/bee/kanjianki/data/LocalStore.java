@@ -1290,6 +1290,33 @@ public final class LocalStore extends SQLiteOpenHelper {
         return new Records.ReviewStats(total, again, hard, good, easy, writingRequired, writingFailed);
     }
 
+    public List<RecentMistake> recentMistakes(int limit) {
+        int boundedLimit = Math.max(1, limit);
+        Cursor cursor = getReadableDatabase().query(
+                "review_log",
+                new String[]{"kanji", "rating", "reviewed_at"},
+                "rating IN (?, ?)",
+                new String[]{"again", "hard"},
+                null,
+                null,
+                "reviewed_at DESC, id DESC",
+                Integer.toString(boundedLimit)
+        );
+        List<RecentMistake> mistakes = new ArrayList<>();
+        try {
+            while (cursor.moveToNext()) {
+                mistakes.add(new RecentMistake(
+                        string(cursor, "kanji"),
+                        string(cursor, "rating"),
+                        longValue(cursor, "reviewed_at")
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+        return mistakes;
+    }
+
     public StudyStreak studyStreak(long nowMillis) {
         Cursor cursor = getReadableDatabase().query(
                 "review_log",
@@ -3140,6 +3167,18 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.writingPassed = writingPassed;
             this.writingFailed = writingFailed;
             this.manualOverrides = manualOverrides;
+        }
+    }
+
+    public static final class RecentMistake {
+        public final String kanji;
+        public final String rating;
+        public final long reviewedAtMillis;
+
+        public RecentMistake(String kanji, String rating, long reviewedAtMillis) {
+            this.kanji = kanji == null ? "" : kanji;
+            this.rating = rating == null ? "" : rating;
+            this.reviewedAtMillis = reviewedAtMillis;
         }
     }
 }

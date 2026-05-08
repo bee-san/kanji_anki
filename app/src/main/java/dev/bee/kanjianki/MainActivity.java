@@ -32,6 +32,7 @@ import android.view.ViewParent;
 import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -103,6 +104,9 @@ public final class MainActivity extends Activity {
     private static final int TEAL = Color.rgb(0, 174, 181);
     private static final int GOLD = Color.rgb(255, 214, 64);
     private static final int BLUE = Color.rgb(110, 92, 230);
+    private static final int BLUSH = Color.rgb(255, 239, 246);
+    private static final int PINK_STROKE = Color.rgb(255, 174, 204);
+    private static final int LILAC = Color.rgb(118, 72, 255);
     private static final long DAY_MILLIS = 86_400_000L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -254,6 +258,7 @@ public final class MainActivity extends Activity {
         flashcardGestureArea = null;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;
+        styleSystemBars();
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
@@ -272,7 +277,7 @@ public final class MainActivity extends Activity {
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nav = nav(selected, 0);
-        root.addView(nav, new LinearLayout.LayoutParams(-1, dp(78)));
+        root.addView(nav, new LinearLayout.LayoutParams(-1, dp(90)));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             int top;
             int bottom;
@@ -285,73 +290,74 @@ public final class MainActivity extends Activity {
                 bottom = insets.getSystemWindowInsetBottom();
             }
             content.setPadding(dp(18), dp(18) + top, dp(18), dp(18));
-            nav.setPadding(dp(10), dp(8), dp(10), dp(8) + bottom);
+            nav.setPadding(dp(14), dp(10), dp(14), dp(10) + bottom);
             ViewGroup.LayoutParams navParams = nav.getLayoutParams();
-            navParams.height = dp(78) + bottom;
+            navParams.height = dp(90) + bottom;
             nav.setLayoutParams(navParams);
             return insets;
         });
         root.requestApplyInsets();
     }
 
+    private void styleSystemBars() {
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        );
+    }
+
     private LinearLayout nav(String selected, int navigationInset) {
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(10), dp(8), dp(10), dp(8) + navigationInset);
-        nav.setBackgroundColor(INK);
-        nav.addView(navButton("Home", selected.equals("home"), this::renderHome));
-        nav.addView(navButton("Study", selected.equals("study"), this::renderStudy));
-        nav.addView(navButton("Stats", selected.equals("stats"), this::renderStats));
+        nav.setPadding(dp(14), dp(10), dp(14), dp(10) + navigationInset);
+        nav.setBackground(panel(Color.WHITE, Color.rgb(244, 219, 231), dp(30)));
+        nav.addView(navButton("Home", R.drawable.ic_home_24, selected.equals("home"), this::renderHome));
+        nav.addView(navButton("Study", R.drawable.ic_study_24, selected.equals("study"), this::renderStudy));
+        nav.addView(navButton("Stats", R.drawable.ic_stats_24, selected.equals("stats"), this::renderStats));
         return nav;
     }
 
-    private Button navButton(String label, boolean active, Runnable action) {
-        Button button = new Button(this);
-        button.setText(label);
-        button.setAllCaps(false);
-        button.setSingleLine(true);
-        button.setIncludeFontPadding(false);
-        button.setTextSize(12);
+    private LinearLayout navButton(String label, int iconRes, boolean active, Runnable action) {
+        LinearLayout button = new LinearLayout(this);
+        button.setOrientation(LinearLayout.VERTICAL);
         button.setGravity(Gravity.CENTER);
-        button.setTextColor(active ? INK : Color.WHITE);
-        button.setBackground(panel(active ? GOLD : Color.TRANSPARENT, active ? GOLD : Color.rgb(70, 70, 70), dp(18)));
+        button.setPadding(dp(8), dp(4), dp(8), dp(4));
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(active ? Color.rgb(245, 166, 0) : MUTED);
+        button.addView(icon, new LinearLayout.LayoutParams(dp(23), dp(23)));
+        TextView text = text(label, 13, active ? INK : MUTED, true);
+        text.setGravity(Gravity.CENTER);
+        text.setSingleLine(true);
+        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
+        button.setBackground(panel(active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, dp(24)));
+        button.setClickable(true);
         button.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
-        lp.setMargins(dp(3), 0, dp(3), 0);
+        lp.setMargins(dp(4), 0, dp(4), 0);
         button.setLayoutParams(lp);
         return button;
     }
 
     private void renderHome() {
         base("home");
-        TextView title = text("Kani", 42, INK, true);
-        title.setLetterSpacing(0);
-        content.addView(title);
-        content.addView(text("Recognise and write the kanji your Kiku reviews keep exposing.", 18, MUTED, false));
-        addSpace(18);
-
-        LocalStore.SyncStatus sync = store.latestSync();
-        AnkiDroidGateway.ProviderStatus provider = gateway.status();
-        LinearLayout hero = band(provider.canSync ? TEAL : CORAL);
-        TextView syncHeadline = text(homeSyncHeadline(sync), 26, Color.WHITE, true);
-        syncHeadline.setOnClickListener(v -> confirmSync());
-        hero.addView(syncHeadline);
-        content.addView(hero);
-        addSpace(18);
-
         long now = System.currentTimeMillis();
+        LocalStore.SyncStatus sync = store.latestSync();
+        LocalStore.StudyStreak streak = store.studyStreak(now);
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         List<Records.StudyItem> homeItems = studyQueue(rows, now, false);
         Records.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
-        content.addView(streakPanel(store.studyStreak(now)));
-        addSpace(10);
-        if (homePlan != null) {
-            content.addView(adaptiveFocusPanel(homePlan));
-            addSpace(10);
-        }
+        List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
+        AnkiDroidGateway.ProviderStatus provider = gateway.status();
+
+        content.addView(homeHeader());
+        addSpace(12);
+        content.addView(homeMetricRow(sync, provider, streak, homePlan));
+        addSpace(14);
 
         if (rows.isEmpty()) {
-            Button syncButton = primaryButton("Sync AnkiDroid", TEAL);
+            Button syncButton = primaryButton("Sync AnkiDroid", CORAL);
             syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
         } else {
@@ -359,30 +365,235 @@ public final class MainActivity extends Activity {
             studyButton.setOnClickListener(v -> startFocusedStudy());
             content.addView(studyButton);
 
-            Button syncAgainButton = secondaryButton("Sync again");
-            syncAgainButton.setOnClickListener(v -> confirmSync());
-            content.addView(syncAgainButton);
         }
-        Button browse = secondaryButton("Browse Kanji");
-        browse.setOnClickListener(v -> renderBrowseKanji(""));
-        content.addView(browse);
-        Button settings = secondaryButton("Settings");
-        settings.setOnClickListener(v -> renderSettings());
-        content.addView(settings);
+        content.addView(homeActionRow());
 
         addSpace(16);
+        content.addView(homeSectionHeader("Focus queue", rows.isEmpty() ? null : "View all", rows.isEmpty() ? null : this::renderFocusQueue));
         if (rows.isEmpty()) {
             emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need focused recall and writing practice.");
         } else {
-            List<QueueEntry> entries = queuedEntries(rows, homeItems, now, homePlan);
-            content.addView(sectionTitle("Adaptive focus queue"));
             if (entries.isEmpty()) {
                 emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.");
             }
-            for (int i = 0; i < Math.min(5, entries.size()); i++) {
+            for (int i = 0; i < Math.min(3, entries.size()); i++) {
                 content.addView(queueRowView(entries.get(i), now));
             }
         }
+    }
+
+    private View homeHeader() {
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        TextView title = text("Kani", 54, INK, true);
+        title.setLetterSpacing(0);
+        copy.addView(title);
+        copy.addView(text("Your AnkiDroid companion app to cure kanji blindness", 18, MUTED, true));
+        header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        KaniMascotView mascot = new KaniMascotView(this);
+        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(116), dp(116));
+        mascotLp.setMargins(dp(12), 0, 0, 0);
+        header.addView(mascot, mascotLp);
+        return header;
+    }
+
+    private View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, LocalStore.StudyStreak streak, Records.AdaptiveLoadPlan plan) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBaselineAligned(false);
+        row.addView(metricCard(
+                R.drawable.ic_sync_24,
+                TEAL,
+                "Last sync",
+                homeSyncValue(sync),
+                provider.canSync && sync != null && "success".equals(sync.status) ? "Up to date" : "Tap to sync",
+                this::confirmSync
+        ));
+        row.addView(metricCard(
+                R.drawable.ic_flame_24,
+                Color.rgb(247, 159, 0),
+                "Study streak",
+                streakHeadline(streak),
+                streak.bestDays > 0 ? "Best: " + streakDayCount(streak.bestDays) : "Start today",
+                null
+        ));
+        row.addView(metricCard(
+                R.drawable.ic_target_24,
+                CORAL,
+                "Today's focus",
+                focusHeadline(plan),
+                plan == null ? "Sync first" : adaptiveFocusText(plan),
+                null
+        ));
+        return row;
+    }
+
+    private View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
+        LinearLayout card = panelBox(Color.WHITE, softened(accent));
+        card.setPadding(dp(10), dp(12), dp(10), dp(12));
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(accent);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(26), dp(26));
+        iconLp.setMargins(0, 0, 0, dp(8));
+        card.addView(icon, iconLp);
+        card.addView(text(label, 13, accent, true));
+        card.addView(text(value, 15, INK, true));
+        card.addView(text(compact(body, 28), 12, MUTED, false));
+        if (action != null) {
+            card.setClickable(true);
+            card.setOnClickListener(v -> action.run());
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+        lp.setMargins(dp(3), 0, dp(3), 0);
+        card.setLayoutParams(lp);
+        return card;
+    }
+
+    private View homeActionRow() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBaselineAligned(false);
+        row.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
+        row.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
+        row.addView(pillButton("Settings", R.drawable.ic_settings_24, this::renderSettings));
+        return row;
+    }
+
+    private void renderBrowseKanji() {
+        renderBrowseKanji("");
+    }
+
+    private String homeSyncValue(LocalStore.SyncStatus sync) {
+        if (sync == null) {
+            return "Never synced";
+        }
+        return sentenceCase(humanSyncTime(sync.finishedAt));
+    }
+
+    private String sentenceCase(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+    }
+
+    private String focusHeadline(Records.AdaptiveLoadPlan plan) {
+        if (plan == null || plan.target <= 0) {
+            return "Waiting";
+        }
+        if (plan.allKanjiMode) {
+            return "All current";
+        }
+        return plan.remaining + " left / " + plan.target;
+    }
+
+    private View homeSectionHeader(String title, String actionLabel, Runnable action) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        TextView heading = sectionTitle(title);
+        heading.setPadding(0, dp(8), 0, dp(8));
+        row.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
+        if (actionLabel != null && action != null) {
+            TextView link = text(actionLabel + " >", 15, CORAL, true);
+            link.setGravity(Gravity.CENTER_VERTICAL);
+            link.setPadding(dp(12), dp(8), 0, dp(8));
+            link.setOnClickListener(v -> action.run());
+            row.addView(link, new LinearLayout.LayoutParams(-2, -2));
+        }
+        return row;
+    }
+
+    private View pillButton(String label, int iconRes, Runnable action) {
+        LinearLayout button = new LinearLayout(this);
+        button.setOrientation(LinearLayout.HORIZONTAL);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(8), 0, dp(8), 0);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(INK);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+        iconLp.setMargins(0, 0, dp(7), 0);
+        button.addView(icon, iconLp);
+        TextView text = text(label, 13, INK, true);
+        text.setGravity(Gravity.CENTER);
+        text.setSingleLine(false);
+        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
+        button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
+        button.setClickable(true);
+        button.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(56), 1);
+        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
+        button.setLayoutParams(lp);
+        return button;
+    }
+
+    private void renderFocusQueue() {
+        base("home");
+        long now = System.currentTimeMillis();
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        List<Records.StudyItem> items = studyQueue(rows, now, false);
+        Records.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
+        List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
+
+        content.addView(homeSectionHeader("Focus queue", "Home", this::renderHome));
+        content.addView(text(adaptiveFocusText(plan), 16, MUTED, false));
+        addSpace(8);
+        if (rows.isEmpty()) {
+            emptyState("No kanji queued yet", "Sync AnkiDroid first to build a focus queue.");
+            Button syncButton = primaryButton("Sync AnkiDroid", CORAL);
+            syncButton.setOnClickListener(v -> confirmSync());
+            content.addView(syncButton);
+            return;
+        }
+        if (entries.isEmpty()) {
+            emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.");
+            return;
+        }
+        for (QueueEntry entry : entries) {
+            content.addView(queueRowView(entry, now));
+        }
+    }
+
+    private void renderRecentMistakes() {
+        base("home");
+        content.addView(homeSectionHeader("Recent mistakes", "Home", this::renderHome));
+        List<LocalStore.RecentMistake> mistakes = store.recentMistakes(12);
+        if (mistakes.isEmpty()) {
+            emptyState("No recent mistakes yet", "Missed and hard reviews will show here after you study.");
+            return;
+        }
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        for (LocalStore.RecentMistake mistake : mistakes) {
+            content.addView(recentMistakeRow(mistake, findRow(rows, mistake.kanji)));
+        }
+    }
+
+    private View recentMistakeRow(LocalStore.RecentMistake mistake, Records.DashboardRow row) {
+        LinearLayout box = panelBox(Color.WHITE, PINK_STROKE);
+        box.setOnClickListener(v -> renderDetail(mistake.kanji));
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView kanji = kanjiTile(mistake.kanji, dp(70), 42);
+        top.addView(kanji);
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        copy.addView(text(row == null ? "Recent review miss" : rowMeaning(row), 19, INK, true));
+        copy.addView(text("Rated " + mistake.rating + " on " + timelineDate(mistake.reviewedAtMillis), 14, MUTED, false));
+        if (row != null) {
+            copy.addView(text(sourceEvidenceText(row), 14, INK, true));
+        }
+        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
+        copyLp.setMargins(dp(12), 0, dp(6), 0);
+        top.addView(copy, copyLp);
+        top.addView(text(">", 34, CORAL, true));
+        box.addView(top);
+        return box;
     }
 
     private LinearLayout streakPanel(LocalStore.StudyStreak streak) {
@@ -395,7 +606,7 @@ public final class MainActivity extends Activity {
 
     private LinearLayout adaptiveFocusPanel(Records.AdaptiveLoadPlan plan) {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        box.addView(text("Todayy's Focus", 22, INK, true));
+        box.addView(text("Today's focus", 22, INK, true));
         String headline = plan.allKanjiMode
                 ? "All current problem kanji"
                 : plan.remaining + " left / " + plan.target;
@@ -423,14 +634,6 @@ public final class MainActivity extends Activity {
             return "Streak logged today. " + countText(streak.reviewsToday, "writing review today", "writing reviews today") + "." + best;
         }
         return "Study one problem kanji today to keep it alive." + best;
-    }
-
-    private String homeSyncHeadline(LocalStore.SyncStatus sync) {
-        if (sync == null) {
-            return "Never synced";
-        }
-        String prefix = "success".equals(sync.status) ? "Last sync " : "Last sync attempt ";
-        return prefix + humanSyncTime(sync.finishedAt) + ", click to sync again";
     }
 
     private String humanSyncTime(long timestampMillis) {
@@ -934,26 +1137,25 @@ public final class MainActivity extends Activity {
     private View queueRowView(QueueEntry entry, long now) {
         Records.DashboardRow row = entry.row;
         Records.StudyItem item = entry.item;
-        LinearLayout box = panelBox(Color.WHITE, rowColor(item, now));
+        LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
         box.setOnClickListener(v -> renderDetail(row.kanji));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView kanji = text(row.kanji, 44, INK, true);
-        kanji.setGravity(Gravity.CENTER);
-        top.addView(kanji, new LinearLayout.LayoutParams(dp(74), dp(74)));
+        top.addView(kanjiTile(row.kanji, dp(80), 46));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(rowMeaning(row), 19, INK, true));
-        copy.addView(text(queueStatusText(item, now), 14, MUTED, false));
+        copy.addView(text(rowMeaning(row), 18, INK, true));
         copy.addView(text(sourceEvidenceText(row), 14, INK, true));
-        copy.addView(text(row.reasonText, 14, MUTED, false));
-        top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        copy.addView(text(compact(row.reasonText, 70), 14, MUTED, false));
+        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
+        copyLp.setMargins(dp(12), 0, dp(6), 0);
+        top.addView(copy, copyLp);
+        top.addView(text(">", 34, CORAL, true));
         box.addView(top);
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.addView(chip(item.dueAtMillis <= now ? "due now" : "resting", item.dueAtMillis <= now ? CORAL : BLUE));
-        chips.addView(chip(item.state, TEAL));
         chips.addView(chip(recognitionStageLabel(item), BLUE));
+        chips.addView(chip(queueStatusText(item, now), item.dueAtMillis <= now ? CORAL : TEAL));
         if (item.writingRemediationPending) {
             chips.addView(chip("writing repair", CORAL));
         } else if (!item.suppressedByTaskType.isEmpty()) {
@@ -963,6 +1165,16 @@ public final class MainActivity extends Activity {
         }
         box.addView(chips);
         return box;
+    }
+
+    private TextView kanjiTile(String value, int sizePx, int textSp) {
+        TextView kanji = text(value, textSp, INK, true);
+        kanji.setGravity(Gravity.CENTER);
+        kanji.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
+        kanji.setBackground(panel(BLUSH, BLUSH, dp(10)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(sizePx, sizePx);
+        kanji.setLayoutParams(lp);
+        return kanji;
     }
 
     private String recognitionStageLabel(Records.StudyItem item) {
@@ -1442,7 +1654,7 @@ public final class MainActivity extends Activity {
         content.addView(text("Today's focus done", 34, INK, true));
         content.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 18, MUTED, false));
         LinearLayout summary = band(TEAL);
-        summary.addView(text("Todayy's Focus: 0 left / " + plan.target, 22, Color.WHITE, true));
+        summary.addView(text("Today's focus: 0 left / " + plan.target, 22, Color.WHITE, true));
         summary.addView(text(plan.status, 15, Color.WHITE, false));
         content.addView(summary);
         Button keepGoing = primaryButton("Continue all kanji", CORAL);
@@ -3458,10 +3670,10 @@ public final class MainActivity extends Activity {
     }
 
     private TextView chip(String value, int color) {
-        TextView chip = text(value, 13, Color.WHITE, true);
+        TextView chip = text(value, 13, color, true);
         chip.setGravity(Gravity.CENTER);
         chip.setPadding(dp(10), dp(5), dp(10), dp(5));
-        chip.setBackground(panel(color, color, dp(14)));
+        chip.setBackground(panel(softened(color), color, dp(7)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
         lp.setMargins(0, dp(7), dp(7), dp(2));
         chip.setLayoutParams(lp);
@@ -3475,7 +3687,7 @@ public final class MainActivity extends Activity {
         button.setTextSize(19);
         button.setTextColor(Color.WHITE);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setBackground(panel(color, color, dp(8)));
+        button.setBackground(panel(color, color, dp(12)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(62));
         lp.setMargins(0, dp(8), 0, dp(8));
         button.setLayoutParams(lp);
@@ -3487,11 +3699,27 @@ public final class MainActivity extends Activity {
         button.setText(label);
         button.setAllCaps(false);
         button.setTextColor(INK);
-        button.setBackground(panel(Color.WHITE, Color.rgb(238, 189, 218), dp(8)));
+        button.setBackground(panel(Color.WHITE, Color.rgb(238, 189, 218), dp(12)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(54));
         lp.setMargins(dp(3), dp(6), dp(3), dp(6));
         button.setLayoutParams(lp);
         return button;
+    }
+
+    private int softened(int color) {
+        if (color == CORAL) {
+            return Color.rgb(255, 235, 243);
+        }
+        if (color == TEAL) {
+            return Color.rgb(230, 250, 251);
+        }
+        if (color == GOLD || color == Color.rgb(247, 159, 0)) {
+            return Color.rgb(255, 247, 220);
+        }
+        if (color == BLUE || color == LILAC) {
+            return Color.rgb(242, 238, 255);
+        }
+        return Color.rgb(248, 238, 245);
     }
 
     private GradientDrawable panel(int fill, int stroke, int radius) {
@@ -3730,6 +3958,75 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class KaniMascotView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        private KaniMascotView(Context context) {
+            super(context);
+            stroke.setStyle(Paint.Style.STROKE);
+            stroke.setStrokeCap(Paint.Cap.ROUND);
+            stroke.setStrokeJoin(Paint.Join.ROUND);
+            text.setTextAlign(Paint.Align.CENTER);
+            text.setTypeface(Typeface.DEFAULT_BOLD);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float w = getWidth();
+            float h = getHeight();
+            float cx = w * 0.5f;
+            float cy = h * 0.48f;
+            float scale = Math.min(w, h);
+
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(Color.rgb(255, 221, 233));
+            canvas.drawCircle(cx + scale * 0.12f, cy - scale * 0.05f, scale * 0.36f, paint);
+
+            stroke.setStrokeWidth(scale * 0.045f);
+            stroke.setColor(Color.rgb(255, 73, 77));
+            canvas.drawLine(cx - scale * 0.28f, cy - scale * 0.18f, cx - scale * 0.43f, cy - scale * 0.36f, stroke);
+            canvas.drawLine(cx + scale * 0.28f, cy - scale * 0.18f, cx + scale * 0.43f, cy - scale * 0.36f, stroke);
+            paint.setColor(Color.rgb(255, 104, 108));
+            canvas.drawCircle(cx - scale * 0.47f, cy - scale * 0.4f, scale * 0.1f, paint);
+            canvas.drawCircle(cx + scale * 0.47f, cy - scale * 0.4f, scale * 0.1f, paint);
+
+            paint.setColor(Color.rgb(255, 116, 113));
+            canvas.drawOval(cx - scale * 0.28f, cy - scale * 0.3f, cx + scale * 0.28f, cy + scale * 0.2f, paint);
+            stroke.setStrokeWidth(scale * 0.025f);
+            stroke.setColor(Color.rgb(222, 55, 67));
+            canvas.drawOval(cx - scale * 0.28f, cy - scale * 0.3f, cx + scale * 0.28f, cy + scale * 0.2f, stroke);
+
+            paint.setColor(INK);
+            canvas.drawCircle(cx - scale * 0.1f, cy - scale * 0.1f, scale * 0.025f, paint);
+            canvas.drawCircle(cx + scale * 0.1f, cy - scale * 0.1f, scale * 0.025f, paint);
+            stroke.setStrokeWidth(scale * 0.018f);
+            stroke.setColor(INK);
+            canvas.drawArc(cx - scale * 0.06f, cy - scale * 0.06f, cx + scale * 0.06f, cy + scale * 0.04f, 25f, 130f, false, stroke);
+
+            stroke.setStrokeWidth(scale * 0.028f);
+            stroke.setColor(Color.rgb(255, 84, 99));
+            for (int i = 0; i < 3; i++) {
+                float y = cy + scale * (0.02f + i * 0.07f);
+                canvas.drawLine(cx - scale * 0.28f, y, cx - scale * (0.45f + i * 0.02f), y + scale * 0.08f, stroke);
+                canvas.drawLine(cx + scale * 0.28f, y, cx + scale * (0.45f + i * 0.02f), y + scale * 0.08f, stroke);
+            }
+
+            paint.setColor(Color.rgb(255, 246, 223));
+            canvas.drawRoundRect(cx - scale * 0.34f, cy + scale * 0.13f, cx + scale * 0.34f, cy + scale * 0.45f, scale * 0.04f, scale * 0.04f, paint);
+            stroke.setStrokeWidth(scale * 0.025f);
+            stroke.setColor(Color.rgb(222, 55, 67));
+            canvas.drawRoundRect(cx - scale * 0.34f, cy + scale * 0.13f, cx + scale * 0.34f, cy + scale * 0.45f, scale * 0.04f, scale * 0.04f, stroke);
+            canvas.drawLine(cx, cy + scale * 0.14f, cx, cy + scale * 0.43f, stroke);
+
+            text.setColor(INK);
+            text.setTextSize(scale * 0.16f);
+            canvas.drawText("字", cx + scale * 0.17f, cy + scale * 0.34f, text);
+        }
     }
 
     private static final class SpaceView extends View {

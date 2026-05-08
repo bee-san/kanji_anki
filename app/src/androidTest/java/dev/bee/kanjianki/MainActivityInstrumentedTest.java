@@ -366,8 +366,8 @@ public final class MainActivityInstrumentedTest {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Todayy's Focus");
-                assertHasText(activity, "Adaptive focus queue");
+                assertHasText(activity, "Today's focus");
+                assertHasText(activity, "Focus queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");
             });
@@ -472,11 +472,52 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Adaptive focus queue");
+                assertHasText(activity, "Focus queue");
                 assertHasText(activity, "ramen radical gap");
                 assertHasText(activity, "From 拉麺");
                 assertNoText(activity, "mystery unused");
                 assertNoText(activity, "謎");
+            });
+        }
+    }
+
+    @Test
+    public void testHomeViewAllShowsFullFocusQueue() {
+        seedDashboard(Arrays.asList(
+                dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards"),
+                dashboardRow("謎", "mystery radical gap", "なぞ", "Missed in mature cards"),
+                dashboardRow("示", "show", "しめす", "Missed in mature cards"),
+                dashboardRow("浸", "to be soaked in", "ひたす", "Missed in mature cards")
+        ));
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "View all");
+            });
+            clickText(scenario, "View all");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Focus queue");
+                assertHasText(activity, "to be soaked in");
+            });
+        }
+    }
+
+    @Test
+    public void testRecentMistakesOpensMissedReviewList() {
+        seedDashboard();
+        LocalStore store = new LocalStore(context);
+        try {
+            store.saveReview(review("拉", "recent-miss"), "again", System.currentTimeMillis());
+        } finally {
+            store.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Recent mistakes");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Recent mistakes");
+                assertHasText(activity, "ramen radical gap");
+                assertHasText(activity, "Rated again");
             });
         }
     }
@@ -1163,19 +1204,19 @@ public final class MainActivityInstrumentedTest {
     public void testLastSyncHeadlineInvitesAndStartsManualSync() {
         long yesterday = moveLocalDays(localDayStart(System.currentTimeMillis()), -1) + 10 * 60 * 60 * 1000L;
         saveSyncFinishedAt(yesterday);
-        String headline = "Last sync yesterday at "
-                + DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date(yesterday))
-                + ", click to sync again";
+        String syncValue = "Yesterday at "
+                + DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date(yesterday));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, headline);
+                assertHasText(activity, "Last sync");
+                assertHasText(activity, syncValue);
                 assertNoText(activity, "active cards checked");
                 assertNoText(activity, "suspended cards archived");
                 assertNoText(activity, "Study starts with recall");
                 assertNoText(activity, "Sync once to find");
             });
-            clickText(scenario, headline);
+            clickText(scenario, syncValue);
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Sync AnkiDroid?");
                 assertHasText(activity, "Sync cards");
