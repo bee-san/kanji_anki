@@ -1,4 +1,14 @@
-# Kani
+<p align="center">
+  <img alt="Kani app logo" src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="160">
+</p>
+
+<h1 align="center">Kani</h1>
+
+<p align="center">
+  <a href="https://github.com/bee-san/kanji_anki/releases">
+    <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kanji_anki/total?style=for-the-badge&logo=github&label=downloads">
+  </a>
+</p>
 
 Kani is a native Android companion for a single AnkiDroid collection. It finds
 problem kanji inside your `Kiku` notes, keeps the evidence local, and gives
