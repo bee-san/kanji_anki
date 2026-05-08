@@ -582,7 +582,6 @@ public final class MainActivity extends Activity {
         ));
 
         LinearLayout meaning = band(GOLD);
-        meaning.addView(text("What this means", 24, INK, true));
         meaning.addView(text(statsMeaning(sync, rows, impact, matureSupport, retired), 16, INK, false));
         content.addView(meaning);
     }

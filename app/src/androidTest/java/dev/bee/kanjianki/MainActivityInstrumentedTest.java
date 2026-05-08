@@ -335,6 +335,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "1 due now");
                 assertHasText(activity, "2 mature Anki support links");
                 assertHasText(activity, "1 kanji resting in Kani");
+                assertNoText(activity, "What this means");
             });
         }
     }
