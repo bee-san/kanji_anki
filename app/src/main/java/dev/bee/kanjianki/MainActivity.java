@@ -26,6 +26,7 @@ import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.WindowInsets;
@@ -122,13 +123,18 @@ public final class MainActivity extends Activity {
     private Button replayButton;
     private Button hintButton;
     private View studyAnswerPanel;
+    private View flashcardGestureArea;
     private WritingAnalysis activeAnalysis;
     private boolean checkingWriting;
+    private boolean flashcardAnswerRevealed;
+    private boolean flashcardTouchTracking;
     private boolean writingModelDownloaded;
     private boolean writingModelStatusKnown;
     private boolean continueAllKanjiSession;
     private int hintsUsed;
     private int currentPracticeLevel;
+    private float flashcardTouchStartX;
+    private float flashcardTouchStartY;
     private HintState currentHintState = HintState.initial();
     private Map<String, StrokeGuide> strokeGuides;
     private WritingRecognizer writingRecognizer;
@@ -223,7 +229,18 @@ public final class MainActivity extends Activity {
         }
     }
 
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (handleFlashcardGesture(event)) {
+            return true;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
     private void base(String selected) {
+        flashcardGestureArea = null;
+        flashcardAnswerRevealed = false;
+        flashcardTouchTracking = false;
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
@@ -1345,9 +1362,12 @@ public final class MainActivity extends Activity {
         content.removeAllViews();
         activeAnalysis = null;
         checkingWriting = false;
+        flashcardAnswerRevealed = false;
+        flashcardTouchTracking = false;
         hintsUsed = 0;
         setHintState(HintState.initial());
         drawingPad = null;
+        flashcardGestureArea = content;
 
         content.addView(text(flashcardTitle(session), 30, INK, true));
         LinearLayout stage = band(CORAL);
@@ -1376,6 +1396,9 @@ public final class MainActivity extends Activity {
         content.removeAllViews();
         activeAnalysis = null;
         checkingWriting = false;
+        flashcardGestureArea = null;
+        flashcardAnswerRevealed = false;
+        flashcardTouchTracking = false;
         hintsUsed = 0;
         setHintState(initialHintState(session));
 
@@ -1562,12 +1585,7 @@ public final class MainActivity extends Activity {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         if (!revealed) {
             Button reveal = primaryButton("Reveal", CORAL);
-            reveal.setOnClickListener(v -> {
-                if (studyAnswerPanel != null) {
-                    studyAnswerPanel.setVisibility(View.VISIBLE);
-                }
-                buildFlashcardActionBar(true);
-            });
+            reveal.setOnClickListener(v -> revealFlashcardAnswer());
             actions.addView(reveal, new LinearLayout.LayoutParams(0, dp(62), 1));
         } else {
             Button fail = primaryButton("Fail", CORAL);
@@ -1579,6 +1597,82 @@ public final class MainActivity extends Activity {
             actions.addView(pass, new LinearLayout.LayoutParams(0, dp(62), 1));
         }
         studyActionBar.addView(actions);
+    }
+
+    private void revealFlashcardAnswer() {
+        if (flashcardAnswerRevealed) {
+            return;
+        }
+        flashcardAnswerRevealed = true;
+        if (studyAnswerPanel != null) {
+            studyAnswerPanel.setVisibility(View.VISIBLE);
+        }
+        buildFlashcardActionBar(true);
+    }
+
+    private boolean handleFlashcardGesture(MotionEvent event) {
+        if (activeSession == null || activeSession.writingRequired || flashcardGestureArea == null) {
+            flashcardTouchTracking = false;
+            return false;
+        }
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                flashcardTouchTracking = isTouchInsideView(flashcardGestureArea, event);
+                if (flashcardTouchTracking) {
+                    flashcardTouchStartX = event.getRawX();
+                    flashcardTouchStartY = event.getRawY();
+                }
+                return false;
+            case MotionEvent.ACTION_UP:
+                if (!flashcardTouchTracking) {
+                    return false;
+                }
+                flashcardTouchTracking = false;
+                if (!isTouchInsideView(flashcardGestureArea, event)) {
+                    return false;
+                }
+                return handleFlashcardRelease(event);
+            case MotionEvent.ACTION_CANCEL:
+                flashcardTouchTracking = false;
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    private boolean handleFlashcardRelease(MotionEvent event) {
+        float dx = event.getRawX() - flashcardTouchStartX;
+        float dy = event.getRawY() - flashcardTouchStartY;
+        float absX = Math.abs(dx);
+        float absY = Math.abs(dy);
+        int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        if (absX <= touchSlop && absY <= touchSlop) {
+            if (!flashcardAnswerRevealed) {
+                revealFlashcardAnswer();
+                return true;
+            }
+            return false;
+        }
+        int swipeThreshold = Math.max(dp(72), touchSlop * 6);
+        if (absX >= swipeThreshold && absX > absY * 1.25f) {
+            if (!flashcardAnswerRevealed) {
+                return false;
+            }
+            submitReview(dx > 0 ? "good" : "again", false);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isTouchInsideView(View view, MotionEvent event) {
+        if (view == null || !view.isShown()) {
+            return false;
+        }
+        Rect bounds = new Rect();
+        if (!view.getGlobalVisibleRect(bounds)) {
+            return false;
+        }
+        return bounds.contains((int) event.getRawX(), (int) event.getRawY());
     }
 
     private void buildStudyActionBar() {
