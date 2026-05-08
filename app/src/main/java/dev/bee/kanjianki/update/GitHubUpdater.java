@@ -9,6 +9,7 @@ import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 
 import dev.bee.kanjianki.BuildConfig;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
@@ -29,6 +30,7 @@ import java.util.Locale;
 
 public final class GitHubUpdater {
     private static final String API_BASE = "https://api.github.com/repos/";
+    private static final String TAG = "KaniUpdate";
 
     private final Context context;
 
@@ -69,7 +71,7 @@ public final class GitHubUpdater {
 
             UpdatePolicy.ValidationResult checksum = UpdatePolicy.validateChecksum(expected, sha256(apkFile));
             if (!checksum.ok) {
-                apkFile.delete();
+                deleteCachedApk(apkFile);
                 return recordResult(checkedAt, UpdateResult.failed(checksum.message), latest.tagName, "", "");
             }
 
@@ -82,7 +84,7 @@ public final class GitHubUpdater {
                     metadata.versionName
             );
             if (!archive.ok) {
-                apkFile.delete();
+                deleteCachedApk(apkFile);
                 return recordResult(checkedAt, UpdateResult.failed(archive.message), latest.tagName, "", "");
             }
 
@@ -118,7 +120,7 @@ public final class GitHubUpdater {
                     metadata.versionName
             );
             if (!archive.ok) {
-                apkFile.delete();
+                deleteCachedApk(apkFile);
                 return recordResult(checkedAt, UpdateResult.failed(archive.message), status.lastVersion, "", "");
             }
             return installVerifiedApk(checkedAt, status.lastVersion, apkFile, source);
@@ -227,6 +229,12 @@ public final class GitHubUpdater {
             throw new IOException("Could not create update cache.");
         }
         return new File(updates, safeFileName(name));
+    }
+
+    private static void deleteCachedApk(File apkFile) {
+        if (apkFile != null && apkFile.exists() && !apkFile.delete()) {
+            Log.w(TAG, "Could not delete update cache file: " + apkFile.getName());
+        }
     }
 
     private static String safeFileName(String name) {

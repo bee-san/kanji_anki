@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInstaller;
+import android.util.Log;
 
 import dev.bee.kanjianki.data.LocalStore;
 
@@ -11,6 +12,7 @@ import java.io.File;
 
 public final class PackageInstallStatusReceiver extends BroadcastReceiver {
     static final String ACTION_INSTALL_STATUS = "dev.bee.kanjianki.action.INSTALL_STATUS";
+    private static final String TAG = "KaniUpdate";
     private static final String EXTRA_APK_NAME = "dev.bee.kanjianki.extra.APK_NAME";
     private static final String EXTRA_VERSION = "dev.bee.kanjianki.extra.VERSION";
     private static final String EXTRA_SOURCE = "dev.bee.kanjianki.extra.SOURCE";
@@ -68,8 +70,8 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
         }
         File updatesDir = new File(context.getCacheDir(), "updates");
         File cached = new File(updatesDir, new File(apkName).getName());
-        if (cached.isFile()) {
-            cached.delete();
+        if (cached.isFile() && !cached.delete()) {
+            Log.w(TAG, "Could not delete update cache file: " + cached.getName());
         }
     }
 
