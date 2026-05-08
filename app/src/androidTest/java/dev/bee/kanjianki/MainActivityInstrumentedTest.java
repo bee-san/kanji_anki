@@ -44,8 +44,10 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.rules.TestName;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -72,6 +74,10 @@ import static org.junit.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public final class MainActivityInstrumentedTest {
     private static final String LIVE_ARG = "kanjiLiveAnkiDroid";
+    private static final String LIVE_FOREGROUND_SYNC_TEST = "testManualSyncButtonWorksAgainstLiveAnkiDroid";
+
+    @Rule
+    public final TestName testName = new TestName();
 
     private Context context;
 
@@ -92,6 +98,9 @@ public final class MainActivityInstrumentedTest {
 
     @Before
     public void setUp() {
+        if (liveAnkiDroidEnabled() && !LIVE_FOREGROUND_SYNC_TEST.equals(testName.getMethodName())) {
+            Assume.assumeTrue("Live AnkiDroid runs only the foreground sync button path from MainActivity.", false);
+        }
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.deleteDatabase("kanji_anki_simple.db");
         MainActivity.setAnkiDroidGatewayForTests(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"));
@@ -1157,7 +1166,8 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Sync AnkiDroid");
             clickText(scenario, "Sync cards");
-            LocalStore.SyncStatus status = waitForLatestSync(2400);
+            waitForText(scenario, "Sync complete", 300_000L);
+            LocalStore.SyncStatus status = waitForLatestSync();
             assertNotNull(status);
             assertEquals("success", status.status);
 
@@ -1437,7 +1447,11 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void waitForText(ActivityScenario<MainActivity> scenario, String text) {
-        long deadline = SystemClock.uptimeMillis() + 5000L;
+        waitForText(scenario, text, 5000L);
+    }
+
+    private static void waitForText(ActivityScenario<MainActivity> scenario, String text, long timeoutMillis) {
+        long deadline = SystemClock.uptimeMillis() + timeoutMillis;
         boolean[] found = new boolean[]{false};
         while (SystemClock.uptimeMillis() < deadline) {
             scenario.onActivity(activity -> found[0] = findText(activity.findViewById(android.R.id.content), text) != null);

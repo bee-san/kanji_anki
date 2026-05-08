@@ -7,8 +7,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.core.Records;
-import dev.bee.kanjianki.data.LocalStore;
-import dev.bee.kanjianki.sync.ManualSyncEngine;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -20,7 +18,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -29,29 +26,23 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
     private static final int MIN_USER_KIKU_NOTES = 7000;
 
     private Context context;
-    private LocalStore store;
 
     @Before
     public void setUp() {
         Bundle arguments = InstrumentationRegistry.getArguments();
         Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", "true".equals(arguments.getString(LIVE_ARG)));
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        context.deleteDatabase("kanji_anki_simple.db");
-        store = new LocalStore(context);
     }
 
     @After
     public void tearDown() {
-        if (store != null) {
-            store.close();
-        }
         if (context != null) {
             context.deleteDatabase("kanji_anki_simple.db");
         }
     }
 
     @Test
-    public void manualSyncReadsUserKikuCollectionThroughRealAnkiDroid() throws Exception {
+    public void readsUserKikuCollectionThroughRealAnkiDroid() throws Exception {
         Records.Settings settings = Records.Settings.kikuDefaults();
         AnkiDroidGateway gateway = new AnkiDroidGateway(context);
         AnkiDroidGateway.ProviderStatus status = gateway.status();
@@ -67,15 +58,6 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
                 snapshot.cards.size() >= MIN_USER_KIKU_NOTES);
         assertAllCardsHaveNotes(snapshot);
         assertHasRealSchedulerState(snapshot);
-        snapshot = null;
-        System.gc();
-
-        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
-
-        assertTrue(result.message, result.success);
-        assertEquals("success", store.latestSync().status);
-        assertTrue("Expected live Kiku sync to build a substantial dashboard.", result.dashboardRows > 1000);
-        assertFalse(store.studyItems().isEmpty());
     }
 
     private void assertAllCardsHaveNotes(Records.CollectionSnapshot snapshot) {

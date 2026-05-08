@@ -383,7 +383,9 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 try {
                     cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex]));
                     scanned++;
-                    progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
+                    if (shouldReportCardProgress(scanned, total)) {
+                        progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
+                    }
                     read = true;
                 } catch (Throwable unsupportedColumns) {
                     projectionIndex++;
@@ -397,6 +399,16 @@ public final class AnkiDroidGateway implements CollectionGateway {
             }
         }
         return cards;
+    }
+
+    private boolean shouldReportCardProgress(int scanned, int total) {
+        if (scanned <= 0 || scanned == total || total <= 100) {
+            return true;
+        }
+        if (scanned <= 10) {
+            return true;
+        }
+        return scanned % (total <= 1000 ? 10 : 50) == 0;
     }
 
     private List<Records.Card> queryCardsForNote(ProviderTarget target, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws SyncException {

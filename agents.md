@@ -126,19 +126,22 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE
 ```
 
-Run the full instrumentation suite with the live fixture enabled.
+Run the targeted live release gate with the live fixture enabled. This keeps the
+slow real-collection run focused on the provider and the foreground sync button
+path; unrelated UI tests use the fake provider in the normal local gate.
 
 ```sh
 adb logcat -c
 adb shell am instrument -w \
   -e kanjiLiveAnkiDroid true \
+  -e class dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid,dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest \
   dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 Expected result:
 
 ```text
-OK (20 tests)
+OK (10 tests)
 ```
 
 Important live tests:
@@ -146,9 +149,9 @@ Important live tests:
 - `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`
   taps `Sync AnkiDroid`, confirms `Sync and tag archive`, and verifies a
   successful sync, dashboard rows, and study items.
-- `RealAnkiDroidLiveProviderInstrumentedTest.manualSyncReadsUserKikuCollectionThroughRealAnkiDroid`
-  reads the copied Kiku collection through the real AnkiDroid provider and
-  asserts at least 7,000 Kiku notes/cards plus real scheduler state.
+- `RealAnkiDroidLiveProviderInstrumentedTest` reads the copied Kiku collection
+  through the real AnkiDroid provider once and asserts at least 7,000 Kiku
+  notes/cards plus real scheduler state.
 - `AnkiDroidGatewayProviderInstrumentedTest` uses the fake provider to reject
   explicit `_id` projections, unsupported scheduler projections, and deferred
   cursor-time errors such as `Queue "queue" is unknown`.
