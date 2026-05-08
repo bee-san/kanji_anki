@@ -127,6 +127,18 @@ public class StrokeOrderEvaluatorTest {
         assertTrue(result.diagnosis.isEmpty());
     }
 
+    @Test
+    public void emptyGuideAndEmptySampleReturnExplicitFailures() {
+        StrokeOrderEvaluator.StrokeOrderResult missingGuide = StrokeOrderEvaluator.evaluate(new StrokeGuide("拉", Collections.emptyList()), sample(stroke(0f, 0f, 1f, 1f)));
+        StrokeOrderEvaluator.StrokeOrderResult noInk = StrokeOrderEvaluator.evaluate(guide(), WritingSample.empty());
+
+        assertTrue(missingGuide.missingGuide);
+        assertFalse(missingGuide.acceptable);
+        assertFalse(noInk.missingGuide);
+        assertFalse(noInk.acceptable);
+        assertEquals("No ink was drawn.", noInk.message);
+    }
+
     private StrokeGuide guide() {
         return new StrokeGuide(
                 "拉",

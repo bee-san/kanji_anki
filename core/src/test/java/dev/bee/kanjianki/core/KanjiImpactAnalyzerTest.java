@@ -111,6 +111,32 @@ public final class KanjiImpactAnalyzerTest {
         assertEquals("Kani is not moving the needle yet.", report.rows.get(0).advice);
     }
 
+    @Test
+    public void retentionScoreFallsBackFromFsrsToReviewsThenMaturityDefaults() {
+        assertEquals(0.0, metricWithoutFsrs(1, 0, 0, 0.0, 5, 9).retentionScore(), 0.001);
+        assertEquals(0.88, metricWithoutFsrs(1, 0, 1, 30.0, 0, 0).retentionScore(), 0.001);
+        assertEquals(0.50, metricWithoutFsrs(1, 0, 0, 0.0, 0, 0).retentionScore(), 0.001);
+        assertEquals(1.0, metric(1, 0, 0, 0.0, 0, 0, null, 150.0).retentionScore(), 0.001);
+        assertEquals(0.0, metric(1, 0, 0, 0.0, 0, 0, null, -0.2).retentionScore(), 0.001);
+    }
+
+    @Test
+    public void analyzeSkipsNullAndBlankHistoriesAndHandlesNullInput() {
+        KanjiImpactAnalyzer analyzer = new KanjiImpactAnalyzer();
+
+        KanjiImpactAnalyzer.Report nullReport = analyzer.analyze(null);
+        KanjiImpactAnalyzer.Report report = analyzer.analyze(Arrays.asList(
+                null,
+                history("", metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
+                history("拉", metric(2, 0, 0, 1.0, 4, 1, 5.0, 0.75), metric(2, 0, 0, 1.0, 4, 1, 5.0, 0.75), null, null, 2, 0, 1)
+        ));
+
+        assertTrue(nullReport.empty());
+        assertEquals(1, report.notHelpingCount);
+        assertEquals(1, report.rows.size());
+        assertEquals("拉", report.rows.get(0).kanji);
+    }
+
     private static KanjiImpactAnalyzer.KanjiHistory history(
             String kanji,
             KanjiImpactAnalyzer.MetricSnapshot baseline,

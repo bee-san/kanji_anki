@@ -32,4 +32,26 @@ public class StrokeGuideTest {
         Exception error = assertThrows(Exception.class, () -> StrokeGuideParser.parse(new StringReader("拉\t0.1,0.2;bad\n")));
         assertTrue(error.getMessage().contains("Invalid point") || error.getMessage().contains("Invalid coordinate"));
     }
+
+    @Test
+    public void skipsBlankAndCommentLines() throws Exception {
+        Map<String, StrokeGuide> guides = StrokeGuideParser.parse(new StringReader(
+                "\n" +
+                        "   # generated data\n" +
+                        "\t\n"
+        ));
+
+        assertTrue(guides.isEmpty());
+    }
+
+    @Test
+    public void rejectsMissingColumnsInvalidCoordinatesAndEmptyUsableStrokes() {
+        Exception missingColumn = assertThrows(Exception.class, () -> StrokeGuideParser.parse(new StringReader("拉\n")));
+        Exception invalidCoordinate = assertThrows(Exception.class, () -> StrokeGuideParser.parse(new StringReader("拉\t0.1,nope;0.2,0.3\n")));
+        Exception noUsableStroke = assertThrows(Exception.class, () -> StrokeGuideParser.parse(new StringReader("拉\t0.1,0.2\n")));
+
+        assertTrue(missingColumn.getMessage().contains("expected kanji<TAB>stroke data"));
+        assertTrue(invalidCoordinate.getMessage().contains("Invalid coordinate"));
+        assertTrue(noUsableStroke.getMessage().contains("no usable strokes"));
+    }
 }
