@@ -32,6 +32,7 @@ import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -453,6 +454,12 @@ public final class MainActivity extends Activity {
     private void runSync() {
         base("home");
         content.addView(text("Finding problem kanji", 34, INK, true));
+        ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progress.setIndeterminate(true);
+        progress.setContentDescription("Sync progress");
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(12));
+        progressParams.setMargins(0, dp(12), 0, dp(12));
+        content.addView(progress, progressParams);
         content.addView(text("Reading Kiku cards, saving missed kanji locally, and updating archived suspended cards when AnkiDroid allows it.", 17, MUTED, false));
         io.execute(() -> {
             ManualSyncEngine.SyncResult result = new ManualSyncEngine(this, store, gateway, settings()).run();
