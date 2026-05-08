@@ -7,6 +7,27 @@ import static org.junit.Assert.assertTrue;
 
 public class SchedulerTunerTest {
     @Test
+    public void nullInputsAndAlreadyCountedReviewsDoNotTune() {
+        SchedulerTuner tuner = new SchedulerTuner();
+        Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
+        Records.SchedulerParameters counted = defaults.withAdjustment(
+                defaults.againMultiplier,
+                defaults.hardMultiplier,
+                defaults.goodMultiplier,
+                defaults.easyMultiplier,
+                0L,
+                30
+        );
+
+        Records.SchedulerParameters nullCurrent = tuner.maybeTune(null, null, SchedulerTuner.MONTH_MILLIS);
+        Records.SchedulerParameters alreadyCounted = tuner.maybeTune(counted, new Records.ReviewStats(30, 5, 5, 15, 5, 10, 0), SchedulerTuner.MONTH_MILLIS);
+
+        assertEquals(defaults.goodMultiplier, nullCurrent.goodMultiplier, 0.001);
+        assertEquals(counted.lastAdjustmentReviewCount, alreadyCounted.lastAdjustmentReviewCount);
+        assertEquals(counted.goodMultiplier, alreadyCounted.goodMultiplier, 0.001);
+    }
+
+    @Test
     public void waitsForEnoughReviewsAndMonthlyWindow() {
         SchedulerTuner tuner = new SchedulerTuner();
         Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
@@ -44,5 +65,18 @@ public class SchedulerTunerTest {
 
         assertTrue(adjusted.goodMultiplier > defaults.goodMultiplier);
         assertTrue(adjusted.easyMultiplier > defaults.easyMultiplier);
+    }
+
+    @Test
+    public void nearTargetRetentionOnlyAdjustsAgainMultiplier() {
+        SchedulerTuner tuner = new SchedulerTuner();
+        Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
+        Records.ReviewStats nearTarget = new Records.ReviewStats(50, 4, 3, 35, 8, 10, 0);
+
+        Records.SchedulerParameters adjusted = tuner.maybeTune(defaults, nearTarget, SchedulerTuner.MONTH_MILLIS);
+
+        assertEquals(defaults.goodMultiplier, adjusted.goodMultiplier, 0.001);
+        assertEquals(defaults.easyMultiplier, adjusted.easyMultiplier, 0.001);
+        assertTrue(adjusted.againMultiplier > defaults.againMultiplier);
     }
 }

@@ -98,6 +98,124 @@ public class KanjiAnalyzerTest {
         assertTrue(shallow.weaknessScore > deep.weaknessScore);
     }
 
+    @Test
+    public void fallsBackToSentenceKanjiAndSkipsDuplicateSuspendedImports() throws Exception {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,1500\n外,1600\n"));
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Arrays.asList(
+                        note(1, "かな", "かな", "meaning", "裂を見た。"),
+                        SuspendedKanjiImporterTest.note(2, "外", "そと")
+                ),
+                Arrays.asList(
+                        card(10, 1, 30, 8, 0, null, null, null),
+                        SuspendedKanjiImporterTest.card(20, 2, true),
+                        SuspendedKanjiImporterTest.card(999, 999, false)
+                )
+        );
+        List<Records.SuspendedImport> imports = Arrays.asList(new Records.SuspendedImport(
+                "外",
+                1600,
+                true,
+                3000,
+                Arrays.asList(
+                        source("外", 20, 2),
+                        source("外", 30, 3)
+                )
+        ));
+
+        List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, imports, ranks, settings);
+        Records.DashboardRow sentenceFallback = find(rows, "裂");
+        Records.DashboardRow imported = find(rows, "外");
+
+        assertEquals(1, sentenceFallback.activeExampleCount);
+        assertEquals("かな", sentenceFallback.examples.get(0).expression);
+        assertEquals(2, imported.suspendedExampleCount);
+    }
+
+    @Test
+    public void activeReasonCodesPreferSchedulerWeaknessThenLapses() throws Exception {
+        Records.Settings supportSatisfied = settingsWithMatureSupport(0);
+        Records.Settings oneMatureRequired = settingsWithMatureSupport(1);
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("浅,1500\n深,1600\n"));
+        Records.DashboardRow schedulerWeak = new KanjiAnalyzer().rebuild(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(SuspendedKanjiImporterTest.note(1, "浅い", "あさい")),
+                        Arrays.asList(card(10, 1, 5, 12, 0, null, null, null))
+                ),
+                Arrays.asList(),
+                ranks,
+                supportSatisfied
+        ).get(0);
+        Records.DashboardRow lapsed = new KanjiAnalyzer().rebuild(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(SuspendedKanjiImporterTest.note(2, "深い", "ふかい")),
+                        Arrays.asList(card(20, 2, 30, 12, 2, null, null, null))
+                ),
+                Arrays.asList(),
+                ranks,
+                oneMatureRequired
+        ).get(0);
+
+        assertEquals("anki_scheduler_weakness", schedulerWeak.reasonCode);
+        assertEquals("anki_lapses", lapsed.reasonCode);
+    }
+
+    @Test
+    public void fullySupportedCleanActiveRowsAreOmitted() throws Exception {
+        Records.Settings settings = settingsWithMatureSupport(1);
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("深,1600\n"));
+
+        List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(SuspendedKanjiImporterTest.note(1, "深い", "ふかい")),
+                        Arrays.asList(card(10, 1, 45, 12, 0, 60.0, 3.0, 0.95))
+                ),
+                Arrays.asList(),
+                ranks,
+                settings
+        );
+
+        assertTrue(rows.isEmpty());
+    }
+
+    private Records.Note note(long id, String expression, String reading, String meaning, String sentence) {
+        java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        fields.put(settings.expressionField, expression);
+        fields.put(settings.readingField, reading);
+        fields.put(settings.meaningField, meaning);
+        fields.put(settings.sentenceField, sentence);
+        fields.put(settings.frequencyField, "9999");
+        fields.put(settings.frequencySortField, "9999");
+        return new Records.Note(id, "Kiku", fields, java.util.Collections.emptyList());
+    }
+
+    private Records.SuspendedSource source(String kanji, long cardId, long noteId) {
+        return new Records.SuspendedSource(kanji, cardId, noteId, kanji, "reading", "meaning", kanji + " sentence");
+    }
+
+    private Records.Settings settingsWithMatureSupport(int matureSupportThreshold) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays
+        );
+    }
+
     private Records.Card card(
             long cardId,
             long noteId,

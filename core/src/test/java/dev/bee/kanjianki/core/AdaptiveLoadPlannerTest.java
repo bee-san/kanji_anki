@@ -68,6 +68,25 @@ public class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    public void emptyManualAllKanjiModeKeepsAllKanjiFlag() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Collections.emptyList(),
+                Collections.emptyList(),
+                new Records.ReviewStats(2, 0, 0, 2, 0, 2, 0),
+                0,
+                Collections.emptySet(),
+                100,
+                AdaptiveLoadPlanner.MODE_MANUAL,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertFalse(plan.autoMode);
+        assertTrue(plan.allKanjiMode);
+        assertEquals("No current problem kanji.", plan.status);
+    }
+
+    @Test
     public void highMissAndWritingFailureLowerTarget() {
         Records.AdaptiveLoadPlan steady = planner().plan(
                 rows(20),
@@ -137,6 +156,32 @@ public class AdaptiveLoadPlannerTest {
         assertTrue(plan.focusKanji.contains("字0"));
         assertTrue(plan.focusKanji.contains("字1"));
         assertTrue(plan.focusKanji.contains("字2"));
+    }
+
+    @Test
+    public void learningItemsCountAsRecoveryOnlyWhenDue() {
+        List<Records.StudyItem> items = Arrays.asList(
+                item("学", "learning", 999L, 0, 0),
+                item("済", "retired", 0L, 10, 0),
+                item("待", "review", 2000L, 10, 0)
+        );
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("学", 10, null, null, null, 3, 1),
+                        row("済", 9, null, null, null, 3, 1),
+                        row("待", 8, null, null, null, 3, 1)
+                ),
+                items,
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                0,
+                Collections.singleton("済"),
+                20,
+                1000L
+        );
+
+        assertTrue(plan.focusKanji.contains("学"));
+        assertEquals(2, plan.remaining);
     }
 
     @Test
@@ -230,6 +275,28 @@ public class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    public void autoWorkloadReportsDropOffWhileWaitingForHistory() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("強", 42, null, null, null, 3, 1),
+                        row("重", 38, null, null, null, 3, 1),
+                        row("軽", 10, null, null, null, 3, 1)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.status.contains("drop-off"));
+        assertTrue(plan.status.contains("starts small"));
+    }
+
+    @Test
     public void autoWorkloadOrdersDropOffByCompositePriorityScore() {
         Records.AdaptiveLoadPlan plan = planner().plan(
                 Arrays.asList(
@@ -276,6 +343,27 @@ public class AdaptiveLoadPlannerTest {
         );
 
         assertEquals(AdaptiveLoadPlanner.targetCeiling(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT), plan.target);
+        assertTrue(plan.status.contains("small Pareto focus"));
+    }
+
+    @Test
+    public void autoWorkloadFallsBackWhenPriorityScoresAreZero() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("穏", 0, null, null, null, 45, 12),
+                        row("静", 0, null, null, null, 45, 12)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                settingsWithMatureSupport(0)
+        );
+
+        assertEquals(2, plan.target);
         assertTrue(plan.status.contains("small Pareto focus"));
     }
 
@@ -360,6 +448,41 @@ public class AdaptiveLoadPlannerTest {
         assertFalse(plan.autoMode);
         assertTrue(plan.allKanjiMode);
         assertEquals(8, plan.target);
+    }
+
+    @Test
+    public void manualModeStatusCoversNoHistoryRecoveryAndFullRange() {
+        Records.AdaptiveLoadPlan noHistory = planner().plan(
+                rows(4),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                1000L
+        );
+        Records.AdaptiveLoadPlan recovery = planner().plan(
+                rows(2),
+                Arrays.asList(reviewed("字0", 0L), reviewed("字1", 0L)),
+                new Records.ReviewStats(6, 0, 0, 6, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                5,
+                1000L
+        );
+        Records.AdaptiveLoadPlan fullRange = planner().plan(
+                rows(4),
+                Collections.emptyList(),
+                new Records.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                5,
+                Collections.emptySet(),
+                5,
+                1000L
+        );
+
+        assertTrue(noHistory.status.contains("starts small"));
+        assertTrue(recovery.status.contains("Due recovery"));
+        assertTrue(fullRange.status.contains("full focus range"));
     }
 
     @Test
@@ -506,5 +629,30 @@ public class AdaptiveLoadPlannerTest {
 
     private Records.StudyItem reviewed(String kanji, long dueAt) {
         return new Records.StudyItem(kanji, "review", dueAt, 1.0, 5.0, 2, 0, 2, 1, null, 0L);
+    }
+
+    private Records.StudyItem item(String kanji, String state, long dueAt, int totalReviews, int lapses) {
+        return new Records.StudyItem(kanji, state, dueAt, 1.0, 5.0, totalReviews, lapses, 0, 1, null, 0L);
+    }
+
+    private Records.Settings settingsWithMatureSupport(int matureSupportThreshold) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays
+        );
     }
 }

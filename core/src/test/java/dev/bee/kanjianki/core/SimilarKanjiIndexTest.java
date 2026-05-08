@@ -14,6 +14,19 @@ import static org.junit.Assert.assertTrue;
 
 public final class SimilarKanjiIndexTest {
     @Test
+    public void emptyIndexAndNullLookupsAreSafe() {
+        SimilarKanjiIndex index = SimilarKanjiIndex.empty();
+
+        assertEquals(0, index.pairCount());
+        assertFalse(index.areSimilar(null, "拉"));
+        assertFalse(index.areSimilar("拉", null));
+        assertTrue(index.similarTo(null).isEmpty());
+        assertTrue(index.similarTo("拉").isEmpty());
+        assertTrue(index.pairsWithin(null).isEmpty());
+        assertTrue(index.pairsWithin(Collections.emptyList()).isEmpty());
+    }
+
+    @Test
     public void parseTsvTreatsPairsAsSymmetricAndDeduplicates() throws Exception {
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
                 "# generated\n" +
@@ -61,6 +74,7 @@ public final class SimilarKanjiIndexTest {
         assertEquals("拉", pairs.get(0).kanjiA);
         assertEquals("謎", pairs.get(0).kanjiB);
         assertTrue(index.pairsWithin(Collections.singletonList("拉")).isEmpty());
+        assertTrue(index.pairsWithin(Arrays.asList("拉", "not-kanji", "")).isEmpty());
     }
 
     @Test
@@ -77,5 +91,15 @@ public final class SimilarKanjiIndexTest {
         assertNotEquals(pair, differentSource);
         assertNotEquals(pair, differentKanji);
         assertNotEquals(pair, "not a pair");
+    }
+
+    @Test
+    public void pairCanonicalDefaultsBlankSourceAndSortsBySource() {
+        SimilarKanjiIndex.Pair defaultSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", " ");
+        SimilarKanjiIndex.Pair explicitSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", "zz");
+
+        assertEquals(SimilarKanjiIndex.SOURCE_KIKU_VISUALLY_SIMILAR, defaultSource.source);
+        assertTrue(defaultSource.compareTo(explicitSource) < 0);
+        assertTrue(SimilarKanjiIndex.Pair.canonical("拉", "麺", "a").compareTo(defaultSource) < 0);
     }
 }
