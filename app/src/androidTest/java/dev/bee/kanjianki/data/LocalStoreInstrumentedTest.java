@@ -193,6 +193,65 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testSimilarChoiceStateSelectionRepairQueueAndNormalReviewIsolation() throws Exception {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Arrays.asList(
+                        note(1L, "拉", "ら", "pull", "拉を見た。"),
+                        note(2L, "提", "てい", "carry", "提を見た。"),
+                        note(3L, "謎", "なぞ", "riddle", "謎を見た。")
+                ),
+                Arrays.asList(
+                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
+                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
+                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                )
+        );
+        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
+                "拉\t提\tfixture\n" +
+                        "拉\t謎\tfixture\n" +
+                        "提\t外\tfixture\n"
+        ));
+
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 1000L, 2000L, null, index);
+
+        Records.SimilarKanjiChoiceCard pull = findSimilarChoice("拉");
+        assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
+        assertEquals("pull", pull.primaryMeaning);
+        assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2000L));
+        assertFalse("inventory-only cards should skip active targets", "拉".equals(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji));
+
+        Records.SimilarKanjiChoiceResult wrong = store.submitSimilarChoice(pull, "提", 2500L);
+        assertFalse(wrong.correct);
+        assertEquals(Arrays.asList("拉", "提"), wrong.repairKanji);
+        assertEquals(0, count("review_log"));
+        assertEquals(1, count("similar_kanji_review_log"));
+        assertEquals(2, count("similar_kanji_repair_queue"));
+        assertEquals("拉", store.nextDueSimilarWritingRepair(2500L).repairKanji);
+        assertTrue(store.dueSimilarChoiceForActiveTarget("拉", 2500L) == null);
+
+        Records.SimilarKanjiWritingRepair targetRepair = store.nextDueSimilarWritingRepair(2600L).withToken("repair-target", 2600L);
+        store.saveSimilarWritingRepair(targetRepair);
+        assertTrue(store.finishSimilarWritingRepair(targetRepair.id, "repair-target", true, 2700L));
+        Records.SimilarKanjiWritingRepair selectedRepair = store.nextDueSimilarWritingRepair(2800L).withToken("repair-selected", 2800L);
+        assertEquals("提", selectedRepair.repairKanji);
+        store.saveSimilarWritingRepair(selectedRepair);
+        assertTrue(store.finishSimilarWritingRepair(selectedRepair.id, "repair-selected", true, 2900L));
+
+        Records.SimilarKanjiChoiceCard retry = store.dueSimilarChoiceForActiveTarget("拉", 3000L);
+        assertNotNull(retry);
+        Records.SimilarKanjiChoiceResult correct = store.submitSimilarChoice(retry, "拉", 3100L);
+        assertTrue(correct.correct);
+        assertTrue(store.dueSimilarChoiceForActiveTarget("拉", 3200L) == null);
+        assertEquals(0, count("review_log"));
+        assertEquals(2, count("similar_kanji_review_log"));
+
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 4000L, 5000L, null, index);
+        assertTrue("passed state should survive identical sync rebuild", store.dueSimilarChoiceForActiveTarget("拉", 5000L) == null);
+        assertTrue(findSimilarChoice("拉").passed());
+    }
+
+    @Test
     public void testTimelineRecordsSuspendedImportOnceAcrossRepeatedSync() {
         Records.DashboardRow row = row("拉", 0);
         Records.SuspendedImport imported = suspendedImport("拉");
@@ -326,6 +385,9 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "word_reading_memory"));
         assertTrue(hasColumn("study_items", "writing_remediation_memory"));
         assertTrue(hasColumn("similar_kanji_pairs", "source"));
+        assertTrue(hasColumn("similar_kanji_choice_state", "choice_signature"));
+        assertTrue(hasColumn("similar_kanji_repair_queue", "repair_kanji"));
+        assertTrue(hasColumn("similar_kanji_review_log", "selected_kanji"));
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
@@ -584,6 +646,15 @@ public final class LocalStoreInstrumentedTest {
 
     private boolean hasTimelineType(Records.KanjiRecoveryTimeline timeline, String eventType) {
         return countTimelineType(timeline, eventType) > 0;
+    }
+
+    private Records.SimilarKanjiChoiceCard findSimilarChoice(String targetKanji) {
+        for (Records.SimilarKanjiChoiceCard card : store.allSimilarChoiceCards()) {
+            if (targetKanji.equals(card.targetKanji)) {
+                return card;
+            }
+        }
+        throw new AssertionError("No similar-choice card for " + targetKanji);
     }
 
     private void createLegacyV1Schema(SQLiteDatabase db) {

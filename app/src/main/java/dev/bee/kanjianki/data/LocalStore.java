@@ -9,6 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
 
@@ -25,7 +26,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 10;
+    private static final int DB_VERSION = 11;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final int DEFAULT_REMINDER_HOUR = 19;
@@ -56,6 +57,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE kanji_examples (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
         createKanjiInventoryTables(db);
         createSimilarKanjiTables(db);
+        createSimilarKanjiPracticeTables(db);
         db.execSQL(STUDY_ITEMS_TABLE_SQL);
         db.execSQL(LEARNING_REPEATS_TABLE_SQL);
         db.execSQL("CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
@@ -113,6 +115,10 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (oldVersion < 10) {
             createSimilarKanjiTables(db);
         }
+        if (oldVersion < 11) {
+            createSimilarKanjiPracticeTables(db);
+            rebuildSimilarKanjiChoiceStates(db, System.currentTimeMillis());
+        }
     }
 
     private void createKanjiInventoryTables(SQLiteDatabase db) {
@@ -125,6 +131,15 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_pairs (kanji_a TEXT NOT NULL, kanji_b TEXT NOT NULL, source TEXT NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (kanji_a, kanji_b, source))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_a ON similar_kanji_pairs(kanji_a)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_b ON similar_kanji_pairs(kanji_b)");
+    }
+
+    private void createSimilarKanjiPracticeTables(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_choice_state (target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, primary_meaning TEXT NOT NULL, choices TEXT NOT NULL, due_at INTEGER NOT NULL, passed_at INTEGER NOT NULL DEFAULT 0, last_reviewed_at INTEGER NOT NULL DEFAULT 0, correct_count INTEGER NOT NULL DEFAULT 0, wrong_count INTEGER NOT NULL DEFAULT 0, active_token TEXT NOT NULL DEFAULT '', first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (target_kanji, choice_signature))");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_choice_due ON similar_kanji_choice_state(passed_at, due_at)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_repair_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, repair_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, wrong_selection TEXT NOT NULL, prompt_meaning TEXT NOT NULL, status TEXT NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER NOT NULL DEFAULT 0)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_repair_due ON similar_kanji_repair_queue(status, due_at, created_at)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, selected_kanji TEXT NOT NULL, correct INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_review_log_target ON similar_kanji_review_log(target_kanji, reviewed_at)");
     }
 
     private void rebuildStudyItemsWithAnswerSignatureKey(SQLiteDatabase db) {
@@ -257,6 +272,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (similarIndex != null) {
                 rebuildSimilarKanjiPairs(db, similarIndex, finishedAt);
             }
+            rebuildSimilarKanjiChoiceStates(db, finishedAt);
             appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, finishedAt, settings);
             db.setTransactionSuccessful();
             return syncId;
@@ -377,6 +393,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.beginTransaction();
         try {
             rebuildSimilarKanjiPairs(db, similarIndex, nowMillis);
+            rebuildSimilarKanjiChoiceStates(db, nowMillis);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -444,6 +461,203 @@ public final class LocalStore extends SQLiteOpenHelper {
             return cursor.moveToFirst();
         } finally {
             cursor.close();
+        }
+    }
+
+    public List<Records.SimilarKanjiChoiceCard> allSimilarChoiceCards() {
+        SQLiteDatabase db = getReadableDatabase();
+        List<Records.SimilarKanjiChoiceCard> out = new ArrayList<>();
+        Cursor cursor = db.query(
+                "similar_kanji_choice_state",
+                null,
+                null,
+                null,
+                null,
+                null,
+                "target_kanji ASC, choice_signature ASC"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                out.add(readSimilarChoiceCard(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    public Records.SimilarKanjiChoiceCard dueSimilarChoiceForActiveTarget(String kanji, long nowMillis) {
+        String target = normalizeSingleKanji(kanji);
+        if (target.isEmpty()) {
+            return null;
+        }
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(
+                "similar_kanji_choice_state",
+                null,
+                "target_kanji=? AND passed_at=0 AND due_at<=?",
+                new String[]{target, Long.toString(nowMillis)},
+                null,
+                null,
+                "due_at ASC, first_seen_at ASC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            Records.SimilarKanjiChoiceCard card = readSimilarChoiceCard(cursor);
+            return hasPendingSimilarRepairs(db, card.targetKanji, card.choiceSignature) ? null : card;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public Records.SimilarKanjiChoiceCard nextDueInventorySimilarChoice(Set<String> activeTargets, long nowMillis) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(
+                "similar_kanji_choice_state",
+                null,
+                "passed_at=0 AND due_at<=?",
+                new String[]{Long.toString(nowMillis)},
+                null,
+                null,
+                "due_at ASC, last_reviewed_at ASC, target_kanji ASC"
+        );
+        try {
+            while (cursor.moveToNext()) {
+                Records.SimilarKanjiChoiceCard card = readSimilarChoiceCard(cursor);
+                if (activeTargets != null && activeTargets.contains(card.targetKanji)) {
+                    continue;
+                }
+                if (!hasPendingSimilarRepairs(db, card.targetKanji, card.choiceSignature)) {
+                    return card;
+                }
+            }
+            return null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public Records.SimilarKanjiChoiceResult submitSimilarChoice(
+            Records.SimilarKanjiChoiceCard submitted,
+            String selectedKanji,
+            long nowMillis
+    ) {
+        if (submitted == null) {
+            return new Records.SimilarKanjiChoiceResult(null, selectedKanji, false, Collections.emptyList());
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Records.SimilarKanjiChoiceCard card = similarChoiceCard(db, submitted.targetKanji, submitted.choiceSignature);
+            if (card == null) {
+                card = submitted;
+            }
+            SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
+            Records.SimilarKanjiChoiceResult result = planner.evaluateSelection(card, normalizeSingleKanji(selectedKanji));
+
+            ContentValues values = new ContentValues();
+            values.put("last_reviewed_at", nowMillis);
+            if (result.correct) {
+                values.put("passed_at", nowMillis);
+                values.put("correct_count", card.correctCount + 1);
+            } else {
+                values.put("passed_at", 0L);
+                values.put("due_at", nowMillis);
+                values.put("wrong_count", card.wrongCount + 1);
+            }
+            db.update(
+                    "similar_kanji_choice_state",
+                    values,
+                    "target_kanji=? AND choice_signature=?",
+                    new String[]{card.targetKanji, card.choiceSignature}
+            );
+
+            ContentValues log = new ContentValues();
+            log.put("target_kanji", card.targetKanji);
+            log.put("choice_signature", card.choiceSignature);
+            log.put("selected_kanji", result.selectedKanji);
+            log.put("correct", result.correct ? 1 : 0);
+            log.put("reviewed_at", nowMillis);
+            db.insert("similar_kanji_review_log", null, log);
+
+            if (!result.correct) {
+                for (String repairKanji : result.repairKanji) {
+                    enqueueSimilarWritingRepair(db, card, repairKanji, result.selectedKanji, nowMillis);
+                }
+            }
+            db.setTransactionSuccessful();
+            return result;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public Records.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(
+                "similar_kanji_repair_queue",
+                null,
+                "status=? AND due_at<=?",
+                new String[]{"pending", Long.toString(nowMillis)},
+                null,
+                null,
+                "created_at ASC, id ASC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return readSimilarWritingRepair(cursor);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public void saveSimilarWritingRepair(Records.SimilarKanjiWritingRepair repair) {
+        if (repair == null || repair.id <= 0L) {
+            return;
+        }
+        ContentValues values = new ContentValues();
+        values.put("active_token", repair.activeToken);
+        values.put("updated_at", repair.updatedAtMillis);
+        getWritableDatabase().update(
+                "similar_kanji_repair_queue",
+                values,
+                "id=? AND status=?",
+                new String[]{Long.toString(repair.id), "pending"}
+        );
+    }
+
+    public boolean finishSimilarWritingRepair(long repairId, String token, boolean passed, long nowMillis) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Records.SimilarKanjiWritingRepair current = similarWritingRepair(db, repairId);
+            if (current == null || !"pending".equals(current.status)) {
+                return false;
+            }
+            if (!current.activeToken.isEmpty() && !current.activeToken.equals(token == null ? "" : token)) {
+                return false;
+            }
+            ContentValues values = new ContentValues();
+            values.put("active_token", "");
+            values.put("updated_at", nowMillis);
+            if (passed) {
+                values.put("status", "complete");
+                values.put("completed_at", nowMillis);
+            } else {
+                values.put("attempts", current.attempts + 1);
+                values.put("due_at", nowMillis);
+            }
+            db.update("similar_kanji_repair_queue", values, "id=?", new String[]{Long.toString(repairId)});
+            db.setTransactionSuccessful();
+            return true;
+        } finally {
+            db.endTransaction();
         }
     }
 
@@ -1757,6 +1971,56 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    private void rebuildSimilarKanjiChoiceStates(SQLiteDatabase db, long nowMillis) {
+        createSimilarKanjiPracticeTables(db);
+        Map<String, SimilarChoiceSnapshot> previous = similarChoiceSnapshots(db);
+        SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
+        List<Records.SimilarKanjiChoiceCard> candidates = planner.buildCandidates(
+                allInventoryItems(db),
+                allSimilarPairs(db)
+        );
+        Set<String> currentKeys = new HashSet<>();
+        for (Records.SimilarKanjiChoiceCard card : candidates) {
+            String key = similarChoiceKey(card.targetKanji, card.choiceSignature);
+            currentKeys.add(key);
+            SimilarChoiceSnapshot old = previous.get(key);
+            ContentValues values = new ContentValues();
+            values.put("target_kanji", card.targetKanji);
+            values.put("choice_signature", card.choiceSignature);
+            values.put("primary_meaning", card.primaryMeaning);
+            values.put("choices", serializeChoices(card.choices));
+            values.put("due_at", old == null ? 0L : old.dueAtMillis);
+            values.put("passed_at", old == null ? 0L : old.passedAtMillis);
+            values.put("last_reviewed_at", old == null ? 0L : old.lastReviewedAtMillis);
+            values.put("correct_count", old == null ? 0 : old.correctCount);
+            values.put("wrong_count", old == null ? 0 : old.wrongCount);
+            values.put("active_token", "");
+            values.put("first_seen_at", old == null ? nowMillis : old.firstSeenAtMillis);
+            values.put("last_seen_at", nowMillis);
+            db.insertWithOnConflict("similar_kanji_choice_state", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+
+        for (String key : previous.keySet()) {
+            if (currentKeys.contains(key)) {
+                continue;
+            }
+            String[] parts = key.split("\u0001", 2);
+            if (parts.length != 2) {
+                continue;
+            }
+            db.delete(
+                    "similar_kanji_choice_state",
+                    "target_kanji=? AND choice_signature=?",
+                    new String[]{parts[0], parts[1]}
+            );
+            db.delete(
+                    "similar_kanji_repair_queue",
+                    "status=? AND target_kanji=? AND choice_signature=?",
+                    new String[]{"pending", parts[0], parts[1]}
+            );
+        }
+    }
+
     private Map<String, Long> similarPairFirstSeen(SQLiteDatabase db) {
         Map<String, Long> out = new HashMap<>();
         Cursor cursor = db.query("similar_kanji_pairs", new String[]{"kanji_a", "kanji_b", "source", "first_seen_at"}, null, null, null, null, null);
@@ -1797,6 +2061,205 @@ public final class LocalStore extends SQLiteOpenHelper {
                 longValue(cursor, "first_seen_at"),
                 longValue(cursor, "last_seen_at")
         );
+    }
+
+    private List<Records.SimilarKanjiPair> allSimilarPairs(SQLiteDatabase db) {
+        List<Records.SimilarKanjiPair> out = new ArrayList<>();
+        Cursor cursor = db.query("similar_kanji_pairs", null, null, null, null, null, "kanji_a ASC, kanji_b ASC, source ASC");
+        try {
+            while (cursor.moveToNext()) {
+                out.add(readSimilarPair(cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private List<Records.KanjiInventoryItem> allInventoryItems(SQLiteDatabase db) {
+        List<Records.KanjiInventoryItem> out = new ArrayList<>();
+        Cursor cursor = db.query("kanji_inventory", null, null, null, null, null, "kanji ASC");
+        try {
+            while (cursor.moveToNext()) {
+                out.add(readInventoryItem(db, cursor));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private Map<String, SimilarChoiceSnapshot> similarChoiceSnapshots(SQLiteDatabase db) {
+        Map<String, SimilarChoiceSnapshot> out = new HashMap<>();
+        Cursor cursor = db.query("similar_kanji_choice_state", null, null, null, null, null, null);
+        try {
+            while (cursor.moveToNext()) {
+                String target = string(cursor, "target_kanji");
+                String signature = string(cursor, "choice_signature");
+                out.put(
+                        similarChoiceKey(target, signature),
+                        new SimilarChoiceSnapshot(
+                                longValue(cursor, "due_at"),
+                                longValue(cursor, "passed_at"),
+                                longValue(cursor, "last_reviewed_at"),
+                                integer(cursor, "correct_count"),
+                                integer(cursor, "wrong_count"),
+                                longValue(cursor, "first_seen_at")
+                        )
+                );
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private Records.SimilarKanjiChoiceCard similarChoiceCard(SQLiteDatabase db, String targetKanji, String choiceSignature) {
+        Cursor cursor = db.query(
+                "similar_kanji_choice_state",
+                null,
+                "target_kanji=? AND choice_signature=?",
+                new String[]{targetKanji, choiceSignature},
+                null,
+                null,
+                null,
+                "1"
+        );
+        try {
+            return cursor.moveToFirst() ? readSimilarChoiceCard(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Records.SimilarKanjiChoiceCard readSimilarChoiceCard(Cursor cursor) {
+        return new Records.SimilarKanjiChoiceCard(
+                string(cursor, "target_kanji"),
+                string(cursor, "primary_meaning"),
+                deserializeChoices(string(cursor, "choices")),
+                string(cursor, "choice_signature"),
+                longValue(cursor, "due_at"),
+                longValue(cursor, "passed_at"),
+                longValue(cursor, "last_reviewed_at"),
+                integer(cursor, "correct_count"),
+                integer(cursor, "wrong_count")
+        );
+    }
+
+    private boolean hasPendingSimilarRepairs(SQLiteDatabase db, String targetKanji, String choiceSignature) {
+        Cursor cursor = db.query(
+                "similar_kanji_repair_queue",
+                new String[]{"id"},
+                "status=? AND target_kanji=? AND choice_signature=?",
+                new String[]{"pending", targetKanji, choiceSignature},
+                null,
+                null,
+                null,
+                "1"
+        );
+        try {
+            return cursor.moveToFirst();
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private void enqueueSimilarWritingRepair(
+            SQLiteDatabase db,
+            Records.SimilarKanjiChoiceCard card,
+            String repairKanji,
+            String wrongSelection,
+            long nowMillis
+    ) {
+        String normalized = normalizeSingleKanji(repairKanji);
+        if (normalized.isEmpty()) {
+            return;
+        }
+        Cursor pending = db.query(
+                "similar_kanji_repair_queue",
+                new String[]{"id"},
+                "status=? AND target_kanji=? AND choice_signature=? AND repair_kanji=?",
+                new String[]{"pending", card.targetKanji, card.choiceSignature, normalized},
+                null,
+                null,
+                null,
+                "1"
+        );
+        try {
+            if (pending.moveToFirst()) {
+                return;
+            }
+        } finally {
+            pending.close();
+        }
+        ContentValues values = new ContentValues();
+        values.put("target_kanji", card.targetKanji);
+        values.put("repair_kanji", normalized);
+        values.put("choice_signature", card.choiceSignature);
+        values.put("wrong_selection", wrongSelection == null ? "" : wrongSelection);
+        values.put("prompt_meaning", card.primaryMeaning);
+        values.put("status", "pending");
+        values.put("due_at", nowMillis);
+        values.put("active_token", "");
+        values.put("attempts", 0);
+        values.put("created_at", nowMillis);
+        values.put("updated_at", nowMillis);
+        values.put("completed_at", 0L);
+        db.insert("similar_kanji_repair_queue", null, values);
+    }
+
+    private Records.SimilarKanjiWritingRepair similarWritingRepair(SQLiteDatabase db, long repairId) {
+        Cursor cursor = db.query(
+                "similar_kanji_repair_queue",
+                null,
+                "id=?",
+                new String[]{Long.toString(repairId)},
+                null,
+                null,
+                null,
+                "1"
+        );
+        try {
+            return cursor.moveToFirst() ? readSimilarWritingRepair(cursor) : null;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private Records.SimilarKanjiWritingRepair readSimilarWritingRepair(Cursor cursor) {
+        return new Records.SimilarKanjiWritingRepair(
+                longValue(cursor, "id"),
+                string(cursor, "target_kanji"),
+                string(cursor, "repair_kanji"),
+                string(cursor, "choice_signature"),
+                string(cursor, "wrong_selection"),
+                string(cursor, "prompt_meaning"),
+                string(cursor, "status"),
+                longValue(cursor, "due_at"),
+                string(cursor, "active_token"),
+                integer(cursor, "attempts"),
+                longValue(cursor, "created_at"),
+                longValue(cursor, "updated_at"),
+                longValue(cursor, "completed_at")
+        );
+    }
+
+    private static String serializeChoices(List<String> choices) {
+        return String.join("\t", choices == null ? Collections.emptyList() : choices);
+    }
+
+    private static List<String> deserializeChoices(String encoded) {
+        if (encoded == null || encoded.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> out = new ArrayList<>();
+        String[] parts = encoded.split("\t", -1);
+        for (String part : parts) {
+            if (!part.isEmpty()) {
+                out.add(part);
+            }
+        }
+        return out;
     }
 
     private void addInventoryText(Map<String, MutableKanjiInventoryItem> inventory, List<String> kanji, String meaning, String reading, String expression, String sentence) {
@@ -1867,6 +2330,10 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private static String similarKey(String first, String second, String source) {
         return first + "\u0000" + second + "\u0000" + source;
+    }
+
+    private static String similarChoiceKey(String targetKanji, String choiceSignature) {
+        return targetKanji + "\u0001" + (choiceSignature == null ? "" : choiceSignature);
     }
 
     private Records.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
@@ -2361,6 +2828,31 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.cardIds = cardIds;
             this.activeCardCount = activeCardCount;
             this.suspendedCardCount = suspendedCardCount;
+        }
+    }
+
+    private static final class SimilarChoiceSnapshot {
+        private final long dueAtMillis;
+        private final long passedAtMillis;
+        private final long lastReviewedAtMillis;
+        private final int correctCount;
+        private final int wrongCount;
+        private final long firstSeenAtMillis;
+
+        private SimilarChoiceSnapshot(
+                long dueAtMillis,
+                long passedAtMillis,
+                long lastReviewedAtMillis,
+                int correctCount,
+                int wrongCount,
+                long firstSeenAtMillis
+        ) {
+            this.dueAtMillis = dueAtMillis;
+            this.passedAtMillis = passedAtMillis;
+            this.lastReviewedAtMillis = lastReviewedAtMillis;
+            this.correctCount = correctCount;
+            this.wrongCount = wrongCount;
+            this.firstSeenAtMillis = firstSeenAtMillis;
         }
     }
 

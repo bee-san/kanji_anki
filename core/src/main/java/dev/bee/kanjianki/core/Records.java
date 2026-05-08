@@ -431,6 +431,136 @@ public final class Records {
         }
     }
 
+    public static final class SimilarKanjiChoiceCard {
+        public final String targetKanji;
+        public final String primaryMeaning;
+        public final List<String> choices;
+        public final String choiceSignature;
+        public final long dueAtMillis;
+        public final long passedAtMillis;
+        public final long lastReviewedAtMillis;
+        public final int correctCount;
+        public final int wrongCount;
+
+        public SimilarKanjiChoiceCard(
+                String targetKanji,
+                String primaryMeaning,
+                List<String> choices,
+                String choiceSignature
+        ) {
+            this(targetKanji, primaryMeaning, choices, choiceSignature, 0L, 0L, 0L, 0, 0);
+        }
+
+        public SimilarKanjiChoiceCard(
+                String targetKanji,
+                String primaryMeaning,
+                List<String> choices,
+                String choiceSignature,
+                long dueAtMillis,
+                long passedAtMillis,
+                long lastReviewedAtMillis,
+                int correctCount,
+                int wrongCount
+        ) {
+            this.targetKanji = targetKanji == null ? "" : targetKanji;
+            this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
+            this.choices = Collections.unmodifiableList(new ArrayList<>(choices == null ? Collections.emptyList() : choices));
+            this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
+            this.dueAtMillis = Math.max(0L, dueAtMillis);
+            this.passedAtMillis = Math.max(0L, passedAtMillis);
+            this.lastReviewedAtMillis = Math.max(0L, lastReviewedAtMillis);
+            this.correctCount = Math.max(0, correctCount);
+            this.wrongCount = Math.max(0, wrongCount);
+        }
+
+        public boolean passed() {
+            return passedAtMillis > 0L;
+        }
+    }
+
+    public static final class SimilarKanjiChoiceResult {
+        public final SimilarKanjiChoiceCard card;
+        public final String selectedKanji;
+        public final boolean correct;
+        public final List<String> repairKanji;
+
+        public SimilarKanjiChoiceResult(
+                SimilarKanjiChoiceCard card,
+                String selectedKanji,
+                boolean correct,
+                List<String> repairKanji
+        ) {
+            this.card = card;
+            this.selectedKanji = selectedKanji == null ? "" : selectedKanji;
+            this.correct = correct;
+            this.repairKanji = Collections.unmodifiableList(new ArrayList<>(repairKanji == null ? Collections.emptyList() : repairKanji));
+        }
+    }
+
+    public static final class SimilarKanjiWritingRepair {
+        public final long id;
+        public final String targetKanji;
+        public final String repairKanji;
+        public final String choiceSignature;
+        public final String wrongSelection;
+        public final String promptMeaning;
+        public final String status;
+        public final long dueAtMillis;
+        public final String activeToken;
+        public final int attempts;
+        public final long createdAtMillis;
+        public final long updatedAtMillis;
+        public final long completedAtMillis;
+
+        public SimilarKanjiWritingRepair(
+                long id,
+                String targetKanji,
+                String repairKanji,
+                String choiceSignature,
+                String wrongSelection,
+                String promptMeaning,
+                String status,
+                long dueAtMillis,
+                String activeToken,
+                int attempts,
+                long createdAtMillis,
+                long updatedAtMillis,
+                long completedAtMillis
+        ) {
+            this.id = Math.max(0L, id);
+            this.targetKanji = targetKanji == null ? "" : targetKanji;
+            this.repairKanji = repairKanji == null ? "" : repairKanji;
+            this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
+            this.wrongSelection = wrongSelection == null ? "" : wrongSelection;
+            this.promptMeaning = promptMeaning == null ? "" : promptMeaning;
+            this.status = status == null || status.isEmpty() ? "pending" : status;
+            this.dueAtMillis = Math.max(0L, dueAtMillis);
+            this.activeToken = activeToken == null ? "" : activeToken;
+            this.attempts = Math.max(0, attempts);
+            this.createdAtMillis = Math.max(0L, createdAtMillis);
+            this.updatedAtMillis = Math.max(0L, updatedAtMillis);
+            this.completedAtMillis = Math.max(0L, completedAtMillis);
+        }
+
+        public SimilarKanjiWritingRepair withToken(String token, long updatedAtMillis) {
+            return new SimilarKanjiWritingRepair(
+                    id,
+                    targetKanji,
+                    repairKanji,
+                    choiceSignature,
+                    wrongSelection,
+                    promptMeaning,
+                    status,
+                    dueAtMillis,
+                    token,
+                    attempts,
+                    createdAtMillis,
+                    updatedAtMillis,
+                    completedAtMillis
+            );
+        }
+    }
+
     public static final class KanjiTimelineEvent {
         public final long id;
         public final String kanji;
