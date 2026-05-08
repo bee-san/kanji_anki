@@ -29,6 +29,15 @@ public class HintProgressionTest {
     }
 
     @Test
+    public void nullStateAndGuideUseTraceFallbackWithoutVisibleStrokes() {
+        HintVisibility visibility = new HintProgression().visibility(null, null);
+
+        assertEquals(HintLevel.TRACE, visibility.level());
+        assertEquals(0, visibility.visibleStrokeCount());
+        assertTrue(visibility.tracePathsVisible());
+    }
+
+    @Test
     public void cleanPassAdvancesAndHintsHoldCurrentLevel() {
         HintProgression progression = new HintProgression();
         HintState state = HintState.initial();
@@ -55,6 +64,24 @@ public class HintProgressionTest {
     }
 
     @Test
+    public void afterWritingNullOrWrongMovesBackTowardSupport() {
+        HintProgression progression = new HintProgression();
+        WritingAnalysis wrong = new WritingAnalysis(
+                WritingAnalysis.Status.WRONG,
+                "again",
+                false,
+                "wrong",
+                null,
+                null,
+                HintLevel.BLIND,
+                2
+        );
+
+        assertEquals(HintLevel.OUTLINE, progression.afterWriting(HintState.fromWritingLevel(2), null).level());
+        assertEquals(HintLevel.MINIMAL, progression.afterWriting(HintState.fromWritingLevel(3), wrong).level());
+    }
+
+    @Test
     public void messyRecognizedWritingHoldsCurrentLevel() {
         HintProgression progression = new HintProgression();
         WritingAnalysis messy = new WritingAnalysis(
@@ -72,6 +99,20 @@ public class HintProgressionTest {
 
         assertEquals(HintLevel.MINIMAL, afterMessy.level());
         assertEquals(0, afterMessy.revealedStrokeCount());
+    }
+
+    @Test
+    public void revealNextTraceAndOutlineUseBroaderHelpRules() {
+        HintProgression progression = new HintProgression();
+
+        HintState trace = progression.revealNext(HintState.fromWritingLevel(0), guide());
+        HintState outline = progression.revealNext(HintState.fromWritingLevel(1), guide());
+        HintState noGuide = progression.revealNext(HintState.fromWritingLevel(3), null);
+
+        assertEquals(HintLevel.TRACE, trace.level());
+        assertEquals(3, trace.revealedStrokeCount());
+        assertEquals(HintLevel.TRACE, outline.level());
+        assertEquals(HintLevel.MINIMAL, noGuide.level());
     }
 
     @Test

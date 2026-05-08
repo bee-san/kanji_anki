@@ -6,6 +6,17 @@ import static org.junit.Assert.assertEquals;
 
 public class HintStateTest {
     @Test
+    public void hintLevelNavigationClampsAtEnds() {
+        assertEquals(0, HintLevel.TRACE.writingLevel());
+        assertEquals(HintLevel.OUTLINE, HintLevel.TRACE.next());
+        assertEquals(HintLevel.BLIND, HintLevel.BLIND.next());
+        assertEquals(HintLevel.MINIMAL, HintLevel.BLIND.previous());
+        assertEquals(HintLevel.TRACE, HintLevel.TRACE.previous());
+        assertEquals(HintLevel.TRACE, HintLevel.fromWritingLevel(-1));
+        assertEquals(HintLevel.BLIND, HintLevel.fromWritingLevel(99));
+    }
+
+    @Test
     public void constructorDefaultsLevelAndClampsCounters() {
         HintState state = new HintState(null, -3, -7);
 

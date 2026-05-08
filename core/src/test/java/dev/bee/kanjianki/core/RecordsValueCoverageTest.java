@@ -143,6 +143,9 @@ public class RecordsValueCoverageTest {
         assertTrue(imperfect.complete());
         assertFalse(imperfect.exactOrder());
         assertEquals(Collections.singletonList("2"), imperfect.outOfPositionStrokeIds());
+        assertEquals(Collections.emptyList(), imperfect.missingStrokeIds());
+        assertEquals(Collections.emptyList(), imperfect.extraStrokeIds());
+        assertEquals(Collections.emptyList(), imperfect.duplicateStrokeIds());
 
         InkPoint point = new InkPoint(0.25f, 0.5f, 7L);
         assertEquals(new InkPoint(25f, 100f, 7L), point.scaled(100f, 200f));

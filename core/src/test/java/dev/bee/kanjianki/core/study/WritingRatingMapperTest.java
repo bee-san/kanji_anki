@@ -10,6 +10,16 @@ import static org.junit.Assert.assertFalse;
 
 public class WritingRatingMapperTest {
     @Test
+    public void nullWritingInputsFallBackToAgain() {
+        WritingRatingMapper mapper = new WritingRatingMapper();
+
+        assertEquals(StudyRating.AGAIN, mapper.applyRequestedRating(null, true, null, false));
+        assertEquals(StudyRating.AGAIN, mapper.suggestedRating(null));
+        assertEquals(StudyRating.AGAIN, mapper.maxAllowedRating(null));
+        assertEquals(StudyRating.AGAIN, StudyRating.fromCode(null));
+    }
+
+    @Test
     public void failedRequiredWritingCapsRequestedRatingToAgain() {
         WritingRatingMapper mapper = new WritingRatingMapper();
         WritingAnalysis failed = new WritingAnalysis(
@@ -35,6 +45,35 @@ public class WritingRatingMapperTest {
         StudyRating applied = mapper.applyRequestedRating(StudyRating.GOOD, true, failed, true);
 
         assertEquals(StudyRating.GOOD, applied);
+    }
+
+    @Test
+    public void passedLowConfidenceWritingStaysHardAndMediumConfidenceIsGood() {
+        WritingRatingMapper mapper = new WritingRatingMapper();
+        WritingAnalysis lowConfidence = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "hard",
+                true,
+                "weak",
+                Arrays.asList(new RecognitionCandidate("拉", 0.45f)),
+                cleanStrokeOrder(),
+                HintLevel.BLIND,
+                0
+        );
+        WritingAnalysis mediumConfidence = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "ok",
+                Arrays.asList(new RecognitionCandidate("拉", 0.50f)),
+                cleanStrokeOrder(),
+                HintLevel.BLIND,
+                0
+        );
+
+        assertEquals(StudyRating.HARD, mapper.suggestedRating(lowConfidence));
+        assertEquals(StudyRating.HARD, mapper.maxAllowedRating(lowConfidence));
+        assertEquals(StudyRating.GOOD, mapper.suggestedRating(mediumConfidence));
     }
 
     @Test
@@ -124,6 +163,9 @@ public class WritingRatingMapperTest {
 
         assertEquals(StudyRating.EASY, applied);
         assertEquals(StudyRating.AGAIN, StudyRating.fromCode("unexpected"));
+        assertEquals(StudyRating.GOOD, StudyRating.fromCode("good"));
+        assertEquals(StudyRating.GOOD, StudyRating.EASY.cappedAt(StudyRating.GOOD));
+        assertEquals(StudyRating.HARD, StudyRating.HARD.cappedAt(StudyRating.GOOD));
     }
 
     private StrokeOrderEvaluator.StrokeOrderResult cleanStrokeOrder() {
