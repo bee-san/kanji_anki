@@ -5,6 +5,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabaseLockedException;
 import android.graphics.Rect;
 import android.net.Uri;
@@ -31,6 +32,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
 import dev.bee.kanjianki.core.study.StrokeGuide;
@@ -53,6 +55,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -766,6 +769,56 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testSimilarChoiceMissQueuesTwoWritingRepairsBeforeRecognition() throws Exception {
+        seedSimilarChoiceDashboard();
+        MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Similar choice");
+                assertHasText(activity, "Which kanji means ramen radical gap?");
+                assertHasText(activity, "拉");
+                assertHasText(activity, "提");
+                assertNoText(activity, "Kanji -> meaning");
+            });
+
+            clickText(scenario, "提");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Similar writing");
+                assertHasText(activity, "Reference");
+                assertHasText(activity, "Meaning: ramen radical gap");
+                drawGuideKanji(activity, "拉");
+            });
+            clickText(scenario, "Check");
+            waitForText(scenario, "Clean match");
+            clickText(scenario, "Next card");
+
+            MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
+            waitForText(scenario, "Meaning: carry radical gap");
+            scenario.onActivity(activity -> drawGuideKanji(activity, "提"));
+            clickText(scenario, "Check");
+            waitForText(scenario, "Clean match");
+            clickText(scenario, "Next card");
+
+            waitForText(scenario, "Which kanji means ramen radical gap?");
+            clickText(scenario, "拉");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Name this kanji");
+                assertHasText(activity, "Kanji -> meaning");
+            });
+
+            LocalStore store = new LocalStore(context);
+            try {
+                assertEquals(0, store.reviewStatsSince(0L).total);
+                assertEquals(2, countSimilarRepairs(store));
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
     public void testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
         seedDashboard();
         LocalStore setup = new LocalStore(context);
@@ -1280,6 +1333,51 @@ public final class MainActivityInstrumentedTest {
             store.replaceStudyItems(items);
         } finally {
             store.close();
+        }
+    }
+
+    private void seedSimilarChoiceDashboard() throws Exception {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.DashboardRow row = dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards");
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Arrays.asList(
+                        note(1L, "拉麺", "らーめん", "ramen radical gap", "拉麺を食べた。"),
+                        note(2L, "提案", "ていあん", "carry radical gap", "提案を見た。")
+                ),
+                Arrays.asList(
+                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
+                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                )
+        );
+        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("拉\t提\tfixture\n"));
+        LocalStore store = new LocalStore(context);
+        try {
+            long now = System.currentTimeMillis();
+            store.saveSuccessfulSync(
+                    snapshot,
+                    Collections.emptyList(),
+                    Collections.singletonList(row),
+                    settings,
+                    Math.max(0L, now - 1_000L),
+                    now,
+                    null,
+                    index
+            );
+            store.replaceStudyItems(Collections.singletonList(
+                    new Records.StudyItem("拉", "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now)
+            ));
+        } finally {
+            store.close();
+        }
+    }
+
+    private int countSimilarRepairs(LocalStore store) {
+        Cursor cursor = store.getReadableDatabase().rawQuery("SELECT COUNT(*) FROM similar_kanji_repair_queue", null);
+        try {
+            assertTrue(cursor.moveToFirst());
+            return cursor.getInt(0);
+        } finally {
+            cursor.close();
         }
     }
 
