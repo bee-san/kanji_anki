@@ -1578,13 +1578,13 @@ public final class MainActivity extends Activity {
         activeLearningRepeat = null;
         activeSession = scheduler.nextSession(seeded, rows, now, focus);
         if (activeSession == null) {
-            if (!continueAllKanjiSession && seededPlan.focusComplete()) {
-                renderFocusDone(seededPlan);
-                return;
-            }
             Records.SimilarKanjiChoiceCard inventoryChoice = store.nextDueInventorySimilarChoice(activeKanjiSet(rows), now);
             if (inventoryChoice != null) {
                 renderSimilarChoice(inventoryChoice);
+                return;
+            }
+            if (!continueAllKanjiSession && seededPlan.focusComplete()) {
+                renderFocusDone(seededPlan);
                 return;
             }
             content.addView(text("Nothing due now", 34, INK, true));
@@ -1703,6 +1703,11 @@ public final class MainActivity extends Activity {
                     null,
                     now
             );
+        }
+        Records.SimilarKanjiChoiceCard gate = store.dueSimilarChoiceForActiveTarget(item.kanji, now);
+        if (gate != null) {
+            renderSimilarChoice(gate);
+            return;
         }
         String token = item.activeToken == null || item.activeToken.isEmpty()
                 ? item.kanji + "-" + UUID.randomUUID()

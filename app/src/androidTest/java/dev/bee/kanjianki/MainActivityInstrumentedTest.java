@@ -860,6 +860,41 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testReviewThisNowUsesSimilarChoiceGate() throws Exception {
+        seedSimilarChoiceDashboard();
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "拉");
+            scenario.onActivity(activity -> assertHasText(activity, "Review this now"));
+
+            clickText(scenario, "Review this now");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Similar choice");
+                assertHasText(activity, "Which kanji means ramen radical gap?");
+                assertHasText(activity, "拉");
+                assertHasText(activity, "提");
+                assertNoText(activity, "Kanji -> meaning");
+            });
+        }
+    }
+
+    @Test
+    public void testInventorySimilarChoiceAppearsBeforeFocusDone() throws Exception {
+        seedFocusCompleteWithInventorySimilarChoice();
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Similar choice");
+                assertHasText(activity, "Which kanji means carry radical gap?");
+                assertHasText(activity, "提");
+                assertHasText(activity, "謎");
+                assertNoText(activity, "Today's focus done");
+            });
+        }
+    }
+
+    @Test
     public void testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
         seedDashboard();
         LocalStore setup = new LocalStore(context);
@@ -1407,6 +1442,44 @@ public final class MainActivityInstrumentedTest {
             store.replaceStudyItems(Collections.singletonList(
                     new Records.StudyItem("拉", "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now)
             ));
+        } finally {
+            store.close();
+        }
+    }
+
+    private void seedFocusCompleteWithInventorySimilarChoice() throws Exception {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.DashboardRow activeRow = dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards");
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Arrays.asList(
+                        note(1L, "拉麺", "らーめん", "ramen radical gap", "拉麺を食べた。"),
+                        note(2L, "提案", "ていあん", "carry radical gap", "提案を見た。"),
+                        note(3L, "謎語", "なぞご", "riddle radical gap", "謎語を見た。")
+                ),
+                Arrays.asList(
+                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
+                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
+                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                )
+        );
+        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("提\t謎\tfixture\n"));
+        LocalStore store = new LocalStore(context);
+        try {
+            long now = System.currentTimeMillis();
+            store.saveSuccessfulSync(
+                    snapshot,
+                    Collections.emptyList(),
+                    Collections.singletonList(activeRow),
+                    settings,
+                    Math.max(0L, now - 1_000L),
+                    now,
+                    null,
+                    index
+            );
+            store.replaceStudyItems(Collections.singletonList(
+                    new Records.StudyItem("拉", "review", now + 86_400_000L, 2.0, 4.0, 1, 0, 2, 0, null, now - 86_400_000L)
+            ));
+            store.saveReview(review("拉", "focus-complete"), "good", now);
         } finally {
             store.close();
         }
