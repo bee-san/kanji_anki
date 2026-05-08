@@ -859,6 +859,23 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Kanji -> meaning");
                 assertHasText(activity, "Answer hidden until reveal");
                 assertNoText(activity, "拉麺");
+                View root = activity.findViewById(android.R.id.content);
+                View hiddenAnswerHint = findText(root, "Answer hidden until reveal");
+                assertNotNull(hiddenAnswerHint);
+                ViewParent promptParent = hiddenAnswerHint.getParent();
+                assertTrue(promptParent instanceof View);
+                View promptPanel = (View) promptParent;
+                ScrollView scroll = (ScrollView) ancestorOfType(promptPanel, ScrollView.class);
+                assertNotNull(scroll);
+                Rect scrollBounds = new Rect();
+                Rect promptBounds = new Rect();
+                assertTrue(scroll.getGlobalVisibleRect(scrollBounds));
+                assertTrue(promptPanel.getGlobalVisibleRect(promptBounds));
+                int tolerancePx = Math.round(activity.getResources().getDisplayMetrics().density * 36f);
+                assertTrue(
+                        "Flashcard prompt should fill the visible study viewport",
+                        promptBounds.bottom >= scrollBounds.bottom - tolerancePx
+                );
             });
             clickText(scenario, "Reveal");
             scenario.onActivity(activity -> {
@@ -1940,14 +1957,18 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static boolean hasAncestorOfType(View view, Class<?> type) {
+        return ancestorOfType(view, type) != null;
+    }
+
+    private static View ancestorOfType(View view, Class<?> type) {
         ViewParent parent = view.getParent();
         while (parent != null) {
             if (type.isInstance(parent)) {
-                return true;
+                return (View) parent;
             }
             parent = parent.getParent();
         }
-        return false;
+        return null;
     }
 
     private static View findText(View root, String text) {

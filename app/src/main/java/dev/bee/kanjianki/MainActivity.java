@@ -120,6 +120,7 @@ public final class MainActivity extends Activity {
     private LocalStore store;
     private AnkiDroidGateway gateway;
     private LinearLayout content;
+    private ScrollView contentScroll;
     private LinearLayout studyActionBar;
     private Records.StudySession activeSession;
     private Records.LearningRepeat activeLearningRepeat;
@@ -270,6 +271,7 @@ public final class MainActivity extends Activity {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(18), dp(18), dp(18), dp(18));
         ScrollView scroll = new ScrollView(this);
+        contentScroll = scroll;
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         studyActionBar = new LinearLayout(this);
@@ -2034,6 +2036,9 @@ public final class MainActivity extends Activity {
 
     private void renderFlashcardSession(Records.StudySession session) {
         content.removeAllViews();
+        if (contentScroll != null) {
+            contentScroll.setFillViewport(true);
+        }
         activeAnalysis = null;
         checkingWriting = false;
         flashcardAnswerRevealed = false;
@@ -2058,7 +2063,9 @@ public final class MainActivity extends Activity {
         }
         content.addView(stage);
 
-        content.addView(flashcardPromptPanel(session));
+        LinearLayout.LayoutParams promptLp = new LinearLayout.LayoutParams(-1, 0, 1);
+        promptLp.setMargins(0, dp(7), 0, dp(7));
+        content.addView(flashcardPromptPanel(session), promptLp);
         studyAnswerPanel = flashcardAnswerPanel(session);
         studyAnswerPanel.setVisibility(View.GONE);
         content.addView(studyAnswerPanel);
@@ -2135,6 +2142,7 @@ public final class MainActivity extends Activity {
 
     private View flashcardPromptPanel(Records.StudySession session) {
         LinearLayout box = panelBox(Color.WHITE, TEAL);
+        box.setMinimumHeight(dp(180));
         box.addView(text("Front", 19, INK, true));
         if (isFontRecognitionTask(session)) {
             box.addView(randomFontVariantCard(session.item.kanji), fontVariantCardParams());
