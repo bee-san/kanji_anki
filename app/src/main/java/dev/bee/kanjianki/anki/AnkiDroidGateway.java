@@ -11,6 +11,7 @@ import android.os.OperationCanceledException;
 
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SyncValidator;
+import dev.bee.kanjianki.sync.SyncProgress;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -93,15 +94,24 @@ public final class AnkiDroidGateway implements CollectionGateway {
                         : "Allow AnkiDroid access so Kani can read your live collection.");
     }
 
+    @Override
     public Records.CollectionSnapshot readCollection(Records.Settings settings) throws SyncException {
+        return readCollection(settings, SyncProgress.NONE);
+    }
+
+    @Override
+    public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) throws SyncException {
+        SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
         ProviderTarget target = requireProvider();
         if (!hasPermission(target.permission)) {
             throw SyncException.permanent("AnkiDroid permission is missing: " + target.permission);
         }
         try {
+            reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
             ModelMapping mapping = findKikuModel(target, settings);
+            reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
             Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
-            List<Records.Card> cards = queryCards(target, settings, notes.keySet());
+            List<Records.Card> cards = queryCards(target, settings, notes.keySet(), reporter);
             validateTemplateCards(cards, settings);
             cards = cardsWithNotes(cards, notes.keySet());
             return new Records.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
@@ -120,7 +130,15 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
     }
 
+    @Override
     public RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        return removeArchivedSuspendedCards(snapshot, SyncProgress.NONE);
+    }
+
+    @Override
+    public RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+        SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
+        reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
         ProviderTarget target = resolveProviderTarget();
         if (target == null || snapshot.cards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No provider removal attempted.");
@@ -312,8 +330,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG);
     }
 
-    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
-        return queryCardsByNote(target, settings, noteIds);
+    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncException {
+        return queryCardsByNote(target, settings, noteIds, progress);
     }
 
     private Map<String, String> selectedFields(ModelMapping mapping, List<String> values, Records.Settings settings) {
@@ -347,7 +365,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
     }
 
-    private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds) throws SyncException {
+    private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncException {
+        int total = noteIds.size();
+        int scanned = 0;
+        progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
         Set<Long> suspendedNoteIds = querySuspendedNoteIds(target, settings);
         List<Records.Card> cards = new ArrayList<>();
         String[][] projections = new String[][]{
@@ -361,6 +382,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
             while (!read && projectionIndex < projections.length) {
                 try {
                     cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex]));
+                    scanned++;
+                    progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
                     read = true;
                 } catch (Throwable unsupportedColumns) {
                     projectionIndex++;
