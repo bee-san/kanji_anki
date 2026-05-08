@@ -9,12 +9,15 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -277,7 +280,7 @@ public final class MainActivity extends Activity {
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nav = nav(selected, 0);
-        root.addView(nav, new LinearLayout.LayoutParams(-1, dp(90)));
+        root.addView(nav, new LinearLayout.LayoutParams(-1, dp(96)));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             int top;
             int bottom;
@@ -290,9 +293,9 @@ public final class MainActivity extends Activity {
                 bottom = insets.getSystemWindowInsetBottom();
             }
             content.setPadding(dp(18), dp(18) + top, dp(18), dp(18));
-            nav.setPadding(dp(14), dp(10), dp(14), dp(10) + bottom);
+            nav.setPadding(dp(18), dp(10), dp(18), dp(10) + bottom);
             ViewGroup.LayoutParams navParams = nav.getLayoutParams();
-            navParams.height = dp(90) + bottom;
+            navParams.height = dp(96) + bottom;
             nav.setLayoutParams(navParams);
             return insets;
         });
@@ -310,8 +313,9 @@ public final class MainActivity extends Activity {
     private LinearLayout nav(String selected, int navigationInset) {
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(14), dp(10), dp(14), dp(10) + navigationInset);
-        nav.setBackground(panel(Color.WHITE, Color.rgb(244, 219, 231), dp(30)));
+        nav.setPadding(dp(18), dp(10), dp(18), dp(10) + navigationInset);
+        nav.setBackground(panel(Color.WHITE, Color.rgb(244, 219, 231), dp(34)));
+        nav.setElevation(dp(8));
         nav.addView(navButton("Home", R.drawable.ic_home_24, selected.equals("home"), this::renderHome));
         nav.addView(navButton("Study", R.drawable.ic_study_24, selected.equals("study"), this::renderStudy));
         nav.addView(navButton("Stats", R.drawable.ic_stats_24, selected.equals("stats"), this::renderStats));
@@ -320,22 +324,24 @@ public final class MainActivity extends Activity {
 
     private LinearLayout navButton(String label, int iconRes, boolean active, Runnable action) {
         LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.VERTICAL);
+        button.setOrientation(LinearLayout.HORIZONTAL);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(8), dp(4), dp(8), dp(4));
+        button.setPadding(dp(10), dp(4), dp(10), dp(4));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(active ? Color.rgb(245, 166, 0) : MUTED);
-        button.addView(icon, new LinearLayout.LayoutParams(dp(23), dp(23)));
-        TextView text = text(label, 13, active ? INK : MUTED, true);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(23), dp(23));
+        iconLp.setMargins(0, 0, dp(7), 0);
+        button.addView(icon, iconLp);
+        TextView text = text(label, 15, active ? INK : MUTED, true);
         text.setGravity(Gravity.CENTER);
         text.setSingleLine(true);
         button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        button.setBackground(panel(active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, dp(24)));
+        button.setBackground(panel(active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, dp(28)));
         button.setClickable(true);
         button.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
-        lp.setMargins(dp(4), 0, dp(4), 0);
+        lp.setMargins(dp(3), 0, dp(3), 0);
         button.setLayoutParams(lp);
         return button;
     }
@@ -361,7 +367,7 @@ public final class MainActivity extends Activity {
             syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
         } else {
-            Button studyButton = primaryButton("Study now", CORAL);
+            Button studyButton = homeStudyButton();
             studyButton.setOnClickListener(v -> startFocusedStudy());
             content.addView(studyButton);
 
@@ -396,8 +402,8 @@ public final class MainActivity extends Activity {
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
         KaniMascotView mascot = new KaniMascotView(this);
-        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(116), dp(116));
-        mascotLp.setMargins(dp(12), 0, 0, 0);
+        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(128), dp(118));
+        mascotLp.setMargins(dp(8), 0, 0, 0);
         header.addView(mascot, mascotLp);
         return header;
     }
@@ -427,7 +433,7 @@ public final class MainActivity extends Activity {
                 CORAL,
                 "Today's focus",
                 focusHeadline(plan),
-                plan == null ? "Sync first" : adaptiveFocusText(plan),
+                focusMetricBody(plan),
                 null
         ));
         return row;
@@ -435,24 +441,35 @@ public final class MainActivity extends Activity {
 
     private View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
         LinearLayout card = panelBox(Color.WHITE, softened(accent));
-        card.setPadding(dp(10), dp(12), dp(10), dp(12));
+        card.setPadding(dp(12), dp(14), dp(12), dp(14));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(accent);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(26), dp(26));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(28), dp(28));
         iconLp.setMargins(0, 0, 0, dp(8));
         card.addView(icon, iconLp);
-        card.addView(text(label, 13, accent, true));
-        card.addView(text(value, 15, INK, true));
-        card.addView(text(compact(body, 28), 12, MUTED, false));
+        card.addView(text(label, 14, accent, true));
+        card.addView(text(value, 16, INK, true));
+        card.addView(text(compact(body, 24), 12, MUTED, false));
         if (action != null) {
             card.setClickable(true);
             card.setOnClickListener(v -> action.run());
         }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
-        lp.setMargins(dp(3), 0, dp(3), 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(124), 1);
+        lp.setMargins(dp(4), 0, dp(4), 0);
         card.setLayoutParams(lp);
         return card;
+    }
+
+    private Button homeStudyButton() {
+        Button button = primaryButton("Study now", CORAL);
+        button.setTextSize(24);
+        button.setMinHeight(dp(80));
+        button.setElevation(dp(5));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(80));
+        lp.setMargins(0, dp(16), 0, dp(14));
+        button.setLayoutParams(lp);
+        return button;
     }
 
     private View homeActionRow() {
@@ -491,6 +508,16 @@ public final class MainActivity extends Activity {
             return "All current";
         }
         return plan.remaining + " left / " + plan.target;
+    }
+
+    private String focusMetricBody(Records.AdaptiveLoadPlan plan) {
+        if (plan == null || plan.target <= 0) {
+            return "Sync first";
+        }
+        if (plan.allKanjiMode) {
+            return "All kanji";
+        }
+        return plan.target <= 5 ? "Small Pareto" : "Adaptive Pareto";
     }
 
     private View homeSectionHeader(String title, String actionLabel, Runnable action) {
@@ -1138,24 +1165,24 @@ public final class MainActivity extends Activity {
         Records.DashboardRow row = entry.row;
         Records.StudyItem item = entry.item;
         LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
+        box.setPadding(dp(12), dp(12), dp(12), dp(12));
         box.setOnClickListener(v -> renderDetail(row.kanji));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.addView(kanjiTile(row.kanji, dp(80), 46));
+        top.addView(kanjiTile(row.kanji, dp(90), 52));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(rowMeaning(row), 18, INK, true));
+        copy.addView(text(rowMeaning(row), 19, INK, true));
         copy.addView(text(sourceEvidenceText(row), 14, INK, true));
-        copy.addView(text(compact(row.reasonText, 70), 14, MUTED, false));
+        copy.addView(text(compact(queueCardBody(row), 72), 14, MUTED, false));
         LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
-        copyLp.setMargins(dp(12), 0, dp(6), 0);
+        copyLp.setMargins(dp(14), 0, dp(6), 0);
         top.addView(copy, copyLp);
         top.addView(text(">", 34, CORAL, true));
         box.addView(top);
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
         chips.addView(chip(recognitionStageLabel(item), BLUE));
-        chips.addView(chip(queueStatusText(item, now), item.dueAtMillis <= now ? CORAL : TEAL));
         if (item.writingRemediationPending) {
             chips.addView(chip("writing repair", CORAL));
         } else if (!item.suppressedByTaskType.isEmpty()) {
@@ -1165,6 +1192,17 @@ public final class MainActivity extends Activity {
         }
         box.addView(chips);
         return box;
+    }
+
+    private String queueCardBody(Records.DashboardRow row) {
+        if (row.reasonText == null || row.reasonText.isEmpty()) {
+            return "Needs focused kanji practice.";
+        }
+        String normalized = row.reasonText.toLowerCase(Locale.ROOT);
+        if (normalized.contains("similar-kanji") || normalized.contains("similar kanji") || normalized.contains("similar choice")) {
+            return "Shape mix-up made this a writing-practice target.";
+        }
+        return row.reasonText;
     }
 
     private TextView kanjiTile(String value, int sizePx, int textSp) {
@@ -3966,71 +4004,27 @@ public final class MainActivity extends Activity {
     }
 
     private static final class KaniMascotView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint stroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Bitmap logo;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Rect source = new Rect();
+        private final RectF target = new RectF();
 
         private KaniMascotView(Context context) {
             super(context);
-            stroke.setStyle(Paint.Style.STROKE);
-            stroke.setStrokeCap(Paint.Cap.ROUND);
-            stroke.setStrokeJoin(Paint.Join.ROUND);
-            text.setTextAlign(Paint.Align.CENTER);
-            text.setTypeface(Typeface.DEFAULT_BOLD);
+            logo = BitmapFactory.decodeResource(context.getResources(), R.mipmap.ic_launcher_foreground);
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            float w = getWidth();
-            float h = getHeight();
-            float cx = w * 0.5f;
-            float cy = h * 0.48f;
-            float scale = Math.min(w, h);
-
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(Color.rgb(255, 221, 233));
-            canvas.drawCircle(cx + scale * 0.12f, cy - scale * 0.05f, scale * 0.36f, paint);
-
-            stroke.setStrokeWidth(scale * 0.045f);
-            stroke.setColor(Color.rgb(255, 73, 77));
-            canvas.drawLine(cx - scale * 0.28f, cy - scale * 0.18f, cx - scale * 0.43f, cy - scale * 0.36f, stroke);
-            canvas.drawLine(cx + scale * 0.28f, cy - scale * 0.18f, cx + scale * 0.43f, cy - scale * 0.36f, stroke);
-            paint.setColor(Color.rgb(255, 104, 108));
-            canvas.drawCircle(cx - scale * 0.47f, cy - scale * 0.4f, scale * 0.1f, paint);
-            canvas.drawCircle(cx + scale * 0.47f, cy - scale * 0.4f, scale * 0.1f, paint);
-
-            paint.setColor(Color.rgb(255, 116, 113));
-            canvas.drawOval(cx - scale * 0.28f, cy - scale * 0.3f, cx + scale * 0.28f, cy + scale * 0.2f, paint);
-            stroke.setStrokeWidth(scale * 0.025f);
-            stroke.setColor(Color.rgb(222, 55, 67));
-            canvas.drawOval(cx - scale * 0.28f, cy - scale * 0.3f, cx + scale * 0.28f, cy + scale * 0.2f, stroke);
-
-            paint.setColor(INK);
-            canvas.drawCircle(cx - scale * 0.1f, cy - scale * 0.1f, scale * 0.025f, paint);
-            canvas.drawCircle(cx + scale * 0.1f, cy - scale * 0.1f, scale * 0.025f, paint);
-            stroke.setStrokeWidth(scale * 0.018f);
-            stroke.setColor(INK);
-            canvas.drawArc(cx - scale * 0.06f, cy - scale * 0.06f, cx + scale * 0.06f, cy + scale * 0.04f, 25f, 130f, false, stroke);
-
-            stroke.setStrokeWidth(scale * 0.028f);
-            stroke.setColor(Color.rgb(255, 84, 99));
-            for (int i = 0; i < 3; i++) {
-                float y = cy + scale * (0.02f + i * 0.07f);
-                canvas.drawLine(cx - scale * 0.28f, y, cx - scale * (0.45f + i * 0.02f), y + scale * 0.08f, stroke);
-                canvas.drawLine(cx + scale * 0.28f, y, cx + scale * (0.45f + i * 0.02f), y + scale * 0.08f, stroke);
+            if (logo == null) {
+                return;
             }
-
-            paint.setColor(Color.rgb(255, 246, 223));
-            canvas.drawRoundRect(cx - scale * 0.34f, cy + scale * 0.13f, cx + scale * 0.34f, cy + scale * 0.45f, scale * 0.04f, scale * 0.04f, paint);
-            stroke.setStrokeWidth(scale * 0.025f);
-            stroke.setColor(Color.rgb(222, 55, 67));
-            canvas.drawRoundRect(cx - scale * 0.34f, cy + scale * 0.13f, cx + scale * 0.34f, cy + scale * 0.45f, scale * 0.04f, scale * 0.04f, stroke);
-            canvas.drawLine(cx, cy + scale * 0.14f, cx, cy + scale * 0.43f, stroke);
-
-            text.setColor(INK);
-            text.setTextSize(scale * 0.16f);
-            canvas.drawText("字", cx + scale * 0.17f, cy + scale * 0.34f, text);
+            int width = logo.getWidth();
+            int height = logo.getHeight();
+            source.set(Math.round(width * 0.14f), Math.round(height * 0.11f), Math.round(width * 0.86f), Math.round(height * 0.68f));
+            target.set(0f, 0f, getWidth(), getHeight());
+            canvas.drawBitmap(logo, source, target, paint);
         }
     }
 
