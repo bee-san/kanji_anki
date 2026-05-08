@@ -31,10 +31,7 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
         long now = System.currentTimeMillis();
 
         try (LocalStore store = new LocalStore(context)) {
-            if (mapped.success) {
-                deleteCachedApk(context, apkName);
-                store.recordAutoUpdateResult(now, mapped.message, version, "", "");
-            } else if (mapped.pendingUserAction) {
+            if (mapped.pendingUserAction) {
                 String message = mapped.message;
                 store.recordAutoUpdateResult(now, message, version, apkName, message);
                 handlePendingUserAction(context, intent, source, version, message);

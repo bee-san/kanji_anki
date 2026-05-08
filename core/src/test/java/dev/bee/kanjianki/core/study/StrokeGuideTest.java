@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core.study;
 import org.junit.Test;
 
 import java.io.StringReader;
+import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -22,7 +23,8 @@ public class StrokeGuideTest {
         assertEquals("拉", guide.kanji);
         assertEquals(2, guide.strokeCount());
         assertEquals(0.1f, guide.strokes.get(0).points.get(0).x, 0.001f);
-        assertThrows(UnsupportedOperationException.class, () -> guide.strokes.add(new InkStroke(java.util.Collections.emptyList())));
+        InkStroke emptyStroke = new InkStroke(Collections.emptyList());
+        assertThrows(UnsupportedOperationException.class, () -> guide.strokes.add(emptyStroke));
     }
 
     @Test

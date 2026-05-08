@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -162,6 +163,24 @@ public final class SimilarKanjiIndex {
                 return b;
             }
             return source.compareTo(other.source);
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof Pair pair)) {
+                return false;
+            }
+            return kanjiA.equals(pair.kanjiA)
+                    && kanjiB.equals(pair.kanjiB)
+                    && source.equals(pair.source);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(kanjiA, kanjiB, source);
         }
     }
 }

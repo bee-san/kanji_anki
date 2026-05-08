@@ -18,11 +18,8 @@ public final class AutoSyncScheduler {
     }
 
     public static void schedule(Context context) {
-        LocalStore store = new LocalStore(context);
-        try {
+        try (LocalStore store = new LocalStore(context)) {
             schedule(context, store, store.autoSyncSettings());
-        } finally {
-            store.close();
         }
     }
 
@@ -39,11 +36,8 @@ public final class AutoSyncScheduler {
 
     public static void cancel(Context context) {
         cancelJob(context);
-        LocalStore store = new LocalStore(context);
-        try {
+        try (LocalStore store = new LocalStore(context)) {
             store.markAutoSyncScheduled(0L);
-        } finally {
-            store.close();
         }
     }
 

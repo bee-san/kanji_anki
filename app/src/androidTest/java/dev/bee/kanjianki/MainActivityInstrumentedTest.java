@@ -1434,8 +1434,7 @@ public final class MainActivityInstrumentedTest {
                     Collections.emptyList(),
                     Collections.singletonList(row),
                     settings,
-                    Math.max(0L, now - 1_000L),
-                    now,
+                    new LocalStore.SyncTiming(Math.max(0L, now - 1_000L), now),
                     null,
                     index
             );
@@ -1471,8 +1470,7 @@ public final class MainActivityInstrumentedTest {
                     Collections.emptyList(),
                     Collections.singletonList(activeRow),
                     settings,
-                    Math.max(0L, now - 1_000L),
-                    now,
+                    new LocalStore.SyncTiming(Math.max(0L, now - 1_000L), now),
                     null,
                     index
             );

@@ -24,5 +24,7 @@ sonar {
                 rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
             ).joinToString(",")
         )
+        property("sonar.coverage.jacoco.xmlReportPaths", rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
+        property("sonar.coverage.exclusions", "app/src/main/**")
     }
 }

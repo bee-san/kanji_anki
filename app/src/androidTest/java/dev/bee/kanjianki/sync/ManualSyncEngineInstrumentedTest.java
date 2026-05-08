@@ -217,8 +217,8 @@ public final class ManualSyncEngineInstrumentedTest {
 
     private static final class FailingGateway implements CollectionGateway {
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncException {
-            throw AnkiDroidGateway.SyncException.permanent("Kiku note type was not found in AnkiDroid.");
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+            throw AnkiDroidGateway.SyncFailure.permanent("Kiku note type was not found in AnkiDroid.");
         }
 
         @Override

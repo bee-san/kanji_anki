@@ -115,8 +115,6 @@ public final class MainActivity extends Activity {
     private final WritingRatingMapper writingRatingMapper = new WritingRatingMapper();
     private LocalStore store;
     private AnkiDroidGateway gateway;
-    private CollectionGateway syncGateway;
-    private LinearLayout root;
     private LinearLayout content;
     private LinearLayout studyActionBar;
     private Records.StudySession activeSession;
@@ -160,7 +158,6 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         store = new LocalStore(this);
         gateway = ankiDroidGatewayForTests == null ? new AnkiDroidGateway(this) : ankiDroidGatewayForTests;
-        syncGateway = collectionGatewayForTests == null ? gateway : collectionGatewayForTests;
         requestAnkiPermissionIfNeeded();
         ReminderScheduler.schedule(this);
         AutoSyncScheduler.schedule(this);
@@ -254,12 +251,13 @@ public final class MainActivity extends Activity {
         return super.dispatchTouchEvent(event);
     }
 
+    @SuppressWarnings({"deprecation", "java:S1874"})
     private void base(String selected) {
         flashcardGestureArea = null;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;
         styleSystemBars();
-        root = new LinearLayout(this);
+        LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
         setContentView(root);
@@ -299,6 +297,7 @@ public final class MainActivity extends Activity {
         root.requestApplyInsets();
     }
 
+    @SuppressWarnings({"deprecation", "java:S1874"})
     private void styleSystemBars() {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
@@ -739,6 +738,7 @@ public final class MainActivity extends Activity {
         content.addView(count);
         content.addView(rate);
         ManualSyncProgressView progressView = new ManualSyncProgressView(stage, progress, count, rate);
+        CollectionGateway syncGateway = collectionGatewayForTests == null ? gateway : collectionGatewayForTests;
         io.execute(() -> {
             ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                     this,
@@ -751,9 +751,7 @@ public final class MainActivity extends Activity {
                 store.activateAutoSyncAfterFirstSuccess();
                 AutoSyncScheduler.schedule(this);
             }
-            main.post(() -> {
-                renderSyncResult(result);
-            });
+            main.post(() -> renderSyncResult(result));
         });
     }
 
@@ -1422,8 +1420,8 @@ public final class MainActivity extends Activity {
     private void copyAnkiSearch(String browserSearch, View v) {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", browserSearch));
-        if (v instanceof Button) {
-            ((Button) v).setText(R.string.copied_anki_search);
+        if (v instanceof Button button) {
+            button.setText(R.string.copied_anki_search);
         }
         Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
     }
@@ -1745,7 +1743,6 @@ public final class MainActivity extends Activity {
             emptyState("Kanji not available", "This row may have changed after sync.");
             return;
         }
-        BridgeScheduler scheduler = new BridgeScheduler();
         long now = System.currentTimeMillis();
         List<Records.StudyItem> seeded = studyQueue(rows, now, true);
         Records.StudyItem item = findStudyItem(seeded, kanji);
@@ -4043,8 +4040,7 @@ public final class MainActivity extends Activity {
                 }
                 int outerHeight = child.getMeasuredHeight();
                 ViewGroup.LayoutParams rawLp = child.getLayoutParams();
-                if (rawLp instanceof ViewGroup.MarginLayoutParams) {
-                    ViewGroup.MarginLayoutParams marginLp = (ViewGroup.MarginLayoutParams) rawLp;
+                if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
                     outerHeight += marginLp.topMargin + marginLp.bottomMargin;
                 }
                 maxOuterHeight = Math.max(maxOuterHeight, outerHeight);
@@ -4060,22 +4056,19 @@ public final class MainActivity extends Activity {
 
             for (int i = 0; i < childCount; i++) {
                 View child = getChildAt(i);
-                if (child.getVisibility() == GONE) {
-                    continue;
+                if (child.getVisibility() != GONE) {
+                    int childHeight = childAreaHeight;
+                    ViewGroup.LayoutParams rawLp = child.getLayoutParams();
+                    if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
+                        childHeight -= marginLp.topMargin + marginLp.bottomMargin;
+                    }
+                    if (childHeight > 0) {
+                        child.measure(
+                                View.MeasureSpec.makeMeasureSpec(child.getMeasuredWidth(), View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(childHeight, View.MeasureSpec.EXACTLY)
+                        );
+                    }
                 }
-                int childHeight = childAreaHeight;
-                ViewGroup.LayoutParams rawLp = child.getLayoutParams();
-                if (rawLp instanceof ViewGroup.MarginLayoutParams) {
-                    ViewGroup.MarginLayoutParams marginLp = (ViewGroup.MarginLayoutParams) rawLp;
-                    childHeight -= marginLp.topMargin + marginLp.bottomMargin;
-                }
-                if (childHeight <= 0) {
-                    continue;
-                }
-                child.measure(
-                        View.MeasureSpec.makeMeasureSpec(child.getMeasuredWidth(), View.MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(childHeight, View.MeasureSpec.EXACTLY)
-                );
             }
 
             if (View.MeasureSpec.getMode(heightMeasureSpec) != View.MeasureSpec.EXACTLY) {

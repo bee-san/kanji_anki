@@ -95,16 +95,16 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     @Override
-    public Records.CollectionSnapshot readCollection(Records.Settings settings) throws SyncException {
+    public Records.CollectionSnapshot readCollection(Records.Settings settings) throws SyncFailure {
         return readCollection(settings, SyncProgress.NONE);
     }
 
     @Override
-    public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) throws SyncException {
+    public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) throws SyncFailure {
         SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
         ProviderTarget target = requireProvider();
         if (!hasPermission(target.permission)) {
-            throw SyncException.permanent("AnkiDroid permission is missing: " + target.permission);
+            throw SyncFailure.permanent("AnkiDroid permission is missing: " + target.permission);
         }
         try {
             reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
@@ -115,18 +115,18 @@ public final class AnkiDroidGateway implements CollectionGateway {
             validateTemplateCards(cards, settings);
             cards = cardsWithNotes(cards, notes.keySet());
             return new Records.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
-        } catch (SyncException error) {
+        } catch (SyncFailure error) {
             throw error;
         } catch (OperationCanceledException error) {
-            throw SyncException.retryable("Timed out while reading AnkiDroid.", error);
+            throw SyncFailure.retryable("Timed out while reading AnkiDroid.", error);
         } catch (SecurityException error) {
-            throw SyncException.permanent("AnkiDroid denied database access.", error);
+            throw SyncFailure.permanent("AnkiDroid denied database access.", error);
         } catch (Throwable error) {
             String kind = SyncValidator.classifyProviderFailure(error);
             if (kind.startsWith("permanent")) {
-                throw SyncException.permanent(error.getMessage() == null ? "Permanent AnkiDroid sync error." : error.getMessage(), error);
+                throw SyncFailure.permanent(error.getMessage() == null ? "Permanent AnkiDroid sync error." : error.getMessage(), error);
             }
-            throw SyncException.retryable("AnkiDroid provider read failed: " + error.getMessage(), error);
+            throw SyncFailure.retryable("AnkiDroid provider read failed: " + error.getMessage(), error);
         }
     }
 
@@ -207,10 +207,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return resolver.update(noteUri, values, null, null) > 0;
     }
 
-    private ProviderTarget requireProvider() throws SyncException {
+    private ProviderTarget requireProvider() throws SyncFailure {
         ProviderTarget target = resolveProviderTarget();
         if (target == null) {
-            throw SyncException.permanent("AnkiDroid's flashcard provider is not installed.");
+            throw SyncFailure.permanent("AnkiDroid's flashcard provider is not installed.");
         }
         return target;
     }
@@ -235,10 +235,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private ModelMapping findKikuModel(ProviderTarget target, Records.Settings settings) throws SyncException {
+    private ModelMapping findKikuModel(ProviderTarget target, Records.Settings settings) throws SyncFailure {
         Cursor cursor = resolver.query(uriFor(target.authority, "models"), null, null, null, null);
         if (cursor == null) {
-            throw SyncException.retryable("AnkiDroid returned no note model cursor.");
+            throw SyncFailure.retryable("AnkiDroid returned no note model cursor.");
         }
         try {
             while (cursor.moveToNext()) {
@@ -250,17 +250,17 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 List<String> fields = splitFields(value(cursor, "field_names"));
                 List<String> errors = SyncValidator.validateModelFields(name, fields, settings);
                 if (!errors.isEmpty()) {
-                    throw SyncException.permanent(String.join("\n", errors));
+                    throw SyncFailure.permanent(String.join("\n", errors));
                 }
                 return new ModelMapping(id, name, fields);
             }
         } finally {
             cursor.close();
         }
-        throw SyncException.permanent("Kiku note type was not found in AnkiDroid.");
+        throw SyncFailure.permanent("Kiku note type was not found in AnkiDroid.");
     }
 
-    private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncException {
+    private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
         try {
             return queryNotesBySearch(target, mapping, settings, "note:\"" + settings.modelName + "\"");
         } catch (Throwable ignored) {
@@ -268,7 +268,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
     }
 
-    private Map<Long, Records.Note> queryNotesBySearch(ProviderTarget target, ModelMapping mapping, Records.Settings settings, String search) throws SyncException {
+    private Map<Long, Records.Note> queryNotesBySearch(ProviderTarget target, ModelMapping mapping, Records.Settings settings, String search) throws SyncFailure {
         Map<Long, Records.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
                 uriFor(target.authority, "notes"),
@@ -278,7 +278,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 null
         );
         if (cursor == null) {
-            throw SyncException.retryable("AnkiDroid returned no Kiku note cursor.");
+            throw SyncFailure.retryable("AnkiDroid returned no Kiku note cursor.");
         }
         try {
             while (cursor.moveToNext()) {
@@ -295,7 +295,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return notes;
     }
 
-    private Map<Long, Records.Note> queryNotesBySql(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncException {
+    private Map<Long, Records.Note> queryNotesBySql(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
         Map<Long, Records.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
                 uriFor(target.authority, "notes_v2"),
@@ -305,7 +305,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 null
         );
         if (cursor == null) {
-            throw SyncException.retryable("AnkiDroid returned no Kiku note cursor.");
+            throw SyncFailure.retryable("AnkiDroid returned no Kiku note cursor.");
         }
         try {
             while (cursor.moveToNext()) {
@@ -330,7 +330,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG);
     }
 
-    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncException {
+    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncFailure {
         return queryCardsByNote(target, settings, noteIds, progress);
     }
 
@@ -357,15 +357,15 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return out;
     }
 
-    private void validateTemplateCards(List<Records.Card> cards, Records.Settings settings) throws SyncException {
+    private void validateTemplateCards(List<Records.Card> cards, Records.Settings settings) throws SyncFailure {
         for (Records.Card card : cards) {
             if (card.ord != 0) {
-                throw SyncException.permanent(settings.modelName + " has card template ord " + card.ord + ". This app supports the " + settings.templateName + " template at ord 0 only.");
+                throw SyncFailure.permanent(settings.modelName + " has card template ord " + card.ord + ". This app supports the " + settings.templateName + " template at ord 0 only.");
             }
         }
     }
 
-    private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncException {
+    private List<Records.Card> queryCardsByNote(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncFailure {
         int total = noteIds.size();
         int scanned = 0;
         progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
@@ -390,10 +390,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 } catch (Throwable unsupportedColumns) {
                     projectionIndex++;
                     if (projectionIndex >= projections.length) {
-                        if (unsupportedColumns instanceof SyncException) {
-                            throw (SyncException) unsupportedColumns;
+                        if (unsupportedColumns instanceof SyncFailure) {
+                            throw (SyncFailure) unsupportedColumns;
                         }
-                        throw SyncException.retryable("AnkiDroid card projection failed: " + unsupportedColumns.getMessage(), unsupportedColumns);
+                        throw SyncFailure.retryable("AnkiDroid card projection failed: " + unsupportedColumns.getMessage(), unsupportedColumns);
                     }
                 }
             }
@@ -411,10 +411,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return scanned % (total <= 1000 ? 10 : 50) == 0;
     }
 
-    private List<Records.Card> queryCardsForNote(ProviderTarget target, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws SyncException {
+    private List<Records.Card> queryCardsForNote(ProviderTarget target, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws SyncFailure {
         Cursor cursor = resolver.query(uriFor(target.authority, "notes", Long.toString(noteId), "cards"), columns, null, null, null);
         if (cursor == null) {
-            throw SyncException.retryable("AnkiDroid returned no per-note card cursor.");
+            throw SyncFailure.retryable("AnkiDroid returned no per-note card cursor.");
         }
         List<Records.Card> cards = new ArrayList<>();
         try {
@@ -458,7 +458,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                     null,
                     null
             );
-        } catch (Throwable ignored) {
+        } catch (Exception ignored) {
             return ids;
         }
         if (cursor == null) {
@@ -659,28 +659,30 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
     }
 
-    public static final class SyncException extends Exception {
+    public static final class SyncFailure extends Exception {
+        private static final long serialVersionUID = 1L;
+
         public final boolean permanent;
 
-        private SyncException(String message, boolean permanent, Throwable cause) {
+        private SyncFailure(String message, boolean permanent, Throwable cause) {
             super(message, cause);
             this.permanent = permanent;
         }
 
-        public static SyncException permanent(String message) {
-            return new SyncException(message, true, null);
+        public static SyncFailure permanent(String message) {
+            return new SyncFailure(message, true, null);
         }
 
-        public static SyncException permanent(String message, Throwable cause) {
-            return new SyncException(message, true, cause);
+        public static SyncFailure permanent(String message, Throwable cause) {
+            return new SyncFailure(message, true, cause);
         }
 
-        public static SyncException retryable(String message, Throwable cause) {
-            return new SyncException(message, false, cause);
+        public static SyncFailure retryable(String message, Throwable cause) {
+            return new SyncFailure(message, false, cause);
         }
 
-        public static SyncException retryable(String message) {
-            return new SyncException(message, false, null);
+        public static SyncFailure retryable(String message) {
+            return new SyncFailure(message, false, null);
         }
     }
 }

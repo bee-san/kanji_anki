@@ -12,7 +12,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
@@ -32,9 +32,11 @@ jobs:
     steps:
       - name: Compute release metadata
         id: meta
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            release_tag="${{ inputs.release_tag }}"
+            release_tag="${RELEASE_TAG_INPUT}"
           else
             release_tag="${GITHUB_REF_NAME}"
           fi
@@ -76,12 +78,12 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
         with:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
         run: |
@@ -89,7 +91,7 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Test, coverage, and lint
-        run: gradle :core:test :core:jacocoTestCoverageVerification :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
+        run: gradle :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
 
   assemble-apk:
     name: Assemble signed APK
@@ -107,12 +109,12 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
         with:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
         run: |
@@ -171,6 +173,8 @@ jobs:
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - metadata
       - validate

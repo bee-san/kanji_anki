@@ -97,11 +97,8 @@ public final class GitHubUpdater {
     public UpdateResult installCachedPendingUpdate(UpdateSource source) {
         long checkedAt = System.currentTimeMillis();
         LocalStore.AutoUpdateStatus status;
-        LocalStore store = new LocalStore(context);
-        try {
+        try (LocalStore store = new LocalStore(context)) {
             status = store.autoUpdateStatus();
-        } finally {
-            store.close();
         }
         try {
             if (!status.hasPendingUpdate()) {

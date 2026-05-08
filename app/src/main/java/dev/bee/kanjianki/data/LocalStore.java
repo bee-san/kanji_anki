@@ -151,16 +151,14 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON study_items(state, due_at)");
     }
 
-    public long saveSuccessfulSync(
-            Records.CollectionSnapshot snapshot,
-            List<Records.SuspendedImport> imports,
-            List<Records.DashboardRow> rows,
-            Records.Settings settings,
-            long startedAt,
-            long finishedAt,
-            AnkiDroidGateway.RemovalSummary removal
-    ) {
-        return saveSuccessfulSync(snapshot, imports, rows, settings, startedAt, finishedAt, removal, null);
+    public static final class SyncTiming {
+        public final long startedAt;
+        public final long finishedAt;
+
+        public SyncTiming(long startedAt, long finishedAt) {
+            this.startedAt = startedAt;
+            this.finishedAt = finishedAt;
+        }
     }
 
     public long saveSuccessfulSync(
@@ -170,6 +168,17 @@ public final class LocalStore extends SQLiteOpenHelper {
             Records.Settings settings,
             long startedAt,
             long finishedAt,
+            AnkiDroidGateway.RemovalSummary removal
+    ) {
+        return saveSuccessfulSync(snapshot, imports, rows, settings, new SyncTiming(startedAt, finishedAt), removal, null);
+    }
+
+    public long saveSuccessfulSync(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            SyncTiming timing,
             AnkiDroidGateway.RemovalSummary removal,
             SimilarKanjiIndex similarIndex
     ) {
@@ -180,7 +189,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
             int deletedNotes = countDeletedExisting(db, "source_notes", "note_id", activeIndex.noteIds);
             int deletedCards = countDeletedExisting(db, "source_cards", "card_id", activeIndex.cardIds);
-            long syncId = insertSyncRun(db, startedAt, finishedAt, "success", activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
+            long syncId = insertSyncRun(db, timing.startedAt, timing.finishedAt, "success", activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
             db.delete("source_cards", null, null);
             db.delete("source_notes", null, null);
             db.delete("dashboard_rows", null, null);
@@ -219,7 +228,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                     values.put("meaning", TextUtil.firstMeaningLine(note.meaning(settings)));
                     values.put("sentence", TextUtil.normalizeJapanese(note.sentence(settings)));
                     values.put("fields_json", fieldsJson(note.fields));
-                    values.put("archived_at", finishedAt);
+                    values.put("archived_at", timing.finishedAt);
                     values.put("archived_sync_id", syncId);
                     db.insertWithOnConflict("suspended_archive", null, values, SQLiteDatabase.CONFLICT_IGNORE);
                 } else {
@@ -250,7 +259,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 }
                 values.put("rank_known", imported.rankKnown ? 1 : 0);
                 values.put("cutoff_used", imported.cutoffUsed);
-                values.put("first_imported_at", firstImportedAt(db, imported.kanji, finishedAt));
+                values.put("first_imported_at", firstImportedAt(db, imported.kanji, timing.finishedAt));
                 values.put("last_seen_sync_id", syncId);
                 db.insertWithOnConflict("suspended_imports", null, values, SQLiteDatabase.CONFLICT_REPLACE);
                 for (Records.SuspendedSource source : imported.sources) {
@@ -267,13 +276,13 @@ public final class LocalStore extends SQLiteOpenHelper {
                 }
             }
 
-            saveRows(db, rows, finishedAt);
-            rebuildKanjiInventory(db, snapshot, imports, rows, finishedAt, settings);
+            saveRows(db, rows, timing.finishedAt);
+            rebuildKanjiInventory(db, snapshot, imports, rows, timing.finishedAt, settings);
             if (similarIndex != null) {
-                rebuildSimilarKanjiPairs(db, similarIndex, finishedAt);
+                rebuildSimilarKanjiPairs(db, similarIndex, timing.finishedAt);
             }
-            rebuildSimilarKanjiChoiceStates(db, finishedAt);
-            appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, finishedAt, settings);
+            rebuildSimilarKanjiChoiceStates(db, timing.finishedAt);
+            appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, timing.finishedAt, settings);
             db.setTransactionSuccessful();
             return syncId;
         } finally {
@@ -2513,7 +2522,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             while (cursor.moveToNext()) {
                 String kanji = string(cursor, "kanji");
                 String answerSignature = string(cursor, "answer_signature");
-                items.put(studyFamilyKey(kanji, answerSignature), new StudySnapshot(kanji, answerSignature, string(cursor, "state")));
+                items.put(studyFamilyKey(kanji, answerSignature), new StudySnapshot(string(cursor, "state")));
             }
         } finally {
             cursor.close();
@@ -2964,13 +2973,9 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private static final class StudySnapshot {
-        private final String kanji;
-        private final String answerSignature;
         private final String state;
 
-        private StudySnapshot(String kanji, String answerSignature, String state) {
-            this.kanji = kanji;
-            this.answerSignature = answerSignature == null ? "" : answerSignature;
+        private StudySnapshot(String state) {
             this.state = state == null ? "" : state;
         }
     }

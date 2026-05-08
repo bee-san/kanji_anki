@@ -15,16 +15,13 @@ public final class ReminderReceiver extends BroadcastReceiver {
             return;
         }
         if (ReminderScheduler.ACTION_DAILY_REMINDER.equals(action)) {
-            LocalStore store = new LocalStore(context);
-            try {
+            try (LocalStore store = new LocalStore(context)) {
                 LocalStore.ReminderSettings settings = store.reminderSettings();
                 if (!settings.enabled) {
                     return;
                 }
                 ReminderScheduler.showReminderNotification(context);
                 ReminderScheduler.schedule(context, settings);
-            } finally {
-                store.close();
             }
         }
     }

@@ -50,7 +50,7 @@ public final class KanjiAnalyzer {
                     card.fsrsRetrievability
             );
             for (String kanji : kanjiList) {
-                rows.computeIfAbsent(kanji, key -> new MutableRow(key)).examples.add(example);
+                rows.computeIfAbsent(kanji, MutableRow::new).examples.add(example);
             }
         }
 

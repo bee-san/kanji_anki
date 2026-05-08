@@ -170,7 +170,7 @@ public final class LocalStoreInstrumentedTest {
                         "拉\t謎\tfixture\n"
         ));
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 1000L, 2000L, null, index);
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
 
         assertNotNull(store.inventoryItemForKanji("拉"));
         assertNotNull(store.inventoryItemForKanji("麺"));
@@ -185,7 +185,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(2000L, first.firstSeenAtMillis);
         assertEquals(2000L, first.lastSeenAtMillis);
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 2500L, 3000L, null, index);
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(2500L, 3000L), null, index);
 
         Records.SimilarKanjiPair updated = store.allLocalSimilarPairs().get(0);
         assertEquals(2000L, updated.firstSeenAtMillis);
@@ -213,7 +213,7 @@ public final class LocalStoreInstrumentedTest {
                         "提\t外\tfixture\n"
         ));
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 1000L, 2000L, null, index);
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
 
         Records.SimilarKanjiChoiceCard pull = findSimilarChoice("拉");
         assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
@@ -246,7 +246,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(0, count("review_log"));
         assertEquals(2, count("similar_kanji_review_log"));
 
-        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 4000L, 5000L, null, index);
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(4000L, 5000L), null, index);
         assertTrue("passed state should survive identical sync rebuild", store.dueSimilarChoiceForActiveTarget("拉", 5000L) == null);
         assertTrue(findSimilarChoice("拉").passed());
     }

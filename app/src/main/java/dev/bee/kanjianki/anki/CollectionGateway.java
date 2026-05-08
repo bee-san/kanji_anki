@@ -4,9 +4,9 @@ import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.sync.SyncProgress;
 
 public interface CollectionGateway {
-    Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncException;
+    Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure;
 
-    default Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) throws AnkiDroidGateway.SyncException {
+    default Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) throws AnkiDroidGateway.SyncFailure {
         return readCollection(settings);
     }
 

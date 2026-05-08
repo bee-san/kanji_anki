@@ -67,7 +67,15 @@ public final class ManualSyncEngine {
             List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, analysisImports, ranks, settings);
             SimilarKanjiIndex similarKanjiIndex = loadSimilarKanjiIndex();
             long finished = System.currentTimeMillis();
-            long syncId = store.saveSuccessfulSync(snapshot, imports, rows, settings, started, finished, null, similarKanjiIndex);
+            long syncId = store.saveSuccessfulSync(
+                    snapshot,
+                    imports,
+                    rows,
+                    settings,
+                    new LocalStore.SyncTiming(started, finished),
+                    null,
+                    similarKanjiIndex
+            );
             AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot, progress);
             store.updateSyncRemovalMessage(syncId, removal.message);
 
@@ -85,7 +93,7 @@ public final class ManualSyncEngine {
             );
             store.replaceStudyItems(seeded, syncId, finished, settings);
             return new SyncResult(true, false, rows.size(), imports.size(), removal.message, plan.status);
-        } catch (AnkiDroidGateway.SyncException error) {
+        } catch (AnkiDroidGateway.SyncFailure error) {
             long finished = System.currentTimeMillis();
             store.saveFailedSync(
                     started,
