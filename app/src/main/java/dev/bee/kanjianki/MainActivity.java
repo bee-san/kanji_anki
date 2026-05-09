@@ -157,6 +157,7 @@ public final class MainActivity extends Activity {
     private Button hintButton;
     private View studyAnswerPanel;
     private View flashcardGestureArea;
+    private View flashcardCard;
     private WritingAnalysis activeAnalysis;
     private boolean checkingWriting;
     private boolean flashcardAnswerRevealed;
@@ -279,6 +280,7 @@ public final class MainActivity extends Activity {
     @SuppressWarnings({"deprecation", "java:S1874"})
     private void base(String selected) {
         flashcardGestureArea = null;
+        flashcardCard = null;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;
         styleSystemBars();
@@ -2077,6 +2079,7 @@ public final class MainActivity extends Activity {
         setHintState(HintState.initial());
         drawingPad = null;
         LinearLayout card = softStudyCard();
+        flashcardCard = card;
         flashcardGestureArea = card;
         card.addView(modePill(studyModeLabel(session)));
         card.addView(text(flashcardTitle(session), 30, STUDY_PLUM, true));
@@ -2370,10 +2373,25 @@ public final class MainActivity extends Activity {
             return;
         }
         flashcardAnswerRevealed = true;
+        expandFlashcardForAnswer();
         if (studyAnswerPanel != null) {
             studyAnswerPanel.setVisibility(View.VISIBLE);
         }
         buildFlashcardActionBar(true);
+    }
+
+    private void expandFlashcardForAnswer() {
+        if (flashcardCard == null) {
+            return;
+        }
+        ViewGroup.LayoutParams params = flashcardCard.getLayoutParams();
+        if (params instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams linearParams = (LinearLayout.LayoutParams) params;
+            linearParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            linearParams.weight = 0f;
+            flashcardCard.setLayoutParams(linearParams);
+            flashcardCard.requestLayout();
+        }
     }
 
     private boolean handleFlashcardGesture(MotionEvent event) {
