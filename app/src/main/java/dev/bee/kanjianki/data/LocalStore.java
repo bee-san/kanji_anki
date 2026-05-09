@@ -600,6 +600,49 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    public int dueSimilarStudyTaskCount(long nowMillis) {
+        return dueSimilarChoiceTaskCount(nowMillis) + dueSimilarWritingRepairTaskCount(nowMillis);
+    }
+
+    public int dueSimilarChoiceTaskCount(long nowMillis) {
+        SQLiteDatabase db = getReadableDatabase();
+        int count = 0;
+        Cursor cursor = db.query(
+                "similar_kanji_choice_state",
+                new String[]{"target_kanji", "choice_signature"},
+                "passed_at=0 AND due_at<=?",
+                new String[]{Long.toString(nowMillis)},
+                null,
+                null,
+                null
+        );
+        try {
+            while (cursor.moveToNext()) {
+                String targetKanji = string(cursor, "target_kanji");
+                String choiceSignature = string(cursor, "choice_signature");
+                if (!hasPendingSimilarRepairs(db, targetKanji, choiceSignature)) {
+                    count++;
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return count;
+    }
+
+    public int dueSimilarWritingRepairTaskCount(long nowMillis) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT COUNT(*) FROM similar_kanji_repair_queue WHERE status=? AND due_at<=?",
+                new String[]{"pending", Long.toString(nowMillis)}
+        );
+        try {
+            return cursor.moveToFirst() ? cursor.getInt(0) : 0;
+        } finally {
+            cursor.close();
+        }
+    }
+
     public Records.SimilarKanjiChoiceResult submitSimilarChoice(
             Records.SimilarKanjiChoiceCard submitted,
             String selectedKanji,
@@ -1522,6 +1565,131 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return new StudyImpactStats(total, reviewedKanji.size(), writingRequired, writingPassed, writingFailed, manualOverrides);
+    }
+
+    public KaniOutcomeStats kaniOutcomeStats() {
+        SQLiteDatabase db = getReadableDatabase();
+        Map<String, ReviewWindow> reviewWindows = reviewWindowsByKanji(db);
+        if (reviewWindows.isEmpty()) {
+            return KaniOutcomeStats.empty();
+        }
+
+        List<KanjiImprovement> improvements = new ArrayList<>();
+        List<KanjiSupportGain> supportGains = new ArrayList<>();
+        double beforeWeaknessSum = 0.0;
+        double afterWeaknessSum = 0.0;
+        int firstSupportCount = 0;
+
+        for (ReviewWindow window : reviewWindows.values()) {
+            OutcomeSnapshot before = latestOutcomeSnapshotBefore(db, window.kanji, window.firstReviewedAtMillis);
+            OutcomeSnapshot after = latestOutcomeSnapshotAfter(db, window.kanji, window.lastReviewedAtMillis);
+            if (before == null || after == null) {
+                continue;
+            }
+
+            int weaknessDrop = before.weaknessScore - after.weaknessScore;
+            if (before.weaknessScore > 0 && weaknessDrop >= 5) {
+                double beforeWeakness = normalizedWeakness(before.weaknessScore);
+                double afterWeakness = normalizedWeakness(after.weaknessScore);
+                improvements.add(new KanjiImprovement(window.kanji, beforeWeakness, afterWeakness));
+                beforeWeaknessSum += beforeWeakness;
+                afterWeaknessSum += afterWeakness;
+            }
+
+            if (after.matureSupportCount > before.matureSupportCount) {
+                supportGains.add(new KanjiSupportGain(window.kanji, before.matureSupportCount, after.matureSupportCount));
+                if (before.matureSupportCount == 0) {
+                    firstSupportCount++;
+                }
+            }
+        }
+
+        improvements.sort((left, right) -> {
+            int dropCompare = Double.compare(right.beforeWeakness - right.afterWeakness, left.beforeWeakness - left.afterWeakness);
+            return dropCompare == 0 ? left.kanji.compareTo(right.kanji) : dropCompare;
+        });
+        supportGains.sort((left, right) -> {
+            int gainCompare = Integer.compare(right.afterMatureSupport - right.beforeMatureSupport, left.afterMatureSupport - left.beforeMatureSupport);
+            return gainCompare == 0 ? left.kanji.compareTo(right.kanji) : gainCompare;
+        });
+
+        int improvedCount = improvements.size();
+        WeakKanjiImprovedMetric weakMetric = new WeakKanjiImprovedMetric(
+                improvedCount,
+                improvedCount == 0 ? 0.0 : beforeWeaknessSum / improvedCount,
+                improvedCount == 0 ? 0.0 : afterWeaknessSum / improvedCount,
+                topThreeImprovements(improvements)
+        );
+        MatureSupportGainedMetric supportMetric = new MatureSupportGainedMetric(
+                supportGains.size(),
+                firstSupportCount,
+                topThreeSupportGains(supportGains)
+        );
+        return new KaniOutcomeStats(weakMetric, supportMetric);
+    }
+
+    private Map<String, ReviewWindow> reviewWindowsByKanji(SQLiteDatabase db) {
+        Map<String, ReviewWindow> out = new LinkedHashMap<>();
+        Cursor cursor = db.rawQuery(
+                "SELECT kanji, MIN(reviewed_at) AS first_reviewed_at, MAX(reviewed_at) AS last_reviewed_at FROM review_log GROUP BY kanji",
+                null
+        );
+        try {
+            while (cursor.moveToNext()) {
+                String kanji = string(cursor, "kanji");
+                if (!kanji.isEmpty()) {
+                    out.put(kanji, new ReviewWindow(
+                            kanji,
+                            longValue(cursor, "first_reviewed_at"),
+                            longValue(cursor, "last_reviewed_at")
+                    ));
+                }
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private OutcomeSnapshot latestOutcomeSnapshotBefore(SQLiteDatabase db, String kanji, long reviewedAtMillis) {
+        return outcomeSnapshot(db, kanji, "kanji=? AND finished_at<?", reviewedAtMillis);
+    }
+
+    private OutcomeSnapshot latestOutcomeSnapshotAfter(SQLiteDatabase db, String kanji, long reviewedAtMillis) {
+        return outcomeSnapshot(db, kanji, "kanji=? AND finished_at>?", reviewedAtMillis);
+    }
+
+    private OutcomeSnapshot outcomeSnapshot(SQLiteDatabase db, String kanji, String selection, long reviewedAtMillis) {
+        Cursor cursor = db.query(
+                "sync_kanji_snapshots",
+                new String[]{"weakness_score", "mature_support_count"},
+                selection,
+                new String[]{kanji, Long.toString(reviewedAtMillis)},
+                null,
+                null,
+                "finished_at DESC, sync_id DESC",
+                "1"
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            return new OutcomeSnapshot(integer(cursor, "weakness_score"), integer(cursor, "mature_support_count"));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private static double normalizedWeakness(int weaknessScore) {
+        return Math.max(0, weaknessScore) / 100.0;
+    }
+
+    private static List<KanjiImprovement> topThreeImprovements(List<KanjiImprovement> improvements) {
+        return new ArrayList<>(improvements.subList(0, Math.min(3, improvements.size())));
+    }
+
+    private static List<KanjiSupportGain> topThreeSupportGains(List<KanjiSupportGain> supportGains) {
+        return new ArrayList<>(supportGains.subList(0, Math.min(3, supportGains.size())));
     }
 
     public KanjiImpactAnalyzer.Report kanjiImpactReport() {
@@ -4090,6 +4258,100 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.writingPassed = writingPassed;
             this.writingFailed = writingFailed;
             this.manualOverrides = manualOverrides;
+        }
+    }
+
+    public static final class KaniOutcomeStats {
+        public final WeakKanjiImprovedMetric weakKanjiImproved;
+        public final MatureSupportGainedMetric matureSupportGained;
+
+        public KaniOutcomeStats(WeakKanjiImprovedMetric weakKanjiImproved, MatureSupportGainedMetric matureSupportGained) {
+            this.weakKanjiImproved = weakKanjiImproved == null ? WeakKanjiImprovedMetric.empty() : weakKanjiImproved;
+            this.matureSupportGained = matureSupportGained == null ? MatureSupportGainedMetric.empty() : matureSupportGained;
+        }
+
+        public static KaniOutcomeStats empty() {
+            return new KaniOutcomeStats(WeakKanjiImprovedMetric.empty(), MatureSupportGainedMetric.empty());
+        }
+    }
+
+    public static final class WeakKanjiImprovedMetric {
+        public final int improvedCount;
+        public final double averageBeforeWeakness;
+        public final double averageAfterWeakness;
+        public final List<KanjiImprovement> examples;
+
+        public WeakKanjiImprovedMetric(int improvedCount, double averageBeforeWeakness, double averageAfterWeakness, List<KanjiImprovement> examples) {
+            this.improvedCount = Math.max(0, improvedCount);
+            this.averageBeforeWeakness = Math.max(0.0, averageBeforeWeakness);
+            this.averageAfterWeakness = Math.max(0.0, averageAfterWeakness);
+            this.examples = Collections.unmodifiableList(new ArrayList<>(examples == null ? Collections.emptyList() : examples));
+        }
+
+        public static WeakKanjiImprovedMetric empty() {
+            return new WeakKanjiImprovedMetric(0, 0.0, 0.0, Collections.emptyList());
+        }
+    }
+
+    public static final class KanjiImprovement {
+        public final String kanji;
+        public final double beforeWeakness;
+        public final double afterWeakness;
+
+        public KanjiImprovement(String kanji, double beforeWeakness, double afterWeakness) {
+            this.kanji = kanji == null ? "" : kanji;
+            this.beforeWeakness = Math.max(0.0, beforeWeakness);
+            this.afterWeakness = Math.max(0.0, afterWeakness);
+        }
+    }
+
+    public static final class MatureSupportGainedMetric {
+        public final int gainedSupportCount;
+        public final int firstSupportCount;
+        public final List<KanjiSupportGain> examples;
+
+        public MatureSupportGainedMetric(int gainedSupportCount, int firstSupportCount, List<KanjiSupportGain> examples) {
+            this.gainedSupportCount = Math.max(0, gainedSupportCount);
+            this.firstSupportCount = Math.max(0, firstSupportCount);
+            this.examples = Collections.unmodifiableList(new ArrayList<>(examples == null ? Collections.emptyList() : examples));
+        }
+
+        public static MatureSupportGainedMetric empty() {
+            return new MatureSupportGainedMetric(0, 0, Collections.emptyList());
+        }
+    }
+
+    public static final class KanjiSupportGain {
+        public final String kanji;
+        public final int beforeMatureSupport;
+        public final int afterMatureSupport;
+
+        public KanjiSupportGain(String kanji, int beforeMatureSupport, int afterMatureSupport) {
+            this.kanji = kanji == null ? "" : kanji;
+            this.beforeMatureSupport = Math.max(0, beforeMatureSupport);
+            this.afterMatureSupport = Math.max(0, afterMatureSupport);
+        }
+    }
+
+    private static final class ReviewWindow {
+        private final String kanji;
+        private final long firstReviewedAtMillis;
+        private final long lastReviewedAtMillis;
+
+        private ReviewWindow(String kanji, long firstReviewedAtMillis, long lastReviewedAtMillis) {
+            this.kanji = kanji == null ? "" : kanji;
+            this.firstReviewedAtMillis = Math.max(0L, firstReviewedAtMillis);
+            this.lastReviewedAtMillis = Math.max(0L, lastReviewedAtMillis);
+        }
+    }
+
+    private static final class OutcomeSnapshot {
+        private final int weaknessScore;
+        private final int matureSupportCount;
+
+        private OutcomeSnapshot(int weaknessScore, int matureSupportCount) {
+            this.weaknessScore = Math.max(0, weaknessScore);
+            this.matureSupportCount = Math.max(0, matureSupportCount);
         }
     }
 

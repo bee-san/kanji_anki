@@ -179,6 +179,7 @@ public final class MainActivity extends Activity {
     private int hintsUsed;
     private int currentPracticeLevel;
     private int studyRunStartingCompleted = -1;
+    private int sessionCompletedSimilarStudyTasks;
     private float flashcardTouchStartX;
     private float flashcardTouchStartY;
     private final Set<String> sessionPassedFocusKanji = new HashSet<>();
@@ -1028,65 +1029,63 @@ public final class MainActivity extends Activity {
     private void renderStats() {
         base("stats");
         content.addView(text("Stats", 34, INK, true));
-        content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then steps back when sync shows enough support.", 16, MUTED, false));
+        content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
         addSpace(10);
 
-        long now = System.currentTimeMillis();
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
-        List<Records.StudyItem> items = store.studyItems();
-        Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
-        List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
-        LocalStore.SyncStatus sync = store.latestSync();
-        LocalStore.StudyImpactStats impact = store.studyImpactStats();
-        KanjiImpactAnalyzer.Report impactReport = store.kanjiImpactReport();
-        Records.ReviewStats week = store.reviewStatsSince(now - 7 * DAY_MILLIS);
-        LocalStore.StudyStreak streak = store.studyStreak(now);
-
-        content.addView(ankiImpactPanel(sync, rows, impactReport));
-        content.addView(sectionTitle("Learning"));
-        content.addView(statPanel(
-                "Kani writing",
-                impact.totalReviews == 0 ? "No writing reviews yet" : countText(impact.totalReviews, "writing review", "writing reviews"),
-                countText(impact.distinctReviewedKanji, "kanji studied", "kanji studied") + ". " + countText(impact.manualOverrides, "manual override", "manual overrides") + ".",
-                CORAL
-        ));
-        content.addView(statPanel(
-                "Recall quality",
-                automaticPassText(impact),
-                recallQualityBody(impact),
-                BLUE
-        ));
-        content.addView(statPanel(
-                "Daily rhythm",
-                streakHeadline(streak),
-                streak.studiedToday
-                        ? countText(streak.reviewsToday, "writing review today", "writing reviews today") + ". Best: " + streakDayCount(streak.bestDays) + "."
-                        : "Study one problem kanji today to keep it alive.",
-                GOLD
-        ));
-
-        content.addView(sectionTitle("Anki Bridge"));
-        int due = dueEntryCount(entries, now);
-        int matureSupport = matureSupportCount(rows);
-        int retired = retiredItemCount(items);
-        content.addView(statPanel(
-                "Now practicing",
-                countText(entries.size(), "active kanji", "active kanji"),
-                countText(due, "due now", "due now") + ". " + adaptiveFocusText(plan) + ".",
+        LocalStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
+        content.addView(outcomePanel(
+                "Weak kanji improved",
+                countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved") + " after Kani practice",
+                weaknessImprovementBody(stats.weakKanjiImproved),
+                weaknessImprovementExamples(stats.weakKanjiImproved),
                 TEAL
         ));
-        content.addView(statPanel(
-                "Retired back to Anki",
-                countText(retired, "kanji resting in Kani", "kanji resting in Kani"),
-                countText(matureSupport, "mature Anki support link", "mature Anki support links") + ". Retired means Kani can stop drilling when synced Anki evidence has caught up.",
+        content.addView(outcomePanel(
+                "Anki support gained",
+                countText(stats.matureSupportGained.gainedSupportCount, "kanji gained Anki support", "kanji gained Anki support"),
+                countText(stats.matureSupportGained.firstSupportCount, "of them gained their first mature supporting card", "of them gained their first mature supporting card") + ".",
+                supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
-        content.addView(statPanel(
-                "Last 7 days",
-                week.total == 0 ? "No reviews this week" : countText(week.total, "writing review", "writing reviews"),
-                weeklyReviewBody(week),
-                CORAL
-        ));
+    }
+
+    private LinearLayout outcomePanel(String title, String value, String body, List<String> examples, int stroke) {
+        LinearLayout box = statPanel(title, value, body, stroke);
+        for (String example : examples) {
+            box.addView(text(example, 17, INK, true));
+        }
+        return box;
+    }
+
+    private String weaknessImprovementBody(LocalStore.WeakKanjiImprovedMetric metric) {
+        if (metric.improvedCount == 0) {
+            return "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.";
+        }
+        return "Average weakness dropped from "
+                + formatWeakness(metric.averageBeforeWeakness)
+                + " to "
+                + formatWeakness(metric.averageAfterWeakness)
+                + " after Kani practice.";
+    }
+
+    private List<String> weaknessImprovementExamples(LocalStore.WeakKanjiImprovedMetric metric) {
+        List<String> examples = new java.util.ArrayList<>();
+        for (LocalStore.KanjiImprovement example : metric.examples) {
+            examples.add(example.kanji + "  " + formatWeakness(example.beforeWeakness) + " -> " + formatWeakness(example.afterWeakness));
+        }
+        return examples;
+    }
+
+    private List<String> supportGainExamples(LocalStore.MatureSupportGainedMetric metric) {
+        List<String> examples = new java.util.ArrayList<>();
+        for (LocalStore.KanjiSupportGain example : metric.examples) {
+            examples.add(example.kanji + "  " + example.beforeMatureSupport + " -> " + example.afterMatureSupport + " mature cards");
+        }
+        return examples;
+    }
+
+    private String formatWeakness(double weakness) {
+        return String.format(java.util.Locale.ROOT, "%.2f", weakness);
     }
 
     private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows, KanjiImpactAnalyzer.Report impactReport) {
@@ -1940,11 +1939,11 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSimilarChoice(Records.SimilarKanjiChoiceCard card) {
-        prepareStudyContent(activeStudyPlan, false);
         activeSession = null;
         activeLearningRepeat = null;
         activeSimilarRepair = null;
         activeSimilarChoice = card;
+        prepareStudyContent(activeStudyPlan, false);
         activeAnalysis = null;
         checkingWriting = false;
         flashcardAnswerRevealed = false;
@@ -2009,6 +2008,9 @@ public final class MainActivity extends Activity {
             return;
         }
         Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(activeSimilarChoice, selectedKanji, System.currentTimeMillis());
+        if (result.correct) {
+            markSimilarStudyTaskCompleted();
+        }
         Toast.makeText(
                 this,
                 result.correct ? "Correct." : "Queued similar writing repairs.",

@@ -212,8 +212,8 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Stats");
-                assertHasText(activity, "Anki impact");
-                assertHasText(activity, "Sync AnkiDroid to connect Kani stats to your selected note type");
+                assertHasText(activity, "Weak kanji improved");
+                assertHasText(activity, "Anki support gained");
             });
 
             clickText(scenario, "Home");
@@ -342,99 +342,37 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testStatsConnectsKaniPracticeToAnkiImpact() {
-        Records.DashboardRow active = dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards");
-        Records.DashboardRow supported = dashboardRow("謎", "mystery radical gap", "なぞ", "Enough mature Anki cards now support it", 2);
-        seedDashboard(Arrays.asList(active, supported));
-        long now = System.currentTimeMillis();
-        LocalStore store = new LocalStore(context);
-        try {
-            store.replaceStudyItems(Arrays.asList(
-                    new Records.StudyItem("拉", "learning", 0L, 0.9, 5.0, 1, 0, 1, 1, null, now),
-                    new Records.StudyItem("謎", "retired", now + 86_400_000L, 2.5, 4.0, 3, 0, 2, 3, null, now - 86_400_000L)
-            ));
-            store.saveReview(review("拉", "stats-good"), "good", now - 7_200_000L);
-            store.saveReview(new Records.ReviewRequest("謎", "stats-again", "again", true, false, false, 0), "again", now - 3_600_000L);
-        } finally {
-            store.close();
-        }
-
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Stats");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Anki impact");
-                assertHasText(activity, "2 problem kanji found from AnkiDroid");
-                assertHasText(activity, "2 active Anki example links");
-                assertHasText(activity, "2 suspended miss links");
-                assertHasText(activity, "Kani writing");
-                assertHasText(activity, "2 writing reviews");
-                assertHasText(activity, "2 kanji studied");
-                assertHasText(activity, "50% automatic pass rate");
-                assertHasText(activity, "1 miss caught");
-                assertHasText(activity, "Now practicing");
-                assertHasText(activity, "1 active kanji");
-                assertHasText(activity, "1 due now");
-                assertHasText(activity, "2 mature Anki support links");
-                assertHasText(activity, "1 kanji resting in Kani");
-                assertNoText(activity, "What this means");
-                assertNoText(activity, "You are turning Anki pain points");
-            });
-        }
-    }
-
-    @Test
-    public void testStatsShowsImpactHistoryBuckets() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.DashboardRow helped = dashboardRow("裂", "split", "れつ", "Kani started from weak Anki evidence", 0);
-        Records.DashboardRow notHelping = dashboardRow("提", "carry", "てい", "Kani is still seeing weak Anki evidence", 1);
-        Records.DashboardRow sparse = dashboardRow("麺", "noodle", "めん", "Not enough local Anki cards yet", 0);
         long now = System.currentTimeMillis();
         LocalStore store = new LocalStore(context);
         try {
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(
-                            Arrays.asList(
-                                    note(101L, "裂", "れつ", "split", "裂"),
-                                    note(201L, "提", "てい", "carry", "提"),
-                                    note(202L, "提", "てい", "carry", "提"),
-                                    note(301L, "麺", "めん", "noodle", "麺")
-                            ),
-                            Arrays.asList(
-                                    new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 10, 20, 7, false, null, 7.2, 0.62),
-                                    new Records.Card(2001L, 201L, 0, "Kiku", 2, 2, 0, 30, 20, 2, false, null, 5.0, 0.85),
-                                    new Records.Card(2002L, 202L, 0, "Kiku", 2, 2, 0, 30, 20, 2, false, null, 5.0, 0.85),
-                                    new Records.Card(3001L, 301L, 0, "Kiku", 2, 2, 0, 2, 1, 0, false, null, 5.0, 0.70)
-                            )
-                    ),
+                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
                     Collections.emptyList(),
-                    Arrays.asList(helped, notHelping, sparse),
-                    settings,
+                    Arrays.asList(
+                            statsDashboardRow("痛", 82, 1),
+                            statsDashboardRow("薬", 76, 0),
+                            statsDashboardRow("疲", 69, 0),
+                            statsDashboardRow("平", 40, 1)
+                    ),
+                    Records.Settings.kikuDefaults(),
+                    now - 30_000L,
                     now - 20_000L,
-                    now - 10_000L,
                     null
             );
-            store.saveReview(review("裂", "impact-helped"), "good", now - 9_000L);
-            store.saveReview(review("提", "impact-flat"), "hard", now - 8_000L);
-            store.saveReview(review("麺", "impact-sparse"), "good", now - 7_000L);
+            store.saveReview(review("痛", "stats-pain"), "good", now - 15_000L);
+            store.saveReview(review("薬", "stats-medicine"), "good", now - 14_000L);
+            store.saveReview(review("疲", "stats-tired"), "good", now - 13_000L);
+            store.saveReview(review("平", "stats-flat"), "good", now - 12_000L);
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(
-                            Arrays.asList(
-                                    note(101L, "裂", "れつ", "split", "裂"),
-                                    note(102L, "裂", "れつ", "split", "裂"),
-                                    note(201L, "提", "てい", "carry", "提"),
-                                    note(202L, "提", "てい", "carry", "提"),
-                                    note(301L, "麺", "めん", "noodle", "麺")
-                            ),
-                            Arrays.asList(
-                                    new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 42, 32, 4, false, null, 5.8, 0.84),
-                                    new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 45, 10, 0, false, null, 4.5, 0.90),
-                                    new Records.Card(2001L, 201L, 0, "Kiku", 2, 2, 0, 20, 20, 5, false, null, 6.2, 0.70),
-                                    new Records.Card(2002L, 202L, 0, "Kiku", 2, 2, 0, 20, 20, 5, false, null, 6.2, 0.70),
-                                    new Records.Card(3001L, 301L, 0, "Kiku", 2, 2, 0, 2, 1, 0, false, null, 5.0, 0.70)
-                            )
-                    ),
+                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
                     Collections.emptyList(),
-                    Arrays.asList(helped, notHelping, sparse),
-                    settings,
+                    Arrays.asList(
+                            statsDashboardRow("痛", 46, 3),
+                            statsDashboardRow("薬", 51, 2),
+                            statsDashboardRow("疲", 44, 1),
+                            statsDashboardRow("平", 38, 1)
+                    ),
+                    Records.Settings.kikuDefaults(),
                     now - 5_000L,
                     now,
                     null
@@ -446,14 +384,76 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "1 helped kanji");
-                assertHasText(activity, "1 not-helping-yet kanji");
-                assertHasText(activity, "1 needs-more-cards kanji");
-                assertHasText(activity, "裂: difficulty 7.2 -> 5.8, retention 62% -> 84%");
-                assertHasText(activity, "Sparse data: immerse and mine more flashcards before judging those kanji.");
-                assertHasText(activity, "Negative data: Kani is not moving the needle yet for those kanji.");
+                assertHasText(activity, "Weak kanji improved");
+                assertHasText(activity, "3 weak kanji improved after Kani practice");
+                assertHasText(activity, "Average weakness dropped from 0.76 to 0.47 after Kani practice.");
+                assertHasText(activity, "痛  0.82 -> 0.46");
+                assertHasText(activity, "薬  0.76 -> 0.51");
+                assertHasText(activity, "疲  0.69 -> 0.44");
+                assertHasText(activity, "Anki support gained");
+                assertHasText(activity, "3 kanji gained Anki support");
+                assertHasText(activity, "2 of them gained their first mature supporting card.");
+                assertHasText(activity, "痛  1 -> 3 mature cards");
+                assertHasText(activity, "薬  0 -> 2 mature cards");
+                assertHasText(activity, "疲  0 -> 1 mature cards");
+                assertNoText(activity, "Anki impact");
+                assertNoText(activity, "Kani writing");
+                assertNoText(activity, "Now practicing");
+                assertNoText(activity, "Last 7 days");
+                assertNoText(activity, "What this means");
+                assertNoText(activity, "You are turning Anki pain points");
             });
         }
+    }
+
+    @Test
+    public void testStatsShowsImpactHistoryBuckets() {
+        long now = System.currentTimeMillis();
+        LocalStore store = new LocalStore(context);
+        try {
+            store.saveSuccessfulSync(
+                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
+                    Collections.emptyList(),
+                    Collections.singletonList(statsDashboardRow("裂", 80, 0)),
+                    Records.Settings.kikuDefaults(),
+                    now - 20_000L,
+                    now - 10_000L,
+                    null
+            );
+            store.saveReview(review("裂", "impact-no-after-sync"), "good", now - 9_000L);
+        } finally {
+            store.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Stats");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "0 weak kanji improved after Kani practice");
+                assertHasText(activity, "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.");
+                assertHasText(activity, "0 kanji gained Anki support");
+                assertHasText(activity, "0 of them gained their first mature supporting card.");
+                assertNoText(activity, "helped kanji");
+                assertNoText(activity, "not-helping-yet kanji");
+                assertNoText(activity, "needs-more-cards kanji");
+            });
+        }
+    }
+
+    private static Records.DashboardRow statsDashboardRow(String kanji, int weaknessScore, int matureSupportCount) {
+        return new Records.DashboardRow(
+                kanji,
+                null,
+                "",
+                "",
+                kanji,
+                weaknessScore,
+                "suspended_archive",
+                "Stats fixture",
+                1,
+                1,
+                matureSupportCount,
+                Collections.emptyList()
+        );
     }
 
     @Test
