@@ -499,9 +499,9 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Reveal");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Answer");
-                assertHasText(activity, "Meaning: ramen radical gap");
-                assertHasText(activity, "Reading: ら");
-                assertHasText(activity, "From: 拉麺  らーめん");
+                assertHasText(activity, "Latin, kidnap");
+                assertHasText(activity, "Reading: らーめん");
+                assertHasText(activity, "From: 拉麺");
                 assertHasText(activity, "Fail");
                 assertHasText(activity, "Pass");
                 assertNoText(activity, "Check");
@@ -825,7 +825,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "I could not read that as the target kanji yet");
                 assertHasText(activity, "Reference");
-                assertHasText(activity, "Meaning: ramen radical gap");
+                assertHasText(activity, "Latin, kidnap");
                 assertHasText(activity, "Try again with full guide");
                 assertHasText(activity, "Save miss");
             });
@@ -926,7 +926,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Similar choice");
-                assertHasText(activity, "Which kanji means ramen radical gap?");
+                assertHasText(activity, "Which kanji means Latin, kidnap?");
                 assertHasText(activity, "拉");
                 assertHasText(activity, "提");
                 assertNoText(activity, "Kanji -> meaning");
@@ -936,7 +936,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Similar writing");
                 assertHasText(activity, "Reference");
-                assertHasText(activity, "Meaning: ramen radical gap");
+                assertHasText(activity, "Latin, kidnap");
                 drawGuideKanji(activity, "拉");
             });
             clickText(scenario, "Check");
@@ -944,13 +944,13 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Next card");
 
             MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
-            waitForText(scenario, "Meaning: carry radical gap");
+            waitForText(scenario, "Propose, take along");
             scenario.onActivity(activity -> drawGuideKanji(activity, "提"));
             clickText(scenario, "Check");
             waitForText(scenario, "Clean match");
             clickText(scenario, "Next card");
 
-            waitForText(scenario, "Which kanji means ramen radical gap?");
+            waitForText(scenario, "Which kanji means Latin, kidnap?");
             clickText(scenario, "拉");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Name this kanji");
@@ -978,7 +978,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Review this now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Similar choice");
-                assertHasText(activity, "Which kanji means ramen radical gap?");
+                assertHasText(activity, "Which kanji means Latin, kidnap?");
                 assertHasText(activity, "拉");
                 assertHasText(activity, "提");
                 assertNoText(activity, "Kanji -> meaning");
@@ -994,7 +994,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Similar choice");
-                assertHasText(activity, "Which kanji means carry radical gap?");
+                assertHasText(activity, "Which kanji means Propose, take along?");
                 assertHasText(activity, "提");
                 assertHasText(activity, "謎");
                 assertNoText(activity, "Today's focus done");

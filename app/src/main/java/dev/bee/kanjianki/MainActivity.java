@@ -43,13 +43,19 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.StudyCue;
+import dev.bee.kanjianki.core.StudyCueFormatter;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintPolicy;
@@ -66,6 +72,7 @@ import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingRatingMapper;
 import dev.bee.kanjianki.core.study.WritingSample;
+import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedStroke;
@@ -81,6 +88,7 @@ import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -152,6 +160,7 @@ public final class MainActivity extends Activity {
     private HintState currentHintState = HintState.initial();
     private Map<String, StrokeGuide> strokeGuides;
     private WritingRecognizer writingRecognizer;
+    private DictionaryLookup dictionaryLookup;
     private LocalStore.ReminderSettings pendingReminderSettings;
     private static AnkiDroidGateway ankiDroidGatewayForTests;
     private static CollectionGateway collectionGatewayForTests;
@@ -1636,17 +1645,7 @@ public final class MainActivity extends Activity {
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
         if (session.row != null) {
-            details.addView(text("Meaning: " + rowMeaning(session.row), 16, INK, true));
-            if (!session.row.reading.isEmpty()) {
-                details.addView(text("Reading: " + session.row.reading, 15, TEAL, true));
-            }
-            Records.Example example = exampleForSession(session);
-            if (example != null) {
-                details.addView(text("Example: " + example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 15, INK, true));
-                if (!example.meaning.isEmpty()) {
-                    details.addView(text(cleanLearnerText(example.meaning, "", 80), 13, MUTED, false));
-                }
-            }
+            addStudyCueLines(details, studyCue(session));
         } else {
             details.addView(text(session.prompt, 15, MUTED, false));
         }
@@ -1912,7 +1911,7 @@ public final class MainActivity extends Activity {
         content.addView(stage);
 
         LinearLayout box = panelBox(Color.WHITE, TEAL);
-        box.addView(text("Which kanji means " + card.primaryMeaning + "?", 22, INK, true));
+        box.addView(text("Which kanji means " + similarChoiceMeaning(card) + "?", 22, INK, true));
         box.addView(similarChoiceGrid(card));
         content.addView(box);
     }
@@ -2146,7 +2145,7 @@ public final class MainActivity extends Activity {
         box.addView(text("Front", 19, INK, true));
         if (isFontRecognitionTask(session)) {
             box.addView(randomFontVariantCard(session.item.kanji), fontVariantCardParams());
-            box.addView(text("What does it mean in your Anki deck?", 15, MUTED, false));
+            box.addView(text("What does this kanji mean?", 15, MUTED, false));
             return box;
         }
         if (isWordReadingTask(session)) {
@@ -2222,17 +2221,7 @@ public final class MainActivity extends Activity {
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
         if (session.row != null) {
-            details.addView(text("Meaning: " + rowMeaning(session.row), 16, INK, true));
-            if (!session.row.reading.isEmpty()) {
-                details.addView(text("Reading: " + hiraganaReading(session.row.reading), 15, TEAL, true));
-            }
-            Records.Example example = exampleForSession(session);
-            if (example != null) {
-                details.addView(text("From: " + example.expression + (example.reading.isEmpty() ? "" : "  " + hiraganaReading(example.reading)), 15, INK, true));
-                if (!example.meaning.isEmpty()) {
-                    details.addView(text(cleanLearnerText(example.meaning, "", 80), 13, MUTED, false));
-                }
-            }
+            addStudyCueLines(details, studyCue(session));
         } else {
             details.addView(text(session.prompt, 15, MUTED, false));
         }
@@ -2241,17 +2230,56 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private String hiraganaReading(String reading) {
-        StringBuilder converted = new StringBuilder(reading.length());
-        for (int i = 0; i < reading.length(); i++) {
-            char c = reading.charAt(i);
-            if (c >= 'ァ' && c <= 'ヶ') {
-                converted.append((char) (c - 0x60));
-            } else {
-                converted.append(c);
-            }
+    private void addStudyCueLines(LinearLayout details, StudyCue cue) {
+        List<String> lines = StudyCueFormatter.answerLines(cue);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            int color = line.startsWith("Reading:") ? TEAL : INK;
+            details.addView(text(line, i == 0 ? 17 : 15, color, true));
         }
-        return converted.toString();
+    }
+
+    private StudyCue studyCue(Records.StudySession session) {
+        if (session == null || session.row == null) {
+            return new StudyCue("", "", "", "");
+        }
+        if (isWordReadingTask(session)) {
+            return wordReadingCue(session);
+        }
+        Records.Example example = exampleForSession(session);
+        String sourceExpression = example == null ? "" : example.expression;
+        String sourceReading = example == null ? session.row.reading : example.reading;
+        String ankiMeaning = example != null && !example.meaning.isEmpty()
+                ? example.meaning
+                : session.row.primaryMeaning;
+        return dictionaryLookup().studyCue(
+                session.item.kanji,
+                ankiMeaning,
+                session.row.reading,
+                sourceExpression,
+                sourceReading
+        );
+    }
+
+    private StudyCue wordReadingCue(Records.StudySession session) {
+        Records.Example example = exampleForSession(session);
+        String sourceExpression = example == null ? "" : example.expression;
+        String sourceReading = example == null ? session.row.reading : example.reading;
+        DictionaryLookup.WordEntry word = dictionaryLookup().lookupWord(sourceExpression, sourceReading);
+        String cueReading = firstNonEmpty(
+                word == null ? "" : word.reading,
+                sourceReading,
+                session.row.reading
+        );
+        String fromExpression = firstNonEmpty(sourceExpression, word == null ? "" : word.expression);
+        return new StudyCue("", cueReading, fromExpression, word == null ? DictionaryLookup.SOURCE_ANKI : DictionaryLookup.SOURCE_JMDICT);
+    }
+
+    private DictionaryLookup dictionaryLookup() {
+        if (dictionaryLookup == null) {
+            dictionaryLookup = DictionaryAssets.load(this);
+        }
+        return dictionaryLookup;
     }
 
     private void buildFlashcardActionBar(boolean revealed) {
@@ -3334,6 +3362,7 @@ public final class MainActivity extends Activity {
         content.addView(reminderSettingsPanel());
         content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
+        content.addView(dataLicenseSettingsPanel());
 
         LinearLayout mapping = band(BLUE);
         mapping.addView(text("Fields used for clues", 22, Color.WHITE, true));
@@ -3344,6 +3373,41 @@ public final class MainActivity extends Activity {
         attribution.addView(text("Stroke data", 22, INK, true));
         attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
         content.addView(attribution);
+    }
+
+    private LinearLayout dataLicenseSettingsPanel() {
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        box.addView(text("Data licenses", 23, INK, true));
+        box.addView(text("JMdict, KANJIDIC2, KanjiVG, and font attribution.", 15, MUTED, false));
+        Button open = secondaryButton("Open data licenses");
+        open.setOnClickListener(v -> renderDataSources());
+        box.addView(open);
+        return box;
+    }
+
+    private void renderDataSources() {
+        base("settings");
+        content.addView(text("Data licenses", 34, INK, true));
+        content.addView(text("Dictionary and stroke-order data bundled for offline study.", 16, MUTED, false));
+
+        LinearLayout dictionary = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        dictionary.addView(text("Dictionary data", 23, INK, true));
+        dictionary.addView(text(dictionarySourcesText(), 14, MUTED, false));
+        content.addView(dictionary);
+
+        LinearLayout stroke = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+        stroke.addView(text("Stroke data", 23, INK, true));
+        stroke.addView(text(kanjiVgAttribution(), 14, MUTED, false));
+        content.addView(stroke);
+
+        LinearLayout fonts = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
+        fonts.addView(text("Fonts", 23, INK, true));
+        fonts.addView(text(rawResourceText(R.raw.ofl), 14, MUTED, false));
+        content.addView(fonts);
+
+        Button back = secondaryButton("Back to settings");
+        back.setOnClickListener(v -> renderSettings());
+        content.addView(back);
     }
 
     private LinearLayout noteTypeSettingsPanel(Records.Settings current) {
@@ -4027,8 +4091,67 @@ public final class MainActivity extends Activity {
     }
 
     private String kanjiVgAttribution() {
-        try (InputStream in = getResources().openRawResource(R.raw.kanjivg_attribution);
-             InputStreamReader reader = new InputStreamReader(in)) {
+        String text = rawResourceText(R.raw.kanjivg_attribution).trim();
+        return text.isEmpty() ? "KanjiVG stroke data, CC BY-SA 3.0." : text;
+    }
+
+    private String dictionarySourcesText() {
+        try {
+            JSONObject manifest = new JSONObject(assetText(DictionaryAssets.SOURCES_ASSET));
+            JSONArray sources = manifest.optJSONArray("sources");
+            if (sources == null || sources.length() == 0) {
+                return "Dictionary manifest is empty.";
+            }
+            List<String> lines = new ArrayList<>();
+            String generatedAt = manifest.optString("generated_at");
+            if (!generatedAt.isEmpty()) {
+                lines.add("Generated: " + generatedAt);
+            }
+            for (int i = 0; i < sources.length(); i++) {
+                JSONObject source = sources.getJSONObject(i);
+                lines.add("");
+                lines.add(source.optString("name", source.optString("id")));
+                addSourceLine(lines, "License", source.optString("license"));
+                addSourceLine(lines, "URL", source.optString("upstream_url"));
+                addSourceLine(lines, "Fetched", source.optString("fetch_date"));
+                addSourceLine(lines, "Version", firstNonEmpty(
+                        source.optString("database_version"),
+                        source.optString("version"),
+                        source.optString("date_of_creation")
+                ));
+                addSourceLine(lines, "SHA-256", source.optString("source_sha256"));
+            }
+            JSONArray notes = manifest.optJSONArray("notes");
+            if (notes != null && notes.length() > 0) {
+                lines.add("");
+                for (int i = 0; i < notes.length(); i++) {
+                    lines.add(notes.optString(i));
+                }
+            }
+            return String.join("\n", lines).trim();
+        } catch (Exception error) {
+            return "JMdict_e and KANJIDIC2 dictionary data from EDRDG, CC BY-SA 4.0.";
+        }
+    }
+
+    private void addSourceLine(List<String> lines, String label, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            lines.add(label + ": " + value.trim());
+        }
+    }
+
+    private String firstNonEmpty(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private String rawResourceText(int resourceId) {
+        try (InputStream in = getResources().openRawResource(resourceId);
+             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
             StringBuilder out = new StringBuilder();
             char[] buffer = new char[1024];
             int read;
@@ -4037,7 +4160,22 @@ public final class MainActivity extends Activity {
             }
             return out.toString().trim();
         } catch (Exception error) {
-            return "KanjiVG stroke data, CC BY-SA 3.0.";
+            return "";
+        }
+    }
+
+    private String assetText(String assetPath) {
+        try (InputStream in = getAssets().open(assetPath);
+             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+            StringBuilder out = new StringBuilder();
+            char[] buffer = new char[2048];
+            int read;
+            while ((read = reader.read(buffer)) != -1) {
+                out.append(buffer, 0, read);
+            }
+            return out.toString();
+        } catch (Exception error) {
+            return "{}";
         }
     }
 
@@ -4197,7 +4335,22 @@ public final class MainActivity extends Activity {
         String raw = session.row == null || session.row.primaryMeaning.isEmpty()
                 ? session.prompt
                 : session.row.primaryMeaning;
-        return cleanLearnerText(raw, session.prompt, 96);
+        return canonicalKanjiMeaning(session == null ? "" : session.item.kanji, raw, 96);
+    }
+
+    private String similarChoiceMeaning(Records.SimilarKanjiChoiceCard card) {
+        return canonicalKanjiMeaning(card == null ? "" : card.targetKanji, card == null ? "" : card.primaryMeaning, 72);
+    }
+
+    private String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
+        DictionaryLookup.KanjiEntry entry = dictionaryLookup().lookupKanji(kanji);
+        if (entry != null) {
+            String meaning = StudyCueFormatter.displayGlosses(entry.meanings, 2);
+            if (!meaning.isEmpty()) {
+                return compact(meaning, maxChars);
+            }
+        }
+        return cleanLearnerText(fallback, "Collection clue", maxChars);
     }
 
     private String wordPrompt(Records.StudySession session) {
@@ -4209,31 +4362,7 @@ public final class MainActivity extends Activity {
     }
 
     private String cleanLearnerText(String raw, String fallback, int maxChars) {
-        String value = raw == null ? "" : raw;
-        value = value.replaceAll("\\[[0-9]{4}-[0-9]{2}-[0-9]{2}\\]", " ");
-        value = value.replaceAll("(?i)\\bJMdict\\s*\\[[^\\]]*\\]\\s*", " ");
-        value = value.replaceAll("(?i)\\bJitendex\\.org\\s*", " ");
-        value = value.replace('\n', ' ').replace('\r', ' ').trim();
-        boolean changed = true;
-        while (changed && value.startsWith("(")) {
-            changed = false;
-            int end = value.indexOf(')');
-            if (end > 0 && end < 140) {
-                String metadata = value.substring(1, end).toLowerCase(Locale.ROOT);
-                if (metadata.contains("jitendex") || metadata.contains("priority") || metadata.contains("form")) {
-                    value = value.substring(end + 1).trim();
-                    changed = true;
-                }
-            }
-        }
-        value = value.replaceAll("^\\d+\\.\\s*", "");
-        value = value.replaceAll("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+", "");
-        value = value.replaceAll("(?i)^(ichidan|suru|na-adjective|i-adjective)\\s+", "");
-        value = value.replaceAll("\\s+", " ").trim();
-        if (value.isEmpty()) {
-            value = fallback == null || fallback.isEmpty() ? "Collection clue" : fallback;
-        }
-        return compact(value, maxChars);
+        return StudyCueFormatter.cleanFallbackMeaning(raw, fallback, maxChars);
     }
 
     private String compact(String value, int maxChars) {

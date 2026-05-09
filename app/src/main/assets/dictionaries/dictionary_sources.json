@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-05-09",
+  "generated_by": "tools/generate_dictionary_assets.py",
+  "assets": [
+    {
+      "path": "jmdict_e_words.tsv.gz",
+      "sha256": "f505085bad67dfc7e9538822d50c0d8ed521b19102d63c048ed0fba4d31654bf",
+      "records": 408800
+    },
+    {
+      "path": "kanjidic2_kanji.tsv.gz",
+      "sha256": "4cd7ed2d754dde6981252c139dbab7e4c1a8dd74d423731876134cbf1854f0a4",
+      "records": 13108
+    }
+  ],
+  "sources": [
+    {
+      "id": "jmdict_e",
+      "name": "JMdict_e",
+      "upstream_url": "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz",
+      "fetch_date": "2026-05-09",
+      "source_sha256": "afee6bd79a595f32c5d373491e2d4b1313d6367e27c0a31d82660b1367bb5704",
+      "version": "daily generated JMdict_e XML export",
+      "license": "CC BY-SA 4.0 via EDRDG licence",
+      "license_url": "https://www.edrdg.org/edrdg/licence.html",
+      "fields_imported": [
+        "expression",
+        "reading",
+        "English glosses",
+        "part-of-speech tags",
+        "priority/commonness"
+      ]
+    },
+    {
+      "id": "kanjidic2",
+      "name": "KANJIDIC2",
+      "upstream_url": "https://www.edrdg.org/kanjidic/kanjidic2.xml.gz",
+      "fetch_date": "2026-05-09",
+      "source_sha256": "765835ca262e71323e07be96ced1a87002892a244d743a3da7f92e5fc0683278",
+      "file_version": "4",
+      "database_version": "2026-129",
+      "date_of_creation": "2026-05-09",
+      "license": "CC BY-SA 4.0 via EDRDG licence",
+      "license_url": "https://www.edrdg.org/edrdg/licence.html",
+      "fields_imported": [
+        "literal",
+        "English meanings",
+        "on/kun/nanori readings",
+        "stroke count",
+        "grade",
+        "radical",
+        "frequency"
+      ]
+    },
+    {
+      "id": "kanjivg",
+      "name": "KanjiVG",
+      "upstream_url": "https://github.com/KanjiVG/kanjivg",
+      "license": "CC BY-SA 3.0",
+      "fields_imported": [
+        "stroke path points"
+      ]
+    }
+  ],
+  "notes": [
+    "SKIP query codes are intentionally excluded because EDRDG documents separate SKIP licensing conditions.",
+    "Refresh by downloading the current source XML exports and rerunning the generator command in documentation/dictionary_sources.md."
+  ]
+}
