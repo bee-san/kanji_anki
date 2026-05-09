@@ -2731,12 +2731,12 @@ public final class MainActivity extends Activity {
         float density = getResources().getDisplayMetrics().density;
         int screenDp = Math.round(getResources().getDisplayMetrics().heightPixels / density);
         if (screenDp < 700) {
-            return dp(220);
+            return dp(300);
         }
         if (screenDp < 820) {
-            return dp(235);
+            return dp(340);
         }
-        return dp(250);
+        return dp(390);
     }
 
     private void checkWriting() {
