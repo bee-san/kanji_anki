@@ -187,6 +187,7 @@ def write_database(
         connection.execute("PRAGMA locking_mode=EXCLUSIVE")
         connection.execute("PRAGMA foreign_keys=OFF")
         connection.execute("CREATE TABLE kanji (literal TEXT PRIMARY KEY, meanings TEXT NOT NULL, on_readings TEXT NOT NULL, kun_readings TEXT NOT NULL, nanori_readings TEXT NOT NULL, stroke_count INTEGER NOT NULL, grade INTEGER NOT NULL, radical INTEGER NOT NULL, kanjidic_frequency INTEGER NOT NULL, jiten_rank INTEGER)")
+        connection.execute("CREATE TABLE jiten_ranks (literal TEXT PRIMARY KEY, rank INTEGER NOT NULL)")
         connection.execute("CREATE TABLE dictionary_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
         connection.executemany(
             "INSERT INTO kanji (literal, meanings, on_readings, kun_readings, nanori_readings, stroke_count, grade, radical, kanjidic_frequency, jiten_rank) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -206,6 +207,10 @@ def write_database(
                 for record in records
             ],
         )
+        connection.executemany(
+            "INSERT INTO jiten_ranks (literal, rank) VALUES (?, ?)",
+            sorted(jiten_ranks.items(), key=lambda item: (item[1], item[0])),
+        )
         meta = [
             ("schema_version", SCHEMA_VERSION),
             ("generated_at", fetch_date),
@@ -219,6 +224,7 @@ def write_database(
             ("jiten_rank_source_path", str(jiten_path)),
             ("jiten_rank_source_sha256", jiten_sha),
             ("kanji_record_count", str(len(records))),
+            ("jiten_rank_count", str(len(jiten_ranks))),
             ("jiten_rank_join_count", str(sum(1 for record in records if record.literal in jiten_ranks))),
             ("skip_codes_imported", "false"),
         ]
@@ -240,7 +246,8 @@ def write_manifest(
     db_asset: Path,
     checksum_asset: Path,
     kanji_count: int,
-    ranked_count: int,
+    jiten_rank_count: int,
+    jiten_rank_join_count: int,
     kanjidic_metadata: dict[str, str],
 ) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -258,7 +265,8 @@ def write_manifest(
                 "path": db_asset.name,
                 "sha256": sha256(db_asset),
                 "records": kanji_count,
-                "jiten_rank_records": ranked_count,
+                "jiten_rank_records": jiten_rank_count,
+                "jiten_rank_join_records": jiten_rank_join_count,
             },
             {
                 "path": checksum_asset.name,
@@ -339,10 +347,11 @@ def main() -> None:
         db_asset,
         checksum_asset,
         len(kanji),
+        len(ranks),
         sum(1 for record in kanji if record.literal in ranks),
         kanjidic_metadata,
     )
-    print(f"Wrote {len(kanji)} KANJIDIC2 kanji rows and joined {len(ranks)} Jiten ranks into {db_asset}")
+    print(f"Wrote {len(kanji)} KANJIDIC2 kanji rows with {len(ranks)} Jiten ranks into {db_asset}")
 
 
 if __name__ == "__main__":

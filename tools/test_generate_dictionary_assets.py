@@ -81,8 +81,10 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
 
             with sqlite3.connect(db_path) as db:
                 columns = {row[1] for row in db.execute("PRAGMA table_info(kanji)")}
+                rank_columns = {row[1] for row in db.execute("PRAGMA table_info(jiten_ranks)")}
                 meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
                 row = db.execute("SELECT meanings, on_readings, stroke_count, kanjidic_frequency, jiten_rank FROM kanji WHERE literal='膨'").fetchone()
+                rank_row = db.execute("SELECT rank FROM jiten_ranks WHERE literal='膨'").fetchone()
             self.assertEqual(
                 {
                     "literal",
@@ -98,10 +100,14 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
                 },
                 columns,
             )
+            self.assertEqual({"literal", "rank"}, rank_columns)
             self.assertEqual("1", meta["schema_version"])
             self.assertEqual("2026-129", meta["kanjidic2_database_version"])
+            self.assertEqual("1", meta["jiten_rank_count"])
+            self.assertEqual("1", meta["jiten_rank_join_count"])
             self.assertEqual("false", meta["skip_codes_imported"])
             self.assertEqual(("swell\u001fget fat", "ボウ", 16, 2077, 77), row)
+            self.assertEqual((77,), rank_row)
 
     def test_manifest_records_update_package_sources_hashes_and_no_word_dictionary(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -126,6 +132,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
                 db_path,
                 checksum,
                 len(rows),
+                1,
                 1,
                 metadata,
             )
@@ -163,13 +170,17 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
 
         with sqlite3.connect(db_path) as db:
             count = db.execute("SELECT COUNT(*) FROM kanji").fetchone()[0]
+            jiten_count = db.execute("SELECT COUNT(*) FROM jiten_ranks").fetchone()[0]
             meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
             ranked = db.execute("SELECT COUNT(*) FROM kanji WHERE jiten_rank IS NOT NULL").fetchone()[0]
 
         self.assertEqual(13108, count)
+        self.assertEqual(10666, jiten_count)
         self.assertEqual("1", meta["schema_version"])
         self.assertEqual("2026-129", meta["kanjidic2_database_version"])
-        self.assertGreater(ranked, 1000)
+        self.assertEqual("10666", meta["jiten_rank_count"])
+        self.assertEqual("8031", meta["jiten_rank_join_count"])
+        self.assertEqual(8031, ranked)
 
 
 if __name__ == "__main__":

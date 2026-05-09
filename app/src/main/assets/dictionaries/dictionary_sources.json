@@ -10,13 +10,14 @@
   "assets": [
     {
       "path": "kanji_dictionary.db",
-      "sha256": "07b2e483d8f171fb5b15e3a8ca0e5f51ad8d8aba847b11f3ac21f4c926799587",
+      "sha256": "bbcdd7788299f32dc689d4f88c65d495738b3d0f4feadc632956dc423b18ad19",
       "records": 13108,
-      "jiten_rank_records": 8031
+      "jiten_rank_records": 10666,
+      "jiten_rank_join_records": 8031
     },
     {
       "path": "kanji_dictionary.db.sha256",
-      "sha256": "dfcace50e553fc292de643a0337126ccd097929f308264a2e6acf33529786630"
+      "sha256": "71a1549c32fb302fe6571484eeeebfaf691f67139dcc5292fc0cf8c3d430b825"
     }
   ],
   "sources": [

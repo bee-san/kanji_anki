@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -59,6 +60,7 @@ public final class DictionaryStoreInstrumentedTest {
         assertEquals("日", entry.literal);
         assertFalse(entry.meanings.isEmpty());
         assertNotNull(entry.jitenRank);
+        assertEquals(10666, store.jitenRanks().size());
         assertEquals(Integer.valueOf(1), store.jitenRanks().rankOf("人"));
     }
 
@@ -116,6 +118,28 @@ public final class DictionaryStoreInstrumentedTest {
         deleteRecursively(packageDir);
     }
 
+    @Test
+    public void validFutureDictionaryPackageUpdatesActiveManifest() throws Exception {
+        DictionaryStore store = DictionaryStore.open(context);
+        File packageDir = new File(context.getCacheDir(), "dictionary-package-valid-test");
+        deleteRecursively(packageDir);
+        assertTrue(packageDir.mkdirs());
+        File database = new File(packageDir, DictionaryAssets.DATABASE_ASSET_NAME);
+        File manifest = new File(packageDir, "dictionary_sources.json");
+        File checksum = new File(packageDir, DictionaryAssets.DATABASE_SHA256_ASSET_NAME);
+        copyAsset(DictionaryAssets.DATABASE_ASSET, database);
+        copyAsset(DictionaryAssets.DATABASE_SHA256_ASSET, checksum);
+        String updatedManifest = assetText(DictionaryAssets.SOURCES_ASSET)
+                .replace("\"generated_at\": \"2026-05-09\"", "\"generated_at\": \"2099-01-01\"");
+        writeText(manifest, updatedManifest);
+
+        DictionaryStore.InstallResult result = store.installVerifiedDictionary(database, manifest, checksum);
+
+        assertTrue(result.ok);
+        assertTrue(DictionaryStore.activeManifestText(context).contains("\"generated_at\": \"2099-01-01\""));
+        deleteRecursively(packageDir);
+    }
+
     private Records.Note note(long id, String expression) {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Map<String, String> fields = new LinkedHashMap<>();
@@ -136,6 +160,18 @@ public final class DictionaryStoreInstrumentedTest {
             while ((read = input.read(buffer)) != -1) {
                 output.write(buffer, 0, read);
             }
+        }
+    }
+
+    private String assetText(String asset) throws IOException {
+        try (InputStream input = context.getAssets().open(asset)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return out.toString(StandardCharsets.UTF_8.name());
         }
     }
 

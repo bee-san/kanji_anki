@@ -37,6 +37,8 @@ import java.util.Set;
 public final class DictionaryStore extends DictionaryLookup {
     private static final String PRIVATE_DIR = "dictionaries";
     private static final String PRIVATE_DB = "kanji_dictionary.db";
+    private static final String PRIVATE_MANIFEST = "dictionary_sources.json";
+    private static final String PRIVATE_CHECKSUM = "kanji_dictionary.db.sha256";
     private static final String BUNDLE_MARKER = "kanji_dictionary.bundle.sha256";
     private static final String SUPPORTED_SCHEMA_VERSION = "1";
     private static final String LIST_SEPARATOR = "\u001f";
@@ -52,6 +54,10 @@ public final class DictionaryStore extends DictionaryLookup {
             "kanjidic_frequency",
             "jiten_rank"
     ));
+    private static final Set<String> REQUIRED_JITEN_RANK_COLUMNS = new HashSet<>(Arrays.asList(
+            "literal",
+            "rank"
+    ));
     private static final Set<String> REQUIRED_META_KEYS = new HashSet<>(Arrays.asList(
             "schema_version",
             "generated_at",
@@ -61,9 +67,13 @@ public final class DictionaryStore extends DictionaryLookup {
     ));
 
     private final File databaseFile;
+    private final File manifestFile;
+    private final File checksumFile;
 
     private DictionaryStore(File databaseFile) {
         this.databaseFile = databaseFile;
+        this.manifestFile = new File(databaseFile.getParentFile(), PRIVATE_MANIFEST);
+        this.checksumFile = new File(databaseFile.getParentFile(), PRIVATE_CHECKSUM);
     }
 
     public static DictionaryStore open(Context context) throws IOException {
@@ -74,20 +84,38 @@ public final class DictionaryStore extends DictionaryLookup {
         return new DictionaryStore(database);
     }
 
+    public static String activeManifestText(Context context) throws IOException {
+        Context appContext = context.getApplicationContext();
+        File directory = new File(appContext.getFilesDir(), PRIVATE_DIR);
+        File database = new File(directory, PRIVATE_DB);
+        ensureBundledDictionaryInstalled(appContext, directory, database);
+        return readText(new File(directory, PRIVATE_MANIFEST));
+    }
+
     public InstallResult installVerifiedDictionary(File database, File manifest, File checksum) {
         File temp = new File(databaseFile.getParentFile(), PRIVATE_DB + ".installing");
+        File tempManifest = new File(databaseFile.getParentFile(), PRIVATE_MANIFEST + ".installing");
+        File tempChecksum = new File(databaseFile.getParentFile(), PRIVATE_CHECKSUM + ".installing");
         try {
             copy(database, temp);
-            String expectedHash = readExpectedHash(checksum);
-            ValidationResult validation = validateDictionary(temp, expectedHash, readText(manifest));
+            String manifestText = readText(manifest);
+            String checksumText = readText(checksum);
+            String expectedHash = firstSha256(checksumText);
+            ValidationResult validation = validateDictionary(temp, expectedHash, manifestText);
             if (!validation.ok) {
                 deleteQuietly(temp);
                 return InstallResult.rejected(validation.message);
             }
+            writeText(tempManifest, manifestText);
+            writeText(tempChecksum, checksumText);
             atomicReplace(temp, databaseFile);
+            atomicReplace(tempManifest, manifestFile);
+            atomicReplace(tempChecksum, checksumFile);
             return InstallResult.installed("Dictionary installed.");
         } catch (IOException error) {
             deleteQuietly(temp);
+            deleteQuietly(tempManifest);
+            deleteQuietly(tempChecksum);
             return InstallResult.rejected("Dictionary install failed: " + readableMessage(error));
         }
     }
@@ -152,7 +180,7 @@ public final class DictionaryStore extends DictionaryLookup {
         Map<String, Integer> ranks = new LinkedHashMap<>();
         try (SQLiteDatabase db = openReadOnly()) {
             Cursor cursor = db.rawQuery(
-                    "SELECT literal, jiten_rank FROM kanji WHERE jiten_rank IS NOT NULL ORDER BY jiten_rank ASC, literal ASC",
+                    "SELECT literal, rank FROM jiten_ranks ORDER BY rank ASC, literal ASC",
                     null
             );
             try {
@@ -177,24 +205,37 @@ public final class DictionaryStore extends DictionaryLookup {
             throw new IOException("Could not create dictionary directory.");
         }
         String bundledHash = readExpectedHash(context.getAssets().open(DictionaryAssets.DATABASE_SHA256_ASSET));
+        String bundledManifest = readAssetText(context, DictionaryAssets.SOURCES_ASSET);
+        String bundledChecksum = readAssetText(context, DictionaryAssets.DATABASE_SHA256_ASSET);
         File marker = new File(directory, BUNDLE_MARKER);
-        if (database.exists() && bundledHash.equals(readMarker(marker))) {
+        File manifest = new File(directory, PRIVATE_MANIFEST);
+        File checksum = new File(directory, PRIVATE_CHECKSUM);
+        if (database.exists()
+                && manifest.exists()
+                && checksum.exists()
+                && bundledHash.equals(readMarker(marker))) {
             return;
         }
         File temp = new File(directory, PRIVATE_DB + ".bundled");
+        File tempManifest = new File(directory, PRIVATE_MANIFEST + ".bundled");
+        File tempChecksum = new File(directory, PRIVATE_CHECKSUM + ".bundled");
         try (InputStream source = context.getAssets().open(DictionaryAssets.DATABASE_ASSET)) {
             copy(source, temp);
         }
         ValidationResult validation = validateDictionary(
                 temp,
                 bundledHash,
-                readAssetText(context, DictionaryAssets.SOURCES_ASSET)
+                bundledManifest
         );
         if (!validation.ok) {
             deleteQuietly(temp);
             throw new IOException(validation.message);
         }
+        writeText(tempManifest, bundledManifest);
+        writeText(tempChecksum, bundledChecksum);
         atomicReplace(temp, database);
+        atomicReplace(tempManifest, manifest);
+        atomicReplace(tempChecksum, checksum);
         writeMarker(marker, bundledHash);
     }
 
@@ -258,6 +299,10 @@ public final class DictionaryStore extends DictionaryLookup {
             ValidationResult tableResult = validateColumns(db, "kanji", REQUIRED_KANJI_COLUMNS);
             if (!tableResult.ok) {
                 return tableResult;
+            }
+            ValidationResult rankTableResult = validateColumns(db, "jiten_ranks", REQUIRED_JITEN_RANK_COLUMNS);
+            if (!rankTableResult.ok) {
+                return rankTableResult;
             }
             ValidationResult metaTableResult = validateColumns(db, "dictionary_meta", new HashSet<>(Arrays.asList("key", "value")));
             if (!metaTableResult.ok) {
@@ -401,6 +446,12 @@ public final class DictionaryStore extends DictionaryLookup {
     private static String readText(File file) throws IOException {
         try (InputStream input = new FileInputStream(file)) {
             return readText(input);
+        }
+    }
+
+    private static void writeText(File file, String value) throws IOException {
+        try (FileOutputStream output = new FileOutputStream(file)) {
+            output.write((value == null ? "" : value).getBytes(StandardCharsets.UTF_8));
         }
     }
 

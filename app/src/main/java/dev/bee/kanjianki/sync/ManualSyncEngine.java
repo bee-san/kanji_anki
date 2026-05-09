@@ -12,7 +12,7 @@ import dev.bee.kanjianki.core.KanjiAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.SuspendedKanjiImporter;
-import dev.bee.kanjianki.data.DictionaryAssets;
+import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.io.InputStreamReader;
@@ -142,7 +142,7 @@ public final class ManualSyncEngine {
     }
 
     public JitenKanjiRanks loadRanks() throws Exception {
-        return DictionaryAssets.load(context).jitenRanks();
+        return DictionaryStore.open(context).jitenRanks();
     }
 
     public SimilarKanjiIndex loadSimilarKanjiIndex() throws Exception {

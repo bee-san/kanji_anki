@@ -73,6 +73,7 @@ import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingRatingMapper;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
+import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedStroke;
@@ -4095,7 +4096,7 @@ public final class MainActivity extends Activity {
 
     private String dictionarySourcesText() {
         try {
-            JSONObject manifest = new JSONObject(assetText(DictionaryAssets.SOURCES_ASSET));
+            JSONObject manifest = new JSONObject(DictionaryStore.activeManifestText(this));
             JSONArray sources = manifest.optJSONArray("sources");
             if (sources == null || sources.length() == 0) {
                 return "Dictionary manifest is empty.";
