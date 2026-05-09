@@ -2537,11 +2537,15 @@ public final class MainActivity extends Activity {
         } else {
             Button fail = studyFailButton("Fail");
             fail.setOnClickListener(v -> submitReview("again", false));
-            actions.addView(fail, new LinearLayout.LayoutParams(0, dp(62), 1));
+            LinearLayout.LayoutParams failParams = new LinearLayout.LayoutParams(0, dp(62), 1);
+            failParams.setMargins(0, 0, dp(6), 0);
+            actions.addView(fail, failParams);
 
             Button pass = pinkPrimaryButton("Pass");
             pass.setOnClickListener(v -> submitReview("good", false));
-            actions.addView(pass, new LinearLayout.LayoutParams(0, dp(62), 1));
+            LinearLayout.LayoutParams passParams = new LinearLayout.LayoutParams(0, dp(62), 1);
+            passParams.setMargins(dp(6), 0, 0, 0);
+            actions.addView(pass, passParams);
         }
         studyActionBar.addView(actions);
     }
