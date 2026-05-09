@@ -120,6 +120,15 @@ public final class MainActivity extends Activity {
     private static final int BLUSH = Color.rgb(255, 239, 246);
     private static final int PINK_STROKE = Color.rgb(255, 174, 204);
     private static final int LILAC = Color.rgb(118, 72, 255);
+    private static final int STUDY_BG = Color.rgb(255, 245, 250);
+    private static final int STUDY_CARD = Color.rgb(255, 255, 255);
+    private static final int STUDY_PANEL = Color.rgb(255, 236, 245);
+    private static final int STUDY_PLUM = Color.rgb(75, 37, 82);
+    private static final int STUDY_MUTED = Color.rgb(130, 96, 132);
+    private static final int STUDY_PINK = Color.rgb(255, 126, 171);
+    private static final int STUDY_PINK_DARK = Color.rgb(218, 58, 122);
+    private static final int STUDY_BORDER = Color.rgb(255, 199, 222);
+    private static final int STUDY_PROGRESS_TRACK = Color.rgb(255, 224, 236);
     private static final long DAY_MILLIS = 86_400_000L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -132,6 +141,7 @@ public final class MainActivity extends Activity {
     private ScrollView contentScroll;
     private LinearLayout studyActionBar;
     private Records.StudySession activeSession;
+    private Records.AdaptiveLoadPlan activeStudyPlan;
     private Records.LearningRepeat activeLearningRepeat;
     private Records.SimilarKanjiChoiceCard activeSimilarChoice;
     private Records.SimilarKanjiWritingRepair activeSimilarRepair;
@@ -286,8 +296,8 @@ public final class MainActivity extends Activity {
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         studyActionBar = new LinearLayout(this);
         studyActionBar.setOrientation(LinearLayout.VERTICAL);
-        studyActionBar.setPadding(dp(12), dp(8), dp(12), dp(8));
-        studyActionBar.setBackground(panel(Color.WHITE, Color.rgb(246, 202, 225), 0));
+        studyActionBar.setPadding(dp(18), dp(10), dp(18), dp(8));
+        studyActionBar.setBackgroundColor(STUDY_BG);
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nav = nav(selected, 0);
@@ -326,7 +336,7 @@ public final class MainActivity extends Activity {
         LinearLayout nav = new LinearLayout(this);
         nav.setGravity(Gravity.CENTER);
         nav.setPadding(dp(18), dp(10), dp(18), dp(10) + navigationInset);
-        nav.setBackground(panel(Color.WHITE, Color.rgb(244, 219, 231), dp(34)));
+        nav.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(34)));
         nav.setElevation(dp(8));
         nav.addView(navButton("Home", R.drawable.ic_home_24, selected.equals("home"), this::renderHome));
         nav.addView(navButton("Study", R.drawable.ic_study_24, selected.equals("study"), this::renderStudy));
@@ -341,15 +351,16 @@ public final class MainActivity extends Activity {
         button.setPadding(dp(10), dp(4), dp(10), dp(4));
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
-        icon.setColorFilter(active ? Color.rgb(245, 166, 0) : MUTED);
+        icon.setColorFilter(active ? STUDY_PINK_DARK : STUDY_MUTED);
         LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(23), dp(23));
         iconLp.setMargins(0, 0, dp(7), 0);
         button.addView(icon, iconLp);
-        TextView text = text(label, 15, active ? INK : MUTED, true);
+        TextView text = text(label, 15, active ? STUDY_PLUM : STUDY_MUTED, true);
         text.setGravity(Gravity.CENTER);
         text.setSingleLine(true);
         button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        button.setBackground(panel(active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, active ? Color.rgb(255, 248, 220) : Color.TRANSPARENT, dp(28)));
+        int activeFill = Color.rgb(255, 235, 244);
+        button.setBackground(panel(active ? activeFill : Color.TRANSPARENT, active ? activeFill : Color.TRANSPARENT, dp(28)));
         button.setClickable(true);
         button.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
@@ -1632,14 +1643,14 @@ public final class MainActivity extends Activity {
     }
 
     private View learningPanel(Records.StudySession session) {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        box.addView(text("Reference", 19, INK, true));
+        LinearLayout box = softInsetPanel();
+        box.addView(text("Reference", 19, STUDY_PLUM, true));
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView glyph = text(session.item.kanji, 72, INK, true);
+        TextView glyph = text(session.item.kanji, 72, STUDY_PLUM, true);
         glyph.setGravity(Gravity.CENTER);
         row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
 
@@ -1695,6 +1706,7 @@ public final class MainActivity extends Activity {
         base("study");
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
+        activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
         Records.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
         if (repair != null) {
             renderSimilarWritingRepair(repair, now);
@@ -1706,8 +1718,13 @@ public final class MainActivity extends Activity {
                 renderSimilarChoice(inventoryChoice);
                 return;
             }
-            content.addView(text("Study practice", 34, INK, true));
-            emptyState("Nothing to study yet", "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.");
+            prepareStudyContent(activeStudyPlan, false);
+            LinearLayout card = softStudyCard();
+            card.addView(modePill("Practice"));
+            card.addView(text("Study practice", 32, STUDY_PLUM, true));
+            card.addView(text("Nothing to study yet", 22, STUDY_PLUM, true));
+            card.addView(text("Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.", 16, STUDY_MUTED, false));
+            content.addView(card);
             return;
         }
         BridgeScheduler scheduler = new BridgeScheduler();
@@ -1715,6 +1732,7 @@ public final class MainActivity extends Activity {
         Records.AdaptiveLoadPlan plan = adaptivePlan(rows, beforeSeed, now);
         List<Records.StudyItem> seeded = studyQueue(rows, now, true, plan);
         Records.AdaptiveLoadPlan seededPlan = adaptivePlan(rows, seeded, now);
+        activeStudyPlan = seededPlan;
         Set<String> focus = continueAllKanjiSession || seededPlan.allKanjiMode
                 ? null
                 : new HashSet<>(seededPlan.focusKanji);
@@ -1735,11 +1753,15 @@ public final class MainActivity extends Activity {
                 renderFocusDone(seededPlan);
                 return;
             }
-            content.addView(text("Nothing due now", 34, INK, true));
-            content.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 18, MUTED, false));
-            Button back = primaryButton("Back home", TEAL);
+            prepareStudyContent(seededPlan, false);
+            LinearLayout card = softStudyCard();
+            card.addView(modePill("Practice"));
+            card.addView(text("Nothing due now", 32, STUDY_PLUM, true));
+            card.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 17, STUDY_MUTED, false));
+            Button back = pinkPrimaryButton("Back home");
             back.setOnClickListener(v -> renderHome());
-            content.addView(back);
+            card.addView(back);
+            content.addView(card);
             return;
         }
         Records.SimilarKanjiChoiceCard gate = store.dueSimilarChoiceForActiveTarget(activeSession.item.kanji, now);
@@ -1799,24 +1821,28 @@ public final class MainActivity extends Activity {
     }
 
     private void renderFocusDone(Records.AdaptiveLoadPlan plan) {
-        content.addView(text("Today's focus done", 34, INK, true));
-        content.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 18, MUTED, false));
-        LinearLayout summary = band(TEAL);
-        summary.addView(text("Today's focus: 0 left / " + plan.target, 22, Color.WHITE, true));
-        summary.addView(text(plan.status, 15, Color.WHITE, false));
-        content.addView(summary);
-        Button keepGoing = primaryButton("Continue all kanji", CORAL);
+        prepareStudyContent(plan, false);
+        LinearLayout card = softStudyCard();
+        card.addView(modePill("Practice"));
+        card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
+        card.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 17, STUDY_MUTED, false));
+        LinearLayout summary = softInsetPanel();
+        summary.addView(text("Today's focus: 0 left / " + plan.target, 20, STUDY_PLUM, true));
+        summary.addView(text(plan.status, 15, STUDY_MUTED, false));
+        card.addView(summary);
+        Button keepGoing = pinkPrimaryButton("Continue all kanji");
         keepGoing.setOnClickListener(v -> {
             continueAllKanjiSession = true;
             renderStudy();
         });
-        content.addView(keepGoing);
-        Button back = secondaryButton("Back home");
+        card.addView(keepGoing);
+        Button back = studySecondaryButton("Back home");
         back.setOnClickListener(v -> {
             continueAllKanjiSession = false;
             renderHome();
         });
-        content.addView(back);
+        card.addView(back);
+        content.addView(card);
     }
 
     private void startFocusedStudy() {
@@ -1827,14 +1853,21 @@ public final class MainActivity extends Activity {
     private void renderStudyForKanji(String kanji) {
         base("study");
         List<Records.DashboardRow> rows = store.activeDashboardRows();
+        long now = System.currentTimeMillis();
+        activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
         Records.DashboardRow row = findRow(rows, kanji);
         if (row == null) {
-            content.addView(text("Study practice", 34, INK, true));
-            emptyState("Kanji not available", "This row may have changed after sync.");
+            prepareStudyContent(activeStudyPlan, false);
+            LinearLayout card = softStudyCard();
+            card.addView(modePill("Practice"));
+            card.addView(text("Study practice", 32, STUDY_PLUM, true));
+            card.addView(text("Kanji not available", 22, STUDY_PLUM, true));
+            card.addView(text("This row may have changed after sync.", 16, STUDY_MUTED, false));
+            content.addView(card);
             return;
         }
-        long now = System.currentTimeMillis();
         List<Records.StudyItem> seeded = studyQueue(rows, now, true);
+        activeStudyPlan = adaptivePlan(rows, seeded, now);
         Records.StudyItem item = findStudyItem(seeded, kanji);
         if (item == null) {
             item = new Records.StudyItem(
@@ -1888,7 +1921,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSimilarChoice(Records.SimilarKanjiChoiceCard card) {
-        content.removeAllViews();
+        prepareStudyContent(activeStudyPlan, false);
         activeSession = null;
         activeLearningRepeat = null;
         activeSimilarRepair = null;
@@ -1905,16 +1938,16 @@ public final class MainActivity extends Activity {
             studyActionBar.setVisibility(View.GONE);
         }
 
-        content.addView(text("Choose the kanji", 30, INK, true));
-        LinearLayout stage = band(CORAL);
-        stage.addView(text("Similar choice", 22, Color.WHITE, true));
-        stage.addView(text("Pick the kanji that matches the meaning before the normal card appears.", 15, Color.WHITE, false));
-        content.addView(stage);
-
-        LinearLayout box = panelBox(Color.WHITE, TEAL);
-        box.addView(text("Which kanji means " + similarChoiceMeaning(card) + "?", 22, INK, true));
+        LinearLayout cardShell = softStudyCard();
+        cardShell.addView(modePill("Recognise"));
+        cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
+        cardShell.addView(text("Similar choice", 16, STUDY_PINK_DARK, true));
+        cardShell.addView(text("Pick the kanji that matches the meaning before the normal card appears.", 15, STUDY_MUTED, false));
+        LinearLayout box = softInsetPanel();
+        box.addView(text("Which kanji means " + similarChoiceMeaning(card) + "?", 22, STUDY_PLUM, true));
         box.addView(similarChoiceGrid(card));
-        content.addView(box);
+        cardShell.addView(box);
+        content.addView(cardShell);
     }
 
     private View similarChoiceGrid(Records.SimilarKanjiChoiceCard card) {
@@ -1930,11 +1963,11 @@ public final class MainActivity extends Activity {
                 grid.addView(row);
             }
             String glyph = choices.get(i);
-            Button button = primaryButton(glyph, Color.WHITE);
-            button.setTextColor(INK);
+            Button button = studySecondaryButton(glyph);
+            button.setTextColor(STUDY_PLUM);
             button.setTextSize(34);
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            button.setBackground(panel(Color.rgb(255, 247, 251), Color.rgb(246, 202, 225), dp(8)));
+            button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
             button.setOnClickListener(v -> submitSimilarChoice(glyph));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
             lp.setMargins(dp(4), dp(8), dp(4), 0);
@@ -2035,10 +2068,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderFlashcardSession(Records.StudySession session) {
-        content.removeAllViews();
-        if (contentScroll != null) {
-            contentScroll.setFillViewport(true);
-        }
+        prepareStudyContent(activeStudyPlan, true);
         activeAnalysis = null;
         checkingWriting = false;
         flashcardAnswerRevealed = false;
@@ -2046,35 +2076,30 @@ public final class MainActivity extends Activity {
         hintsUsed = 0;
         setHintState(HintState.initial());
         drawingPad = null;
-        flashcardGestureArea = content;
-
-        content.addView(text(flashcardTitle(session), 30, INK, true));
-        LinearLayout stage = band(CORAL);
-        stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
+        LinearLayout card = softStudyCard();
+        flashcardGestureArea = card;
+        card.addView(modePill(studyModeLabel(session)));
+        card.addView(text(flashcardTitle(session), 30, STUDY_PLUM, true));
+        card.addView(text(labelForTask(session.taskType), 15, STUDY_PINK_DARK, true));
         if (activeLearningRepeat != null) {
-            stage.addView(text(learningRepeatLine(activeLearningRepeat), 15, Color.WHITE, false));
+            card.addView(text(learningRepeatLine(activeLearningRepeat), 15, STUDY_MUTED, false));
         }
-        if (isFontRecognitionTask(session)) {
-            stage.addView(text("Recognise the shape across fonts, then reveal the Anki clue.", 15, Color.WHITE, false));
-        } else if (isWordReadingTask(session)) {
-            stage.addView(text("Read the source word before revealing the answer.", 15, Color.WHITE, false));
-        } else {
-            stage.addView(text("Name the meaning before revealing the answer.", 15, Color.WHITE, false));
-        }
-        content.addView(stage);
-
-        LinearLayout.LayoutParams promptLp = new LinearLayout.LayoutParams(-1, 0, 1);
-        promptLp.setMargins(0, dp(7), 0, dp(7));
-        content.addView(flashcardPromptPanel(session), promptLp);
+        card.addView(text(flashcardPromptText(session), 17, STUDY_MUTED, false));
+        card.addView(kanjiDisplayPanel(session));
+        card.addView(text(flashcardQuestion(session), 16, STUDY_PLUM, true));
+        card.addView(text("Answer hidden until reveal.", 14, STUDY_MUTED, false));
         studyAnswerPanel = flashcardAnswerPanel(session);
         studyAnswerPanel.setVisibility(View.GONE);
-        content.addView(studyAnswerPanel);
+        card.addView(studyAnswerPanel);
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
+        cardLp.setMargins(0, dp(6), 0, dp(12));
+        content.addView(card, cardLp);
 
         buildFlashcardActionBar(false);
     }
 
     private void renderWritingSession(Records.StudySession session) {
-        content.removeAllViews();
+        prepareStudyContent(activeStudyPlan, false);
         activeAnalysis = null;
         checkingWriting = false;
         flashcardGestureArea = null;
@@ -2083,42 +2108,48 @@ public final class MainActivity extends Activity {
         hintsUsed = 0;
         setHintState(initialHintState(session));
 
-        content.addView(text("Draw this kanji", 30, INK, true));
-        LinearLayout stage = band(CORAL);
-        stage.addView(text(labelForTask(session.taskType), 22, Color.WHITE, true));
+        LinearLayout card = softStudyCard();
+        card.addView(modePill("Practice"));
+        card.addView(text("Draw this kanji", 30, STUDY_PLUM, true));
+        card.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
         if (activeLearningRepeat != null) {
-            stage.addView(text(learningRepeatLine(activeLearningRepeat), 15, Color.WHITE, false));
+            card.addView(text(learningRepeatLine(activeLearningRepeat), 15, STUDY_MUTED, false));
         }
         if (session.row != null) {
             if (isRecallTask(session)) {
-                stage.addView(text("Prompt: " + sessionClue(session), 17, Color.WHITE, false));
+                card.addView(text("Prompt: " + sessionClue(session), 17, STUDY_PLUM, true));
                 if (!session.row.reading.isEmpty()) {
-                    stage.addView(text("Reading: " + session.row.reading, 15, Color.WHITE, false));
+                    card.addView(text("Reading: " + session.row.reading, 15, STUDY_MUTED, false));
                 }
-                stage.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, Color.WHITE, false));
+                card.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, STUDY_MUTED, false));
             } else if ("writing_remediation".equals(session.taskType)) {
-                stage.addView(text("Recognition has missed on multiple days. Write it once with the guide before returning to recognition.", 15, Color.WHITE, false));
+                card.addView(text("Recognition has missed on multiple days. Write it once with the guide before returning to recognition.", 15, STUDY_MUTED, false));
             } else if ("similar_writing".equals(session.taskType)) {
-                stage.addView(text("Write the kanji from the similar-choice miss before retrying that choice.", 15, Color.WHITE, false));
+                card.addView(text("Write the kanji from the similar-choice miss before retrying that choice.", 15, STUDY_MUTED, false));
             } else {
-                stage.addView(text("Learn it from the reference, trace it, then check.", 15, Color.WHITE, false));
+                card.addView(text("Learn it from the reference, trace it, then check.", 15, STUDY_MUTED, false));
             }
         } else {
-            stage.addView(text(session.prompt, 17, Color.WHITE, false));
+            card.addView(text(session.prompt, 17, STUDY_MUTED, false));
         }
-        content.addView(stage);
         studyAnswerPanel = learningPanel(session);
-        content.addView(studyAnswerPanel);
+        card.addView(studyAnswerPanel);
 
-        content.addView(sectionTitle("Writing"));
+        TextView writingTitle = sectionTitle("Writing");
+        writingTitle.setTextColor(STUDY_PLUM);
+        card.addView(writingTitle);
         StrokeGuide guide = strokeGuide(session.item.kanji);
-        studyStatus = text(guideLabel(currentHintState, guide), 16, MUTED, false);
-        content.addView(studyStatus);
+        studyStatus = text(guideLabel(currentHintState, guide), 16, STUDY_MUTED, false);
+        card.addView(studyStatus);
         drawingPad = new DrawingPadView(this);
         drawingPad.setTarget(session.item.kanji);
         drawingPad.setInkEditListener(this::handleDrawingEdited);
         drawingPad.setGuide(guide, currentHintState, false);
-        content.addView(drawingPad, new LinearLayout.LayoutParams(-1, studyPadHeight()));
+        LinearLayout padShell = softInsetPanel();
+        padShell.setPadding(dp(8), dp(8), dp(8), dp(8));
+        padShell.addView(drawingPad, new LinearLayout.LayoutParams(-1, studyPadHeight()));
+        card.addView(padShell);
+        content.addView(card);
 
         buildStudyActionBar();
         updateResultActions();
@@ -2140,26 +2171,49 @@ public final class MainActivity extends Activity {
         return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
     }
 
-    private View flashcardPromptPanel(Records.StudySession session) {
-        LinearLayout box = panelBox(Color.WHITE, TEAL);
-        box.setMinimumHeight(dp(180));
-        box.addView(text("Front", 19, INK, true));
-        if (isFontRecognitionTask(session)) {
-            box.addView(randomFontVariantCard(session.item.kanji), fontVariantCardParams());
-            box.addView(text("What does this kanji mean?", 15, MUTED, false));
-            return box;
+    private String studyModeLabel(Records.StudySession session) {
+        if (session != null && session.writingRequired) {
+            return "Practice";
         }
         if (isWordReadingTask(session)) {
-            box.addView(text(wordPrompt(session), 34, INK, true));
-            box.addView(text("What is the reading?", 15, MUTED, false));
-            return box;
+            return "Read";
         }
-        TextView glyph = text(session.item.kanji, 84, INK, true);
+        return "Recognise";
+    }
+
+    private String flashcardPromptText(Records.StudySession session) {
+        if (isFontRecognitionTask(session)) {
+            return "Recognise the shape across fonts, then reveal the Anki clue.";
+        }
+        if (isWordReadingTask(session)) {
+            return "Read the source word before revealing the answer.";
+        }
+        return "Name the meaning before revealing the answer.";
+    }
+
+    private String flashcardQuestion(Records.StudySession session) {
+        if (isWordReadingTask(session)) {
+            return "What is the reading?";
+        }
+        if (isFontRecognitionTask(session)) {
+            return "What does this kanji mean?";
+        }
+        return "What does it mean?";
+    }
+
+    private View kanjiDisplayPanel(Records.StudySession session) {
+        LinearLayout panel = softInsetPanel();
+        panel.setGravity(Gravity.CENTER);
+        panel.setMinimumHeight(dp(188));
+        if (isFontRecognitionTask(session)) {
+            panel.addView(randomFontVariantCard(session.item.kanji), fontVariantCardParams());
+            return panel;
+        }
+        TextView glyph = text(isWordReadingTask(session) ? wordPrompt(session) : session.item.kanji, isWordReadingTask(session) ? 38 : 92, STUDY_PLUM, true);
         glyph.setGravity(Gravity.CENTER);
-        box.addView(glyph, new LinearLayout.LayoutParams(-1, dp(118)));
-        box.addView(text("What does it mean?", 15, MUTED, false));
-        box.addView(text("Answer hidden until reveal.", 14, MUTED, false));
-        return box;
+        glyph.setIncludeFontPadding(false);
+        panel.addView(glyph, new LinearLayout.LayoutParams(-1, dp(150)));
+        return panel;
     }
 
     private View randomFontVariantCard(String kanji) {
@@ -2188,12 +2242,12 @@ public final class MainActivity extends Activity {
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER);
         tile.setPadding(dp(8), dp(10), dp(8), dp(10));
-        tile.setBackground(panel(Color.rgb(255, 247, 251), Color.rgb(246, 202, 225), dp(8)));
-        TextView glyph = text(kanji, 92, INK, true);
+        tile.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
+        TextView glyph = text(kanji, 92, STUDY_PLUM, true);
         glyph.setTypeface(typeface, Typeface.BOLD);
         glyph.setGravity(Gravity.CENTER);
         tile.addView(glyph, new LinearLayout.LayoutParams(-1, 0, 1));
-        TextView caption = text(label, 12, MUTED, false);
+        TextView caption = text(label, 12, STUDY_MUTED, false);
         caption.setGravity(Gravity.CENTER);
         tile.addView(caption);
         return tile;
@@ -2208,14 +2262,14 @@ public final class MainActivity extends Activity {
     }
 
     private View flashcardAnswerPanel(Records.StudySession session) {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        box.addView(text("Answer", 19, INK, true));
+        LinearLayout box = softInsetPanel();
+        box.addView(text("Answer", 19, STUDY_PLUM, true));
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView glyph = text(session.item.kanji, 76, INK, true);
+        TextView glyph = text(session.item.kanji, 76, STUDY_PLUM, true);
         glyph.setGravity(Gravity.CENTER);
         row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
 
@@ -2235,7 +2289,7 @@ public final class MainActivity extends Activity {
         List<String> lines = StudyCueFormatter.answerLines(cue);
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
-            int color = line.startsWith("Reading:") ? TEAL : INK;
+            int color = line.startsWith("Reading:") ? STUDY_PINK_DARK : STUDY_PLUM;
             details.addView(text(line, i == 0 ? 17 : 15, color, true));
         }
     }
@@ -2285,25 +2339,26 @@ public final class MainActivity extends Activity {
         if (studyActionBar == null) {
             return;
         }
+        styleStudyActionBarShell();
         studyActionBar.removeAllViews();
         studyActionBar.setVisibility(View.VISIBLE);
 
-        resultStatus = text("", 15, MUTED, false);
+        resultStatus = text("", 15, STUDY_MUTED, false);
         resultStatus.setVisibility(View.GONE);
         studyActionBar.addView(resultStatus);
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         if (!revealed) {
-            Button reveal = primaryButton("Reveal", CORAL);
+            Button reveal = pinkPrimaryButton("Reveal");
             reveal.setOnClickListener(v -> revealFlashcardAnswer());
             actions.addView(reveal, new LinearLayout.LayoutParams(0, dp(62), 1));
         } else {
-            Button fail = primaryButton("Fail", CORAL);
+            Button fail = studyFailButton("Fail");
             fail.setOnClickListener(v -> submitReview("again", false));
             actions.addView(fail, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-            Button pass = primaryButton("Pass", TEAL);
+            Button pass = pinkPrimaryButton("Pass");
             pass.setOnClickListener(v -> submitReview("good", false));
             actions.addView(pass, new LinearLayout.LayoutParams(0, dp(62), 1));
         }
@@ -2390,16 +2445,17 @@ public final class MainActivity extends Activity {
         if (studyActionBar == null) {
             return;
         }
+        styleStudyActionBarShell();
         studyActionBar.removeAllViews();
         studyActionBar.setVisibility(View.VISIBLE);
 
-        resultStatus = text("", 16, MUTED, false);
+        resultStatus = text("", 16, STUDY_MUTED, false);
         resultStatus.setVisibility(View.GONE);
         studyActionBar.addView(resultStatus);
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button clear = secondaryButton("Erase");
+        Button clear = studySecondaryButton("Erase");
         clear.setOnClickListener(v -> {
             drawingPad.clear();
             activeAnalysis = null;
@@ -2407,37 +2463,37 @@ public final class MainActivity extends Activity {
             updateResultActions();
         });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
-        hintButton = secondaryButton("Hint");
+        hintButton = studySecondaryButton("Hint");
         hintButton.setOnClickListener(v -> showWritingHint());
         actions.addView(hintButton, new LinearLayout.LayoutParams(0, dp(58), 1));
         studyActionBar.addView(actions);
 
         LinearLayout primaryActions = new LinearLayout(this);
         primaryActions.setOrientation(LinearLayout.HORIZONTAL);
-        checkWritingButton = primaryButton("Check", CORAL);
+        checkWritingButton = pinkPrimaryButton("Check");
         checkWritingButton.setOnClickListener(v -> checkWriting());
         primaryActions.addView(checkWritingButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        downloadModelButton = secondaryButton("Download checker");
+        downloadModelButton = studySecondaryButton("Download checker");
         downloadModelButton.setOnClickListener(v -> downloadWritingModel());
         primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        nextAfterPassButton = primaryButton("Next", TEAL);
+        nextAfterPassButton = pinkPrimaryButton("Next");
         nextAfterPassButton.setOnClickListener(v -> submitReview(activeAnalysis == null ? "again" : activeAnalysis.rating, false));
         primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
         studyActionBar.addView(primaryActions);
 
         LinearLayout fallbackActions = new LinearLayout(this);
         fallbackActions.setOrientation(LinearLayout.HORIZONTAL);
-        replayButton = secondaryButton("Replay");
+        replayButton = studySecondaryButton("Replay");
         replayButton.setOnClickListener(v -> replayWritingAnalysis());
         fallbackActions.addView(replayButton, new LinearLayout.LayoutParams(0, dp(56), 1));
 
-        manualOverrideButton = secondaryButton("Mark right anyway");
+        manualOverrideButton = studySecondaryButton("Mark right anyway");
         manualOverrideButton.setOnClickListener(v -> submitReview("good", true));
         fallbackActions.addView(manualOverrideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
 
-        practiceWithGuideButton = secondaryButton("Try again with full guide");
+        practiceWithGuideButton = studySecondaryButton("Try again with full guide");
         practiceWithGuideButton.setOnClickListener(v -> {
             setHintState(HintState.initial());
             hintsUsed++;
@@ -4214,6 +4270,194 @@ public final class MainActivity extends Activity {
                 now,
                 settings()
         );
+    }
+
+    private void prepareStudyContent(Records.AdaptiveLoadPlan plan, boolean fillViewport) {
+        activeStudyPlan = plan;
+        content.removeAllViews();
+        if (contentScroll != null) {
+            contentScroll.setFillViewport(fillViewport);
+        }
+        content.addView(studyTopBar(plan));
+    }
+
+    private View studyTopBar(Records.AdaptiveLoadPlan plan) {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.VERTICAL);
+        bar.setPadding(0, 0, 0, dp(8));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(studyIconButton(R.drawable.ic_close_24, "Close study", this::renderHome), new LinearLayout.LayoutParams(dp(46), dp(46)));
+
+        TextView progress = text(studyProgressText(plan), 18, STUDY_PLUM, true);
+        progress.setGravity(Gravity.CENTER);
+        progress.setIncludeFontPadding(false);
+        row.addView(progress, new LinearLayout.LayoutParams(0, -2, 1));
+
+        row.addView(studyIconButton(R.drawable.ic_settings_24, "Settings", this::renderSettings), new LinearLayout.LayoutParams(dp(46), dp(46)));
+        bar.addView(row);
+
+        ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(1000);
+        progressBar.setProgress(Math.round(studyProgressFraction(plan) * 1000f));
+        progressBar.setIndeterminate(false);
+        if (Build.VERSION.SDK_INT >= 21) {
+            progressBar.setProgressTintList(ColorStateList.valueOf(STUDY_PINK));
+            progressBar.setProgressBackgroundTintList(ColorStateList.valueOf(STUDY_PROGRESS_TRACK));
+        }
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(-1, dp(6));
+        progressLp.setMargins(dp(66), dp(6), dp(66), 0);
+        bar.addView(progressBar, progressLp);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, 0, 0, dp(10));
+        bar.setLayoutParams(lp);
+        return bar;
+    }
+
+    private View studyIconButton(int iconRes, String description, Runnable action) {
+        FrameLayout button = new FrameLayout(this);
+        button.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setContentDescription(description);
+        button.setElevation(dp(2));
+        button.setOnClickListener(v -> action.run());
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(STUDY_PINK_DARK);
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER);
+        button.addView(icon, iconLp);
+        return button;
+    }
+
+    private String studyProgressText(Records.AdaptiveLoadPlan plan) {
+        int target = studyProgressTarget(plan);
+        int completed = studyProgressCompleted(plan);
+        return completed + " / " + target;
+    }
+
+    private float studyProgressFraction(Records.AdaptiveLoadPlan plan) {
+        int target = studyProgressTarget(plan);
+        if (target <= 0) {
+            return 0f;
+        }
+        return Math.max(0f, Math.min(1f, studyProgressCompleted(plan) / (float) target));
+    }
+
+    private int studyProgressTarget(Records.AdaptiveLoadPlan plan) {
+        return plan == null ? 0 : Math.max(0, plan.target);
+    }
+
+    private int studyProgressCompleted(Records.AdaptiveLoadPlan plan) {
+        if (plan == null) {
+            return 0;
+        }
+        int target = studyProgressTarget(plan);
+        if (target <= 0) {
+            return 0;
+        }
+        int remaining = Math.max(0, Math.min(target, plan.remaining));
+        return Math.max(0, Math.min(target, target - remaining));
+    }
+
+    private LinearLayout softStudyCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(22), dp(22), dp(22), dp(22));
+        card.setBackground(panel(STUDY_CARD, STUDY_BORDER, dp(26)));
+        card.setElevation(dp(5));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(6), 0, dp(12));
+        card.setLayoutParams(lp);
+        return card;
+    }
+
+    private TextView modePill(String value) {
+        TextView pill = text(value, 13, STUDY_PINK_DARK, true);
+        pill.setGravity(Gravity.CENTER);
+        pill.setIncludeFontPadding(false);
+        pill.setPadding(dp(12), dp(7), dp(12), dp(7));
+        pill.setBackground(panel(Color.rgb(255, 239, 247), STUDY_BORDER, dp(18)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+        lp.setMargins(0, 0, 0, dp(14));
+        pill.setLayoutParams(lp);
+        return pill;
+    }
+
+    private LinearLayout softInsetPanel() {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(16), dp(16), dp(16), dp(16));
+        panel.setBackground(panel(STUDY_PANEL, STUDY_BORDER, dp(22)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(12), 0, dp(10));
+        panel.setLayoutParams(lp);
+        return panel;
+    }
+
+    private Button pinkPrimaryButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextSize(19);
+        button.setTextColor(Color.WHITE);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        if ("Reveal".equals(label)) {
+            button.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_eye_24, 0, 0, 0);
+            button.setCompoundDrawablePadding(dp(8));
+            if (Build.VERSION.SDK_INT >= 23) {
+                button.setCompoundDrawableTintList(ColorStateList.valueOf(Color.WHITE));
+            }
+        }
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] { Color.rgb(255, 139, 182), STUDY_PINK_DARK }
+        );
+        background.setCornerRadius(dp(20));
+        background.setStroke(dp(1), Color.rgb(255, 173, 205));
+        GradientDrawable mask = new GradientDrawable();
+        mask.setColor(Color.WHITE);
+        mask.setCornerRadius(dp(20));
+        button.setBackground(new RippleDrawable(
+                ColorStateList.valueOf(Color.argb(42, 255, 255, 255)),
+                background,
+                mask
+        ));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(62));
+        lp.setMargins(dp(3), dp(8), dp(3), dp(8));
+        button.setLayoutParams(lp);
+        return button;
+    }
+
+    private Button studySecondaryButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setAllCaps(false);
+        button.setTextSize(16);
+        button.setTextColor(STUDY_PLUM);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(56));
+        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
+        button.setLayoutParams(lp);
+        return button;
+    }
+
+    private Button studyFailButton(String label) {
+        Button button = studySecondaryButton(label);
+        button.setTextColor(STUDY_PINK_DARK);
+        button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(18)));
+        return button;
+    }
+
+    private void styleStudyActionBarShell() {
+        if (studyActionBar != null) {
+            studyActionBar.setPadding(dp(18), dp(10), dp(18), dp(8));
+            studyActionBar.setBackgroundColor(STUDY_BG);
+        }
     }
 
     private LinearLayout band(int color) {
