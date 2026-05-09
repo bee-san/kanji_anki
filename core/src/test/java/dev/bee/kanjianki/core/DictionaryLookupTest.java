@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -69,6 +70,34 @@ public class DictionaryLookupTest {
         assertTrue(new StudyCue("sorrow", "ヒ", "悲しみ", "KANJIDIC2").toString().contains("悲しみ"));
         assertEquals(cue, new StudyCue("sorrow", "ヒ", "悲しみ", DictionaryLookup.SOURCE_KANJIDIC2));
         assertEquals(cue.hashCode(), new StudyCue("sorrow", "ヒ", "悲しみ", DictionaryLookup.SOURCE_KANJIDIC2).hashCode());
+    }
+
+    @Test
+    public void typingAnswerMatchesAnyDictionaryMeaningWithCaseAndPunctuation() {
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(kanji("拉", Arrays.asList("Latin", "kidnap"), Arrays.asList("ラ"), Collections.emptyList(), 1800, null))
+        );
+
+        assertTrue(TypingAnswerMatcher.matches(lookup, "拉", "KIDNAP!", "archive example"));
+        assertTrue(TypingAnswerMatcher.matches(lookup, "拉", " latin ", "archive example"));
+    }
+
+    @Test
+    public void typingAnswerUsesCleanedCommaSeparatedCollectionFallback() {
+        DictionaryLookup lookup = DictionaryLookup.empty();
+
+        assertTrue(TypingAnswerMatcher.matches(lookup, "鿃", "rare shape", "(noun) rare shape, collection-only clue"));
+        assertTrue(TypingAnswerMatcher.matches(lookup, "鿃", "collection only clue", "(noun) rare shape, collection-only clue"));
+    }
+
+    @Test
+    public void typingAnswerRejectsWrongMeaning() {
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(kanji("悲", Arrays.asList("sorrow", "despair"), Arrays.asList("ヒ"), Arrays.asList("かな.しい"), 1014, 500))
+        );
+
+        assertTrue(TypingAnswerMatcher.acceptedMeanings(lookup, "悲", "fallback").contains("sorrow"));
+        assertFalse(TypingAnswerMatcher.matches(lookup, "悲", "joy", "fallback"));
     }
 
     private static DictionaryLookup.KanjiEntry kanji(

@@ -14,6 +14,7 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.ScrollView;
@@ -1060,11 +1061,70 @@ public final class MainActivityInstrumentedTest {
                 List<Records.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertFalse(items.get(0).writingRemediationPending);
-                assertEquals(0, items.get(0).recognitionStage);
+                assertEquals(-1, items.get(0).recognitionStage);
                 assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
                 assertLatestReviewSchedulerStateContains(store, "\"due_at\":" + items.get(0).dueAtMillis);
             } finally {
                 store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testTypingMeaningAutoPassesCorrectAnswerAndAllowsManualWrongGrading() {
+        seedDashboard();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            clickText(scenario, "Reveal");
+            clickText(scenario, "Fail");
+
+            forceStudyItemDue("拉", -1, false);
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Type the meaning");
+                assertHasText(activity, "Typing -> meaning");
+                assertHasText(activity, "Meaning");
+                assertHasText(activity, "Reveal");
+            });
+            enterFirstEditText(scenario, "kidnap");
+            clickText(scenario, "Reveal");
+
+            LocalStore afterCorrect = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = afterCorrect.reviewStatsSince(0L);
+                assertEquals(2, stats.total);
+                assertEquals(1, stats.good);
+                List<Records.StudyItem> items = afterCorrect.studyItems();
+                assertEquals(1, items.size());
+                assertEquals(0, items.get(0).recognitionStage);
+                assertEquals(1, items.get(0).typingMeaningMemory.totalReviews);
+            } finally {
+                afterCorrect.close();
+            }
+
+            forceStudyItemDue("拉", -1, false);
+            clickText(scenario, "Study");
+            enterFirstEditText(scenario, "wrong");
+            clickText(scenario, "Reveal");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Answer");
+                assertHasText(activity, "Latin, kidnap");
+                assertHasText(activity, "Fail");
+                assertHasText(activity, "Pass");
+            });
+            clickText(scenario, "Fail");
+
+            LocalStore afterWrong = new LocalStore(context);
+            try {
+                Records.ReviewStats stats = afterWrong.reviewStatsSince(0L);
+                assertEquals(3, stats.total);
+                assertEquals(2, stats.again);
+                List<Records.StudyItem> items = afterWrong.studyItems();
+                assertEquals(1, items.size());
+                assertEquals(-1, items.get(0).recognitionStage);
+                assertTrue(items.get(0).writingRemediationPending);
+            } finally {
+                afterWrong.close();
             }
         }
     }
@@ -1615,6 +1675,49 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
+    private void forceStudyItemDue(String kanji, int recognitionStage, boolean writingRemediationPending) {
+        LocalStore store = new LocalStore(context);
+        try {
+            Records.StudyItem item = null;
+            for (Records.StudyItem candidate : store.studyItems()) {
+                if (kanji.equals(candidate.kanji)) {
+                    item = candidate;
+                    break;
+                }
+            }
+            assertNotNull(item);
+            long now = System.currentTimeMillis();
+            store.saveStudyItem(new Records.StudyItem(
+                    item.kanji,
+                    "learning",
+                    now,
+                    item.stability,
+                    item.difficulty,
+                    item.totalReviews,
+                    item.lapses,
+                    item.learningStep,
+                    item.writingLevel,
+                    recognitionStage,
+                    item.consecutiveFailedRecognitionDays,
+                    item.lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    item.suppressedByTaskType,
+                    item.suppressedAtMillis,
+                    item.matureIntervalDays,
+                    item.answerSignature,
+                    null,
+                    item.createdAtMillis,
+                    item.typingMeaningMemory,
+                    item.kanjiMeaningMemory,
+                    item.fontMeaningMemory,
+                    item.wordReadingMemory,
+                    item.writingRemediationMemory
+            ));
+        } finally {
+            store.close();
+        }
+    }
+
     private void seedDashboardRowsOnly(List<Records.DashboardRow> rows) {
         saveSyncFinishedAt(2000L, rows);
     }
@@ -1762,6 +1865,16 @@ public final class MainActivityInstrumentedTest {
             object.click();
             device.waitForIdle(2000L);
         }
+    }
+
+    private static void enterFirstEditText(ActivityScenario<MainActivity> scenario, String text) {
+        scenario.onActivity(activity -> {
+            EditText input = findType(activity.findViewById(android.R.id.content), EditText.class);
+            assertNotNull(input);
+            input.setText(text);
+            input.setSelection(text.length());
+        });
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
     }
 
     private static UiObject2 findDeviceText(UiDevice device, String text) {
