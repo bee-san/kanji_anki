@@ -42,6 +42,7 @@ import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.core.widget.TextViewCompat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -4386,10 +4387,8 @@ public final class MainActivity extends Activity {
         progressBar.setMax(1000);
         progressBar.setProgress(Math.round(studyProgressFraction(plan) * 1000f));
         progressBar.setIndeterminate(false);
-        if (Build.VERSION.SDK_INT >= 21) {
-            progressBar.setProgressTintList(ColorStateList.valueOf(STUDY_PINK));
-            progressBar.setProgressBackgroundTintList(ColorStateList.valueOf(STUDY_PROGRESS_TRACK));
-        }
+        progressBar.setProgressTintList(ColorStateList.valueOf(STUDY_PINK));
+        progressBar.setProgressBackgroundTintList(ColorStateList.valueOf(STUDY_PROGRESS_TRACK));
         LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(-1, dp(6));
         progressLp.setMargins(dp(66), dp(6), dp(66), 0);
         bar.addView(progressBar, progressLp);
@@ -5317,4 +5316,3 @@ public final class MainActivity extends Activity {
         }
     }
 }
-import androidx.core.widget.TextViewCompat;
