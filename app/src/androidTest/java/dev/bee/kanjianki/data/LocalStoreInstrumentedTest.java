@@ -252,6 +252,9 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
         assertEquals("pull", pull.primaryMeaning);
         assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2000L));
+        assertEquals(1, store.dueSimilarChoiceTaskCount(2000L));
+        assertEquals(0, store.dueSimilarWritingRepairTaskCount(2000L));
+        assertEquals(1, store.dueSimilarStudyTaskCount(2000L));
         assertFalse("inventory-only cards should skip active targets", "拉".equals(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji));
 
         Records.SimilarKanjiChoiceResult wrong = store.submitSimilarChoice(pull, "提", 2500L);
@@ -262,10 +265,14 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(2, count("similar_kanji_repair_queue"));
         assertEquals("拉", store.nextDueSimilarWritingRepair(2500L).repairKanji);
         assertTrue(store.dueSimilarChoiceForActiveTarget("拉", 2500L) == null);
+        assertEquals(0, store.dueSimilarChoiceTaskCount(2500L));
+        assertEquals(2, store.dueSimilarWritingRepairTaskCount(2500L));
+        assertEquals(2, store.dueSimilarStudyTaskCount(2500L));
 
         Records.SimilarKanjiWritingRepair targetRepair = store.nextDueSimilarWritingRepair(2600L).withToken("repair-target", 2600L);
         store.saveSimilarWritingRepair(targetRepair);
         assertTrue(store.finishSimilarWritingRepair(targetRepair.id, "repair-target", true, 2700L));
+        assertEquals(1, store.dueSimilarWritingRepairTaskCount(2800L));
         Records.SimilarKanjiWritingRepair selectedRepair = store.nextDueSimilarWritingRepair(2800L).withToken("repair-selected", 2800L);
         assertEquals("提", selectedRepair.repairKanji);
         store.saveSimilarWritingRepair(selectedRepair);
@@ -273,9 +280,13 @@ public final class LocalStoreInstrumentedTest {
 
         Records.SimilarKanjiChoiceCard retry = store.dueSimilarChoiceForActiveTarget("拉", 3000L);
         assertNotNull(retry);
+        assertEquals(1, store.dueSimilarChoiceTaskCount(3000L));
+        assertEquals(0, store.dueSimilarWritingRepairTaskCount(3000L));
+        assertEquals(1, store.dueSimilarStudyTaskCount(3000L));
         Records.SimilarKanjiChoiceResult correct = store.submitSimilarChoice(retry, "拉", 3100L);
         assertTrue(correct.correct);
         assertTrue(store.dueSimilarChoiceForActiveTarget("拉", 3200L) == null);
+        assertEquals(0, store.dueSimilarStudyTaskCount(3200L));
         assertEquals(0, count("review_log"));
         assertEquals(2, count("similar_kanji_review_log"));
 

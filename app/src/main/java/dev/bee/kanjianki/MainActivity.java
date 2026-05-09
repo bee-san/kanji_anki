@@ -2302,6 +2302,7 @@ public final class MainActivity extends Activity {
 
     private void resetStudyRunProgress() {
         sessionPassedFocusKanji.clear();
+        sessionCompletedSimilarStudyTasks = 0;
         studyRunStartingCompleted = -1;
     }
 
@@ -2310,6 +2311,10 @@ public final class MainActivity extends Activity {
             return;
         }
         sessionPassedFocusKanji.add(kanji);
+    }
+
+    private void markSimilarStudyTaskCompleted() {
+        sessionCompletedSimilarStudyTasks++;
     }
 
     private String learningRepeatLine(Records.LearningRepeat repeat) {
@@ -2875,6 +2880,9 @@ public final class MainActivity extends Activity {
         }
         boolean passed = request.manualOverride || request.writingPassed;
         boolean saved = store.finishSimilarWritingRepair(repair.id, request.token, passed, System.currentTimeMillis());
+        if (saved && passed) {
+            markSimilarStudyTaskCompleted();
+        }
         Toast.makeText(
                 this,
                 !saved ? "Similar writing repair already changed." : (passed ? "Similar writing repair complete." : "Similar writing repair stays queued."),
@@ -4581,6 +4589,7 @@ public final class MainActivity extends Activity {
     }
 
     private View studyTopBar(Records.AdaptiveLoadPlan plan) {
+        StudyProgressSnapshot progressSnapshot = studyProgressSnapshot(plan);
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.VERTICAL);
         bar.setPadding(0, 0, 0, dp(8));
@@ -4594,13 +4603,13 @@ public final class MainActivity extends Activity {
         center.setOrientation(LinearLayout.VERTICAL);
         center.setGravity(Gravity.CENTER);
 
-        TextView progress = text(studyProgressTextForActiveCard(plan), 18, STUDY_HERO_PLUM, true);
+        TextView progress = text(progressSnapshot.text(), 18, STUDY_HERO_PLUM, true);
         progress.setGravity(Gravity.CENTER);
         progress.setIncludeFontPadding(false);
         center.addView(progress, new LinearLayout.LayoutParams(-1, -2));
 
         StudyProgressPillView progressPill = new StudyProgressPillView(this);
-        progressPill.setFraction(studyProgressFraction(plan));
+        progressPill.setFraction(progressSnapshot.fraction);
         LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(180), dp(7));
         progressLp.gravity = Gravity.CENTER_HORIZONTAL;
         progressLp.setMargins(0, dp(8), 0, 0);
@@ -4635,25 +4644,23 @@ public final class MainActivity extends Activity {
         return button;
     }
 
-    private String studyProgressText(Records.AdaptiveLoadPlan plan) {
-        int target = studyProgressTarget(plan);
-        int completed = studyProgressCompleted(plan);
-        return completed + " / " + target;
-    }
-
-    private String studyProgressTextForActiveCard(Records.AdaptiveLoadPlan plan) {
-        int target = Math.max(1, studyProgressTarget(plan));
-        int completed = studyProgressCompleted(plan);
-        int ordinal = activeSession == null ? completed : Math.min(target, completed + 1);
-        return ordinal + " / " + target;
-    }
-
-    private float studyProgressFraction(Records.AdaptiveLoadPlan plan) {
-        int target = studyProgressTarget(plan);
-        if (target <= 0) {
-            return 0f;
+    private StudyProgressSnapshot studyProgressSnapshot(Records.AdaptiveLoadPlan plan) {
+        int focusTarget = studyProgressTarget(plan);
+        int completed = studyProgressCompleted(plan) + sessionCompletedSimilarStudyTasks;
+        int target = focusTarget + sessionCompletedSimilarStudyTasks;
+        if (store != null) {
+            target += store.dueSimilarStudyTaskCount(System.currentTimeMillis());
         }
-        return Math.max(0f, Math.min(1f, studyProgressCompleted(plan) / (float) target));
+        boolean activeTask = activeSession != null || activeSimilarChoice != null || activeSimilarRepair != null;
+        if (activeTask && target <= completed) {
+            target = completed + 1;
+        }
+        if (activeTask) {
+            target = Math.max(1, target);
+        }
+        int visibleCompleted = Math.max(0, Math.min(target, completed));
+        float fraction = target <= 0 ? 0f : Math.max(0f, Math.min(1f, completed / (float) target));
+        return new StudyProgressSnapshot(visibleCompleted, target, fraction);
     }
 
     private int studyProgressTarget(Records.AdaptiveLoadPlan plan) {
@@ -4688,6 +4695,22 @@ public final class MainActivity extends Activity {
             }
         }
         return count;
+    }
+
+    private static final class StudyProgressSnapshot {
+        private final int completed;
+        private final int target;
+        private final float fraction;
+
+        private StudyProgressSnapshot(int completed, int target, float fraction) {
+            this.completed = Math.max(0, completed);
+            this.target = Math.max(0, target);
+            this.fraction = Math.max(0f, Math.min(1f, fraction));
+        }
+
+        private String text() {
+            return completed + " / " + target;
+        }
     }
 
     private LinearLayout softStudyCard() {

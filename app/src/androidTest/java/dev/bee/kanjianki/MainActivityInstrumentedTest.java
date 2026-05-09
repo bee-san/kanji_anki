@@ -922,6 +922,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "0 / 2");
                 assertHasText(activity, "Similar choice");
                 assertHasText(activity, "Which kanji means Latin, kidnap?");
                 assertHasText(activity, "拉");
@@ -950,6 +951,7 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "Which kanji means Latin, kidnap?");
             clickText(scenario, "拉");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "3 / 4");
                 assertHasText(activity, "Name this kanji");
                 assertHasText(activity, "Kanji -> meaning");
             });
@@ -974,6 +976,7 @@ public final class MainActivityInstrumentedTest {
 
             clickText(scenario, "Review this now");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "0 / 2");
                 assertHasText(activity, "Similar choice");
                 assertHasText(activity, "Which kanji means Latin, kidnap?");
                 assertHasText(activity, "拉");
@@ -990,11 +993,18 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "1 / 2");
                 assertHasText(activity, "Similar choice");
                 assertHasText(activity, "Which kanji means Propose, take along?");
                 assertHasText(activity, "提");
                 assertHasText(activity, "謎");
                 assertNoText(activity, "Today's focus done");
+            });
+
+            clickText(scenario, "提");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "2 / 2");
+                assertHasText(activity, "Today's focus done");
             });
         }
     }
@@ -1053,14 +1063,14 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "1 / 2");
+                assertHasText(activity, "0 / 2");
                 assertHasText(activity, "Learning step 1 / 2. Practice only.");
             });
 
             clickText(scenario, "Reveal");
             clickText(scenario, "Pass");
 
-            scenario.onActivity(activity -> assertHasText(activity, "2 / 2"));
+            scenario.onActivity(activity -> assertHasText(activity, "1 / 2"));
         }
     }
 
