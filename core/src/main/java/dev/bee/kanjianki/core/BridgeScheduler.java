@@ -13,7 +13,9 @@ import java.util.UUID;
 public final class BridgeScheduler {
     private static final long MINUTE = 60_000L;
     private static final long DAY = 86_400_000L;
+    private static final int MIN_RECOGNITION_STAGE = -1;
     private static final int MAX_RECOGNITION_STAGE = 2;
+    public static final String TASK_TYPING_MEANING = "typing_meaning";
     public static final String TASK_KANJI_MEANING = "kanji_meaning";
     public static final String TASK_FONT_MEANING = "font_meaning";
     public static final String TASK_WORD_READING = "word_reading";
@@ -216,6 +218,7 @@ public final class BridgeScheduler {
                 item.answerSignature,
                 null,
                 item.createdAtMillis,
+                item.typingMeaningMemory,
                 item.kanjiMeaningMemory,
                 item.fontMeaningMemory,
                 item.wordReadingMemory,
@@ -252,7 +255,7 @@ public final class BridgeScheduler {
         if (signature.isEmpty() || item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
             return item.withAnswerSignature(signature);
         }
-        int fallbackStage = Math.max(0, item.recognitionStage - 1);
+        int fallbackStage = Math.max(MIN_RECOGNITION_STAGE, item.recognitionStage - 1);
         boolean retired = "retired".equals(item.state);
         return new Records.StudyItem(
                 item.kanji,
@@ -274,6 +277,7 @@ public final class BridgeScheduler {
                 signature,
                 null,
                 item.createdAtMillis,
+                Records.TaskMemory.initial(),
                 Records.TaskMemory.initial(),
                 Records.TaskMemory.initial(),
                 Records.TaskMemory.initial(),
@@ -439,13 +443,17 @@ public final class BridgeScheduler {
         }
         if (!request.writingRequired) {
             if ("again".equals(rating)) {
-                recognitionStage = Math.max(0, recognitionStage - 1);
                 long today = localDayStart(nowMillis);
                 if (failedRecognitionDays <= 0 || lastFailedRecognitionDay != today) {
                     failedRecognitionDays++;
                     lastFailedRecognitionDay = today;
                 }
-                writingRemediationPending = failedRecognitionDays >= settings.writingTriggerMissDays;
+                if (recognitionStage <= MIN_RECOGNITION_STAGE) {
+                    writingRemediationPending = true;
+                } else {
+                    recognitionStage = Math.max(MIN_RECOGNITION_STAGE, recognitionStage - 1);
+                    writingRemediationPending = false;
+                }
             } else {
                 recognitionStage = Math.min(MAX_RECOGNITION_STAGE, recognitionStage + 1);
                 failedRecognitionDays = 0;
@@ -454,7 +462,7 @@ public final class BridgeScheduler {
             }
         } else if (writingRemediationReview) {
             if (request.manualOverride || request.writingPassed) {
-                recognitionStage = 0;
+                recognitionStage = MIN_RECOGNITION_STAGE;
                 failedRecognitionDays = 0;
                 lastFailedRecognitionDay = 0L;
                 writingRemediationPending = false;
@@ -498,6 +506,7 @@ public final class BridgeScheduler {
                 item.answerSignature,
                 null,
                 item.createdAtMillis,
+                item.typingMeaningMemory,
                 item.kanjiMeaningMemory,
                 item.fontMeaningMemory,
                 item.wordReadingMemory,
@@ -610,7 +619,9 @@ public final class BridgeScheduler {
     }
 
     private static String recognitionTaskType(int stage) {
-        switch (Math.max(0, Math.min(MAX_RECOGNITION_STAGE, stage))) {
+        switch (Math.max(MIN_RECOGNITION_STAGE, Math.min(MAX_RECOGNITION_STAGE, stage))) {
+            case -1:
+                return TASK_TYPING_MEANING;
             case 1:
                 return TASK_FONT_MEANING;
             case 2:
@@ -651,7 +662,7 @@ public final class BridgeScheduler {
                 continue;
             }
             int dominantRank = taskRank(sibling.suppressedByTaskType);
-            if (taskRank(item) < dominantRank && sameAnswerSignature(item, sibling)) {
+            if (ladderRank(item) < dominantRank && sameAnswerSignature(item, sibling)) {
                 return true;
             }
         }
@@ -678,26 +689,41 @@ public final class BridgeScheduler {
 
     private static int taskRank(Records.StudyItem item) {
         if (item.writingRemediationPending) {
-            return 3;
+            return 5;
         }
-        return Math.max(0, Math.min(MAX_RECOGNITION_STAGE, item.recognitionStage));
+        return taskRank(recognitionTaskType(item.recognitionStage));
+    }
+
+    private static int ladderRank(Records.StudyItem item) {
+        if (item.writingRemediationPending) {
+            return taskRank(TASK_WRITING_REMEDIATION);
+        }
+        return taskRank(recognitionTaskType(item.recognitionStage));
     }
 
     private static int taskRank(String taskType) {
         if (TASK_WRITING_REMEDIATION.equals(taskType)) {
-            return 3;
+            return 0;
         }
-        if (TASK_WORD_READING.equals(taskType)) {
+        if (TASK_TYPING_MEANING.equals(taskType)) {
+            return 1;
+        }
+        if (TASK_KANJI_MEANING.equals(taskType)) {
             return 2;
         }
         if (TASK_FONT_MEANING.equals(taskType)) {
-            return 1;
+            return 3;
         }
-        return 0;
+        if (TASK_WORD_READING.equals(taskType)) {
+            return 4;
+        }
+        return 2;
     }
 
     private static boolean dominatesLowerSiblings(String taskType) {
-        return TASK_FONT_MEANING.equals(taskType) || TASK_WORD_READING.equals(taskType);
+        return TASK_KANJI_MEANING.equals(taskType)
+                || TASK_FONT_MEANING.equals(taskType)
+                || TASK_WORD_READING.equals(taskType);
     }
 
     private static int intervalDays(long intervalMillis) {

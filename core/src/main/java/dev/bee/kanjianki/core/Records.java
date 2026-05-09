@@ -829,6 +829,7 @@ public final class Records {
         public final String answerSignature;
         public final String activeToken;
         public final long createdAtMillis;
+        public final TaskMemory typingMeaningMemory;
         public final TaskMemory kanjiMeaningMemory;
         public final TaskMemory fontMeaningMemory;
         public final TaskMemory wordReadingMemory;
@@ -951,6 +952,7 @@ public final class Records {
                     answerSignature,
                     activeToken,
                     createdAtMillis,
+                    seedMemoryForStage(-1, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
                     seedMemoryForStage(0, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
                     seedMemoryForStage(1, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
                     seedMemoryForStage(2, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
@@ -983,6 +985,60 @@ public final class Records {
                 TaskMemory wordReadingMemory,
                 TaskMemory writingRemediationMemory
         ) {
+            this(
+                    kanji,
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    writingLevel,
+                    recognitionStage,
+                    consecutiveFailedRecognitionDays,
+                    lastFailedRecognitionDayMillis,
+                    writingRemediationPending,
+                    suppressedByTaskType,
+                    suppressedAtMillis,
+                    matureIntervalDays,
+                    answerSignature,
+                    activeToken,
+                    createdAtMillis,
+                    TaskMemory.initial(),
+                    kanjiMeaningMemory,
+                    fontMeaningMemory,
+                    wordReadingMemory,
+                    writingRemediationMemory
+            );
+        }
+
+        public StudyItem(
+                String kanji,
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                int writingLevel,
+                int recognitionStage,
+                int consecutiveFailedRecognitionDays,
+                long lastFailedRecognitionDayMillis,
+                boolean writingRemediationPending,
+                String suppressedByTaskType,
+                long suppressedAtMillis,
+                int matureIntervalDays,
+                String answerSignature,
+                String activeToken,
+                long createdAtMillis,
+                TaskMemory typingMeaningMemory,
+                TaskMemory kanjiMeaningMemory,
+                TaskMemory fontMeaningMemory,
+                TaskMemory wordReadingMemory,
+                TaskMemory writingRemediationMemory
+        ) {
             this.kanji = kanji;
             this.state = state;
             this.dueAtMillis = dueAtMillis;
@@ -992,7 +1048,7 @@ public final class Records {
             this.lapses = lapses;
             this.learningStep = learningStep;
             this.writingLevel = writingLevel;
-            this.recognitionStage = Math.max(0, Math.min(2, recognitionStage));
+            this.recognitionStage = Math.max(-1, Math.min(2, recognitionStage));
             this.consecutiveFailedRecognitionDays = Math.max(0, consecutiveFailedRecognitionDays);
             this.lastFailedRecognitionDayMillis = Math.max(0L, lastFailedRecognitionDayMillis);
             this.writingRemediationPending = writingRemediationPending;
@@ -1002,6 +1058,7 @@ public final class Records {
             this.answerSignature = answerSignature == null ? "" : answerSignature;
             this.activeToken = activeToken;
             this.createdAtMillis = createdAtMillis;
+            this.typingMeaningMemory = typingMeaningMemory == null ? TaskMemory.initial() : typingMeaningMemory;
             this.kanjiMeaningMemory = kanjiMeaningMemory == null ? TaskMemory.initial() : kanjiMeaningMemory;
             this.fontMeaningMemory = fontMeaningMemory == null ? TaskMemory.initial() : fontMeaningMemory;
             this.wordReadingMemory = wordReadingMemory == null ? TaskMemory.initial() : wordReadingMemory;
@@ -1029,6 +1086,7 @@ public final class Records {
                     answerSignature,
                     token,
                     createdAtMillis,
+                    typingMeaningMemory,
                     kanjiMeaningMemory,
                     fontMeaningMemory,
                     wordReadingMemory,
@@ -1057,6 +1115,7 @@ public final class Records {
                     answerSignature,
                     activeToken,
                     createdAtMillis,
+                    typingMeaningMemory,
                     kanjiMeaningMemory,
                     fontMeaningMemory,
                     wordReadingMemory,
@@ -1085,6 +1144,7 @@ public final class Records {
                     answerSignature,
                     activeToken,
                     createdAtMillis,
+                    typingMeaningMemory,
                     kanjiMeaningMemory,
                     fontMeaningMemory,
                     wordReadingMemory,
@@ -1096,6 +1156,9 @@ public final class Records {
             if ("writing_remediation".equals(taskType)) {
                 return writingRemediationMemory;
             }
+            if ("typing_meaning".equals(taskType)) {
+                return typingMeaningMemory;
+            }
             if ("word_reading".equals(taskType)) {
                 return wordReadingMemory;
             }
@@ -1106,12 +1169,15 @@ public final class Records {
         }
 
         public StudyItem withTaskMemory(String taskType, TaskMemory memory) {
+            TaskMemory typingMemory = typingMeaningMemory;
             TaskMemory kanjiMemory = kanjiMeaningMemory;
             TaskMemory fontMemory = fontMeaningMemory;
             TaskMemory wordMemory = wordReadingMemory;
             TaskMemory writingMemory = writingRemediationMemory;
             if ("writing_remediation".equals(taskType)) {
                 writingMemory = memory;
+            } else if ("typing_meaning".equals(taskType)) {
+                typingMemory = memory;
             } else if ("word_reading".equals(taskType)) {
                 wordMemory = memory;
             } else if ("font_meaning".equals(taskType)) {
@@ -1119,10 +1185,14 @@ public final class Records {
             } else {
                 kanjiMemory = memory;
             }
-            return withTaskMemories(kanjiMemory, fontMemory, wordMemory, writingMemory);
+            return withTaskMemories(typingMemory, kanjiMemory, fontMemory, wordMemory, writingMemory);
         }
 
         public StudyItem withTaskMemories(TaskMemory kanjiMemory, TaskMemory fontMemory, TaskMemory wordMemory, TaskMemory writingMemory) {
+            return withTaskMemories(typingMeaningMemory, kanjiMemory, fontMemory, wordMemory, writingMemory);
+        }
+
+        public StudyItem withTaskMemories(TaskMemory typingMemory, TaskMemory kanjiMemory, TaskMemory fontMemory, TaskMemory wordMemory, TaskMemory writingMemory) {
             return new StudyItem(
                     kanji,
                     state,
@@ -1143,6 +1213,7 @@ public final class Records {
                     answerSignature,
                     activeToken,
                     createdAtMillis,
+                    typingMemory,
                     kanjiMemory,
                     fontMemory,
                     wordMemory,
@@ -1162,7 +1233,7 @@ public final class Records {
                 int learningStep,
                 int matureIntervalDays
         ) {
-            int safeStage = Math.max(0, Math.min(2, recognitionStage));
+            int safeStage = Math.max(-1, Math.min(2, recognitionStage));
             if (safeStage != memoryStage) {
                 return TaskMemory.initial();
             }

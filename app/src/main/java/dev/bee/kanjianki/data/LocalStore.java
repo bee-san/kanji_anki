@@ -28,8 +28,8 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 13;
-    private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
+    private static final int DB_VERSION = 14;
+    private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final String REVIEW_LOG_TABLE_SQL = "CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
     private static final String STATUS_SUCCESS = "success";
@@ -134,6 +134,9 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (oldVersion < 13) {
             createHistoricalSyncTables(db);
             addHistoricalIdentityColumns(db);
+        }
+        if (oldVersion < 14) {
+            addNullableColumn(db, "study_items", "typing_meaning_memory", "TEXT NOT NULL DEFAULT ''");
         }
     }
 
@@ -3416,6 +3419,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("suppressed_at", item.suppressedAtMillis);
         values.put("mature_interval_days", item.matureIntervalDays);
         values.put("answer_signature", item.answerSignature);
+        values.put("typing_meaning_memory", item.typingMeaningMemory.encode());
         values.put("kanji_meaning_memory", item.kanjiMeaningMemory.encode());
         values.put("font_meaning_memory", item.fontMeaningMemory.encode());
         values.put("word_reading_memory", item.wordReadingMemory.encode());
@@ -3436,6 +3440,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         int recognitionStage = integer(cursor, "recognition_stage");
         boolean writingRemediationPending = integer(cursor, "writing_remediation_pending") == 1;
         int matureIntervalDays = integer(cursor, "mature_interval_days");
+        Records.TaskMemory typingFallback = taskMemoryFallback(-1, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
         Records.TaskMemory kanjiFallback = taskMemoryFallback(0, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
         Records.TaskMemory fontFallback = taskMemoryFallback(1, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
         Records.TaskMemory wordFallback = taskMemoryFallback(2, recognitionStage, state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
@@ -3462,6 +3467,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 string(cursor, "answer_signature"),
                 string(cursor, "active_token"),
                 longValue(cursor, "created_at"),
+                Records.TaskMemory.decode(string(cursor, "typing_meaning_memory"), typingFallback),
                 Records.TaskMemory.decode(string(cursor, "kanji_meaning_memory"), kanjiFallback),
                 Records.TaskMemory.decode(string(cursor, "font_meaning_memory"), fontFallback),
                 Records.TaskMemory.decode(string(cursor, "word_reading_memory"), wordFallback),
@@ -3495,7 +3501,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             int learningStep,
             int matureIntervalDays
     ) {
-        if (Math.max(0, Math.min(2, recognitionStage)) == memoryStage) {
+        if (Math.max(-1, Math.min(2, recognitionStage)) == memoryStage) {
             return Records.TaskMemory.fromStudyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
         }
         return Records.TaskMemory.initial();
