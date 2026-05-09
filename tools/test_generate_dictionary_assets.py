@@ -4,31 +4,12 @@ from __future__ import annotations
 
 import gzip
 import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 
 from tools import generate_dictionary_assets as generator
-
-
-JMDICT_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE JMdict [
-<!ENTITY n "noun (common) (futsuumeishi)">
-<!ENTITY vs "noun or participle which takes the aux. verb suru">
-<!ENTITY vi "intransitive verb">
-]>
-<JMdict>
-<entry>
-<ent_seq>1520010</ent_seq>
-<k_ele><keb>膨張</keb><ke_pri>ichi1</ke_pri></k_ele>
-<r_ele><reb>ぼうちょう</reb><re_pri>news1</re_pri></r_ele>
-<sense>
-<pos>&n;</pos><pos>&vs;</pos><pos>&vi;</pos>
-<gloss>expansion</gloss><gloss>swelling</gloss>
-</sense>
-</entry>
-</JMdict>
-"""
 
 
 KANJIDIC_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -38,6 +19,7 @@ KANJIDIC_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
 <literal>膨</literal>
 <radical><rad_value rad_type="classical">130</rad_value></radical>
 <misc><grade>8</grade><stroke_count>16</stroke_count><freq>2077</freq></misc>
+<dic_number><query_code><q_code qc_type="skip">1-4-12</q_code></query_code></dic_number>
 <reading_meaning>
 <rmgroup>
 <reading r_type="ja_on">ボウ</reading>
@@ -55,20 +37,7 @@ KANJIDIC_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 class GenerateDictionaryAssetsTest(unittest.TestCase):
-    def test_parses_jmdict_word_sense_metadata_and_glosses(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            source = Path(temp) / "JMdict_e.gz"
-            source.write_bytes(gzip.compress(JMDICT_FIXTURE.encode("utf-8")))
-
-            rows = generator.parse_jmdict(source)
-
-            self.assertEqual(1, len(rows))
-            self.assertEqual("膨張", rows[0].expression)
-            self.assertEqual("ぼうちょう", rows[0].reading)
-            self.assertEqual(("expansion", "swelling"), rows[0].glosses)
-            self.assertIn("noun", rows[0].pos[0])
-
-    def test_parses_kanjidic2_kanji_fields(self) -> None:
+    def test_parses_kanjidic2_kanji_fields_without_skip_codes(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             source = Path(temp) / "kanjidic2.xml.gz"
             source.write_bytes(gzip.compress(KANJIDIC_FIXTURE.encode("utf-8")))
@@ -83,58 +52,124 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
             self.assertEqual(16, rows[0].stroke_count)
             self.assertEqual("𠂉", rows[1].literal)
             self.assertEqual((), rows[1].meanings)
+            self.assertFalse(hasattr(rows[0], "skip"))
 
-    def test_manifest_records_license_version_hashes_and_excluded_skip_note(self) -> None:
+    def test_parses_existing_jiten_rank_csv_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "jiten.csv"
+            source.write_text("Kanji,Rank\n人,1\n裂,824\n1,日\nword,not-rank\n", encoding="utf-8")
+
+            ranks = generator.parse_jiten_ranks(source)
+
+            self.assertEqual(1, ranks["人"])
+            self.assertEqual(824, ranks["裂"])
+            self.assertEqual(1, ranks["日"])
+            self.assertNotIn("word", ranks)
+
+    def test_writes_database_schema_metadata_and_jiten_join(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            jmdict = root / "JMdict_e.gz"
             kanjidic = root / "kanjidic2.xml.gz"
-            words = root / "jmdict_e_words.tsv.gz"
-            kanji = root / "kanjidic2_kanji.tsv.gz"
-            manifest = root / "dictionary_sources.json"
-            jmdict.write_bytes(gzip.compress(JMDICT_FIXTURE.encode("utf-8")))
+            jiten = root / "jiten_kanji_rank.csv"
+            db_path = root / "kanji_dictionary.db"
             kanjidic.write_bytes(gzip.compress(KANJIDIC_FIXTURE.encode("utf-8")))
-            words.write_bytes(gzip.compress(b"expression\treading\tglosses\tpos\tpriority\tcommonness\n"))
-            kanji.write_bytes(gzip.compress(b"literal\tmeanings\ton_readings\tkun_readings\tnanori_readings\tstroke_count\tgrade\tradical\tfrequency\n"))
+            jiten.write_text("Kanji,Rank\n膨,77\n", encoding="utf-8")
+            metadata, rows = generator.parse_kanjidic2(kanjidic)
+            ranks = generator.parse_jiten_ranks(jiten)
+
+            generator.write_database(rows, ranks, db_path, "2026-05-09", kanjidic, jiten, metadata)
+
+            with sqlite3.connect(db_path) as db:
+                columns = {row[1] for row in db.execute("PRAGMA table_info(kanji)")}
+                meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
+                row = db.execute("SELECT meanings, on_readings, stroke_count, kanjidic_frequency, jiten_rank FROM kanji WHERE literal='膨'").fetchone()
+            self.assertEqual(
+                {
+                    "literal",
+                    "meanings",
+                    "on_readings",
+                    "kun_readings",
+                    "nanori_readings",
+                    "stroke_count",
+                    "grade",
+                    "radical",
+                    "kanjidic_frequency",
+                    "jiten_rank",
+                },
+                columns,
+            )
+            self.assertEqual("1", meta["schema_version"])
+            self.assertEqual("2026-129", meta["kanjidic2_database_version"])
+            self.assertEqual("false", meta["skip_codes_imported"])
+            self.assertEqual(("swell\u001fget fat", "ボウ", 16, 2077, 77), row)
+
+    def test_manifest_records_update_package_sources_hashes_and_no_word_dictionary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            kanjidic = root / "kanjidic2.xml.gz"
+            jiten = root / "jiten_kanji_rank.csv"
+            db_path = root / "kanji_dictionary.db"
+            checksum = root / "kanji_dictionary.db.sha256"
+            manifest = root / "dictionary_sources.json"
+            kanjidic.write_bytes(gzip.compress(KANJIDIC_FIXTURE.encode("utf-8")))
+            jiten.write_text("Kanji,Rank\n膨,77\n", encoding="utf-8")
+            metadata, rows = generator.parse_kanjidic2(kanjidic)
+            ranks = generator.parse_jiten_ranks(jiten)
+            generator.write_database(rows, ranks, db_path, "2026-05-09", kanjidic, jiten, metadata)
+            generator.write_sha256_file(checksum, db_path)
 
             generator.write_manifest(
                 manifest,
                 "2026-05-09",
-                jmdict,
                 kanjidic,
-                words,
-                kanji,
+                jiten,
+                db_path,
+                checksum,
+                len(rows),
                 1,
-                1,
-                {"file_version": "4", "database_version": "2026-129", "date_of_creation": "2026-05-09"},
+                metadata,
             )
 
             data = json.loads(manifest.read_text(encoding="utf-8"))
-            self.assertEqual("CC BY-SA 4.0 via EDRDG licence", data["sources"][0]["license"])
-            self.assertEqual("2026-129", data["sources"][1]["database_version"])
-            self.assertRegex(data["sources"][0]["source_sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual(["kanji_dictionary.db", "dictionary_sources.json", "kanji_dictionary.db.sha256"], data["update_package"])
+            self.assertEqual("kanji_dictionary.db", data["assets"][0]["path"])
+            self.assertRegex(data["assets"][0]["sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual("KANJIDIC2", data["sources"][0]["name"])
+            self.assertEqual("Jiten kanji frequency ranks", data["sources"][1]["name"])
+            self.assertNotIn("jmdict_e", json.dumps(data, ensure_ascii=False))
             self.assertIn("SKIP", data["notes"][0])
 
-    def test_generated_gzip_assets_are_reproducible(self) -> None:
+    def test_generated_database_is_reproducible(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            first = root / "first.tsv.gz"
-            second = root / "second.tsv.gz"
-            records = [
-                generator.WordRecord(
-                    "悲しみ",
-                    "かなしみ",
-                    ("sorrow", "despair"),
-                    ("noun",),
-                    ("ichi1",),
-                    1,
-                )
-            ]
+            kanjidic = root / "kanjidic2.xml.gz"
+            jiten = root / "jiten_kanji_rank.csv"
+            first = root / "first.db"
+            second = root / "second.db"
+            kanjidic.write_bytes(gzip.compress(KANJIDIC_FIXTURE.encode("utf-8")))
+            jiten.write_text("Kanji,Rank\n膨,77\n", encoding="utf-8")
+            metadata, rows = generator.parse_kanjidic2(kanjidic)
+            ranks = generator.parse_jiten_ranks(jiten)
 
-            generator.write_words(records, first)
-            generator.write_words(records, second)
+            generator.write_database(rows, ranks, first, "2026-05-09", kanjidic, jiten, metadata)
+            generator.write_database(rows, ranks, second, "2026-05-09", kanjidic, jiten, metadata)
 
             self.assertEqual(first.read_bytes(), second.read_bytes())
+
+    def test_bundled_database_contains_all_kanjidic2_literals(self) -> None:
+        db_path = Path("app/src/main/assets/dictionaries/kanji_dictionary.db")
+        if not db_path.exists():
+            self.skipTest("Bundled SQLite dictionary has not been generated yet.")
+
+        with sqlite3.connect(db_path) as db:
+            count = db.execute("SELECT COUNT(*) FROM kanji").fetchone()[0]
+            meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
+            ranked = db.execute("SELECT COUNT(*) FROM kanji WHERE jiten_rank IS NOT NULL").fetchone()[0]
+
+        self.assertEqual(13108, count)
+        self.assertEqual("1", meta["schema_version"])
+        self.assertEqual("2026-129", meta["kanjidic2_database_version"])
+        self.assertGreater(ranked, 1000)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class JitenKanjiRanks {
+    private static final JitenKanjiRanks EMPTY = new JitenKanjiRanks(new LinkedHashMap<>());
+
     private final Map<String, Integer> ranks;
 
     public JitenKanjiRanks(Map<String, Integer> ranks) {
@@ -19,6 +21,10 @@ public final class JitenKanjiRanks {
 
     public int size() {
         return ranks.size();
+    }
+
+    public static JitenKanjiRanks empty() {
+        return EMPTY;
     }
 
     public static JitenKanjiRanks parseCsv(Reader reader) throws IOException {

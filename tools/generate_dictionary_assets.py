@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Generate compact offline dictionary assets from JMdict_e and KANJIDIC2 XML."""
+"""Generate the bundled offline kanji dictionary SQLite database."""
 
 from __future__ import annotations
 
 import argparse
 import gzip
 import hashlib
-import io
 import json
 import re
+import sqlite3
 import xml.etree.ElementTree as ET
-from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -18,21 +17,15 @@ from typing import Iterable
 
 
 LIST_SEPARATOR = "\x1f"
+SCHEMA_VERSION = "1"
 XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 EDRDG_LICENSE = "CC BY-SA 4.0 via EDRDG licence"
-JMDICT_URL = "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz"
 KANJIDIC2_URL = "https://www.edrdg.org/kanjidic/kanjidic2.xml.gz"
 EDRDG_LICENSE_URL = "https://www.edrdg.org/edrdg/licence.html"
-
-
-@dataclass(frozen=True)
-class WordRecord:
-    expression: str
-    reading: str
-    glosses: tuple[str, ...]
-    pos: tuple[str, ...]
-    priority: tuple[str, ...]
-    commonness: int
+KANJIVG_URL = "https://github.com/KanjiVG/kanjivg"
+DB_ASSET_NAME = "kanji_dictionary.db"
+DB_SHA256_ASSET_NAME = "kanji_dictionary.db.sha256"
+MANIFEST_ASSET_NAME = "dictionary_sources.json"
 
 
 @dataclass(frozen=True)
@@ -45,7 +38,7 @@ class KanjiRecord:
     stroke_count: int
     grade: int
     radical: int
-    frequency: int
+    kanjidic_frequency: int
 
 
 def source_opener(path: Path):
@@ -73,70 +66,6 @@ def unique(values: Iterable[str]) -> tuple[str, ...]:
     return tuple(out)
 
 
-def commonness(priorities: Iterable[str]) -> int:
-    score = 999
-    for priority in priorities:
-        if priority.startswith(("ichi", "news", "spec", "gai")):
-            score = min(score, 1)
-        elif priority.startswith("nf"):
-            try:
-                score = min(score, int(priority[2:]))
-            except ValueError:
-                score = min(score, 50)
-    return score
-
-
-def better_word(left: WordRecord, right: WordRecord) -> WordRecord:
-    left_key = (left.commonness, -len(left.glosses), left.expression, left.reading)
-    right_key = (right.commonness, -len(right.glosses), right.expression, right.reading)
-    return left if left_key <= right_key else right
-
-
-def parse_jmdict(path: Path) -> list[WordRecord]:
-    records: dict[tuple[str, str], WordRecord] = {}
-    opener = source_opener(path)
-    with opener(path, "rb") as source:
-        for _event, elem in ET.iterparse(source, events=("end",)):
-            if elem.tag != "entry":
-                continue
-            kanji_forms = [clean(node.text) for node in elem.findall("k_ele/keb")]
-            kanji_priorities = [clean(node.text) for node in elem.findall("k_ele/ke_pri")]
-            readings = [clean(node.text) for node in elem.findall("r_ele/reb")]
-            reading_priorities = [clean(node.text) for node in elem.findall("r_ele/re_pri")]
-            first_sense = elem.find("sense")
-            if first_sense is None:
-                elem.clear()
-                continue
-            glosses = unique(
-                gloss.text
-                for gloss in first_sense.findall("gloss")
-                if gloss.get(XML_LANG, "eng") in ("", "eng")
-            )
-            if not glosses:
-                elem.clear()
-                continue
-            pos = unique(node.text for node in first_sense.findall("pos"))
-            priorities = unique(kanji_priorities + reading_priorities)
-            expressions = unique(kanji_forms if kanji_forms else readings)
-            for expression in expressions:
-                for reading in unique(readings):
-                    if not expression or not reading:
-                        continue
-                    record = WordRecord(
-                        expression,
-                        reading,
-                        glosses,
-                        pos,
-                        priorities,
-                        commonness(priorities),
-                    )
-                    key = (expression, reading)
-                    previous = records.get(key)
-                    records[key] = record if previous is None else better_word(previous, record)
-            elem.clear()
-    return sorted(records.values(), key=lambda item: (item.expression, item.reading, item.commonness))
-
-
 def parse_kanjidic2(path: Path) -> tuple[dict[str, str], list[KanjiRecord]]:
     opener = source_opener(path)
     with opener(path, "rb") as source:
@@ -153,7 +82,7 @@ def parse_kanjidic2(path: Path) -> tuple[dict[str, str], list[KanjiRecord]]:
         meanings = unique(
             meaning.text
             for meaning in character.findall("reading_meaning/rmgroup/meaning")
-            if "m_lang" not in meaning.attrib
+            if "m_lang" not in meaning.attrib and meaning.get(XML_LANG, "eng") in ("", "eng")
         )
         if not literal:
             continue
@@ -173,6 +102,29 @@ def parse_kanjidic2(path: Path) -> tuple[dict[str, str], list[KanjiRecord]]:
     return metadata, sorted(records, key=lambda item: ord(item.literal[0]))
 
 
+def parse_jiten_ranks(path: Path) -> dict[str, int]:
+    ranks: dict[str, int] = {}
+    with path.open("r", encoding="utf-8-sig", newline="") as source:
+        for line in source:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            cells = [cell.strip() for cell in re.split(r"[,\t]", line)]
+            if len(cells) < 2:
+                continue
+            kanji = ""
+            rank = None
+            if is_integer(cells[0]):
+                rank = int(cells[0])
+                kanji = cells[1]
+            elif is_integer(cells[1]):
+                kanji = cells[0]
+                rank = int(cells[1])
+            if rank is not None and is_kanji_literal(kanji):
+                ranks[kanji] = rank
+    return ranks
+
+
 def text(elem: ET.Element | None, path: str) -> str:
     if elem is None:
         return ""
@@ -187,102 +139,133 @@ def int_or_zero(value: str) -> int:
         return 0
 
 
+def is_integer(value: str) -> bool:
+    if not value:
+        return False
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
+
+
+def is_kanji_literal(value: str) -> bool:
+    if len(value) != 1:
+        return False
+    codepoint = ord(value)
+    return (
+        0x3400 <= codepoint <= 0x4DBF
+        or 0x4E00 <= codepoint <= 0x9FFF
+        or 0xF900 <= codepoint <= 0xFAFF
+        or 0x20000 <= codepoint <= 0x2FA1F
+        or 0x30000 <= codepoint <= 0x3134F
+    )
+
+
 def list_cell(values: Iterable[str]) -> str:
     return LIST_SEPARATOR.join(clean(value) for value in values if clean(value))
 
 
-@contextmanager
-def gzip_text_writer(output: Path):
-    with output.open("wb") as raw:
-        with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as gz:
-            with io.TextIOWrapper(gz, encoding="utf-8", newline="\n") as target:
-                yield target
-
-
-def write_words(records: list[WordRecord], output: Path) -> None:
+def write_database(
+    records: list[KanjiRecord],
+    jiten_ranks: dict[str, int],
+    output: Path,
+    fetch_date: str,
+    kanjidic_path: Path,
+    jiten_path: Path,
+    kanjidic_metadata: dict[str, str],
+) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
-    with gzip_text_writer(output) as target:
-        target.write("# Generated by tools/generate_dictionary_assets.py\n")
-        target.write("expression\treading\tglosses\tpos\tpriority\tcommonness\n")
-        for record in records:
-            target.write(
-                "\t".join(
-                    [
-                        record.expression,
-                        record.reading,
-                        list_cell(record.glosses),
-                        list_cell(record.pos),
-                        list_cell(record.priority),
-                        str(record.commonness),
-                    ]
+    if output.exists():
+        output.unlink()
+    kanjidic_sha = sha256(kanjidic_path)
+    jiten_sha = sha256(jiten_path)
+    connection = sqlite3.connect(output)
+    try:
+        connection.execute("PRAGMA journal_mode=OFF")
+        connection.execute("PRAGMA synchronous=OFF")
+        connection.execute("PRAGMA locking_mode=EXCLUSIVE")
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute("CREATE TABLE kanji (literal TEXT PRIMARY KEY, meanings TEXT NOT NULL, on_readings TEXT NOT NULL, kun_readings TEXT NOT NULL, nanori_readings TEXT NOT NULL, stroke_count INTEGER NOT NULL, grade INTEGER NOT NULL, radical INTEGER NOT NULL, kanjidic_frequency INTEGER NOT NULL, jiten_rank INTEGER)")
+        connection.execute("CREATE TABLE dictionary_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        connection.executemany(
+            "INSERT INTO kanji (literal, meanings, on_readings, kun_readings, nanori_readings, stroke_count, grade, radical, kanjidic_frequency, jiten_rank) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    record.literal,
+                    list_cell(record.meanings),
+                    list_cell(record.on_readings),
+                    list_cell(record.kun_readings),
+                    list_cell(record.nanori_readings),
+                    record.stroke_count,
+                    record.grade,
+                    record.radical,
+                    record.kanjidic_frequency,
+                    jiten_ranks.get(record.literal),
                 )
-                + "\n"
-            )
+                for record in records
+            ],
+        )
+        meta = [
+            ("schema_version", SCHEMA_VERSION),
+            ("generated_at", fetch_date),
+            ("generator", "tools/generate_dictionary_assets.py"),
+            ("list_separator", "U+001F"),
+            ("kanjidic2_upstream_url", KANJIDIC2_URL),
+            ("kanjidic2_source_sha256", kanjidic_sha),
+            ("kanjidic2_file_version", kanjidic_metadata.get("file_version", "")),
+            ("kanjidic2_database_version", kanjidic_metadata.get("database_version", "")),
+            ("kanjidic2_date_of_creation", kanjidic_metadata.get("date_of_creation", "")),
+            ("jiten_rank_source_path", str(jiten_path)),
+            ("jiten_rank_source_sha256", jiten_sha),
+            ("kanji_record_count", str(len(records))),
+            ("jiten_rank_join_count", str(sum(1 for record in records if record.literal in jiten_ranks))),
+            ("skip_codes_imported", "false"),
+        ]
+        connection.executemany("INSERT INTO dictionary_meta (key, value) VALUES (?, ?)", meta)
+        connection.commit()
+    finally:
+        connection.close()
 
 
-def write_kanji(records: list[KanjiRecord], output: Path) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with gzip_text_writer(output) as target:
-        target.write("# Generated by tools/generate_dictionary_assets.py\n")
-        target.write("literal\tmeanings\ton_readings\tkun_readings\tnanori_readings\tstroke_count\tgrade\tradical\tfrequency\n")
-        for record in records:
-            target.write(
-                "\t".join(
-                    [
-                        record.literal,
-                        list_cell(record.meanings),
-                        list_cell(record.on_readings),
-                        list_cell(record.kun_readings),
-                        list_cell(record.nanori_readings),
-                        str(record.stroke_count),
-                        str(record.grade),
-                        str(record.radical),
-                        str(record.frequency),
-                    ]
-                )
-                + "\n"
-            )
+def write_sha256_file(output: Path, target: Path) -> None:
+    output.write_text(f"{sha256(target)}  {target.name}\n", encoding="utf-8")
 
 
 def write_manifest(
     output: Path,
     fetch_date: str,
-    jmdict_path: Path,
     kanjidic_path: Path,
-    words_asset: Path,
-    kanji_asset: Path,
-    word_count: int,
+    jiten_path: Path,
+    db_asset: Path,
+    checksum_asset: Path,
     kanji_count: int,
+    ranked_count: int,
     kanjidic_metadata: dict[str, str],
 ) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
         "generated_at": fetch_date,
         "generated_by": "tools/generate_dictionary_assets.py",
+        "schema_version": SCHEMA_VERSION,
+        "update_package": [
+            DB_ASSET_NAME,
+            MANIFEST_ASSET_NAME,
+            DB_SHA256_ASSET_NAME,
+        ],
         "assets": [
             {
-                "path": words_asset.name,
-                "sha256": sha256(words_asset),
-                "records": word_count,
+                "path": db_asset.name,
+                "sha256": sha256(db_asset),
+                "records": kanji_count,
+                "jiten_rank_records": ranked_count,
             },
             {
-                "path": kanji_asset.name,
-                "sha256": sha256(kanji_asset),
-                "records": kanji_count,
+                "path": checksum_asset.name,
+                "sha256": sha256(checksum_asset),
             },
         ],
         "sources": [
-            {
-                "id": "jmdict_e",
-                "name": "JMdict_e",
-                "upstream_url": JMDICT_URL,
-                "fetch_date": fetch_date,
-                "source_sha256": sha256(jmdict_path),
-                "version": "daily generated JMdict_e XML export",
-                "license": EDRDG_LICENSE,
-                "license_url": EDRDG_LICENSE_URL,
-                "fields_imported": ["expression", "reading", "English glosses", "part-of-speech tags", "priority/commonness"],
-            },
             {
                 "id": "kanjidic2",
                 "name": "KANJIDIC2",
@@ -294,19 +277,29 @@ def write_manifest(
                 "date_of_creation": kanjidic_metadata.get("date_of_creation", ""),
                 "license": EDRDG_LICENSE,
                 "license_url": EDRDG_LICENSE_URL,
-                "fields_imported": ["literal", "English meanings", "on/kun/nanori readings", "stroke count", "grade", "radical", "frequency"],
+                "fields_imported": ["literal", "English meanings", "on/kun/nanori readings", "stroke count", "grade", "radical", "KANJIDIC frequency"],
+            },
+            {
+                "id": "jiten_kanji_rank",
+                "name": "Jiten kanji frequency ranks",
+                "source_path": str(jiten_path),
+                "fetch_date": fetch_date,
+                "source_sha256": sha256(jiten_path),
+                "fields_imported": ["literal", "frequency rank"],
             },
             {
                 "id": "kanjivg",
                 "name": "KanjiVG",
-                "upstream_url": "https://github.com/KanjiVG/kanjivg",
+                "upstream_url": KANJIVG_URL,
                 "license": "CC BY-SA 3.0",
                 "fields_imported": ["stroke path points"],
             },
         ],
         "notes": [
             "SKIP query codes are intentionally excluded because EDRDG documents separate SKIP licensing conditions.",
-            "Refresh by downloading the current source XML exports and rerunning the generator command in documentation/dictionary_sources.md.",
+            "Word-level dictionary data is not bundled. Study From lines come from Anki examples only.",
+            "Dictionary updates must provide kanji_dictionary.db, dictionary_sources.json, and kanji_dictionary.db.sha256.",
+            "Refresh by downloading the current KANJIDIC2 XML export and rerunning the generator command in documentation/dictionary_sources.md.",
         ],
     }
     output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -314,8 +307,8 @@ def write_manifest(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--jmdict", type=Path, required=True)
     parser.add_argument("--kanjidic2", type=Path, required=True)
+    parser.add_argument("--jiten-ranks", type=Path, default=Path("tools/data/jiten_kanji_rank.csv"))
     parser.add_argument("--output-dir", type=Path, default=Path("app/src/main/assets/dictionaries"))
     parser.add_argument("--fetch-date", default=date.today().isoformat())
     return parser.parse_args()
@@ -323,25 +316,33 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    words = parse_jmdict(args.jmdict)
     kanjidic_metadata, kanji = parse_kanjidic2(args.kanjidic2)
-    words_asset = args.output_dir / "jmdict_e_words.tsv.gz"
-    kanji_asset = args.output_dir / "kanjidic2_kanji.tsv.gz"
-    manifest_asset = args.output_dir / "dictionary_sources.json"
-    write_words(words, words_asset)
-    write_kanji(kanji, kanji_asset)
+    ranks = parse_jiten_ranks(args.jiten_ranks)
+    db_asset = args.output_dir / DB_ASSET_NAME
+    checksum_asset = args.output_dir / DB_SHA256_ASSET_NAME
+    manifest_asset = args.output_dir / MANIFEST_ASSET_NAME
+    write_database(
+        kanji,
+        ranks,
+        db_asset,
+        args.fetch_date,
+        args.kanjidic2,
+        args.jiten_ranks,
+        kanjidic_metadata,
+    )
+    write_sha256_file(checksum_asset, db_asset)
     write_manifest(
         manifest_asset,
         args.fetch_date,
-        args.jmdict,
         args.kanjidic2,
-        words_asset,
-        kanji_asset,
-        len(words),
+        args.jiten_ranks,
+        db_asset,
+        checksum_asset,
         len(kanji),
+        sum(1 for record in kanji if record.literal in ranks),
         kanjidic_metadata,
     )
-    print(f"Wrote {len(words)} JMdict_e word rows and {len(kanji)} KANJIDIC2 kanji rows to {args.output_dir}")
+    print(f"Wrote {len(kanji)} KANJIDIC2 kanji rows and joined {len(ranks)} Jiten ranks into {db_asset}")
 
 
 if __name__ == "__main__":

@@ -1,36 +1,25 @@
 {
   "generated_at": "2026-05-09",
   "generated_by": "tools/generate_dictionary_assets.py",
+  "schema_version": "1",
+  "update_package": [
+    "kanji_dictionary.db",
+    "dictionary_sources.json",
+    "kanji_dictionary.db.sha256"
+  ],
   "assets": [
     {
-      "path": "jmdict_e_words.tsv.gz",
-      "sha256": "f505085bad67dfc7e9538822d50c0d8ed521b19102d63c048ed0fba4d31654bf",
-      "records": 408800
+      "path": "kanji_dictionary.db",
+      "sha256": "07b2e483d8f171fb5b15e3a8ca0e5f51ad8d8aba847b11f3ac21f4c926799587",
+      "records": 13108,
+      "jiten_rank_records": 8031
     },
     {
-      "path": "kanjidic2_kanji.tsv.gz",
-      "sha256": "4cd7ed2d754dde6981252c139dbab7e4c1a8dd74d423731876134cbf1854f0a4",
-      "records": 13108
+      "path": "kanji_dictionary.db.sha256",
+      "sha256": "dfcace50e553fc292de643a0337126ccd097929f308264a2e6acf33529786630"
     }
   ],
   "sources": [
-    {
-      "id": "jmdict_e",
-      "name": "JMdict_e",
-      "upstream_url": "http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz",
-      "fetch_date": "2026-05-09",
-      "source_sha256": "afee6bd79a595f32c5d373491e2d4b1313d6367e27c0a31d82660b1367bb5704",
-      "version": "daily generated JMdict_e XML export",
-      "license": "CC BY-SA 4.0 via EDRDG licence",
-      "license_url": "https://www.edrdg.org/edrdg/licence.html",
-      "fields_imported": [
-        "expression",
-        "reading",
-        "English glosses",
-        "part-of-speech tags",
-        "priority/commonness"
-      ]
-    },
     {
       "id": "kanjidic2",
       "name": "KANJIDIC2",
@@ -49,7 +38,18 @@
         "stroke count",
         "grade",
         "radical",
-        "frequency"
+        "KANJIDIC frequency"
+      ]
+    },
+    {
+      "id": "jiten_kanji_rank",
+      "name": "Jiten kanji frequency ranks",
+      "source_path": "tools/data/jiten_kanji_rank.csv",
+      "fetch_date": "2026-05-09",
+      "source_sha256": "ffbe5c0844443367fa0def82d97a3339e29efb4018376607e61f5065a60ef2a9",
+      "fields_imported": [
+        "literal",
+        "frequency rank"
       ]
     },
     {
@@ -64,6 +64,8 @@
   ],
   "notes": [
     "SKIP query codes are intentionally excluded because EDRDG documents separate SKIP licensing conditions.",
-    "Refresh by downloading the current source XML exports and rerunning the generator command in documentation/dictionary_sources.md."
+    "Word-level dictionary data is not bundled. Study From lines come from Anki examples only.",
+    "Dictionary updates must provide kanji_dictionary.db, dictionary_sources.json, and kanji_dictionary.db.sha256.",
+    "Refresh by downloading the current KANJIDIC2 XML export and rerunning the generator command in documentation/dictionary_sources.md."
   ]
 }

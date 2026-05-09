@@ -2265,14 +2265,12 @@ public final class MainActivity extends Activity {
         Records.Example example = exampleForSession(session);
         String sourceExpression = example == null ? "" : example.expression;
         String sourceReading = example == null ? session.row.reading : example.reading;
-        DictionaryLookup.WordEntry word = dictionaryLookup().lookupWord(sourceExpression, sourceReading);
         String cueReading = firstNonEmpty(
-                word == null ? "" : word.reading,
                 sourceReading,
                 session.row.reading
         );
-        String fromExpression = firstNonEmpty(sourceExpression, word == null ? "" : word.expression);
-        return new StudyCue("", cueReading, fromExpression, word == null ? DictionaryLookup.SOURCE_ANKI : DictionaryLookup.SOURCE_JMDICT);
+        String fromExpression = firstNonEmpty(sourceExpression);
+        return new StudyCue("", cueReading, fromExpression, DictionaryLookup.SOURCE_ANKI);
     }
 
     private DictionaryLookup dictionaryLookup() {
@@ -3378,7 +3376,7 @@ public final class MainActivity extends Activity {
     private LinearLayout dataLicenseSettingsPanel() {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
         box.addView(text("Data licenses", 23, INK, true));
-        box.addView(text("JMdict, KANJIDIC2, KanjiVG, and font attribution.", 15, MUTED, false));
+        box.addView(text("KANJIDIC2, Jiten rank data, KanjiVG, and font attribution.", 15, MUTED, false));
         Button open = secondaryButton("Open data licenses");
         open.setOnClickListener(v -> renderDataSources());
         box.addView(open);
@@ -4113,6 +4111,7 @@ public final class MainActivity extends Activity {
                 lines.add(source.optString("name", source.optString("id")));
                 addSourceLine(lines, "License", source.optString("license"));
                 addSourceLine(lines, "URL", source.optString("upstream_url"));
+                addSourceLine(lines, "Source", source.optString("source_path"));
                 addSourceLine(lines, "Fetched", source.optString("fetch_date"));
                 addSourceLine(lines, "Version", firstNonEmpty(
                         source.optString("database_version"),
@@ -4130,7 +4129,7 @@ public final class MainActivity extends Activity {
             }
             return String.join("\n", lines).trim();
         } catch (Exception error) {
-            return "JMdict_e and KANJIDIC2 dictionary data from EDRDG, CC BY-SA 4.0.";
+            return "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.";
         }
     }
 

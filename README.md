@@ -78,7 +78,7 @@ suite.
 - Shows a per-kanji recovery timeline: first import, support changes, reviews,
   retirements, and reopened repairs.
 - Runs a small bridge SRS for focused recall and writing repair.
-- Uses bundled Jiten rank data and stroke-order guides offline.
+- Uses bundled SQLite dictionary, Jiten rank data, and stroke-order guides offline.
 - Schedules one local background sync per day after the first successful manual
   sync.
 - Checks GitHub Releases and can install a verified APK update with Android
@@ -94,7 +94,7 @@ polling loop.
 - The expected note type is `Kiku`, with the `Mining` card template.
 - Required fields are `Expression`, `ExpressionReading`, `MainDefinition`, `Sentence`, `Frequency`, and `FreqSort`.
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.
-- The full Jiten kanji frequency CSV is bundled for offline filtering. The default suspended import range is ranks `100` through `3000`, and it can be changed in Settings.
+- Jiten kanji frequency ranks are bundled in the offline dictionary DB for filtering. The default suspended import range is ranks `100` through `3000`, and it can be changed in Settings.
 - Weak-kanji rows and details are derived from the active mirror plus the suspended archive.
 - `Study now` is the single study entry point.
 - Releases are signed, tagged as `vMAJOR.MINOR.PATCH`, and published with an APK plus SHA-256 checksum.
