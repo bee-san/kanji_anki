@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.core;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -390,6 +389,8 @@ public final class BridgeScheduler {
         int recognitionStage = item.recognitionStage;
         int failedRecognitionDays = item.consecutiveFailedRecognitionDays;
         long lastFailedRecognitionDay = item.lastFailedRecognitionDayMillis;
+        int recognitionPasses = previousTaskMemory.consecutivePasses;
+        long lastRecognitionPassDueAt = previousTaskMemory.lastPassedDueAtMillis;
         boolean writingRemediationPending = item.writingRemediationPending;
         double stability = previousTaskMemory.stability;
         double difficulty = previousTaskMemory.difficulty;
@@ -443,19 +444,32 @@ public final class BridgeScheduler {
         }
         if (!request.writingRequired) {
             if ("again".equals(rating)) {
-                long today = localDayStart(nowMillis);
-                if (failedRecognitionDays <= 0 || lastFailedRecognitionDay != today) {
+                if (previousTaskMemory.dueAtMillis <= nowMillis
+                        && (failedRecognitionDays <= 0 || lastFailedRecognitionDay != previousTaskMemory.dueAtMillis)) {
                     failedRecognitionDays++;
-                    lastFailedRecognitionDay = today;
+                    lastFailedRecognitionDay = previousTaskMemory.dueAtMillis;
                 }
-                if (recognitionStage <= MIN_RECOGNITION_STAGE) {
-                    writingRemediationPending = true;
-                } else {
-                    recognitionStage = Math.max(MIN_RECOGNITION_STAGE, recognitionStage - 1);
-                    writingRemediationPending = false;
+                if (failedRecognitionDays >= settings.writingTriggerMissDays) {
+                    failedRecognitionDays = 0;
+                    lastFailedRecognitionDay = 0L;
+                    if (recognitionStage <= MIN_RECOGNITION_STAGE) {
+                        writingRemediationPending = true;
+                    } else {
+                        recognitionStage = Math.max(MIN_RECOGNITION_STAGE, recognitionStage - 1);
+                        writingRemediationPending = false;
+                    }
                 }
             } else {
-                recognitionStage = Math.min(MAX_RECOGNITION_STAGE, recognitionStage + 1);
+                if (previousTaskMemory.dueAtMillis <= nowMillis
+                        && (recognitionPasses <= 0 || lastRecognitionPassDueAt != previousTaskMemory.dueAtMillis)) {
+                    recognitionPasses++;
+                    lastRecognitionPassDueAt = previousTaskMemory.dueAtMillis;
+                }
+                if (recognitionPasses >= settings.recognitionPromotionPasses) {
+                    recognitionStage = Math.min(MAX_RECOGNITION_STAGE, recognitionStage + 1);
+                    recognitionPasses = 0;
+                    lastRecognitionPassDueAt = 0L;
+                }
                 failedRecognitionDays = 0;
                 lastFailedRecognitionDay = 0L;
                 writingRemediationPending = false;
@@ -522,7 +536,9 @@ public final class BridgeScheduler {
                         taskLapses,
                         step,
                         rating,
-                        scheduledIntervalDays
+                        scheduledIntervalDays,
+                        "again".equals(rating) || request.writingRequired ? 0 : recognitionPasses,
+                        "again".equals(rating) || request.writingRequired ? 0L : lastRecognitionPassDueAt
                 )
         );
         return new Records.ReviewResult(updated, rating, false, "Review applied.");
@@ -761,15 +777,5 @@ public final class BridgeScheduler {
             return "";
         }
         return value.trim().replaceAll("\\s+", " ");
-    }
-
-    private static long localDayStart(long millis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(millis);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
     }
 }

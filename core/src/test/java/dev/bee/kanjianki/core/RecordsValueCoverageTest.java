@@ -92,6 +92,11 @@ public class RecordsValueCoverageTest {
         assertEquals("new", decoded.state);
         assertEquals(0L, decoded.dueAtMillis);
         assertEquals("", decoded.lastRating);
+        assertEquals(0, decoded.consecutivePasses);
+        assertEquals(0L, decoded.lastPassedDueAtMillis);
+        Records.TaskMemory promoted = fallback.withDueAtMillis(10L);
+        assertEquals(10L, promoted.dueAtMillis);
+        assertEquals(fallback.consecutivePasses, promoted.consecutivePasses);
 
         Records.LearningRepeat repeat = new Records.LearningRepeat(null, null, null, "bad", -1, -2L, null, -3L, -4L);
         assertEquals("", repeat.kanji);

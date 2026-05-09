@@ -100,16 +100,20 @@ public final class LearningStepSettingsTest {
                 100,
                 24,
                 3,
+                0,
                 0
         );
 
         assertEquals(Records.DEFAULT_SUSPENDED_RANK_MIN, legacy.suspendedRankMin);
         assertEquals(2500, legacy.suspendedRankMax);
         assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, legacy.writingTriggerMissDays);
+        assertEquals(Records.DEFAULT_RECOGNITION_PROMOTION_PASSES, legacy.recognitionPromotionPasses);
         assertEquals(4, legacyWithTrigger.writingTriggerMissDays);
+        assertEquals(Records.DEFAULT_RECOGNITION_PROMOTION_PASSES, legacyWithTrigger.recognitionPromotionPasses);
         assertEquals(100, settings.suspendedRankMin);
         assertEquals(3000, settings.suspendedRankMax);
         assertEquals(3000, settings.suspendedRankCutoff);
         assertEquals(1, settings.writingTriggerMissDays);
+        assertEquals(1, settings.recognitionPromotionPasses);
     }
 }

@@ -2843,7 +2843,7 @@ public final class MainActivity extends Activity {
         LocalStore.StudyStreak streak = null;
         if (!result.duplicate) {
             String repeatType = learningRepeatTypeForReview(activeSession.item, request, result.appliedRating);
-            Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, now);
+            Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, activeSession.taskType, now);
             store.saveStudyItem(itemToSave);
             store.saveReview(request, result.appliedRating, now, activeSession.item, itemToSave);
             if (!"again".equals(result.appliedRating)) {
@@ -2945,12 +2945,12 @@ public final class MainActivity extends Activity {
         store.enqueueLearningRepeat(item, taskType, repeatType, 0, now + steps.get(0) * 60_000L, now);
     }
 
-    private Records.StudyItem deferSameDaySrsDue(Records.StudyItem item, long now) {
+    private Records.StudyItem deferSameDaySrsDue(Records.StudyItem item, String taskType, long now) {
         if (item == null || item.dueAtMillis <= now || !sameLocalDay(item.dueAtMillis, now)) {
             return item;
         }
         long due = nextLocalDayStart(now);
-        return new Records.StudyItem(
+        Records.StudyItem deferred = new Records.StudyItem(
                 item.kanji,
                 item.state,
                 due,
@@ -2976,6 +2976,7 @@ public final class MainActivity extends Activity {
                 item.wordReadingMemory,
                 item.writingRemediationMemory
         );
+        return deferred.withTaskMemory(taskType, deferred.memoryForTaskType(taskType).withDueAtMillis(due));
     }
 
     private boolean sameLocalDay(long leftMillis, long rightMillis) {
@@ -3647,6 +3648,7 @@ public final class MainActivity extends Activity {
         content.addView(workloadSettingsPanel());
         content.addView(retentionSettingsPanel());
         content.addView(learningStepsSettingsPanel());
+        content.addView(ladderThresholdSettingsPanel());
         content.addView(reminderSettingsPanel());
         content.addView(autoSyncSettingsPanel());
         content.addView(updateSettingsPanel());
@@ -4098,6 +4100,64 @@ public final class MainActivity extends Activity {
         input.setSingleLine(true);
         input.setSelectAllOnFocus(true);
         return input;
+    }
+
+    private LinearLayout ladderThresholdSettingsPanel() {
+        Records.Settings current = settings();
+        LinearLayout box = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
+        box.addView(text("Ladder thresholds", 23, INK, true));
+        box.addView(text("Recognition rungs move only after repeated FSRS-due reviews. Learning-step repeats stay practice-only.", 15, MUTED, false));
+
+        EditText passes = thresholdInput(current.recognitionPromotionPasses);
+        EditText misses = thresholdInput(current.writingTriggerMissDays);
+        box.addView(text("Passes to go up", 15, INK, true));
+        box.addView(passes, new LinearLayout.LayoutParams(-1, dp(58)));
+        box.addView(text("Misses to go down", 15, INK, true));
+        box.addView(misses, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        Button defaults = secondaryButton("Use 3 and 3");
+        defaults.setOnClickListener(v -> {
+            passes.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_RECOGNITION_PROMOTION_PASSES));
+            misses.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS));
+        });
+        box.addView(defaults);
+
+        Button save = primaryButton("Save ladder thresholds", TEAL);
+        save.setOnClickListener(v -> {
+            int passCount;
+            int missCount;
+            try {
+                passCount = parseThresholdInput(passes);
+                missCount = parseThresholdInput(misses);
+            } catch (NumberFormatException error) {
+                Toast.makeText(this, "Use whole numbers from 1 to 10.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (passCount < 1 || passCount > 10 || missCount < 1 || missCount > 10) {
+                Toast.makeText(this, "Use whole numbers from 1 to 10.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, passCount);
+            store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, missCount);
+            Toast.makeText(this, "Ladder thresholds saved.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
+    }
+
+    private EditText thresholdInput(int value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.format(Locale.ROOT, "%d", Math.max(1, value)));
+        input.setTextSize(20);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        return input;
+    }
+
+    private int parseThresholdInput(EditText input) {
+        return Integer.parseInt(input.getText().toString().trim());
     }
 
     private LinearLayout retentionSettingsPanel() {

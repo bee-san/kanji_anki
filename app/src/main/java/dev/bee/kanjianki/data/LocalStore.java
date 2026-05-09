@@ -43,6 +43,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final String KEY_AUTO_UPDATE_LAST_RESULT = "auto_update_last_result";
     private static final String KEY_AUTO_UPDATE_LAST_VERSION = "auto_update_last_version";
     private static final String KEY_AUTO_UPDATE_PENDING_APK = "auto_update_pending_apk";
+    private static final int MAX_DISPLAYED_INVENTORY_READINGS = 3;
     private static final String KEY_AUTO_UPDATE_PENDING_MESSAGE = "auto_update_pending_message";
 
     public LocalStore(Context context) {
@@ -3805,7 +3806,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         private String browserSearch = "";
         private int sourceCount = 0;
         private int exampleCount = 0;
-        private final Set<String> readings = new HashSet<>();
+        private final Set<String> readings = new LinkedHashSet<>();
         private final Set<String> searchParts = new HashSet<>();
 
         private MutableKanjiInventoryItem(String kanji) {
@@ -3838,7 +3839,17 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (readings.isEmpty()) {
                 return previous == null ? "" : previous;
             }
-            return String.join(" / ", readings);
+            List<String> display = new ArrayList<>();
+            int hidden = 0;
+            for (String reading : readings) {
+                if (display.size() < MAX_DISPLAYED_INVENTORY_READINGS) {
+                    display.add(reading);
+                } else {
+                    hidden++;
+                }
+            }
+            String text = String.join(" / ", display);
+            return hidden == 0 ? text : text + " +" + hidden + " more";
         }
 
         private String searchText(Records.KanjiInventoryItem previous) {

@@ -9,6 +9,7 @@ import java.util.Objects;
 
 public final class Records {
     public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
+    public static final int DEFAULT_RECOGNITION_PROMOTION_PASSES = 3;
     public static final int DEFAULT_SUSPENDED_RANK_MIN = 100;
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
     public static final String LEARNING_REPEAT_NEW = "new";
@@ -34,6 +35,7 @@ public final class Records {
         public final int activeQueueCap;
         public final int newPerDay;
         public final int writingTriggerMissDays;
+        public final int recognitionPromotionPasses;
 
         public Settings(
                 String modelName,
@@ -65,7 +67,8 @@ public final class Records {
                     suspendedRankCutoff,
                     activeQueueCap,
                     newPerDay,
-                    DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                    DEFAULT_WRITING_TRIGGER_MISS_DAYS,
+                    DEFAULT_RECOGNITION_PROMOTION_PASSES
             );
         }
 
@@ -100,7 +103,8 @@ public final class Records {
                     suspendedRankCutoff,
                     activeQueueCap,
                     newPerDay,
-                    writingTriggerMissDays
+                    writingTriggerMissDays,
+                    DEFAULT_RECOGNITION_PROMOTION_PASSES
             );
         }
 
@@ -120,6 +124,44 @@ public final class Records {
                 int activeQueueCap,
                 int newPerDay,
                 int writingTriggerMissDays
+        ) {
+            this(
+                    modelName,
+                    templateName,
+                    expressionField,
+                    readingField,
+                    meaningField,
+                    sentenceField,
+                    frequencyField,
+                    frequencySortField,
+                    matureDays,
+                    matureSupportThreshold,
+                    suspendedRankMin,
+                    suspendedRankMax,
+                    activeQueueCap,
+                    newPerDay,
+                    writingTriggerMissDays,
+                    DEFAULT_RECOGNITION_PROMOTION_PASSES
+            );
+        }
+
+        public Settings(
+                String modelName,
+                String templateName,
+                String expressionField,
+                String readingField,
+                String meaningField,
+                String sentenceField,
+                String frequencyField,
+                String frequencySortField,
+                int matureDays,
+                int matureSupportThreshold,
+                int suspendedRankMin,
+                int suspendedRankMax,
+                int activeQueueCap,
+                int newPerDay,
+                int writingTriggerMissDays,
+                int recognitionPromotionPasses
         ) {
             this.modelName = modelName;
             this.templateName = templateName;
@@ -144,6 +186,7 @@ public final class Records {
             this.activeQueueCap = activeQueueCap;
             this.newPerDay = newPerDay;
             this.writingTriggerMissDays = Math.max(1, writingTriggerMissDays);
+            this.recognitionPromotionPasses = Math.max(1, recognitionPromotionPasses);
         }
 
         public static Settings kikuDefaults() {
@@ -162,7 +205,8 @@ public final class Records {
                     DEFAULT_SUSPENDED_RANK_MAX,
                     24,
                     3,
-                    DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                    DEFAULT_WRITING_TRIGGER_MISS_DAYS,
+                    DEFAULT_RECOGNITION_PROMOTION_PASSES
             );
         }
 
@@ -730,6 +774,8 @@ public final class Records {
         public final int learningStep;
         public final String lastRating;
         public final int matureIntervalDays;
+        public final int consecutivePasses;
+        public final long lastPassedDueAtMillis;
 
         public TaskMemory(
                 String state,
@@ -742,6 +788,22 @@ public final class Records {
                 String lastRating,
                 int matureIntervalDays
         ) {
+            this(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, lastRating, matureIntervalDays, 0, 0L);
+        }
+
+        public TaskMemory(
+                String state,
+                long dueAtMillis,
+                double stability,
+                double difficulty,
+                int totalReviews,
+                int lapses,
+                int learningStep,
+                String lastRating,
+                int matureIntervalDays,
+                int consecutivePasses,
+                long lastPassedDueAtMillis
+        ) {
             this.state = state == null || state.isEmpty() ? "new" : state;
             this.dueAtMillis = Math.max(0L, dueAtMillis);
             this.stability = stability;
@@ -751,6 +813,8 @@ public final class Records {
             this.learningStep = Math.max(0, learningStep);
             this.lastRating = lastRating == null ? "" : lastRating;
             this.matureIntervalDays = Math.max(0, matureIntervalDays);
+            this.consecutivePasses = Math.max(0, consecutivePasses);
+            this.lastPassedDueAtMillis = Math.max(0L, lastPassedDueAtMillis);
         }
 
         public static TaskMemory initial() {
@@ -770,6 +834,22 @@ public final class Records {
             return new TaskMemory(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, "", matureIntervalDays);
         }
 
+        public TaskMemory withDueAtMillis(long dueAtMillis) {
+            return new TaskMemory(
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    learningStep,
+                    lastRating,
+                    matureIntervalDays,
+                    consecutivePasses,
+                    lastPassedDueAtMillis
+            );
+        }
+
         public String encode() {
             return state + "\t"
                     + dueAtMillis + "\t"
@@ -779,7 +859,9 @@ public final class Records {
                     + lapses + "\t"
                     + learningStep + "\t"
                     + lastRating + "\t"
-                    + matureIntervalDays;
+                    + matureIntervalDays + "\t"
+                    + consecutivePasses + "\t"
+                    + lastPassedDueAtMillis;
         }
 
         public static TaskMemory decode(String encoded, TaskMemory fallback) {
@@ -801,7 +883,9 @@ public final class Records {
                         Integer.parseInt(parts[5]),
                         Integer.parseInt(parts[6]),
                         parts[7],
-                        Integer.parseInt(parts[8])
+                        Integer.parseInt(parts[8]),
+                        parts.length > 9 ? Integer.parseInt(parts[9]) : 0,
+                        parts.length > 10 ? Long.parseLong(parts[10]) : 0L
                 );
             } catch (RuntimeException ignored) {
                 return safeFallback;

@@ -11,6 +11,8 @@ public final class SyncSettings {
     public static final String SENTENCE_FIELD_SETTING_KEY = "sentence_field";
     public static final String FREQUENCY_FIELD_SETTING_KEY = "frequency_field";
     public static final String FREQUENCY_SORT_FIELD_SETTING_KEY = "frequency_sort_field";
+    public static final String WRITING_TRIGGER_MISS_DAYS_SETTING_KEY = "writing_trigger_miss_days";
+    public static final String RECOGNITION_PROMOTION_PASSES_SETTING_KEY = "recognition_promotion_passes";
 
     private SyncSettings() {
     }
@@ -35,6 +37,12 @@ public final class SyncSettings {
                         "suspended_rank_max",
                         store.getIntSetting("suspended_rank_cutoff", defaults.suspendedRankMax)
                 );
+        int writingTriggerMissDays = store == null
+                ? defaults.writingTriggerMissDays
+                : store.getIntSetting(WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, defaults.writingTriggerMissDays);
+        int recognitionPromotionPasses = store == null
+                ? defaults.recognitionPromotionPasses
+                : store.getIntSetting(RECOGNITION_PROMOTION_PASSES_SETTING_KEY, defaults.recognitionPromotionPasses);
         return new Records.Settings(
                 modelName,
                 defaults.templateName,
@@ -50,7 +58,8 @@ public final class SyncSettings {
                 maxRank,
                 defaults.activeQueueCap,
                 defaults.newPerDay,
-                defaults.writingTriggerMissDays
+                writingTriggerMissDays,
+                recognitionPromotionPasses
         );
     }
 

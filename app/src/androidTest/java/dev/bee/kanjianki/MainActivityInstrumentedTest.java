@@ -236,6 +236,9 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Use manual workload");
                 assertHasText(activity, "FSRS retention");
                 assertHasText(activity, "Desired retention: 90%");
+                assertHasText(activity, "Ladder thresholds");
+                assertHasText(activity, "Passes to go up");
+                assertHasText(activity, "Misses to go down");
                 assertHasText(activity, "Daily reminder");
                 assertHasText(activity, "App updates");
                 assertHasText(activity, "Off");
@@ -1062,14 +1065,8 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testMissedRecognitionUsesInternalWritingThreshold() {
+    public void testMissedRecognitionCountsTowardInternalWritingThreshold() {
         seedDashboard();
-        LocalStore initialStore = new LocalStore(context);
-        try {
-            initialStore.putIntSetting("writing_trigger_miss_days", 1);
-        } finally {
-            initialStore.close();
-        }
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Study");
             clickText(scenario, "Reveal");
@@ -1084,7 +1081,7 @@ public final class MainActivityInstrumentedTest {
                 List<Records.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertFalse(items.get(0).writingRemediationPending);
-                assertEquals(-1, items.get(0).recognitionStage);
+                assertEquals(0, items.get(0).recognitionStage);
                 assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
                 assertLatestReviewSchedulerStateContains(store, "\"due_at\":" + items.get(0).dueAtMillis);
             } finally {
@@ -1145,7 +1142,8 @@ public final class MainActivityInstrumentedTest {
                 List<Records.StudyItem> items = afterWrong.studyItems();
                 assertEquals(1, items.size());
                 assertEquals(-1, items.get(0).recognitionStage);
-                assertTrue(items.get(0).writingRemediationPending);
+                assertFalse(items.get(0).writingRemediationPending);
+                assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
             } finally {
                 afterWrong.close();
             }

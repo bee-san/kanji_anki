@@ -152,6 +152,32 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testKanjiInventoryShortensLongReadingListsButKeepsSearchText() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+                Arrays.asList(
+                        note(1L, "読一", "あ", "read one", "読んだ。"),
+                        note(2L, "読二", "い", "read two", "読んだ。"),
+                        note(3L, "読三", "う", "read three", "読んだ。"),
+                        note(4L, "読四", "え", "read four", "読んだ。")
+                ),
+                Arrays.asList(
+                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
+                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
+                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
+                        new Records.Card(40L, 4L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false)
+                )
+        );
+
+        store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, 1000L, 2000L, null);
+
+        Records.KanjiInventoryItem item = store.inventoryItemForKanji("読");
+        assertNotNull(item);
+        assertEquals("あ / い / う +1 more", item.readings);
+        assertEquals("読", store.searchKanjiInventory("え").get(0).kanji);
+    }
+
+    @Test
     public void testSimilarPairsUseConfiguredInventoryFieldsAndPreserveFirstSeen() throws Exception {
         Records.Settings settings = new Records.Settings(
                 "Custom Mining",
@@ -466,7 +492,10 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(3000, rangeFrequency.suspendedRankMax);
         assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
         store.putIntSetting("writing_trigger_miss_days", 4);
-        assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
+        store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, 5);
+        Records.Settings ladderSettings = SyncSettings.fromStore(store);
+        assertEquals(4, ladderSettings.writingTriggerMissDays);
+        assertEquals(5, ladderSettings.recognitionPromotionPasses);
         LocalStore.ReminderSettings defaults = store.reminderSettings();
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);

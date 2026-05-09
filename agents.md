@@ -56,6 +56,16 @@ boolean equalsNonPoint = point.equals(nonPoint);
 assertFalse(equalsNonPoint);
 ```
 
+## Study Scheduler Notes
+
+When adding repeated-pass or repeated-failure rules, count only persisted
+FSRS-due review attempts. The short learning-step repeats, such as the default
+1m and 10m practice steps, are practice-only and must not advance promotion,
+demotion, or other long-term scheduler thresholds. If FSRS schedules a real
+review for the same local day, that due review can count; the boundary is the
+task's persisted FSRS due time, not the calendar day or the learning-repeat
+queue.
+
 ## What Was Tested For v0.3.6
 
 The `_id is unknown` / `queue _id is unknown` fix was validated with:
