@@ -131,6 +131,13 @@ public final class MainActivity extends Activity {
     private static final int STUDY_PINK_DARK = Color.rgb(218, 58, 122);
     private static final int STUDY_BORDER = Color.rgb(255, 199, 222);
     private static final int STUDY_PROGRESS_TRACK = Color.rgb(255, 224, 236);
+    private static final int STUDY_BG_SOFT = Color.rgb(255, 246, 251);
+    private static final int STUDY_HERO_PANEL = Color.rgb(253, 241, 247);
+    private static final int STUDY_HERO_PINK = Color.rgb(248, 45, 114);
+    private static final int STUDY_HERO_PINK_DARK = Color.rgb(230, 42, 109);
+    private static final int STUDY_HERO_TRACK = Color.rgb(251, 221, 236);
+    private static final int STUDY_HERO_PLUM = Color.rgb(33, 7, 44);
+    private static final int STUDY_HERO_MUTED = Color.rgb(102, 82, 110);
     private static final long DAY_MILLIS = 86_400_000L;
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -158,6 +165,7 @@ public final class MainActivity extends Activity {
     private Button replayButton;
     private Button hintButton;
     private View studyAnswerPanel;
+    private View inlineRevealButton;
     private View flashcardGestureArea;
     private View flashcardCard;
     private EditText typingAnswerInput;
@@ -289,7 +297,7 @@ public final class MainActivity extends Activity {
         styleSystemBars();
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(BG);
+        root.setBackgroundColor("study".equals(selected) ? STUDY_BG_SOFT : BG);
         setContentView(root);
 
         content = new LinearLayout(this);
@@ -302,7 +310,7 @@ public final class MainActivity extends Activity {
         studyActionBar = new LinearLayout(this);
         studyActionBar.setOrientation(LinearLayout.VERTICAL);
         studyActionBar.setPadding(dp(18), dp(10), dp(18), dp(8));
-        studyActionBar.setBackgroundColor(STUDY_BG);
+        studyActionBar.setBackgroundColor(STUDY_BG_SOFT);
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nav = nav(selected, 0);
@@ -2085,31 +2093,178 @@ public final class MainActivity extends Activity {
         hintsUsed = 0;
         setHintState(HintState.initial());
         drawingPad = null;
-        LinearLayout card = softStudyCard();
+        inlineRevealButton = null;
+
+        if (studyActionBar != null) {
+            studyActionBar.removeAllViews();
+            studyActionBar.setVisibility(View.GONE);
+        }
+
+        LinearLayout card = recognitionHeroCard(session);
         flashcardCard = card;
         flashcardGestureArea = card;
-        card.addView(modePill(studyModeLabel(session)));
-        card.addView(text(flashcardTitle(session), 30, STUDY_PLUM, true));
-        card.addView(text(labelForTask(session.taskType), 15, STUDY_PINK_DARK, true));
-        if (activeLearningRepeat != null) {
-            card.addView(text(learningRepeatLine(activeLearningRepeat), 15, STUDY_MUTED, false));
-        }
-        card.addView(text(flashcardPromptText(session), 17, STUDY_MUTED, false));
-        card.addView(kanjiDisplayPanel(session));
-        card.addView(text(flashcardQuestion(session), 16, STUDY_PLUM, true));
+
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
+        cardLp.setMargins(0, 0, 0, dp(14));
+        content.addView(card, cardLp);
+    }
+
+    private LinearLayout recognitionHeroCard(Records.StudySession session) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(24), dp(28), dp(24), dp(24));
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setMinimumHeight(dp(560));
+        card.setBackground(panel(Color.WHITE, Color.TRANSPARENT, dp(32)));
+        card.setElevation(dp(8));
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        card.addView(recognitionPill(studyModeLabel(session)));
+
+        TextView question = text(heroQuestion(session), 27, STUDY_HERO_PLUM, true);
+        question.setGravity(Gravity.CENTER);
+        question.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams questionLp = new LinearLayout.LayoutParams(-1, -2);
+        questionLp.setMargins(0, dp(34), 0, 0);
+        card.addView(question, questionLp);
+
+        card.addView(heroKanjiPanel(session));
+
         if (isTypingMeaningTask(session)) {
+            TextView label = text("Meaning", 15, STUDY_HERO_MUTED, true);
+            label.setGravity(Gravity.CENTER);
+            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-1, -2);
+            labelLp.setMargins(0, dp(14), 0, dp(8));
+            card.addView(label, labelLp);
             card.addView(typingAnswerField());
-        } else {
-            card.addView(text("Answer hidden until reveal.", 14, STUDY_MUTED, false));
         }
+
         studyAnswerPanel = flashcardAnswerPanel(session);
         studyAnswerPanel.setVisibility(View.GONE);
         card.addView(studyAnswerPanel);
-        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
-        cardLp.setMargins(0, dp(6), 0, dp(12));
-        content.addView(card, cardLp);
 
-        buildFlashcardActionBar(false);
+        inlineRevealButton = heroRevealButton();
+        inlineRevealButton.setOnClickListener(v -> revealFlashcardAnswer());
+        card.addView(inlineRevealButton);
+
+        return card;
+    }
+
+    private String heroQuestion(Records.StudySession session) {
+        if (isWordReadingTask(session)) {
+            return "What is the reading?";
+        }
+        return "What does this kanji mean?";
+    }
+
+    private View recognitionPill(String label) {
+        LinearLayout pill = new LinearLayout(this);
+        pill.setOrientation(LinearLayout.HORIZONTAL);
+        pill.setGravity(Gravity.CENTER);
+        pill.setPadding(dp(18), 0, dp(18), 0);
+        pill.setMinimumHeight(dp(44));
+        pill.setBackground(panel(Color.rgb(253, 239, 246), Color.TRANSPARENT, dp(24)));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_eye_24);
+        icon.setColorFilter(STUDY_HERO_PINK);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+        iconLp.setMargins(0, 0, dp(10), 0);
+        pill.addView(icon, iconLp);
+
+        TextView text = text(label, 18, STUDY_HERO_PINK, true);
+        text.setIncludeFontPadding(false);
+        pill.addView(text);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(44));
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+        pill.setLayoutParams(lp);
+        return pill;
+    }
+
+    private View heroKanjiPanel(Records.StudySession session) {
+        FrameLayout panel = new FrameLayout(this);
+        panel.setBackground(panel(STUDY_HERO_PANEL, STUDY_BORDER, dp(28)));
+        panel.setPadding(dp(10), dp(10), dp(10), dp(10));
+
+        TextView glyph = text(
+                isWordReadingTask(session) ? wordPrompt(session) : session.item.kanji,
+                isWordReadingTask(session) ? 52 : 142,
+                STUDY_HERO_PLUM,
+                true
+        );
+        if (isFontRecognitionTask(session)) {
+            glyph.setTypeface(randomFontVariantTypeface(), Typeface.BOLD);
+        } else {
+            glyph.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        }
+        glyph.setGravity(Gravity.CENTER);
+        glyph.setIncludeFontPadding(false);
+        panel.addView(glyph, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(314));
+        lp.setMargins(0, dp(44), 0, 0);
+        panel.setLayoutParams(lp);
+        return panel;
+    }
+
+    private Typeface randomFontVariantTypeface() {
+        switch (ThreadLocalRandom.current().nextInt(5)) {
+            case 0:
+                return Typeface.SERIF;
+            case 1:
+                return Typeface.DEFAULT;
+            case 2:
+                return Typeface.MONOSPACE;
+            case 3:
+                return fontResource(R.font.klee_one_regular, Typeface.DEFAULT);
+            default:
+                return fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF);
+        }
+    }
+
+    private View heroRevealButton() {
+        LinearLayout button = new LinearLayout(this);
+        button.setOrientation(LinearLayout.HORIZONTAL);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(18), 0, dp(18), 0);
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setContentDescription("Reveal answer");
+        button.setElevation(dp(8));
+
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] { Color.rgb(255, 47, 120), Color.rgb(248, 36, 110) }
+        );
+        background.setCornerRadius(dp(24));
+
+        GradientDrawable mask = new GradientDrawable();
+        mask.setColor(Color.WHITE);
+        mask.setCornerRadius(dp(24));
+
+        button.setBackground(new RippleDrawable(
+                ColorStateList.valueOf(Color.argb(40, 255, 255, 255)),
+                background,
+                mask
+        ));
+
+        ImageView sparkle = new ImageView(this);
+        sparkle.setImageResource(R.drawable.ic_sparkle_24);
+        sparkle.setColorFilter(Color.WHITE);
+        LinearLayout.LayoutParams sparkleLp = new LinearLayout.LayoutParams(dp(26), dp(26));
+        sparkleLp.setMargins(0, 0, dp(14), 0);
+        button.addView(sparkle, sparkleLp);
+
+        TextView label = text("Reveal", 22, Color.WHITE, true);
+        label.setIncludeFontPadding(false);
+        button.addView(label);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(74));
+        lp.setMargins(0, dp(48), 0, 0);
+        button.setLayoutParams(lp);
+        return button;
     }
 
     private void renderWritingSession(Records.StudySession session) {
@@ -2422,6 +2577,9 @@ public final class MainActivity extends Activity {
             return;
         }
         flashcardAnswerRevealed = true;
+        if (inlineRevealButton != null) {
+            inlineRevealButton.setVisibility(View.GONE);
+        }
         expandFlashcardForAnswer();
         if (studyAnswerPanel != null) {
             studyAnswerPanel.setVisibility(View.VISIBLE);
@@ -4373,43 +4531,48 @@ public final class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(studyIconButton(R.drawable.ic_close_24, "Close study", this::renderHome), new LinearLayout.LayoutParams(dp(46), dp(46)));
+        row.addView(studyIconButton(R.drawable.ic_close_24, "Close study", this::renderHome), new LinearLayout.LayoutParams(dp(56), dp(56)));
 
-        TextView progress = text(studyProgressText(plan), 18, STUDY_PLUM, true);
+        LinearLayout center = new LinearLayout(this);
+        center.setOrientation(LinearLayout.VERTICAL);
+        center.setGravity(Gravity.CENTER);
+
+        TextView progress = text(studyProgressTextForActiveCard(plan), 18, STUDY_HERO_PLUM, true);
         progress.setGravity(Gravity.CENTER);
         progress.setIncludeFontPadding(false);
-        row.addView(progress, new LinearLayout.LayoutParams(0, -2, 1));
+        center.addView(progress, new LinearLayout.LayoutParams(-1, -2));
 
-        row.addView(studyIconButton(R.drawable.ic_settings_24, "Settings", this::renderSettings), new LinearLayout.LayoutParams(dp(46), dp(46)));
+        StudyProgressPillView progressPill = new StudyProgressPillView(this);
+        progressPill.setFraction(studyProgressFraction(plan));
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(180), dp(7));
+        progressLp.gravity = Gravity.CENTER_HORIZONTAL;
+        progressLp.setMargins(0, dp(8), 0, 0);
+        center.addView(progressPill, progressLp);
+
+        LinearLayout.LayoutParams centerLp = new LinearLayout.LayoutParams(0, -2, 1);
+        centerLp.setMargins(dp(10), 0, dp(10), 0);
+        row.addView(center, centerLp);
+
+        row.addView(studyIconButton(R.drawable.ic_settings_24, "Settings", this::renderSettings), new LinearLayout.LayoutParams(dp(56), dp(56)));
         bar.addView(row);
 
-        ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progressBar.setMax(1000);
-        progressBar.setProgress(Math.round(studyProgressFraction(plan) * 1000f));
-        progressBar.setIndeterminate(false);
-        progressBar.setProgressTintList(ColorStateList.valueOf(STUDY_PINK));
-        progressBar.setProgressBackgroundTintList(ColorStateList.valueOf(STUDY_PROGRESS_TRACK));
-        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(-1, dp(6));
-        progressLp.setMargins(dp(66), dp(6), dp(66), 0);
-        bar.addView(progressBar, progressLp);
-
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, 0, 0, dp(10));
+        lp.setMargins(0, 0, 0, dp(18));
         bar.setLayoutParams(lp);
         return bar;
     }
 
     private View studyIconButton(int iconRes, String description, Runnable action) {
         FrameLayout button = new FrameLayout(this);
-        button.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
+        button.setBackground(panel(Color.rgb(255, 242, 248), Color.TRANSPARENT, dp(28)));
         button.setClickable(true);
         button.setFocusable(true);
         button.setContentDescription(description);
-        button.setElevation(dp(2));
+        button.setElevation(dp(3));
         button.setOnClickListener(v -> action.run());
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
-        icon.setColorFilter(STUDY_PINK_DARK);
+        icon.setColorFilter(STUDY_HERO_PINK_DARK);
         FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER);
         button.addView(icon, iconLp);
         return button;
@@ -4419,6 +4582,13 @@ public final class MainActivity extends Activity {
         int target = studyProgressTarget(plan);
         int completed = studyProgressCompleted(plan);
         return completed + " / " + target;
+    }
+
+    private String studyProgressTextForActiveCard(Records.AdaptiveLoadPlan plan) {
+        int target = Math.max(1, studyProgressTarget(plan));
+        int completed = studyProgressCompleted(plan);
+        int ordinal = activeSession == null ? completed : Math.min(target, completed + 1);
+        return ordinal + " / " + target;
     }
 
     private float studyProgressFraction(Records.AdaptiveLoadPlan plan) {
@@ -4941,6 +5111,30 @@ public final class MainActivity extends Activity {
         QueueEntry(Records.DashboardRow row, Records.StudyItem item) {
             this.row = row;
             this.item = item;
+        }
+    }
+
+    private final class StudyProgressPillView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float fraction;
+
+        StudyProgressPillView(Context context) {
+            super(context);
+        }
+
+        void setFraction(float value) {
+            fraction = Math.max(0f, Math.min(1f, value));
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float radius = getHeight() / 2f;
+            paint.setColor(STUDY_HERO_TRACK);
+            canvas.drawRoundRect(0, 0, getWidth(), getHeight(), radius, radius, paint);
+            paint.setColor(STUDY_HERO_PINK);
+            canvas.drawRoundRect(0, 0, getWidth() * fraction, getHeight(), radius, radius, paint);
         }
     }
 
