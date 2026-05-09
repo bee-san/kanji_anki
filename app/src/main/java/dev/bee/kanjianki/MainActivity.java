@@ -165,9 +165,9 @@ public final class MainActivity extends Activity {
     private Button replayButton;
     private Button hintButton;
     private View studyAnswerPanel;
-    private View inlineRevealButton;
     private View flashcardGestureArea;
     private View flashcardCard;
+    private View flashcardHeroPanel;
     private EditText typingAnswerInput;
     private WritingAnalysis activeAnalysis;
     private boolean checkingWriting;
@@ -178,8 +178,10 @@ public final class MainActivity extends Activity {
     private boolean continueAllKanjiSession;
     private int hintsUsed;
     private int currentPracticeLevel;
+    private int studyRunStartingCompleted = -1;
     private float flashcardTouchStartX;
     private float flashcardTouchStartY;
+    private final Set<String> sessionPassedFocusKanji = new HashSet<>();
     private HintState currentHintState = HintState.initial();
     private Map<String, StrokeGuide> strokeGuides;
     private WritingRecognizer writingRecognizer;
@@ -352,7 +354,7 @@ public final class MainActivity extends Activity {
         nav.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(34)));
         nav.setElevation(dp(8));
         nav.addView(navButton("Home", R.drawable.ic_home_24, selected.equals("home"), this::renderHome));
-        nav.addView(navButton("Study", R.drawable.ic_study_24, selected.equals("study"), this::renderStudy));
+        nav.addView(navButton("Study", R.drawable.ic_study_24, selected.equals("study"), this::startFocusedStudy));
         nav.addView(navButton("Stats", R.drawable.ic_stats_24, selected.equals("stats"), this::renderStats));
         return nav;
     }
@@ -1860,10 +1862,12 @@ public final class MainActivity extends Activity {
 
     private void startFocusedStudy() {
         continueAllKanjiSession = false;
+        resetStudyRunProgress();
         renderStudy();
     }
 
     private void renderStudyForKanji(String kanji) {
+        resetStudyRunProgress();
         base("study");
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
@@ -2093,7 +2097,7 @@ public final class MainActivity extends Activity {
         hintsUsed = 0;
         setHintState(HintState.initial());
         drawingPad = null;
-        inlineRevealButton = null;
+        flashcardHeroPanel = null;
 
         if (studyActionBar != null) {
             studyActionBar.removeAllViews();
@@ -2107,14 +2111,14 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
         cardLp.setMargins(0, 0, 0, dp(14));
         content.addView(card, cardLp);
+        buildFlashcardActionBar(false);
     }
 
     private LinearLayout recognitionHeroCard(Records.StudySession session) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(24), dp(28), dp(24), dp(24));
+        card.setPadding(dp(18), dp(18), dp(18), dp(18));
         card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setMinimumHeight(dp(560));
         card.setBackground(panel(Color.WHITE, Color.TRANSPARENT, dp(32)));
         card.setElevation(dp(8));
         card.setClickable(true);
@@ -2122,14 +2126,29 @@ public final class MainActivity extends Activity {
 
         card.addView(recognitionPill(studyModeLabel(session)));
 
+        TextView title = text(flashcardTitle(session), 21, STUDY_HERO_PLUM, true);
+        title.setGravity(Gravity.CENTER);
+        title.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
+        titleLp.setMargins(0, dp(14), 0, 0);
+        card.addView(title, titleLp);
+
         TextView question = text(heroQuestion(session), 27, STUDY_HERO_PLUM, true);
         question.setGravity(Gravity.CENTER);
         question.setIncludeFontPadding(false);
         LinearLayout.LayoutParams questionLp = new LinearLayout.LayoutParams(-1, -2);
-        questionLp.setMargins(0, dp(34), 0, 0);
+        questionLp.setMargins(0, dp(8), 0, 0);
         card.addView(question, questionLp);
 
-        card.addView(heroKanjiPanel(session));
+        TextView hiddenHint = text("Answer hidden until reveal", 14, STUDY_HERO_MUTED, false);
+        hiddenHint.setGravity(Gravity.CENTER);
+        hiddenHint.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
+        hintLp.setMargins(0, dp(6), 0, 0);
+        card.addView(hiddenHint, hintLp);
+
+        flashcardHeroPanel = heroKanjiPanel(session);
+        card.addView(flashcardHeroPanel);
 
         if (isTypingMeaningTask(session)) {
             TextView label = text("Meaning", 15, STUDY_HERO_MUTED, true);
@@ -2143,10 +2162,6 @@ public final class MainActivity extends Activity {
         studyAnswerPanel = flashcardAnswerPanel(session);
         studyAnswerPanel.setVisibility(View.GONE);
         card.addView(studyAnswerPanel);
-
-        inlineRevealButton = heroRevealButton();
-        inlineRevealButton.setOnClickListener(v -> revealFlashcardAnswer());
-        card.addView(inlineRevealButton);
 
         return card;
     }
@@ -2190,7 +2205,7 @@ public final class MainActivity extends Activity {
 
         TextView glyph = text(
                 isWordReadingTask(session) ? wordPrompt(session) : session.item.kanji,
-                isWordReadingTask(session) ? 52 : 142,
+                isWordReadingTask(session) ? 44 : 116,
                 STUDY_HERO_PLUM,
                 true
         );
@@ -2203,8 +2218,8 @@ public final class MainActivity extends Activity {
         glyph.setIncludeFontPadding(false);
         panel.addView(glyph, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(314));
-        lp.setMargins(0, dp(44), 0, 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(210));
+        lp.setMargins(0, dp(16), 0, 0);
         panel.setLayoutParams(lp);
         return panel;
     }
@@ -2222,49 +2237,6 @@ public final class MainActivity extends Activity {
             default:
                 return fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF);
         }
-    }
-
-    private View heroRevealButton() {
-        LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.HORIZONTAL);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(18), 0, dp(18), 0);
-        button.setClickable(true);
-        button.setFocusable(true);
-        button.setContentDescription("Reveal answer");
-        button.setElevation(dp(8));
-
-        GradientDrawable background = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[] { Color.rgb(255, 47, 120), Color.rgb(248, 36, 110) }
-        );
-        background.setCornerRadius(dp(24));
-
-        GradientDrawable mask = new GradientDrawable();
-        mask.setColor(Color.WHITE);
-        mask.setCornerRadius(dp(24));
-
-        button.setBackground(new RippleDrawable(
-                ColorStateList.valueOf(Color.argb(40, 255, 255, 255)),
-                background,
-                mask
-        ));
-
-        ImageView sparkle = new ImageView(this);
-        sparkle.setImageResource(R.drawable.ic_sparkle_24);
-        sparkle.setColorFilter(Color.WHITE);
-        LinearLayout.LayoutParams sparkleLp = new LinearLayout.LayoutParams(dp(26), dp(26));
-        sparkleLp.setMargins(0, 0, dp(14), 0);
-        button.addView(sparkle, sparkleLp);
-
-        TextView label = text("Reveal", 22, Color.WHITE, true);
-        label.setIncludeFontPadding(false);
-        button.addView(label);
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(74));
-        lp.setMargins(0, dp(48), 0, 0);
-        button.setLayoutParams(lp);
-        return button;
     }
 
     private void renderWritingSession(Records.StudySession session) {
@@ -2324,6 +2296,18 @@ public final class MainActivity extends Activity {
         buildStudyActionBar();
         updateResultActions();
         refreshWritingModelStatus();
+    }
+
+    private void resetStudyRunProgress() {
+        sessionPassedFocusKanji.clear();
+        studyRunStartingCompleted = -1;
+    }
+
+    private void markStudyRunPassed(String kanji) {
+        if (kanji == null || kanji.isEmpty()) {
+            return;
+        }
+        sessionPassedFocusKanji.add(kanji);
     }
 
     private String learningRepeatLine(Records.LearningRepeat repeat) {
@@ -2577,8 +2561,8 @@ public final class MainActivity extends Activity {
             return;
         }
         flashcardAnswerRevealed = true;
-        if (inlineRevealButton != null) {
-            inlineRevealButton.setVisibility(View.GONE);
+        if (flashcardHeroPanel != null) {
+            flashcardHeroPanel.setVisibility(View.GONE);
         }
         expandFlashcardForAnswer();
         if (studyAnswerPanel != null) {
@@ -2862,6 +2846,9 @@ public final class MainActivity extends Activity {
             Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, now);
             store.saveStudyItem(itemToSave);
             store.saveReview(request, result.appliedRating, now, activeSession.item, itemToSave);
+            if (!"again".equals(result.appliedRating)) {
+                markStudyRunPassed(request.kanji);
+            }
             String repeatTaskType = "again".equals(result.appliedRating) ? taskTypeForStudyItem(itemToSave) : activeSession.taskType;
             enqueueLearningRepeatIfNeeded(itemToSave, repeatTaskType, repeatType, now);
             streak = store.studyStreak(now);
@@ -2919,6 +2906,7 @@ public final class MainActivity extends Activity {
             if (nextStep >= steps.size()) {
                 store.clearLearningRepeat(repeat);
                 activeLearningRepeat = null;
+                markStudyRunPassed(request.kanji);
                 Toast.makeText(this, "Learning repeat complete.", Toast.LENGTH_SHORT).show();
                 renderStudy();
                 return;
@@ -2926,6 +2914,9 @@ public final class MainActivity extends Activity {
         }
         long dueAt = now + steps.get(nextStep) * 60_000L;
         store.saveLearningRepeat(repeat.withStep(nextStep, dueAt, now));
+        if (!"again".equals(rating)) {
+            markStudyRunPassed(request.kanji);
+        }
         Toast.makeText(this, "Learning repeat " + dueText(dueAt, now) + ".", Toast.LENGTH_SHORT).show();
         renderStudy();
     }
@@ -4612,7 +4603,25 @@ public final class MainActivity extends Activity {
             return 0;
         }
         int remaining = Math.max(0, Math.min(target, plan.remaining));
-        return Math.max(0, Math.min(target, target - remaining));
+        int plannerCompleted = Math.max(0, Math.min(target, target - remaining));
+        if (studyRunStartingCompleted < 0) {
+            studyRunStartingCompleted = plannerCompleted;
+        }
+        int sessionCompleted = studyRunStartingCompleted + passedFocusKanjiCount(plan);
+        return Math.max(0, Math.min(target, Math.max(plannerCompleted, sessionCompleted)));
+    }
+
+    private int passedFocusKanjiCount(Records.AdaptiveLoadPlan plan) {
+        if (plan == null || sessionPassedFocusKanji.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (String kanji : plan.focusKanji) {
+            if (sessionPassedFocusKanji.contains(kanji)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private LinearLayout softStudyCard() {

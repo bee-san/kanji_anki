@@ -861,22 +861,11 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Answer hidden until reveal");
                 assertNoText(activity, "拉麺");
                 View root = activity.findViewById(android.R.id.content);
-                View hiddenAnswerHint = findText(root, "Answer hidden until reveal");
-                assertNotNull(hiddenAnswerHint);
-                ViewParent promptParent = hiddenAnswerHint.getParent();
-                assertTrue(promptParent instanceof View);
-                View promptPanel = (View) promptParent;
-                ScrollView scroll = (ScrollView) ancestorOfType(promptPanel, ScrollView.class);
-                assertNotNull(scroll);
-                Rect scrollBounds = new Rect();
-                Rect promptBounds = new Rect();
-                assertTrue(scroll.getGlobalVisibleRect(scrollBounds));
-                assertTrue(promptPanel.getGlobalVisibleRect(promptBounds));
-                int tolerancePx = Math.round(activity.getResources().getDisplayMetrics().density * 36f);
-                assertTrue(
-                        "Flashcard prompt should fill the visible study viewport",
-                        promptBounds.bottom >= scrollBounds.bottom - tolerancePx
-                );
+                View reveal = findExactText(root, "Reveal");
+                assertNotNull(reveal);
+                Rect revealBounds = new Rect();
+                assertTrue(reveal.getGlobalVisibleRect(revealBounds));
+                assertFalse(hasAncestorOfType(reveal, ScrollView.class));
             });
             clickText(scenario, "Reveal");
             scenario.onActivity(activity -> {
@@ -887,10 +876,14 @@ public final class MainActivityInstrumentedTest {
                 Rect failBounds = new Rect();
                 Rect passBounds = new Rect();
                 View root = activity.findViewById(android.R.id.content);
+                View answer = findExactText(root, "Answer");
                 View fail = findExactText(root, "Fail");
                 View pass = findExactText(root, "Pass");
+                assertNotNull(answer);
                 assertNotNull(fail);
                 assertNotNull(pass);
+                Rect answerBounds = new Rect();
+                assertTrue(answer.getGlobalVisibleRect(answerBounds));
                 assertTrue(fail.getGlobalVisibleRect(failBounds));
                 assertTrue(pass.getGlobalVisibleRect(passBounds));
                 assertTrue("Fail should be left of Pass", failBounds.centerX() < passBounds.centerX());
@@ -1035,6 +1028,36 @@ public final class MainActivityInstrumentedTest {
             } finally {
                 store.close();
             }
+        }
+    }
+
+    @Test
+    public void testLearningRepeatPassAdvancesSessionProgressHeader() {
+        seedDashboard(Arrays.asList(
+                dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards"),
+                dashboardRow("提", "carry radical gap", "てい", "Imported from suspended cards")
+        ));
+        LocalStore setup = new LocalStore(context);
+        try {
+            long now = System.currentTimeMillis();
+            Records.StudyItem repeatItem = new Records.StudyItem("拉", "learning", now + 86_400_000L, 0.4, 5.0, 1, 1, 0, 0, null, now)
+                    .withAnswerSignature("拉|拉致|らち|archive example");
+            setup.enqueueLearningRepeat(repeatItem, "kanji_meaning", Records.LEARNING_REPEAT_NEW, 0, now - 1_000L, now - 2_000L);
+        } finally {
+            setup.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "1 / 2");
+                assertHasText(activity, "Learning step 1 / 2. Practice only.");
+            });
+
+            clickText(scenario, "Reveal");
+            clickText(scenario, "Pass");
+
+            scenario.onActivity(activity -> assertHasText(activity, "2 / 2"));
         }
     }
 
