@@ -57,6 +57,7 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.StudyCue;
 import dev.bee.kanjianki.core.StudyCueFormatter;
 import dev.bee.kanjianki.core.TextUtil;
+import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintPolicy;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -158,6 +159,7 @@ public final class MainActivity extends Activity {
     private View studyAnswerPanel;
     private View flashcardGestureArea;
     private View flashcardCard;
+    private EditText typingAnswerInput;
     private WritingAnalysis activeAnalysis;
     private boolean checkingWriting;
     private boolean flashcardAnswerRevealed;
@@ -1912,7 +1914,9 @@ public final class MainActivity extends Activity {
         if (item.writingRemediationPending) {
             return "writing_remediation";
         }
-        switch (Math.max(0, Math.min(2, item.recognitionStage))) {
+        switch (Math.max(-1, Math.min(2, item.recognitionStage))) {
+            case -1:
+                return "typing_meaning";
             case 1:
                 return "font_meaning";
             case 2:
@@ -1932,6 +1936,7 @@ public final class MainActivity extends Activity {
         checkingWriting = false;
         flashcardAnswerRevealed = false;
         flashcardGestureArea = null;
+        typingAnswerInput = null;
         drawingPad = null;
         hintsUsed = 0;
         setHintState(HintState.initial());
@@ -2075,6 +2080,7 @@ public final class MainActivity extends Activity {
         checkingWriting = false;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;
+        typingAnswerInput = null;
         hintsUsed = 0;
         setHintState(HintState.initial());
         drawingPad = null;
@@ -2090,7 +2096,11 @@ public final class MainActivity extends Activity {
         card.addView(text(flashcardPromptText(session), 17, STUDY_MUTED, false));
         card.addView(kanjiDisplayPanel(session));
         card.addView(text(flashcardQuestion(session), 16, STUDY_PLUM, true));
-        card.addView(text("Answer hidden until reveal.", 14, STUDY_MUTED, false));
+        if (isTypingMeaningTask(session)) {
+            card.addView(typingAnswerField());
+        } else {
+            card.addView(text("Answer hidden until reveal.", 14, STUDY_MUTED, false));
+        }
         studyAnswerPanel = flashcardAnswerPanel(session);
         studyAnswerPanel.setVisibility(View.GONE);
         card.addView(studyAnswerPanel);
@@ -2108,6 +2118,7 @@ public final class MainActivity extends Activity {
         flashcardGestureArea = null;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;
+        typingAnswerInput = null;
         hintsUsed = 0;
         setHintState(initialHintState(session));
 
@@ -2171,6 +2182,9 @@ public final class MainActivity extends Activity {
         if (isWordReadingTask(session)) {
             return "Read this word";
         }
+        if (isTypingMeaningTask(session)) {
+            return "Type the meaning";
+        }
         return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
     }
 
@@ -2181,10 +2195,16 @@ public final class MainActivity extends Activity {
         if (isWordReadingTask(session)) {
             return "Read";
         }
+        if (isTypingMeaningTask(session)) {
+            return "Type";
+        }
         return "Recognise";
     }
 
     private String flashcardPromptText(Records.StudySession session) {
+        if (isTypingMeaningTask(session)) {
+            return "Type one accepted meaning, then reveal.";
+        }
         if (isFontRecognitionTask(session)) {
             return "Recognise the shape across fonts, then reveal the Anki clue.";
         }
@@ -2195,6 +2215,9 @@ public final class MainActivity extends Activity {
     }
 
     private String flashcardQuestion(Records.StudySession session) {
+        if (isTypingMeaningTask(session)) {
+            return "Meaning";
+        }
         if (isWordReadingTask(session)) {
             return "What is the reading?";
         }
@@ -2202,6 +2225,21 @@ public final class MainActivity extends Activity {
             return "What does this kanji mean?";
         }
         return "What does it mean?";
+    }
+
+    private View typingAnswerField() {
+        typingAnswerInput = new EditText(this);
+        typingAnswerInput.setSingleLine(true);
+        typingAnswerInput.setTextSize(20);
+        typingAnswerInput.setTextColor(STUDY_PLUM);
+        typingAnswerInput.setHintTextColor(STUDY_MUTED);
+        typingAnswerInput.setHint("Meaning");
+        typingAnswerInput.setPadding(dp(16), 0, dp(16), 0);
+        typingAnswerInput.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(58));
+        lp.setMargins(0, dp(4), 0, dp(4));
+        typingAnswerInput.setLayoutParams(lp);
+        return typingAnswerInput;
     }
 
     private View kanjiDisplayPanel(Records.StudySession session) {
@@ -2372,12 +2410,33 @@ public final class MainActivity extends Activity {
         if (flashcardAnswerRevealed) {
             return;
         }
+        if (isTypingMeaningTask(activeSession)
+                && TypingAnswerMatcher.matches(
+                dictionaryLookup(),
+                activeSession.item.kanji,
+                typingAnswerInput == null ? "" : typingAnswerInput.getText().toString(),
+                collectionMeaningForSession(activeSession))) {
+            Toast.makeText(this, "Typing answer accepted.", Toast.LENGTH_SHORT).show();
+            submitReview("good", false);
+            return;
+        }
         flashcardAnswerRevealed = true;
         expandFlashcardForAnswer();
         if (studyAnswerPanel != null) {
             studyAnswerPanel.setVisibility(View.VISIBLE);
         }
         buildFlashcardActionBar(true);
+    }
+
+    private String collectionMeaningForSession(Records.StudySession session) {
+        if (session == null || session.row == null) {
+            return "";
+        }
+        Records.Example example = exampleForSession(session);
+        if (example != null && !example.meaning.isEmpty()) {
+            return example.meaning;
+        }
+        return session.row.primaryMeaning;
     }
 
     private void expandFlashcardForAnswer() {
@@ -2644,7 +2703,8 @@ public final class MainActivity extends Activity {
             Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, now);
             store.saveStudyItem(itemToSave);
             store.saveReview(request, result.appliedRating, now, activeSession.item, itemToSave);
-            enqueueLearningRepeatIfNeeded(itemToSave, activeSession.taskType, repeatType, now);
+            String repeatTaskType = "again".equals(result.appliedRating) ? taskTypeForStudyItem(itemToSave) : activeSession.taskType;
+            enqueueLearningRepeatIfNeeded(itemToSave, repeatTaskType, repeatType, now);
             streak = store.studyStreak(now);
             Records.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
             if (tuned.lastAdjustedAtMillis != parameters.lastAdjustedAtMillis || tuned.lastAdjustmentReviewCount != parameters.lastAdjustmentReviewCount) {
@@ -2760,6 +2820,7 @@ public final class MainActivity extends Activity {
                 item.answerSignature,
                 item.activeToken,
                 item.createdAtMillis,
+                item.typingMeaningMemory,
                 item.kanjiMeaningMemory,
                 item.fontMeaningMemory,
                 item.wordReadingMemory,
@@ -3059,6 +3120,10 @@ public final class MainActivity extends Activity {
 
     private boolean isFontRecognitionTask(Records.StudySession session) {
         return session != null && ("font_meaning".equals(session.taskType) || "font_recognition".equals(session.taskType));
+    }
+
+    private boolean isTypingMeaningTask(Records.StudySession session) {
+        return session != null && "typing_meaning".equals(session.taskType);
     }
 
     private boolean isWordReadingTask(Records.StudySession session) {
@@ -4649,6 +4714,9 @@ public final class MainActivity extends Activity {
         }
         if ("kanji_meaning".equals(task)) {
             return "Kanji -> meaning";
+        }
+        if ("typing_meaning".equals(task)) {
+            return "Typing -> meaning";
         }
         if ("font_meaning".equals(task)) {
             return "Font -> meaning";
