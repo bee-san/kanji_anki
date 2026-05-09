@@ -4491,9 +4491,7 @@ public final class MainActivity extends Activity {
         if ("Reveal".equals(label)) {
             button.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_eye_24, 0, 0, 0);
             button.setCompoundDrawablePadding(dp(8));
-            if (Build.VERSION.SDK_INT >= 23) {
-                button.setCompoundDrawableTintList(ColorStateList.valueOf(Color.WHITE));
-            }
+            TextViewCompat.setCompoundDrawableTintList(button, ColorStateList.valueOf(Color.WHITE));
         }
         GradientDrawable background = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
@@ -5319,3 +5317,4 @@ public final class MainActivity extends Activity {
         }
     }
 }
+import androidx.core.widget.TextViewCompat;
