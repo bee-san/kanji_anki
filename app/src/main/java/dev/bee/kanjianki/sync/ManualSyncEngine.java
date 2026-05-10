@@ -136,6 +136,7 @@ public final class ManualSyncEngine {
                 studiedToday,
                 store.adaptiveLoadWorkPercent(),
                 store.adaptiveLoadMode(),
+                store.adaptiveLoadMaxItems(),
                 nowMillis,
                 settings
         );

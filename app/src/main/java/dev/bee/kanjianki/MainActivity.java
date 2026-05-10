@@ -4894,7 +4894,7 @@ public final class MainActivity extends Activity {
         if (plan == null || plan.target <= 0) {
             return "Auto Pareto: waiting for problem kanji";
         }
-        return "Auto Pareto: " + countText(plan.target, "item", "items") + " from today's drop-off";
+        return "Auto Pareto: " + countText(plan.target, "item", "items") + " today";
     }
 
     private LinearLayout updateSettingsPanel() {

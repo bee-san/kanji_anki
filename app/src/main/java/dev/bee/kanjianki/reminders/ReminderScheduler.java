@@ -170,6 +170,7 @@ public final class ReminderScheduler {
                     store.studiedKanjiSince(now - (now % 86_400_000L)),
                     store.adaptiveLoadWorkPercent(),
                     store.adaptiveLoadMode(),
+                    store.adaptiveLoadMaxItems(),
                     now,
                     Records.Settings.kikuDefaults()
             );
