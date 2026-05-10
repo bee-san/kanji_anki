@@ -28,10 +28,12 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 14;
+    private static final int DB_VERSION = 15;
     private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE study_items (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE learning_repeats (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final String REVIEW_LOG_TABLE_SQL = "CREATE TABLE review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
+    private static final String STUDY_TASK_LOG_TABLE_SQL = "CREATE TABLE IF NOT EXISTS study_task_log (id INTEGER PRIMARY KEY AUTOINCREMENT, task_key TEXT NOT NULL UNIQUE, kanji TEXT NOT NULL, task_type TEXT NOT NULL, started_at INTEGER NOT NULL, answered_at INTEGER NOT NULL, active_elapsed_ms INTEGER NOT NULL, outcome TEXT NOT NULL)";
+    private static final long MAX_STUDY_TASK_ELAPSED_MS = 30L * 60L * 1000L;
     private static final String STATUS_SUCCESS = "success";
     private static final String COLUMN_FIRST_IMPORTED_AT = "first_imported_at";
     private static final int DEFAULT_REMINDER_HOUR = 19;
@@ -67,6 +69,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         db.execSQL(STUDY_ITEMS_TABLE_SQL);
         db.execSQL(LEARNING_REPEATS_TABLE_SQL);
         db.execSQL(REVIEW_LOG_TABLE_SQL);
+        createStudyTaskLogTable(db);
         db.execSQL("CREATE INDEX idx_examples_kanji ON kanji_examples(kanji)");
         db.execSQL("CREATE INDEX idx_study_due ON study_items(state, due_at)");
         db.execSQL("CREATE INDEX idx_learning_repeats_due ON learning_repeats(due_at)");
@@ -139,6 +142,14 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (oldVersion < 14) {
             addNullableColumn(db, "study_items", "typing_meaning_memory", "TEXT NOT NULL DEFAULT ''");
         }
+        if (oldVersion < 15) {
+            createStudyTaskLogTable(db);
+        }
+    }
+
+    private void createStudyTaskLogTable(SQLiteDatabase db) {
+        db.execSQL(STUDY_TASK_LOG_TABLE_SQL);
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_task_log_answered ON study_task_log(answered_at)");
     }
 
     private void createKanjiInventoryTables(SQLiteDatabase db) {
@@ -1429,6 +1440,58 @@ public final class LocalStore extends SQLiteOpenHelper {
             cursor.close();
         }
         return new Records.ReviewStats(total, again, hard, good, easy, writingRequired, writingFailed);
+    }
+
+    public boolean recordStudyTaskAnswered(String taskKey, String kanji, String taskType, long startedAt, long answeredAt, long activeElapsedMillis, String outcome) {
+        String normalizedKey = taskKey == null ? "" : taskKey;
+        if (normalizedKey.isEmpty()) {
+            return false;
+        }
+        ContentValues values = new ContentValues();
+        values.put("task_key", normalizedKey);
+        values.put("kanji", kanji == null ? "" : kanji);
+        values.put("task_type", taskType == null ? "" : taskType);
+        values.put("started_at", Math.max(0L, startedAt));
+        values.put("answered_at", Math.max(0L, answeredAt));
+        values.put("active_elapsed_ms", Math.min(MAX_STUDY_TASK_ELAPSED_MS, Math.max(0L, activeElapsedMillis)));
+        values.put("outcome", outcome == null ? "" : outcome);
+        return getWritableDatabase().insertWithOnConflict("study_task_log", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L;
+    }
+
+    public StudyTaskTimeStats studyTaskTimeStats(long nowMillis) {
+        long today = localDayStart(nowMillis);
+        long tomorrow = moveLocalDays(today, 1);
+        long sevenDayStart = moveLocalDays(today, -6);
+        long todayMillis = sumStudyTaskElapsed(today, tomorrow);
+        StudyTaskAggregate week = studyTaskAggregate(sevenDayStart, tomorrow);
+        return new StudyTaskTimeStats(todayMillis, week.elapsedMillis, week.taskCount);
+    }
+
+    private long sumStudyTaskElapsed(long startMillis, long endMillis) {
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT COALESCE(SUM(active_elapsed_ms), 0) FROM study_task_log WHERE answered_at>=? AND answered_at<?",
+                new String[]{Long.toString(startMillis), Long.toString(endMillis)}
+        );
+        try {
+            return cursor.moveToFirst() ? cursor.getLong(0) : 0L;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private StudyTaskAggregate studyTaskAggregate(long startMillis, long endMillis) {
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT COALESCE(SUM(active_elapsed_ms), 0), COUNT(*) FROM study_task_log WHERE answered_at>=? AND answered_at<?",
+                new String[]{Long.toString(startMillis), Long.toString(endMillis)}
+        );
+        try {
+            if (!cursor.moveToFirst()) {
+                return new StudyTaskAggregate(0L, 0);
+            }
+            return new StudyTaskAggregate(cursor.getLong(0), cursor.getInt(1));
+        } finally {
+            cursor.close();
+        }
     }
 
     public List<RecentMistake> recentMistakes(int limit) {
@@ -4258,6 +4321,35 @@ public final class LocalStore extends SQLiteOpenHelper {
             this.writingPassed = writingPassed;
             this.writingFailed = writingFailed;
             this.manualOverrides = manualOverrides;
+        }
+    }
+
+    public static final class StudyTaskTimeStats {
+        public final long todayMillis;
+        public final long lastSevenDaysMillis;
+        public final int answeredTasks;
+
+        public StudyTaskTimeStats(long todayMillis, long lastSevenDaysMillis, int answeredTasks) {
+            this.todayMillis = Math.max(0L, todayMillis);
+            this.lastSevenDaysMillis = Math.max(0L, lastSevenDaysMillis);
+            this.answeredTasks = Math.max(0, answeredTasks);
+        }
+
+        public long averageMillisPerTask() {
+            if (answeredTasks == 0) {
+                return 0L;
+            }
+            return lastSevenDaysMillis / answeredTasks;
+        }
+    }
+
+    private static final class StudyTaskAggregate {
+        private final long elapsedMillis;
+        private final int taskCount;
+
+        private StudyTaskAggregate(long elapsedMillis, int taskCount) {
+            this.elapsedMillis = elapsedMillis;
+            this.taskCount = taskCount;
         }
     }
 

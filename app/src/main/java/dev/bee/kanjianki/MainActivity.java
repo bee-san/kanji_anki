@@ -184,6 +184,8 @@ public final class MainActivity extends Activity {
     private int sessionProgressMax;
     private float flashcardTouchStartX;
     private float flashcardTouchStartY;
+    private ActiveStudyTask activeStudyTask;
+    private boolean activityPaused;
     private final Set<String> sessionPassedFocusKanji = new HashSet<>();
     private final Set<String> sessionCompletedTaskKeys = new HashSet<>();
     private final Set<String> sessionSeenTaskKeys = new HashSet<>();
@@ -214,6 +216,20 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleLaunchIntent(intent);
+    }
+
+    @Override
+    protected void onPause() {
+        pauseActiveStudyTask();
+        activityPaused = true;
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        activityPaused = false;
+        resumeActiveStudyTask();
     }
 
     @Override
@@ -297,6 +313,9 @@ public final class MainActivity extends Activity {
 
     @SuppressWarnings({"deprecation", "java:S1874"})
     private void base(String selected) {
+        if (!"study".equals(selected)) {
+            abandonActiveStudyTask();
+        }
         flashcardGestureArea = null;
         flashcardCard = null;
         flashcardAnswerRevealed = false;
@@ -1062,8 +1081,10 @@ public final class MainActivity extends Activity {
     private void renderStats() {
         base("stats");
         LocalStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
+        LocalStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
         content.addView(fullWidthHomeButton());
         content.addView(text("Stats", 34, INK, true));
+        content.addView(studyTimePanel(studyTime));
         content.addView(statsVerdictPanel(stats));
         content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
         addSpace(10);
@@ -1096,6 +1117,16 @@ public final class MainActivity extends Activity {
                 working ? INK : MUTED,
                 false
         ));
+        return box;
+    }
+
+    private LinearLayout studyTimePanel(LocalStore.StudyTaskTimeStats stats) {
+        LinearLayout box = panelBox(Color.WHITE, CORAL);
+        box.addView(text("Answered study time", 18, MUTED, true));
+        box.addView(text("Today: " + formatStudyTime(stats.todayMillis), 24, INK, true));
+        box.addView(text("Last 7 days: " + formatStudyTime(stats.lastSevenDaysMillis), 16, MUTED, false));
+        box.addView(text("Answered tasks: " + stats.answeredTasks, 16, MUTED, false));
+        box.addView(text("Avg / task: " + formatStudyTime(stats.averageMillisPerTask()), 16, MUTED, false));
         return box;
     }
 
@@ -1138,6 +1169,21 @@ public final class MainActivity extends Activity {
 
     private String formatWeakness(double weakness) {
         return String.format(java.util.Locale.ROOT, "%.2f", weakness);
+    }
+
+    private String formatStudyTime(long millis) {
+        long seconds = Math.max(0L, Math.round(millis / 1000.0));
+        if (seconds < 60L) {
+            return seconds + " sec";
+        }
+        long minutes = seconds / 60L;
+        long remainingSeconds = seconds % 60L;
+        if (minutes < 60L) {
+            return remainingSeconds == 0L ? minutes + " min" : minutes + " min " + remainingSeconds + " sec";
+        }
+        long hours = minutes / 60L;
+        long remainingMinutes = minutes % 60L;
+        return remainingMinutes == 0L ? hours + " hr" : hours + " hr " + remainingMinutes + " min";
     }
 
     private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows, KanjiImpactAnalyzer.Report impactReport) {
@@ -1842,7 +1888,9 @@ public final class MainActivity extends Activity {
             return;
         }
         store.saveStudyItem(activeSession.item);
-        registerStudyTaskShown(sessionTaskKey(activeSession));
+        String taskKey = sessionTaskKey(activeSession);
+        registerStudyTaskShown(taskKey);
+        startActiveStudyTask(taskKey, activeSession.item.kanji, activeSession.taskType, now);
         renderSession(activeSession);
     }
 
@@ -1890,7 +1938,9 @@ public final class MainActivity extends Activity {
                 "writing_remediation".equals(repeat.taskType),
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
-        registerStudyTaskShown(learningRepeatKey(activeLearningRepeat));
+        String taskKey = learningRepeatKey(activeLearningRepeat);
+        registerStudyTaskShown(taskKey);
+        startActiveStudyTask(taskKey, activeLearningRepeat.kanji, activeLearningRepeat.taskType, now);
         renderSession(activeSession);
     }
 
@@ -1979,7 +2029,9 @@ public final class MainActivity extends Activity {
         );
         activeLearningRepeat = null;
         store.saveStudyItem(activeSession.item);
-        registerStudyTaskShown(sessionTaskKey(activeSession));
+        String taskKey = sessionTaskKey(activeSession);
+        registerStudyTaskShown(taskKey);
+        startActiveStudyTask(taskKey, activeSession.item.kanji, activeSession.taskType, now);
         renderSession(activeSession);
     }
 
@@ -2005,7 +2057,9 @@ public final class MainActivity extends Activity {
         activeSimilarRepair = null;
         activeSimilarChoice = card;
         initializeSessionProgressTarget(activeStudyPlan);
-        registerStudyTaskShown(similarChoiceKey(card));
+        String taskKey = similarChoiceKey(card);
+        registerStudyTaskShown(taskKey);
+        startActiveStudyTask(taskKey, card.targetKanji, "similar_choice", System.currentTimeMillis());
         prepareStudyContent(activeStudyPlan, false);
         activeAnalysis = null;
         checkingWriting = false;
@@ -2070,7 +2124,10 @@ public final class MainActivity extends Activity {
             renderStudy();
             return;
         }
-        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(activeSimilarChoice, selectedKanji, System.currentTimeMillis());
+        String taskKey = similarChoiceKey(activeSimilarChoice);
+        long now = System.currentTimeMillis();
+        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(activeSimilarChoice, selectedKanji, now);
+        completeActiveStudyTask(taskKey, result.correct ? "correct" : "wrong", now);
         if (result.correct) {
             markSimilarStudyTaskCompleted();
         }
@@ -2113,7 +2170,9 @@ public final class MainActivity extends Activity {
                 activeSimilarRepair.promptMeaning
         );
         initializeSessionProgressTarget(activeStudyPlan);
-        registerStudyTaskShown(similarRepairKey(activeSimilarRepair));
+        String taskKey = similarRepairKey(activeSimilarRepair);
+        registerStudyTaskShown(taskKey);
+        startActiveStudyTask(taskKey, activeSimilarRepair.repairKanji, "similar_writing", now);
         renderSession(activeSession);
     }
 
@@ -2437,6 +2496,53 @@ public final class MainActivity extends Activity {
         return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token;
     }
 
+    private void startActiveStudyTask(String key, String kanji, String taskType, long startedAt) {
+        if (key == null || key.isEmpty()) {
+            return;
+        }
+        if (activeStudyTask != null && key.equals(activeStudyTask.taskKey)) {
+            return;
+        }
+        activeStudyTask = new ActiveStudyTask(key, kanji, taskType, startedAt);
+        if (!activityPaused) {
+            activeStudyTask.resume(SystemClock.elapsedRealtime());
+        }
+    }
+
+    private void completeActiveStudyTask(String key, String outcome, long answeredAt) {
+        if (activeStudyTask == null || key == null || !key.equals(activeStudyTask.taskKey)) {
+            return;
+        }
+        long nowElapsed = SystemClock.elapsedRealtime();
+        activeStudyTask.pause(nowElapsed);
+        store.recordStudyTaskAnswered(
+                activeStudyTask.taskKey,
+                activeStudyTask.kanji,
+                activeStudyTask.taskType,
+                activeStudyTask.startedAtMillis,
+                answeredAt,
+                activeStudyTask.activeElapsedMillis,
+                outcome
+        );
+        activeStudyTask = null;
+    }
+
+    private void pauseActiveStudyTask() {
+        if (activeStudyTask != null) {
+            activeStudyTask.pause(SystemClock.elapsedRealtime());
+        }
+    }
+
+    private void resumeActiveStudyTask() {
+        if (activeStudyTask != null) {
+            activeStudyTask.resume(SystemClock.elapsedRealtime());
+        }
+    }
+
+    private void abandonActiveStudyTask() {
+        activeStudyTask = null;
+    }
+
     private String learningRepeatKey(Records.LearningRepeat repeat) {
         if (repeat == null) {
             return "";
@@ -2448,7 +2554,7 @@ public final class MainActivity extends Activity {
         if (choice == null) {
             return "";
         }
-        return "similar-choice:" + choice.targetKanji + ":" + choice.choiceSignature;
+        return "similar-choice:" + choice.targetKanji + ":" + choice.choiceSignature + ":" + choice.correctCount + ":" + choice.wrongCount;
     }
 
     private String similarRepairKey(Records.SimilarKanjiWritingRepair repair) {
@@ -2998,6 +3104,7 @@ public final class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         Records.SchedulerParameters parameters = store.schedulerParameters();
         Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters, settings());
+        completeActiveStudyTask(sessionTaskKey(activeSession), result.appliedRating, now);
         LocalStore.StudyStreak streak = null;
         if (!result.duplicate) {
             String repeatType = learningRepeatTypeForReview(activeSession.item, request, result.appliedRating);
@@ -3025,8 +3132,13 @@ public final class MainActivity extends Activity {
             renderStudy();
             return;
         }
+        String taskKey = similarRepairKey(repair);
         boolean passed = request.manualOverride || request.writingPassed;
-        boolean saved = store.finishSimilarWritingRepair(repair.id, request.token, passed, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        boolean saved = store.finishSimilarWritingRepair(repair.id, request.token, passed, now);
+        if (saved) {
+            completeActiveStudyTask(taskKey, passed ? "passed" : "failed", now);
+        }
         if (saved && passed) {
             markSimilarStudyTaskCompleted();
         }
@@ -3046,7 +3158,9 @@ public final class MainActivity extends Activity {
             renderStudy();
             return;
         }
+        String taskKey = learningRepeatKey(repeat);
         long now = System.currentTimeMillis();
+        completeActiveStudyTask(taskKey, rating, now);
         Records.LearningStepSettings settings = store.learningStepSettings();
         List<Integer> steps = Records.LEARNING_REPEAT_REVIEW.equals(repeat.repeatType)
                 ? settings.reviewStepsMinutes
@@ -5126,7 +5240,7 @@ public final class MainActivity extends Activity {
             return "Kanji -> meaning";
         }
         if ("typing_meaning".equals(task)) {
-            return "Typing -> meaning";
+            return "Type the meaning";
         }
         if ("font_meaning".equals(task)) {
             return "Font -> meaning";
@@ -5275,6 +5389,36 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class ActiveStudyTask {
+        private final String taskKey;
+        private final String kanji;
+        private final String taskType;
+        private final long startedAtMillis;
+        private long activeElapsedMillis;
+        private long visibleSinceElapsedMillis;
+
+        private ActiveStudyTask(String taskKey, String kanji, String taskType, long startedAtMillis) {
+            this.taskKey = taskKey;
+            this.kanji = kanji == null ? "" : kanji;
+            this.taskType = taskType == null ? "" : taskType;
+            this.startedAtMillis = Math.max(0L, startedAtMillis);
+        }
+
+        private void pause(long nowElapsedMillis) {
+            if (visibleSinceElapsedMillis <= 0L) {
+                return;
+            }
+            activeElapsedMillis += Math.max(0L, nowElapsedMillis - visibleSinceElapsedMillis);
+            visibleSinceElapsedMillis = 0L;
+        }
+
+        private void resume(long nowElapsedMillis) {
+            if (visibleSinceElapsedMillis <= 0L) {
+                visibleSinceElapsedMillis = nowElapsedMillis;
+            }
+        }
     }
 
     private static final class EqualHeightRow extends LinearLayout {

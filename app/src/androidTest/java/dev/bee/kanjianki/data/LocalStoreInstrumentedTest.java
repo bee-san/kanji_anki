@@ -437,6 +437,8 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("review_log", "hints_used"));
         assertTrue(hasColumn("review_log", "memory_before"));
         assertTrue(hasColumn("review_log", "scheduler_state_after_json"));
+        assertTrue(hasColumn("study_task_log", "task_key"));
+        assertTrue(hasColumn("study_task_log", "active_elapsed_ms"));
         assertTrue(hasColumn("sync_card_snapshots", "deck_id"));
         assertTrue(hasColumn("sync_card_snapshots", "model_id"));
         assertTrue(hasColumn("sync_card_snapshots", "fsrs_difficulty"));
@@ -743,6 +745,42 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1.80, loaded.goodMultiplier, 0.001);
         assertEquals(5000L, loaded.lastAdjustedAtMillis);
         assertEquals(30, loaded.lastAdjustmentReviewCount);
+    }
+
+    @Test
+    public void testStudyTaskAnsweredLogSuppressesDuplicateTaskKeys() {
+        assertTrue(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
+        assertFalse(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 3000L, 24_000L, "easy"));
+
+        LocalStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(2500L);
+        assertEquals(12_000L, stats.todayMillis);
+        assertEquals(12_000L, stats.lastSevenDaysMillis);
+        assertEquals(1, stats.answeredTasks);
+        assertEquals(12_000L, stats.averageMillisPerTask());
+        assertEquals(1, count("study_task_log"));
+    }
+
+    @Test
+    public void testStudyTaskTimeStatsUseLocalDayBoundariesAndClampOutliers() {
+        long today = localDayStart(System.currentTimeMillis());
+        long tomorrow = moveLocalDays(today, 1);
+        long yesterday = moveLocalDays(today, -1);
+        long sixDaysAgo = moveLocalDays(today, -6);
+        long sevenDaysAgo = moveLocalDays(today, -7);
+
+        store.recordStudyTaskAnswered("today-start", "拉", "kanji_meaning", today - 500L, today, 30_000L, "good");
+        store.recordStudyTaskAnswered("today-end", "提", "typing_meaning", today, tomorrow - 1L, 90_000L, "good");
+        store.recordStudyTaskAnswered("yesterday", "謎", "similar_choice", yesterday, yesterday + 60_000L, 120_000L, "wrong");
+        store.recordStudyTaskAnswered("six-days", "麺", "similar_writing", sixDaysAgo, sixDaysAgo + 60_000L, 180_000L, "passed");
+        store.recordStudyTaskAnswered("seven-days", "確", "kanji_meaning", sevenDaysAgo, sevenDaysAgo + 60_000L, 240_000L, "good");
+        store.recordStudyTaskAnswered("clamped", "曜", "word_reading", today, today + 60_000L, 31L * 60L * 1000L, "easy");
+
+        LocalStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(today + 12 * 60_000L);
+
+        assertEquals(30_000L + 90_000L + 30L * 60L * 1000L, stats.todayMillis);
+        assertEquals(30_000L + 90_000L + 120_000L + 180_000L + 30L * 60L * 1000L, stats.lastSevenDaysMillis);
+        assertEquals(5, stats.answeredTasks);
+        assertEquals(stats.lastSevenDaysMillis / 5, stats.averageMillisPerTask());
     }
 
     @Test

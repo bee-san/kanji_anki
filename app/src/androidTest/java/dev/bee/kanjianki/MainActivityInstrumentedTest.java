@@ -380,6 +380,11 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Kani is working for you");
+                assertHasText(activity, "Answered study time");
+                assertHasText(activity, "Today: 0 sec");
+                assertHasText(activity, "Last 7 days: 0 sec");
+                assertHasText(activity, "Answered tasks: 0");
+                assertHasText(activity, "Avg / task: 0 sec");
                 assertHasText(activity, "Weak kanji improved");
                 assertHasText(activity, "4 weak kanji improved after Kani practice");
                 assertHasText(activity, "Average weakness dropped from 0.75 to 0.48 after Kani practice.");
@@ -396,7 +401,6 @@ public final class MainActivityInstrumentedTest {
                 assertNoText(activity, "Anki impact");
                 assertNoText(activity, "Kani writing");
                 assertNoText(activity, "Now practicing");
-                assertNoText(activity, "Last 7 days");
                 assertNoText(activity, "What this means");
                 assertNoText(activity, "You are turning Anki pain points");
             });
@@ -1004,6 +1008,36 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "2 / 2");
                 assertHasText(activity, "Today's focus done");
             });
+
+            LocalStore store = new LocalStore(context);
+            try {
+                LocalStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(System.currentTimeMillis());
+                assertEquals(1, stats.answeredTasks);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testNormalPassLogsAnsweredStudyTime() {
+        seedDashboard();
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study now");
+            clickText(scenario, "Reveal");
+            clickText(scenario, "Pass");
+
+            LocalStore store = new LocalStore(context);
+            try {
+                Records.ReviewStats reviewStats = store.reviewStatsSince(0L);
+                assertEquals(1, reviewStats.total);
+                assertEquals(1, reviewStats.good);
+                LocalStore.StudyTaskTimeStats timeStats = store.studyTaskTimeStats(System.currentTimeMillis());
+                assertEquals(1, timeStats.answeredTasks);
+            } finally {
+                store.close();
+            }
         }
     }
 
@@ -1033,6 +1067,7 @@ public final class MainActivityInstrumentedTest {
             LocalStore store = new LocalStore(context);
             try {
                 assertEquals(0, store.reviewStatsSince(0L).total);
+                assertEquals(1, store.studyTaskTimeStats(System.currentTimeMillis()).answeredTasks);
                 List<Records.LearningRepeat> repeats = store.dueLearningRepeats(System.currentTimeMillis() + 11 * 60_000L);
                 assertEquals(1, repeats.size());
                 assertEquals(1, repeats.get(0).stepIndex);
@@ -1110,7 +1145,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Type the meaning");
-                assertHasText(activity, "Typing -> meaning");
+                assertHasText(activity, "Type the meaning");
                 assertHasText(activity, "Meaning");
                 assertHasText(activity, "Reveal");
             });
