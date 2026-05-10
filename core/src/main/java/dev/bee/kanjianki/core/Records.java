@@ -18,6 +18,79 @@ public final class Records {
     private Records() {
     }
 
+    private static Object arg(Object[] args, int index, String context) {
+        if (index >= args.length) {
+            throw new IllegalArgumentException(context + " expected more arguments");
+        }
+        return args[index];
+    }
+
+    private static void requireArgCount(String context, Object[] args, int... expectedCounts) {
+        for (int expected : expectedCounts) {
+            if (args.length == expected) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException(context + " received " + args.length + " trailing arguments");
+    }
+
+    private static String stringArg(Object[] args, int index, String context) {
+        return (String) arg(args, index, context);
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private static int intArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return (Integer) value;
+    }
+
+    private static long longArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return (Long) value;
+    }
+
+    private static double doubleArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return (Double) value;
+    }
+
+    private static boolean booleanArg(Object[] args, int index, String context) {
+        return (Boolean) arg(args, index, context);
+    }
+
+    private static Double nullableDoubleArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return (Double) value;
+    }
+
+    private static List<Example> examplesArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        List<?> rawExamples = (List<?>) value;
+        List<Example> examples = new ArrayList<>();
+        for (Object example : rawExamples) {
+            examples.add((Example) example);
+        }
+        return examples;
+    }
+
     public static final class Settings {
         public final String modelName;
         public final String templateName;
@@ -44,137 +117,21 @@ public final class Records {
                 String readingField,
                 String meaningField,
                 String sentenceField,
-                String frequencyField,
-                String frequencySortField,
-                int matureDays,
-                int matureSupportThreshold,
-                int suspendedRankCutoff,
-                int activeQueueCap,
-                int newPerDay
+                Object... rest
         ) {
-            this(
-                    modelName,
-                    templateName,
-                    expressionField,
-                    readingField,
-                    meaningField,
-                    sentenceField,
-                    frequencyField,
-                    frequencySortField,
-                    matureDays,
-                    matureSupportThreshold,
-                    DEFAULT_SUSPENDED_RANK_MIN,
-                    suspendedRankCutoff,
-                    activeQueueCap,
-                    newPerDay,
-                    DEFAULT_WRITING_TRIGGER_MISS_DAYS,
-                    DEFAULT_RECOGNITION_PROMOTION_PASSES
-            );
-        }
-
-        public Settings(
-                String modelName,
-                String templateName,
-                String expressionField,
-                String readingField,
-                String meaningField,
-                String sentenceField,
-                String frequencyField,
-                String frequencySortField,
-                int matureDays,
-                int matureSupportThreshold,
-                int suspendedRankCutoff,
-                int activeQueueCap,
-                int newPerDay,
-                int writingTriggerMissDays
-        ) {
-            this(
-                    modelName,
-                    templateName,
-                    expressionField,
-                    readingField,
-                    meaningField,
-                    sentenceField,
-                    frequencyField,
-                    frequencySortField,
-                    matureDays,
-                    matureSupportThreshold,
-                    DEFAULT_SUSPENDED_RANK_MIN,
-                    suspendedRankCutoff,
-                    activeQueueCap,
-                    newPerDay,
-                    writingTriggerMissDays,
-                    DEFAULT_RECOGNITION_PROMOTION_PASSES
-            );
-        }
-
-        public Settings(
-                String modelName,
-                String templateName,
-                String expressionField,
-                String readingField,
-                String meaningField,
-                String sentenceField,
-                String frequencyField,
-                String frequencySortField,
-                int matureDays,
-                int matureSupportThreshold,
-                int suspendedRankMin,
-                int suspendedRankMax,
-                int activeQueueCap,
-                int newPerDay,
-                int writingTriggerMissDays
-        ) {
-            this(
-                    modelName,
-                    templateName,
-                    expressionField,
-                    readingField,
-                    meaningField,
-                    sentenceField,
-                    frequencyField,
-                    frequencySortField,
-                    matureDays,
-                    matureSupportThreshold,
-                    suspendedRankMin,
-                    suspendedRankMax,
-                    activeQueueCap,
-                    newPerDay,
-                    writingTriggerMissDays,
-                    DEFAULT_RECOGNITION_PROMOTION_PASSES
-            );
-        }
-
-        public Settings(
-                String modelName,
-                String templateName,
-                String expressionField,
-                String readingField,
-                String meaningField,
-                String sentenceField,
-                String frequencyField,
-                String frequencySortField,
-                int matureDays,
-                int matureSupportThreshold,
-                int suspendedRankMin,
-                int suspendedRankMax,
-                int activeQueueCap,
-                int newPerDay,
-                int writingTriggerMissDays,
-                int recognitionPromotionPasses
-        ) {
+            SettingsArgs args = SettingsArgs.from(rest);
             this.modelName = modelName;
             this.templateName = templateName;
             this.expressionField = expressionField;
             this.readingField = readingField;
             this.meaningField = meaningField;
             this.sentenceField = sentenceField;
-            this.frequencyField = frequencyField;
-            this.frequencySortField = frequencySortField;
-            this.matureDays = matureDays;
-            this.matureSupportThreshold = matureSupportThreshold;
-            int normalizedMin = Math.max(1, Math.min(20000, suspendedRankMin));
-            int normalizedMax = Math.max(1, Math.min(20000, suspendedRankMax));
+            this.frequencyField = args.frequencyField;
+            this.frequencySortField = args.frequencySortField;
+            this.matureDays = args.matureDays;
+            this.matureSupportThreshold = args.matureSupportThreshold;
+            int normalizedMin = Math.max(1, Math.min(20000, args.suspendedRankMin));
+            int normalizedMax = Math.max(1, Math.min(20000, args.suspendedRankMax));
             if (normalizedMin > normalizedMax) {
                 int swap = normalizedMin;
                 normalizedMin = normalizedMax;
@@ -183,10 +140,50 @@ public final class Records {
             this.suspendedRankMin = normalizedMin;
             this.suspendedRankMax = normalizedMax;
             this.suspendedRankCutoff = normalizedMax;
-            this.activeQueueCap = activeQueueCap;
-            this.newPerDay = newPerDay;
-            this.writingTriggerMissDays = Math.max(1, writingTriggerMissDays);
-            this.recognitionPromotionPasses = Math.max(1, recognitionPromotionPasses);
+            this.activeQueueCap = args.activeQueueCap;
+            this.newPerDay = args.newPerDay;
+            this.writingTriggerMissDays = Math.max(1, args.writingTriggerMissDays);
+            this.recognitionPromotionPasses = Math.max(1, args.recognitionPromotionPasses);
+        }
+
+        private static final class SettingsArgs {
+            String frequencyField;
+            String frequencySortField;
+            int matureDays;
+            int matureSupportThreshold;
+            int suspendedRankMin = DEFAULT_SUSPENDED_RANK_MIN;
+            int suspendedRankMax;
+            int activeQueueCap;
+            int newPerDay;
+            int writingTriggerMissDays = DEFAULT_WRITING_TRIGGER_MISS_DAYS;
+            int recognitionPromotionPasses = DEFAULT_RECOGNITION_PROMOTION_PASSES;
+
+            static SettingsArgs from(Object[] rest) {
+                requireArgCount("Settings", rest, 7, 8, 9, 10);
+                SettingsArgs args = new SettingsArgs();
+                args.frequencyField = stringArg(rest, 0, "Settings");
+                args.frequencySortField = stringArg(rest, 1, "Settings");
+                args.matureDays = intArg(rest, 2, "Settings");
+                args.matureSupportThreshold = intArg(rest, 3, "Settings");
+                if (rest.length <= 8) {
+                    args.suspendedRankMax = intArg(rest, 4, "Settings");
+                    args.activeQueueCap = intArg(rest, 5, "Settings");
+                    args.newPerDay = intArg(rest, 6, "Settings");
+                    if (rest.length == 8) {
+                        args.writingTriggerMissDays = intArg(rest, 7, "Settings");
+                    }
+                } else {
+                    args.suspendedRankMin = intArg(rest, 4, "Settings");
+                    args.suspendedRankMax = intArg(rest, 5, "Settings");
+                    args.activeQueueCap = intArg(rest, 6, "Settings");
+                    args.newPerDay = intArg(rest, 7, "Settings");
+                    args.writingTriggerMissDays = intArg(rest, 8, "Settings");
+                    if (rest.length == 10) {
+                        args.recognitionPromotionPasses = intArg(rest, 9, "Settings");
+                    }
+                }
+                return args;
+            }
         }
 
         public static Settings kikuDefaults() {
@@ -286,73 +283,63 @@ public final class Records {
         public final Double fsrsDifficulty;
         public final Double fsrsRetrievability;
 
-        public Card(
-                long cardId,
-                long noteId,
-                int ord,
-                String deckName,
-                int queue,
-                int type,
-                int due,
-                int intervalDays,
-                int reps,
-                int lapses,
-                boolean suspended
-        ) {
-            this(cardId, noteId, ord, deckName, queue, type, due, intervalDays, reps, lapses, suspended, null, null, null);
-        }
-
-        public Card(
-                long cardId,
-                long noteId,
-                int ord,
-                String deckName,
-                int queue,
-                int type,
-                int due,
-                int intervalDays,
-                int reps,
-                int lapses,
-                boolean suspended,
-                Double fsrsStability,
-                Double fsrsDifficulty,
-                Double fsrsRetrievability
-        ) {
-            this(cardId, noteId, ord, deckName, deckName, queue, type, due, intervalDays, reps, lapses, suspended, fsrsStability, fsrsDifficulty, fsrsRetrievability);
-        }
-
-        public Card(
-                long cardId,
-                long noteId,
-                int ord,
-                String deckId,
-                String deckName,
-                int queue,
-                int type,
-                int due,
-                int intervalDays,
-                int reps,
-                int lapses,
-                boolean suspended,
-                Double fsrsStability,
-                Double fsrsDifficulty,
-                Double fsrsRetrievability
-        ) {
+        public Card(long cardId, long noteId, int ord, String deckId, Object... rest) {
+            CardArgs args = CardArgs.from(deckId, rest);
             this.cardId = cardId;
             this.noteId = noteId;
             this.ord = ord;
-            this.deckId = deckId == null ? "" : deckId;
-            this.deckName = deckName;
-            this.queue = queue;
-            this.type = type;
-            this.due = due;
-            this.intervalDays = intervalDays;
-            this.reps = reps;
-            this.lapses = lapses;
-            this.suspended = suspended;
-            this.fsrsStability = fsrsStability;
-            this.fsrsDifficulty = fsrsDifficulty;
-            this.fsrsRetrievability = fsrsRetrievability;
+            this.deckId = args.deckId == null ? "" : args.deckId;
+            this.deckName = args.deckName;
+            this.queue = args.queue;
+            this.type = args.type;
+            this.due = args.due;
+            this.intervalDays = args.intervalDays;
+            this.reps = args.reps;
+            this.lapses = args.lapses;
+            this.suspended = args.suspended;
+            this.fsrsStability = args.fsrsStability;
+            this.fsrsDifficulty = args.fsrsDifficulty;
+            this.fsrsRetrievability = args.fsrsRetrievability;
+        }
+
+        private static final class CardArgs {
+            String deckId;
+            String deckName;
+            int queue;
+            int type;
+            int due;
+            int intervalDays;
+            int reps;
+            int lapses;
+            boolean suspended;
+            Double fsrsStability;
+            Double fsrsDifficulty;
+            Double fsrsRetrievability;
+
+            static CardArgs from(String firstDeckValue, Object[] rest) {
+                requireArgCount("Card", rest, 7, 10, 11);
+                CardArgs args = new CardArgs();
+                int offset = 0;
+                args.deckId = firstDeckValue;
+                args.deckName = firstDeckValue;
+                if (rest.length == 11) {
+                    args.deckName = stringArg(rest, 0, "Card");
+                    offset = 1;
+                }
+                args.queue = intArg(rest, offset, "Card");
+                args.type = intArg(rest, offset + 1, "Card");
+                args.due = intArg(rest, offset + 2, "Card");
+                args.intervalDays = intArg(rest, offset + 3, "Card");
+                args.reps = intArg(rest, offset + 4, "Card");
+                args.lapses = intArg(rest, offset + 5, "Card");
+                args.suspended = booleanArg(rest, offset + 6, "Card");
+                if (rest.length - offset == 10) {
+                    args.fsrsStability = nullableDoubleArg(rest, offset + 7, "Card");
+                    args.fsrsDifficulty = nullableDoubleArg(rest, offset + 8, "Card");
+                    args.fsrsRetrievability = nullableDoubleArg(rest, offset + 9, "Card");
+                }
+                return args;
+            }
         }
 
         public boolean mature(int matureDays) {
@@ -434,10 +421,6 @@ public final class Records {
         public final Double fsrsDifficulty;
         public final Double fsrsRetrievability;
 
-        public Example(String sourceType, long cardId, long noteId, String expression, String reading, String meaning, String sentence, boolean mature, int lapses) {
-            this(sourceType, cardId, noteId, expression, reading, meaning, sentence, mature, lapses, 0, 0, null, null, null);
-        }
-
         public Example(
                 String sourceType,
                 long cardId,
@@ -445,29 +428,50 @@ public final class Records {
                 String expression,
                 String reading,
                 String meaning,
-                String sentence,
-                boolean mature,
-                int lapses,
-                int intervalDays,
-                int reps,
-                Double fsrsStability,
-                Double fsrsDifficulty,
-                Double fsrsRetrievability
+                Object... rest
         ) {
+            ExampleArgs args = ExampleArgs.from(rest);
             this.sourceType = sourceType;
             this.cardId = cardId;
             this.noteId = noteId;
             this.expression = expression;
             this.reading = reading;
             this.meaning = meaning;
-            this.sentence = sentence;
-            this.mature = mature;
-            this.lapses = lapses;
-            this.intervalDays = intervalDays;
-            this.reps = reps;
-            this.fsrsStability = fsrsStability;
-            this.fsrsDifficulty = fsrsDifficulty;
-            this.fsrsRetrievability = fsrsRetrievability;
+            this.sentence = args.sentence;
+            this.mature = args.mature;
+            this.lapses = args.lapses;
+            this.intervalDays = args.intervalDays;
+            this.reps = args.reps;
+            this.fsrsStability = args.fsrsStability;
+            this.fsrsDifficulty = args.fsrsDifficulty;
+            this.fsrsRetrievability = args.fsrsRetrievability;
+        }
+
+        private static final class ExampleArgs {
+            String sentence;
+            boolean mature;
+            int lapses;
+            int intervalDays;
+            int reps;
+            Double fsrsStability;
+            Double fsrsDifficulty;
+            Double fsrsRetrievability;
+
+            static ExampleArgs from(Object[] rest) {
+                requireArgCount("Example", rest, 3, 8);
+                ExampleArgs args = new ExampleArgs();
+                args.sentence = stringArg(rest, 0, "Example");
+                args.mature = booleanArg(rest, 1, "Example");
+                args.lapses = intArg(rest, 2, "Example");
+                if (rest.length == 8) {
+                    args.intervalDays = intArg(rest, 3, "Example");
+                    args.reps = intArg(rest, 4, "Example");
+                    args.fsrsStability = nullableDoubleArg(rest, 5, "Example");
+                    args.fsrsDifficulty = nullableDoubleArg(rest, 6, "Example");
+                    args.fsrsRetrievability = nullableDoubleArg(rest, 7, "Example");
+                }
+                return args;
+            }
         }
     }
 
@@ -485,32 +489,20 @@ public final class Records {
         public final int matureSupportCount;
         public final List<Example> examples;
 
-        public DashboardRow(
-                String kanji,
-                Integer jitenRank,
-                String primaryMeaning,
-                String reading,
-                String browserSearch,
-                int weaknessScore,
-                String reasonCode,
-                String reasonText,
-                int activeExampleCount,
-                int suspendedExampleCount,
-                int matureSupportCount,
-                List<Example> examples
-        ) {
+        public DashboardRow(String kanji, Integer jitenRank, String primaryMeaning, String reading, String browserSearch, Object... rest) {
+            requireArgCount("DashboardRow", rest, 7);
             this.kanji = kanji;
             this.jitenRank = jitenRank;
             this.primaryMeaning = primaryMeaning;
             this.reading = reading;
             this.browserSearch = browserSearch;
-            this.weaknessScore = weaknessScore;
-            this.reasonCode = reasonCode;
-            this.reasonText = reasonText;
-            this.activeExampleCount = activeExampleCount;
-            this.suspendedExampleCount = suspendedExampleCount;
-            this.matureSupportCount = matureSupportCount;
-            this.examples = Collections.unmodifiableList(new ArrayList<>(examples));
+            this.weaknessScore = intArg(rest, 0, "DashboardRow");
+            this.reasonCode = stringArg(rest, 1, "DashboardRow");
+            this.reasonText = stringArg(rest, 2, "DashboardRow");
+            this.activeExampleCount = intArg(rest, 3, "DashboardRow");
+            this.suspendedExampleCount = intArg(rest, 4, "DashboardRow");
+            this.matureSupportCount = intArg(rest, 5, "DashboardRow");
+            this.examples = Collections.unmodifiableList(examplesArg(rest, 6, "DashboardRow"));
         }
     }
 
@@ -524,24 +516,16 @@ public final class Records {
         public final boolean suspended;
         public final long lastSeenAtMillis;
 
-        public KanjiInventoryItem(
-                String kanji,
-                String primaryMeaning,
-                String readings,
-                String browserSearch,
-                int sourceCount,
-                int exampleCount,
-                boolean suspended,
-                long lastSeenAtMillis
-        ) {
+        public KanjiInventoryItem(String kanji, String primaryMeaning, String readings, String browserSearch, Object... rest) {
+            requireArgCount("KanjiInventoryItem", rest, 4);
             this.kanji = kanji == null ? "" : kanji;
             this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
             this.readings = readings == null ? "" : readings;
             this.browserSearch = browserSearch == null ? "" : browserSearch;
-            this.sourceCount = Math.max(0, sourceCount);
-            this.exampleCount = Math.max(0, exampleCount);
-            this.suspended = suspended;
-            this.lastSeenAtMillis = Math.max(0L, lastSeenAtMillis);
+            this.sourceCount = Math.max(0, intArg(rest, 0, "KanjiInventoryItem"));
+            this.exampleCount = Math.max(0, intArg(rest, 1, "KanjiInventoryItem"));
+            this.suspended = booleanArg(rest, 2, "KanjiInventoryItem");
+            this.lastSeenAtMillis = Math.max(0L, longArg(rest, 3, "KanjiInventoryItem"));
         }
     }
 
@@ -576,31 +560,19 @@ public final class Records {
                 String targetKanji,
                 String primaryMeaning,
                 List<String> choices,
-                String choiceSignature
-        ) {
-            this(targetKanji, primaryMeaning, choices, choiceSignature, 0L, 0L, 0L, 0, 0);
-        }
-
-        public SimilarKanjiChoiceCard(
-                String targetKanji,
-                String primaryMeaning,
-                List<String> choices,
                 String choiceSignature,
-                long dueAtMillis,
-                long passedAtMillis,
-                long lastReviewedAtMillis,
-                int correctCount,
-                int wrongCount
+                Object... rest
         ) {
+            requireArgCount("SimilarKanjiChoiceCard", rest, 0, 5);
             this.targetKanji = targetKanji == null ? "" : targetKanji;
             this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
             this.choices = Collections.unmodifiableList(new ArrayList<>(choices == null ? Collections.emptyList() : choices));
             this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
-            this.dueAtMillis = Math.max(0L, dueAtMillis);
-            this.passedAtMillis = Math.max(0L, passedAtMillis);
-            this.lastReviewedAtMillis = Math.max(0L, lastReviewedAtMillis);
-            this.correctCount = Math.max(0, correctCount);
-            this.wrongCount = Math.max(0, wrongCount);
+            this.dueAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 0, "SimilarKanjiChoiceCard"));
+            this.passedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 1, "SimilarKanjiChoiceCard"));
+            this.lastReviewedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 2, "SimilarKanjiChoiceCard"));
+            this.correctCount = rest.length == 0 ? 0 : Math.max(0, intArg(rest, 3, "SimilarKanjiChoiceCard"));
+            this.wrongCount = rest.length == 0 ? 0 : Math.max(0, intArg(rest, 4, "SimilarKanjiChoiceCard"));
         }
 
         public boolean passed() {
@@ -649,27 +621,23 @@ public final class Records {
                 String choiceSignature,
                 String wrongSelection,
                 String promptMeaning,
-                String status,
-                long dueAtMillis,
-                String activeToken,
-                int attempts,
-                long createdAtMillis,
-                long updatedAtMillis,
-                long completedAtMillis
+                Object... rest
         ) {
+            requireArgCount("SimilarKanjiWritingRepair", rest, 7);
             this.id = Math.max(0L, id);
             this.targetKanji = targetKanji == null ? "" : targetKanji;
             this.repairKanji = repairKanji == null ? "" : repairKanji;
             this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
             this.wrongSelection = wrongSelection == null ? "" : wrongSelection;
             this.promptMeaning = promptMeaning == null ? "" : promptMeaning;
+            String status = stringArg(rest, 0, "SimilarKanjiWritingRepair");
             this.status = status == null || status.isEmpty() ? "pending" : status;
-            this.dueAtMillis = Math.max(0L, dueAtMillis);
-            this.activeToken = activeToken == null ? "" : activeToken;
-            this.attempts = Math.max(0, attempts);
-            this.createdAtMillis = Math.max(0L, createdAtMillis);
-            this.updatedAtMillis = Math.max(0L, updatedAtMillis);
-            this.completedAtMillis = Math.max(0L, completedAtMillis);
+            this.dueAtMillis = Math.max(0L, longArg(rest, 1, "SimilarKanjiWritingRepair"));
+            this.activeToken = stringArg(rest, 2, "SimilarKanjiWritingRepair") == null ? "" : stringArg(rest, 2, "SimilarKanjiWritingRepair");
+            this.attempts = Math.max(0, intArg(rest, 3, "SimilarKanjiWritingRepair"));
+            this.createdAtMillis = Math.max(0L, longArg(rest, 4, "SimilarKanjiWritingRepair"));
+            this.updatedAtMillis = Math.max(0L, longArg(rest, 5, "SimilarKanjiWritingRepair"));
+            this.completedAtMillis = Math.max(0L, longArg(rest, 6, "SimilarKanjiWritingRepair"));
         }
 
         public SimilarKanjiWritingRepair withToken(String token, long updatedAtMillis) {
@@ -716,33 +684,28 @@ public final class Records {
                 String eventType,
                 String title,
                 String detail,
-                String sourceExpression,
-                String sourceReading,
-                String rating,
-                boolean writingRequired,
-                boolean writingPassed,
-                boolean manualOverride,
-                Integer weaknessScore,
-                Integer matureSupportCount,
-                Long syncId,
-                String dedupeKey
+                Object... rest
         ) {
+            requireArgCount("KanjiTimelineEvent", rest, 10);
             this.id = id;
             this.kanji = kanji;
             this.occurredAtMillis = occurredAtMillis;
             this.eventType = eventType;
             this.title = title;
             this.detail = detail;
+            String sourceExpression = stringArg(rest, 0, "KanjiTimelineEvent");
+            String sourceReading = stringArg(rest, 1, "KanjiTimelineEvent");
+            String rating = stringArg(rest, 2, "KanjiTimelineEvent");
             this.sourceExpression = sourceExpression == null ? "" : sourceExpression;
             this.sourceReading = sourceReading == null ? "" : sourceReading;
             this.rating = rating == null ? "" : rating;
-            this.writingRequired = writingRequired;
-            this.writingPassed = writingPassed;
-            this.manualOverride = manualOverride;
-            this.weaknessScore = weaknessScore;
-            this.matureSupportCount = matureSupportCount;
-            this.syncId = syncId;
-            this.dedupeKey = dedupeKey;
+            this.writingRequired = booleanArg(rest, 3, "KanjiTimelineEvent");
+            this.writingPassed = booleanArg(rest, 4, "KanjiTimelineEvent");
+            this.manualOverride = booleanArg(rest, 5, "KanjiTimelineEvent");
+            this.weaknessScore = (Integer) arg(rest, 6, "KanjiTimelineEvent");
+            this.matureSupportCount = (Integer) arg(rest, 7, "KanjiTimelineEvent");
+            this.syncId = (Long) arg(rest, 8, "KanjiTimelineEvent");
+            this.dedupeKey = stringArg(rest, 9, "KanjiTimelineEvent");
         }
     }
 
@@ -784,37 +747,21 @@ public final class Records {
                 double difficulty,
                 int totalReviews,
                 int lapses,
-                int learningStep,
-                String lastRating,
-                int matureIntervalDays
+                Object... rest
         ) {
-            this(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, lastRating, matureIntervalDays, 0, 0L);
-        }
-
-        public TaskMemory(
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                String lastRating,
-                int matureIntervalDays,
-                int consecutivePasses,
-                long lastPassedDueAtMillis
-        ) {
+            requireArgCount("TaskMemory", rest, 3, 5);
             this.state = state == null || state.isEmpty() ? "new" : state;
             this.dueAtMillis = Math.max(0L, dueAtMillis);
             this.stability = stability;
             this.difficulty = difficulty;
             this.totalReviews = Math.max(0, totalReviews);
             this.lapses = Math.max(0, lapses);
-            this.learningStep = Math.max(0, learningStep);
+            this.learningStep = Math.max(0, intArg(rest, 0, "TaskMemory"));
+            String lastRating = stringArg(rest, 1, "TaskMemory");
             this.lastRating = lastRating == null ? "" : lastRating;
-            this.matureIntervalDays = Math.max(0, matureIntervalDays);
-            this.consecutivePasses = Math.max(0, consecutivePasses);
-            this.lastPassedDueAtMillis = Math.max(0L, lastPassedDueAtMillis);
+            this.matureIntervalDays = Math.max(0, intArg(rest, 2, "TaskMemory"));
+            this.consecutivePasses = rest.length == 3 ? 0 : Math.max(0, intArg(rest, 3, "TaskMemory"));
+            this.lastPassedDueAtMillis = rest.length == 3 ? 0L : Math.max(0L, longArg(rest, 4, "TaskMemory"));
         }
 
         public static TaskMemory initial() {
@@ -828,10 +775,20 @@ public final class Records {
                 double difficulty,
                 int totalReviews,
                 int lapses,
-                int learningStep,
-                int matureIntervalDays
+                Object... rest
         ) {
-            return new TaskMemory(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, "", matureIntervalDays);
+            requireArgCount("TaskMemory.fromStudyFields", rest, 2);
+            return new TaskMemory(
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    lapses,
+                    intArg(rest, 0, "TaskMemory.fromStudyFields"),
+                    "",
+                    intArg(rest, 1, "TaskMemory.fromStudyFields")
+            );
         }
 
         public TaskMemory withDueAtMillis(long dueAtMillis) {
@@ -926,227 +883,114 @@ public final class Records {
                 double stability,
                 double difficulty,
                 int totalReviews,
-                int lapses,
-                int learningStep,
-                int writingLevel,
-                String activeToken,
-                long createdAtMillis
+                Object... rest
         ) {
-            this(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    0,
-                    0,
-                    0L,
-                    false,
-                    null,
-                    0L,
-                    0,
-                    "",
-                    activeToken,
-                    createdAtMillis
-            );
-        }
-
-        public StudyItem(
-                String kanji,
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                int writingLevel,
-                int recognitionStage,
-                int consecutiveFailedRecognitionDays,
-                long lastFailedRecognitionDayMillis,
-                boolean writingRemediationPending,
-                String activeToken,
-                long createdAtMillis
-        ) {
-            this(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    null,
-                    0L,
-                    0,
-                    "",
-                    activeToken,
-                    createdAtMillis
-            );
-        }
-
-        public StudyItem(
-                String kanji,
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                int writingLevel,
-                int recognitionStage,
-                int consecutiveFailedRecognitionDays,
-                long lastFailedRecognitionDayMillis,
-                boolean writingRemediationPending,
-                String suppressedByTaskType,
-                long suppressedAtMillis,
-                int matureIntervalDays,
-                String answerSignature,
-                String activeToken,
-                long createdAtMillis
-        ) {
-            this(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    activeToken,
-                    createdAtMillis,
-                    seedMemoryForStage(-1, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
-                    seedMemoryForStage(0, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
-                    seedMemoryForStage(1, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
-                    seedMemoryForStage(2, recognitionStage, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays),
-                    seedMemoryForWriting(writingRemediationPending, state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
-            );
-        }
-
-        public StudyItem(
-                String kanji,
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                int writingLevel,
-                int recognitionStage,
-                int consecutiveFailedRecognitionDays,
-                long lastFailedRecognitionDayMillis,
-                boolean writingRemediationPending,
-                String suppressedByTaskType,
-                long suppressedAtMillis,
-                int matureIntervalDays,
-                String answerSignature,
-                String activeToken,
-                long createdAtMillis,
-                TaskMemory kanjiMeaningMemory,
-                TaskMemory fontMeaningMemory,
-                TaskMemory wordReadingMemory,
-                TaskMemory writingRemediationMemory
-        ) {
-            this(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    activeToken,
-                    createdAtMillis,
-                    TaskMemory.initial(),
-                    kanjiMeaningMemory,
-                    fontMeaningMemory,
-                    wordReadingMemory,
-                    writingRemediationMemory
-            );
-        }
-
-        public StudyItem(
-                String kanji,
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                int writingLevel,
-                int recognitionStage,
-                int consecutiveFailedRecognitionDays,
-                long lastFailedRecognitionDayMillis,
-                boolean writingRemediationPending,
-                String suppressedByTaskType,
-                long suppressedAtMillis,
-                int matureIntervalDays,
-                String answerSignature,
-                String activeToken,
-                long createdAtMillis,
-                TaskMemory typingMeaningMemory,
-                TaskMemory kanjiMeaningMemory,
-                TaskMemory fontMeaningMemory,
-                TaskMemory wordReadingMemory,
-                TaskMemory writingRemediationMemory
-        ) {
+            StudyItemArgs args = StudyItemArgs.from(state, dueAtMillis, stability, difficulty, totalReviews, rest);
             this.kanji = kanji;
             this.state = state;
             this.dueAtMillis = dueAtMillis;
             this.stability = stability;
             this.difficulty = difficulty;
             this.totalReviews = totalReviews;
-            this.lapses = lapses;
-            this.learningStep = learningStep;
-            this.writingLevel = writingLevel;
-            this.recognitionStage = Math.max(-1, Math.min(2, recognitionStage));
-            this.consecutiveFailedRecognitionDays = Math.max(0, consecutiveFailedRecognitionDays);
-            this.lastFailedRecognitionDayMillis = Math.max(0L, lastFailedRecognitionDayMillis);
-            this.writingRemediationPending = writingRemediationPending;
-            this.suppressedByTaskType = suppressedByTaskType == null ? "" : suppressedByTaskType;
-            this.suppressedAtMillis = Math.max(0L, suppressedAtMillis);
-            this.matureIntervalDays = Math.max(0, matureIntervalDays);
-            this.answerSignature = answerSignature == null ? "" : answerSignature;
-            this.activeToken = activeToken;
-            this.createdAtMillis = createdAtMillis;
-            this.typingMeaningMemory = typingMeaningMemory == null ? TaskMemory.initial() : typingMeaningMemory;
-            this.kanjiMeaningMemory = kanjiMeaningMemory == null ? TaskMemory.initial() : kanjiMeaningMemory;
-            this.fontMeaningMemory = fontMeaningMemory == null ? TaskMemory.initial() : fontMeaningMemory;
-            this.wordReadingMemory = wordReadingMemory == null ? TaskMemory.initial() : wordReadingMemory;
-            this.writingRemediationMemory = writingRemediationMemory == null ? TaskMemory.initial() : writingRemediationMemory;
+            this.lapses = args.lapses;
+            this.learningStep = args.learningStep;
+            this.writingLevel = args.writingLevel;
+            this.recognitionStage = Math.max(-1, Math.min(2, args.recognitionStage));
+            this.consecutiveFailedRecognitionDays = Math.max(0, args.consecutiveFailedRecognitionDays);
+            this.lastFailedRecognitionDayMillis = Math.max(0L, args.lastFailedRecognitionDayMillis);
+            this.writingRemediationPending = args.writingRemediationPending;
+            this.suppressedByTaskType = args.suppressedByTaskType == null ? "" : args.suppressedByTaskType;
+            this.suppressedAtMillis = Math.max(0L, args.suppressedAtMillis);
+            this.matureIntervalDays = Math.max(0, args.matureIntervalDays);
+            this.answerSignature = args.answerSignature == null ? "" : args.answerSignature;
+            this.activeToken = args.activeToken;
+            this.createdAtMillis = args.createdAtMillis;
+            this.typingMeaningMemory = args.typingMeaningMemory == null ? TaskMemory.initial() : args.typingMeaningMemory;
+            this.kanjiMeaningMemory = args.kanjiMeaningMemory == null ? TaskMemory.initial() : args.kanjiMeaningMemory;
+            this.fontMeaningMemory = args.fontMeaningMemory == null ? TaskMemory.initial() : args.fontMeaningMemory;
+            this.wordReadingMemory = args.wordReadingMemory == null ? TaskMemory.initial() : args.wordReadingMemory;
+            this.writingRemediationMemory = args.writingRemediationMemory == null ? TaskMemory.initial() : args.writingRemediationMemory;
+        }
+
+        private static final class StudyItemArgs {
+            int lapses;
+            int learningStep;
+            int writingLevel;
+            int recognitionStage;
+            int consecutiveFailedRecognitionDays;
+            long lastFailedRecognitionDayMillis;
+            boolean writingRemediationPending;
+            String suppressedByTaskType;
+            long suppressedAtMillis;
+            int matureIntervalDays;
+            String answerSignature = "";
+            String activeToken;
+            long createdAtMillis;
+            TaskMemory typingMeaningMemory;
+            TaskMemory kanjiMeaningMemory;
+            TaskMemory fontMeaningMemory;
+            TaskMemory wordReadingMemory;
+            TaskMemory writingRemediationMemory;
+
+            static StudyItemArgs from(String state, long dueAtMillis, double stability, double difficulty, int totalReviews, Object[] rest) {
+                requireArgCount("StudyItem", rest, 5, 9, 13, 17, 18);
+                StudyItemArgs args = new StudyItemArgs();
+                args.lapses = intArg(rest, 0, "StudyItem");
+                args.learningStep = intArg(rest, 1, "StudyItem");
+                args.writingLevel = intArg(rest, 2, "StudyItem");
+                int memoryStart = -1;
+                if (rest.length == 5) {
+                    args.activeToken = stringArg(rest, 3, "StudyItem");
+                    args.createdAtMillis = longArg(rest, 4, "StudyItem");
+                } else {
+                    args.recognitionStage = intArg(rest, 3, "StudyItem");
+                    args.consecutiveFailedRecognitionDays = intArg(rest, 4, "StudyItem");
+                    args.lastFailedRecognitionDayMillis = longArg(rest, 5, "StudyItem");
+                    args.writingRemediationPending = booleanArg(rest, 6, "StudyItem");
+                    if (rest.length == 9) {
+                        args.activeToken = stringArg(rest, 7, "StudyItem");
+                        args.createdAtMillis = longArg(rest, 8, "StudyItem");
+                    } else {
+                        args.suppressedByTaskType = stringArg(rest, 7, "StudyItem");
+                        args.suppressedAtMillis = longArg(rest, 8, "StudyItem");
+                        args.matureIntervalDays = intArg(rest, 9, "StudyItem");
+                        args.answerSignature = stringArg(rest, 10, "StudyItem");
+                        args.activeToken = stringArg(rest, 11, "StudyItem");
+                        args.createdAtMillis = longArg(rest, 12, "StudyItem");
+                        if (rest.length > 13) {
+                            memoryStart = 13;
+                        }
+                    }
+                }
+                args.seedMemories(state, dueAtMillis, stability, difficulty, totalReviews);
+                if (memoryStart >= 0) {
+                    args.applyMemories(rest, memoryStart);
+                }
+                return args;
+            }
+
+            private void seedMemories(String state, long dueAtMillis, double stability, double difficulty, int totalReviews) {
+                typingMeaningMemory = seedMemoryForStage(-1, this, state, dueAtMillis, stability, difficulty, totalReviews);
+                kanjiMeaningMemory = seedMemoryForStage(0, this, state, dueAtMillis, stability, difficulty, totalReviews);
+                fontMeaningMemory = seedMemoryForStage(1, this, state, dueAtMillis, stability, difficulty, totalReviews);
+                wordReadingMemory = seedMemoryForStage(2, this, state, dueAtMillis, stability, difficulty, totalReviews);
+                writingRemediationMemory = seedMemoryForWriting(this, state, dueAtMillis, stability, difficulty, totalReviews);
+            }
+
+            private void applyMemories(Object[] rest, int start) {
+                if (rest.length == 17) {
+                    kanjiMeaningMemory = (TaskMemory) arg(rest, start, "StudyItem");
+                    fontMeaningMemory = (TaskMemory) arg(rest, start + 1, "StudyItem");
+                    wordReadingMemory = (TaskMemory) arg(rest, start + 2, "StudyItem");
+                    writingRemediationMemory = (TaskMemory) arg(rest, start + 3, "StudyItem");
+                    return;
+                }
+                typingMeaningMemory = (TaskMemory) arg(rest, start, "StudyItem");
+                kanjiMeaningMemory = (TaskMemory) arg(rest, start + 1, "StudyItem");
+                fontMeaningMemory = (TaskMemory) arg(rest, start + 2, "StudyItem");
+                wordReadingMemory = (TaskMemory) arg(rest, start + 3, "StudyItem");
+                writingRemediationMemory = (TaskMemory) arg(rest, start + 4, "StudyItem");
+            }
         }
 
         public StudyItem withToken(String token) {
@@ -1307,38 +1151,50 @@ public final class Records {
 
         private static TaskMemory seedMemoryForStage(
                 int memoryStage,
-                int recognitionStage,
+                StudyItemArgs args,
                 String state,
                 long dueAtMillis,
                 double stability,
                 double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                int matureIntervalDays
+                int totalReviews
         ) {
-            int safeStage = Math.max(-1, Math.min(2, recognitionStage));
+            int safeStage = Math.max(-1, Math.min(2, args.recognitionStage));
             if (safeStage != memoryStage) {
                 return TaskMemory.initial();
             }
-            return TaskMemory.fromStudyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+            return TaskMemory.fromStudyFields(
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    args.lapses,
+                    args.learningStep,
+                    args.matureIntervalDays
+            );
         }
 
         private static TaskMemory seedMemoryForWriting(
-                boolean writingRemediationPending,
+                StudyItemArgs args,
                 String state,
                 long dueAtMillis,
                 double stability,
                 double difficulty,
-                int totalReviews,
-                int lapses,
-                int learningStep,
-                int matureIntervalDays
+                int totalReviews
         ) {
-            if (!writingRemediationPending) {
+            if (!args.writingRemediationPending) {
                 return TaskMemory.initial();
             }
-            return TaskMemory.fromStudyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
+            return TaskMemory.fromStudyFields(
+                    state,
+                    dueAtMillis,
+                    stability,
+                    difficulty,
+                    totalReviews,
+                    args.lapses,
+                    args.learningStep,
+                    args.matureIntervalDays
+            );
         }
     }
 
@@ -1375,12 +1231,12 @@ public final class Records {
 
         public static List<Integer> parseSteps(String value, List<Integer> fallback) {
             List<Integer> parsed = tryParseSteps(value);
-            return parsed == null ? normalizeSteps(fallback, defaultNewSteps()) : parsed;
+            return parsed.isEmpty() ? normalizeSteps(fallback, defaultNewSteps()) : parsed;
         }
 
         public static List<Integer> tryParseSteps(String value) {
             if (value == null || value.trim().isEmpty()) {
-                return null;
+                return Collections.emptyList();
             }
             String[] parts = value.trim().split("[,\\s]+");
             List<Integer> parsed = new ArrayList<>();
@@ -1390,11 +1246,11 @@ public final class Records {
                 }
                 Integer minutes = parseStepMinutes(part);
                 if (minutes == null || minutes <= 0) {
-                    return null;
+                    return Collections.emptyList();
                 }
                 parsed.add(minutes);
             }
-            return parsed.isEmpty() ? null : normalizeSteps(parsed, defaultNewSteps());
+            return parsed.isEmpty() ? Collections.emptyList() : normalizeSteps(parsed, defaultNewSteps());
         }
 
         public static String formatSteps(List<Integer> steps) {
@@ -1479,26 +1335,17 @@ public final class Records {
         public final long createdAtMillis;
         public final long updatedAtMillis;
 
-        public LearningRepeat(
-                String kanji,
-                String answerSignature,
-                String taskType,
-                String repeatType,
-                int stepIndex,
-                long dueAtMillis,
-                String activeToken,
-                long createdAtMillis,
-                long updatedAtMillis
-        ) {
+        public LearningRepeat(String kanji, String answerSignature, String taskType, String repeatType, Object... rest) {
+            requireArgCount("LearningRepeat", rest, 5);
             this.kanji = kanji == null ? "" : kanji;
             this.answerSignature = answerSignature == null ? "" : answerSignature;
             this.taskType = taskType == null ? "" : taskType;
             this.repeatType = LEARNING_REPEAT_REVIEW.equals(repeatType) ? LEARNING_REPEAT_REVIEW : LEARNING_REPEAT_NEW;
-            this.stepIndex = Math.max(0, stepIndex);
-            this.dueAtMillis = Math.max(0L, dueAtMillis);
-            this.activeToken = activeToken == null ? "" : activeToken;
-            this.createdAtMillis = Math.max(0L, createdAtMillis);
-            this.updatedAtMillis = Math.max(0L, updatedAtMillis);
+            this.stepIndex = Math.max(0, intArg(rest, 0, "LearningRepeat"));
+            this.dueAtMillis = Math.max(0L, longArg(rest, 1, "LearningRepeat"));
+            this.activeToken = stringArg(rest, 2, "LearningRepeat") == null ? "" : stringArg(rest, 2, "LearningRepeat");
+            this.createdAtMillis = Math.max(0L, longArg(rest, 3, "LearningRepeat"));
+            this.updatedAtMillis = Math.max(0L, longArg(rest, 4, "LearningRepeat"));
         }
 
         public LearningRepeat withToken(String token, long updatedAtMillis) {
@@ -1523,71 +1370,35 @@ public final class Records {
         public final boolean manualOverride;
         public final int hintsUsed;
 
-        public ReviewRequest(String kanji, String token, String rating, boolean writingRequired, boolean writingPassed, boolean manualOverride, int hintsUsed) {
-            this(
-                    kanji,
-                    token,
-                    rating,
-                    writingRequired,
-                    writingPassed,
-                    writingPassed && ("good".equals(rating) || "easy".equals(rating)),
-                    manualOverride,
-                    hintsUsed,
-                    "",
-                    "",
-                    ""
-            );
-        }
-
         public ReviewRequest(
                 String kanji,
                 String token,
                 String rating,
                 boolean writingRequired,
                 boolean writingPassed,
-                boolean writingClean,
-                boolean manualOverride,
-                int hintsUsed
+                Object... rest
         ) {
-            this(
-                    kanji,
-                    token,
-                    rating,
-                    writingRequired,
-                    writingPassed,
-                    writingClean,
-                    manualOverride,
-                    hintsUsed,
-                    "",
-                    "",
-                    ""
-            );
-        }
-
-        public ReviewRequest(
-                String kanji,
-                String token,
-                String rating,
-                boolean writingRequired,
-                boolean writingPassed,
-                boolean writingClean,
-                boolean manualOverride,
-                int hintsUsed,
-                String taskType,
-                String answerSignature,
-                String prompt
-        ) {
+            requireArgCount("ReviewRequest", rest, 2, 3, 6);
             this.kanji = kanji;
             this.token = token;
             this.rating = rating;
-            this.taskType = taskType == null ? "" : taskType;
-            this.answerSignature = answerSignature == null ? "" : answerSignature;
-            this.prompt = prompt == null ? "" : prompt;
             this.writingRequired = writingRequired;
             this.writingPassed = writingPassed;
-            this.writingClean = writingClean;
-            this.manualOverride = manualOverride;
-            this.hintsUsed = hintsUsed;
+            if (rest.length == 2) {
+                this.writingClean = writingPassed && ("good".equals(rating) || "easy".equals(rating));
+                this.manualOverride = booleanArg(rest, 0, "ReviewRequest");
+                this.hintsUsed = intArg(rest, 1, "ReviewRequest");
+                this.taskType = "";
+                this.answerSignature = "";
+                this.prompt = "";
+            } else {
+                this.writingClean = booleanArg(rest, 0, "ReviewRequest");
+                this.manualOverride = booleanArg(rest, 1, "ReviewRequest");
+                this.hintsUsed = intArg(rest, 2, "ReviewRequest");
+                this.taskType = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 3, "ReviewRequest"));
+                this.answerSignature = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 4, "ReviewRequest"));
+                this.prompt = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 5, "ReviewRequest"));
+            }
         }
     }
 
@@ -1709,24 +1520,16 @@ public final class Records {
             this(false, workloadPercent, target, remaining, focusKanji, newAdmissionLimit, allKanjiMode, status);
         }
 
-        public AdaptiveLoadPlan(
-                boolean autoMode,
-                int workloadPercent,
-                int target,
-                int remaining,
-                List<String> focusKanji,
-                int newAdmissionLimit,
-                boolean allKanjiMode,
-                String status
-        ) {
+        public AdaptiveLoadPlan(boolean autoMode, int workloadPercent, int target, int remaining, List<String> focusKanji, Object... rest) {
+            requireArgCount("AdaptiveLoadPlan", rest, 3);
             this.autoMode = autoMode;
             this.workloadPercent = workloadPercent;
             this.target = target;
             this.remaining = remaining;
             this.focusKanji = Collections.unmodifiableList(new ArrayList<>(focusKanji));
-            this.newAdmissionLimit = newAdmissionLimit;
-            this.allKanjiMode = allKanjiMode;
-            this.status = status == null ? "" : status;
+            this.newAdmissionLimit = intArg(rest, 0, "AdaptiveLoadPlan");
+            this.allKanjiMode = booleanArg(rest, 1, "AdaptiveLoadPlan");
+            this.status = nullToEmpty(stringArg(rest, 2, "AdaptiveLoadPlan"));
         }
 
         public boolean focusComplete() {

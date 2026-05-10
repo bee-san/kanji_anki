@@ -138,6 +138,7 @@ public final class MainActivity extends Activity {
     private static final long DAY_MILLIS = 86_400_000L;
     private static final String NAV_STUDY = "study";
     private static final String NAV_SETTINGS = "Settings";
+    private static final String NAV_SETTINGS_ROUTE = "settings";
     private static final String LABEL_BACK_HOME = "Back home";
     private static final String LABEL_MEANING = "Meaning";
     private static final String LABEL_PRACTICE = "Practice";
@@ -145,6 +146,8 @@ public final class MainActivity extends Activity {
     private static final String RATING_AGAIN = "again";
     private static final String STATE_LEARNING = "learning";
     private static final String STATE_RETIRED = "retired";
+    private static final String SOURCE_ACTIVE = "active";
+    private static final String SOURCE_SUSPENDED = "suspended";
     private static final String TASK_FONT_MEANING = "font_meaning";
     private static final String TASK_SIMILAR_WRITING = "similar_writing";
     private static final String TASK_TARGETED_WRITING = "targeted_writing";
@@ -297,26 +300,38 @@ public final class MainActivity extends Activity {
         if (requestCode == 7) {
             renderHome();
         } else if (requestCode == REQUEST_POST_NOTIFICATIONS) {
-            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            LocalStore.ReminderSettings pending = pendingReminderSettings;
-            if (granted) {
-                LocalStore.ReminderSettings reminder = pending == null ? store.reminderSettings() : pending;
-                store.saveReminderSettings(reminder);
-                ReminderScheduler.schedule(this, reminder);
-                if (ReminderScheduler.notificationsAllowed(this)) {
-                    Toast.makeText(this, "Reminder saved for around " + reminder.displayTime() + ".", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Reminder saved, but Android notifications are off.", Toast.LENGTH_LONG).show();
-                }
-            } else {
-                LocalStore.ReminderSettings fallback = pending == null ? store.reminderSettings() : pending;
-                store.saveReminderSettings(new LocalStore.ReminderSettings(false, fallback.hour, fallback.minute));
-                ReminderScheduler.cancel(this);
-                Toast.makeText(this, "Notifications are off, so reminders are disabled.", Toast.LENGTH_LONG).show();
-            }
-            pendingReminderSettings = null;
-            renderSettings();
+            handlePostNotificationPermission(grantResults);
         }
+    }
+
+    private void handlePostNotificationPermission(int[] grantResults) {
+        boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        LocalStore.ReminderSettings pending = pendingReminderSettings;
+        if (granted) {
+            saveGrantedReminderPermission(pending);
+        } else {
+            disableReminderAfterDeniedPermission(pending);
+        }
+        pendingReminderSettings = null;
+        renderSettings();
+    }
+
+    private void saveGrantedReminderPermission(LocalStore.ReminderSettings pending) {
+        LocalStore.ReminderSettings reminder = pending == null ? store.reminderSettings() : pending;
+        store.saveReminderSettings(reminder);
+        ReminderScheduler.schedule(this, reminder);
+        if (ReminderScheduler.notificationsAllowed(this)) {
+            Toast.makeText(this, "Reminder saved for around " + reminder.displayTime() + ".", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Reminder saved, but Android notifications are off.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void disableReminderAfterDeniedPermission(LocalStore.ReminderSettings pending) {
+        LocalStore.ReminderSettings fallback = pending == null ? store.reminderSettings() : pending;
+        store.saveReminderSettings(new LocalStore.ReminderSettings(false, fallback.hour, fallback.minute));
+        ReminderScheduler.cancel(this);
+        Toast.makeText(this, "Notifications are off, so reminders are disabled.", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -1308,9 +1323,9 @@ public final class MainActivity extends Activity {
         String active = "";
         String suspended = "";
         for (Records.Example example : row.examples) {
-            if (active.isEmpty() && "active".equals(example.sourceType)) {
+            if (active.isEmpty() && SOURCE_ACTIVE.equals(example.sourceType)) {
                 active = example.expression;
-            } else if (suspended.isEmpty() && "suspended".equals(example.sourceType)) {
+            } else if (suspended.isEmpty() && SOURCE_SUSPENDED.equals(example.sourceType)) {
                 suspended = example.expression;
             }
         }
@@ -1581,7 +1596,7 @@ public final class MainActivity extends Activity {
     }
 
     private View exampleView(Records.Example example) {
-        int color = "suspended".equals(example.sourceType) ? CORAL : TEAL;
+        int color = SOURCE_SUSPENDED.equals(example.sourceType) ? CORAL : TEAL;
         LinearLayout box = panelBox(Color.WHITE, color);
         box.addView(chip(example.sourceType.toUpperCase(Locale.ROOT), color));
         box.addView(text(example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 22, INK, true));
@@ -1624,7 +1639,7 @@ public final class MainActivity extends Activity {
             return null;
         }
         for (Records.Example example : row.examples) {
-            if ("active".equals(example.sourceType)) {
+            if (SOURCE_ACTIVE.equals(example.sourceType)) {
                 return example;
             }
         }
@@ -1637,10 +1652,10 @@ public final class MainActivity extends Activity {
         }
         Records.Example active = null;
         for (Records.Example example : row.examples) {
-            if ("suspended".equals(example.sourceType)) {
+            if (SOURCE_SUSPENDED.equals(example.sourceType)) {
                 return example;
             }
-            if (active == null && "active".equals(example.sourceType)) {
+            if (active == null && SOURCE_ACTIVE.equals(example.sourceType)) {
                 active = example;
             }
         }
@@ -3187,12 +3202,7 @@ public final class MainActivity extends Activity {
             return activeSession != null && isTeachingTask(activeSession) && currentPracticeLevel < 3;
         }
         switch (analysis.status) {
-            case PASS:
-            case CLOSE:
-            case WRONG:
-            case MODEL_UNAVAILABLE:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
+            case PASS, CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return true;
             default:
                 return false;
@@ -3223,9 +3233,7 @@ public final class MainActivity extends Activity {
             return false;
         }
         switch (analysis.status) {
-            case WRONG:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
+            case WRONG, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return true;
             default:
                 return false;
@@ -3282,10 +3290,7 @@ public final class MainActivity extends Activity {
             return false;
         }
         switch (analysis.status) {
-            case NO_INK:
-            case MODEL_UNAVAILABLE:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
+            case NO_INK, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return false;
             default:
                 return true;
@@ -3314,10 +3319,7 @@ public final class MainActivity extends Activity {
             return false;
         }
         switch (analysis.status) {
-            case NO_INK:
-            case MODEL_UNAVAILABLE:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
+            case NO_INK, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return false;
             default:
                 return true;
@@ -3369,12 +3371,7 @@ public final class MainActivity extends Activity {
             return false;
         }
         switch (analysis.status) {
-            case PASS:
-            case CLOSE:
-            case WRONG:
-            case MODEL_UNAVAILABLE:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
+            case PASS, CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return true;
             default:
                 return false;
@@ -3386,10 +3383,7 @@ public final class MainActivity extends Activity {
             return false;
         }
         switch (analysis.status) {
-            case WRONG:
-            case MODEL_UNAVAILABLE:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
+            case WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return true;
             default:
                 return false;
@@ -3400,15 +3394,7 @@ public final class MainActivity extends Activity {
         if (analysis == null) {
             return false;
         }
-        switch (analysis.status) {
-            case WRONG:
-            case MODEL_UNAVAILABLE:
-            case NO_STROKE_DATA:
-            case RECOGNITION_ERROR:
-                return true;
-            default:
-                return false;
-        }
+        return canManualOverride(analysis);
     }
 
     private void setStudyStatus(String value, int color) {
@@ -3588,7 +3574,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderUpdate() {
-        base("settings");
+        base(NAV_SETTINGS_ROUTE);
         content.addView(text("GitHub updater", 34, INK, true));
         content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.", 16, MUTED, false));
         content.addView(autoUpdatePanel("Automatic updates"));
@@ -3663,7 +3649,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSettings() {
-        base("settings");
+        base(NAV_SETTINGS_ROUTE);
         Records.Settings current = settings();
         content.addView(fullWidthHomeButton());
         content.addView(settingsHero());
@@ -3901,7 +3887,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderDataSources() {
-        base("settings");
+        base(NAV_SETTINGS_ROUTE);
         content.addView(text("Data licenses", 34, INK, true));
         content.addView(text("Dictionary and stroke-order data bundled for offline study.", 16, MUTED, false));
 
@@ -3947,8 +3933,7 @@ public final class MainActivity extends Activity {
         addFieldMappingInput(box, "Frequency field", frequencyField);
         addFieldMappingInput(box, "Frequency sort field", frequencySortField);
 
-        Button choose = secondaryButton("Choose from AnkiDroid");
-        choose.setOnClickListener(v -> chooseNoteType(
+        FieldMappingInputs fieldMappings = new FieldMappingInputs(
                 noteType,
                 expressionField,
                 readingField,
@@ -3956,7 +3941,9 @@ public final class MainActivity extends Activity {
                 sentenceField,
                 frequencyField,
                 frequencySortField
-        ));
+        );
+        Button choose = secondaryButton("Choose from AnkiDroid");
+        choose.setOnClickListener(v -> chooseNoteType(fieldMappings));
         box.addView(choose);
         Button kiku = secondaryButton("Use Kiku");
         kiku.setOnClickListener(v -> {
@@ -4021,29 +4008,12 @@ public final class MainActivity extends Activity {
         box.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
     }
 
-    private void chooseNoteType(
-            EditText noteTypeInput,
-            EditText expressionField,
-            EditText readingField,
-            EditText meaningField,
-            EditText sentenceField,
-            EditText frequencyField,
-            EditText frequencySortField
-    ) {
+    private void chooseNoteType(FieldMappingInputs inputs) {
         Toast.makeText(this, "Reading AnkiDroid note types.", Toast.LENGTH_SHORT).show();
         io.execute(() -> {
             try {
                 List<AnkiDroidGateway.NoteType> noteTypes = gateway.noteTypes();
-                main.post(() -> showNoteTypeDialog(
-                        noteTypeInput,
-                        expressionField,
-                        readingField,
-                        meaningField,
-                        sentenceField,
-                        frequencyField,
-                        frequencySortField,
-                        noteTypes
-                ));
+                main.post(() -> showNoteTypeDialog(inputs, noteTypes));
             } catch (Throwable error) {
                 String message = error.getMessage() == null || error.getMessage().trim().isEmpty()
                         ? "Could not read AnkiDroid note types."
@@ -4053,16 +4023,7 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void showNoteTypeDialog(
-            EditText noteTypeInput,
-            EditText expressionField,
-            EditText readingField,
-            EditText meaningField,
-            EditText sentenceField,
-            EditText frequencyField,
-            EditText frequencySortField,
-            List<AnkiDroidGateway.NoteType> noteTypes
-    ) {
+    private void showNoteTypeDialog(FieldMappingInputs inputs, List<AnkiDroidGateway.NoteType> noteTypes) {
         if (noteTypes == null || noteTypes.isEmpty()) {
             Toast.makeText(this, "No note types found in AnkiDroid.", Toast.LENGTH_LONG).show();
             return;
@@ -4076,8 +4037,8 @@ public final class MainActivity extends Activity {
                 .setTitle("Choose note type")
                 .setItems(labels, (dialog, which) -> {
                     AnkiDroidGateway.NoteType selected = noteTypes.get(which);
-                    noteTypeInput.setText(selected.name);
-                    applyFieldGuesses(selected, expressionField, readingField, meaningField, sentenceField, frequencyField, frequencySortField);
+                    inputs.noteType.setText(selected.name);
+                    applyFieldGuesses(selected, inputs);
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -4085,25 +4046,48 @@ public final class MainActivity extends Activity {
 
     private void applyFieldGuesses(
             AnkiDroidGateway.NoteType noteType,
-            EditText expressionField,
-            EditText readingField,
-            EditText meaningField,
-            EditText sentenceField,
-            EditText frequencyField,
-            EditText frequencySortField
+            FieldMappingInputs inputs
     ) {
         Records.Settings defaults = Records.Settings.kikuDefaults();
-        expressionField.setText(firstMatchingField(noteType.fields, defaults.expressionField, "Front", "Japanese", "Word", "Vocabulary", "Term"));
-        readingField.setText(firstMatchingField(noteType.fields, defaults.readingField, "Reading", "Kana", "Pronunciation"));
-        meaningField.setText(firstMatchingField(noteType.fields, defaults.meaningField, LABEL_MEANING, "Back", "Definition", "Glossary"));
-        sentenceField.setText(firstMatchingField(noteType.fields, defaults.sentenceField, "Context", "Example", "ExampleSentence"));
-        frequencyField.setText(firstMatchingField(noteType.fields, defaults.frequencyField, "Freq"));
-        frequencySortField.setText(firstMatchingField(noteType.fields, defaults.frequencySortField, "FrequencySort", defaults.frequencyField));
-        if (expressionField.getText().toString().trim().isEmpty() && !noteType.fields.isEmpty()) {
-            expressionField.setText(noteType.fields.get(0));
+        inputs.expression.setText(firstMatchingField(noteType.fields, defaults.expressionField, "Front", "Japanese", "Word", "Vocabulary", "Term"));
+        inputs.reading.setText(firstMatchingField(noteType.fields, defaults.readingField, "Reading", "Kana", "Pronunciation"));
+        inputs.meaning.setText(firstMatchingField(noteType.fields, defaults.meaningField, LABEL_MEANING, "Back", "Definition", "Glossary"));
+        inputs.sentence.setText(firstMatchingField(noteType.fields, defaults.sentenceField, "Context", "Example", "ExampleSentence"));
+        inputs.frequency.setText(firstMatchingField(noteType.fields, defaults.frequencyField, "Freq"));
+        inputs.frequencySort.setText(firstMatchingField(noteType.fields, defaults.frequencySortField, "FrequencySort", defaults.frequencyField));
+        if (inputs.expression.getText().toString().trim().isEmpty() && !noteType.fields.isEmpty()) {
+            inputs.expression.setText(noteType.fields.get(0));
         }
-        if (meaningField.getText().toString().trim().isEmpty() && noteType.fields.size() > 1) {
-            meaningField.setText(noteType.fields.get(1));
+        if (inputs.meaning.getText().toString().trim().isEmpty() && noteType.fields.size() > 1) {
+            inputs.meaning.setText(noteType.fields.get(1));
+        }
+    }
+
+    private static final class FieldMappingInputs {
+        private final EditText noteType;
+        private final EditText expression;
+        private final EditText reading;
+        private final EditText meaning;
+        private final EditText sentence;
+        private final EditText frequency;
+        private final EditText frequencySort;
+
+        private FieldMappingInputs(
+                EditText noteType,
+                EditText expression,
+                EditText reading,
+                EditText meaning,
+                EditText sentence,
+                EditText frequency,
+                EditText frequencySort
+        ) {
+            this.noteType = noteType;
+            this.expression = expression;
+            this.reading = reading;
+            this.meaning = meaning;
+            this.sentence = sentence;
+            this.frequency = frequency;
+            this.frequencySort = frequencySort;
         }
     }
 
@@ -4352,7 +4336,7 @@ public final class MainActivity extends Activity {
         save.setOnClickListener(v -> {
             List<Integer> parsedNew = Records.LearningStepSettings.tryParseSteps(newSteps.getText().toString());
             List<Integer> parsedReview = Records.LearningStepSettings.tryParseSteps(reviewSteps.getText().toString());
-            if (parsedNew == null || parsedReview == null) {
+            if (parsedNew.isEmpty() || parsedReview.isEmpty()) {
                 Toast.makeText(this, "Use steps like 1m, 10m, or 1h.", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -4793,7 +4777,7 @@ public final class MainActivity extends Activity {
     }
 
     private void runUpdate(boolean cachedPending) {
-        base("settings");
+        base(NAV_SETTINGS_ROUTE);
         content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
         content.addView(text(cachedPending ? "Using the verified APK already cached by Kani." : "Downloading metadata and verifying assets.", 16, MUTED, false));
         io.execute(() -> {

@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public final class LearningStepSettingsTest {
     @Test
@@ -19,12 +19,12 @@ public final class LearningStepSettingsTest {
 
     @Test
     public void rejectsInvalidSteps() {
-        assertNull(Records.LearningStepSettings.tryParseSteps(""));
-        assertNull(Records.LearningStepSettings.tryParseSteps(null));
-        assertNull(Records.LearningStepSettings.tryParseSteps("0m, 10m"));
-        assertNull(Records.LearningStepSettings.tryParseSteps("h"));
-        assertNull(Records.LearningStepSettings.tryParseSteps("999999999999999999999h"));
-        assertNull(Records.LearningStepSettings.tryParseSteps("soon"));
+        assertTrue(Records.LearningStepSettings.tryParseSteps("").isEmpty());
+        assertTrue(Records.LearningStepSettings.tryParseSteps(null).isEmpty());
+        assertTrue(Records.LearningStepSettings.tryParseSteps("0m, 10m").isEmpty());
+        assertTrue(Records.LearningStepSettings.tryParseSteps("h").isEmpty());
+        assertTrue(Records.LearningStepSettings.tryParseSteps("999999999999999999999h").isEmpty());
+        assertTrue(Records.LearningStepSettings.tryParseSteps("soon").isEmpty());
     }
 
     @Test

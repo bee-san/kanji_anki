@@ -30,6 +30,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -92,35 +93,16 @@ public final class LocalStoreInstrumentedTest {
         );
         store.updateSyncRemovalMessage(syncId, "Archived locally before provider cleanup.");
 
-        LocalStore.SyncStatus status = store.latestSync();
-        assertNotNull(status);
-        assertEquals("success", status.status);
-        assertEquals(1, status.activeCards);
-        assertEquals(1, status.suspendedCards);
-        assertEquals(1, status.importedKanji);
-        assertEquals("Archived locally before provider cleanup.", status.removalMessage);
-        assertEquals(1, count("source_cards"));
-        assertEquals(1, count("source_notes"));
-        assertEquals(1, count("suspended_archive"));
-        assertEquals(1, count("suspended_imports"));
-        assertEquals(1, count("suspended_sources"));
-        assertEquals(1, count("dashboard_rows"));
-        assertEquals(1, count("kanji_examples"));
-        assertEquals(2, count("sync_card_snapshots"));
-        assertEquals(2, count("sync_note_snapshots"));
-        assertTrue(count("sync_kanji_snapshots") >= 2);
+        assertLatestSyncArchivedSuspendedCard();
+        assertSyncMirrorCounts();
         assertHistoricalCardSnapshot(syncId, 10L, 0, 1, 12, 1, 18.5, 7.0, 0.48);
         assertHistoricalIdentitySnapshot(syncId, 10L, "101", "例文マイニング", 1001L, "101", "例文マイニング");
         assertHistoricalKanjiSnapshot(syncId, "拉", 0, 1);
         assertSourceCardFsrs(18.5, 7.0, 0.48);
-        assertEquals("拉", store.dashboardRows().get(0).kanji);
-        assertEquals(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability, 0.001);
+        assertDashboardRowFsrsStored();
         assertTrue(store.hasSuccessfulSyncSince(1500L));
         assertFalse(store.hasSuccessfulSyncSince(2500L));
-        List<Records.SuspendedImport> storedImports = store.suspendedImports();
-        assertEquals(1, storedImports.size());
-        assertEquals("拉", storedImports.get(0).kanji);
-        assertEquals(1, storedImports.get(0).sources.size());
+        assertSuspendedImportStored();
     }
 
     @Test
@@ -198,10 +180,10 @@ public final class LocalStoreInstrumentedTest {
                 Collections.singletonList(customNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")),
                 Collections.singletonList(new Records.Card(10L, 1L, 0, "Custom", 2, 2, 0, 3, 4, 1, false))
         );
-        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
-                "拉\t麺\tfixture\n" +
-                        "拉\t謎\tfixture\n"
-        ));
+        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("""
+                拉\t麺\tfixture
+                拉\t謎\tfixture
+                """));
 
         store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
 
@@ -240,34 +222,19 @@ public final class LocalStoreInstrumentedTest {
                         new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
                 )
         );
-        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
-                "拉\t提\tfixture\n" +
-                        "拉\t謎\tfixture\n" +
-                        "提\t外\tfixture\n"
-        ));
+        SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("""
+                拉\t提\tfixture
+                拉\t謎\tfixture
+                提\t外\tfixture
+                """));
 
         store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(1000L, 2000L), null, index);
 
         Records.SimilarKanjiChoiceCard pull = findSimilarChoice("拉");
-        assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
-        assertEquals("pull", pull.primaryMeaning);
-        assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2000L));
-        assertEquals(1, store.dueSimilarChoiceTaskCount(2000L));
-        assertEquals(0, store.dueSimilarWritingRepairTaskCount(2000L));
-        assertEquals(1, store.dueSimilarStudyTaskCount(2000L));
-        assertFalse("inventory-only cards should skip active targets", "拉".equals(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji));
+        assertInitialSimilarChoiceDue(pull);
 
         Records.SimilarKanjiChoiceResult wrong = store.submitSimilarChoice(pull, "提", 2500L);
-        assertFalse(wrong.correct);
-        assertEquals(Arrays.asList("拉", "提"), wrong.repairKanji);
-        assertEquals(0, count("review_log"));
-        assertEquals(1, count("similar_kanji_review_log"));
-        assertEquals(2, count("similar_kanji_repair_queue"));
-        assertEquals("拉", store.nextDueSimilarWritingRepair(2500L).repairKanji);
-        assertTrue(store.dueSimilarChoiceForActiveTarget("拉", 2500L) == null);
-        assertEquals(0, store.dueSimilarChoiceTaskCount(2500L));
-        assertEquals(2, store.dueSimilarWritingRepairTaskCount(2500L));
-        assertEquals(2, store.dueSimilarStudyTaskCount(2500L));
+        assertWrongSimilarChoiceCreatesRepair(wrong);
 
         Records.SimilarKanjiWritingRepair targetRepair = store.nextDueSimilarWritingRepair(2600L).withToken("repair-target", 2600L);
         store.saveSimilarWritingRepair(targetRepair);
@@ -280,18 +247,12 @@ public final class LocalStoreInstrumentedTest {
 
         Records.SimilarKanjiChoiceCard retry = store.dueSimilarChoiceForActiveTarget("拉", 3000L);
         assertNotNull(retry);
-        assertEquals(1, store.dueSimilarChoiceTaskCount(3000L));
-        assertEquals(0, store.dueSimilarWritingRepairTaskCount(3000L));
-        assertEquals(1, store.dueSimilarStudyTaskCount(3000L));
+        assertSimilarChoiceRetryDue();
         Records.SimilarKanjiChoiceResult correct = store.submitSimilarChoice(retry, "拉", 3100L);
-        assertTrue(correct.correct);
-        assertTrue(store.dueSimilarChoiceForActiveTarget("拉", 3200L) == null);
-        assertEquals(0, store.dueSimilarStudyTaskCount(3200L));
-        assertEquals(0, count("review_log"));
-        assertEquals(2, count("similar_kanji_review_log"));
+        assertCorrectSimilarChoicePasses(correct);
 
         store.saveSuccessfulSync(snapshot, Collections.emptyList(), Collections.emptyList(), settings, new LocalStore.SyncTiming(4000L, 5000L), null, index);
-        assertTrue("passed state should survive identical sync rebuild", store.dueSimilarChoiceForActiveTarget("拉", 5000L) == null);
+        assertNull("passed state should survive identical sync rebuild", store.dueSimilarChoiceForActiveTarget("拉", 5000L));
         assertTrue(findSimilarChoice("拉").passed());
     }
 
@@ -412,10 +373,25 @@ public final class LocalStoreInstrumentedTest {
         store = new LocalStore(context);
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("review_log"));
+        assertMigratedColumnsExist();
+        assertMigratedTimelineState();
+    }
+
+    private void assertMigratedColumnsExist() {
+        assertMigratedCardAndExampleColumns();
+        assertMigratedStudyColumns();
+        assertMigratedPracticeAndReviewColumns();
+        assertMigratedHistoricalSyncColumns();
+    }
+
+    private void assertMigratedCardAndExampleColumns() {
         assertTrue(hasColumn("source_cards", "fsrs_stability"));
         assertTrue(hasColumn("source_cards", "fsrs_difficulty"));
         assertTrue(hasColumn("source_cards", "fsrs_retrievability"));
         assertTrue(hasColumn("kanji_examples", "fsrs_stability"));
+    }
+
+    private void assertMigratedStudyColumns() {
         assertTrue(hasColumn("study_items", "recognition_stage"));
         assertTrue(hasColumn("study_items", "consecutive_failed_recognition_days"));
         assertTrue(hasColumn("study_items", "last_failed_recognition_day"));
@@ -429,6 +405,9 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "font_meaning_memory"));
         assertTrue(hasColumn("study_items", "word_reading_memory"));
         assertTrue(hasColumn("study_items", "writing_remediation_memory"));
+    }
+
+    private void assertMigratedPracticeAndReviewColumns() {
         assertTrue(hasColumn("similar_kanji_pairs", "source"));
         assertTrue(hasColumn("similar_kanji_choice_state", "choice_signature"));
         assertTrue(hasColumn("similar_kanji_repair_queue", "repair_kanji"));
@@ -439,6 +418,9 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("review_log", "scheduler_state_after_json"));
         assertTrue(hasColumn("study_task_log", "task_key"));
         assertTrue(hasColumn("study_task_log", "active_elapsed_ms"));
+    }
+
+    private void assertMigratedHistoricalSyncColumns() {
         assertTrue(hasColumn("sync_card_snapshots", "deck_id"));
         assertTrue(hasColumn("sync_card_snapshots", "model_id"));
         assertTrue(hasColumn("sync_card_snapshots", "fsrs_difficulty"));
@@ -446,6 +428,9 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("sync_note_snapshots", "deck_ids"));
         assertTrue(hasColumn("sync_note_snapshots", "extracted_kanji"));
         assertTrue(hasColumn("sync_kanji_snapshots", "weakness_score"));
+    }
+
+    private void assertMigratedTimelineState() {
         assertTrue(count("kanji_timeline_events") >= 3);
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
         assertNotNull(timeline.currentRow);
@@ -476,6 +461,13 @@ public final class LocalStoreInstrumentedTest {
         store.close();
 
         store = new LocalStore(context);
+        assertSyncSettingsPersistAndNormalize();
+        assertReminderAndAdaptiveLoadSettingsPersist();
+        assertAutoSyncSettingsPersist();
+        assertReviewTokensPersist(request);
+    }
+
+    private void assertSyncSettingsPersistAndNormalize() {
         assertEquals(4000, store.getIntSetting("suspended_rank_cutoff", 1000));
         Records.Settings legacyFrequency = SyncSettings.fromStore(store);
         assertEquals("Kiku", legacyFrequency.modelName);
@@ -509,6 +501,9 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings ladderSettings = SyncSettings.fromStore(store);
         assertEquals(4, ladderSettings.writingTriggerMissDays);
         assertEquals(5, ladderSettings.recognitionPromotionPasses);
+    }
+
+    private void assertReminderAndAdaptiveLoadSettingsPersist() {
         LocalStore.ReminderSettings defaults = store.reminderSettings();
         assertFalse(defaults.enabled);
         assertEquals(19, defaults.hour);
@@ -528,7 +523,9 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(8, reminder.hour);
         assertEquals(30, reminder.minute);
         assertEquals("08:30", reminder.displayTime());
+    }
 
+    private void assertAutoSyncSettingsPersist() {
         LocalStore.AutoSyncSettings autoDefaults = store.autoSyncSettings();
         assertFalse(autoDefaults.configured);
         assertFalse(autoDefaults.enabled);
@@ -554,7 +551,9 @@ public final class LocalStoreInstrumentedTest {
         LocalStore.AutoSyncSettings disabledAuto = store.autoSyncSettings();
         assertTrue(disabledAuto.configured);
         assertFalse(disabledAuto.enabled);
+    }
 
+    private void assertReviewTokensPersist(Records.ReviewRequest request) {
         List<String> tokens = store.consumedTokens();
         assertEquals(1, tokens.size());
         assertEquals("token-1", tokens.get(0));
@@ -862,6 +861,78 @@ public final class LocalStoreInstrumentedTest {
 
     private Records.ReviewRequest review(String kanji, String token) {
         return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
+    }
+
+    private void assertLatestSyncArchivedSuspendedCard() {
+        LocalStore.SyncStatus status = store.latestSync();
+        assertNotNull(status);
+        assertEquals("success", status.status);
+        assertEquals(1, status.activeCards);
+        assertEquals(1, status.suspendedCards);
+        assertEquals(1, status.importedKanji);
+        assertEquals("Archived locally before provider cleanup.", status.removalMessage);
+    }
+
+    private void assertSyncMirrorCounts() {
+        assertEquals(1, count("source_cards"));
+        assertEquals(1, count("source_notes"));
+        assertEquals(1, count("suspended_archive"));
+        assertEquals(1, count("suspended_imports"));
+        assertEquals(1, count("suspended_sources"));
+        assertEquals(1, count("dashboard_rows"));
+        assertEquals(1, count("kanji_examples"));
+        assertEquals(2, count("sync_card_snapshots"));
+        assertEquals(2, count("sync_note_snapshots"));
+        assertTrue(count("sync_kanji_snapshots") >= 2);
+    }
+
+    private void assertDashboardRowFsrsStored() {
+        assertEquals("拉", store.dashboardRows().get(0).kanji);
+        assertEquals(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability, 0.001);
+    }
+
+    private void assertSuspendedImportStored() {
+        List<Records.SuspendedImport> storedImports = store.suspendedImports();
+        assertEquals(1, storedImports.size());
+        assertEquals("拉", storedImports.get(0).kanji);
+        assertEquals(1, storedImports.get(0).sources.size());
+    }
+
+    private void assertInitialSimilarChoiceDue(Records.SimilarKanjiChoiceCard pull) {
+        assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
+        assertEquals("pull", pull.primaryMeaning);
+        assertNotNull(store.dueSimilarChoiceForActiveTarget("拉", 2000L));
+        assertEquals(1, store.dueSimilarChoiceTaskCount(2000L));
+        assertEquals(0, store.dueSimilarWritingRepairTaskCount(2000L));
+        assertEquals(1, store.dueSimilarStudyTaskCount(2000L));
+        assertFalse("inventory-only cards should skip active targets", "拉".equals(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji));
+    }
+
+    private void assertWrongSimilarChoiceCreatesRepair(Records.SimilarKanjiChoiceResult wrong) {
+        assertFalse(wrong.correct);
+        assertEquals(Arrays.asList("拉", "提"), wrong.repairKanji);
+        assertEquals(0, count("review_log"));
+        assertEquals(1, count("similar_kanji_review_log"));
+        assertEquals(2, count("similar_kanji_repair_queue"));
+        assertEquals("拉", store.nextDueSimilarWritingRepair(2500L).repairKanji);
+        assertNull(store.dueSimilarChoiceForActiveTarget("拉", 2500L));
+        assertEquals(0, store.dueSimilarChoiceTaskCount(2500L));
+        assertEquals(2, store.dueSimilarWritingRepairTaskCount(2500L));
+        assertEquals(2, store.dueSimilarStudyTaskCount(2500L));
+    }
+
+    private void assertSimilarChoiceRetryDue() {
+        assertEquals(1, store.dueSimilarChoiceTaskCount(3000L));
+        assertEquals(0, store.dueSimilarWritingRepairTaskCount(3000L));
+        assertEquals(1, store.dueSimilarStudyTaskCount(3000L));
+    }
+
+    private void assertCorrectSimilarChoicePasses(Records.SimilarKanjiChoiceResult correct) {
+        assertTrue(correct.correct);
+        assertNull(store.dueSimilarChoiceForActiveTarget("拉", 3200L));
+        assertEquals(0, store.dueSimilarStudyTaskCount(3200L));
+        assertEquals(0, count("review_log"));
+        assertEquals(2, count("similar_kanji_review_log"));
     }
 
     private long saveSingleRowSync(Records.DashboardRow row, List<Records.SuspendedImport> imports, long finishedAt) {
