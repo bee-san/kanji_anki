@@ -10,10 +10,8 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Insets;
-import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -42,9 +40,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.widget.TextViewCompat;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -63,13 +58,11 @@ import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.StudyRating;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
-import dev.bee.kanjianki.core.study.StrokeGuideParser;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingRatingMapper;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
-import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedWriting;
@@ -82,9 +75,6 @@ import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -2639,6 +2629,15 @@ public final class MainActivity extends Activity {
         return new StudyCue("", cueReading, fromExpression, DictionaryLookup.SOURCE_ANKI);
     }
 
+    private String firstNonEmpty(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
     private DictionaryLookup dictionaryLookup() {
         if (dictionaryLookup == null) {
             dictionaryLookup = DictionaryAssets.load(this);
@@ -3689,18 +3688,9 @@ public final class MainActivity extends Activity {
 
     private StrokeGuide strokeGuide(String kanji) {
         if (strokeGuides == null) {
-            strokeGuides = loadStrokeGuides();
+            strokeGuides = StrokeGuideAssets.load(this);
         }
         return strokeGuides.get(kanji);
-    }
-
-    private Map<String, StrokeGuide> loadStrokeGuides() {
-        try (InputStream in = getResources().openRawResource(R.raw.kanji_strokes);
-             InputStreamReader reader = new InputStreamReader(in)) {
-            return StrokeGuideParser.parse(reader);
-        } catch (Exception error) {
-            return new HashMap<>();
-        }
     }
 
     private void renderUpdate() {
@@ -4002,7 +3992,7 @@ public final class MainActivity extends Activity {
     private LinearLayout strokeDataSettingsPanel() {
         LinearLayout attribution = settingsPanelBox();
         attribution.addView(text("Stroke data", 22, INK, true));
-        attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
+        attribution.addView(text(AttributionTexts.kanjiVg(this), 14, MUTED, false));
         return attribution;
     }
 
@@ -4023,17 +4013,17 @@ public final class MainActivity extends Activity {
 
         LinearLayout dictionary = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
         dictionary.addView(text("Dictionary data", 23, INK, true));
-        dictionary.addView(text(dictionarySourcesText(), 14, MUTED, false));
+        dictionary.addView(text(AttributionTexts.dictionarySources(this), 14, MUTED, false));
         content.addView(dictionary);
 
         LinearLayout stroke = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
         stroke.addView(text("Stroke data", 23, INK, true));
-        stroke.addView(text(kanjiVgAttribution(), 14, MUTED, false));
+        stroke.addView(text(AttributionTexts.kanjiVg(this), 14, MUTED, false));
         content.addView(stroke);
 
         LinearLayout fonts = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
         fonts.addView(text("Fonts", 23, INK, true));
-        fonts.addView(text(rawResourceText(R.raw.ofl), 14, MUTED, false));
+        fonts.addView(text(AttributionTexts.rawResourceText(this, R.raw.ofl), 14, MUTED, false));
         content.addView(fonts);
 
         Button back = secondaryButton("Back to settings");
@@ -4838,81 +4828,6 @@ public final class MainActivity extends Activity {
         startActivity(intent);
     }
 
-    private String kanjiVgAttribution() {
-        String text = rawResourceText(R.raw.kanjivg_attribution).trim();
-        return text.isEmpty() ? "KanjiVG stroke data, CC BY-SA 3.0." : text;
-    }
-
-    private String dictionarySourcesText() {
-        try {
-            JSONObject manifest = new JSONObject(DictionaryStore.activeManifestText(this));
-            JSONArray sources = manifest.optJSONArray("sources");
-            if (sources == null || sources.length() == 0) {
-                return "Dictionary manifest is empty.";
-            }
-            List<String> lines = new ArrayList<>();
-            String generatedAt = manifest.optString("generated_at");
-            if (!generatedAt.isEmpty()) {
-                lines.add("Generated: " + generatedAt);
-            }
-            for (int i = 0; i < sources.length(); i++) {
-                JSONObject source = sources.getJSONObject(i);
-                lines.add("");
-                lines.add(source.optString("name", source.optString("id")));
-                addSourceLine(lines, "License", source.optString("license"));
-                addSourceLine(lines, "URL", source.optString("upstream_url"));
-                addSourceLine(lines, "Source", source.optString("source_path"));
-                addSourceLine(lines, "Fetched", source.optString("fetch_date"));
-                addSourceLine(lines, "Version", firstNonEmpty(
-                        source.optString("database_version"),
-                        source.optString("version"),
-                        source.optString("date_of_creation")
-                ));
-                addSourceLine(lines, "SHA-256", source.optString("source_sha256"));
-            }
-            JSONArray notes = manifest.optJSONArray("notes");
-            if (notes != null && notes.length() > 0) {
-                lines.add("");
-                for (int i = 0; i < notes.length(); i++) {
-                    lines.add(notes.optString(i));
-                }
-            }
-            return String.join("\n", lines).trim();
-        } catch (Exception error) {
-            return "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.";
-        }
-    }
-
-    private void addSourceLine(List<String> lines, String label, String value) {
-        if (value != null && !value.trim().isEmpty()) {
-            lines.add(label + ": " + value.trim());
-        }
-    }
-
-    private String firstNonEmpty(String... values) {
-        for (String value : values) {
-            if (value != null && !value.trim().isEmpty()) {
-                return value.trim();
-            }
-        }
-        return "";
-    }
-
-    private String rawResourceText(int resourceId) {
-        try (InputStream in = getResources().openRawResource(resourceId);
-             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-            StringBuilder out = new StringBuilder();
-            char[] buffer = new char[1024];
-            int read;
-            while ((read = reader.read(buffer)) != -1) {
-                out.append(buffer, 0, read);
-            }
-            return out.toString().trim();
-        } catch (Exception error) {
-            return "";
-        }
-    }
-
     private void runUpdate(boolean cachedPending) {
         base(NAV_SETTINGS_ROUTE);
         content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
@@ -5022,7 +4937,7 @@ public final class MainActivity extends Activity {
         progress.setIncludeFontPadding(false);
         center.addView(progress, new LinearLayout.LayoutParams(-1, -2));
 
-        StudyProgressPillView progressPill = new StudyProgressPillView(this);
+        StudyProgressPillView progressPill = new StudyProgressPillView(this, STUDY_HERO_TRACK, STUDY_HERO_PINK);
         progressPill.setFraction(progressSnapshot.fraction);
         LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(180), dp(7));
         progressLp.gravity = Gravity.CENTER_HORIZONTAL;
@@ -5583,30 +5498,6 @@ public final class MainActivity extends Activity {
         QueueEntry(Records.DashboardRow row, Records.StudyItem item) {
             this.row = row;
             this.item = item;
-        }
-    }
-
-    private final class StudyProgressPillView extends View {
-        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private float fraction;
-
-        StudyProgressPillView(Context context) {
-            super(context);
-        }
-
-        void setFraction(float value) {
-            fraction = Math.max(0f, Math.min(1f, value));
-            invalidate();
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            float radius = getHeight() / 2f;
-            paint.setColor(STUDY_HERO_TRACK);
-            canvas.drawRoundRect(0, 0, getWidth(), getHeight(), radius, radius, paint);
-            paint.setColor(STUDY_HERO_PINK);
-            canvas.drawRoundRect(0, 0, getWidth() * fraction, getHeight(), radius, radius, paint);
         }
     }
 

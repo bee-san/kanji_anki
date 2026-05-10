@@ -683,7 +683,7 @@ public final class LocalStoreInstrumentedTest {
                 null
         );
 
-        KanjiImpactAnalyzer.Report report = store.kanjiImpactReport();
+        KanjiImpactAnalyzer.Report report = new KanjiImpactReportStore(store).report();
 
         assertEquals(1, report.helpedCount);
         assertEquals(0, report.notHelpingCount);

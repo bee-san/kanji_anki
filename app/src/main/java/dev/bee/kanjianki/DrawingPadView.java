@@ -208,7 +208,8 @@ final class DrawingPadView extends View {
             case MotionEvent.ACTION_DOWN:
                 return handleTouchDown(event);
             case MotionEvent.ACTION_MOVE:
-                return handleTouchMove(event);
+                handleTouchMove(event);
+                return true;
             case MotionEvent.ACTION_POINTER_UP:
                 return handlePointerUp(event);
             case MotionEvent.ACTION_UP:
@@ -242,21 +243,20 @@ final class DrawingPadView extends View {
         return true;
     }
 
-    private boolean handleTouchMove(MotionEvent event) {
+    private void handleTouchMove(MotionEvent event) {
         if (current == null) {
-            return true;
+            return;
         }
         requestParentIntercept(false);
         int pointerIndex = activePointerIndex(event);
         if (pointerIndex < 0) {
-            return true;
+            return;
         }
         for (int i = 0; i < event.getHistorySize(); i++) {
             appendPoint(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i), event.getHistoricalEventTime(i), true);
         }
         appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
         invalidate();
-        return true;
     }
 
     private boolean handlePointerUp(MotionEvent event) {

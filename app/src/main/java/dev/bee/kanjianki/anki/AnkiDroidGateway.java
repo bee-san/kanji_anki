@@ -432,7 +432,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                         queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex]),
                         projectionIndex
                 );
-            } catch (Throwable unsupportedColumns) {
+            } catch (Exception unsupportedColumns) {
                 projectionIndex++;
                 if (projectionIndex >= projections.length) {
                     if (unsupportedColumns instanceof SyncFailure syncFailure) {
