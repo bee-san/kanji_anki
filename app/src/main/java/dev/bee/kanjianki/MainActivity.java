@@ -64,6 +64,7 @@ import dev.bee.kanjianki.core.study.WritingRatingMapper;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
@@ -75,22 +76,17 @@ import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
-import java.text.DateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
 
 public final class MainActivity extends Activity {
     public static final String EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE";
@@ -384,7 +380,7 @@ public final class MainActivity extends Activity {
         base("home");
         long now = System.currentTimeMillis();
         LocalStore.SyncStatus sync = store.latestSync();
-        LocalStore.StudyStreak streak = store.studyStreak(now);
+        StudyStatsStore.StudyStreak streak = store.studyStreak(now);
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         List<Records.StudyItem> homeItems = studyQueue(rows, now, false);
         Records.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
@@ -446,7 +442,7 @@ public final class MainActivity extends Activity {
         return header;
     }
 
-    private View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, LocalStore.StudyStreak streak, Records.AdaptiveLoadPlan plan) {
+    private View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, Records.AdaptiveLoadPlan plan) {
         LinearLayout row = new EqualHeightRow(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBaselineAligned(false);
@@ -740,18 +736,18 @@ public final class MainActivity extends Activity {
     private void renderRecentMistakes() {
         base("home");
         content.addView(homeSectionHeader("Recent mistakes", "Home", this::renderHome));
-        List<LocalStore.RecentMistake> mistakes = store.recentMistakes(12);
+        List<StudyStatsStore.RecentMistake> mistakes = store.recentMistakes(12);
         if (mistakes.isEmpty()) {
             emptyState("No recent mistakes yet", "Missed and hard reviews will show here after you study.");
             return;
         }
         List<Records.DashboardRow> rows = store.activeDashboardRows();
-        for (LocalStore.RecentMistake mistake : mistakes) {
+        for (StudyStatsStore.RecentMistake mistake : mistakes) {
             content.addView(recentMistakeRow(mistake, findRow(rows, mistake.kanji)));
         }
     }
 
-    private View recentMistakeRow(LocalStore.RecentMistake mistake, Records.DashboardRow row) {
+    private View recentMistakeRow(StudyStatsStore.RecentMistake mistake, Records.DashboardRow row) {
         LinearLayout box = panelBox(Color.WHITE, PINK_STROKE);
         box.setOnClickListener(v -> renderDetail(mistake.kanji));
         LinearLayout top = new LinearLayout(this);
@@ -773,18 +769,18 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private String streakHeadline(LocalStore.StudyStreak streak) {
+    private String streakHeadline(StudyStatsStore.StudyStreak streak) {
         if (streak.currentDays <= 0) {
             return "No streak yet";
         }
         return streak.currentDays + "-day streak";
     }
 
-    private int streakAccent(LocalStore.StudyStreak streak) {
+    private int streakAccent(StudyStatsStore.StudyStreak streak) {
         return streak != null && streak.studiedToday ? Color.rgb(247, 159, 0) : Color.rgb(160, 160, 166);
     }
 
-    private String streakMetricBody(LocalStore.StudyStreak streak) {
+    private String streakMetricBody(StudyStatsStore.StudyStreak streak) {
         if (streak != null && streak.studiedToday) {
             return streak.bestDays > 0 ? "Best: " + streakDayCount(streak.bestDays) : "Done today";
         }
@@ -792,28 +788,7 @@ public final class MainActivity extends Activity {
     }
 
     private String humanSyncTime(long timestampMillis) {
-        if (timestampMillis <= 0L) {
-            return "date unknown";
-        }
-        Date date = new Date(timestampMillis);
-        Calendar then = Calendar.getInstance();
-        then.setTime(date);
-        Calendar now = Calendar.getInstance();
-        DateFormat timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT);
-        if (sameLocalDay(then, now)) {
-            return "today at " + timeFormat.format(date);
-        }
-        now.add(Calendar.DAY_OF_YEAR, -1);
-        if (sameLocalDay(then, now)) {
-            return "yesterday at " + timeFormat.format(date);
-        }
-        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(date);
-    }
-
-    private boolean sameLocalDay(Calendar left, Calendar right) {
-        return left.get(Calendar.ERA) == right.get(Calendar.ERA)
-                && left.get(Calendar.YEAR) == right.get(Calendar.YEAR)
-                && left.get(Calendar.DAY_OF_YEAR) == right.get(Calendar.DAY_OF_YEAR);
+        return UiDateText.humanSyncTime(timestampMillis);
     }
 
     private String streakDayCount(int days) {
@@ -1059,8 +1034,8 @@ public final class MainActivity extends Activity {
 
     private void renderStats() {
         base("stats");
-        LocalStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
-        LocalStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
+        StudyStatsStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
+        StudyStatsStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
         content.addView(fullWidthHomeButton());
         content.addView(text("Stats", 34, INK, true));
         content.addView(statsVerdictPanel(stats));
@@ -1084,7 +1059,7 @@ public final class MainActivity extends Activity {
         content.addView(studyTimePanel(studyTime));
     }
 
-    private LinearLayout statsVerdictPanel(LocalStore.KaniOutcomeStats stats) {
+    private LinearLayout statsVerdictPanel(StudyStatsStore.KaniOutcomeStats stats) {
         boolean working = stats != null && stats.weakKanjiImproved.improvedCount > 0;
         LinearLayout box = panelBox(working ? Color.rgb(238, 252, 250) : Color.rgb(246, 246, 248), working ? TEAL : Color.rgb(178, 178, 186));
         box.addView(text(working ? "Kani is working for you" : "Kani is not currently working for you", 24, working ? TEAL : MUTED, true));
@@ -1099,7 +1074,7 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private LinearLayout studyTimePanel(LocalStore.StudyTaskTimeStats stats) {
+    private LinearLayout studyTimePanel(StudyStatsStore.StudyTaskTimeStats stats) {
         LinearLayout box = panelBox(Color.WHITE, CORAL);
         box.addView(text("Answered study time", 18, MUTED, true));
         box.addView(text("Today: " + formatStudyTime(stats.todayMillis), 24, INK, true));
@@ -1117,7 +1092,7 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private String weaknessImprovementBody(LocalStore.WeakKanjiImprovedMetric metric) {
+    private String weaknessImprovementBody(StudyStatsStore.WeakKanjiImprovedMetric metric) {
         if (metric.improvedCount == 0) {
             return "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.";
         }
@@ -1128,19 +1103,19 @@ public final class MainActivity extends Activity {
                 + " after Kani practice.";
     }
 
-    private List<String> weaknessImprovementExamples(LocalStore.WeakKanjiImprovedMetric metric) {
+    private List<String> weaknessImprovementExamples(StudyStatsStore.WeakKanjiImprovedMetric metric) {
         List<String> examples = new java.util.ArrayList<>();
         int maxExamples = Math.min(3, metric.examples.size());
         for (int i = 0; i < maxExamples; i++) {
-            LocalStore.KanjiImprovement example = metric.examples.get(i);
+            StudyStatsStore.KanjiImprovement example = metric.examples.get(i);
             examples.add(example.kanji + "  " + formatWeakness(example.beforeWeakness) + " -> " + formatWeakness(example.afterWeakness));
         }
         return examples;
     }
 
-    private List<String> supportGainExamples(LocalStore.MatureSupportGainedMetric metric) {
+    private List<String> supportGainExamples(StudyStatsStore.MatureSupportGainedMetric metric) {
         List<String> examples = new java.util.ArrayList<>();
-        for (LocalStore.KanjiSupportGain example : metric.examples) {
+        for (StudyStatsStore.KanjiSupportGain example : metric.examples) {
             examples.add(example.kanji + "  " + example.beforeMatureSupport + " -> " + example.afterMatureSupport + " mature cards");
         }
         return examples;
@@ -1246,19 +1221,7 @@ public final class MainActivity extends Activity {
     }
 
     private String dueText(long dueAt, long now) {
-        if (dueAt <= now) {
-            return "due now";
-        }
-        long delta = dueAt - now;
-        long minutes = Math.max(1L, delta / 60_000L);
-        if (minutes < 60L) {
-            return "due in " + minutes + " min";
-        }
-        long hours = Math.max(1L, delta / 3_600_000L);
-        if (hours < 24L) {
-            return "due in " + hours + " hr";
-        }
-        return "due " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(dueAt));
+        return UiDateText.dueText(dueAt, now);
     }
 
     private View queueRowView(QueueEntry entry, long now) {
@@ -1620,10 +1583,7 @@ public final class MainActivity extends Activity {
     }
 
     private String timelineDate(long occurredAt) {
-        if (occurredAt <= 0L) {
-            return "Unknown time";
-        }
-        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date(occurredAt));
+        return UiDateText.timelineDate(occurredAt);
     }
 
     private String timelineSourceLine(Records.KanjiTimelineEvent event) {
@@ -1839,7 +1799,7 @@ public final class MainActivity extends Activity {
             renderStudy();
             return;
         }
-        String token = repeat.activeToken.isEmpty() ? repeat.kanji + "-repeat-" + UUID.randomUUID() : repeat.activeToken;
+        String token = StudyTokenFactory.learningRepeat(repeat.kanji, repeat.activeToken);
         activeLearningRepeat = repeat.withToken(token, now);
         store.saveLearningRepeat(activeLearningRepeat);
         activeSession = new Records.StudySession(
@@ -1954,9 +1914,7 @@ public final class MainActivity extends Activity {
             renderSimilarChoice(gate);
             return;
         }
-        String token = item.activeToken == null || item.activeToken.isEmpty()
-                ? item.kanji + "-" + UUID.randomUUID()
-                : item.activeToken;
+        String token = StudyTokenFactory.studyItem(item.kanji, item.activeToken);
         String taskType = taskTypeForStudyItem(item);
         activeSession = new Records.StudySession(
                 item.withToken(token),
@@ -2081,9 +2039,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSimilarWritingRepair(Records.SimilarKanjiWritingRepair repair, long now) {
-        String token = repair.activeToken.isEmpty()
-                ? repair.repairKanji + "-similar-repair-" + UUID.randomUUID()
-                : repair.activeToken;
+        String token = StudyTokenFactory.similarRepair(repair.repairKanji, repair.activeToken);
         activeSimilarChoice = null;
         activeSimilarRepair = repair.withToken(token, now);
         store.saveSimilarWritingRepair(activeSimilarRepair);
@@ -2292,18 +2248,7 @@ public final class MainActivity extends Activity {
     }
 
     private Typeface randomFontVariantTypeface() {
-        switch (ThreadLocalRandom.current().nextInt(5)) {
-            case 0:
-                return Typeface.SERIF;
-            case 1:
-                return Typeface.DEFAULT;
-            case 2:
-                return Typeface.MONOSPACE;
-            case 3:
-                return fontResource(R.font.klee_one_regular, Typeface.DEFAULT);
-            default:
-                return fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF);
-        }
+        return StudyFontVariants.random(this);
     }
 
     private void renderWritingSession(Records.StudySession session) {
@@ -3004,7 +2949,7 @@ public final class MainActivity extends Activity {
         Records.SchedulerParameters parameters = store.schedulerParameters();
         Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters, settings());
         completeActiveStudyTask(sessionTaskKey(activeSession), result.appliedRating, now);
-        LocalStore.StudyStreak streak = null;
+        StudyStatsStore.StudyStreak streak = null;
         if (!result.duplicate) {
             saveAppliedReview(request, result, now);
             streak = store.studyStreak(now);
@@ -3169,22 +3114,11 @@ public final class MainActivity extends Activity {
     }
 
     private boolean sameLocalDay(long leftMillis, long rightMillis) {
-        Calendar left = Calendar.getInstance();
-        left.setTimeInMillis(leftMillis);
-        Calendar right = Calendar.getInstance();
-        right.setTimeInMillis(rightMillis);
-        return sameLocalDay(left, right);
+        return UiDateText.sameLocalDay(leftMillis, rightMillis);
     }
 
     private long nextLocalDayStart(long now) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(now);
-        calendar.add(Calendar.DAY_OF_YEAR, 1);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        return UiDateText.nextLocalDayStart(now);
     }
 
     private HintState initialHintState(Records.StudySession session) {
@@ -3605,7 +3539,7 @@ public final class MainActivity extends Activity {
         return activeSession != null && activeSession.token.equals(token);
     }
 
-    private String reviewToast(Records.ReviewResult result, LocalStore.StudyStreak streak) {
+    private String reviewToast(Records.ReviewResult result, StudyStatsStore.StudyStreak streak) {
         if (result.duplicate) {
             return "Already saved.";
         }
@@ -3748,10 +3682,7 @@ public final class MainActivity extends Activity {
     }
 
     private String autoUpdateLastCheckText(LocalStore.AutoUpdateStatus status) {
-        if (status.lastCheckAtMillis <= 0L) {
-            return "not yet";
-        }
-        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(new Date(status.lastCheckAtMillis));
+        return UiDateText.autoUpdateLastCheckText(status.lastCheckAtMillis);
     }
 
     private String versionText(String version) {
@@ -4735,8 +4666,7 @@ public final class MainActivity extends Activity {
     }
 
     private String shortDateTime(long millis) {
-        Date date = new Date(millis);
-        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(date);
+        return UiDateText.shortDateTime(millis);
     }
 
     private String workloadStatusText(int percent, int maxItems) {

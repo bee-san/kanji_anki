@@ -39,6 +39,7 @@ import dev.bee.kanjianki.core.study.InkStroke;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideParser;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.SyncProgress;
@@ -927,7 +928,7 @@ public final class MainActivityInstrumentedTest {
             });
 
             try (LocalStore store = new LocalStore(context)) {
-                LocalStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(System.currentTimeMillis());
+                StudyStatsStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(System.currentTimeMillis());
                 assertEquals(1, stats.answeredTasks);
             }
         }
@@ -946,7 +947,7 @@ public final class MainActivityInstrumentedTest {
                 Records.ReviewStats reviewStats = store.reviewStatsSince(0L);
                 assertEquals(1, reviewStats.total);
                 assertEquals(1, reviewStats.good);
-                LocalStore.StudyTaskTimeStats timeStats = store.studyTaskTimeStats(System.currentTimeMillis());
+                StudyStatsStore.StudyTaskTimeStats timeStats = store.studyTaskTimeStats(System.currentTimeMillis());
                 assertEquals(1, timeStats.answeredTasks);
             }
         }

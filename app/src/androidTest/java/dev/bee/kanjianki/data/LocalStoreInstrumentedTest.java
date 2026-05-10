@@ -728,7 +728,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, stats.good);
         assertEquals(2, stats.writingRequired);
         assertEquals(1, stats.writingFailed);
-        LocalStore.StudyImpactStats impact = store.studyImpactStats();
+        StudyStatsStore.StudyImpactStats impact = store.studyImpactStats();
         assertEquals(2, impact.totalReviews);
         assertEquals(2, impact.distinctReviewedKanji);
         assertEquals(2, impact.writingRequired);
@@ -765,7 +765,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
         assertFalse(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 3000L, 24_000L, "easy"));
 
-        LocalStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(2500L);
+        StudyStatsStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(2500L);
         assertEquals(12_000L, stats.todayMillis);
         assertEquals(12_000L, stats.lastSevenDaysMillis);
         assertEquals(1, stats.answeredTasks);
@@ -788,7 +788,7 @@ public final class LocalStoreInstrumentedTest {
         store.recordStudyTaskAnswered("seven-days", "確", "kanji_meaning", sevenDaysAgo, sevenDaysAgo + 60_000L, 240_000L, "good");
         store.recordStudyTaskAnswered("clamped", "曜", "word_reading", today, today + 60_000L, 31L * 60L * 1000L, "easy");
 
-        LocalStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(today + 12 * 60_000L);
+        StudyStatsStore.StudyTaskTimeStats stats = store.studyTaskTimeStats(today + 12 * 60_000L);
 
         assertEquals(30_000L + 90_000L + 30L * 60L * 1000L, stats.todayMillis);
         assertEquals(30_000L + 90_000L + 120_000L + 180_000L + 30L * 60L * 1000L, stats.lastSevenDaysMillis);
@@ -839,7 +839,7 @@ public final class LocalStoreInstrumentedTest {
         store.saveReview(review("確", "token-today-b"), "easy", today + 120_000L);
         store.saveReview(review("確", "token-today-c"), "hard", today + 180_000L);
 
-        LocalStore.StudyStreak streak = store.studyStreak(today + 3_600_000L);
+        StudyStatsStore.StudyStreak streak = store.studyStreak(today + 3_600_000L);
         assertEquals(3, streak.currentDays);
         assertEquals(3, streak.bestDays);
         assertTrue(streak.studiedToday);
@@ -847,13 +847,13 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(today + 180_000L, streak.lastStudyAtMillis);
         assertEquals(2, store.studiedKanjiSince(today).size());
 
-        LocalStore.StudyStreak tomorrow = store.studyStreak(moveLocalDays(today, 1) + 3_600_000L);
+        StudyStatsStore.StudyStreak tomorrow = store.studyStreak(moveLocalDays(today, 1) + 3_600_000L);
         assertEquals(3, tomorrow.currentDays);
         assertEquals(3, tomorrow.bestDays);
         assertFalse(tomorrow.studiedToday);
         assertEquals(0, tomorrow.reviewsToday);
 
-        LocalStore.StudyStreak afterMiss = store.studyStreak(moveLocalDays(today, 2) + 3_600_000L);
+        StudyStatsStore.StudyStreak afterMiss = store.studyStreak(moveLocalDays(today, 2) + 3_600_000L);
         assertEquals(0, afterMiss.currentDays);
         assertEquals(3, afterMiss.bestDays);
         assertFalse(afterMiss.studiedToday);

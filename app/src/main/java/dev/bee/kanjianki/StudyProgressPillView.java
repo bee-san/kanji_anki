@@ -27,7 +27,7 @@ final class StudyProgressPillView extends View {
     }
 
     private StudyProgressPillView(Context context, AttributeSet attrs, int trackColor, int fillColor) {
-        super(context);
+        super(context, attrs);
         this.trackColor = trackColor;
         this.fillColor = fillColor;
     }

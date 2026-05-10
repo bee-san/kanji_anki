@@ -20,8 +20,6 @@ final class KanjiImpactReportStore {
     private static final String TABLE_SUSPENDED_IMPORTS = "suspended_imports";
     private static final String COLUMN_KANJI = "kanji";
     private static final String COLUMN_SYNC_ID = "sync_id";
-    private static final String COLUMN_STARTED_AT = "started_at";
-    private static final String COLUMN_FINISHED_AT = "finished_at";
     private static final String COLUMN_MATURE_SUPPORT_COUNT = "mature_support_count";
     private static final String ORDER_ID_DESC = "id DESC";
     private static final String ORDER_KANJI_ASC = "kanji ASC";
