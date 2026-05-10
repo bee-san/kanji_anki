@@ -19,15 +19,17 @@ public class JitenKanjiRanksTest {
     @Test
     public void parsesRankFirstRowsAndSkipsMalformedRows() throws Exception {
         JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader(
-                "# comment\n"
-                        + "\n"
-                        + "1,日\n"
-                        + "裂\t824\n"
-                        + "bad\n"
-                        + "word,not-rank\n"
-                        + "2,A\n"
-                        + ",3\n"
-                        + "-1,提\n"
+                """
+                # comment
+
+                1,日
+                裂\t824
+                bad
+                word,not-rank
+                2,A
+                ,3
+                -1,提
+                """
         ));
 
         assertEquals(3, ranks.size());

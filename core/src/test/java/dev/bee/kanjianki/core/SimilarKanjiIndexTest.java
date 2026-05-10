@@ -29,11 +29,13 @@ public final class SimilarKanjiIndexTest {
     @Test
     public void parseTsvTreatsPairsAsSymmetricAndDeduplicates() throws Exception {
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
-                "# generated\n" +
-                        "kanji_a\tkanji_b\tsource\n" +
-                        "拉\t麺\tfixture\n" +
-                        "麺\t拉\tfixture\n" +
-                        "拉\t謎\tfixture\n"
+                """
+                # generated
+                kanji_a\tkanji_b\tsource
+                拉\t麺\tfixture
+                麺\t拉\tfixture
+                拉\t謎\tfixture
+                """
         ));
 
         assertEquals(2, index.pairCount());
@@ -48,11 +50,13 @@ public final class SimilarKanjiIndexTest {
     @Test
     public void parseTsvSkipsMalformedRows() throws Exception {
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
-                "not enough cells\n" +
-                        "abc\t麺\tfixture\n" +
-                        "拉\tkana\tfixture\n" +
-                        "拉\t拉\tfixture\n" +
-                        "拉\t麺\t\n"
+                """
+                not enough cells
+                abc\t麺\tfixture
+                拉\tkana\tfixture
+                拉\t拉\tfixture
+                拉\t麺\t
+                """
         ));
 
         assertEquals(1, index.pairCount());
@@ -63,9 +67,11 @@ public final class SimilarKanjiIndexTest {
     @Test
     public void pairsWithinOnlyReturnsPairsWhereBothKanjiArePresent() throws Exception {
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
-                "拉\t麺\tfixture\n" +
-                        "拉\t謎\tfixture\n" +
-                        "確\t認\tfixture\n"
+                """
+                拉\t麺\tfixture
+                拉\t謎\tfixture
+                確\t認\tfixture
+                """
         ));
 
         List<SimilarKanjiIndex.Pair> pairs = index.pairsWithin(Arrays.asList("拉", "謎", "提"));

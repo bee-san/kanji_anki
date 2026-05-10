@@ -72,7 +72,7 @@ public final class StudyCueFormatter {
 
     public static String cleanFallbackMeaning(String raw, String fallback, int maxChars) {
         String value = raw == null ? "" : raw;
-        value = value.replaceAll("\\[[0-9]{4}-[0-9]{2}-[0-9]{2}\\]", " ");
+        value = value.replaceAll("\\[\\d{4}-\\d{2}-\\d{2}\\]", " ");
         value = value.replaceAll("(?i)\\bJMdict\\s*\\[[^\\]]*\\]\\s*", " ");
         value = value.replaceAll("(?i)\\bJitendex\\.org\\s*", " ");
         value = value.replace('\n', ' ').replace('\r', ' ').trim();
@@ -124,24 +124,22 @@ public final class StudyCueFormatter {
     private static String stripLeadingMetadataWords(String value) {
         String[] words = value.trim().split("\\s+");
         int firstMeaningWord = 0;
-        while (firstMeaningWord < words.length) {
-            String normalized = words[firstMeaningWord]
-                    .toLowerCase(Locale.ROOT)
-                    .replaceAll("[^a-z0-9-]", "");
-            if (normalized.equals("5-dan")
-                    || normalized.equals("na-adjective")
-                    || normalized.equals("i-adjective")
-                    || normalized.equals("no-adjective")
-                    || LEADING_METADATA.contains(normalized)) {
-                firstMeaningWord++;
-                continue;
-            }
-            break;
+        while (firstMeaningWord < words.length && isLeadingMetadataWord(words[firstMeaningWord])) {
+            firstMeaningWord++;
         }
         if (firstMeaningWord == 0) {
             return value;
         }
         return String.join(" ", Arrays.copyOfRange(words, firstMeaningWord, words.length));
+    }
+
+    private static boolean isLeadingMetadataWord(String word) {
+        String normalized = word.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "");
+        return normalized.equals("5-dan")
+                || normalized.equals("na-adjective")
+                || normalized.equals("i-adjective")
+                || normalized.equals("no-adjective")
+                || LEADING_METADATA.contains(normalized);
     }
 
     private static String cleanInline(String value) {

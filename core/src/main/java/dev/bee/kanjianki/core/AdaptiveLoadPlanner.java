@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -424,6 +423,55 @@ public final class AdaptiveLoadPlanner {
                     + lapseScore * 2.0
                     + supportDeficit * 4.0;
         }
+
+        private static int lapseScore(Records.DashboardRow row, Records.StudyItem item) {
+            int score = item == null ? 0 : item.lapses * 3 + Math.max(0, 3 - item.writingLevel);
+            for (Records.Example example : row.examples) {
+                score += example.lapses;
+            }
+            return score;
+        }
+
+        private static double fsrsRisk(Records.DashboardRow row, Records.Settings settings) {
+            double best = 0.0;
+            for (Records.Example example : row.examples) {
+                double risk = 0.0;
+                Double retrievability = normalizedRetrievability(example.fsrsRetrievability);
+                if (retrievability != null) {
+                    risk += Math.max(0.0, 0.90 - retrievability) * 120.0;
+                }
+                if (example.fsrsDifficulty != null) {
+                    risk += Math.max(0.0, example.fsrsDifficulty - 5.0) * 5.0;
+                }
+                if (example.fsrsStability != null) {
+                    if (example.reps >= 5 && example.fsrsStability < settings.matureDays) {
+                        risk += (settings.matureDays - example.fsrsStability) * 1.4;
+                    } else if (example.mature && example.fsrsStability >= settings.matureDays * 2.0) {
+                        risk -= 8.0;
+                    }
+                } else if (example.reps >= 8 && example.intervalDays < settings.matureDays) {
+                    risk += Math.min(16.0, (settings.matureDays - example.intervalDays) * 0.6);
+                }
+                best = Math.max(best, risk);
+            }
+            return best;
+        }
+
+        private static Double normalizedRetrievability(Double value) {
+            if (value == null) {
+                return null;
+            }
+            if (value < 0.0) {
+                return null;
+            }
+            if (value > 1.0 && value <= 100.0) {
+                return value / 100.0;
+            }
+            if (value > 1.0) {
+                return null;
+            }
+            return value;
+        }
     }
 
     private static final class AutoTarget {
@@ -434,54 +482,5 @@ public final class AdaptiveLoadPlanner {
             this.target = Math.max(1, target);
             this.dropFound = dropFound;
         }
-    }
-
-    private static int lapseScore(Records.DashboardRow row, Records.StudyItem item) {
-        int score = item == null ? 0 : item.lapses * 3 + Math.max(0, 3 - item.writingLevel);
-        for (Records.Example example : row.examples) {
-            score += example.lapses;
-        }
-        return score;
-    }
-
-    private static double fsrsRisk(Records.DashboardRow row, Records.Settings settings) {
-        double best = 0.0;
-        for (Records.Example example : row.examples) {
-            double risk = 0.0;
-            Double retrievability = normalizedRetrievability(example.fsrsRetrievability);
-            if (retrievability != null) {
-                risk += Math.max(0.0, 0.90 - retrievability) * 120.0;
-            }
-            if (example.fsrsDifficulty != null) {
-                risk += Math.max(0.0, example.fsrsDifficulty - 5.0) * 5.0;
-            }
-            if (example.fsrsStability != null) {
-                if (example.reps >= 5 && example.fsrsStability < settings.matureDays) {
-                    risk += (settings.matureDays - example.fsrsStability) * 1.4;
-                } else if (example.mature && example.fsrsStability >= settings.matureDays * 2.0) {
-                    risk -= 8.0;
-                }
-            } else if (example.reps >= 8 && example.intervalDays < settings.matureDays) {
-                risk += Math.min(16.0, (settings.matureDays - example.intervalDays) * 0.6);
-            }
-            best = Math.max(best, risk);
-        }
-        return best;
-    }
-
-    private static Double normalizedRetrievability(Double value) {
-        if (value == null) {
-            return null;
-        }
-        if (value < 0.0) {
-            return null;
-        }
-        if (value > 1.0 && value <= 100.0) {
-            return value / 100.0;
-        }
-        if (value > 1.0) {
-            return null;
-        }
-        return value;
     }
 }

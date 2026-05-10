@@ -9,6 +9,9 @@ import java.util.Map;
 import java.util.Set;
 
 public final class KanjiAnalyzer {
+    private static final String SOURCE_ACTIVE = "active";
+    private static final String SOURCE_SUSPENDED = "suspended";
+
     public List<Records.DashboardRow> rebuild(
             Records.CollectionSnapshot snapshot,
             List<Records.SuspendedImport> suspendedImports,
@@ -19,61 +22,112 @@ public final class KanjiAnalyzer {
         Map<String, MutableRow> rows = new LinkedHashMap<>();
         Set<Long> suspendedCardIds = new LinkedHashSet<>();
 
+        addCardExamples(snapshot, notesById, rows, suspendedCardIds, settings);
+        addImportedSuspensions(suspendedImports, rows, suspendedCardIds);
+
+        List<Records.DashboardRow> out = dashboardRows(rows, ranks, settings);
+        out.sort(Comparator
+                .comparingInt((Records.DashboardRow row) -> row.weaknessScore).reversed()
+                .thenComparing((Records.DashboardRow row) -> row.suspendedExampleCount, Comparator.reverseOrder())
+                .thenComparing(row -> row.jitenRank == null ? Integer.MAX_VALUE : row.jitenRank)
+                .thenComparing(row -> row.kanji));
+        return out;
+    }
+
+    private static void addCardExamples(
+            Records.CollectionSnapshot snapshot,
+            Map<Long, Records.Note> notesById,
+            Map<String, MutableRow> rows,
+            Set<Long> suspendedCardIds,
+            Records.Settings settings
+    ) {
         for (Records.Card card : snapshot.cards) {
             Records.Note note = notesById.get(card.noteId);
-            if (note == null) {
-                continue;
-            }
-            if (card.suspended) {
-                suspendedCardIds.add(card.cardId);
-            }
-            String sourceType = card.suspended ? "suspended" : "active";
-            String expression = TextUtil.normalizeJapanese(note.expression(settings));
-            List<String> kanjiList = TextUtil.extractKanji(expression);
-            if (kanjiList.isEmpty()) {
-                kanjiList = TextUtil.extractKanji(note.sentence(settings));
-            }
-            Records.Example example = new Records.Example(
-                    sourceType,
-                    card.cardId,
-                    note.noteId,
-                    expression,
-                    TextUtil.normalizeJapanese(note.reading(settings)),
-                    TextUtil.firstMeaningLine(note.meaning(settings)),
-                    TextUtil.normalizeJapanese(note.sentence(settings)),
-                    card.mature(settings.matureDays),
-                    card.lapses,
-                    card.intervalDays,
-                    card.reps,
-                    card.fsrsStability,
-                    card.fsrsDifficulty,
-                    card.fsrsRetrievability
-            );
-            for (String kanji : kanjiList) {
-                rows.computeIfAbsent(kanji, MutableRow::new).examples.add(example);
+            if (note != null) {
+                addCardExample(card, note, rows, suspendedCardIds, settings);
             }
         }
+    }
 
+    private static void addCardExample(
+            Records.Card card,
+            Records.Note note,
+            Map<String, MutableRow> rows,
+            Set<Long> suspendedCardIds,
+            Records.Settings settings
+    ) {
+        if (card.suspended) {
+            suspendedCardIds.add(card.cardId);
+        }
+        String expression = TextUtil.normalizeJapanese(note.expression(settings));
+        List<String> kanjiList = TextUtil.extractKanji(expression);
+        if (kanjiList.isEmpty()) {
+            kanjiList = TextUtil.extractKanji(note.sentence(settings));
+        }
+        Records.Example example = exampleFromCard(card, note, expression, settings);
+        for (String kanji : kanjiList) {
+            rows.computeIfAbsent(kanji, MutableRow::new).examples.add(example);
+        }
+    }
+
+    private static Records.Example exampleFromCard(
+            Records.Card card,
+            Records.Note note,
+            String expression,
+            Records.Settings settings
+    ) {
+        return new Records.Example(
+                card.suspended ? SOURCE_SUSPENDED : SOURCE_ACTIVE,
+                card.cardId,
+                note.noteId,
+                expression,
+                TextUtil.normalizeJapanese(note.reading(settings)),
+                TextUtil.firstMeaningLine(note.meaning(settings)),
+                TextUtil.normalizeJapanese(note.sentence(settings)),
+                card.mature(settings.matureDays),
+                card.lapses,
+                card.intervalDays,
+                card.reps,
+                card.fsrsStability,
+                card.fsrsDifficulty,
+                card.fsrsRetrievability
+        );
+    }
+
+    private static void addImportedSuspensions(
+            List<Records.SuspendedImport> suspendedImports,
+            Map<String, MutableRow> rows,
+            Set<Long> suspendedCardIds
+    ) {
         for (Records.SuspendedImport imported : suspendedImports) {
             MutableRow row = rows.computeIfAbsent(imported.kanji, MutableRow::new);
             for (Records.SuspendedSource source : imported.sources) {
-                if (suspendedCardIds.contains(source.cardId)) {
-                    continue;
+                if (!suspendedCardIds.contains(source.cardId)) {
+                    row.examples.add(exampleFromSuspendedSource(source));
                 }
-                row.examples.add(new Records.Example(
-                        "suspended",
-                        source.cardId,
-                        source.noteId,
-                        source.expression,
-                        source.reading,
-                        source.meaning,
-                        source.sentence,
-                        false,
-                        0
-                ));
             }
         }
+    }
 
+    private static Records.Example exampleFromSuspendedSource(Records.SuspendedSource source) {
+        return new Records.Example(
+                SOURCE_SUSPENDED,
+                source.cardId,
+                source.noteId,
+                source.expression,
+                source.reading,
+                source.meaning,
+                source.sentence,
+                false,
+                0
+        );
+    }
+
+    private static List<Records.DashboardRow> dashboardRows(
+            Map<String, MutableRow> rows,
+            JitenKanjiRanks ranks,
+            Records.Settings settings
+    ) {
         List<Records.DashboardRow> out = new ArrayList<>();
         for (MutableRow row : rows.values()) {
             Records.DashboardRow built = row.build(ranks, settings);
@@ -81,11 +135,6 @@ public final class KanjiAnalyzer {
                 out.add(built);
             }
         }
-        out.sort(Comparator
-                .comparingInt((Records.DashboardRow row) -> row.weaknessScore).reversed()
-                .thenComparing((Records.DashboardRow row) -> row.suspendedExampleCount, Comparator.reverseOrder())
-                .thenComparing(row -> row.jitenRank == null ? Integer.MAX_VALUE : row.jitenRank)
-                .thenComparing(row -> row.kanji));
         return out;
     }
 
@@ -98,83 +147,75 @@ public final class KanjiAnalyzer {
         }
 
         private Records.DashboardRow build(JitenKanjiRanks ranks, Records.Settings settings) {
-            int active = 0;
-            int suspended = 0;
-            int mature = 0;
-            int lapses = 0;
-            int reps = 0;
-            int intervalPressure = 0;
-            int fsrsPressure = 0;
-            String meaning = "";
-            String reading = "";
-            List<Records.Example> trimmed = new ArrayList<>();
-            Set<Long> seenCards = new LinkedHashSet<>();
-            for (Records.Example example : examples) {
-                if (seenCards.add(example.cardId) && trimmed.size() < 8) {
-                    trimmed.add(example);
-                }
-                if ("suspended".equals(example.sourceType)) {
-                    suspended++;
-                } else {
-                    active++;
-                    if (example.mature) {
-                        mature++;
-                    }
-                    lapses += example.lapses;
-                    reps += example.reps;
-                    if (example.reps >= 8 && !example.mature) {
-                        intervalPressure++;
-                    }
-                    fsrsPressure += fsrsPressure(example, settings);
-                }
-                if (meaning.isEmpty() && !example.meaning.isEmpty()) {
-                    meaning = example.meaning;
-                }
-                if (reading.isEmpty() && !example.reading.isEmpty()) {
-                    reading = example.reading;
-                }
-            }
-            int supportDeficit = Math.max(0, settings.matureSupportThreshold - mature);
-            int weakness = suspended * 12
+            RowSummary summary = summarize(settings);
+            int supportDeficit = Math.max(0, settings.matureSupportThreshold - summary.mature);
+            int weakness = summary.suspended * 12
                     + supportDeficit * 5
-                    + Math.min(8, lapses * 2)
-                    + Math.min(6, intervalPressure * 2)
-                    + Math.min(12, fsrsPressure);
-            String reasonCode;
-            String reasonText;
-            if (suspended > 0) {
-                reasonCode = "suspended_archive";
-                reasonText = suspended + " missed example" + (suspended == 1 ? "" : "s") + " made this a writing-practice target.";
-            } else if (fsrsPressure > 0) {
-                reasonCode = "fsrs_weak_memory";
-                reasonText = "Anki FSRS memory state marks this kanji as fragile.";
-            } else if (supportDeficit > 0) {
-                reasonCode = "weak_support";
-                reasonText = "Only " + mature + " known example" + (mature == 1 ? "" : "s") + " support this kanji.";
-            } else if (intervalPressure > 0) {
-                reasonCode = "anki_scheduler_weakness";
-                reasonText = "Anki has " + reps + " active review" + (reps == 1 ? "" : "s") + " but little mature support for this kanji.";
-            } else if (lapses > 0) {
-                reasonCode = "anki_lapses";
-                reasonText = "Your active Anki cards containing this kanji have " + lapses + " lapse" + (lapses == 1 ? "" : "s") + ".";
-            } else {
-                reasonCode = "watch";
-                reasonText = "This kanji appears in your active cards and is ready for examples.";
-            }
+                    + Math.min(8, summary.lapses * 2)
+                    + Math.min(6, summary.intervalPressure * 2)
+                    + Math.min(12, summary.fsrsPressure);
+            Reason reason = reasonFor(summary, supportDeficit);
             return new Records.DashboardRow(
                     kanji,
                     ranks.rankOf(kanji),
-                    meaning,
-                    reading,
+                    summary.meaning,
+                    summary.reading,
                     TextUtil.browserSearchForKanji(kanji, settings),
                     weakness,
-                    reasonCode,
-                    reasonText,
-                    active,
-                    suspended,
-                    mature,
-                    trimmed
+                    reason.code,
+                    reason.text,
+                    summary.active,
+                    summary.suspended,
+                    summary.mature,
+                    summary.trimmed
             );
+        }
+
+        private RowSummary summarize(Records.Settings settings) {
+            RowSummary summary = new RowSummary();
+            Set<Long> seenCards = new LinkedHashSet<>();
+            for (Records.Example example : examples) {
+                if (seenCards.add(example.cardId) && summary.trimmed.size() < 8) {
+                    summary.trimmed.add(example);
+                }
+                if (SOURCE_SUSPENDED.equals(example.sourceType)) {
+                    summary.suspended++;
+                } else {
+                    summary.active++;
+                    if (example.mature) {
+                        summary.mature++;
+                    }
+                    summary.lapses += example.lapses;
+                    summary.reps += example.reps;
+                    if (example.reps >= 8 && !example.mature) {
+                        summary.intervalPressure++;
+                    }
+                    summary.fsrsPressure += fsrsPressure(example, settings);
+                }
+                if (summary.meaning.isEmpty() && !example.meaning.isEmpty()) {
+                    summary.meaning = example.meaning;
+                }
+                if (summary.reading.isEmpty() && !example.reading.isEmpty()) {
+                    summary.reading = example.reading;
+                }
+            }
+            return summary;
+        }
+
+        private Reason reasonFor(RowSummary summary, int supportDeficit) {
+            if (summary.suspended > 0) {
+                return new Reason("suspended_archive", summary.suspended + " missed example" + (summary.suspended == 1 ? "" : "s") + " made this a writing-practice target.");
+            } else if (summary.fsrsPressure > 0) {
+                return new Reason("fsrs_weak_memory", "Anki FSRS memory state marks this kanji as fragile.");
+            } else if (supportDeficit > 0) {
+                return new Reason("weak_support", "Only " + summary.mature + " known example" + (summary.mature == 1 ? "" : "s") + " support this kanji.");
+            } else if (summary.intervalPressure > 0) {
+                return new Reason("anki_scheduler_weakness", "Anki has " + summary.reps + " active review" + (summary.reps == 1 ? "" : "s") + " but little mature support for this kanji.");
+            } else if (summary.lapses > 0) {
+                return new Reason("anki_lapses", "Your active Anki cards containing this kanji have " + summary.lapses + " lapse" + (summary.lapses == 1 ? "" : "s") + ".");
+            } else {
+                return new Reason("watch", "This kanji appears in your active cards and is ready for examples.");
+            }
         }
 
         private int fsrsPressure(Records.Example example, Records.Settings settings) {
@@ -206,6 +247,29 @@ public final class KanjiAnalyzer {
                 return value / 100.0;
             }
             return value > 1.0 ? null : value;
+        }
+    }
+
+    private static final class RowSummary {
+        private int active;
+        private int suspended;
+        private int mature;
+        private int lapses;
+        private int reps;
+        private int intervalPressure;
+        private int fsrsPressure;
+        private String meaning = "";
+        private String reading = "";
+        private final List<Records.Example> trimmed = new ArrayList<>();
+    }
+
+    private static final class Reason {
+        private final String code;
+        private final String text;
+
+        private Reason(String code, String text) {
+            this.code = code;
+            this.text = text;
         }
     }
 }

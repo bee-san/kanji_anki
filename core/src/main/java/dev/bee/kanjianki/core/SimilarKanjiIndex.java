@@ -41,33 +41,39 @@ public final class SimilarKanjiIndex {
         BufferedReader buffered = new BufferedReader(reader);
         String line;
         while ((line = buffered.readLine()) != null) {
-            String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                continue;
-            }
-            String[] cells = line.split("\t", -1);
-            if (cells.length < 2 || "kanji_a".equals(cells[0])) {
-                continue;
-            }
-            String kanjiA = cleanKanji(cells[0]);
-            String kanjiB = cleanKanji(cells[1]);
-            if (kanjiA.isEmpty() || kanjiB.isEmpty() || kanjiA.equals(kanjiB)) {
-                continue;
-            }
-            String source = cells.length >= 3 && !cells[2].trim().isEmpty()
-                    ? cells[2].trim()
-                    : SOURCE_KIKU_VISUALLY_SIMILAR;
-            Pair pair = Pair.canonical(kanjiA, kanjiB, source);
-            String key = pair.key();
-            if (!pairsByKey.containsKey(key)) {
-                pairsByKey.put(key, pair);
-                similarByKanji.computeIfAbsent(pair.kanjiA, ignored -> new TreeSet<>()).add(pair.kanjiB);
-                similarByKanji.computeIfAbsent(pair.kanjiB, ignored -> new TreeSet<>()).add(pair.kanjiA);
+            Pair pair = parsePair(line);
+            if (pair != null) {
+                String key = pair.key();
+                if (!pairsByKey.containsKey(key)) {
+                    pairsByKey.put(key, pair);
+                    similarByKanji.computeIfAbsent(pair.kanjiA, ignored -> new TreeSet<>()).add(pair.kanjiB);
+                    similarByKanji.computeIfAbsent(pair.kanjiB, ignored -> new TreeSet<>()).add(pair.kanjiA);
+                }
             }
         }
         List<Pair> pairs = new ArrayList<>(pairsByKey.values());
         Collections.sort(pairs);
         return new SimilarKanjiIndex(similarByKanji, pairs);
+    }
+
+    private static Pair parsePair(String line) {
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+            return null;
+        }
+        String[] cells = line.split("\t", -1);
+        if (cells.length < 2 || "kanji_a".equals(cells[0])) {
+            return null;
+        }
+        String kanjiA = cleanKanji(cells[0]);
+        String kanjiB = cleanKanji(cells[1]);
+        if (kanjiA.isEmpty() || kanjiB.isEmpty() || kanjiA.equals(kanjiB)) {
+            return null;
+        }
+        String source = cells.length >= 3 && !cells[2].trim().isEmpty()
+                ? cells[2].trim()
+                : SOURCE_KIKU_VISUALLY_SIMILAR;
+        return Pair.canonical(kanjiA, kanjiB, source);
     }
 
     public boolean areSimilar(String first, String second) {

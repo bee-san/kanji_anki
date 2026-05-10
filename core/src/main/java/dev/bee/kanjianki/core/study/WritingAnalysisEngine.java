@@ -4,6 +4,13 @@ import java.util.Collections;
 import java.util.List;
 
 public final class WritingAnalysisEngine {
+    private static final String RATING_AGAIN = "again";
+    private static final String RATING_HARD = "hard";
+    private static final String RATING_GOOD = "good";
+    private static final String RATING_EASY = "easy";
+    private static final String TARGET_NOT_RECOGNIZED = "I could not read that as the target kanji yet.";
+    private static final String RECOGNITION_ERROR_MESSAGE = "The handwriting checker could not read this attempt. Try once more.";
+
     private WritingAnalysisEngine() {
     }
 
@@ -12,7 +19,7 @@ public final class WritingAnalysisEngine {
     }
 
     public static WritingAnalysis noInk(HintLevel hintLevel, int hintsUsed) {
-        return new WritingAnalysis(WritingAnalysis.Status.NO_INK, "again", false, "Write in the square before checking.", Collections.emptyList(), null, hintLevel, hintsUsed);
+        return new WritingAnalysis(WritingAnalysis.Status.NO_INK, RATING_AGAIN, false, "Write in the square before checking.", Collections.emptyList(), null, hintLevel, hintsUsed);
     }
 
     public static WritingAnalysis modelUnavailable(String message) {
@@ -20,15 +27,15 @@ public final class WritingAnalysisEngine {
     }
 
     public static WritingAnalysis modelUnavailable(String message, HintLevel hintLevel, int hintsUsed) {
-        return new WritingAnalysis(WritingAnalysis.Status.MODEL_UNAVAILABLE, "again", false, message, Collections.emptyList(), null, hintLevel, hintsUsed);
+        return new WritingAnalysis(WritingAnalysis.Status.MODEL_UNAVAILABLE, RATING_AGAIN, false, message, Collections.emptyList(), null, hintLevel, hintsUsed);
     }
 
-    public static WritingAnalysis recognitionError(String message) {
-        return recognitionError(message, HintLevel.BLIND, 0);
+    public static WritingAnalysis recognitionError() {
+        return recognitionError(HintLevel.BLIND, 0);
     }
 
-    public static WritingAnalysis recognitionError(String message, HintLevel hintLevel, int hintsUsed) {
-        return new WritingAnalysis(WritingAnalysis.Status.RECOGNITION_ERROR, "again", false, "The handwriting checker could not read this attempt. Try once more.", Collections.emptyList(), null, hintLevel, hintsUsed);
+    public static WritingAnalysis recognitionError(HintLevel hintLevel, int hintsUsed) {
+        return new WritingAnalysis(WritingAnalysis.Status.RECOGNITION_ERROR, RATING_AGAIN, false, RECOGNITION_ERROR_MESSAGE, Collections.emptyList(), null, hintLevel, hintsUsed);
     }
 
     public static WritingAnalysis analyze(String target, WritingSample sample, StrokeGuide guide, List<RecognitionCandidate> candidates) {
@@ -53,25 +60,25 @@ public final class WritingAnalysisEngine {
                 String message = match.topCandidate
                         ? "Recognized as the target kanji. Stroke order could not be checked because no guide is bundled yet."
                         : "Recognized as the target kanji, but stroke order could not be checked because no guide is bundled yet.";
-                return new WritingAnalysis(WritingAnalysis.Status.CLOSE, match.topCandidate ? "good" : "hard", true, message, candidates, order, hintLevel, hintsUsed);
+                return new WritingAnalysis(WritingAnalysis.Status.CLOSE, match.topCandidate ? RATING_GOOD : RATING_HARD, true, message, candidates, order, hintLevel, hintsUsed);
             }
-            return new WritingAnalysis(WritingAnalysis.Status.NO_STROKE_DATA, "again", false, order.message + " I could not read that as the target kanji yet.", candidates, order, hintLevel, hintsUsed);
+            return new WritingAnalysis(WritingAnalysis.Status.NO_STROKE_DATA, RATING_AGAIN, false, order.message + " " + TARGET_NOT_RECOGNIZED, candidates, order, hintLevel, hintsUsed);
         }
         RecognitionMatch match = match(target, candidates);
         if (!match.recognized) {
-            return new WritingAnalysis(WritingAnalysis.Status.WRONG, "again", false, "I could not read that as the target kanji yet.", candidates, order, hintLevel, hintsUsed);
+            return new WritingAnalysis(WritingAnalysis.Status.WRONG, RATING_AGAIN, false, TARGET_NOT_RECOGNIZED, candidates, order, hintLevel, hintsUsed);
         }
         if (!order.acceptable) {
-            return new WritingAnalysis(WritingAnalysis.Status.WRONG, "again", false, order.message, candidates, order, hintLevel, hintsUsed);
+            return new WritingAnalysis(WritingAnalysis.Status.WRONG, RATING_AGAIN, false, order.message, candidates, order, hintLevel, hintsUsed);
         }
         if (!order.clean) {
             order = order.withDiagnosis(order.diagnosis.plus(StrokeDiagnosis.Label.RECOGNIZED_BUT_MESSY, 0));
-            return new WritingAnalysis(WritingAnalysis.Status.CLOSE, "hard", true, "Readable, but the stroke path needs one more careful pass.", candidates, order, hintLevel, hintsUsed);
+            return new WritingAnalysis(WritingAnalysis.Status.CLOSE, RATING_HARD, true, "Readable, but the stroke path needs one more careful pass.", candidates, order, hintLevel, hintsUsed);
         }
         if (match.topCandidate) {
-            return new WritingAnalysis(WritingAnalysis.Status.PASS, "easy", true, "Clean match.", candidates, order, hintLevel, hintsUsed);
+            return new WritingAnalysis(WritingAnalysis.Status.PASS, RATING_EASY, true, "Clean match.", candidates, order, hintLevel, hintsUsed);
         }
-        return new WritingAnalysis(WritingAnalysis.Status.PASS, "good", true, "Matched the kanji. Keep tightening the stroke path.", candidates, order, hintLevel, hintsUsed);
+        return new WritingAnalysis(WritingAnalysis.Status.PASS, RATING_GOOD, true, "Matched the kanji. Keep tightening the stroke path.", candidates, order, hintLevel, hintsUsed);
     }
 
     private static RecognitionMatch match(String target, List<RecognitionCandidate> candidates) {

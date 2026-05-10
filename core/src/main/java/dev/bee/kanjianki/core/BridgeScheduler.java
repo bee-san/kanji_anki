@@ -14,6 +14,14 @@ public final class BridgeScheduler {
     private static final long DAY = 86_400_000L;
     private static final int MIN_RECOGNITION_STAGE = -1;
     private static final int MAX_RECOGNITION_STAGE = 2;
+    private static final String STATE_NEW = "new";
+    private static final String STATE_LEARNING = "learning";
+    private static final String STATE_REVIEW = "review";
+    private static final String STATE_RETIRED = "retired";
+    private static final String RATING_AGAIN = "again";
+    private static final String RATING_HARD = "hard";
+    private static final String RATING_GOOD = "good";
+    private static final String RATING_EASY = "easy";
     public static final String TASK_TYPING_MEANING = "typing_meaning";
     public static final String TASK_KANJI_MEANING = "kanji_meaning";
     public static final String TASK_FONT_MEANING = "font_meaning";
@@ -92,14 +100,13 @@ public final class BridgeScheduler {
             if (row != null) {
                 current = alignAnswerSignature(current, row, nowMillis);
             }
-            if (!"retired".equals(item.state)) {
-                if (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0)) {
-                    current = retiredCopy(current);
-                }
+            if (!STATE_RETIRED.equals(item.state)
+                    && (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0))) {
+                current = retiredCopy(current);
             }
             byFamily.put(familyKey(current), current);
             out.add(current);
-            if (!"retired".equals(current.state)) {
+            if (!STATE_RETIRED.equals(current.state)) {
                 activeCount++;
                 if (current.createdAtMillis >= startOfDayMillis) {
                     newToday++;
@@ -111,7 +118,7 @@ public final class BridgeScheduler {
             String rowKey = rowFamilyKey(row);
             Records.StudyItem current = byFamily.get(rowKey);
             if (current != null) {
-                if ("retired".equals(current.state)
+                if (STATE_RETIRED.equals(current.state)
                         && row.matureSupportCount < settings.matureSupportThreshold
                         && activeCount < activeQueueCap
                         && newToday < admissionLimit) {
@@ -132,7 +139,7 @@ public final class BridgeScheduler {
             newToday++;
         }
         out.sort(Comparator
-                .comparing((Records.StudyItem item) -> item.state.equals("retired"))
+                .comparing((Records.StudyItem item) -> item.state.equals(STATE_RETIRED))
                 .thenComparingLong(item -> item.dueAtMillis)
                 .thenComparing(item -> item.kanji));
         return out;
@@ -199,7 +206,7 @@ public final class BridgeScheduler {
     private Records.StudyItem retiredCopy(Records.StudyItem item) {
         return new Records.StudyItem(
                 item.kanji,
-                "retired",
+                STATE_RETIRED,
                 item.dueAtMillis,
                 item.stability,
                 item.difficulty,
@@ -228,7 +235,7 @@ public final class BridgeScheduler {
     private Records.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature) {
         return new Records.StudyItem(
                 kanji,
-                "new",
+                STATE_NEW,
                 nowMillis,
                 0.4,
                 5.0,
@@ -255,10 +262,10 @@ public final class BridgeScheduler {
             return item.withAnswerSignature(signature);
         }
         int fallbackStage = Math.max(MIN_RECOGNITION_STAGE, item.recognitionStage - 1);
-        boolean retired = "retired".equals(item.state);
+        boolean retired = STATE_RETIRED.equals(item.state);
         return new Records.StudyItem(
                 item.kanji,
-                retired ? item.state : "learning",
+                retired ? item.state : STATE_LEARNING,
                 retired ? item.dueAtMillis : nowMillis,
                 retired ? item.stability : 0.4,
                 retired ? item.difficulty : 5.0,
@@ -308,10 +315,10 @@ public final class BridgeScheduler {
         if (item.writingRemediationPending) {
             return 0;
         }
-        if ("learning".equals(item.state) || (item.totalReviews > 0 && item.learningStep < 2)) {
+        if (STATE_LEARNING.equals(item.state) || (item.totalReviews > 0 && item.learningStep < 2)) {
             return 0;
         }
-        if ("review".equals(item.state) || item.totalReviews > 0) {
+        if (STATE_REVIEW.equals(item.state) || item.totalReviews > 0) {
             return 1;
         }
         return 2;
@@ -368,9 +375,9 @@ public final class BridgeScheduler {
                 ? TASK_WRITING_REMEDIATION
                 : recognitionTaskType(item.recognitionStage);
         if (writingRemediationReview && request.manualOverride) {
-            rating = "hard";
+            rating = RATING_HARD;
         } else if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
-            rating = "again";
+            rating = RATING_AGAIN;
         }
         boolean writingReviewCanMoveHelp = request.writingRequired && !request.manualOverride;
         boolean cleanWritingPass = writingReviewCanMoveHelp
@@ -399,7 +406,7 @@ public final class BridgeScheduler {
         String state;
 
         switch (rating) {
-            case "again":
+            case RATING_AGAIN:
                 lapses++;
                 taskLapses++;
                 step = 0;
@@ -407,26 +414,26 @@ public final class BridgeScheduler {
                 difficulty = Math.min(10.0, difficulty + 0.7);
                 due = nowMillis + 10 * MINUTE;
                 scheduledIntervalDays = 0;
-                state = "learning";
+                state = STATE_LEARNING;
                 break;
-            case "hard":
+            case RATING_HARD:
                 step = Math.max(1, step);
                 stability = Math.max(0.5, stability * parameters.hardMultiplier);
                 difficulty = Math.min(10.0, difficulty + 0.2);
                 due = nowMillis + DAY;
                 scheduledIntervalDays = 1;
-                state = "review";
+                state = STATE_REVIEW;
                 break;
-            case "easy":
+            case RATING_EASY:
                 step = 2;
                 stability = Math.max(2.5, stability * parameters.easyMultiplier);
                 difficulty = Math.max(1.0, difficulty - 0.35);
                 long easyInterval = reviewInterval(stability, parameters);
                 scheduledIntervalDays = intervalDays(easyInterval);
                 due = nowMillis + easyInterval;
-                state = "review";
+                state = STATE_REVIEW;
                 break;
-            case "good":
+            case RATING_GOOD:
             default:
                 step = Math.min(2, step + 1);
                 stability = Math.max(1.0, stability * parameters.goodMultiplier);
@@ -434,7 +441,7 @@ public final class BridgeScheduler {
                 long goodInterval = step < 2 ? 10 * MINUTE : reviewInterval(stability, parameters);
                 scheduledIntervalDays = step < 2 ? 0 : intervalDays(goodInterval);
                 due = nowMillis + goodInterval;
-                state = step < 2 ? "learning" : "review";
+                state = step < 2 ? STATE_LEARNING : STATE_REVIEW;
                 break;
         }
         if (failedWriting) {
@@ -443,7 +450,7 @@ public final class BridgeScheduler {
             writingLevel = Math.min(3, writingLevel + 1);
         }
         if (!request.writingRequired) {
-            if ("again".equals(rating)) {
+            if (RATING_AGAIN.equals(rating)) {
                 if (previousTaskMemory.dueAtMillis <= nowMillis
                         && (failedRecognitionDays <= 0 || lastFailedRecognitionDay != previousTaskMemory.dueAtMillis)) {
                     failedRecognitionDays++;
@@ -488,7 +495,7 @@ public final class BridgeScheduler {
         String suppressedByTaskType = item.suppressedByTaskType;
         long suppressedAtMillis = item.suppressedAtMillis;
         int matureIntervalDays = scheduledIntervalDays;
-        if ("again".equals(rating)) {
+        if (RATING_AGAIN.equals(rating)) {
             suppressedByTaskType = "";
             suppressedAtMillis = 0L;
             matureIntervalDays = 0;
@@ -537,8 +544,8 @@ public final class BridgeScheduler {
                         step,
                         rating,
                         scheduledIntervalDays,
-                        "again".equals(rating) || request.writingRequired ? 0 : recognitionPasses,
-                        "again".equals(rating) || request.writingRequired ? 0L : lastRecognitionPassDueAt
+                        RATING_AGAIN.equals(rating) || request.writingRequired ? 0 : recognitionPasses,
+                        RATING_AGAIN.equals(rating) || request.writingRequired ? 0L : lastRecognitionPassDueAt
                 )
         );
         return new Records.ReviewResult(updated, rating, false, "Review applied.");
@@ -547,7 +554,7 @@ public final class BridgeScheduler {
     public int dueCount(List<Records.StudyItem> items, long nowMillis) {
         int count = 0;
         for (Records.StudyItem item : items) {
-            if (!"retired".equals(item.state) && item.dueAtMillis <= nowMillis) {
+            if (!STATE_RETIRED.equals(item.state) && item.dueAtMillis <= nowMillis) {
                 count++;
             }
         }
@@ -578,7 +585,7 @@ public final class BridgeScheduler {
         }
         Map<String, List<Records.StudyItem>> byFamily = new HashMap<>();
         for (Records.StudyItem item : items) {
-            if ("retired".equals(item.state)) {
+            if (STATE_RETIRED.equals(item.state)) {
                 continue;
             }
             if (allowedKanji != null && !allowedKanji.contains(item.kanji)) {
@@ -611,16 +618,13 @@ public final class BridgeScheduler {
 
     private static String normalizeRating(String rating) {
         if (rating == null) {
-            return "again";
+            return RATING_AGAIN;
         }
         switch (rating) {
-            case "again":
-            case "hard":
-            case "good":
-            case "easy":
+            case RATING_AGAIN, RATING_HARD, RATING_GOOD, RATING_EASY:
                 return rating;
             default:
-                return "again";
+                return RATING_AGAIN;
         }
     }
 

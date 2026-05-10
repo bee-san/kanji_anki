@@ -52,7 +52,6 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
-import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.StudyCue;
@@ -139,6 +138,9 @@ public final class MainActivity extends Activity {
     private static final int STUDY_HERO_PLUM = Color.rgb(33, 7, 44);
     private static final int STUDY_HERO_MUTED = Color.rgb(102, 82, 110);
     private static final long DAY_MILLIS = 86_400_000L;
+    private static final String LABEL_STUDY_NOW = "Study now";
+    private static final String EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet";
+    private static final String EMPTY_ACTIVE_PRACTICE_BODY = "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.";
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -178,7 +180,6 @@ public final class MainActivity extends Activity {
     private boolean continueAllKanjiSession;
     private int hintsUsed;
     private int currentPracticeLevel;
-    private int studyRunStartingCompleted = -1;
     private int sessionCompletedSimilarStudyTasks;
     private int sessionProgressCompleted;
     private int sessionProgressMax;
@@ -186,7 +187,6 @@ public final class MainActivity extends Activity {
     private float flashcardTouchStartY;
     private ActiveStudyTask activeStudyTask;
     private boolean activityPaused;
-    private final Set<String> sessionPassedFocusKanji = new HashSet<>();
     private final Set<String> sessionCompletedTaskKeys = new HashSet<>();
     private final Set<String> sessionSeenTaskKeys = new HashSet<>();
     private HintState currentHintState = HintState.initial();
@@ -369,43 +369,6 @@ public final class MainActivity extends Activity {
         );
     }
 
-    private LinearLayout nav(String selected, int navigationInset) {
-        LinearLayout nav = new LinearLayout(this);
-        nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(18), dp(10), dp(18), dp(10) + navigationInset);
-        nav.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(34)));
-        nav.setElevation(dp(8));
-        nav.addView(navButton("Home", R.drawable.ic_home_24, selected.equals("home"), this::renderHome));
-        nav.addView(navButton("Study", R.drawable.ic_study_24, selected.equals("study"), this::startFocusedStudy));
-        nav.addView(navButton("Stats", R.drawable.ic_stats_24, selected.equals("stats"), this::renderStats));
-        return nav;
-    }
-
-    private LinearLayout navButton(String label, int iconRes, boolean active, Runnable action) {
-        LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.HORIZONTAL);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(10), dp(4), dp(10), dp(4));
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(iconRes);
-        icon.setColorFilter(active ? STUDY_PINK_DARK : STUDY_MUTED);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(23), dp(23));
-        iconLp.setMargins(0, 0, dp(7), 0);
-        button.addView(icon, iconLp);
-        TextView text = text(label, 15, active ? STUDY_PLUM : STUDY_MUTED, true);
-        text.setGravity(Gravity.CENTER);
-        text.setSingleLine(true);
-        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        int activeFill = Color.rgb(255, 235, 244);
-        button.setBackground(panel(active ? activeFill : Color.TRANSPARENT, active ? activeFill : Color.TRANSPARENT, dp(28)));
-        button.setClickable(true);
-        button.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
-        lp.setMargins(dp(3), 0, dp(3), 0);
-        button.setLayoutParams(lp);
-        return button;
-    }
-
     private void renderHome() {
         base("home");
         long now = System.currentTimeMillis();
@@ -440,7 +403,7 @@ public final class MainActivity extends Activity {
             emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need focused recall and writing practice.");
         } else {
             if (entries.isEmpty()) {
-                emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.");
+                emptyState(EMPTY_ACTIVE_PRACTICE_TITLE, EMPTY_ACTIVE_PRACTICE_BODY);
             }
             for (int i = 0; i < Math.min(3, entries.size()); i++) {
                 content.addView(queueRowView(entries.get(i), now));
@@ -562,7 +525,7 @@ public final class MainActivity extends Activity {
         ));
         button.setClickable(true);
         button.setFocusable(true);
-        button.setContentDescription("Study now");
+        button.setContentDescription(LABEL_STUDY_NOW);
         button.setMinimumHeight(dp(94));
         button.setElevation(dp(9));
         button.setTranslationZ(dp(2));
@@ -571,7 +534,7 @@ public final class MainActivity extends Activity {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text("Study now", 26, Color.WHITE, true);
+        TextView title = text(LABEL_STUDY_NOW, 26, Color.WHITE, true);
         title.setIncludeFontPadding(false);
         title.setLetterSpacing(0);
         copy.addView(title);
@@ -755,7 +718,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (entries.isEmpty()) {
-            emptyState("No active practice yet", "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.");
+            emptyState(EMPTY_ACTIVE_PRACTICE_TITLE, EMPTY_ACTIVE_PRACTICE_BODY);
             return;
         }
         for (QueueEntry entry : entries) {
@@ -799,44 +762,11 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private LinearLayout streakPanel(LocalStore.StudyStreak streak) {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(255, 219, 103));
-        box.addView(text("Study streak", 22, INK, true));
-        box.addView(text(streakHeadline(streak), 25, streak.currentDays > 0 ? CORAL : MUTED, true));
-        box.addView(text(streakBody(streak), 15, MUTED, false));
-        return box;
-    }
-
-    private LinearLayout adaptiveFocusPanel(Records.AdaptiveLoadPlan plan) {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        box.addView(text("Today's focus", 22, INK, true));
-        String headline = plan.allKanjiMode
-                ? "All current problem kanji"
-                : plan.remaining + " items left / " + plan.target;
-        box.addView(text(headline, 25, plan.remaining > 0 ? CORAL : TEAL, true));
-        box.addView(text(plan.status, 15, MUTED, false));
-        return box;
-    }
-
     private String streakHeadline(LocalStore.StudyStreak streak) {
         if (streak.currentDays <= 0) {
             return "No streak yet";
         }
         return streak.currentDays + "-day streak";
-    }
-
-    private String streakBody(LocalStore.StudyStreak streak) {
-        String best = streak.bestDays > 0 ? " Best: " + streakDayCount(streak.bestDays) + "." : "";
-        if (streak.currentDays <= 0) {
-            if (streak.lastStudyAtMillis <= 0L) {
-                return "Study one problem kanji to start." + best;
-            }
-            return "Start a new streak today. Last studied " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(streak.lastStudyAtMillis)) + "." + best;
-        }
-        if (streak.studiedToday) {
-            return "Streak logged today. " + countText(streak.reviewsToday, "writing review today", "writing reviews today") + "." + best;
-        }
-        return "Study one problem kanji today to keep it alive." + best;
     }
 
     private int streakAccent(LocalStore.StudyStreak streak) {
@@ -1201,119 +1131,12 @@ public final class MainActivity extends Activity {
         return remainingMinutes == 0L ? hours + " hr" : hours + " hr " + remainingMinutes + " min";
     }
 
-    private LinearLayout ankiImpactPanel(LocalStore.SyncStatus sync, List<Records.DashboardRow> rows, KanjiImpactAnalyzer.Report impactReport) {
-        LinearLayout box = band(TEAL);
-        box.addView(text("Anki impact", 26, Color.WHITE, true));
-        if (sync == null) {
-            box.addView(text("Sync AnkiDroid to connect Kani stats to your selected note type.", 16, Color.WHITE, false));
-            box.addView(text("After sync, this page shows which problem kanji came from Anki, which misses became writing practice, and where Anki has mature support.", 15, Color.WHITE, false));
-            return box;
-        }
-        box.addView(text(countText(rows.size(), "problem kanji found from AnkiDroid", "problem kanji found from AnkiDroid"), 22, Color.WHITE, true));
-        box.addView(text(countText(activeEvidenceCount(rows), "active Anki example link", "active Anki example links") + " and " + countText(suspendedEvidenceCount(rows), "suspended miss link", "suspended miss links") + " explain why they are here.", 15, Color.WHITE, false));
-        box.addView(text(latestSyncText(sync), 14, Color.WHITE, false));
-        if (impactReport == null || impactReport.empty()) {
-            box.addView(text("Impact history starts after the next successful sync.", 15, Color.WHITE, false));
-            return box;
-        }
-        box.addView(text(
-                countText(impactReport.helpedCount, "helped kanji", "helped kanji")
-                        + " · " + countText(impactReport.notHelpingCount, "not-helping-yet kanji", "not-helping-yet kanji")
-                        + " · " + countText(impactReport.needsMoreCardsCount, "needs-more-cards kanji", "needs-more-cards kanji"),
-                18,
-                Color.WHITE,
-                true
-        ));
-        int shown = 0;
-        for (KanjiImpactAnalyzer.Row row : impactReport.rows) {
-            if (shown >= 4) {
-                break;
-            }
-            box.addView(text(row.summary(), 15, Color.WHITE, false));
-            shown++;
-        }
-        if (impactReport.needsMoreCardsCount > 0) {
-            box.addView(text("Sparse data: immerse and mine more flashcards before judging those kanji.", 14, Color.WHITE, false));
-        }
-        if (impactReport.notHelpingCount > 0) {
-            box.addView(text("Negative data: Kani is not moving the needle yet for those kanji.", 14, Color.WHITE, false));
-        }
-        return box;
-    }
-
     private LinearLayout statPanel(String title, String value, String body, int stroke) {
         LinearLayout box = panelBox(Color.WHITE, stroke);
         box.addView(text(title, 18, MUTED, true));
         box.addView(text(value, 25, INK, true));
         box.addView(text(body, 15, MUTED, false));
         return box;
-    }
-
-    private String automaticPassText(LocalStore.StudyImpactStats impact) {
-        if (impact.writingRequired == 0) {
-            return "No automatic checks yet";
-        }
-        return Math.round(100.0 * impact.writingPassed / impact.writingRequired) + "% automatic pass rate";
-    }
-
-    private String recallQualityBody(LocalStore.StudyImpactStats impact) {
-        if (impact.totalReviews == 0) {
-            return "Misses caught during handwriting checks will show here after you study.";
-        }
-        return countText(impact.writingFailed, "miss caught", "misses caught") + " before they could stay vague in Anki.";
-    }
-
-    private String weeklyReviewBody(Records.ReviewStats week) {
-        if (week.total == 0) {
-            return "Recent misses and passes will show here after you study.";
-        }
-        return countText(week.again, "miss", "misses") + ", " + countText(week.hard, "shaky pass", "shaky passes") + ", " + countText(week.good + week.easy, "solid pass", "solid passes") + ".";
-    }
-
-    private String latestSyncText(LocalStore.SyncStatus sync) {
-        if (!"success".equals(sync.status)) {
-            return "Latest sync is blocked: " + sync.errorMessage;
-        }
-        String when = sync.finishedAt > 0L
-                ? DateFormat.getDateInstance(DateFormat.MEDIUM).format(new Date(sync.finishedAt))
-                : "latest sync";
-        return "Latest sync " + when + ": "
-                + countText(sync.activeCards, "active Anki card checked", "active Anki cards checked")
-                + ", " + countText(sync.suspendedCards, "suspended card archived", "suspended cards archived") + ".";
-    }
-
-    private int activeEvidenceCount(List<Records.DashboardRow> rows) {
-        int total = 0;
-        for (Records.DashboardRow row : rows) {
-            total += row.activeExampleCount;
-        }
-        return total;
-    }
-
-    private int suspendedEvidenceCount(List<Records.DashboardRow> rows) {
-        int total = 0;
-        for (Records.DashboardRow row : rows) {
-            total += row.suspendedExampleCount;
-        }
-        return total;
-    }
-
-    private int matureSupportCount(List<Records.DashboardRow> rows) {
-        int total = 0;
-        for (Records.DashboardRow row : rows) {
-            total += row.matureSupportCount;
-        }
-        return total;
-    }
-
-    private int retiredItemCount(List<Records.StudyItem> items) {
-        int total = 0;
-        for (Records.StudyItem item : items) {
-            if ("retired".equals(item.state)) {
-                total++;
-            }
-        }
-        return total;
     }
 
     private List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist) {
@@ -1365,16 +1188,6 @@ public final class MainActivity extends Activity {
         return entries;
     }
 
-    private int dueEntryCount(List<QueueEntry> entries, long now) {
-        int due = 0;
-        for (QueueEntry entry : entries) {
-            if (entry.item.dueAtMillis <= now) {
-                due++;
-            }
-        }
-        return due;
-    }
-
     private int stateRank(String state) {
         if ("learning".equals(state)) {
             return 0;
@@ -1396,11 +1209,6 @@ public final class MainActivity extends Activity {
             return BLUE;
         }
         return Color.rgb(246, 202, 225);
-    }
-
-    private String queueStatusText(Records.StudyItem item, long now) {
-        String state = "new".equals(item.state) ? "new problem" : item.state;
-        return state + " · " + dueText(item.dueAtMillis, now);
     }
 
     private String dueText(long dueAt, long now) {
@@ -2478,9 +2286,7 @@ public final class MainActivity extends Activity {
     }
 
     private void resetStudyRunProgress() {
-        sessionPassedFocusKanji.clear();
         sessionCompletedSimilarStudyTasks = 0;
-        studyRunStartingCompleted = -1;
         sessionProgressCompleted = 0;
         sessionProgressMax = 0;
         sessionCompletedTaskKeys.clear();
@@ -2653,32 +2459,6 @@ public final class MainActivity extends Activity {
         return "Recognise";
     }
 
-    private String flashcardPromptText(Records.StudySession session) {
-        if (isTypingMeaningTask(session)) {
-            return "Type one accepted meaning, then reveal.";
-        }
-        if (isFontRecognitionTask(session)) {
-            return "Recognise the shape across fonts, then reveal the Anki clue.";
-        }
-        if (isWordReadingTask(session)) {
-            return "Read the source word before revealing the answer.";
-        }
-        return "Name the meaning before revealing the answer.";
-    }
-
-    private String flashcardQuestion(Records.StudySession session) {
-        if (isTypingMeaningTask(session)) {
-            return "Meaning";
-        }
-        if (isWordReadingTask(session)) {
-            return "What is the reading?";
-        }
-        if (isFontRecognitionTask(session)) {
-            return "What does this kanji mean?";
-        }
-        return "What does it mean?";
-    }
-
     private View typingAnswerField() {
         typingAnswerInput = new EditText(this);
         typingAnswerInput.setSingleLine(true);
@@ -2692,58 +2472,6 @@ public final class MainActivity extends Activity {
         lp.setMargins(0, dp(4), 0, dp(4));
         typingAnswerInput.setLayoutParams(lp);
         return typingAnswerInput;
-    }
-
-    private View kanjiDisplayPanel(Records.StudySession session) {
-        LinearLayout panel = softInsetPanel();
-        panel.setGravity(Gravity.CENTER);
-        panel.setMinimumHeight(dp(188));
-        if (isFontRecognitionTask(session)) {
-            panel.addView(randomFontVariantCard(session.item.kanji), fontVariantCardParams());
-            return panel;
-        }
-        TextView glyph = text(isWordReadingTask(session) ? wordPrompt(session) : session.item.kanji, isWordReadingTask(session) ? 38 : 92, STUDY_PLUM, true);
-        glyph.setGravity(Gravity.CENTER);
-        glyph.setIncludeFontPadding(false);
-        panel.addView(glyph, new LinearLayout.LayoutParams(-1, dp(150)));
-        return panel;
-    }
-
-    private View randomFontVariantCard(String kanji) {
-        switch (ThreadLocalRandom.current().nextInt(5)) {
-            case 0:
-                return fontVariantTile(kanji, "Print", Typeface.SERIF);
-            case 1:
-                return fontVariantTile(kanji, "Sans", Typeface.DEFAULT);
-            case 2:
-                return fontVariantTile(kanji, "Block", Typeface.MONOSPACE);
-            case 3:
-                return fontVariantTile(kanji, "Klee", fontResource(R.font.klee_one_regular, Typeface.DEFAULT));
-            default:
-                return fontVariantTile(kanji, "Kaisei", fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF));
-        }
-    }
-
-    private LinearLayout.LayoutParams fontVariantCardParams() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(168));
-        lp.setMargins(0, dp(6), 0, dp(6));
-        return lp;
-    }
-
-    private View fontVariantTile(String kanji, String label, Typeface typeface) {
-        LinearLayout tile = new LinearLayout(this);
-        tile.setOrientation(LinearLayout.VERTICAL);
-        tile.setGravity(Gravity.CENTER);
-        tile.setPadding(dp(8), dp(10), dp(8), dp(10));
-        tile.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
-        TextView glyph = text(kanji, 92, STUDY_PLUM, true);
-        glyph.setTypeface(typeface, Typeface.BOLD);
-        glyph.setGravity(Gravity.CENTER);
-        tile.addView(glyph, new LinearLayout.LayoutParams(-1, 0, 1));
-        TextView caption = text(label, 12, STUDY_MUTED, false);
-        caption.setGravity(Gravity.CENTER);
-        tile.addView(caption);
-        return tile;
     }
 
     private Typeface fontResource(int fontRes, Typeface fallback) {
@@ -3118,7 +2846,7 @@ public final class MainActivity extends Activity {
                 }
                 checkingWriting = false;
                 if (error != null) {
-                    activeAnalysis = WritingAnalysisEngine.recognitionError(error.getMessage(), currentHintState.level(), hintsUsed);
+                    activeAnalysis = WritingAnalysisEngine.recognitionError(currentHintState.level(), hintsUsed);
                 } else {
                     activeAnalysis = WritingAnalysisEngine.analyze(target, sample, guide, candidates(result), currentHintState.level(), hintsUsed);
                 }
@@ -5040,21 +4768,6 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private String assetText(String assetPath) {
-        try (InputStream in = getAssets().open(assetPath);
-             InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-            StringBuilder out = new StringBuilder();
-            char[] buffer = new char[2048];
-            int read;
-            while ((read = reader.read(buffer)) != -1) {
-                out.append(buffer, 0, read);
-            }
-            return out.toString();
-        } catch (Exception error) {
-            return "{}";
-        }
-    }
-
     private void runUpdate(boolean cachedPending) {
         base("settings");
         content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
@@ -5214,40 +4927,6 @@ public final class MainActivity extends Activity {
         int visibleCompleted = Math.max(0, Math.min(target, completed));
         float fraction = target <= 0 ? 0f : Math.max(0f, Math.min(1f, completed / (float) target));
         return new StudyProgressSnapshot(visibleCompleted, target, fraction);
-    }
-
-    private int studyProgressTarget(Records.AdaptiveLoadPlan plan) {
-        return plan == null ? 0 : Math.max(0, plan.target);
-    }
-
-    private int studyProgressCompleted(Records.AdaptiveLoadPlan plan) {
-        if (plan == null) {
-            return 0;
-        }
-        int target = studyProgressTarget(plan);
-        if (target <= 0) {
-            return 0;
-        }
-        int remaining = Math.max(0, Math.min(target, plan.remaining));
-        int plannerCompleted = Math.max(0, Math.min(target, target - remaining));
-        if (studyRunStartingCompleted < 0) {
-            studyRunStartingCompleted = plannerCompleted;
-        }
-        int sessionCompleted = studyRunStartingCompleted + passedFocusKanjiCount(plan);
-        return Math.max(0, Math.min(target, Math.max(plannerCompleted, sessionCompleted)));
-    }
-
-    private int passedFocusKanjiCount(Records.AdaptiveLoadPlan plan) {
-        if (plan == null || sessionPassedFocusKanji.isEmpty()) {
-            return 0;
-        }
-        int count = 0;
-        for (String kanji : plan.focusKanji) {
-            if (sessionPassedFocusKanji.contains(kanji)) {
-                count++;
-            }
-        }
-        return count;
     }
 
     private static final class StudyProgressSnapshot {

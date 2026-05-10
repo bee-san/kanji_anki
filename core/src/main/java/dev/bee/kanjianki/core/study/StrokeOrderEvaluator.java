@@ -46,10 +46,18 @@ public final class StrokeOrderEvaluator {
         float score = clamp((countScore * 0.45f) + (shapeScore * 0.55f));
         boolean acceptable = countDelta <= Math.max(1, expected / 4) && score >= 0.45f;
         boolean clean = countDelta == 0 && score >= 0.68f && weakestStrokeScore >= 0.55f;
-        String message = clean ? "Stroke path looks clean."
-                : acceptable ? "Readable path, but some strokes look shaky."
-                : "The stroke count or order does not match the guide yet.";
+        String message = resultMessage(acceptable, clean);
         return new StrokeOrderResult(acceptable, clean, score, message, false, diagnosis.build());
+    }
+
+    private static String resultMessage(boolean acceptable, boolean clean) {
+        if (clean) {
+            return "Stroke path looks clean.";
+        }
+        if (acceptable) {
+            return "Readable path, but some strokes look shaky.";
+        }
+        return "The stroke count or order does not match the guide yet.";
     }
 
     private static void diagnoseComparedStroke(

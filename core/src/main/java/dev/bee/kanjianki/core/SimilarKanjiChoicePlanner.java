@@ -14,6 +14,23 @@ public final class SimilarKanjiChoicePlanner {
             List<Records.KanjiInventoryItem> inventory,
             List<Records.SimilarKanjiPair> pairs
     ) {
+        Map<String, Records.KanjiInventoryItem> inventoryByKanji = inventoryByKanji(inventory);
+        if (inventoryByKanji.size() < 2) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Set<String>> directNeighbors = directNeighbors(pairs, inventoryByKanji);
+        List<Records.SimilarKanjiChoiceCard> out = new ArrayList<>();
+        for (Records.KanjiInventoryItem target : inventoryByKanji.values()) {
+            Records.SimilarKanjiChoiceCard card = choiceCard(target, directNeighbors);
+            if (card != null) {
+                out.add(card);
+            }
+        }
+        return out;
+    }
+
+    private static Map<String, Records.KanjiInventoryItem> inventoryByKanji(List<Records.KanjiInventoryItem> inventory) {
         Map<String, Records.KanjiInventoryItem> inventoryByKanji = new TreeMap<>();
         if (inventory != null) {
             for (Records.KanjiInventoryItem item : inventory) {
@@ -22,50 +39,56 @@ public final class SimilarKanjiChoicePlanner {
                 }
             }
         }
-        if (inventoryByKanji.size() < 2) {
-            return Collections.emptyList();
-        }
+        return inventoryByKanji;
+    }
 
+    private static Map<String, Set<String>> directNeighbors(
+            List<Records.SimilarKanjiPair> pairs,
+            Map<String, Records.KanjiInventoryItem> inventoryByKanji
+    ) {
         Map<String, Set<String>> directNeighbors = new TreeMap<>();
         if (pairs != null) {
             for (Records.SimilarKanjiPair pair : pairs) {
-                if (pair == null
-                        || pair.kanjiA.isEmpty()
-                        || pair.kanjiB.isEmpty()
-                        || pair.kanjiA.equals(pair.kanjiB)
-                        || !inventoryByKanji.containsKey(pair.kanjiA)
-                        || !inventoryByKanji.containsKey(pair.kanjiB)) {
-                    continue;
+                if (validPair(pair, inventoryByKanji)) {
+                    directNeighbors.computeIfAbsent(pair.kanjiA, ignored -> new TreeSet<>()).add(pair.kanjiB);
+                    directNeighbors.computeIfAbsent(pair.kanjiB, ignored -> new TreeSet<>()).add(pair.kanjiA);
                 }
-                directNeighbors.computeIfAbsent(pair.kanjiA, ignored -> new TreeSet<>()).add(pair.kanjiB);
-                directNeighbors.computeIfAbsent(pair.kanjiB, ignored -> new TreeSet<>()).add(pair.kanjiA);
             }
         }
+        return directNeighbors;
+    }
 
-        List<Records.SimilarKanjiChoiceCard> out = new ArrayList<>();
-        for (Records.KanjiInventoryItem target : inventoryByKanji.values()) {
-            if (target.primaryMeaning.trim().isEmpty()) {
-                continue;
-            }
-            Set<String> neighbors = directNeighbors.get(target.kanji);
-            if (neighbors == null || neighbors.isEmpty()) {
-                continue;
-            }
-            TreeSet<String> choices = new TreeSet<>();
-            choices.add(target.kanji);
-            choices.addAll(neighbors);
-            if (choices.size() < 2) {
-                continue;
-            }
-            List<String> choiceList = new ArrayList<>(choices);
-            out.add(new Records.SimilarKanjiChoiceCard(
-                    target.kanji,
-                    target.primaryMeaning.trim(),
-                    choiceList,
-                    choiceSignature(choiceList)
-            ));
+    private static boolean validPair(Records.SimilarKanjiPair pair, Map<String, Records.KanjiInventoryItem> inventoryByKanji) {
+        return pair != null
+                && !pair.kanjiA.isEmpty()
+                && !pair.kanjiB.isEmpty()
+                && !pair.kanjiA.equals(pair.kanjiB)
+                && inventoryByKanji.containsKey(pair.kanjiA)
+                && inventoryByKanji.containsKey(pair.kanjiB);
+    }
+
+    private static Records.SimilarKanjiChoiceCard choiceCard(
+            Records.KanjiInventoryItem target,
+            Map<String, Set<String>> directNeighbors
+    ) {
+        String meaning = target.primaryMeaning.trim();
+        Set<String> neighbors = directNeighbors.get(target.kanji);
+        if (meaning.isEmpty() || neighbors == null || neighbors.isEmpty()) {
+            return null;
         }
-        return out;
+        TreeSet<String> choices = new TreeSet<>();
+        choices.add(target.kanji);
+        choices.addAll(neighbors);
+        if (choices.size() < 2) {
+            return null;
+        }
+        List<String> choiceList = new ArrayList<>(choices);
+        return new Records.SimilarKanjiChoiceCard(
+                target.kanji,
+                meaning,
+                choiceList,
+                choiceSignature(choiceList)
+        );
     }
 
     public Records.SimilarKanjiChoiceResult evaluateSelection(

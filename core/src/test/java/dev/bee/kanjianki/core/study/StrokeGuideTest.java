@@ -14,8 +14,10 @@ public class StrokeGuideTest {
     @Test
     public void parsesCompactNormalizedStrokeData() throws Exception {
         Map<String, StrokeGuide> guides = StrokeGuideParser.parse(new StringReader(
-                "# generated from KanjiVG\n" +
-                        "拉\t0.1,0.2;0.3,0.4|0.5,0.6;0.7,0.8\n"
+                """
+                # generated from KanjiVG
+                拉\t0.1,0.2;0.3,0.4|0.5,0.6;0.7,0.8
+                """
         ));
 
         StrokeGuide guide = guides.get("拉");
@@ -36,9 +38,11 @@ public class StrokeGuideTest {
     @Test
     public void skipsBlankAndCommentLines() throws Exception {
         Map<String, StrokeGuide> guides = StrokeGuideParser.parse(new StringReader(
-                "\n" +
-                        "   # generated data\n" +
-                        "\t\n"
+                """
+
+                   # generated data
+                \t
+                """
         ));
 
         assertTrue(guides.isEmpty());

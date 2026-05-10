@@ -56,9 +56,6 @@ public final class HintProgression {
             HintState safeState = state == null ? HintState.initial() : state;
             return new HintState(safeState.level(), 0, 0);
         }
-        if (analysis.status != WritingAnalysis.Status.PASS) {
-            return afterReview(state, false, analysis.hintsUsed());
-        }
-        return afterReview(state, true, analysis.hintsUsed());
+        return afterReview(state, analysis.status == WritingAnalysis.Status.PASS, analysis.hintsUsed());
     }
 }

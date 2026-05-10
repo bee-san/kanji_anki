@@ -30,6 +30,7 @@ public class WritingSampleTest {
 
         assertTrue(sample.hasInk());
         assertEquals(1, sample.strokeCount());
-        assertThrows(UnsupportedOperationException.class, () -> sample.strokes.add(new InkStroke(Collections.emptyList())));
+        InkStroke emptyStroke = new InkStroke(Collections.emptyList());
+        assertThrows(UnsupportedOperationException.class, () -> sample.strokes.add(emptyStroke));
     }
 }

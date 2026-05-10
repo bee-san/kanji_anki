@@ -102,8 +102,8 @@ public class WritingAnalysisEngineTest {
         WritingAnalysis defaultNoInk = WritingAnalysisEngine.noInk();
         WritingAnalysis unavailable = WritingAnalysisEngine.modelUnavailable("offline", HintLevel.OUTLINE, 1);
         WritingAnalysis defaultUnavailable = WritingAnalysisEngine.modelUnavailable("offline");
-        WritingAnalysis recognitionError = WritingAnalysisEngine.recognitionError("raw", HintLevel.MINIMAL, 2);
-        WritingAnalysis defaultRecognitionError = WritingAnalysisEngine.recognitionError("raw");
+        WritingAnalysis recognitionError = WritingAnalysisEngine.recognitionError(HintLevel.MINIMAL, 2);
+        WritingAnalysis defaultRecognitionError = WritingAnalysisEngine.recognitionError();
 
         assertEquals(WritingAnalysis.Status.NO_INK, noInk.status);
         assertEquals(HintLevel.TRACE, noInk.hintLevel());

@@ -70,8 +70,15 @@ public final class WritingAnalysis {
         } else if (!candidates.isEmpty()) {
             recognitionScore = writingPassed ? 0.78 : 0.0;
         }
-        double orderScore = strokeOrder == null ? (writingPassed ? 0.7 : 0.0) : strokeOrder.score;
+        double orderScore = orderConfidenceScore();
         return Math.max(0.0, Math.min(1.0, (recognitionScore * 0.55) + (orderScore * 0.45)));
+    }
+
+    private double orderConfidenceScore() {
+        if (strokeOrder != null) {
+            return strokeOrder.score;
+        }
+        return writingPassed ? 0.7 : 0.0;
     }
 
     public HintLevel hintLevel() {
