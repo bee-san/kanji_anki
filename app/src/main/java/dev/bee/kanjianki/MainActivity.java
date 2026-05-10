@@ -194,6 +194,10 @@ public final class MainActivity extends Activity {
     private WritingRecognizer writingRecognizer;
     private DictionaryLookup dictionaryLookup;
     private LocalStore.ReminderSettings pendingReminderSettings;
+    private boolean settingsAnkiExpanded = true;
+    private boolean settingsStudyExpanded;
+    private boolean settingsSyncExpanded;
+    private boolean settingsAppExpanded;
     private static AnkiDroidGateway ankiDroidGatewayForTests;
     private static CollectionGateway collectionGatewayForTests;
     private static WritingRecognizer writingRecognizerForTests;
@@ -620,14 +624,25 @@ public final class MainActivity extends Activity {
     }
 
     private View homeActionRow() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBaselineAligned(false);
-        row.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
-        row.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
-        row.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
-        row.addView(pillButton("Settings", R.drawable.ic_settings_24, this::renderSettings));
-        return row;
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setBaselineAligned(false);
+
+        LinearLayout firstRow = new LinearLayout(this);
+        firstRow.setOrientation(LinearLayout.HORIZONTAL);
+        firstRow.setBaselineAligned(false);
+        firstRow.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
+        firstRow.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
+        firstRow.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
+        column.addView(firstRow);
+
+        LinearLayout secondRow = new LinearLayout(this);
+        secondRow.setOrientation(LinearLayout.HORIZONTAL);
+        secondRow.setBaselineAligned(false);
+        secondRow.addView(pillButton("Settings", R.drawable.ic_settings_24, this::renderSettings));
+        column.addView(secondRow);
+
+        return column;
     }
 
     private void renderBrowseKanji() {
@@ -655,7 +670,7 @@ public final class MainActivity extends Activity {
         if (plan.allKanjiMode) {
             return "All current";
         }
-        return plan.remaining + " left / " + plan.target;
+        return plan.remaining + " items left / " + plan.target;
     }
 
     private View homeSectionHeader(String title, String actionLabel, Runnable action) {
@@ -797,7 +812,7 @@ public final class MainActivity extends Activity {
         box.addView(text("Today's focus", 22, INK, true));
         String headline = plan.allKanjiMode
                 ? "All current problem kanji"
-                : plan.remaining + " left / " + plan.target;
+                : plan.remaining + " items left / " + plan.target;
         box.addView(text(headline, 25, plan.remaining > 0 ? CORAL : TEAL, true));
         box.addView(text(plan.status, 15, MUTED, false));
         return box;
@@ -1084,7 +1099,6 @@ public final class MainActivity extends Activity {
         LocalStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
         content.addView(fullWidthHomeButton());
         content.addView(text("Stats", 34, INK, true));
-        content.addView(studyTimePanel(studyTime));
         content.addView(statsVerdictPanel(stats));
         content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
         addSpace(10);
@@ -1103,6 +1117,7 @@ public final class MainActivity extends Activity {
                 supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
+        content.addView(studyTimePanel(studyTime));
     }
 
     private LinearLayout statsVerdictPanel(LocalStore.KaniOutcomeStats stats) {
@@ -1823,7 +1838,12 @@ public final class MainActivity extends Activity {
         base("study");
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
-        activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
+        activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
+        initializeSessionProgressTarget(activeStudyPlan);
+        if (studyRunAtHardCap()) {
+            renderStudyRunDone(activeStudyPlan);
+            return;
+        }
         Records.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
         if (repair != null) {
             renderSimilarWritingRepair(repair, now);
@@ -1846,11 +1866,15 @@ public final class MainActivity extends Activity {
         }
         BridgeScheduler scheduler = new BridgeScheduler();
         List<Records.StudyItem> beforeSeed = store.studyItems();
-        Records.AdaptiveLoadPlan plan = adaptivePlan(rows, beforeSeed, now);
+        Records.AdaptiveLoadPlan plan = studyPlanForMode(rows, beforeSeed, now);
         List<Records.StudyItem> seeded = studyQueue(rows, now, true, plan);
-        Records.AdaptiveLoadPlan seededPlan = adaptivePlan(rows, seeded, now);
+        Records.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
         activeStudyPlan = seededPlan;
         initializeSessionProgressTarget(seededPlan);
+        if (studyRunAtHardCap()) {
+            renderStudyRunDone(seededPlan);
+            return;
+        }
         Set<String> focus = continueAllKanjiSession || seededPlan.allKanjiMode
                 ? null
                 : new HashSet<>(seededPlan.focusKanji);
@@ -1951,8 +1975,35 @@ public final class MainActivity extends Activity {
         card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
         card.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 17, STUDY_MUTED, false));
         LinearLayout summary = softInsetPanel();
-        summary.addView(text("Today's focus: 0 left / " + plan.target, 20, STUDY_PLUM, true));
+        summary.addView(text("Today's focus: 0 items left / " + plan.target, 20, STUDY_PLUM, true));
         summary.addView(text(plan.status, 15, STUDY_MUTED, false));
+        card.addView(summary);
+        Button keepGoing = pinkPrimaryButton("Continue all kanji");
+        keepGoing.setOnClickListener(v -> {
+            continueAllKanjiSession = true;
+            renderStudy();
+        });
+        card.addView(keepGoing);
+        Button back = studySecondaryButton("Back home");
+        back.setOnClickListener(v -> {
+            continueAllKanjiSession = false;
+            renderHome();
+        });
+        card.addView(back);
+        content.addView(card);
+    }
+
+    private void renderStudyRunDone(Records.AdaptiveLoadPlan plan) {
+        prepareStudyContent(plan, false);
+        LinearLayout card = softStudyCard();
+        card.addView(modePill("Practice"));
+        card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
+        card.addView(text("Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.", 17, STUDY_MUTED, false));
+        LinearLayout summary = softInsetPanel();
+        summary.addView(text("Study now: " + sessionProgressCompleted + " / " + Math.max(1, sessionProgressMax), 20, STUDY_PLUM, true));
+        if (plan != null && !plan.status.isEmpty()) {
+            summary.addView(text(plan.status, 15, STUDY_MUTED, false));
+        }
         card.addView(summary);
         Button keepGoing = pinkPrimaryButton("Continue all kanji");
         keepGoing.setOnClickListener(v -> {
@@ -2060,7 +2111,7 @@ public final class MainActivity extends Activity {
         String taskKey = similarChoiceKey(card);
         registerStudyTaskShown(taskKey);
         startActiveStudyTask(taskKey, card.targetKanji, "similar_choice", System.currentTimeMillis());
-        prepareStudyContent(activeStudyPlan, false);
+        prepareStudyContent(activeStudyPlan, true);
         activeAnalysis = null;
         checkingWriting = false;
         flashcardAnswerRevealed = false;
@@ -2083,7 +2134,9 @@ public final class MainActivity extends Activity {
         box.addView(text("Which kanji means " + similarChoiceMeaning(card) + "?", 22, STUDY_PLUM, true));
         box.addView(similarChoiceGrid(card));
         cardShell.addView(box);
-        content.addView(cardShell);
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
+        cardLp.setMargins(0, dp(6), 0, dp(12));
+        content.addView(cardShell, cardLp);
     }
 
     private View similarChoiceGrid(Records.SimilarKanjiChoiceCard card) {
@@ -2234,7 +2287,7 @@ public final class MainActivity extends Activity {
         flashcardCard = card;
         flashcardGestureArea = card;
 
-        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, -2);
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
         cardLp.setMargins(0, 0, 0, dp(14));
         content.addView(card, cardLp);
         buildFlashcardActionBar(false);
@@ -2462,8 +2515,12 @@ public final class MainActivity extends Activity {
 
     private void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan) {
         if (sessionProgressMax <= 0 && plan != null) {
-            sessionProgressMax = Math.max(0, plan.target);
+            sessionProgressMax = Math.max(0, plan.remaining > 0 ? plan.remaining : plan.target);
         }
+    }
+
+    private boolean studyRunAtHardCap() {
+        return !continueAllKanjiSession && sessionProgressMax > 0 && sessionProgressCompleted >= sessionProgressMax;
     }
 
     private void registerStudyTaskShown(String key) {
@@ -2471,7 +2528,7 @@ public final class MainActivity extends Activity {
             return;
         }
         boolean extraSessionTask = key.startsWith("repeat:") || key.startsWith("similar-choice:") || key.startsWith("similar-repair:");
-        if (sessionSeenTaskKeys.add(key) && sessionProgressMax > 0 && extraSessionTask) {
+        if (sessionSeenTaskKeys.add(key) && sessionProgressMax > 0 && extraSessionTask && continueAllKanjiSession) {
             sessionProgressMax++;
         } else if (sessionProgressMax <= 0) {
             sessionProgressMax = 1;
@@ -2524,6 +2581,7 @@ public final class MainActivity extends Activity {
                 activeStudyTask.activeElapsedMillis,
                 outcome
         );
+        markStudyTaskCompleted(key);
         activeStudyTask = null;
     }
 
@@ -3785,7 +3843,7 @@ public final class MainActivity extends Activity {
         content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.", 16, MUTED, false));
         content.addView(autoUpdatePanel("Automatic updates"));
 
-        Button button = primaryButton("Check for update", BLUE);
+        Button button = primaryButton("Check for update", STUDY_PINK_DARK);
         button.setOnClickListener(v -> runUpdate(false));
         content.addView(button);
     }
@@ -3793,7 +3851,7 @@ public final class MainActivity extends Activity {
     private LinearLayout autoUpdatePanel(String title) {
         LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
         boolean canInstall = canInstallUpdates();
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        LinearLayout box = settingsPanelBox();
         box.addView(text(title, 23, INK, true));
         box.addView(text(status.enabled ? "On: checks about once a day" : "Off", 18, status.enabled ? TEAL : MUTED, true));
         box.addView(text("Last check: " + autoUpdateLastCheckText(status), 15, MUTED, false));
@@ -3858,13 +3916,159 @@ public final class MainActivity extends Activity {
         base("settings");
         Records.Settings current = settings();
         content.addView(fullWidthHomeButton());
-        content.addView(text("Settings", 34, INK, true));
-        content.addView(text("Tune FSRS retention, which Anki cards enter practice, and when Kani reminds you.", 16, MUTED, false));
+        content.addView(settingsHero());
         addSpace(12);
 
-        content.addView(noteTypeSettingsPanel(current));
+        content.addView(settingsCategory(
+                "Anki setup",
+                "Note type, clue fields, and suspended-card import range",
+                R.drawable.ic_book_24,
+                settingsAnkiExpanded,
+                () -> {
+                    settingsAnkiExpanded = !settingsAnkiExpanded;
+                    renderSettings();
+                },
+                noteTypeSettingsPanel(current),
+                frequencyRangeSettingsPanel(current),
+                fieldMappingPanel()
+        ));
+        content.addView(settingsCategory(
+                "Study tuning",
+                "Daily focus, FSRS retention, repeat steps, and ladder thresholds",
+                R.drawable.ic_study_24,
+                settingsStudyExpanded,
+                () -> {
+                    settingsStudyExpanded = !settingsStudyExpanded;
+                    renderSettings();
+                },
+                workloadSettingsPanel(),
+                retentionSettingsPanel(),
+                learningStepsSettingsPanel(),
+                ladderThresholdSettingsPanel()
+        ));
+        content.addView(settingsCategory(
+                "Reminders & sync",
+                "Daily study nudges and automatic AnkiDroid refreshes",
+                R.drawable.ic_sync_24,
+                settingsSyncExpanded,
+                () -> {
+                    settingsSyncExpanded = !settingsSyncExpanded;
+                    renderSettings();
+                },
+                reminderSettingsPanel(),
+                autoSyncSettingsPanel()
+        ));
+        content.addView(settingsCategory(
+                "App & data",
+                "Updates, bundled data licenses, and stroke attribution",
+                R.drawable.ic_sparkle_24,
+                settingsAppExpanded,
+                () -> {
+                    settingsAppExpanded = !settingsAppExpanded;
+                    renderSettings();
+                },
+                updateSettingsPanel(),
+                dataLicenseSettingsPanel(),
+                strokeDataSettingsPanel()
+        ));
+    }
 
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+    private View settingsHero() {
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setPadding(dp(22), dp(22), dp(22), dp(22));
+        hero.setBackground(panel(Color.rgb(255, 239, 247), STUDY_BORDER, dp(26)));
+        hero.setElevation(dp(5));
+
+        TextView pill = text("Kani care desk", 13, STUDY_PINK_DARK, true);
+        pill.setGravity(Gravity.CENTER);
+        pill.setIncludeFontPadding(false);
+        pill.setPadding(dp(12), dp(7), dp(12), dp(7));
+        pill.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
+        hero.addView(pill, new LinearLayout.LayoutParams(-2, -2));
+
+        TextView title = text("Settings", 34, STUDY_PLUM, true);
+        title.setPadding(0, dp(12), 0, dp(4));
+        hero.addView(title);
+        hero.addView(text("Tune Anki, study focus, reminders, and updates without leaving the soft pink control room.", 16, STUDY_MUTED, false));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(8), 0, dp(10));
+        hero.setLayoutParams(lp);
+        return hero;
+    }
+
+    private LinearLayout settingsCategory(
+            String title,
+            String summary,
+            int iconRes,
+            boolean expanded,
+            Runnable toggle,
+            View... panels
+    ) {
+        LinearLayout category = new LinearLayout(this);
+        category.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(7), 0, dp(9));
+        category.setLayoutParams(lp);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(16), dp(14), dp(16), dp(14));
+        header.setBackground(panel(expanded ? Color.WHITE : Color.rgb(255, 242, 248), STUDY_BORDER, dp(22)));
+        header.setClickable(true);
+        header.setFocusable(true);
+        header.setContentDescription((expanded ? "Collapse " : "Expand ") + title);
+        header.setOnClickListener(v -> toggle.run());
+        header.setElevation(dp(3));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(STUDY_PINK_DARK);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(28), dp(28));
+        iconLp.setMargins(0, 0, dp(12), 0);
+        header.addView(icon, iconLp);
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        TextView heading = text(title, 21, STUDY_PLUM, true);
+        heading.setIncludeFontPadding(false);
+        copy.addView(heading);
+        TextView detail = text(summary, 14, STUDY_MUTED, false);
+        detail.setPadding(0, dp(4), 0, 0);
+        copy.addView(detail);
+        header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        ImageView arrow = new ImageView(this);
+        arrow.setImageResource(R.drawable.ic_arrow_forward_24);
+        arrow.setColorFilter(STUDY_PINK_DARK);
+        arrow.setRotation(expanded ? 90f : 0f);
+        header.addView(arrow, new LinearLayout.LayoutParams(dp(24), dp(24)));
+        category.addView(header);
+
+        if (expanded) {
+            for (View panel : panels) {
+                category.addView(panel);
+            }
+        }
+        return category;
+    }
+
+    private LinearLayout settingsPanelBox() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16), dp(16), dp(16), dp(16));
+        box.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(22)));
+        box.setElevation(dp(2));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(8), 0, dp(6));
+        box.setLayoutParams(lp);
+        return box;
+    }
+
+    private LinearLayout frequencyRangeSettingsPanel(Records.Settings current) {
+        LinearLayout box = settingsPanelBox();
         final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
         box.addView(text("Frequency range", 23, INK, true));
         TextView status = text(frequencyRangeStatusText(selected[0], selected[1]), 17, TEAL, true);
@@ -3896,7 +4100,7 @@ public final class MainActivity extends Activity {
         box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
         bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
 
-        Button save = primaryButton("Save frequency range", TEAL);
+        Button save = primaryButton("Save frequency range", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             int minRank;
             int maxRank;
@@ -3919,30 +4123,25 @@ public final class MainActivity extends Activity {
             renderSettings();
         });
         box.addView(save);
-        content.addView(box);
+        return box;
+    }
 
-        content.addView(workloadSettingsPanel());
-        content.addView(retentionSettingsPanel());
-        content.addView(learningStepsSettingsPanel());
-        content.addView(ladderThresholdSettingsPanel());
-        content.addView(reminderSettingsPanel());
-        content.addView(autoSyncSettingsPanel());
-        content.addView(updateSettingsPanel());
-        content.addView(dataLicenseSettingsPanel());
+    private LinearLayout fieldMappingPanel() {
+        LinearLayout mapping = settingsPanelBox();
+        mapping.addView(text("Fields used for clues", 22, INK, true));
+        mapping.addView(text("The selected note type should include these Kiku-compatible fields:\nExpression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, MUTED, false));
+        return mapping;
+    }
 
-        LinearLayout mapping = band(BLUE);
-        mapping.addView(text("Fields used for clues", 22, Color.WHITE, true));
-        mapping.addView(text("The selected note type should include these Kiku-compatible fields:\nExpression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, Color.WHITE, false));
-        content.addView(mapping);
-
-        LinearLayout attribution = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+    private LinearLayout strokeDataSettingsPanel() {
+        LinearLayout attribution = settingsPanelBox();
         attribution.addView(text("Stroke data", 22, INK, true));
         attribution.addView(text(kanjiVgAttribution(), 14, MUTED, false));
-        content.addView(attribution);
+        return attribution;
     }
 
     private LinearLayout dataLicenseSettingsPanel() {
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Data licenses", 23, INK, true));
         box.addView(text("KANJIDIC2, Jiten rank data, KanjiVG, and font attribution.", 15, MUTED, false));
         Button open = secondaryButton("Open data licenses");
@@ -3978,7 +4177,7 @@ public final class MainActivity extends Activity {
 
     private LinearLayout noteTypeSettingsPanel(Records.Settings current) {
         Records.Settings defaults = Records.Settings.kikuDefaults();
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Note type", 23, INK, true));
         box.addView(text("Using " + current.modelName, 17, TEAL, true));
         box.addView(text("Default: Kiku. Choose any AnkiDroid note type that uses the configured clue fields.", 15, MUTED, false));
@@ -4021,7 +4220,7 @@ public final class MainActivity extends Activity {
         });
         box.addView(kiku);
 
-        Button save = primaryButton("Save note type", TEAL);
+        Button save = primaryButton("Save note type", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             String selected = noteType.getText().toString().trim();
             if (selected.isEmpty()) {
@@ -4246,9 +4445,11 @@ public final class MainActivity extends Activity {
 
     private LinearLayout workloadSettingsPanel() {
         int current = store.adaptiveLoadWorkPercent();
+        int currentMax = store.adaptiveLoadMaxItems();
         boolean autoMode = AdaptiveLoadPlanner.isAutoMode(store.adaptiveLoadMode());
         final int[] selected = new int[]{current};
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        final int[] selectedMax = new int[]{currentMax};
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Daily workload", 23, INK, true));
 
         if (autoMode) {
@@ -4259,6 +4460,14 @@ public final class MainActivity extends Activity {
                     : adaptivePlan(rows, store.studyItems(), now);
             box.addView(text(autoWorkloadStatusText(plan), 17, TEAL, true));
             box.addView(text("Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.", 15, MUTED, false));
+            addMaxItemsControl(box, selectedMax, null, null);
+            Button saveMax = primaryButton("Save maximum", STUDY_PINK_DARK);
+            saveMax.setOnClickListener(v -> {
+                store.saveAdaptiveLoadMaxItems(selectedMax[0]);
+                Toast.makeText(this, "Pareto maximum saved.", Toast.LENGTH_SHORT).show();
+                renderSettings();
+            });
+            box.addView(saveMax);
             Button manual = secondaryButton("Use manual workload");
             manual.setOnClickListener(v -> {
                 store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
@@ -4269,7 +4478,7 @@ public final class MainActivity extends Activity {
             return box;
         }
 
-        TextView status = text(workloadStatusText(selected[0]), 17, TEAL, true);
+        TextView status = text(workloadStatusText(selected[0], selectedMax[0]), 17, TEAL, true);
         box.addView(status);
         box.addView(text("Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.", 15, MUTED, false));
 
@@ -4280,7 +4489,7 @@ public final class MainActivity extends Activity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 selected[0] = AdaptiveLoadPlanner.snapWorkloadPercent(progress);
-                status.setText(workloadStatusText(selected[0]));
+                status.setText(workloadStatusText(selected[0], selectedMax[0]));
             }
 
             @Override
@@ -4303,10 +4512,13 @@ public final class MainActivity extends Activity {
         }
         box.addView(labels);
 
-        Button save = primaryButton("Save workload", TEAL);
+        addMaxItemsControl(box, selectedMax, status, selected);
+
+        Button save = primaryButton("Save workload", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
             store.saveAdaptiveLoadWorkPercent(selected[0]);
+            store.saveAdaptiveLoadMaxItems(selectedMax[0]);
             Toast.makeText(this, "Workload saved. Study uses the new adaptive focus.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -4321,9 +4533,39 @@ public final class MainActivity extends Activity {
         return box;
     }
 
+    private void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
+        TextView maxStatus = text(maxItemsStatusText(selectedMax[0]), 17, TEAL, true);
+        maxStatus.setPadding(0, dp(8), 0, 0);
+        box.addView(maxStatus);
+
+        SeekBar maxSlider = new SeekBar(this);
+        maxSlider.setMax(AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+        maxSlider.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+        maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                selectedMax[0] = AdaptiveLoadPlanner.normalizeMaxItems(progress + AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+                maxStatus.setText(maxItemsStatusText(selectedMax[0]));
+                if (workloadStatus != null && selectedWorkload != null) {
+                    workloadStatus.setText(workloadStatusText(selectedWorkload[0], selectedMax[0]));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                seekBar.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+            }
+        });
+        box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
+    }
+
     private LinearLayout learningStepsSettingsPanel() {
         Records.LearningStepSettings current = store.learningStepSettings();
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Learning steps", 23, INK, true));
         box.addView(text("New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.", 15, MUTED, false));
 
@@ -4352,7 +4594,7 @@ public final class MainActivity extends Activity {
         presets.addView(sameSteps, new LinearLayout.LayoutParams(0, dp(54), 1));
         box.addView(presets);
 
-        Button save = primaryButton("Save learning steps", TEAL);
+        Button save = primaryButton("Save learning steps", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             List<Integer> parsedNew = Records.LearningStepSettings.tryParseSteps(newSteps.getText().toString());
             List<Integer> parsedReview = Records.LearningStepSettings.tryParseSteps(reviewSteps.getText().toString());
@@ -4380,7 +4622,7 @@ public final class MainActivity extends Activity {
 
     private LinearLayout ladderThresholdSettingsPanel() {
         Records.Settings current = settings();
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Ladder thresholds", 23, INK, true));
         box.addView(text("Recognition rungs move only after repeated FSRS-due reviews. Learning-step repeats stay practice-only.", 15, MUTED, false));
 
@@ -4398,7 +4640,7 @@ public final class MainActivity extends Activity {
         });
         box.addView(defaults);
 
-        Button save = primaryButton("Save ladder thresholds", TEAL);
+        Button save = primaryButton("Save ladder thresholds", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             int passCount;
             int missCount;
@@ -4439,7 +4681,7 @@ public final class MainActivity extends Activity {
     private LinearLayout retentionSettingsPanel() {
         Records.SchedulerParameters current = store.schedulerParameters();
         final int[] selected = new int[]{retentionPercent(current.targetRetention)};
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("FSRS retention", 23, INK, true));
         TextView status = text(retentionStatusText(selected[0]), 17, TEAL, true);
         box.addView(status);
@@ -4478,7 +4720,7 @@ public final class MainActivity extends Activity {
         }
         box.addView(quick);
 
-        Button save = primaryButton("Save retention", TEAL);
+        Button save = primaryButton("Save retention", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             Records.SchedulerParameters latest = store.schedulerParameters();
             store.saveSchedulerParameters(new Records.SchedulerParameters(
@@ -4512,7 +4754,7 @@ public final class MainActivity extends Activity {
         int[] selectedHour = new int[]{reminder.hour};
         int[] selectedMinute = new int[]{reminder.minute};
 
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(221, 214, 255));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Daily reminder", 23, INK, true));
         box.addView(text(reminderStatus(reminder, blocked), 17, blocked ? CORAL : reminder.enabled ? TEAL : MUTED, true));
         box.addView(text("Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work.", 15, MUTED, false));
@@ -4539,7 +4781,7 @@ public final class MainActivity extends Activity {
         addReminderPreset(quick, "Night", 21, 0, selectedHour, selectedMinute, time);
         box.addView(quick);
 
-        Button save = primaryButton(reminder.enabled ? "Save reminder" : "Enable reminder", TEAL);
+        Button save = primaryButton(reminder.enabled ? "Save reminder" : "Enable reminder", STUDY_PINK_DARK);
         save.setOnClickListener(v -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true));
         box.addView(save);
         if (reminder.enabled) {
@@ -4565,7 +4807,7 @@ public final class MainActivity extends Activity {
 
     private LinearLayout autoSyncSettingsPanel() {
         LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
-        LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
+        LinearLayout box = settingsPanelBox();
         box.addView(text("Daily Anki sync", 23, INK, true));
         box.addView(text(autoSyncStatus(auto), 17, auto.enabled ? TEAL : MUTED, true));
         box.addView(text(autoSyncDetail(auto), 15, MUTED, false));
@@ -4580,7 +4822,7 @@ public final class MainActivity extends Activity {
                 });
                 box.addView(off);
             } else {
-                Button on = primaryButton("Turn on daily sync", TEAL);
+                Button on = primaryButton("Turn on daily sync", STUDY_PINK_DARK);
                 on.setOnClickListener(v -> {
                     store.setAutoSyncEnabled(true);
                     AutoSyncScheduler.schedule(this);
@@ -4631,24 +4873,33 @@ public final class MainActivity extends Activity {
     }
 
     private String workloadStatusText(int percent) {
+        return workloadStatusText(percent, store.adaptiveLoadMaxItems());
+    }
+
+    private String workloadStatusText(int percent, int maxItems) {
         int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
+        int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems);
         String label = AdaptiveLoadPlanner.workloadLabel(snapped);
         if (snapped >= 100) {
-            return label + ": all current problem kanji";
+            return label + ": up to " + normalizedMax + " items";
         }
-        return label + ": up to " + AdaptiveLoadPlanner.targetCeiling(snapped) + " kanji";
+        return label + ": up to " + Math.min(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax) + " items";
+    }
+
+    private String maxItemsStatusText(int maxItems) {
+        return "Maximum: " + countText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems), "item", "items");
     }
 
     private String autoWorkloadStatusText(Records.AdaptiveLoadPlan plan) {
         if (plan == null || plan.target <= 0) {
             return "Auto Pareto: waiting for problem kanji";
         }
-        return "Auto Pareto: " + countText(plan.target, "kanji", "kanji") + " from today's drop-off";
+        return "Auto Pareto: " + countText(plan.target, "item", "items") + " from today's drop-off";
     }
 
     private LinearLayout updateSettingsPanel() {
         LinearLayout box = autoUpdatePanel("App updates");
-        Button update = primaryButton("Open updater", BLUE);
+        Button update = primaryButton("Open updater", STUDY_PINK_DARK);
         update.setOnClickListener(v -> renderUpdate());
         box.addView(update);
         return box;
@@ -4836,9 +5087,52 @@ public final class MainActivity extends Activity {
                 store.studiedKanjiSince(startOfDay(now)),
                 store.adaptiveLoadWorkPercent(),
                 store.adaptiveLoadMode(),
+                store.adaptiveLoadMaxItems(),
                 now,
                 settings()
         );
+    }
+
+    private Records.AdaptiveLoadPlan studyPlanForMode(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        if (continueAllKanjiSession) {
+            return allCurrentProblemKanjiPlan(rows, items, now);
+        }
+        return adaptivePlan(rows, items, now);
+    }
+
+    private Records.AdaptiveLoadPlan allCurrentProblemKanjiPlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        List<String> focus = new ArrayList<>();
+        for (Records.DashboardRow row : rows) {
+            focus.add(row.kanji);
+        }
+        Set<String> studied = store.studiedKanjiSince(startOfDay(now));
+        int remaining = 0;
+        for (String kanji : focus) {
+            Records.StudyItem item = findStudyItem(items, kanji);
+            if (!studied.contains(kanji) || itemDueForFocus(item, now)) {
+                remaining++;
+            }
+        }
+        return new Records.AdaptiveLoadPlan(
+                false,
+                100,
+                focus.size(),
+                remaining,
+                focus,
+                focus.size(),
+                true,
+                "All current problem kanji are available today."
+        );
+    }
+
+    private boolean itemDueForFocus(Records.StudyItem item, long now) {
+        if (item == null || "retired".equals(item.state)) {
+            return false;
+        }
+        if ("learning".equals(item.state)) {
+            return item.dueAtMillis <= now;
+        }
+        return item.totalReviews > 0 && item.dueAtMillis <= now;
     }
 
     private void prepareStudyContent(Records.AdaptiveLoadPlan plan, boolean fillViewport) {
@@ -4911,7 +5205,7 @@ public final class MainActivity extends Activity {
         int completed = sessionProgressCompleted;
         int target = sessionProgressMax;
         boolean activeTask = activeSession != null || activeSimilarChoice != null || activeSimilarRepair != null;
-        if (activeTask && target <= completed) {
+        if (activeTask && target <= completed && continueAllKanjiSession) {
             target = completed + 1;
         }
         if (activeTask) {
@@ -5291,7 +5585,7 @@ public final class MainActivity extends Activity {
         if (plan.allKanjiMode) {
             return "Adaptive focus is set to all current problem kanji";
         }
-        return "Today's adaptive focus: " + plan.remaining + " left / " + plan.target;
+        return "Today's adaptive focus: " + plan.remaining + " items left / " + plan.target;
     }
 
     private String guideLabel(int level, StrokeGuide guide) {

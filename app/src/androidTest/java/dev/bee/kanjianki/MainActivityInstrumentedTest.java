@@ -214,6 +214,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "Anki setup");
+                assertHasText(activity, "Study tuning");
+                assertHasText(activity, "Reminders & sync");
+                assertHasText(activity, "App & data");
                 assertHasText(activity, "Note type");
                 assertHasText(activity, "Using Kiku");
                 assertHasText(activity, "Expression field");
@@ -226,17 +230,9 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Default: 100-3000");
                 assertHasText(activity, "Min rank");
                 assertHasText(activity, "Max rank");
-                assertHasText(activity, "Daily workload");
-                assertHasText(activity, "Auto Pareto: waiting for problem kanji");
-                assertHasText(activity, "Use manual workload");
-                assertHasText(activity, "FSRS retention");
-                assertHasText(activity, "Desired retention: 90%");
-                assertHasText(activity, "Ladder thresholds");
-                assertHasText(activity, "Passes to go up");
-                assertHasText(activity, "Misses to go down");
-                assertHasText(activity, "Daily reminder");
-                assertHasText(activity, "App updates");
-                assertHasText(activity, "Off");
+                assertNoText(activity, "Daily workload");
+                assertNoText(activity, "Daily reminder");
+                assertNoText(activity, "App updates");
             });
             scenario.onActivity(activity -> {
                 List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
@@ -245,8 +241,19 @@ public final class MainActivityInstrumentedTest {
                 sliders.get(1).setProgress(3499);
             });
             clickText(scenario, "Save frequency range");
+            clickText(scenario, "Study tuning");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Daily workload");
+                assertHasText(activity, "Auto Pareto: waiting for problem kanji");
+                assertHasText(activity, "Use manual workload");
+                assertHasText(activity, "FSRS retention");
+                assertHasText(activity, "Desired retention: 90%");
+                assertHasText(activity, "Ladder thresholds");
+                assertHasText(activity, "Passes to go up");
+                assertHasText(activity, "Misses to go down");
+            });
             clickText(scenario, "Use manual workload");
-            waitForText(scenario, "Pareto: up to 5 kanji");
+            waitForText(scenario, "Pareto: up to 5 items");
             scenario.onActivity(activity -> {
                 List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
                 assertTrue(sliders.size() >= 3);
@@ -255,6 +262,11 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save workload");
             clickText(scenario, "95%");
             clickText(scenario, "Save retention");
+            clickText(scenario, "Reminders & sync");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Daily reminder");
+                assertHasText(activity, "Daily Anki sync");
+            });
             clickText(scenario, "Morning 08:00");
             clickText(scenario, "Enable reminder");
             clickTextIfPresent("Allow");
@@ -264,6 +276,7 @@ public final class MainActivityInstrumentedTest {
             try {
                 assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
                 assertEquals(70, store.adaptiveLoadWorkPercent());
+                assertEquals(5, store.adaptiveLoadMaxItems());
                 assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
                 assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
                 assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
@@ -275,6 +288,8 @@ public final class MainActivityInstrumentedTest {
                 store.close();
             }
 
+            clickText(scenario, "App & data");
+            waitForText(scenario, "App updates");
             clickText(scenario, "Open updater");
             waitForText(scenario, "GitHub updater");
             scenario.onActivity(activity -> {
@@ -291,6 +306,7 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
+            clickText(scenario, "App & data");
             waitForText(scenario, "App updates");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "On: checks about once a day");
@@ -654,6 +670,49 @@ public final class MainActivityInstrumentedTest {
                 List<Records.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertEquals("拉", items.get(0).kanji);
+            } finally {
+                store.close();
+            }
+        }
+    }
+
+    @Test
+    public void testStudyNowStopsAtConfiguredMaximumItems() {
+        seedDashboardRowsOnly(Arrays.asList(
+                dashboardRow("拉", "ramen radical gap", "ら", "Imported from suspended cards"),
+                dashboardRow("謎", "mystery radical gap", "なぞ", "Missed in mature cards"),
+                dashboardRow("示", "show radical gap", "しめす", "Missed in mature cards"),
+                dashboardRow("浸", "soak radical gap", "ひたす", "Missed in mature cards"),
+                dashboardRow("確", "certain radical gap", "たし", "Missed in mature cards"),
+                dashboardRow("曜", "weekday radical gap", "よう", "Missed in mature cards"),
+                dashboardRow("麺", "noodle radical gap", "めん", "Missed in mature cards"),
+                dashboardRow("提", "present radical gap", "てい", "Missed in mature cards")
+        ));
+        LocalStore setupStore = new LocalStore(context);
+        try {
+            setupStore.saveAdaptiveLoadMaxItems(3);
+        } finally {
+            setupStore.close();
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Study now");
+            for (int i = 0; i < 3; i++) {
+                waitForText(scenario, "Reveal");
+                clickText(scenario, "Reveal");
+                waitForText(scenario, "Pass");
+                clickText(scenario, "Pass");
+            }
+            waitForText(scenario, "Today's focus done");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Study now: 3 / 3");
+                assertHasText(activity, "Continue all kanji");
+                assertNoText(activity, "Reveal");
+            });
+
+            LocalStore store = new LocalStore(context);
+            try {
+                assertEquals(3, store.reviewStatsSince(0L).total);
             } finally {
                 store.close();
             }
