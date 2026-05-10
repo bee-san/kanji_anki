@@ -29,6 +29,7 @@ import java.util.Set;
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
     private static final int DB_VERSION = 15;
+    private static final String TABLE_SETTINGS = "settings";
     private static final String TABLE_SYNC_RUNS = "sync_runs";
     private static final String TABLE_SOURCE_NOTES = "source_notes";
     private static final String TABLE_SOURCE_CARDS = "source_cards";
@@ -50,10 +51,78 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final String TABLE_SYNC_CARD_SNAPSHOTS = "sync_card_snapshots";
     private static final String TABLE_SYNC_NOTE_SNAPSHOTS = "sync_note_snapshots";
     private static final String TABLE_SYNC_KANJI_SNAPSHOTS = "sync_kanji_snapshots";
-    private static final String STUDY_ITEMS_TABLE_SQL = "CREATE TABLE " + TABLE_STUDY_ITEMS + " (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
-    private static final String LEARNING_REPEATS_TABLE_SQL = "CREATE TABLE " + TABLE_LEARNING_REPEATS + " (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
-    private static final String REVIEW_LOG_TABLE_SQL = "CREATE TABLE " + TABLE_REVIEW_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
-    private static final String STUDY_TASK_LOG_TABLE_SQL = "CREATE TABLE IF NOT EXISTS " + TABLE_STUDY_TASK_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, task_key TEXT NOT NULL UNIQUE, kanji TEXT NOT NULL, task_type TEXT NOT NULL, started_at INTEGER NOT NULL, answered_at INTEGER NOT NULL, active_elapsed_ms INTEGER NOT NULL, outcome TEXT NOT NULL)";
+    private static final String SQL_CREATE_TABLE = "CREATE TABLE ";
+    private static final String SQL_CREATE_TABLE_IF_NEEDED = "CREATE TABLE IF NOT EXISTS ";
+    private static final String SQL_TEXT_NOT_NULL_DEFAULT_EMPTY = "TEXT NOT NULL DEFAULT ''";
+    private static final String SQL_INTEGER_NOT_NULL_DEFAULT_ZERO = "INTEGER NOT NULL DEFAULT 0";
+    private static final String WHERE_KANJI = "kanji=?";
+    private static final String WHERE_SETTING_KEY = "key=?";
+    private static final String WHERE_SIMILAR_CHOICE = "target_kanji=? AND choice_signature=?";
+    private static final String ORDER_ID_DESC = "id DESC";
+    private static final String ORDER_KANJI_ASC = "kanji ASC";
+    private static final String ORDER_SIMILAR_PAIR = "kanji_a ASC, kanji_b ASC, source ASC";
+    private static final String COLUMN_ACTIVE_TOKEN = "active_token";
+    private static final String COLUMN_ANSWER_SIGNATURE = "answer_signature";
+    private static final String COLUMN_ATTEMPTS = "attempts";
+    private static final String COLUMN_BROWSER_SEARCH = "browser_search";
+    private static final String COLUMN_CARD_ID = "card_id";
+    private static final String COLUMN_CHOICE_SIGNATURE = "choice_signature";
+    private static final String COLUMN_COMPLETED_AT = "completed_at";
+    private static final String COLUMN_CORRECT_COUNT = "correct_count";
+    private static final String COLUMN_CREATED_AT = "created_at";
+    private static final String COLUMN_CUTOFF_USED = "cutoff_used";
+    private static final String COLUMN_DECK_ID = "deck_id";
+    private static final String COLUMN_DECK_IDS = "deck_ids";
+    private static final String COLUMN_DECK_NAME = "deck_name";
+    private static final String COLUMN_DUE_AT = "due_at";
+    private static final String COLUMN_ERROR_MESSAGE = "error_message";
+    private static final String COLUMN_EXPRESSION = "expression";
+    private static final String COLUMN_FIELDS_JSON = "fields_json";
+    private static final String COLUMN_FINISHED_AT = "finished_at";
+    private static final String COLUMN_FIRST_SEEN_AT = "first_seen_at";
+    private static final String COLUMN_FSRS_DIFFICULTY = "fsrs_difficulty";
+    private static final String COLUMN_FSRS_RETRIEVABILITY = "fsrs_retrievability";
+    private static final String COLUMN_FSRS_STABILITY = "fsrs_stability";
+    private static final String COLUMN_JITEN_RANK = "jiten_rank";
+    private static final String COLUMN_KANJI = "kanji";
+    private static final String COLUMN_KANJI_A = "kanji_a";
+    private static final String COLUMN_KANJI_B = "kanji_b";
+    private static final String COLUMN_LAST_REVIEWED_AT = "last_reviewed_at";
+    private static final String COLUMN_LAST_SEEN_AT = "last_seen_at";
+    private static final String COLUMN_LAST_SEEN_SYNC_ID = "last_seen_sync_id";
+    private static final String COLUMN_LAPSES = "lapses";
+    private static final String COLUMN_MANUAL_OVERRIDE = "manual_override";
+    private static final String COLUMN_MATURE_SUPPORT_COUNT = "mature_support_count";
+    private static final String COLUMN_MEANING = "meaning";
+    private static final String COLUMN_MODEL_ID = "model_id";
+    private static final String COLUMN_MODEL_NAME = "model_name";
+    private static final String COLUMN_NOTE_ID = "note_id";
+    private static final String COLUMN_PASSED_AT = "passed_at";
+    private static final String COLUMN_PRIMARY_MEANING = "primary_meaning";
+    private static final String COLUMN_QUEUE = "queue";
+    private static final String COLUMN_RANK_KNOWN = "rank_known";
+    private static final String COLUMN_RATING = "rating";
+    private static final String COLUMN_READING = "reading";
+    private static final String COLUMN_REASON_CODE = "reason_code";
+    private static final String COLUMN_REASON_TEXT = "reason_text";
+    private static final String COLUMN_REVIEWED_AT = "reviewed_at";
+    private static final String COLUMN_SENTENCE = "sentence";
+    private static final String COLUMN_SOURCE = "source";
+    private static final String COLUMN_STATE = "state";
+    private static final String COLUMN_STATUS = "status";
+    private static final String COLUMN_SYNC_ID = "sync_id";
+    private static final String COLUMN_TARGET_KANJI = "target_kanji";
+    private static final String COLUMN_TASK_TYPE = "task_type";
+    private static final String COLUMN_TOKEN = "token";
+    private static final String COLUMN_UPDATED_AT = "updated_at";
+    private static final String COLUMN_VALUE = "value";
+    private static final String COLUMN_WEAKNESS_SCORE = "weakness_score";
+    private static final String COLUMN_WRITING_PASSED = "writing_passed";
+    private static final String COLUMN_WRITING_REQUIRED = "writing_required";
+    private static final String STUDY_ITEMS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_STUDY_ITEMS + " (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
+    private static final String LEARNING_REPEATS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_LEARNING_REPEATS + " (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
+    private static final String REVIEW_LOG_TABLE_SQL = SQL_CREATE_TABLE + TABLE_REVIEW_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
+    private static final String STUDY_TASK_LOG_TABLE_SQL = SQL_CREATE_TABLE_IF_NEEDED + TABLE_STUDY_TASK_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, task_key TEXT NOT NULL UNIQUE, kanji TEXT NOT NULL, task_type TEXT NOT NULL, started_at INTEGER NOT NULL, answered_at INTEGER NOT NULL, active_elapsed_ms INTEGER NOT NULL, outcome TEXT NOT NULL)";
     private static final long MAX_STUDY_TASK_ELAPSED_MS = 30L * 60L * 1000L;
     private static final String STATUS_SUCCESS = "success";
     private static final String STATUS_PENDING = "pending";
@@ -77,7 +146,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SETTINGS + " (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE " + TABLE_SYNC_RUNS + " (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
         db.execSQL("CREATE TABLE " + TABLE_SOURCE_NOTES + " (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE " + TABLE_SOURCE_CARDS + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, last_seen_sync_id INTEGER NOT NULL)");
@@ -107,14 +176,14 @@ public final class LocalStore extends SQLiteOpenHelper {
             backfillTimelineEvents(db);
         }
         if (oldVersion < 3) {
-            addNullableColumn(db, TABLE_SOURCE_CARDS, "fsrs_stability", "REAL");
-            addNullableColumn(db, TABLE_SOURCE_CARDS, "fsrs_difficulty", "REAL");
-            addNullableColumn(db, TABLE_SOURCE_CARDS, "fsrs_retrievability", "REAL");
+            addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_STABILITY, "REAL");
+            addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_DIFFICULTY, "REAL");
+            addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_RETRIEVABILITY, "REAL");
             addNullableColumn(db, TABLE_KANJI_EXAMPLES, "interval_days", "INTEGER NOT NULL DEFAULT 0");
             addNullableColumn(db, TABLE_KANJI_EXAMPLES, "reps", "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, "fsrs_stability", "REAL");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, "fsrs_difficulty", "REAL");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, "fsrs_retrievability", "REAL");
+            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_STABILITY, "REAL");
+            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_DIFFICULTY, "REAL");
+            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_RETRIEVABILITY, "REAL");
         }
         if (oldVersion < 4) {
             addNullableColumn(db, TABLE_STUDY_ITEMS, "recognition_stage", "INTEGER NOT NULL DEFAULT 0");
@@ -126,7 +195,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             addNullableColumn(db, TABLE_STUDY_ITEMS, "suppressed_by_task_type", "TEXT NOT NULL DEFAULT ''");
             addNullableColumn(db, TABLE_STUDY_ITEMS, "suppressed_at", "INTEGER NOT NULL DEFAULT 0");
             addNullableColumn(db, TABLE_STUDY_ITEMS, "mature_interval_days", "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, "answer_signature", "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_ANSWER_SIGNATURE, "TEXT NOT NULL DEFAULT ''");
         }
         if (oldVersion < 6) {
             addNullableColumn(db, TABLE_STUDY_ITEMS, "kanji_meaning_memory", "TEXT NOT NULL DEFAULT ''");
@@ -207,17 +276,17 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private void addHistoricalIdentityColumns(SQLiteDatabase db) {
-        addNullableColumn(db, TABLE_SYNC_CARD_SNAPSHOTS, "deck_id", "TEXT NOT NULL DEFAULT ''");
-        addNullableColumn(db, TABLE_SYNC_CARD_SNAPSHOTS, "model_id", "INTEGER NOT NULL DEFAULT 0");
-        addNullableColumn(db, TABLE_SYNC_NOTE_SNAPSHOTS, "model_id", "INTEGER NOT NULL DEFAULT 0");
-        addNullableColumn(db, TABLE_SYNC_NOTE_SNAPSHOTS, "deck_ids", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, TABLE_SYNC_CARD_SNAPSHOTS, COLUMN_DECK_ID, "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, TABLE_SYNC_CARD_SNAPSHOTS, COLUMN_MODEL_ID, "INTEGER NOT NULL DEFAULT 0");
+        addNullableColumn(db, TABLE_SYNC_NOTE_SNAPSHOTS, COLUMN_MODEL_ID, "INTEGER NOT NULL DEFAULT 0");
+        addNullableColumn(db, TABLE_SYNC_NOTE_SNAPSHOTS, COLUMN_DECK_IDS, "TEXT NOT NULL DEFAULT ''");
         db.execSQL("UPDATE " + TABLE_SYNC_CARD_SNAPSHOTS + " SET deck_id=deck_name WHERE deck_id=''");
         db.execSQL("UPDATE " + TABLE_SYNC_NOTE_SNAPSHOTS + " SET deck_ids=deck_names WHERE deck_ids=''");
     }
 
     private void addRichReviewColumns(SQLiteDatabase db) {
-        addNullableColumn(db, TABLE_REVIEW_LOG, "task_type", "TEXT NOT NULL DEFAULT ''");
-        addNullableColumn(db, TABLE_REVIEW_LOG, "answer_signature", "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, TABLE_REVIEW_LOG, COLUMN_TASK_TYPE, "TEXT NOT NULL DEFAULT ''");
+        addNullableColumn(db, TABLE_REVIEW_LOG, COLUMN_ANSWER_SIGNATURE, "TEXT NOT NULL DEFAULT ''");
         addNullableColumn(db, TABLE_REVIEW_LOG, "prompt", "TEXT NOT NULL DEFAULT ''");
         addNullableColumn(db, TABLE_REVIEW_LOG, "hints_used", "INTEGER NOT NULL DEFAULT 0");
         addNullableColumn(db, TABLE_REVIEW_LOG, "writing_clean", "INTEGER NOT NULL DEFAULT 0");
@@ -271,8 +340,8 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             Map<String, RowSnapshot> previousRows = rowSnapshots(db);
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
-            int deletedNotes = countDeletedExisting(db, TABLE_SOURCE_NOTES, "note_id", activeIndex.noteIds);
-            int deletedCards = countDeletedExisting(db, TABLE_SOURCE_CARDS, "card_id", activeIndex.cardIds);
+            int deletedNotes = countDeletedExisting(db, TABLE_SOURCE_NOTES, COLUMN_NOTE_ID, activeIndex.noteIds);
+            int deletedCards = countDeletedExisting(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID, activeIndex.cardIds);
             long syncId = insertSyncRun(db, timing.startedAt, timing.finishedAt, STATUS_SUCCESS, activeIndex, imports.size(), null, null, removal == null ? "" : removal.message, deletedNotes, deletedCards);
             Map<Long, Records.Note> notesById = snapshot.notesById();
             appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing);
@@ -314,15 +383,15 @@ public final class LocalStore extends SQLiteOpenHelper {
                 continue;
             }
             ContentValues values = new ContentValues();
-            values.put("note_id", note.noteId);
-            values.put("model_name", note.modelName);
-            values.put("expression", TextUtil.normalizeJapanese(note.expression(settings)));
-            values.put("reading", TextUtil.normalizeJapanese(note.reading(settings)));
-            values.put("meaning", TextUtil.firstMeaningLine(note.meaning(settings)));
-            values.put("sentence", TextUtil.normalizeJapanese(note.sentence(settings)));
-            values.put("fields_json", fieldsJson(note.fields));
+            values.put(COLUMN_NOTE_ID, note.noteId);
+            values.put(COLUMN_MODEL_NAME, note.modelName);
+            values.put(COLUMN_EXPRESSION, TextUtil.normalizeJapanese(note.expression(settings)));
+            values.put(COLUMN_READING, TextUtil.normalizeJapanese(note.reading(settings)));
+            values.put(COLUMN_MEANING, TextUtil.firstMeaningLine(note.meaning(settings)));
+            values.put(COLUMN_SENTENCE, TextUtil.normalizeJapanese(note.sentence(settings)));
+            values.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
             values.put("tags", String.join(" ", note.tags));
-            values.put("last_seen_sync_id", syncId);
+            values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
             db.insertWithOnConflict(TABLE_SOURCE_NOTES, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
@@ -357,15 +426,15 @@ public final class LocalStore extends SQLiteOpenHelper {
             long syncId
     ) {
         ContentValues values = new ContentValues();
-        values.put("card_id", card.cardId);
-        values.put("note_id", card.noteId);
-        values.put("deck_name", card.deckName);
-        values.put("model_name", note.modelName);
-        values.put("expression", TextUtil.normalizeJapanese(note.expression(settings)));
-        values.put("reading", TextUtil.normalizeJapanese(note.reading(settings)));
-        values.put("meaning", TextUtil.firstMeaningLine(note.meaning(settings)));
-        values.put("sentence", TextUtil.normalizeJapanese(note.sentence(settings)));
-        values.put("fields_json", fieldsJson(note.fields));
+        values.put(COLUMN_CARD_ID, card.cardId);
+        values.put(COLUMN_NOTE_ID, card.noteId);
+        values.put(COLUMN_DECK_NAME, card.deckName);
+        values.put(COLUMN_MODEL_NAME, note.modelName);
+        values.put(COLUMN_EXPRESSION, TextUtil.normalizeJapanese(note.expression(settings)));
+        values.put(COLUMN_READING, TextUtil.normalizeJapanese(note.reading(settings)));
+        values.put(COLUMN_MEANING, TextUtil.firstMeaningLine(note.meaning(settings)));
+        values.put(COLUMN_SENTENCE, TextUtil.normalizeJapanese(note.sentence(settings)));
+        values.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
         values.put("archived_at", finishedAt);
         values.put("archived_sync_id", syncId);
         db.insertWithOnConflict(TABLE_SUSPENDED_ARCHIVE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
@@ -373,20 +442,20 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private void saveSourceCard(SQLiteDatabase db, Records.Card card, long syncId) {
         ContentValues values = new ContentValues();
-        values.put("card_id", card.cardId);
-        values.put("note_id", card.noteId);
-        values.put("deck_name", card.deckName);
+        values.put(COLUMN_CARD_ID, card.cardId);
+        values.put(COLUMN_NOTE_ID, card.noteId);
+        values.put(COLUMN_DECK_NAME, card.deckName);
         values.put("ord", card.ord);
-        values.put("queue", card.queue);
+        values.put(COLUMN_QUEUE, card.queue);
         values.put("type", card.type);
         values.put("due", card.due);
         values.put("interval_days", card.intervalDays);
         values.put("reps", card.reps);
         values.put("lapses", card.lapses);
-        putNullableDouble(values, "fsrs_stability", card.fsrsStability);
-        putNullableDouble(values, "fsrs_difficulty", card.fsrsDifficulty);
-        putNullableDouble(values, "fsrs_retrievability", card.fsrsRetrievability);
-        values.put("last_seen_sync_id", syncId);
+        putNullableDouble(values, COLUMN_FSRS_STABILITY, card.fsrsStability);
+        putNullableDouble(values, COLUMN_FSRS_DIFFICULTY, card.fsrsDifficulty);
+        putNullableDouble(values, COLUMN_FSRS_RETRIEVABILITY, card.fsrsRetrievability);
+        values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
         db.insertWithOnConflict(TABLE_SOURCE_CARDS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
@@ -408,25 +477,25 @@ public final class LocalStore extends SQLiteOpenHelper {
             long syncId
     ) {
         ContentValues values = new ContentValues();
-        values.put("kanji", imported.kanji);
+        values.put(COLUMN_KANJI, imported.kanji);
         if (imported.jitenRank != null) {
-            values.put("jiten_rank", imported.jitenRank);
+            values.put(COLUMN_JITEN_RANK, imported.jitenRank);
         }
-        values.put("rank_known", imported.rankKnown ? 1 : 0);
-        values.put("cutoff_used", imported.cutoffUsed);
+        values.put(COLUMN_RANK_KNOWN, imported.rankKnown ? 1 : 0);
+        values.put(COLUMN_CUTOFF_USED, imported.cutoffUsed);
         values.put(COLUMN_FIRST_IMPORTED_AT, firstImportedAt(db, imported.kanji, finishedAt));
-        values.put("last_seen_sync_id", syncId);
+        values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
         db.insertWithOnConflict(TABLE_SUSPENDED_IMPORTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         for (Records.SuspendedSource source : imported.sources) {
             ContentValues sourceValues = new ContentValues();
-            sourceValues.put("kanji", imported.kanji);
-            sourceValues.put("card_id", source.cardId);
-            sourceValues.put("note_id", source.noteId);
-            sourceValues.put("expression", source.expression);
-            sourceValues.put("reading", source.reading);
-            sourceValues.put("meaning", source.meaning);
-            sourceValues.put("sentence", source.sentence);
-            sourceValues.put("sync_id", syncId);
+            sourceValues.put(COLUMN_KANJI, imported.kanji);
+            sourceValues.put(COLUMN_CARD_ID, source.cardId);
+            sourceValues.put(COLUMN_NOTE_ID, source.noteId);
+            sourceValues.put(COLUMN_EXPRESSION, source.expression);
+            sourceValues.put(COLUMN_READING, source.reading);
+            sourceValues.put(COLUMN_MEANING, source.meaning);
+            sourceValues.put(COLUMN_SENTENCE, source.sentence);
+            sourceValues.put(COLUMN_SYNC_ID, syncId);
             db.insertWithOnConflict(TABLE_SUSPENDED_SOURCES, null, sourceValues, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
@@ -436,7 +505,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put("started_at", startedAt);
         values.put("finished_at", finishedAt);
-        values.put("status", status);
+        values.put(COLUMN_STATUS, status);
         values.put("active_notes_count", 0);
         values.put("active_cards_count", 0);
         values.put("suspended_cards_archived_count", 0);
@@ -460,19 +529,19 @@ public final class LocalStore extends SQLiteOpenHelper {
         List<Records.DashboardRow> rows = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, "weakness_score DESC, suspended_example_count DESC, kanji ASC", "120")) {
             while (cursor.moveToNext()) {
-                String kanji = string(cursor, "kanji");
+                String kanji = string(cursor, COLUMN_KANJI);
                 rows.add(new Records.DashboardRow(
                         kanji,
-                        nullableInt(cursor, "jiten_rank"),
-                        string(cursor, "primary_meaning"),
-                        string(cursor, "reading"),
-                        string(cursor, "browser_search"),
-                        integer(cursor, "weakness_score"),
-                        string(cursor, "reason_code"),
-                        string(cursor, "reason_text"),
+                        nullableInt(cursor, COLUMN_JITEN_RANK),
+                        string(cursor, COLUMN_PRIMARY_MEANING),
+                        string(cursor, COLUMN_READING),
+                        string(cursor, COLUMN_BROWSER_SEARCH),
+                        integer(cursor, COLUMN_WEAKNESS_SCORE),
+                        string(cursor, COLUMN_REASON_CODE),
+                        string(cursor, COLUMN_REASON_TEXT),
                         integer(cursor, "active_example_count"),
                         integer(cursor, "suspended_example_count"),
-                        integer(cursor, "mature_support_count"),
+                        integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
                         examplesForKanji(db, kanji)
                 ));
             }
@@ -519,7 +588,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 args,
                 null,
                 null,
-                "kanji ASC",
+                ORDER_KANJI_ASC,
                 "300"
         )) {
             while (cursor.moveToNext()) {
@@ -547,7 +616,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     public List<Records.SimilarKanjiPair> allLocalSimilarPairs() {
         SQLiteDatabase db = getReadableDatabase();
         List<Records.SimilarKanjiPair> out = new ArrayList<>();
-        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, "kanji_a ASC, kanji_b ASC, source ASC")) {
+        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, ORDER_SIMILAR_PAIR)) {
             while (cursor.moveToNext()) {
                 out.add(readSimilarPair(cursor));
             }
@@ -569,7 +638,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 new String[]{normalized, normalized},
                 null,
                 null,
-                "kanji_a ASC, kanji_b ASC, source ASC"
+                ORDER_SIMILAR_PAIR
         )) {
             while (cursor.moveToNext()) {
                 out.add(readSimilarPair(cursor));
@@ -587,7 +656,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         String[] pair = canonicalSimilarPair(kanjiA, kanjiB);
         try (Cursor cursor = getReadableDatabase().query(
                 TABLE_SIMILAR_KANJI_PAIRS,
-                new String[]{"kanji_a"},
+                new String[]{COLUMN_KANJI_A},
                 "kanji_a=? AND kanji_b=?",
                 pair,
                 null,
@@ -675,7 +744,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         int count = 0;
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_CHOICE_STATE,
-                new String[]{"target_kanji", "choice_signature"},
+                new String[]{COLUMN_TARGET_KANJI, COLUMN_CHOICE_SIGNATURE},
                 "passed_at=0 AND due_at<=?",
                 new String[]{Long.toString(nowMillis)},
                 null,
@@ -683,8 +752,8 @@ public final class LocalStore extends SQLiteOpenHelper {
                 null
         )) {
             while (cursor.moveToNext()) {
-                String targetKanji = string(cursor, "target_kanji");
-                String choiceSignature = string(cursor, "choice_signature");
+                String targetKanji = string(cursor, COLUMN_TARGET_KANJI);
+                String choiceSignature = string(cursor, COLUMN_CHOICE_SIGNATURE);
                 if (!hasPendingSimilarRepairs(db, targetKanji, choiceSignature)) {
                     count++;
                 }
@@ -722,28 +791,28 @@ public final class LocalStore extends SQLiteOpenHelper {
             Records.SimilarKanjiChoiceResult result = planner.evaluateSelection(card, normalizeSingleKanji(selectedKanji));
 
             ContentValues values = new ContentValues();
-            values.put("last_reviewed_at", nowMillis);
+            values.put(COLUMN_LAST_REVIEWED_AT, nowMillis);
             if (result.correct) {
-                values.put("passed_at", nowMillis);
-                values.put("correct_count", card.correctCount + 1);
+                values.put(COLUMN_PASSED_AT, nowMillis);
+                values.put(COLUMN_CORRECT_COUNT, card.correctCount + 1);
             } else {
-                values.put("passed_at", 0L);
-                values.put("due_at", nowMillis);
+                values.put(COLUMN_PASSED_AT, 0L);
+                values.put(COLUMN_DUE_AT, nowMillis);
                 values.put("wrong_count", card.wrongCount + 1);
             }
             db.update(
                     TABLE_SIMILAR_KANJI_CHOICE_STATE,
                     values,
-                    "target_kanji=? AND choice_signature=?",
+                    WHERE_SIMILAR_CHOICE,
                     new String[]{card.targetKanji, card.choiceSignature}
             );
 
             ContentValues log = new ContentValues();
-            log.put("target_kanji", card.targetKanji);
-            log.put("choice_signature", card.choiceSignature);
+            log.put(COLUMN_TARGET_KANJI, card.targetKanji);
+            log.put(COLUMN_CHOICE_SIGNATURE, card.choiceSignature);
             log.put("selected_kanji", result.selectedKanji);
             log.put("correct", result.correct ? 1 : 0);
-            log.put("reviewed_at", nowMillis);
+            log.put(COLUMN_REVIEWED_AT, nowMillis);
             db.insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log);
 
             if (!result.correct) {
@@ -782,8 +851,8 @@ public final class LocalStore extends SQLiteOpenHelper {
             return;
         }
         ContentValues values = new ContentValues();
-        values.put("active_token", repair.activeToken);
-        values.put("updated_at", repair.updatedAtMillis);
+        values.put(COLUMN_ACTIVE_TOKEN, repair.activeToken);
+        values.put(COLUMN_UPDATED_AT, repair.updatedAtMillis);
         getWritableDatabase().update(
                 TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
                 values,
@@ -804,14 +873,14 @@ public final class LocalStore extends SQLiteOpenHelper {
                 return false;
             }
             ContentValues values = new ContentValues();
-            values.put("active_token", "");
-            values.put("updated_at", nowMillis);
+            values.put(COLUMN_ACTIVE_TOKEN, "");
+            values.put(COLUMN_UPDATED_AT, nowMillis);
             if (passed) {
-                values.put("status", STATUS_COMPLETE);
-                values.put("completed_at", nowMillis);
+                values.put(COLUMN_STATUS, STATUS_COMPLETE);
+                values.put(COLUMN_COMPLETED_AT, nowMillis);
             } else {
-                values.put("attempts", current.attempts + 1);
-                values.put("due_at", nowMillis);
+                values.put(COLUMN_ATTEMPTS, current.attempts + 1);
+                values.put(COLUMN_DUE_AT, nowMillis);
             }
             db.update(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, values, "id=?", new String[]{Long.toString(repairId)});
             db.setTransactionSuccessful();
@@ -823,16 +892,16 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public Set<String> locallySuspendedKanji() {
         Set<String> out = new HashSet<>();
-        try (Cursor cursor = getReadableDatabase().query(TABLE_LOCAL_KANJI_SUSPENSIONS, new String[]{"kanji"}, null, null, null, null, null)) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_LOCAL_KANJI_SUSPENSIONS, new String[]{COLUMN_KANJI}, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
-                out.add(string(cursor, "kanji"));
+                out.add(string(cursor, COLUMN_KANJI));
             }
         }
         return out;
     }
 
     public boolean isKanjiLocallySuspended(String kanji) {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_LOCAL_KANJI_SUSPENSIONS, new String[]{"kanji"}, "kanji=?", new String[]{kanji}, null, null, null, "1")) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_LOCAL_KANJI_SUSPENSIONS, new String[]{COLUMN_KANJI}, WHERE_KANJI, new String[]{kanji}, null, null, null, "1")) {
             return cursor.moveToFirst();
         }
     }
@@ -846,12 +915,12 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             if (suspended) {
                 ContentValues values = new ContentValues();
-                values.put("kanji", kanji);
+                values.put(COLUMN_KANJI, kanji);
                 values.put("suspended_at", nowMillis);
                 db.insertWithOnConflict(TABLE_LOCAL_KANJI_SUSPENSIONS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-                db.delete(TABLE_LEARNING_REPEATS, "kanji=?", new String[]{kanji});
+                db.delete(TABLE_LEARNING_REPEATS, WHERE_KANJI, new String[]{kanji});
             } else {
-                db.delete(TABLE_LOCAL_KANJI_SUSPENSIONS, "kanji=?", new String[]{kanji});
+                db.delete(TABLE_LOCAL_KANJI_SUSPENSIONS, WHERE_KANJI, new String[]{kanji});
             }
             db.setTransactionSuccessful();
         } finally {
@@ -868,7 +937,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         Cursor cursor = db.query(
                 "kanji_timeline_events",
                 null,
-                "kanji=?",
+                WHERE_KANJI,
                 new String[]{kanji},
                 null,
                 null,
@@ -902,30 +971,30 @@ public final class LocalStore extends SQLiteOpenHelper {
         Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();
         try (Cursor cursor = db.query(TABLE_SUSPENDED_IMPORTS, null, null, null, null, null, "jiten_rank ASC, kanji ASC")) {
             while (cursor.moveToNext()) {
-                String kanji = string(cursor, "kanji");
+                String kanji = string(cursor, COLUMN_KANJI);
                 imports.put(kanji, new MutableSuspendedImport(
                         kanji,
-                        nullableInt(cursor, "jiten_rank"),
-                        integer(cursor, "rank_known") == 1,
-                        integer(cursor, "cutoff_used")
+                        nullableInt(cursor, COLUMN_JITEN_RANK),
+                        integer(cursor, COLUMN_RANK_KNOWN) == 1,
+                        integer(cursor, COLUMN_CUTOFF_USED)
                 ));
             }
         }
 
         try (Cursor sources = db.query(TABLE_SUSPENDED_SOURCES, null, null, null, null, null, "kanji ASC, card_id ASC")) {
             while (sources.moveToNext()) {
-                MutableSuspendedImport imported = imports.get(string(sources, "kanji"));
+                MutableSuspendedImport imported = imports.get(string(sources, COLUMN_KANJI));
                 if (imported == null) {
                     continue;
                 }
                 imported.sources.add(new Records.SuspendedSource(
                         imported.kanji,
-                        longValue(sources, "card_id"),
-                        longValue(sources, "note_id"),
-                        string(sources, "expression"),
-                        string(sources, "reading"),
-                        string(sources, "meaning"),
-                        string(sources, "sentence")
+                        longValue(sources, COLUMN_CARD_ID),
+                        longValue(sources, COLUMN_NOTE_ID),
+                        string(sources, COLUMN_EXPRESSION),
+                        string(sources, COLUMN_READING),
+                        string(sources, COLUMN_MEANING),
+                        string(sources, COLUMN_SENTENCE)
                 ));
             }
         }
@@ -983,15 +1052,15 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private long insertReview(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt, Records.StudyItem beforeReview, Records.StudyItem afterReview) {
         ContentValues values = new ContentValues();
-        values.put("kanji", request.kanji);
-        values.put("token", request.token);
-        values.put("rating", appliedRating);
-        values.put("writing_required", request.writingRequired ? 1 : 0);
-        values.put("writing_passed", request.writingPassed ? 1 : 0);
-        values.put("manual_override", request.manualOverride ? 1 : 0);
-        values.put("reviewed_at", reviewedAt);
-        values.put("task_type", request.taskType);
-        values.put("answer_signature", request.answerSignature);
+        values.put(COLUMN_KANJI, request.kanji);
+        values.put(COLUMN_TOKEN, request.token);
+        values.put(COLUMN_RATING, appliedRating);
+        values.put(COLUMN_WRITING_REQUIRED, request.writingRequired ? 1 : 0);
+        values.put(COLUMN_WRITING_PASSED, request.writingPassed ? 1 : 0);
+        values.put(COLUMN_MANUAL_OVERRIDE, request.manualOverride ? 1 : 0);
+        values.put(COLUMN_REVIEWED_AT, reviewedAt);
+        values.put(COLUMN_TASK_TYPE, request.taskType);
+        values.put(COLUMN_ANSWER_SIGNATURE, request.answerSignature);
         values.put("prompt", request.prompt);
         values.put("hints_used", request.hintsUsed);
         values.put("writing_clean", request.writingClean ? 1 : 0);
@@ -1029,21 +1098,21 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public List<String> consumedTokens() {
         List<String> tokens = new ArrayList<>();
-        try (Cursor cursor = getReadableDatabase().query(TABLE_REVIEW_LOG, new String[]{"token"}, null, null, null, null, null)) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_REVIEW_LOG, new String[]{COLUMN_TOKEN}, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
-                tokens.add(string(cursor, "token"));
+                tokens.add(string(cursor, COLUMN_TOKEN));
             }
         }
         return tokens;
     }
 
     public SyncStatus latestSync() {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_SYNC_RUNS, null, null, null, null, null, "id DESC", "1")) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_SYNC_RUNS, null, null, null, null, null, ORDER_ID_DESC, "1")) {
             if (!cursor.moveToFirst()) {
                 return null;
             }
             return new SyncStatus(
-                    string(cursor, "status"),
+                    string(cursor, COLUMN_STATUS),
                     integer(cursor, "active_notes_count"),
                     integer(cursor, "active_cards_count"),
                     integer(cursor, "suspended_cards_archived_count"),
@@ -1063,7 +1132,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 new String[]{STATUS_SUCCESS, Long.toString(finishedAtMillis)},
                 null,
                 null,
-                "id DESC",
+                ORDER_ID_DESC,
                 "1"
         )) {
             return cursor.moveToFirst();
@@ -1071,12 +1140,12 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public int getIntSetting(String key, int fallback) {
-        try (Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1")) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
             try {
-                return Integer.parseInt(string(cursor, "value"));
+                return Integer.parseInt(string(cursor, COLUMN_VALUE));
             } catch (NumberFormatException ignored) {
                 return fallback;
             }
@@ -1084,12 +1153,12 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public long getLongSetting(String key, long fallback) {
-        try (Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1")) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
             try {
-                return Long.parseLong(string(cursor, "value"));
+                return Long.parseLong(string(cursor, COLUMN_VALUE));
             } catch (NumberFormatException ignored) {
                 return fallback;
             }
@@ -1097,22 +1166,22 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public String getStringSetting(String key, String fallback) {
-        try (Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1")) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            String value = string(cursor, "value");
+            String value = string(cursor, COLUMN_VALUE);
             return value == null ? fallback : value;
         }
     }
 
     public double getDoubleSetting(String key, double fallback) {
-        try (Cursor cursor = getReadableDatabase().query("settings", new String[]{"value"}, "key=?", new String[]{key}, null, null, null, "1")) {
+        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
             try {
-                return Double.parseDouble(string(cursor, "value"));
+                return Double.parseDouble(string(cursor, COLUMN_VALUE));
             } catch (NumberFormatException ignored) {
                 return fallback;
             }
@@ -1356,16 +1425,16 @@ public final class LocalStore extends SQLiteOpenHelper {
             return;
         }
         ContentValues values = new ContentValues();
-        values.put("kanji", repeat.kanji);
-        values.put("answer_signature", repeat.answerSignature);
-        values.put("task_type", repeat.taskType);
+        values.put(COLUMN_KANJI, repeat.kanji);
+        values.put(COLUMN_ANSWER_SIGNATURE, repeat.answerSignature);
+        values.put(COLUMN_TASK_TYPE, repeat.taskType);
         values.put("repeat_type", repeat.repeatType);
         values.put("step_index", repeat.stepIndex);
-        values.put("due_at", repeat.dueAtMillis);
-        values.put("active_token", repeat.activeToken);
-        values.put("created_at", repeat.createdAtMillis);
-        values.put("updated_at", repeat.updatedAtMillis);
-        getWritableDatabase().insertWithOnConflict("learning_repeats", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        values.put(COLUMN_DUE_AT, repeat.dueAtMillis);
+        values.put(COLUMN_ACTIVE_TOKEN, repeat.activeToken);
+        values.put(COLUMN_CREATED_AT, repeat.createdAtMillis);
+        values.put(COLUMN_UPDATED_AT, repeat.updatedAtMillis);
+        getWritableDatabase().insertWithOnConflict(TABLE_LEARNING_REPEATS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     public void enqueueLearningRepeat(Records.StudyItem item, String taskType, String repeatType, int stepIndex, long dueAtMillis, long nowMillis) {
@@ -1390,7 +1459,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             return;
         }
         getWritableDatabase().delete(
-                "learning_repeats",
+                TABLE_LEARNING_REPEATS,
                 "kanji=? AND answer_signature=? AND task_type=?",
                 new String[]{repeat.kanji, repeat.answerSignature, repeat.taskType}
         );
@@ -1399,7 +1468,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     public List<Records.LearningRepeat> dueLearningRepeats(long nowMillis) {
         List<Records.LearningRepeat> repeats = new ArrayList<>();
         Cursor cursor = getReadableDatabase().query(
-                "learning_repeats",
+                TABLE_LEARNING_REPEATS,
                 null,
                 "due_at<=?",
                 new String[]{Long.toString(nowMillis)},
@@ -1419,8 +1488,8 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public Records.ReviewStats reviewStatsSince(long sinceMillis) {
         Cursor cursor = getReadableDatabase().query(
-                "review_log",
-                new String[]{"rating", "writing_required", "writing_passed", "manual_override"},
+                TABLE_REVIEW_LOG,
+                new String[]{COLUMN_RATING, COLUMN_WRITING_REQUIRED, COLUMN_WRITING_PASSED, COLUMN_MANUAL_OVERRIDE},
                 "reviewed_at>=?",
                 new String[]{Long.toString(sinceMillis)},
                 null,
@@ -1437,7 +1506,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             while (cursor.moveToNext()) {
                 total++;
-                String rating = string(cursor, "rating");
+                String rating = string(cursor, COLUMN_RATING);
                 if ("again".equals(rating)) {
                     again++;
                 } else if ("hard".equals(rating)) {
@@ -1447,9 +1516,9 @@ public final class LocalStore extends SQLiteOpenHelper {
                 } else {
                     good++;
                 }
-                boolean required = integer(cursor, "writing_required") == 1;
-                boolean passed = integer(cursor, "writing_passed") == 1;
-                boolean override = integer(cursor, "manual_override") == 1;
+                boolean required = integer(cursor, COLUMN_WRITING_REQUIRED) == 1;
+                boolean passed = integer(cursor, COLUMN_WRITING_PASSED) == 1;
+                boolean override = integer(cursor, COLUMN_MANUAL_OVERRIDE) == 1;
                 if (required) {
                     writingRequired++;
                     if (!passed && !override) {
@@ -1470,8 +1539,8 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
         ContentValues values = new ContentValues();
         values.put("task_key", normalizedKey);
-        values.put("kanji", kanji == null ? "" : kanji);
-        values.put("task_type", taskType == null ? "" : taskType);
+        values.put(COLUMN_KANJI, kanji == null ? "" : kanji);
+        values.put(COLUMN_TASK_TYPE, taskType == null ? "" : taskType);
         values.put("started_at", Math.max(0L, startedAt));
         values.put("answered_at", Math.max(0L, answeredAt));
         values.put("active_elapsed_ms", Math.min(MAX_STUDY_TASK_ELAPSED_MS, Math.max(0L, activeElapsedMillis)));
@@ -1518,8 +1587,8 @@ public final class LocalStore extends SQLiteOpenHelper {
     public List<RecentMistake> recentMistakes(int limit) {
         int boundedLimit = Math.max(1, limit);
         Cursor cursor = getReadableDatabase().query(
-                "review_log",
-                new String[]{"kanji", "rating", "reviewed_at"},
+                TABLE_REVIEW_LOG,
+                new String[]{COLUMN_KANJI, COLUMN_RATING, COLUMN_REVIEWED_AT},
                 "rating IN (?, ?)",
                 new String[]{"again", "hard"},
                 null,
@@ -1531,9 +1600,9 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             while (cursor.moveToNext()) {
                 mistakes.add(new RecentMistake(
-                        string(cursor, "kanji"),
-                        string(cursor, "rating"),
-                        longValue(cursor, "reviewed_at")
+                        string(cursor, COLUMN_KANJI),
+                        string(cursor, COLUMN_RATING),
+                        longValue(cursor, COLUMN_REVIEWED_AT)
                 ));
             }
         } finally {
@@ -1544,8 +1613,8 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public StudyStreak studyStreak(long nowMillis) {
         Cursor cursor = getReadableDatabase().query(
-                "review_log",
-                new String[]{"reviewed_at"},
+                TABLE_REVIEW_LOG,
+                new String[]{COLUMN_REVIEWED_AT},
                 null,
                 null,
                 null,
@@ -1560,7 +1629,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             long lastAddedDay = Long.MIN_VALUE;
             while (cursor.moveToNext()) {
-                long reviewedAt = cursor.getLong(cursor.getColumnIndexOrThrow("reviewed_at"));
+                long reviewedAt = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_REVIEWED_AT));
                 if (lastStudyAt == 0L) {
                     lastStudyAt = reviewedAt;
                 }
@@ -1612,8 +1681,8 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public StudyImpactStats studyImpactStats() {
         Cursor cursor = getReadableDatabase().query(
-                "review_log",
-                new String[]{"kanji", "writing_required", "writing_passed", "manual_override"},
+                TABLE_REVIEW_LOG,
+                new String[]{COLUMN_KANJI, COLUMN_WRITING_REQUIRED, COLUMN_WRITING_PASSED, COLUMN_MANUAL_OVERRIDE},
                 null,
                 null,
                 null,
@@ -1629,10 +1698,10 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             while (cursor.moveToNext()) {
                 total++;
-                reviewedKanji.add(string(cursor, "kanji"));
-                boolean required = integer(cursor, "writing_required") == 1;
-                boolean passed = integer(cursor, "writing_passed") == 1;
-                boolean override = integer(cursor, "manual_override") == 1;
+                reviewedKanji.add(string(cursor, COLUMN_KANJI));
+                boolean required = integer(cursor, COLUMN_WRITING_REQUIRED) == 1;
+                boolean passed = integer(cursor, COLUMN_WRITING_PASSED) == 1;
+                boolean override = integer(cursor, COLUMN_MANUAL_OVERRIDE) == 1;
                 if (required) {
                     writingRequired++;
                     if (passed) {
@@ -1720,12 +1789,12 @@ public final class LocalStore extends SQLiteOpenHelper {
         );
         try {
             while (cursor.moveToNext()) {
-                String kanji = string(cursor, "kanji");
+                String kanji = string(cursor, COLUMN_KANJI);
                 if (!kanji.isEmpty()) {
                     out.put(kanji, new ReviewWindow(
                             kanji,
                             longValue(cursor, "first_reviewed_at"),
-                            longValue(cursor, "last_reviewed_at")
+                            longValue(cursor, COLUMN_LAST_REVIEWED_AT)
                     ));
                 }
             }
@@ -1745,8 +1814,8 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private OutcomeSnapshot outcomeSnapshot(SQLiteDatabase db, String kanji, String selection, long reviewedAtMillis) {
         Cursor cursor = db.query(
-                "sync_kanji_snapshots",
-                new String[]{"weakness_score", "mature_support_count"},
+                TABLE_SYNC_KANJI_SNAPSHOTS,
+                new String[]{COLUMN_WEAKNESS_SCORE, COLUMN_MATURE_SUPPORT_COUNT},
                 selection,
                 new String[]{kanji, Long.toString(reviewedAtMillis)},
                 null,
@@ -1758,7 +1827,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return null;
             }
-            return new OutcomeSnapshot(integer(cursor, "weakness_score"), integer(cursor, "mature_support_count"));
+            return new OutcomeSnapshot(integer(cursor, COLUMN_WEAKNESS_SCORE), integer(cursor, COLUMN_MATURE_SUPPORT_COUNT));
         } finally {
             cursor.close();
         }
@@ -1812,8 +1881,8 @@ public final class LocalStore extends SQLiteOpenHelper {
     public Set<String> studiedKanjiSince(long sinceMillis) {
         Cursor cursor = getReadableDatabase().query(
                 true,
-                "review_log",
-                new String[]{"kanji"},
+                TABLE_REVIEW_LOG,
+                new String[]{COLUMN_KANJI},
                 "reviewed_at>=?",
                 new String[]{Long.toString(sinceMillis)},
                 null,
@@ -1824,7 +1893,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         Set<String> kanji = new HashSet<>();
         try {
             while (cursor.moveToNext()) {
-                kanji.add(string(cursor, "kanji"));
+                kanji.add(string(cursor, COLUMN_KANJI));
             }
         } finally {
             cursor.close();
@@ -1851,10 +1920,10 @@ public final class LocalStore extends SQLiteOpenHelper {
     private void backfillTimelineEvents(SQLiteDatabase db) {
         Map<String, RowSnapshot> rows = rowSnapshots(db);
 
-        Cursor imports = db.query("suspended_imports", null, null, null, null, null, "first_imported_at ASC, kanji ASC");
+        Cursor imports = db.query(TABLE_SUSPENDED_IMPORTS, null, null, null, null, null, "first_imported_at ASC, kanji ASC");
         try {
             while (imports.moveToNext()) {
-                String kanji = string(imports, "kanji");
+                String kanji = string(imports, COLUMN_KANJI);
                 SourceSnapshot source = firstSuspendedSourceForKanji(db, kanji);
                 long importedAt = longValue(imports, COLUMN_FIRST_IMPORTED_AT);
                 insertTimelineEvent(
@@ -1872,7 +1941,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                         false,
                         null,
                         null,
-                        longValue(imports, "last_seen_sync_id"),
+                        longValue(imports, COLUMN_LAST_SEEN_SYNC_ID),
                         "suspended_imported:" + kanji
                 );
             }
@@ -1919,11 +1988,11 @@ public final class LocalStore extends SQLiteOpenHelper {
             );
         }
 
-        Cursor study = db.query("study_items", null, null, null, null, null, "created_at ASC, kanji ASC");
+        Cursor study = db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, "created_at ASC, kanji ASC");
         try {
             while (study.moveToNext()) {
-                String kanji = string(study, "kanji");
-                long createdAt = longValue(study, "created_at");
+                String kanji = string(study, COLUMN_KANJI);
+                long createdAt = longValue(study, COLUMN_CREATED_AT);
                 RowSnapshot row = rows.get(kanji);
                 SourceSnapshot source = row == null ? firstExampleForKanji(db, kanji) : row.source;
                 if (row == null) {
@@ -1974,19 +2043,19 @@ public final class LocalStore extends SQLiteOpenHelper {
             study.close();
         }
 
-        Cursor reviews = db.query("review_log", null, null, null, null, null, "reviewed_at ASC, id ASC");
+        Cursor reviews = db.query(TABLE_REVIEW_LOG, null, null, null, null, null, "reviewed_at ASC, id ASC");
         try {
             while (reviews.moveToNext()) {
                 Records.ReviewRequest request = new Records.ReviewRequest(
-                        string(reviews, "kanji"),
-                        string(reviews, "token"),
-                        string(reviews, "rating"),
-                        integer(reviews, "writing_required") == 1,
-                        integer(reviews, "writing_passed") == 1,
-                        integer(reviews, "manual_override") == 1,
+                        string(reviews, COLUMN_KANJI),
+                        string(reviews, COLUMN_TOKEN),
+                        string(reviews, COLUMN_RATING),
+                        integer(reviews, COLUMN_WRITING_REQUIRED) == 1,
+                        integer(reviews, COLUMN_WRITING_PASSED) == 1,
+                        integer(reviews, COLUMN_MANUAL_OVERRIDE) == 1,
                         0
                 );
-                appendReviewTimelineEvent(db, request, string(reviews, "rating"), longValue(reviews, "reviewed_at"), "review:" + request.token);
+                appendReviewTimelineEvent(db, request, string(reviews, COLUMN_RATING), longValue(reviews, COLUMN_REVIEWED_AT), "review:" + request.token);
             }
         } finally {
             reviews.close();
@@ -2175,7 +2244,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         String eventType;
         String title;
         if (request.manualOverride) {
-            eventType = "manual_override";
+            eventType = COLUMN_MANUAL_OVERRIDE;
             title = "Manual override";
         } else if ("again".equals(appliedRating) || (request.writingRequired && !request.writingPassed)) {
             eventType = "review_failed";
@@ -2233,7 +2302,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private List<Records.DashboardRow> dashboardRowsFromDb(SQLiteDatabase db) {
         List<Records.DashboardRow> rows = new ArrayList<>();
-        try (Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, "kanji ASC")) {
+        try (Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, ORDER_KANJI_ASC)) {
             while (cursor.moveToNext()) {
                 rows.add(readDashboardRow(db, cursor));
             }
@@ -2245,27 +2314,27 @@ public final class LocalStore extends SQLiteOpenHelper {
         Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();
         try (Cursor cursor = db.query(TABLE_SUSPENDED_IMPORTS, null, null, null, null, null, "jiten_rank ASC, kanji ASC")) {
             while (cursor.moveToNext()) {
-                String kanji = string(cursor, "kanji");
+                String kanji = string(cursor, COLUMN_KANJI);
                 imports.put(kanji, new MutableSuspendedImport(
                         kanji,
-                        nullableInt(cursor, "jiten_rank"),
-                        integer(cursor, "rank_known") == 1,
-                        integer(cursor, "cutoff_used")
+                        nullableInt(cursor, COLUMN_JITEN_RANK),
+                        integer(cursor, COLUMN_RANK_KNOWN) == 1,
+                        integer(cursor, COLUMN_CUTOFF_USED)
                 ));
             }
         }
         try (Cursor sources = db.query(TABLE_SUSPENDED_SOURCES, null, null, null, null, null, "kanji ASC, card_id ASC")) {
             while (sources.moveToNext()) {
-                MutableSuspendedImport imported = imports.get(string(sources, "kanji"));
+                MutableSuspendedImport imported = imports.get(string(sources, COLUMN_KANJI));
                 if (imported != null) {
                     imported.sources.add(new Records.SuspendedSource(
                             imported.kanji,
-                            longValue(sources, "card_id"),
-                            longValue(sources, "note_id"),
-                            string(sources, "expression"),
-                            string(sources, "reading"),
-                            string(sources, "meaning"),
-                            string(sources, "sentence")
+                            longValue(sources, COLUMN_CARD_ID),
+                            longValue(sources, COLUMN_NOTE_ID),
+                            string(sources, COLUMN_EXPRESSION),
+                            string(sources, COLUMN_READING),
+                            string(sources, COLUMN_MEANING),
+                            string(sources, COLUMN_SENTENCE)
                     ));
                 }
             }
@@ -2314,20 +2383,20 @@ public final class LocalStore extends SQLiteOpenHelper {
                 item.add(example.meaning, example.reading, example.expression, example.sentence);
             }
         }
-        try (Cursor study = db.query(TABLE_STUDY_ITEMS, new String[]{"kanji"}, null, null, null, null, null)) {
+        try (Cursor study = db.query(TABLE_STUDY_ITEMS, new String[]{COLUMN_KANJI}, null, null, null, null, null)) {
             while (study.moveToNext()) {
-                inventoryItem(inventory, string(study, "kanji"));
+                inventoryItem(inventory, string(study, COLUMN_KANJI));
             }
         }
-        try (Cursor reviews = db.query(true, TABLE_REVIEW_LOG, new String[]{"kanji"}, null, null, null, null, null, null)) {
+        try (Cursor reviews = db.query(true, TABLE_REVIEW_LOG, new String[]{COLUMN_KANJI}, null, null, null, null, null, null)) {
             while (reviews.moveToNext()) {
-                inventoryItem(inventory, string(reviews, "kanji"));
+                inventoryItem(inventory, string(reviews, COLUMN_KANJI));
             }
         }
-        Cursor timeline = db.query(true, "kanji_timeline_events", new String[]{"kanji"}, null, null, null, null, null, null);
+        Cursor timeline = db.query(true, "kanji_timeline_events", new String[]{COLUMN_KANJI}, null, null, null, null, null, null);
         try {
             while (timeline.moveToNext()) {
-                inventoryItem(inventory, string(timeline, "kanji"));
+                inventoryItem(inventory, string(timeline, COLUMN_KANJI));
             }
         } finally {
             timeline.close();
@@ -2338,31 +2407,31 @@ public final class LocalStore extends SQLiteOpenHelper {
             }
             Records.KanjiInventoryItem previous = readInventoryItem(db, item.kanji);
             ContentValues values = new ContentValues();
-            values.put("kanji", item.kanji);
-            values.put("primary_meaning", firstNonEmpty(item.primaryMeaning, previous == null ? "" : previous.primaryMeaning));
+            values.put(COLUMN_KANJI, item.kanji);
+            values.put(COLUMN_PRIMARY_MEANING, firstNonEmpty(item.primaryMeaning, previous == null ? "" : previous.primaryMeaning));
             values.put("readings", item.readingsText(previous == null ? "" : previous.readings));
-            values.put("browser_search", firstNonEmpty(item.browserSearch, previous == null ? TextUtil.browserSearchForKanji(item.kanji, settings) : previous.browserSearch));
+            values.put(COLUMN_BROWSER_SEARCH, firstNonEmpty(item.browserSearch, previous == null ? TextUtil.browserSearchForKanji(item.kanji, settings) : previous.browserSearch));
             values.put("search_text", item.searchText(previous));
             values.put("source_count", Math.max(item.sourceCount, previous == null ? 0 : previous.sourceCount));
             values.put("example_count", Math.max(item.exampleCount, previous == null ? 0 : previous.exampleCount));
-            values.put("first_seen_at", previous == null ? nowMillis : previous.lastSeenAtMillis);
-            values.put("last_seen_at", nowMillis);
-            db.insertWithOnConflict("kanji_inventory", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            values.put(COLUMN_FIRST_SEEN_AT, previous == null ? nowMillis : previous.lastSeenAtMillis);
+            values.put(COLUMN_LAST_SEEN_AT, nowMillis);
+            db.insertWithOnConflict(TABLE_KANJI_INVENTORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
 
     private void rebuildSimilarKanjiPairs(SQLiteDatabase db, SimilarKanjiIndex similarIndex, long nowMillis) {
         Map<String, Long> firstSeenByPair = similarPairFirstSeen(db);
         List<SimilarKanjiIndex.Pair> localPairs = similarIndex.pairsWithin(localInventoryKanji(db));
-        db.delete("similar_kanji_pairs", null, null);
+        db.delete(TABLE_SIMILAR_KANJI_PAIRS, null, null);
         for (SimilarKanjiIndex.Pair pair : localPairs) {
             ContentValues values = new ContentValues();
-            values.put("kanji_a", pair.kanjiA);
-            values.put("kanji_b", pair.kanjiB);
-            values.put("source", pair.source);
-            values.put("first_seen_at", firstSeenByPair.getOrDefault(similarKey(pair.kanjiA, pair.kanjiB, pair.source), nowMillis));
-            values.put("last_seen_at", nowMillis);
-            db.insertWithOnConflict("similar_kanji_pairs", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            values.put(COLUMN_KANJI_A, pair.kanjiA);
+            values.put(COLUMN_KANJI_B, pair.kanjiB);
+            values.put(COLUMN_SOURCE, pair.source);
+            values.put(COLUMN_FIRST_SEEN_AT, firstSeenByPair.getOrDefault(similarKey(pair.kanjiA, pair.kanjiB, pair.source), nowMillis));
+            values.put(COLUMN_LAST_SEEN_AT, nowMillis);
+            db.insertWithOnConflict(TABLE_SIMILAR_KANJI_PAIRS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
 
@@ -2380,18 +2449,18 @@ public final class LocalStore extends SQLiteOpenHelper {
             currentKeys.add(key);
             SimilarChoiceSnapshot old = previous.get(key);
             ContentValues values = new ContentValues();
-            values.put("target_kanji", card.targetKanji);
-            values.put("choice_signature", card.choiceSignature);
-            values.put("primary_meaning", card.primaryMeaning);
+            values.put(COLUMN_TARGET_KANJI, card.targetKanji);
+            values.put(COLUMN_CHOICE_SIGNATURE, card.choiceSignature);
+            values.put(COLUMN_PRIMARY_MEANING, card.primaryMeaning);
             values.put("choices", serializeChoices(card.choices));
-            values.put("due_at", old == null ? 0L : old.dueAtMillis);
-            values.put("passed_at", old == null ? 0L : old.passedAtMillis);
-            values.put("last_reviewed_at", old == null ? 0L : old.lastReviewedAtMillis);
-            values.put("correct_count", old == null ? 0 : old.correctCount);
+            values.put(COLUMN_DUE_AT, old == null ? 0L : old.dueAtMillis);
+            values.put(COLUMN_PASSED_AT, old == null ? 0L : old.passedAtMillis);
+            values.put(COLUMN_LAST_REVIEWED_AT, old == null ? 0L : old.lastReviewedAtMillis);
+            values.put(COLUMN_CORRECT_COUNT, old == null ? 0 : old.correctCount);
             values.put("wrong_count", old == null ? 0 : old.wrongCount);
-            values.put("active_token", "");
-            values.put("first_seen_at", old == null ? nowMillis : old.firstSeenAtMillis);
-            values.put("last_seen_at", nowMillis);
+            values.put(COLUMN_ACTIVE_TOKEN, "");
+            values.put(COLUMN_FIRST_SEEN_AT, old == null ? nowMillis : old.firstSeenAtMillis);
+            values.put(COLUMN_LAST_SEEN_AT, nowMillis);
             db.insertWithOnConflict(TABLE_SIMILAR_KANJI_CHOICE_STATE, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
 
@@ -2405,7 +2474,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             }
             db.delete(
                     TABLE_SIMILAR_KANJI_CHOICE_STATE,
-                    "target_kanji=? AND choice_signature=?",
+                    WHERE_SIMILAR_CHOICE,
                     new String[]{parts[0], parts[1]}
             );
             db.delete(
@@ -2418,11 +2487,11 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Map<String, Long> similarPairFirstSeen(SQLiteDatabase db) {
         Map<String, Long> out = new HashMap<>();
-        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, new String[]{"kanji_a", "kanji_b", "source", "first_seen_at"}, null, null, null, null, null)) {
+        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, new String[]{COLUMN_KANJI_A, COLUMN_KANJI_B, COLUMN_SOURCE, COLUMN_FIRST_SEEN_AT}, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
                 out.put(
-                        similarKey(string(cursor, "kanji_a"), string(cursor, "kanji_b"), string(cursor, "source")),
-                        longValue(cursor, "first_seen_at")
+                        similarKey(string(cursor, COLUMN_KANJI_A), string(cursor, COLUMN_KANJI_B), string(cursor, COLUMN_SOURCE)),
+                        longValue(cursor, COLUMN_FIRST_SEEN_AT)
                 );
             }
         }
@@ -2431,9 +2500,9 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Set<String> localInventoryKanji(SQLiteDatabase db) {
         Set<String> out = new HashSet<>();
-        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, new String[]{"kanji"}, null, null, null, null, null)) {
+        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, new String[]{COLUMN_KANJI}, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
-                String kanji = normalizeSingleKanji(string(cursor, "kanji"));
+                String kanji = normalizeSingleKanji(string(cursor, COLUMN_KANJI));
                 if (!kanji.isEmpty()) {
                     out.add(kanji);
                 }
@@ -2444,17 +2513,17 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Records.SimilarKanjiPair readSimilarPair(Cursor cursor) {
         return new Records.SimilarKanjiPair(
-                string(cursor, "kanji_a"),
-                string(cursor, "kanji_b"),
-                string(cursor, "source"),
-                longValue(cursor, "first_seen_at"),
-                longValue(cursor, "last_seen_at")
+                string(cursor, COLUMN_KANJI_A),
+                string(cursor, COLUMN_KANJI_B),
+                string(cursor, COLUMN_SOURCE),
+                longValue(cursor, COLUMN_FIRST_SEEN_AT),
+                longValue(cursor, COLUMN_LAST_SEEN_AT)
         );
     }
 
     private List<Records.SimilarKanjiPair> allSimilarPairs(SQLiteDatabase db) {
         List<Records.SimilarKanjiPair> out = new ArrayList<>();
-        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, "kanji_a ASC, kanji_b ASC, source ASC")) {
+        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, ORDER_SIMILAR_PAIR)) {
             while (cursor.moveToNext()) {
                 out.add(readSimilarPair(cursor));
             }
@@ -2464,7 +2533,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private List<Records.KanjiInventoryItem> allInventoryItems(SQLiteDatabase db) {
         List<Records.KanjiInventoryItem> out = new ArrayList<>();
-        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, null, null, null, null, "kanji ASC")) {
+        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, null, null, null, null, ORDER_KANJI_ASC)) {
             while (cursor.moveToNext()) {
                 out.add(readInventoryItem(db, cursor));
             }
@@ -2476,17 +2545,17 @@ public final class LocalStore extends SQLiteOpenHelper {
         Map<String, SimilarChoiceSnapshot> out = new HashMap<>();
         try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_CHOICE_STATE, null, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
-                String target = string(cursor, "target_kanji");
-                String signature = string(cursor, "choice_signature");
+                String target = string(cursor, COLUMN_TARGET_KANJI);
+                String signature = string(cursor, COLUMN_CHOICE_SIGNATURE);
                 out.put(
                         similarChoiceKey(target, signature),
                         new SimilarChoiceSnapshot(
-                                longValue(cursor, "due_at"),
-                                longValue(cursor, "passed_at"),
-                                longValue(cursor, "last_reviewed_at"),
-                                integer(cursor, "correct_count"),
+                                longValue(cursor, COLUMN_DUE_AT),
+                                longValue(cursor, COLUMN_PASSED_AT),
+                                longValue(cursor, COLUMN_LAST_REVIEWED_AT),
+                                integer(cursor, COLUMN_CORRECT_COUNT),
                                 integer(cursor, "wrong_count"),
-                                longValue(cursor, "first_seen_at")
+                                longValue(cursor, COLUMN_FIRST_SEEN_AT)
                         )
                 );
             }
@@ -2498,7 +2567,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_CHOICE_STATE,
                 null,
-                "target_kanji=? AND choice_signature=?",
+                WHERE_SIMILAR_CHOICE,
                 new String[]{targetKanji, choiceSignature},
                 null,
                 null,
@@ -2511,14 +2580,14 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Records.SimilarKanjiChoiceCard readSimilarChoiceCard(Cursor cursor) {
         return new Records.SimilarKanjiChoiceCard(
-                string(cursor, "target_kanji"),
-                string(cursor, "primary_meaning"),
+                string(cursor, COLUMN_TARGET_KANJI),
+                string(cursor, COLUMN_PRIMARY_MEANING),
                 deserializeChoices(string(cursor, "choices")),
-                string(cursor, "choice_signature"),
-                longValue(cursor, "due_at"),
-                longValue(cursor, "passed_at"),
-                longValue(cursor, "last_reviewed_at"),
-                integer(cursor, "correct_count"),
+                string(cursor, COLUMN_CHOICE_SIGNATURE),
+                longValue(cursor, COLUMN_DUE_AT),
+                longValue(cursor, COLUMN_PASSED_AT),
+                longValue(cursor, COLUMN_LAST_REVIEWED_AT),
+                integer(cursor, COLUMN_CORRECT_COUNT),
                 integer(cursor, "wrong_count")
         );
     }
@@ -2564,18 +2633,18 @@ public final class LocalStore extends SQLiteOpenHelper {
             }
         }
         ContentValues values = new ContentValues();
-        values.put("target_kanji", card.targetKanji);
+        values.put(COLUMN_TARGET_KANJI, card.targetKanji);
         values.put("repair_kanji", normalized);
-        values.put("choice_signature", card.choiceSignature);
+        values.put(COLUMN_CHOICE_SIGNATURE, card.choiceSignature);
         values.put("wrong_selection", wrongSelection == null ? "" : wrongSelection);
         values.put("prompt_meaning", card.primaryMeaning);
-        values.put("status", STATUS_PENDING);
-        values.put("due_at", nowMillis);
-        values.put("active_token", "");
-        values.put("attempts", 0);
-        values.put("created_at", nowMillis);
-        values.put("updated_at", nowMillis);
-        values.put("completed_at", 0L);
+        values.put(COLUMN_STATUS, STATUS_PENDING);
+        values.put(COLUMN_DUE_AT, nowMillis);
+        values.put(COLUMN_ACTIVE_TOKEN, "");
+        values.put(COLUMN_ATTEMPTS, 0);
+        values.put(COLUMN_CREATED_AT, nowMillis);
+        values.put(COLUMN_UPDATED_AT, nowMillis);
+        values.put(COLUMN_COMPLETED_AT, 0L);
         db.insert(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, null, values);
     }
 
@@ -2597,18 +2666,18 @@ public final class LocalStore extends SQLiteOpenHelper {
     private Records.SimilarKanjiWritingRepair readSimilarWritingRepair(Cursor cursor) {
         return new Records.SimilarKanjiWritingRepair(
                 longValue(cursor, "id"),
-                string(cursor, "target_kanji"),
+                string(cursor, COLUMN_TARGET_KANJI),
                 string(cursor, "repair_kanji"),
-                string(cursor, "choice_signature"),
+                string(cursor, COLUMN_CHOICE_SIGNATURE),
                 string(cursor, "wrong_selection"),
                 string(cursor, "prompt_meaning"),
-                string(cursor, "status"),
-                longValue(cursor, "due_at"),
-                string(cursor, "active_token"),
-                integer(cursor, "attempts"),
-                longValue(cursor, "created_at"),
-                longValue(cursor, "updated_at"),
-                longValue(cursor, "completed_at")
+                string(cursor, COLUMN_STATUS),
+                longValue(cursor, COLUMN_DUE_AT),
+                string(cursor, COLUMN_ACTIVE_TOKEN),
+                integer(cursor, COLUMN_ATTEMPTS),
+                longValue(cursor, COLUMN_CREATED_AT),
+                longValue(cursor, COLUMN_UPDATED_AT),
+                longValue(cursor, COLUMN_COMPLETED_AT)
         );
     }
 
@@ -2646,7 +2715,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private Records.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("kanji_inventory", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             return cursor.moveToFirst() ? readInventoryItem(db, cursor) : null;
         } finally {
@@ -2655,21 +2724,21 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private Records.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, Cursor cursor) {
-        String kanji = string(cursor, "kanji");
+        String kanji = string(cursor, COLUMN_KANJI);
         return new Records.KanjiInventoryItem(
                 kanji,
-                string(cursor, "primary_meaning"),
+                string(cursor, COLUMN_PRIMARY_MEANING),
                 string(cursor, "readings"),
-                string(cursor, "browser_search"),
+                string(cursor, COLUMN_BROWSER_SEARCH),
                 integer(cursor, "source_count"),
                 integer(cursor, "example_count"),
                 isKanjiSuspended(db, kanji),
-                longValue(cursor, "last_seen_at")
+                longValue(cursor, COLUMN_LAST_SEEN_AT)
         );
     }
 
     private boolean isKanjiSuspended(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("local_kanji_suspensions", new String[]{"kanji"}, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query(TABLE_LOCAL_KANJI_SUSPENSIONS, new String[]{COLUMN_KANJI}, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             return cursor.moveToFirst();
         } finally {
@@ -2705,7 +2774,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private Records.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("dashboard_rows", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             if (!cursor.moveToFirst()) {
                 return null;
@@ -2717,25 +2786,25 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private Records.DashboardRow readDashboardRow(SQLiteDatabase db, Cursor cursor) {
-        String kanji = string(cursor, "kanji");
+        String kanji = string(cursor, COLUMN_KANJI);
         return new Records.DashboardRow(
                 kanji,
-                nullableInt(cursor, "jiten_rank"),
-                string(cursor, "primary_meaning"),
-                string(cursor, "reading"),
-                string(cursor, "browser_search"),
-                integer(cursor, "weakness_score"),
-                string(cursor, "reason_code"),
-                string(cursor, "reason_text"),
+                nullableInt(cursor, COLUMN_JITEN_RANK),
+                string(cursor, COLUMN_PRIMARY_MEANING),
+                string(cursor, COLUMN_READING),
+                string(cursor, COLUMN_BROWSER_SEARCH),
+                integer(cursor, COLUMN_WEAKNESS_SCORE),
+                string(cursor, COLUMN_REASON_CODE),
+                string(cursor, COLUMN_REASON_TEXT),
                 integer(cursor, "active_example_count"),
                 integer(cursor, "suspended_example_count"),
-                integer(cursor, "mature_support_count"),
+                integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
                 examplesForKanji(db, kanji)
         );
     }
 
     private Records.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("study_items", null, "kanji=?", new String[]{kanji}, null, null, "state='retired' ASC, due_at ASC", "1");
+        Cursor cursor = db.query(TABLE_STUDY_ITEMS, null, WHERE_KANJI, new String[]{kanji}, null, null, "state='retired' ASC, due_at ASC", "1");
         try {
             return cursor.moveToFirst() ? readStudyItem(cursor) : null;
         } finally {
@@ -2746,20 +2815,20 @@ public final class LocalStore extends SQLiteOpenHelper {
     private Records.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
         return new Records.KanjiTimelineEvent(
                 longValue(cursor, "id"),
-                string(cursor, "kanji"),
+                string(cursor, COLUMN_KANJI),
                 longValue(cursor, "occurred_at"),
                 string(cursor, "event_type"),
                 string(cursor, "title"),
                 string(cursor, "detail"),
                 string(cursor, "source_expression"),
                 string(cursor, "source_reading"),
-                string(cursor, "rating"),
-                integer(cursor, "writing_required") == 1,
-                integer(cursor, "writing_passed") == 1,
-                integer(cursor, "manual_override") == 1,
-                nullableInt(cursor, "weakness_score"),
-                nullableInt(cursor, "mature_support_count"),
-                nullableLong(cursor, "sync_id"),
+                string(cursor, COLUMN_RATING),
+                integer(cursor, COLUMN_WRITING_REQUIRED) == 1,
+                integer(cursor, COLUMN_WRITING_PASSED) == 1,
+                integer(cursor, COLUMN_MANUAL_OVERRIDE) == 1,
+                nullableInt(cursor, COLUMN_WEAKNESS_SCORE),
+                nullableInt(cursor, COLUMN_MATURE_SUPPORT_COUNT),
+                nullableLong(cursor, COLUMN_SYNC_ID),
                 string(cursor, "dedupe_key")
         );
     }
@@ -2783,31 +2852,31 @@ public final class LocalStore extends SQLiteOpenHelper {
             String dedupeKey
     ) {
         ContentValues values = new ContentValues();
-        values.put("kanji", kanji);
+        values.put(COLUMN_KANJI, kanji);
         values.put("occurred_at", occurredAt);
         values.put("event_type", eventType == null ? "" : eventType);
         values.put("title", title == null ? "" : title);
         values.put("detail", detail == null ? "" : detail);
         values.put("source_expression", sourceExpression == null ? "" : sourceExpression);
         values.put("source_reading", sourceReading == null ? "" : sourceReading);
-        values.put("rating", rating == null ? "" : rating);
-        values.put("writing_required", writingRequired ? 1 : 0);
-        values.put("writing_passed", writingPassed ? 1 : 0);
-        values.put("manual_override", manualOverride ? 1 : 0);
+        values.put(COLUMN_RATING, rating == null ? "" : rating);
+        values.put(COLUMN_WRITING_REQUIRED, writingRequired ? 1 : 0);
+        values.put(COLUMN_WRITING_PASSED, writingPassed ? 1 : 0);
+        values.put(COLUMN_MANUAL_OVERRIDE, manualOverride ? 1 : 0);
         if (weaknessScore == null) {
-            values.putNull("weakness_score");
+            values.putNull(COLUMN_WEAKNESS_SCORE);
         } else {
-            values.put("weakness_score", weaknessScore);
+            values.put(COLUMN_WEAKNESS_SCORE, weaknessScore);
         }
         if (matureSupportCount == null) {
-            values.putNull("mature_support_count");
+            values.putNull(COLUMN_MATURE_SUPPORT_COUNT);
         } else {
-            values.put("mature_support_count", matureSupportCount);
+            values.put(COLUMN_MATURE_SUPPORT_COUNT, matureSupportCount);
         }
         if (syncId == null) {
-            values.putNull("sync_id");
+            values.putNull(COLUMN_SYNC_ID);
         } else {
-            values.put("sync_id", syncId);
+            values.put(COLUMN_SYNC_ID, syncId);
         }
         values.put("dedupe_key", dedupeKey);
         db.insertWithOnConflict("kanji_timeline_events", null, values, SQLiteDatabase.CONFLICT_IGNORE);
@@ -2815,7 +2884,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Map<String, RowSnapshot> rowSnapshots(SQLiteDatabase db) {
         Map<String, RowSnapshot> rows = new LinkedHashMap<>();
-        Cursor cursor = db.query("dashboard_rows", null, null, null, null, null, "kanji ASC");
+        Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, ORDER_KANJI_ASC);
         try {
             while (cursor.moveToNext()) {
                 RowSnapshot row = rowSnapshotFromCursor(db, cursor);
@@ -2828,7 +2897,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private RowSnapshot rowSnapshot(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("dashboard_rows", null, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             return cursor.moveToFirst() ? rowSnapshotFromCursor(db, cursor) : null;
         } finally {
@@ -2837,11 +2906,11 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private RowSnapshot rowSnapshotFromCursor(SQLiteDatabase db, Cursor cursor) {
-        String kanji = string(cursor, "kanji");
+        String kanji = string(cursor, COLUMN_KANJI);
         return new RowSnapshot(
                 kanji,
-                integer(cursor, "weakness_score"),
-                integer(cursor, "mature_support_count"),
+                integer(cursor, COLUMN_WEAKNESS_SCORE),
+                integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
                 longValue(cursor, "rebuilt_at"),
                 firstExampleForKanji(db, kanji)
         );
@@ -2849,11 +2918,11 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Map<String, StudySnapshot> studySnapshots(SQLiteDatabase db) {
         Map<String, StudySnapshot> items = new HashMap<>();
-        Cursor cursor = db.query("study_items", new String[]{"kanji", "answer_signature", "state"}, null, null, null, null, null);
+        Cursor cursor = db.query(TABLE_STUDY_ITEMS, new String[]{COLUMN_KANJI, COLUMN_ANSWER_SIGNATURE, "state"}, null, null, null, null, null);
         try {
             while (cursor.moveToNext()) {
-                String kanji = string(cursor, "kanji");
-                String answerSignature = string(cursor, "answer_signature");
+                String kanji = string(cursor, COLUMN_KANJI);
+                String answerSignature = string(cursor, COLUMN_ANSWER_SIGNATURE);
                 items.put(studyFamilyKey(kanji, answerSignature), new StudySnapshot(string(cursor, "state")));
             }
         } finally {
@@ -2863,24 +2932,24 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private SourceSnapshot firstExampleForKanji(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("kanji_examples", new String[]{"expression", "reading"}, "kanji=?", new String[]{kanji}, null, null, "source_type ASC, id ASC", "1");
+        Cursor cursor = db.query(TABLE_KANJI_EXAMPLES, new String[]{COLUMN_EXPRESSION, COLUMN_READING}, WHERE_KANJI, new String[]{kanji}, null, null, "source_type ASC, id ASC", "1");
         try {
             if (!cursor.moveToFirst()) {
                 return SourceSnapshot.EMPTY;
             }
-            return new SourceSnapshot(string(cursor, "expression"), string(cursor, "reading"));
+            return new SourceSnapshot(string(cursor, COLUMN_EXPRESSION), string(cursor, COLUMN_READING));
         } finally {
             cursor.close();
         }
     }
 
     private SourceSnapshot firstSuspendedSourceForKanji(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query("suspended_sources", new String[]{"expression", "reading"}, "kanji=?", new String[]{kanji}, null, null, "card_id ASC", "1");
+        Cursor cursor = db.query(TABLE_SUSPENDED_SOURCES, new String[]{COLUMN_EXPRESSION, COLUMN_READING}, WHERE_KANJI, new String[]{kanji}, null, null, "card_id ASC", "1");
         try {
             if (!cursor.moveToFirst()) {
                 return SourceSnapshot.EMPTY;
             }
-            return new SourceSnapshot(string(cursor, "expression"), string(cursor, "reading"));
+            return new SourceSnapshot(string(cursor, COLUMN_EXPRESSION), string(cursor, COLUMN_READING));
         } finally {
             cursor.close();
         }
@@ -2931,16 +3000,16 @@ public final class LocalStore extends SQLiteOpenHelper {
     private void putSetting(String key, String value) {
         ContentValues values = new ContentValues();
         values.put("key", key);
-        values.put("value", value);
-        values.put("updated_at", System.currentTimeMillis());
-        getWritableDatabase().insertWithOnConflict("settings", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        values.put(COLUMN_VALUE, value);
+        values.put(COLUMN_UPDATED_AT, System.currentTimeMillis());
+        getWritableDatabase().insertWithOnConflict(TABLE_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     private long insertSyncRun(SQLiteDatabase db, long startedAt, long finishedAt, String status, ActiveCardIndex activeIndex, int importCount, String errorCode, String errorMessage, String removalMessage, int deletedNotes, int deletedCards) {
         ContentValues values = new ContentValues();
         values.put("started_at", startedAt);
         values.put("finished_at", finishedAt);
-        values.put("status", status);
+        values.put(COLUMN_STATUS, status);
         values.put("active_notes_count", activeIndex.noteIds.size());
         values.put("active_cards_count", activeIndex.activeCardCount);
         values.put("suspended_cards_archived_count", activeIndex.suspendedCardCount);
@@ -2950,45 +3019,45 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("error_code", errorCode);
         values.put("error_message", errorMessage);
         values.put("removal_message", removalMessage);
-        return db.insert("sync_runs", null, values);
+        return db.insert(TABLE_SYNC_RUNS, null, values);
     }
 
     private void saveRows(SQLiteDatabase db, List<Records.DashboardRow> rows, long rebuiltAt) {
         for (Records.DashboardRow row : rows) {
             ContentValues values = new ContentValues();
-            values.put("kanji", row.kanji);
+            values.put(COLUMN_KANJI, row.kanji);
             if (row.jitenRank != null) {
-                values.put("jiten_rank", row.jitenRank);
+                values.put(COLUMN_JITEN_RANK, row.jitenRank);
             }
-            values.put("primary_meaning", row.primaryMeaning);
-            values.put("reading", row.reading);
-            values.put("browser_search", row.browserSearch);
-            values.put("weakness_score", row.weaknessScore);
-            values.put("reason_code", row.reasonCode);
-            values.put("reason_text", row.reasonText);
+            values.put(COLUMN_PRIMARY_MEANING, row.primaryMeaning);
+            values.put(COLUMN_READING, row.reading);
+            values.put(COLUMN_BROWSER_SEARCH, row.browserSearch);
+            values.put(COLUMN_WEAKNESS_SCORE, row.weaknessScore);
+            values.put(COLUMN_REASON_CODE, row.reasonCode);
+            values.put(COLUMN_REASON_TEXT, row.reasonText);
             values.put("active_example_count", row.activeExampleCount);
             values.put("suspended_example_count", row.suspendedExampleCount);
-            values.put("mature_support_count", row.matureSupportCount);
+            values.put(COLUMN_MATURE_SUPPORT_COUNT, row.matureSupportCount);
             values.put("rebuilt_at", rebuiltAt);
-            db.insertWithOnConflict("dashboard_rows", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            db.insertWithOnConflict(TABLE_DASHBOARD_ROWS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
             for (Records.Example example : row.examples) {
                 ContentValues ex = new ContentValues();
-                ex.put("kanji", row.kanji);
+                ex.put(COLUMN_KANJI, row.kanji);
                 ex.put("source_type", example.sourceType);
-                ex.put("card_id", example.cardId);
-                ex.put("note_id", example.noteId);
-                ex.put("expression", example.expression);
-                ex.put("reading", example.reading);
-                ex.put("meaning", example.meaning);
-                ex.put("sentence", example.sentence);
+                ex.put(COLUMN_CARD_ID, example.cardId);
+                ex.put(COLUMN_NOTE_ID, example.noteId);
+                ex.put(COLUMN_EXPRESSION, example.expression);
+                ex.put(COLUMN_READING, example.reading);
+                ex.put(COLUMN_MEANING, example.meaning);
+                ex.put(COLUMN_SENTENCE, example.sentence);
                 ex.put("mature", example.mature ? 1 : 0);
                 ex.put("lapses", example.lapses);
                 ex.put("interval_days", example.intervalDays);
                 ex.put("reps", example.reps);
-                putNullableDouble(ex, "fsrs_stability", example.fsrsStability);
-                putNullableDouble(ex, "fsrs_difficulty", example.fsrsDifficulty);
-                putNullableDouble(ex, "fsrs_retrievability", example.fsrsRetrievability);
-                db.insert("kanji_examples", null, ex);
+                putNullableDouble(ex, COLUMN_FSRS_STABILITY, example.fsrsStability);
+                putNullableDouble(ex, COLUMN_FSRS_DIFFICULTY, example.fsrsDifficulty);
+                putNullableDouble(ex, COLUMN_FSRS_RETRIEVABILITY, example.fsrsRetrievability);
+                db.insert(TABLE_KANJI_EXAMPLES, null, ex);
             }
         }
     }
@@ -3013,28 +3082,28 @@ public final class LocalStore extends SQLiteOpenHelper {
                 continue;
             }
             ContentValues cardValues = new ContentValues();
-            cardValues.put("sync_id", syncId);
+            cardValues.put(COLUMN_SYNC_ID, syncId);
             cardValues.put("started_at", timing.startedAt);
             cardValues.put("finished_at", timing.finishedAt);
-            cardValues.put("card_id", card.cardId);
-            cardValues.put("note_id", card.noteId);
-            cardValues.put("deck_id", card.deckId);
-            cardValues.put("deck_name", card.deckName);
-            cardValues.put("model_id", note.modelId);
-            cardValues.put("model_name", note.modelName);
+            cardValues.put(COLUMN_CARD_ID, card.cardId);
+            cardValues.put(COLUMN_NOTE_ID, card.noteId);
+            cardValues.put(COLUMN_DECK_ID, card.deckId);
+            cardValues.put(COLUMN_DECK_NAME, card.deckName);
+            cardValues.put(COLUMN_MODEL_ID, note.modelId);
+            cardValues.put(COLUMN_MODEL_NAME, note.modelName);
             cardValues.put("ord", card.ord);
-            cardValues.put("queue", card.queue);
+            cardValues.put(COLUMN_QUEUE, card.queue);
             cardValues.put("type", card.type);
             cardValues.put("due", card.due);
             cardValues.put("interval_days", card.intervalDays);
             cardValues.put("reps", card.reps);
             cardValues.put("lapses", card.lapses);
             cardValues.put("suspended", card.suspended ? 1 : 0);
-            putNullableDouble(cardValues, "fsrs_stability", card.fsrsStability);
-            putNullableDouble(cardValues, "fsrs_difficulty", card.fsrsDifficulty);
-            putNullableDouble(cardValues, "fsrs_retrievability", card.fsrsRetrievability);
+            putNullableDouble(cardValues, COLUMN_FSRS_STABILITY, card.fsrsStability);
+            putNullableDouble(cardValues, COLUMN_FSRS_DIFFICULTY, card.fsrsDifficulty);
+            putNullableDouble(cardValues, COLUMN_FSRS_RETRIEVABILITY, card.fsrsRetrievability);
             cardValues.put("mature", card.mature(settings.matureDays) ? 1 : 0);
-            db.insertWithOnConflict("sync_card_snapshots", null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.insertWithOnConflict(TABLE_SYNC_CARD_SNAPSHOTS, null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
 
             for (String kanji : extractedKanji(note, settings)) {
                 aggregateFor(aggregates, kanji).add(card, settings.matureDays);
@@ -3052,21 +3121,21 @@ public final class LocalStore extends SQLiteOpenHelper {
             String meaning = TextUtil.firstMeaningLine(note.meaning(settings));
             String sentence = TextUtil.normalizeJapanese(note.sentence(settings));
             ContentValues noteValues = new ContentValues();
-            noteValues.put("sync_id", syncId);
+            noteValues.put(COLUMN_SYNC_ID, syncId);
             noteValues.put("finished_at", timing.finishedAt);
-            noteValues.put("note_id", note.noteId);
-            noteValues.put("model_id", note.modelId);
-            noteValues.put("model_name", note.modelName);
-            noteValues.put("deck_ids", deckIds == null ? "" : String.join(" ", deckIds));
+            noteValues.put(COLUMN_NOTE_ID, note.noteId);
+            noteValues.put(COLUMN_MODEL_ID, note.modelId);
+            noteValues.put(COLUMN_MODEL_NAME, note.modelName);
+            noteValues.put(COLUMN_DECK_IDS, deckIds == null ? "" : String.join(" ", deckIds));
             noteValues.put("deck_names", String.join(" ", decks));
-            noteValues.put("expression", expression);
-            noteValues.put("reading", reading);
-            noteValues.put("meaning", meaning);
-            noteValues.put("sentence", sentence);
+            noteValues.put(COLUMN_EXPRESSION, expression);
+            noteValues.put(COLUMN_READING, reading);
+            noteValues.put(COLUMN_MEANING, meaning);
+            noteValues.put(COLUMN_SENTENCE, sentence);
             noteValues.put("tags", String.join(" ", note.tags));
-            noteValues.put("fields_json", fieldsJson(note.fields));
+            noteValues.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
             noteValues.put("extracted_kanji", String.join("", TextUtil.extractKanji(expression + " " + sentence)));
-            db.insertWithOnConflict("sync_note_snapshots", null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.insertWithOnConflict(TABLE_SYNC_NOTE_SNAPSHOTS, null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
         }
 
         overlayDashboardRows(aggregates, rows);
@@ -3074,7 +3143,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private void backfillLatestHistoricalSync(SQLiteDatabase db) {
-        if (tableHasRows(db, "sync_kanji_snapshots")) {
+        if (tableHasRows(db, TABLE_SYNC_KANJI_SNAPSHOTS)) {
             return;
         }
         HistoricalSyncRun sync = latestSuccessfulSyncRun(db);
@@ -3089,16 +3158,16 @@ public final class LocalStore extends SQLiteOpenHelper {
         Map<Long, LinkedHashSet<String>> deckIdsByNote = new LinkedHashMap<>();
         Map<Long, LinkedHashSet<String>> deckNamesByNote = new LinkedHashMap<>();
         Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
-        Cursor cards = db.query("source_cards", null, null, null, null, null, "card_id ASC");
+        Cursor cards = db.query(TABLE_SOURCE_CARDS, null, null, null, null, null, "card_id ASC");
         try {
             while (cards.moveToNext()) {
-                long noteId = longValue(cards, "note_id");
+                long noteId = longValue(cards, COLUMN_NOTE_ID);
                 HistoricalNoteSnapshot note = notes.get(noteId);
                 if (note == null) {
                     continue;
                 }
-                long cardId = longValue(cards, "card_id");
-                String deck = string(cards, "deck_name");
+                long cardId = longValue(cards, COLUMN_CARD_ID);
+                String deck = string(cards, COLUMN_DECK_NAME);
                 linkedSetFor(deckIdsByNote, noteId).add(deck);
                 linkedSetFor(deckNamesByNote, noteId).add(deck);
                 int intervalDays = integer(cards, "interval_days");
@@ -3107,28 +3176,28 @@ public final class LocalStore extends SQLiteOpenHelper {
                 boolean mature = intervalDays >= settings.matureDays;
 
                 ContentValues cardValues = new ContentValues();
-                cardValues.put("sync_id", sync.id);
+                cardValues.put(COLUMN_SYNC_ID, sync.id);
                 cardValues.put("started_at", sync.startedAt);
                 cardValues.put("finished_at", sync.finishedAt);
-                cardValues.put("card_id", cardId);
-                cardValues.put("note_id", noteId);
-                cardValues.put("deck_id", deck);
-                cardValues.put("deck_name", deck);
-                cardValues.put("model_id", note.modelId);
-                cardValues.put("model_name", note.modelName);
+                cardValues.put(COLUMN_CARD_ID, cardId);
+                cardValues.put(COLUMN_NOTE_ID, noteId);
+                cardValues.put(COLUMN_DECK_ID, deck);
+                cardValues.put(COLUMN_DECK_NAME, deck);
+                cardValues.put(COLUMN_MODEL_ID, note.modelId);
+                cardValues.put(COLUMN_MODEL_NAME, note.modelName);
                 cardValues.put("ord", integer(cards, "ord"));
-                cardValues.put("queue", integer(cards, "queue"));
+                cardValues.put(COLUMN_QUEUE, integer(cards, COLUMN_QUEUE));
                 cardValues.put("type", integer(cards, "type"));
                 cardValues.put("due", integer(cards, "due"));
                 cardValues.put("interval_days", intervalDays);
                 cardValues.put("reps", reps);
                 cardValues.put("lapses", lapses);
                 cardValues.put("suspended", 0);
-                putNullableDouble(cardValues, "fsrs_stability", nullableDouble(cards, "fsrs_stability"));
-                putNullableDouble(cardValues, "fsrs_difficulty", nullableDouble(cards, "fsrs_difficulty"));
-                putNullableDouble(cardValues, "fsrs_retrievability", nullableDouble(cards, "fsrs_retrievability"));
+                putNullableDouble(cardValues, COLUMN_FSRS_STABILITY, nullableDouble(cards, COLUMN_FSRS_STABILITY));
+                putNullableDouble(cardValues, COLUMN_FSRS_DIFFICULTY, nullableDouble(cards, COLUMN_FSRS_DIFFICULTY));
+                putNullableDouble(cardValues, COLUMN_FSRS_RETRIEVABILITY, nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY));
                 cardValues.put("mature", mature ? 1 : 0);
-                db.insertWithOnConflict("sync_card_snapshots", null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
+                db.insertWithOnConflict(TABLE_SYNC_CARD_SNAPSHOTS, null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
 
                 for (String kanji : TextUtil.extractKanji(note.expression + " " + note.sentence)) {
                     aggregateFor(aggregates, kanji).add(
@@ -3137,9 +3206,9 @@ public final class LocalStore extends SQLiteOpenHelper {
                             lapses,
                             false,
                             mature,
-                            nullableDouble(cards, "fsrs_stability"),
-                            nullableDouble(cards, "fsrs_difficulty"),
-                            nullableDouble(cards, "fsrs_retrievability")
+                            nullableDouble(cards, COLUMN_FSRS_STABILITY),
+                            nullableDouble(cards, COLUMN_FSRS_DIFFICULTY),
+                            nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY)
                     );
                 }
             }
@@ -3153,21 +3222,21 @@ public final class LocalStore extends SQLiteOpenHelper {
                 continue;
             }
             ContentValues noteValues = new ContentValues();
-            noteValues.put("sync_id", sync.id);
+            noteValues.put(COLUMN_SYNC_ID, sync.id);
             noteValues.put("finished_at", sync.finishedAt);
-            noteValues.put("note_id", note.noteId);
-            noteValues.put("model_id", note.modelId);
-            noteValues.put("model_name", note.modelName);
-            noteValues.put("deck_ids", deckIds == null ? "" : String.join(" ", deckIds));
+            noteValues.put(COLUMN_NOTE_ID, note.noteId);
+            noteValues.put(COLUMN_MODEL_ID, note.modelId);
+            noteValues.put(COLUMN_MODEL_NAME, note.modelName);
+            noteValues.put(COLUMN_DECK_IDS, deckIds == null ? "" : String.join(" ", deckIds));
             noteValues.put("deck_names", String.join(" ", decks));
-            noteValues.put("expression", note.expression);
-            noteValues.put("reading", note.reading);
-            noteValues.put("meaning", note.meaning);
-            noteValues.put("sentence", note.sentence);
+            noteValues.put(COLUMN_EXPRESSION, note.expression);
+            noteValues.put(COLUMN_READING, note.reading);
+            noteValues.put(COLUMN_MEANING, note.meaning);
+            noteValues.put(COLUMN_SENTENCE, note.sentence);
             noteValues.put("tags", note.tags);
-            noteValues.put("fields_json", note.fieldsJson);
+            noteValues.put(COLUMN_FIELDS_JSON, note.fieldsJson);
             noteValues.put("extracted_kanji", String.join("", TextUtil.extractKanji(note.expression + " " + note.sentence)));
-            db.insertWithOnConflict("sync_note_snapshots", null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
+            db.insertWithOnConflict(TABLE_SYNC_NOTE_SNAPSHOTS, null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
         }
         overlayDashboardRows(aggregates, currentDashboardRows(db));
         insertHistoricalKanjiAggregates(db, sync.id, sync.finishedAt, aggregates);
@@ -3230,23 +3299,23 @@ public final class LocalStore extends SQLiteOpenHelper {
                 continue;
             }
             ContentValues values = new ContentValues();
-            values.put("sync_id", syncId);
+            values.put(COLUMN_SYNC_ID, syncId);
             values.put("finished_at", finishedAt);
-            values.put("kanji", aggregate.kanji);
+            values.put(COLUMN_KANJI, aggregate.kanji);
             values.put("active_cards", aggregate.activeCards);
             values.put("suspended_cards", aggregate.suspendedCards);
-            values.put("mature_support_count", aggregate.matureSupportCount);
+            values.put(COLUMN_MATURE_SUPPORT_COUNT, aggregate.matureSupportCount);
             values.put("average_interval_days", aggregate.averageIntervalDays());
             values.put("total_lapses", aggregate.totalLapses);
             values.put("total_reps", aggregate.totalReps);
             putNullableDouble(values, "fsrs_stability_avg", aggregate.averageStability());
             putNullableDouble(values, "fsrs_difficulty_avg", aggregate.averageDifficulty());
             putNullableDouble(values, "fsrs_retrievability_avg", aggregate.averageRetrievability());
-            values.put("weakness_score", aggregate.weaknessScore);
-            values.put("reason_code", aggregate.reasonCode);
+            values.put(COLUMN_WEAKNESS_SCORE, aggregate.weaknessScore);
+            values.put(COLUMN_REASON_CODE, aggregate.reasonCode);
             values.put("active_example_count", aggregate.activeExampleCount);
             values.put("suspended_example_count", aggregate.suspendedExampleCount);
-            db.insertWithOnConflict("sync_kanji_snapshots", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            db.insertWithOnConflict(TABLE_SYNC_KANJI_SNAPSHOTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
 
@@ -3261,13 +3330,13 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private HistoricalSyncRun latestSuccessfulSyncRun(SQLiteDatabase db) {
         Cursor cursor = db.query(
-                "sync_runs",
+                TABLE_SYNC_RUNS,
                 new String[]{"id", "started_at", "finished_at"},
                 "status=?",
                 new String[]{STATUS_SUCCESS},
                 null,
                 null,
-                "id DESC",
+                ORDER_ID_DESC,
                 "1"
         );
         try {
@@ -3286,20 +3355,20 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Map<Long, HistoricalNoteSnapshot> currentSourceNotes(SQLiteDatabase db) {
         Map<Long, HistoricalNoteSnapshot> notes = new LinkedHashMap<>();
-        Cursor cursor = db.query("source_notes", null, null, null, null, null, "note_id ASC");
+        Cursor cursor = db.query(TABLE_SOURCE_NOTES, null, null, null, null, null, "note_id ASC");
         try {
             while (cursor.moveToNext()) {
-                long noteId = longValue(cursor, "note_id");
+                long noteId = longValue(cursor, COLUMN_NOTE_ID);
                 notes.put(noteId, new HistoricalNoteSnapshot(
                         noteId,
                         0L,
-                        string(cursor, "model_name"),
-                        string(cursor, "expression"),
-                        string(cursor, "reading"),
-                        string(cursor, "meaning"),
-                        string(cursor, "sentence"),
+                        string(cursor, COLUMN_MODEL_NAME),
+                        string(cursor, COLUMN_EXPRESSION),
+                        string(cursor, COLUMN_READING),
+                        string(cursor, COLUMN_MEANING),
+                        string(cursor, COLUMN_SENTENCE),
                         string(cursor, "tags"),
-                        string(cursor, "fields_json")
+                        string(cursor, COLUMN_FIELDS_JSON)
                 ));
             }
         } finally {
@@ -3310,10 +3379,10 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private List<Records.DashboardRow> currentDashboardRows(SQLiteDatabase db) {
         List<Records.DashboardRow> rows = new ArrayList<>();
-        Cursor cursor = db.query("dashboard_rows", new String[]{"kanji"}, null, null, null, null, "kanji ASC");
+        Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, new String[]{COLUMN_KANJI}, null, null, null, null, ORDER_KANJI_ASC);
         try {
             while (cursor.moveToNext()) {
-                Records.DashboardRow row = readDashboardRow(db, string(cursor, "kanji"));
+                Records.DashboardRow row = readDashboardRow(db, string(cursor, COLUMN_KANJI));
                 if (row != null) {
                     rows.add(row);
                 }
@@ -3334,7 +3403,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         Cursor cursor = db.rawQuery("SELECT kanji, COUNT(*) AS review_count FROM review_log GROUP BY kanji", null);
         try {
             while (cursor.moveToNext()) {
-                counts.put(string(cursor, "kanji"), integer(cursor, "review_count"));
+                counts.put(string(cursor, COLUMN_KANJI), integer(cursor, "review_count"));
             }
         } finally {
             cursor.close();
@@ -3345,8 +3414,8 @@ public final class LocalStore extends SQLiteOpenHelper {
     private Set<String> impactCandidateKanji(SQLiteDatabase db, long latestSyncId) {
         Set<String> candidates = new HashSet<>();
         Cursor current = db.query(
-                "sync_kanji_snapshots",
-                new String[]{"kanji"},
+                TABLE_SYNC_KANJI_SNAPSHOTS,
+                new String[]{COLUMN_KANJI},
                 "sync_id=? AND (weakness_score>0 OR reason_code<>'' OR active_example_count>0 OR suspended_example_count>0)",
                 new String[]{Long.toString(latestSyncId)},
                 null,
@@ -3355,23 +3424,23 @@ public final class LocalStore extends SQLiteOpenHelper {
         );
         try {
             while (current.moveToNext()) {
-                candidates.add(string(current, "kanji"));
+                candidates.add(string(current, COLUMN_KANJI));
             }
         } finally {
             current.close();
         }
-        Cursor study = db.query(true, "study_items", new String[]{"kanji"}, null, null, null, null, null, null);
+        Cursor study = db.query(true, TABLE_STUDY_ITEMS, new String[]{COLUMN_KANJI}, null, null, null, null, null, null);
         try {
             while (study.moveToNext()) {
-                candidates.add(string(study, "kanji"));
+                candidates.add(string(study, COLUMN_KANJI));
             }
         } finally {
             study.close();
         }
-        Cursor imports = db.query(true, "suspended_imports", new String[]{"kanji"}, null, null, null, null, null, null);
+        Cursor imports = db.query(true, TABLE_SUSPENDED_IMPORTS, new String[]{COLUMN_KANJI}, null, null, null, null, null, null);
         try {
             while (imports.moveToNext()) {
-                candidates.add(string(imports, "kanji"));
+                candidates.add(string(imports, COLUMN_KANJI));
             }
         } finally {
             imports.close();
@@ -3382,17 +3451,17 @@ public final class LocalStore extends SQLiteOpenHelper {
     private Map<String, KanjiImpactAnalyzer.MetricSnapshot> kanjiMetricsForSync(SQLiteDatabase db, long syncId) {
         Map<String, KanjiImpactAnalyzer.MetricSnapshot> out = new LinkedHashMap<>();
         Cursor cursor = db.query(
-                "sync_kanji_snapshots",
+                TABLE_SYNC_KANJI_SNAPSHOTS,
                 null,
                 "sync_id=?",
                 new String[]{Long.toString(syncId)},
                 null,
                 null,
-                "kanji ASC"
+                ORDER_KANJI_ASC
         );
         try {
             while (cursor.moveToNext()) {
-                out.put(string(cursor, "kanji"), readKanjiImpactMetric(cursor));
+                out.put(string(cursor, COLUMN_KANJI), readKanjiImpactMetric(cursor));
             }
         } finally {
             cursor.close();
@@ -3462,7 +3531,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private HistoricalKanjiSnapshot firstKanjiSnapshotAtOrAfter(SQLiteDatabase db, String kanji, long startedAt) {
         Cursor cursor = db.query(
-                "sync_kanji_snapshots",
+                TABLE_SYNC_KANJI_SNAPSHOTS,
                 null,
                 "kanji=? AND finished_at>=?",
                 new String[]{kanji, Long.toString(startedAt)},
@@ -3475,7 +3544,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return null;
             }
-            return new HistoricalKanjiSnapshot(longValue(cursor, "sync_id"), readKanjiImpactMetric(cursor));
+            return new HistoricalKanjiSnapshot(longValue(cursor, COLUMN_SYNC_ID), readKanjiImpactMetric(cursor));
         } finally {
             cursor.close();
         }
@@ -3483,7 +3552,7 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private HistoricalKanjiSnapshot latestKanjiSnapshotAtOrBefore(SQLiteDatabase db, String kanji, long startedAt) {
         Cursor cursor = db.query(
-                "sync_kanji_snapshots",
+                TABLE_SYNC_KANJI_SNAPSHOTS,
                 null,
                 "kanji=? AND finished_at<=?",
                 new String[]{kanji, Long.toString(startedAt)},
@@ -3496,7 +3565,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return null;
             }
-            return new HistoricalKanjiSnapshot(longValue(cursor, "sync_id"), readKanjiImpactMetric(cursor));
+            return new HistoricalKanjiSnapshot(longValue(cursor, COLUMN_SYNC_ID), readKanjiImpactMetric(cursor));
         } finally {
             cursor.close();
         }
@@ -3504,9 +3573,9 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private HistoricalKanjiSnapshot firstKanjiSnapshot(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query(
-                "sync_kanji_snapshots",
+                TABLE_SYNC_KANJI_SNAPSHOTS,
                 null,
-                "kanji=?",
+                WHERE_KANJI,
                 new String[]{kanji},
                 null,
                 null,
@@ -3517,7 +3586,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return null;
             }
-            return new HistoricalKanjiSnapshot(longValue(cursor, "sync_id"), readKanjiImpactMetric(cursor));
+            return new HistoricalKanjiSnapshot(longValue(cursor, COLUMN_SYNC_ID), readKanjiImpactMetric(cursor));
         } finally {
             cursor.close();
         }
@@ -3527,7 +3596,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         return new KanjiImpactAnalyzer.MetricSnapshot(
                 integer(cursor, "active_cards"),
                 integer(cursor, "suspended_cards"),
-                integer(cursor, "mature_support_count"),
+                integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
                 cursor.getDouble(cursor.getColumnIndexOrThrow("average_interval_days")),
                 integer(cursor, "total_reps"),
                 integer(cursor, "total_lapses"),
@@ -3585,24 +3654,24 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private List<Records.Example> examplesForKanji(SQLiteDatabase db, String kanji) {
         List<Records.Example> examples = new ArrayList<>();
-        Cursor cursor = db.query("kanji_examples", null, "kanji=?", new String[]{kanji}, null, null, "source_type DESC, id ASC", "8");
+        Cursor cursor = db.query(TABLE_KANJI_EXAMPLES, null, WHERE_KANJI, new String[]{kanji}, null, null, "source_type DESC, id ASC", "8");
         try {
             while (cursor.moveToNext()) {
                 examples.add(new Records.Example(
                         string(cursor, "source_type"),
-                        longValue(cursor, "card_id"),
-                        longValue(cursor, "note_id"),
-                        string(cursor, "expression"),
-                        string(cursor, "reading"),
-                        string(cursor, "meaning"),
-                        string(cursor, "sentence"),
+                        longValue(cursor, COLUMN_CARD_ID),
+                        longValue(cursor, COLUMN_NOTE_ID),
+                        string(cursor, COLUMN_EXPRESSION),
+                        string(cursor, COLUMN_READING),
+                        string(cursor, COLUMN_MEANING),
+                        string(cursor, COLUMN_SENTENCE),
                         integer(cursor, "mature") == 1,
                         integer(cursor, "lapses"),
                         integer(cursor, "interval_days"),
                         integer(cursor, "reps"),
-                        nullableDouble(cursor, "fsrs_stability"),
-                        nullableDouble(cursor, "fsrs_difficulty"),
-                        nullableDouble(cursor, "fsrs_retrievability")
+                        nullableDouble(cursor, COLUMN_FSRS_STABILITY),
+                        nullableDouble(cursor, COLUMN_FSRS_DIFFICULTY),
+                        nullableDouble(cursor, COLUMN_FSRS_RETRIEVABILITY)
                 ));
             }
         } finally {
@@ -3613,9 +3682,9 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private void upsertStudyItem(SQLiteDatabase db, Records.StudyItem item) {
         ContentValues values = new ContentValues();
-        values.put("kanji", item.kanji);
+        values.put(COLUMN_KANJI, item.kanji);
         values.put("state", item.state);
-        values.put("due_at", item.dueAtMillis);
+        values.put(COLUMN_DUE_AT, item.dueAtMillis);
         values.put("stability", item.stability);
         values.put("difficulty", item.difficulty);
         values.put("total_reviews", item.totalReviews);
@@ -3629,20 +3698,20 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("suppressed_by_task_type", item.suppressedByTaskType);
         values.put("suppressed_at", item.suppressedAtMillis);
         values.put("mature_interval_days", item.matureIntervalDays);
-        values.put("answer_signature", item.answerSignature);
+        values.put(COLUMN_ANSWER_SIGNATURE, item.answerSignature);
         values.put("typing_meaning_memory", item.typingMeaningMemory.encode());
         values.put("kanji_meaning_memory", item.kanjiMeaningMemory.encode());
         values.put("font_meaning_memory", item.fontMeaningMemory.encode());
         values.put("word_reading_memory", item.wordReadingMemory.encode());
         values.put("writing_remediation_memory", item.writingRemediationMemory.encode());
-        values.put("active_token", item.activeToken);
-        values.put("created_at", item.createdAtMillis);
-        db.insertWithOnConflict("study_items", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        values.put(COLUMN_ACTIVE_TOKEN, item.activeToken);
+        values.put(COLUMN_CREATED_AT, item.createdAtMillis);
+        db.insertWithOnConflict(TABLE_STUDY_ITEMS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     private Records.StudyItem readStudyItem(Cursor cursor) {
         String state = string(cursor, "state");
-        long dueAt = longValue(cursor, "due_at");
+        long dueAt = longValue(cursor, COLUMN_DUE_AT);
         double stability = cursor.getDouble(cursor.getColumnIndexOrThrow("stability"));
         double difficulty = cursor.getDouble(cursor.getColumnIndexOrThrow("difficulty"));
         int totalReviews = integer(cursor, "total_reviews");
@@ -3659,7 +3728,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                 ? Records.TaskMemory.fromStudyFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
                 : Records.TaskMemory.initial();
         return new Records.StudyItem(
-                string(cursor, "kanji"),
+                string(cursor, COLUMN_KANJI),
                 state,
                 dueAt,
                 stability,
@@ -3675,9 +3744,9 @@ public final class LocalStore extends SQLiteOpenHelper {
                 string(cursor, "suppressed_by_task_type"),
                 longValue(cursor, "suppressed_at"),
                 matureIntervalDays,
-                string(cursor, "answer_signature"),
-                string(cursor, "active_token"),
-                longValue(cursor, "created_at"),
+                string(cursor, COLUMN_ANSWER_SIGNATURE),
+                string(cursor, COLUMN_ACTIVE_TOKEN),
+                longValue(cursor, COLUMN_CREATED_AT),
                 Records.TaskMemory.decode(string(cursor, "typing_meaning_memory"), typingFallback),
                 Records.TaskMemory.decode(string(cursor, "kanji_meaning_memory"), kanjiFallback),
                 Records.TaskMemory.decode(string(cursor, "font_meaning_memory"), fontFallback),
@@ -3688,15 +3757,15 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private Records.LearningRepeat readLearningRepeat(Cursor cursor) {
         return new Records.LearningRepeat(
-                string(cursor, "kanji"),
-                string(cursor, "answer_signature"),
-                string(cursor, "task_type"),
+                string(cursor, COLUMN_KANJI),
+                string(cursor, COLUMN_ANSWER_SIGNATURE),
+                string(cursor, COLUMN_TASK_TYPE),
                 string(cursor, "repeat_type"),
                 integer(cursor, "step_index"),
-                longValue(cursor, "due_at"),
-                string(cursor, "active_token"),
-                longValue(cursor, "created_at"),
-                longValue(cursor, "updated_at")
+                longValue(cursor, COLUMN_DUE_AT),
+                string(cursor, COLUMN_ACTIVE_TOKEN),
+                longValue(cursor, COLUMN_CREATED_AT),
+                longValue(cursor, COLUMN_UPDATED_AT)
         );
     }
 
@@ -3719,7 +3788,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private long firstImportedAt(SQLiteDatabase db, String kanji, long fallback) {
-        Cursor cursor = db.query("suspended_imports", new String[]{COLUMN_FIRST_IMPORTED_AT}, "kanji=?", new String[]{kanji}, null, null, null, "1");
+        Cursor cursor = db.query(TABLE_SUSPENDED_IMPORTS, new String[]{COLUMN_FIRST_IMPORTED_AT}, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             return cursor.moveToFirst() ? longValue(cursor, COLUMN_FIRST_IMPORTED_AT) : fallback;
         } finally {
