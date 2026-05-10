@@ -932,54 +932,54 @@ public final class MainActivity extends Activity {
             }
             return rateText + " - estimating time left";
         }
-    }
 
-    private String syncStageText(SyncProgress.Stage stage) {
-        if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
-            return "Finding note type";
+        private String syncStageText(SyncProgress.Stage stage) {
+            if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
+                return "Finding note type";
+            }
+            if (stage == SyncProgress.Stage.READING_NOTES) {
+                return "Reading notes";
+            }
+            if (stage == SyncProgress.Stage.SCANNING_CARDS) {
+                return "Scanning cards";
+            }
+            if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
+                return "Building practice queue";
+            }
+            if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
+                return "Archiving imported suspended cards";
+            }
+            return "Syncing cards";
         }
-        if (stage == SyncProgress.Stage.READING_NOTES) {
-            return "Reading notes";
-        }
-        if (stage == SyncProgress.Stage.SCANNING_CARDS) {
-            return "Scanning cards";
-        }
-        if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
-            return "Building practice queue";
-        }
-        if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
-            return "Archiving imported suspended cards";
-        }
-        return "Syncing cards";
-    }
 
-    private String syncStageBody(SyncProgress.Stage stage) {
-        if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
-            return "Checking collection shape.";
+        private String syncStageBody(SyncProgress.Stage stage) {
+            if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
+                return "Checking collection shape.";
+            }
+            if (stage == SyncProgress.Stage.READING_NOTES) {
+                return "Reading notes before the card total is known.";
+            }
+            if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
+                return "Saving the practice queue.";
+            }
+            if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
+                return "Updating archived suspended cards.";
+            }
+            return "Preparing card scan.";
         }
-        if (stage == SyncProgress.Stage.READING_NOTES) {
-            return "Reading notes before the card total is known.";
-        }
-        if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
-            return "Saving the practice queue.";
-        }
-        if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
-            return "Updating archived suspended cards.";
-        }
-        return "Preparing card scan.";
-    }
 
-    private String shortDuration(long millis) {
-        long seconds = Math.max(1L, Math.round(millis / 1000.0));
-        if (seconds < 60L) {
-            return seconds + " sec";
+        private String shortDuration(long millis) {
+            long seconds = Math.max(1L, Math.round(millis / 1000.0));
+            if (seconds < 60L) {
+                return seconds + " sec";
+            }
+            long minutes = Math.max(1L, Math.round(seconds / 60.0));
+            if (minutes < 60L) {
+                return minutes + " min";
+            }
+            long hours = Math.max(1L, Math.round(minutes / 60.0));
+            return hours + " hr";
         }
-        long minutes = Math.max(1L, Math.round(seconds / 60.0));
-        if (minutes < 60L) {
-            return minutes + " min";
-        }
-        long hours = Math.max(1L, Math.round(minutes / 60.0));
-        return hours + " hr";
     }
 
     private void renderSyncResult(ManualSyncEngine.SyncResult result) {
@@ -1355,11 +1355,11 @@ public final class MainActivity extends Activity {
             return;
         }
         for (Records.KanjiInventoryItem item : items) {
-            content.addView(browseKanjiRow(item, query == null ? "" : query));
+            content.addView(browseKanjiRow(item));
         }
     }
 
-    private View browseKanjiRow(Records.KanjiInventoryItem item, String query) {
+    private View browseKanjiRow(Records.KanjiInventoryItem item) {
         LinearLayout box = panelBox(Color.WHITE, item.suspended ? CORAL : TEAL);
         box.setOnClickListener(v -> renderDetail(item.kanji, true));
         LinearLayout top = new LinearLayout(this);
@@ -2643,8 +2643,7 @@ public final class MainActivity extends Activity {
             return;
         }
         ViewGroup.LayoutParams params = flashcardCard.getLayoutParams();
-        if (params instanceof LinearLayout.LayoutParams) {
-            LinearLayout.LayoutParams linearParams = (LinearLayout.LayoutParams) params;
+        if (params instanceof LinearLayout.LayoutParams linearParams) {
             linearParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             linearParams.weight = 0f;
             flashcardCard.setLayoutParams(linearParams);
@@ -2942,11 +2941,18 @@ public final class MainActivity extends Activity {
         }
         Toast.makeText(
                 this,
-                !saved ? "Similar writing repair already changed." : (passed ? "Similar writing repair complete." : "Similar writing repair stays queued."),
+                similarWritingRepairToast(saved, passed),
                 Toast.LENGTH_SHORT
         ).show();
         activeSimilarRepair = null;
         renderStudy();
+    }
+
+    private String similarWritingRepairToast(boolean saved, boolean passed) {
+        if (!saved) {
+            return "Similar writing repair already changed.";
+        }
+        return passed ? "Similar writing repair complete." : "Similar writing repair stays queued.";
     }
 
     private void submitLearningRepeat(Records.ReviewRequest request, String rating) {

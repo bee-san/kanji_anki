@@ -173,14 +173,14 @@ public final class LocalStore extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(SQL_CREATE_TABLE + TABLE_SETTINGS + " (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE " + TABLE_SYNC_RUNS + " (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
-        db.execSQL("CREATE TABLE " + TABLE_SOURCE_NOTES + " (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE " + TABLE_SOURCE_CARDS + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE " + TABLE_SUSPENDED_ARCHIVE + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, archived_at INTEGER NOT NULL, archived_sync_id INTEGER NOT NULL, restored_at INTEGER)");
-        db.execSQL("CREATE TABLE " + TABLE_SUSPENDED_IMPORTS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, rank_known INTEGER NOT NULL, cutoff_used INTEGER NOT NULL, first_imported_at INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE " + TABLE_SUSPENDED_SOURCES + " (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
-        db.execSQL("CREATE TABLE " + TABLE_DASHBOARD_ROWS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE " + TABLE_KANJI_EXAMPLES + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SYNC_RUNS + " (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SOURCE_NOTES + " (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SOURCE_CARDS + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SUSPENDED_ARCHIVE + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, archived_at INTEGER NOT NULL, archived_sync_id INTEGER NOT NULL, restored_at INTEGER)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SUSPENDED_IMPORTS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, rank_known INTEGER NOT NULL, cutoff_used INTEGER NOT NULL, first_imported_at INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_SUSPENDED_SOURCES + " (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_DASHBOARD_ROWS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE + TABLE_KANJI_EXAMPLES + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
         createKanjiInventoryTables(db);
         createSimilarKanjiTables(db);
         createSimilarKanjiPracticeTables(db);
@@ -205,29 +205,29 @@ public final class LocalStore extends SQLiteOpenHelper {
             addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_STABILITY, "REAL");
             addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_DIFFICULTY, "REAL");
             addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_RETRIEVABILITY, "REAL");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_INTERVAL_DAYS, "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_REPS, "INTEGER NOT NULL DEFAULT 0");
+            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_INTERVAL_DAYS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_REPS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
             addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_STABILITY, "REAL");
             addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_DIFFICULTY, "REAL");
             addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_RETRIEVABILITY, "REAL");
         }
         if (oldVersion < 4) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_RECOGNITION_STAGE, "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_CONSECUTIVE_FAILED_RECOGNITION_DAYS, "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_LAST_FAILED_RECOGNITION_DAY, "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WRITING_REMEDIATION_PENDING, "INTEGER NOT NULL DEFAULT 0");
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_RECOGNITION_STAGE, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_CONSECUTIVE_FAILED_RECOGNITION_DAYS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_LAST_FAILED_RECOGNITION_DAY, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WRITING_REMEDIATION_PENDING, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
         }
         if (oldVersion < 5) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_SUPPRESSED_BY_TASK_TYPE, "TEXT NOT NULL DEFAULT ''");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_SUPPRESSED_AT, "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_MATURE_INTERVAL_DAYS, "INTEGER NOT NULL DEFAULT 0");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_ANSWER_SIGNATURE, "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_SUPPRESSED_BY_TASK_TYPE, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_SUPPRESSED_AT, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_MATURE_INTERVAL_DAYS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_ANSWER_SIGNATURE, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
         }
         if (oldVersion < 6) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_KANJI_MEANING_MEMORY, "TEXT NOT NULL DEFAULT ''");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_FONT_MEANING_MEMORY, "TEXT NOT NULL DEFAULT ''");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WORD_READING_MEMORY, "TEXT NOT NULL DEFAULT ''");
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WRITING_REMEDIATION_MEMORY, "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_KANJI_MEANING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_FONT_MEANING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WORD_READING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WRITING_REMEDIATION_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
         }
         if (oldVersion < 7) {
             rebuildStudyItemsWithAnswerSignatureKey(db);
@@ -258,7 +258,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             addHistoricalIdentityColumns(db);
         }
         if (oldVersion < 14) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_TYPING_MEANING_MEMORY, "TEXT NOT NULL DEFAULT ''");
+            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_TYPING_MEANING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
         }
         if (oldVersion < 15) {
             createStudyTaskLogTable(db);
@@ -267,37 +267,37 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     private void createStudyTaskLogTable(SQLiteDatabase db) {
         db.execSQL(STUDY_TASK_LOG_TABLE_SQL);
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_task_log_answered ON study_task_log(answered_at)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_task_log_answered ON " + TABLE_STUDY_TASK_LOG + "(answered_at)");
     }
 
     private void createKanjiInventoryTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS kanji_inventory (kanji TEXT PRIMARY KEY, primary_meaning TEXT NOT NULL, readings TEXT NOT NULL, browser_search TEXT NOT NULL, search_text TEXT NOT NULL, source_count INTEGER NOT NULL, example_count INTEGER NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS local_kanji_suspensions (kanji TEXT PRIMARY KEY, suspended_at INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_KANJI_INVENTORY + " (kanji TEXT PRIMARY KEY, primary_meaning TEXT NOT NULL, readings TEXT NOT NULL, browser_search TEXT NOT NULL, search_text TEXT NOT NULL, source_count INTEGER NOT NULL, example_count INTEGER NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_LOCAL_KANJI_SUSPENSIONS + " (kanji TEXT PRIMARY KEY, suspended_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_kanji_inventory_search ON kanji_inventory(search_text)");
     }
 
     private void createSimilarKanjiTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_pairs (kanji_a TEXT NOT NULL, kanji_b TEXT NOT NULL, source TEXT NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (kanji_a, kanji_b, source))");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SIMILAR_KANJI_PAIRS + " (kanji_a TEXT NOT NULL, kanji_b TEXT NOT NULL, source TEXT NOT NULL, first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (kanji_a, kanji_b, source))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_a ON similar_kanji_pairs(kanji_a)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_kanji_pairs_b ON similar_kanji_pairs(kanji_b)");
     }
 
     private void createSimilarKanjiPracticeTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_choice_state (target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, primary_meaning TEXT NOT NULL, choices TEXT NOT NULL, due_at INTEGER NOT NULL, passed_at INTEGER NOT NULL DEFAULT 0, last_reviewed_at INTEGER NOT NULL DEFAULT 0, correct_count INTEGER NOT NULL DEFAULT 0, wrong_count INTEGER NOT NULL DEFAULT 0, active_token TEXT NOT NULL DEFAULT '', first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (target_kanji, choice_signature))");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SIMILAR_KANJI_CHOICE_STATE + " (target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, primary_meaning TEXT NOT NULL, choices TEXT NOT NULL, due_at INTEGER NOT NULL, passed_at INTEGER NOT NULL DEFAULT 0, last_reviewed_at INTEGER NOT NULL DEFAULT 0, correct_count INTEGER NOT NULL DEFAULT 0, wrong_count INTEGER NOT NULL DEFAULT 0, active_token TEXT NOT NULL DEFAULT '', first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL, PRIMARY KEY (target_kanji, choice_signature))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_choice_due ON similar_kanji_choice_state(passed_at, due_at)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_repair_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, repair_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, wrong_selection TEXT NOT NULL, prompt_meaning TEXT NOT NULL, status TEXT NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER NOT NULL DEFAULT 0)");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SIMILAR_KANJI_REPAIR_QUEUE + " (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, repair_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, wrong_selection TEXT NOT NULL, prompt_meaning TEXT NOT NULL, status TEXT NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER NOT NULL DEFAULT 0)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_repair_due ON similar_kanji_repair_queue(status, due_at, created_at)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS similar_kanji_review_log (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, selected_kanji TEXT NOT NULL, correct INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SIMILAR_KANJI_REVIEW_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, selected_kanji TEXT NOT NULL, correct INTEGER NOT NULL, reviewed_at INTEGER NOT NULL)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_similar_review_log_target ON similar_kanji_review_log(target_kanji, reviewed_at)");
     }
 
     private void createHistoricalSyncTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_SYNC_CARD_SNAPSHOTS + " (id INTEGER PRIMARY KEY AUTOINCREMENT, sync_id INTEGER NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, deck_id TEXT NOT NULL DEFAULT '', deck_name TEXT NOT NULL, model_id INTEGER NOT NULL DEFAULT 0, model_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, suspended INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, mature INTEGER NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SYNC_CARD_SNAPSHOTS + " (id INTEGER PRIMARY KEY AUTOINCREMENT, sync_id INTEGER NOT NULL, started_at INTEGER NOT NULL, finished_at INTEGER NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, deck_id TEXT NOT NULL DEFAULT '', deck_name TEXT NOT NULL, model_id INTEGER NOT NULL DEFAULT 0, model_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, suspended INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, mature INTEGER NOT NULL)");
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_card_snapshots_sync_card ON " + TABLE_SYNC_CARD_SNAPSHOTS + "(sync_id, card_id)");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_card_snapshots_note ON " + TABLE_SYNC_CARD_SNAPSHOTS + "(sync_id, note_id)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_SYNC_NOTE_SNAPSHOTS + " (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, note_id INTEGER NOT NULL, model_id INTEGER NOT NULL DEFAULT 0, model_name TEXT NOT NULL, deck_ids TEXT NOT NULL DEFAULT '', deck_names TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, tags TEXT NOT NULL, fields_json TEXT NOT NULL, extracted_kanji TEXT NOT NULL, PRIMARY KEY (sync_id, note_id))");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SYNC_NOTE_SNAPSHOTS + " (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, note_id INTEGER NOT NULL, model_id INTEGER NOT NULL DEFAULT 0, model_name TEXT NOT NULL, deck_ids TEXT NOT NULL DEFAULT '', deck_names TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, tags TEXT NOT NULL, fields_json TEXT NOT NULL, extracted_kanji TEXT NOT NULL, PRIMARY KEY (sync_id, note_id))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_note_snapshots_kanji ON " + TABLE_SYNC_NOTE_SNAPSHOTS + "(sync_id, extracted_kanji)");
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_SYNC_KANJI_SNAPSHOTS + " (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, kanji TEXT NOT NULL, active_cards INTEGER NOT NULL, suspended_cards INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, average_interval_days REAL NOT NULL, total_lapses INTEGER NOT NULL, total_reps INTEGER NOT NULL, fsrs_stability_avg REAL, fsrs_difficulty_avg REAL, fsrs_retrievability_avg REAL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, PRIMARY KEY (sync_id, kanji))");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SYNC_KANJI_SNAPSHOTS + " (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, kanji TEXT NOT NULL, active_cards INTEGER NOT NULL, suspended_cards INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, average_interval_days REAL NOT NULL, total_lapses INTEGER NOT NULL, total_reps INTEGER NOT NULL, fsrs_stability_avg REAL, fsrs_difficulty_avg REAL, fsrs_retrievability_avg REAL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, PRIMARY KEY (sync_id, kanji))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_sync ON " + TABLE_SYNC_KANJI_SNAPSHOTS + "(kanji, sync_id)");
     }
 
@@ -1571,7 +1571,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put("answered_at", Math.max(0L, answeredAt));
         values.put("active_elapsed_ms", Math.min(MAX_STUDY_TASK_ELAPSED_MS, Math.max(0L, activeElapsedMillis)));
         values.put("outcome", outcome == null ? "" : outcome);
-        return getWritableDatabase().insertWithOnConflict("study_task_log", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L;
+        return getWritableDatabase().insertWithOnConflict(TABLE_STUDY_TASK_LOG, null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L;
     }
 
     public StudyTaskTimeStats studyTaskTimeStats(long nowMillis) {

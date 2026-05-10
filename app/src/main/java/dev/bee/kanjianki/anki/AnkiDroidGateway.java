@@ -57,6 +57,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private static final String COLUMN_DIFFICULTY = "difficulty";
     private static final String COLUMN_RETRIEVABILITY = "retrievability";
     private static final String COLUMN_DATA = "data";
+    private static final String URI_SEGMENT_NOTES = "notes";
     private static final String[] CARD_COLUMNS_WITH_FSRS = {
             COLUMN_NOTE_ID,
             COLUMN_ORD,
@@ -224,7 +225,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private boolean tagNoteArchived(ProviderTarget target, long noteId) {
-        Uri noteUri = uriFor(target.authority, "notes", String.valueOf(noteId));
+        Uri noteUri = uriFor(target.authority, URI_SEGMENT_NOTES, String.valueOf(noteId));
         String tags = "";
         Cursor rawCursor = resolver.query(noteUri, new String[]{COLUMN_TAGS}, null, null, null);
         if (rawCursor != null) {
@@ -322,7 +323,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private Map<Long, Records.Note> queryNotesBySearch(ProviderTarget target, ModelMapping mapping, Records.Settings settings, String search) throws SyncFailure {
         Map<Long, Records.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
-                uriFor(target.authority, "notes"),
+                uriFor(target.authority, URI_SEGMENT_NOTES),
                 null,
                 search,
                 null,
@@ -451,7 +452,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private List<Records.Card> queryCardsForNote(ProviderTarget target, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws SyncFailure {
-        Cursor cursor = resolver.query(uriFor(target.authority, "notes", Long.toString(noteId), "cards"), columns, null, null, null);
+        Cursor cursor = resolver.query(uriFor(target.authority, URI_SEGMENT_NOTES, Long.toString(noteId), "cards"), columns, null, null, null);
         if (cursor == null) {
             throw SyncFailure.retryable("AnkiDroid returned no per-note card cursor.");
         }
@@ -491,7 +492,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         Cursor cursor;
         try {
             cursor = resolver.query(
-                    uriFor(target.authority, "notes"),
+                    uriFor(target.authority, URI_SEGMENT_NOTES),
                     null,
                     "note:\"" + settings.modelName + "\" is:suspended",
                     null,
@@ -598,11 +599,11 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 continue;
             }
             String key = matcher.group(1).toLowerCase(Locale.ROOT);
-            if ("stability".equals(key) || "s".equals(key)) {
+            if (COLUMN_STABILITY.equals(key) || "s".equals(key)) {
                 stability = value;
-            } else if ("difficulty".equals(key) || "d".equals(key)) {
+            } else if (COLUMN_DIFFICULTY.equals(key) || "d".equals(key)) {
                 difficulty = value;
-            } else if ("retrievability".equals(key) || "r".equals(key)) {
+            } else if (COLUMN_RETRIEVABILITY.equals(key) || "r".equals(key)) {
                 retrievability = value;
             }
         }

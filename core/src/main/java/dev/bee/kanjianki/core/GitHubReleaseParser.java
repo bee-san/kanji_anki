@@ -206,9 +206,7 @@ public final class GitHubReleaseParser {
     private static ParsedEscape readEscape(String json, int escapeIndex) {
         char escaped = json.charAt(escapeIndex);
         switch (escaped) {
-            case '"':
-            case '\\':
-            case '/':
+            case '"', '\\', '/':
                 return new ParsedEscape(String.valueOf(escaped), escapeIndex + 1);
             case 'b':
                 return new ParsedEscape("\b", escapeIndex + 1);

@@ -55,12 +55,13 @@ public final class TextUtil {
     public static List<String> extractKanji(String value) {
         String normalized = normalizeJapanese(value);
         Set<String> out = new LinkedHashSet<>();
-        for (int i = 0; i < normalized.length(); ) {
-            int cp = normalized.codePointAt(i);
+        int index = 0;
+        while (index < normalized.length()) {
+            int cp = normalized.codePointAt(index);
             if (isKanji(cp)) {
                 out.add(new String(Character.toChars(cp)));
             }
-            i += Character.charCount(cp);
+            index += Character.charCount(cp);
         }
         return new ArrayList<>(out);
     }
