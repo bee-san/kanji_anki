@@ -14,6 +14,20 @@ public final class Records {
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
+    private static final String CONTEXT_SETTINGS = "Settings";
+    private static final String CONTEXT_CARD = "Card";
+    private static final String CONTEXT_EXAMPLE = "Example";
+    private static final String CONTEXT_DASHBOARD_ROW = "DashboardRow";
+    private static final String CONTEXT_KANJI_INVENTORY_ITEM = "KanjiInventoryItem";
+    private static final String CONTEXT_SIMILAR_KANJI_CHOICE_CARD = "SimilarKanjiChoiceCard";
+    private static final String CONTEXT_SIMILAR_KANJI_WRITING_REPAIR = "SimilarKanjiWritingRepair";
+    private static final String CONTEXT_KANJI_TIMELINE_EVENT = "KanjiTimelineEvent";
+    private static final String CONTEXT_TASK_MEMORY = "TaskMemory";
+    private static final String CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS = "TaskMemory.fromStudyFields";
+    private static final String CONTEXT_STUDY_ITEM = "StudyItem";
+    private static final String CONTEXT_LEARNING_REPEAT = "LearningRepeat";
+    private static final String CONTEXT_REVIEW_REQUEST = "ReviewRequest";
+    private static final String CONTEXT_ADAPTIVE_LOAD_PLAN = "AdaptiveLoadPlan";
 
     private Records() {
     }
@@ -58,14 +72,6 @@ public final class Records {
         return (Long) value;
     }
 
-    private static double doubleArg(Object[] args, int index, String context) {
-        Object value = arg(args, index, context);
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return (Double) value;
-    }
-
     private static boolean booleanArg(Object[] args, int index, String context) {
         return (Boolean) arg(args, index, context);
     }
@@ -79,16 +85,6 @@ public final class Records {
             return number.doubleValue();
         }
         return (Double) value;
-    }
-
-    private static List<Example> examplesArg(Object[] args, int index, String context) {
-        Object value = arg(args, index, context);
-        List<?> rawExamples = (List<?>) value;
-        List<Example> examples = new ArrayList<>();
-        for (Object example : rawExamples) {
-            examples.add((Example) example);
-        }
-        return examples;
     }
 
     public static final class Settings {
@@ -159,27 +155,27 @@ public final class Records {
             int recognitionPromotionPasses = DEFAULT_RECOGNITION_PROMOTION_PASSES;
 
             static SettingsArgs from(Object[] rest) {
-                requireArgCount("Settings", rest, 7, 8, 9, 10);
+                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10);
                 SettingsArgs args = new SettingsArgs();
-                args.frequencyField = stringArg(rest, 0, "Settings");
-                args.frequencySortField = stringArg(rest, 1, "Settings");
-                args.matureDays = intArg(rest, 2, "Settings");
-                args.matureSupportThreshold = intArg(rest, 3, "Settings");
+                args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS);
+                args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS);
+                args.matureDays = intArg(rest, 2, CONTEXT_SETTINGS);
+                args.matureSupportThreshold = intArg(rest, 3, CONTEXT_SETTINGS);
                 if (rest.length <= 8) {
-                    args.suspendedRankMax = intArg(rest, 4, "Settings");
-                    args.activeQueueCap = intArg(rest, 5, "Settings");
-                    args.newPerDay = intArg(rest, 6, "Settings");
+                    args.suspendedRankMax = intArg(rest, 4, CONTEXT_SETTINGS);
+                    args.activeQueueCap = intArg(rest, 5, CONTEXT_SETTINGS);
+                    args.newPerDay = intArg(rest, 6, CONTEXT_SETTINGS);
                     if (rest.length == 8) {
-                        args.writingTriggerMissDays = intArg(rest, 7, "Settings");
+                        args.writingTriggerMissDays = intArg(rest, 7, CONTEXT_SETTINGS);
                     }
                 } else {
-                    args.suspendedRankMin = intArg(rest, 4, "Settings");
-                    args.suspendedRankMax = intArg(rest, 5, "Settings");
-                    args.activeQueueCap = intArg(rest, 6, "Settings");
-                    args.newPerDay = intArg(rest, 7, "Settings");
-                    args.writingTriggerMissDays = intArg(rest, 8, "Settings");
+                    args.suspendedRankMin = intArg(rest, 4, CONTEXT_SETTINGS);
+                    args.suspendedRankMax = intArg(rest, 5, CONTEXT_SETTINGS);
+                    args.activeQueueCap = intArg(rest, 6, CONTEXT_SETTINGS);
+                    args.newPerDay = intArg(rest, 7, CONTEXT_SETTINGS);
+                    args.writingTriggerMissDays = intArg(rest, 8, CONTEXT_SETTINGS);
                     if (rest.length == 10) {
-                        args.recognitionPromotionPasses = intArg(rest, 9, "Settings");
+                        args.recognitionPromotionPasses = intArg(rest, 9, CONTEXT_SETTINGS);
                     }
                 }
                 return args;
@@ -317,26 +313,26 @@ public final class Records {
             Double fsrsRetrievability;
 
             static CardArgs from(String firstDeckValue, Object[] rest) {
-                requireArgCount("Card", rest, 7, 10, 11);
+                requireArgCount(CONTEXT_CARD, rest, 7, 10, 11);
                 CardArgs args = new CardArgs();
                 int offset = 0;
                 args.deckId = firstDeckValue;
                 args.deckName = firstDeckValue;
                 if (rest.length == 11) {
-                    args.deckName = stringArg(rest, 0, "Card");
+                    args.deckName = stringArg(rest, 0, CONTEXT_CARD);
                     offset = 1;
                 }
-                args.queue = intArg(rest, offset, "Card");
-                args.type = intArg(rest, offset + 1, "Card");
-                args.due = intArg(rest, offset + 2, "Card");
-                args.intervalDays = intArg(rest, offset + 3, "Card");
-                args.reps = intArg(rest, offset + 4, "Card");
-                args.lapses = intArg(rest, offset + 5, "Card");
-                args.suspended = booleanArg(rest, offset + 6, "Card");
+                args.queue = intArg(rest, offset, CONTEXT_CARD);
+                args.type = intArg(rest, offset + 1, CONTEXT_CARD);
+                args.due = intArg(rest, offset + 2, CONTEXT_CARD);
+                args.intervalDays = intArg(rest, offset + 3, CONTEXT_CARD);
+                args.reps = intArg(rest, offset + 4, CONTEXT_CARD);
+                args.lapses = intArg(rest, offset + 5, CONTEXT_CARD);
+                args.suspended = booleanArg(rest, offset + 6, CONTEXT_CARD);
                 if (rest.length - offset == 10) {
-                    args.fsrsStability = nullableDoubleArg(rest, offset + 7, "Card");
-                    args.fsrsDifficulty = nullableDoubleArg(rest, offset + 8, "Card");
-                    args.fsrsRetrievability = nullableDoubleArg(rest, offset + 9, "Card");
+                    args.fsrsStability = nullableDoubleArg(rest, offset + 7, CONTEXT_CARD);
+                    args.fsrsDifficulty = nullableDoubleArg(rest, offset + 8, CONTEXT_CARD);
+                    args.fsrsRetrievability = nullableDoubleArg(rest, offset + 9, CONTEXT_CARD);
                 }
                 return args;
             }
@@ -458,17 +454,17 @@ public final class Records {
             Double fsrsRetrievability;
 
             static ExampleArgs from(Object[] rest) {
-                requireArgCount("Example", rest, 3, 8);
+                requireArgCount(CONTEXT_EXAMPLE, rest, 3, 8);
                 ExampleArgs args = new ExampleArgs();
-                args.sentence = stringArg(rest, 0, "Example");
-                args.mature = booleanArg(rest, 1, "Example");
-                args.lapses = intArg(rest, 2, "Example");
+                args.sentence = stringArg(rest, 0, CONTEXT_EXAMPLE);
+                args.mature = booleanArg(rest, 1, CONTEXT_EXAMPLE);
+                args.lapses = intArg(rest, 2, CONTEXT_EXAMPLE);
                 if (rest.length == 8) {
-                    args.intervalDays = intArg(rest, 3, "Example");
-                    args.reps = intArg(rest, 4, "Example");
-                    args.fsrsStability = nullableDoubleArg(rest, 5, "Example");
-                    args.fsrsDifficulty = nullableDoubleArg(rest, 6, "Example");
-                    args.fsrsRetrievability = nullableDoubleArg(rest, 7, "Example");
+                    args.intervalDays = intArg(rest, 3, CONTEXT_EXAMPLE);
+                    args.reps = intArg(rest, 4, CONTEXT_EXAMPLE);
+                    args.fsrsStability = nullableDoubleArg(rest, 5, CONTEXT_EXAMPLE);
+                    args.fsrsDifficulty = nullableDoubleArg(rest, 6, CONTEXT_EXAMPLE);
+                    args.fsrsRetrievability = nullableDoubleArg(rest, 7, CONTEXT_EXAMPLE);
                 }
                 return args;
             }
@@ -490,19 +486,29 @@ public final class Records {
         public final List<Example> examples;
 
         public DashboardRow(String kanji, Integer jitenRank, String primaryMeaning, String reading, String browserSearch, Object... rest) {
-            requireArgCount("DashboardRow", rest, 7);
+            requireArgCount(CONTEXT_DASHBOARD_ROW, rest, 7);
             this.kanji = kanji;
             this.jitenRank = jitenRank;
             this.primaryMeaning = primaryMeaning;
             this.reading = reading;
             this.browserSearch = browserSearch;
-            this.weaknessScore = intArg(rest, 0, "DashboardRow");
-            this.reasonCode = stringArg(rest, 1, "DashboardRow");
-            this.reasonText = stringArg(rest, 2, "DashboardRow");
-            this.activeExampleCount = intArg(rest, 3, "DashboardRow");
-            this.suspendedExampleCount = intArg(rest, 4, "DashboardRow");
-            this.matureSupportCount = intArg(rest, 5, "DashboardRow");
-            this.examples = Collections.unmodifiableList(examplesArg(rest, 6, "DashboardRow"));
+            this.weaknessScore = intArg(rest, 0, CONTEXT_DASHBOARD_ROW);
+            this.reasonCode = stringArg(rest, 1, CONTEXT_DASHBOARD_ROW);
+            this.reasonText = stringArg(rest, 2, CONTEXT_DASHBOARD_ROW);
+            this.activeExampleCount = intArg(rest, 3, CONTEXT_DASHBOARD_ROW);
+            this.suspendedExampleCount = intArg(rest, 4, CONTEXT_DASHBOARD_ROW);
+            this.matureSupportCount = intArg(rest, 5, CONTEXT_DASHBOARD_ROW);
+            this.examples = Collections.unmodifiableList(examplesArg(rest, 6));
+        }
+
+        private static List<Example> examplesArg(Object[] args, int index) {
+            Object value = arg(args, index, CONTEXT_DASHBOARD_ROW);
+            List<?> rawExamples = (List<?>) value;
+            List<Example> examples = new ArrayList<>();
+            for (Object example : rawExamples) {
+                examples.add((Example) example);
+            }
+            return examples;
         }
     }
 
@@ -517,15 +523,15 @@ public final class Records {
         public final long lastSeenAtMillis;
 
         public KanjiInventoryItem(String kanji, String primaryMeaning, String readings, String browserSearch, Object... rest) {
-            requireArgCount("KanjiInventoryItem", rest, 4);
+            requireArgCount(CONTEXT_KANJI_INVENTORY_ITEM, rest, 4);
             this.kanji = kanji == null ? "" : kanji;
             this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
             this.readings = readings == null ? "" : readings;
             this.browserSearch = browserSearch == null ? "" : browserSearch;
-            this.sourceCount = Math.max(0, intArg(rest, 0, "KanjiInventoryItem"));
-            this.exampleCount = Math.max(0, intArg(rest, 1, "KanjiInventoryItem"));
-            this.suspended = booleanArg(rest, 2, "KanjiInventoryItem");
-            this.lastSeenAtMillis = Math.max(0L, longArg(rest, 3, "KanjiInventoryItem"));
+            this.sourceCount = Math.max(0, intArg(rest, 0, CONTEXT_KANJI_INVENTORY_ITEM));
+            this.exampleCount = Math.max(0, intArg(rest, 1, CONTEXT_KANJI_INVENTORY_ITEM));
+            this.suspended = booleanArg(rest, 2, CONTEXT_KANJI_INVENTORY_ITEM);
+            this.lastSeenAtMillis = Math.max(0L, longArg(rest, 3, CONTEXT_KANJI_INVENTORY_ITEM));
         }
     }
 
@@ -563,16 +569,16 @@ public final class Records {
                 String choiceSignature,
                 Object... rest
         ) {
-            requireArgCount("SimilarKanjiChoiceCard", rest, 0, 5);
+            requireArgCount(CONTEXT_SIMILAR_KANJI_CHOICE_CARD, rest, 0, 5);
             this.targetKanji = targetKanji == null ? "" : targetKanji;
             this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
             this.choices = Collections.unmodifiableList(new ArrayList<>(choices == null ? Collections.emptyList() : choices));
             this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
-            this.dueAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 0, "SimilarKanjiChoiceCard"));
-            this.passedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 1, "SimilarKanjiChoiceCard"));
-            this.lastReviewedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 2, "SimilarKanjiChoiceCard"));
-            this.correctCount = rest.length == 0 ? 0 : Math.max(0, intArg(rest, 3, "SimilarKanjiChoiceCard"));
-            this.wrongCount = rest.length == 0 ? 0 : Math.max(0, intArg(rest, 4, "SimilarKanjiChoiceCard"));
+            this.dueAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 0, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
+            this.passedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 1, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
+            this.lastReviewedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 2, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
+            this.correctCount = rest.length == 0 ? 0 : Math.max(0, intArg(rest, 3, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
+            this.wrongCount = rest.length == 0 ? 0 : Math.max(0, intArg(rest, 4, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
         }
 
         public boolean passed() {
@@ -623,21 +629,22 @@ public final class Records {
                 String promptMeaning,
                 Object... rest
         ) {
-            requireArgCount("SimilarKanjiWritingRepair", rest, 7);
+            requireArgCount(CONTEXT_SIMILAR_KANJI_WRITING_REPAIR, rest, 7);
             this.id = Math.max(0L, id);
             this.targetKanji = targetKanji == null ? "" : targetKanji;
             this.repairKanji = repairKanji == null ? "" : repairKanji;
             this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
             this.wrongSelection = wrongSelection == null ? "" : wrongSelection;
             this.promptMeaning = promptMeaning == null ? "" : promptMeaning;
-            String status = stringArg(rest, 0, "SimilarKanjiWritingRepair");
-            this.status = status == null || status.isEmpty() ? "pending" : status;
-            this.dueAtMillis = Math.max(0L, longArg(rest, 1, "SimilarKanjiWritingRepair"));
-            this.activeToken = stringArg(rest, 2, "SimilarKanjiWritingRepair") == null ? "" : stringArg(rest, 2, "SimilarKanjiWritingRepair");
-            this.attempts = Math.max(0, intArg(rest, 3, "SimilarKanjiWritingRepair"));
-            this.createdAtMillis = Math.max(0L, longArg(rest, 4, "SimilarKanjiWritingRepair"));
-            this.updatedAtMillis = Math.max(0L, longArg(rest, 5, "SimilarKanjiWritingRepair"));
-            this.completedAtMillis = Math.max(0L, longArg(rest, 6, "SimilarKanjiWritingRepair"));
+            String requestedStatus = stringArg(rest, 0, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR);
+            this.status = requestedStatus == null || requestedStatus.isEmpty() ? "pending" : requestedStatus;
+            this.dueAtMillis = Math.max(0L, longArg(rest, 1, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
+            String requestedActiveToken = stringArg(rest, 2, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR);
+            this.activeToken = requestedActiveToken == null ? "" : requestedActiveToken;
+            this.attempts = Math.max(0, intArg(rest, 3, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
+            this.createdAtMillis = Math.max(0L, longArg(rest, 4, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
+            this.updatedAtMillis = Math.max(0L, longArg(rest, 5, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
+            this.completedAtMillis = Math.max(0L, longArg(rest, 6, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
         }
 
         public SimilarKanjiWritingRepair withToken(String token, long updatedAtMillis) {
@@ -686,26 +693,26 @@ public final class Records {
                 String detail,
                 Object... rest
         ) {
-            requireArgCount("KanjiTimelineEvent", rest, 10);
+            requireArgCount(CONTEXT_KANJI_TIMELINE_EVENT, rest, 10);
             this.id = id;
             this.kanji = kanji;
             this.occurredAtMillis = occurredAtMillis;
             this.eventType = eventType;
             this.title = title;
             this.detail = detail;
-            String sourceExpression = stringArg(rest, 0, "KanjiTimelineEvent");
-            String sourceReading = stringArg(rest, 1, "KanjiTimelineEvent");
-            String rating = stringArg(rest, 2, "KanjiTimelineEvent");
-            this.sourceExpression = sourceExpression == null ? "" : sourceExpression;
-            this.sourceReading = sourceReading == null ? "" : sourceReading;
-            this.rating = rating == null ? "" : rating;
-            this.writingRequired = booleanArg(rest, 3, "KanjiTimelineEvent");
-            this.writingPassed = booleanArg(rest, 4, "KanjiTimelineEvent");
-            this.manualOverride = booleanArg(rest, 5, "KanjiTimelineEvent");
-            this.weaknessScore = (Integer) arg(rest, 6, "KanjiTimelineEvent");
-            this.matureSupportCount = (Integer) arg(rest, 7, "KanjiTimelineEvent");
-            this.syncId = (Long) arg(rest, 8, "KanjiTimelineEvent");
-            this.dedupeKey = stringArg(rest, 9, "KanjiTimelineEvent");
+            String requestedSourceExpression = stringArg(rest, 0, CONTEXT_KANJI_TIMELINE_EVENT);
+            String requestedSourceReading = stringArg(rest, 1, CONTEXT_KANJI_TIMELINE_EVENT);
+            String requestedRating = stringArg(rest, 2, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.sourceExpression = requestedSourceExpression == null ? "" : requestedSourceExpression;
+            this.sourceReading = requestedSourceReading == null ? "" : requestedSourceReading;
+            this.rating = requestedRating == null ? "" : requestedRating;
+            this.writingRequired = booleanArg(rest, 3, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.writingPassed = booleanArg(rest, 4, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.manualOverride = booleanArg(rest, 5, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.weaknessScore = (Integer) arg(rest, 6, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.matureSupportCount = (Integer) arg(rest, 7, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.syncId = (Long) arg(rest, 8, CONTEXT_KANJI_TIMELINE_EVENT);
+            this.dedupeKey = stringArg(rest, 9, CONTEXT_KANJI_TIMELINE_EVENT);
         }
     }
 
@@ -749,19 +756,19 @@ public final class Records {
                 int lapses,
                 Object... rest
         ) {
-            requireArgCount("TaskMemory", rest, 3, 5);
+            requireArgCount(CONTEXT_TASK_MEMORY, rest, 3, 5);
             this.state = state == null || state.isEmpty() ? "new" : state;
             this.dueAtMillis = Math.max(0L, dueAtMillis);
             this.stability = stability;
             this.difficulty = difficulty;
             this.totalReviews = Math.max(0, totalReviews);
             this.lapses = Math.max(0, lapses);
-            this.learningStep = Math.max(0, intArg(rest, 0, "TaskMemory"));
-            String lastRating = stringArg(rest, 1, "TaskMemory");
-            this.lastRating = lastRating == null ? "" : lastRating;
-            this.matureIntervalDays = Math.max(0, intArg(rest, 2, "TaskMemory"));
-            this.consecutivePasses = rest.length == 3 ? 0 : Math.max(0, intArg(rest, 3, "TaskMemory"));
-            this.lastPassedDueAtMillis = rest.length == 3 ? 0L : Math.max(0L, longArg(rest, 4, "TaskMemory"));
+            this.learningStep = Math.max(0, intArg(rest, 0, CONTEXT_TASK_MEMORY));
+            String requestedLastRating = stringArg(rest, 1, CONTEXT_TASK_MEMORY);
+            this.lastRating = requestedLastRating == null ? "" : requestedLastRating;
+            this.matureIntervalDays = Math.max(0, intArg(rest, 2, CONTEXT_TASK_MEMORY));
+            this.consecutivePasses = rest.length == 3 ? 0 : Math.max(0, intArg(rest, 3, CONTEXT_TASK_MEMORY));
+            this.lastPassedDueAtMillis = rest.length == 3 ? 0L : Math.max(0L, longArg(rest, 4, CONTEXT_TASK_MEMORY));
         }
 
         public static TaskMemory initial() {
@@ -777,7 +784,7 @@ public final class Records {
                 int lapses,
                 Object... rest
         ) {
-            requireArgCount("TaskMemory.fromStudyFields", rest, 2);
+            requireArgCount(CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS, rest, 2);
             return new TaskMemory(
                     state,
                     dueAtMillis,
@@ -785,9 +792,9 @@ public final class Records {
                     difficulty,
                     totalReviews,
                     lapses,
-                    intArg(rest, 0, "TaskMemory.fromStudyFields"),
+                    intArg(rest, 0, CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS),
                     "",
-                    intArg(rest, 1, "TaskMemory.fromStudyFields")
+                    intArg(rest, 1, CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS)
             );
         }
 
@@ -933,30 +940,30 @@ public final class Records {
             TaskMemory writingRemediationMemory;
 
             static StudyItemArgs from(String state, long dueAtMillis, double stability, double difficulty, int totalReviews, Object[] rest) {
-                requireArgCount("StudyItem", rest, 5, 9, 13, 17, 18);
+                requireArgCount(CONTEXT_STUDY_ITEM, rest, 5, 9, 13, 17, 18);
                 StudyItemArgs args = new StudyItemArgs();
-                args.lapses = intArg(rest, 0, "StudyItem");
-                args.learningStep = intArg(rest, 1, "StudyItem");
-                args.writingLevel = intArg(rest, 2, "StudyItem");
+                args.lapses = intArg(rest, 0, CONTEXT_STUDY_ITEM);
+                args.learningStep = intArg(rest, 1, CONTEXT_STUDY_ITEM);
+                args.writingLevel = intArg(rest, 2, CONTEXT_STUDY_ITEM);
                 int memoryStart = -1;
                 if (rest.length == 5) {
-                    args.activeToken = stringArg(rest, 3, "StudyItem");
-                    args.createdAtMillis = longArg(rest, 4, "StudyItem");
+                    args.activeToken = stringArg(rest, 3, CONTEXT_STUDY_ITEM);
+                    args.createdAtMillis = longArg(rest, 4, CONTEXT_STUDY_ITEM);
                 } else {
-                    args.recognitionStage = intArg(rest, 3, "StudyItem");
-                    args.consecutiveFailedRecognitionDays = intArg(rest, 4, "StudyItem");
-                    args.lastFailedRecognitionDayMillis = longArg(rest, 5, "StudyItem");
-                    args.writingRemediationPending = booleanArg(rest, 6, "StudyItem");
+                    args.recognitionStage = intArg(rest, 3, CONTEXT_STUDY_ITEM);
+                    args.consecutiveFailedRecognitionDays = intArg(rest, 4, CONTEXT_STUDY_ITEM);
+                    args.lastFailedRecognitionDayMillis = longArg(rest, 5, CONTEXT_STUDY_ITEM);
+                    args.writingRemediationPending = booleanArg(rest, 6, CONTEXT_STUDY_ITEM);
                     if (rest.length == 9) {
-                        args.activeToken = stringArg(rest, 7, "StudyItem");
-                        args.createdAtMillis = longArg(rest, 8, "StudyItem");
+                        args.activeToken = stringArg(rest, 7, CONTEXT_STUDY_ITEM);
+                        args.createdAtMillis = longArg(rest, 8, CONTEXT_STUDY_ITEM);
                     } else {
-                        args.suppressedByTaskType = stringArg(rest, 7, "StudyItem");
-                        args.suppressedAtMillis = longArg(rest, 8, "StudyItem");
-                        args.matureIntervalDays = intArg(rest, 9, "StudyItem");
-                        args.answerSignature = stringArg(rest, 10, "StudyItem");
-                        args.activeToken = stringArg(rest, 11, "StudyItem");
-                        args.createdAtMillis = longArg(rest, 12, "StudyItem");
+                        args.suppressedByTaskType = stringArg(rest, 7, CONTEXT_STUDY_ITEM);
+                        args.suppressedAtMillis = longArg(rest, 8, CONTEXT_STUDY_ITEM);
+                        args.matureIntervalDays = intArg(rest, 9, CONTEXT_STUDY_ITEM);
+                        args.answerSignature = stringArg(rest, 10, CONTEXT_STUDY_ITEM);
+                        args.activeToken = stringArg(rest, 11, CONTEXT_STUDY_ITEM);
+                        args.createdAtMillis = longArg(rest, 12, CONTEXT_STUDY_ITEM);
                         if (rest.length > 13) {
                             memoryStart = 13;
                         }
@@ -979,17 +986,65 @@ public final class Records {
 
             private void applyMemories(Object[] rest, int start) {
                 if (rest.length == 17) {
-                    kanjiMeaningMemory = (TaskMemory) arg(rest, start, "StudyItem");
-                    fontMeaningMemory = (TaskMemory) arg(rest, start + 1, "StudyItem");
-                    wordReadingMemory = (TaskMemory) arg(rest, start + 2, "StudyItem");
-                    writingRemediationMemory = (TaskMemory) arg(rest, start + 3, "StudyItem");
+                    kanjiMeaningMemory = (TaskMemory) arg(rest, start, CONTEXT_STUDY_ITEM);
+                    fontMeaningMemory = (TaskMemory) arg(rest, start + 1, CONTEXT_STUDY_ITEM);
+                    wordReadingMemory = (TaskMemory) arg(rest, start + 2, CONTEXT_STUDY_ITEM);
+                    writingRemediationMemory = (TaskMemory) arg(rest, start + 3, CONTEXT_STUDY_ITEM);
                     return;
                 }
-                typingMeaningMemory = (TaskMemory) arg(rest, start, "StudyItem");
-                kanjiMeaningMemory = (TaskMemory) arg(rest, start + 1, "StudyItem");
-                fontMeaningMemory = (TaskMemory) arg(rest, start + 2, "StudyItem");
-                wordReadingMemory = (TaskMemory) arg(rest, start + 3, "StudyItem");
-                writingRemediationMemory = (TaskMemory) arg(rest, start + 4, "StudyItem");
+                typingMeaningMemory = (TaskMemory) arg(rest, start, CONTEXT_STUDY_ITEM);
+                kanjiMeaningMemory = (TaskMemory) arg(rest, start + 1, CONTEXT_STUDY_ITEM);
+                fontMeaningMemory = (TaskMemory) arg(rest, start + 2, CONTEXT_STUDY_ITEM);
+                wordReadingMemory = (TaskMemory) arg(rest, start + 3, CONTEXT_STUDY_ITEM);
+                writingRemediationMemory = (TaskMemory) arg(rest, start + 4, CONTEXT_STUDY_ITEM);
+            }
+
+            private static TaskMemory seedMemoryForStage(
+                    int memoryStage,
+                    StudyItemArgs args,
+                    String state,
+                    long dueAtMillis,
+                    double stability,
+                    double difficulty,
+                    int totalReviews
+            ) {
+                int safeStage = Math.max(-1, Math.min(2, args.recognitionStage));
+                if (safeStage != memoryStage) {
+                    return TaskMemory.initial();
+                }
+                return TaskMemory.fromStudyFields(
+                        state,
+                        dueAtMillis,
+                        stability,
+                        difficulty,
+                        totalReviews,
+                        args.lapses,
+                        args.learningStep,
+                        args.matureIntervalDays
+                );
+            }
+
+            private static TaskMemory seedMemoryForWriting(
+                    StudyItemArgs args,
+                    String state,
+                    long dueAtMillis,
+                    double stability,
+                    double difficulty,
+                    int totalReviews
+            ) {
+                if (!args.writingRemediationPending) {
+                    return TaskMemory.initial();
+                }
+                return TaskMemory.fromStudyFields(
+                        state,
+                        dueAtMillis,
+                        stability,
+                        difficulty,
+                        totalReviews,
+                        args.lapses,
+                        args.learningStep,
+                        args.matureIntervalDays
+                );
             }
         }
 
@@ -1148,54 +1203,6 @@ public final class Records {
                     writingMemory
             );
         }
-
-        private static TaskMemory seedMemoryForStage(
-                int memoryStage,
-                StudyItemArgs args,
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews
-        ) {
-            int safeStage = Math.max(-1, Math.min(2, args.recognitionStage));
-            if (safeStage != memoryStage) {
-                return TaskMemory.initial();
-            }
-            return TaskMemory.fromStudyFields(
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    args.lapses,
-                    args.learningStep,
-                    args.matureIntervalDays
-            );
-        }
-
-        private static TaskMemory seedMemoryForWriting(
-                StudyItemArgs args,
-                String state,
-                long dueAtMillis,
-                double stability,
-                double difficulty,
-                int totalReviews
-        ) {
-            if (!args.writingRemediationPending) {
-                return TaskMemory.initial();
-            }
-            return TaskMemory.fromStudyFields(
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    args.lapses,
-                    args.learningStep,
-                    args.matureIntervalDays
-            );
-        }
     }
 
     public static final class StudySession {
@@ -1336,16 +1343,17 @@ public final class Records {
         public final long updatedAtMillis;
 
         public LearningRepeat(String kanji, String answerSignature, String taskType, String repeatType, Object... rest) {
-            requireArgCount("LearningRepeat", rest, 5);
+            requireArgCount(CONTEXT_LEARNING_REPEAT, rest, 5);
             this.kanji = kanji == null ? "" : kanji;
             this.answerSignature = answerSignature == null ? "" : answerSignature;
             this.taskType = taskType == null ? "" : taskType;
             this.repeatType = LEARNING_REPEAT_REVIEW.equals(repeatType) ? LEARNING_REPEAT_REVIEW : LEARNING_REPEAT_NEW;
-            this.stepIndex = Math.max(0, intArg(rest, 0, "LearningRepeat"));
-            this.dueAtMillis = Math.max(0L, longArg(rest, 1, "LearningRepeat"));
-            this.activeToken = stringArg(rest, 2, "LearningRepeat") == null ? "" : stringArg(rest, 2, "LearningRepeat");
-            this.createdAtMillis = Math.max(0L, longArg(rest, 3, "LearningRepeat"));
-            this.updatedAtMillis = Math.max(0L, longArg(rest, 4, "LearningRepeat"));
+            this.stepIndex = Math.max(0, intArg(rest, 0, CONTEXT_LEARNING_REPEAT));
+            this.dueAtMillis = Math.max(0L, longArg(rest, 1, CONTEXT_LEARNING_REPEAT));
+            String requestedActiveToken = stringArg(rest, 2, CONTEXT_LEARNING_REPEAT);
+            this.activeToken = requestedActiveToken == null ? "" : requestedActiveToken;
+            this.createdAtMillis = Math.max(0L, longArg(rest, 3, CONTEXT_LEARNING_REPEAT));
+            this.updatedAtMillis = Math.max(0L, longArg(rest, 4, CONTEXT_LEARNING_REPEAT));
         }
 
         public LearningRepeat withToken(String token, long updatedAtMillis) {
@@ -1378,7 +1386,7 @@ public final class Records {
                 boolean writingPassed,
                 Object... rest
         ) {
-            requireArgCount("ReviewRequest", rest, 2, 3, 6);
+            requireArgCount(CONTEXT_REVIEW_REQUEST, rest, 2, 3, 6);
             this.kanji = kanji;
             this.token = token;
             this.rating = rating;
@@ -1386,18 +1394,18 @@ public final class Records {
             this.writingPassed = writingPassed;
             if (rest.length == 2) {
                 this.writingClean = writingPassed && ("good".equals(rating) || "easy".equals(rating));
-                this.manualOverride = booleanArg(rest, 0, "ReviewRequest");
-                this.hintsUsed = intArg(rest, 1, "ReviewRequest");
+                this.manualOverride = booleanArg(rest, 0, CONTEXT_REVIEW_REQUEST);
+                this.hintsUsed = intArg(rest, 1, CONTEXT_REVIEW_REQUEST);
                 this.taskType = "";
                 this.answerSignature = "";
                 this.prompt = "";
             } else {
-                this.writingClean = booleanArg(rest, 0, "ReviewRequest");
-                this.manualOverride = booleanArg(rest, 1, "ReviewRequest");
-                this.hintsUsed = intArg(rest, 2, "ReviewRequest");
-                this.taskType = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 3, "ReviewRequest"));
-                this.answerSignature = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 4, "ReviewRequest"));
-                this.prompt = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 5, "ReviewRequest"));
+                this.writingClean = booleanArg(rest, 0, CONTEXT_REVIEW_REQUEST);
+                this.manualOverride = booleanArg(rest, 1, CONTEXT_REVIEW_REQUEST);
+                this.hintsUsed = intArg(rest, 2, CONTEXT_REVIEW_REQUEST);
+                this.taskType = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 3, CONTEXT_REVIEW_REQUEST));
+                this.answerSignature = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 4, CONTEXT_REVIEW_REQUEST));
+                this.prompt = rest.length == 3 ? "" : nullToEmpty(stringArg(rest, 5, CONTEXT_REVIEW_REQUEST));
             }
         }
     }
@@ -1521,15 +1529,15 @@ public final class Records {
         }
 
         public AdaptiveLoadPlan(boolean autoMode, int workloadPercent, int target, int remaining, List<String> focusKanji, Object... rest) {
-            requireArgCount("AdaptiveLoadPlan", rest, 3);
+            requireArgCount(CONTEXT_ADAPTIVE_LOAD_PLAN, rest, 3);
             this.autoMode = autoMode;
             this.workloadPercent = workloadPercent;
             this.target = target;
             this.remaining = remaining;
             this.focusKanji = Collections.unmodifiableList(new ArrayList<>(focusKanji));
-            this.newAdmissionLimit = intArg(rest, 0, "AdaptiveLoadPlan");
-            this.allKanjiMode = booleanArg(rest, 1, "AdaptiveLoadPlan");
-            this.status = nullToEmpty(stringArg(rest, 2, "AdaptiveLoadPlan"));
+            this.newAdmissionLimit = intArg(rest, 0, CONTEXT_ADAPTIVE_LOAD_PLAN);
+            this.allKanjiMode = booleanArg(rest, 1, CONTEXT_ADAPTIVE_LOAD_PLAN);
+            this.status = nullToEmpty(stringArg(rest, 2, CONTEXT_ADAPTIVE_LOAD_PLAN));
         }
 
         public boolean focusComplete() {

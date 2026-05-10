@@ -209,6 +209,10 @@ public final class KanjiImpactAnalyzer {
             this.newCards = Math.max(0, countAt(counts, 1));
             this.reviewCount = Math.max(0, countAt(counts, 2));
         }
+
+        private static int countAt(int[] counts, int index) {
+            return counts == null || counts.length <= index ? 0 : counts[index];
+        }
     }
 
     public static final class MetricSnapshot {
@@ -304,10 +308,10 @@ public final class KanjiImpactAnalyzer {
             this.currentCardCount = countAt(counts, 4);
             this.reviewCount = countAt(counts, 5);
         }
-    }
 
-    private static int countAt(int[] counts, int index) {
-        return counts == null || counts.length <= index ? 0 : counts[index];
+        private static int countAt(int[] counts, int index) {
+            return counts == null || counts.length <= index ? 0 : counts[index];
+        }
     }
 
     private static Double fsrsAt(Double[] values, int index) {

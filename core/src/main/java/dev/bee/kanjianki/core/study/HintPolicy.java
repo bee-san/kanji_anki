@@ -30,26 +30,27 @@ public final class HintPolicy {
         if (reveal) {
             return new HintVisibility(true, index == current ? 0.95f : 0.42f, state.level() == HintLevel.TRACE);
         }
-        switch (state.level()) {
-            case TRACE:
-                return new HintVisibility(true, index == current ? 0.95f : 0.62f, true);
-            case OUTLINE:
-                return new HintVisibility(true, index == current ? 0.9f : 0.20f, false);
-            case MINIMAL:
-                if (index == current) {
-                    return new HintVisibility(true, 0.86f, false);
-                }
-                if (index > current && index <= Math.min(strokeCount - 1, current + state.revealedStrokeCount())) {
-                    return new HintVisibility(true, 0.58f, false);
-                }
-                return new HintVisibility(false, 0f, false);
-            case BLIND:
-            default:
-                if (index >= current && index < Math.min(strokeCount, current + state.revealedStrokeCount())) {
-                    return new HintVisibility(true, index == current ? 0.86f : 0.58f, false);
-                }
-                return new HintVisibility(false, 0f, false);
+        return switch (state.level()) {
+            case TRACE -> new HintVisibility(true, index == current ? 0.95f : 0.62f, true);
+            case OUTLINE -> new HintVisibility(true, index == current ? 0.9f : 0.20f, false);
+            case MINIMAL -> minimalVisibility(state, index, current, strokeCount);
+            case BLIND -> blindVisibility(state, index, current, strokeCount);
+        };
+    }
+
+    private static HintVisibility minimalVisibility(HintState state, int index, int current, int strokeCount) {
+        if (index == current) {
+            return new HintVisibility(true, 0.86f, false);
         }
+        boolean revealed = index > current && index <= Math.min(strokeCount - 1, current + state.revealedStrokeCount());
+        return revealed ? new HintVisibility(true, 0.58f, false) : new HintVisibility(false, 0f, false);
+    }
+
+    private static HintVisibility blindVisibility(HintState state, int index, int current, int strokeCount) {
+        boolean revealed = index >= current && index < Math.min(strokeCount, current + state.revealedStrokeCount());
+        return revealed
+                ? new HintVisibility(true, index == current ? 0.86f : 0.58f, false)
+                : new HintVisibility(false, 0f, false);
     }
 
     private static final class HintVisibility {

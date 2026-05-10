@@ -32,28 +32,9 @@ public final class SuspendedKanjiImporter {
         Map<Long, Records.Note> notesById = snapshot.notesById();
         Map<String, List<Records.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
         for (Records.Card card : snapshot.cards) {
-            if (!card.suspended) {
-                continue;
-            }
             Records.Note note = notesById.get(card.noteId);
-            if (note == null) {
-                continue;
-            }
-            String expression = TextUtil.normalizeJapanese(note.expression(settings));
-            for (String kanji : TextUtil.extractKanji(expression)) {
-                Integer rank = ranks.rankOf(kanji);
-                if (rank != null && rank >= minRank && rank <= maxRank) {
-                    sourcesByKanji.computeIfAbsent(kanji, ignored -> new ArrayList<>())
-                            .add(new Records.SuspendedSource(
-                                    kanji,
-                                    card.cardId,
-                                    note.noteId,
-                                    expression,
-                                    TextUtil.normalizeJapanese(note.reading(settings)),
-                                    TextUtil.firstMeaningLine(note.meaning(settings)),
-                                    TextUtil.normalizeJapanese(note.sentence(settings))
-                            ));
-                }
+            if (card.suspended && note != null) {
+                addSuspendedSources(sourcesByKanji, card, note, settings);
             }
         }
 
@@ -72,5 +53,29 @@ public final class SuspendedKanjiImporter {
                 .comparing((Records.SuspendedImport item) -> item.jitenRank == null ? Integer.MAX_VALUE : item.jitenRank)
                 .thenComparing(item -> item.kanji));
         return results;
+    }
+
+    private void addSuspendedSources(
+            Map<String, List<Records.SuspendedSource>> sourcesByKanji,
+            Records.Card card,
+            Records.Note note,
+            Records.Settings settings
+    ) {
+        String expression = TextUtil.normalizeJapanese(note.expression(settings));
+        for (String kanji : TextUtil.extractKanji(expression)) {
+            Integer rank = ranks.rankOf(kanji);
+            if (rank != null && rank >= minRank && rank <= maxRank) {
+                sourcesByKanji.computeIfAbsent(kanji, ignored -> new ArrayList<>())
+                        .add(new Records.SuspendedSource(
+                                kanji,
+                                card.cardId,
+                                note.noteId,
+                                expression,
+                                TextUtil.normalizeJapanese(note.reading(settings)),
+                                TextUtil.firstMeaningLine(note.meaning(settings)),
+                                TextUtil.normalizeJapanese(note.sentence(settings))
+                        ));
+            }
+        }
     }
 }

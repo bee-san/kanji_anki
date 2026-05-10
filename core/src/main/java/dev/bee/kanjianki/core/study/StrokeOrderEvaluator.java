@@ -21,10 +21,30 @@ public final class StrokeOrderEvaluator {
         int compared = Math.min(expected, actual);
         Bounds guideBounds = Bounds.forGuide(guide);
         Bounds sampleBounds = Bounds.forSample(sample);
+        StrokeComparisonSummary summary = compareStrokes(guide, sample, sampleBounds, guideBounds, compared);
+        float shapeScore = compared == 0 ? 0f : summary.shapeScore / compared;
+        float weakestStrokeScore = summary.weakestStrokeScore;
+        if (actual < expected) {
+            addMissingStrokes(summary.matchedGuideStrokes, summary.diagnosis);
+        }
+        float score = clamp((countScore * 0.45f) + (shapeScore * 0.55f));
+        boolean acceptable = countDelta <= Math.max(1, expected / 4) && score >= 0.45f;
+        boolean clean = countDelta == 0 && score >= 0.68f && weakestStrokeScore >= 0.55f;
+        String message = resultMessage(acceptable, clean);
+        return new StrokeOrderResult(acceptable, clean, score, message, false, summary.diagnosis.build());
+    }
+
+    private static StrokeComparisonSummary compareStrokes(
+            StrokeGuide guide,
+            WritingSample sample,
+            Bounds sampleBounds,
+            Bounds guideBounds,
+            int compared
+    ) {
         float shapeScore = 0f;
         float weakestStrokeScore = compared == 0 ? 0f : 1f;
         StrokeDiagnosis.Builder diagnosis = StrokeDiagnosis.builder();
-        boolean[] matchedGuideStrokes = new boolean[expected];
+        boolean[] matchedGuideStrokes = new boolean[guide.strokeCount()];
         for (int i = 0; i < compared; i++) {
             StrokeComparison expectedComparison = compare(guide.strokes.get(i), sample.strokes.get(i), sampleBounds, guideBounds);
             shapeScore += expectedComparison.score;
@@ -35,19 +55,15 @@ public final class StrokeOrderEvaluator {
             }
             diagnoseComparedStroke(i, expectedComparison, best, diagnosis);
         }
-        if (actual < expected) {
-            for (int i = 0; i < matchedGuideStrokes.length; i++) {
-                if (!matchedGuideStrokes[i]) {
-                    diagnosis.add(StrokeDiagnosis.Label.MISSING_STROKE, i + 1);
-                }
+        return new StrokeComparisonSummary(shapeScore, weakestStrokeScore, matchedGuideStrokes, diagnosis);
+    }
+
+    private static void addMissingStrokes(boolean[] matchedGuideStrokes, StrokeDiagnosis.Builder diagnosis) {
+        for (int i = 0; i < matchedGuideStrokes.length; i++) {
+            if (!matchedGuideStrokes[i]) {
+                diagnosis.add(StrokeDiagnosis.Label.MISSING_STROKE, i + 1);
             }
         }
-        shapeScore = compared == 0 ? 0f : shapeScore / compared;
-        float score = clamp((countScore * 0.45f) + (shapeScore * 0.55f));
-        boolean acceptable = countDelta <= Math.max(1, expected / 4) && score >= 0.45f;
-        boolean clean = countDelta == 0 && score >= 0.68f && weakestStrokeScore >= 0.55f;
-        String message = resultMessage(acceptable, clean);
-        return new StrokeOrderResult(acceptable, clean, score, message, false, diagnosis.build());
     }
 
     private static String resultMessage(boolean acceptable, boolean clean) {
@@ -179,6 +195,25 @@ public final class StrokeOrderEvaluator {
 
         float directionlessScore() {
             return Math.max(directScore, reversedScore);
+        }
+    }
+
+    private static final class StrokeComparisonSummary {
+        final float shapeScore;
+        final float weakestStrokeScore;
+        final boolean[] matchedGuideStrokes;
+        final StrokeDiagnosis.Builder diagnosis;
+
+        private StrokeComparisonSummary(
+                float shapeScore,
+                float weakestStrokeScore,
+                boolean[] matchedGuideStrokes,
+                StrokeDiagnosis.Builder diagnosis
+        ) {
+            this.shapeScore = shapeScore;
+            this.weakestStrokeScore = weakestStrokeScore;
+            this.matchedGuideStrokes = matchedGuideStrokes;
+            this.diagnosis = diagnosis;
         }
     }
 

@@ -106,28 +106,18 @@ public abstract class DictionaryLookup {
         public final int kanjidicFrequency;
         public final Integer jitenRank;
 
-        public KanjiEntry(
-                String literal,
-                List<String> meanings,
-                List<String> onReadings,
-                List<String> kunReadings,
-                List<String> nanoriReadings,
-                int strokeCount,
-                int grade,
-                int radical,
-                int kanjidicFrequency,
-                Integer jitenRank
-        ) {
-            this.literal = normalize(literal);
-            this.meanings = immutableList(meanings);
-            this.onReadings = immutableList(onReadings);
-            this.kunReadings = immutableList(kunReadings);
-            this.nanoriReadings = immutableList(nanoriReadings);
-            this.strokeCount = strokeCount;
-            this.grade = grade;
-            this.radical = radical;
-            this.kanjidicFrequency = kanjidicFrequency;
-            this.jitenRank = jitenRank;
+        public KanjiEntry(KanjiEntryFields fields) {
+            KanjiEntryFields safeFields = fields == null ? KanjiEntryFields.empty() : fields;
+            this.literal = normalize(safeFields.literal);
+            this.meanings = immutableList(safeFields.meanings);
+            this.onReadings = immutableList(safeFields.onReadings);
+            this.kunReadings = immutableList(safeFields.kunReadings);
+            this.nanoriReadings = immutableList(safeFields.nanoriReadings);
+            this.strokeCount = safeFields.strokeCount;
+            this.grade = safeFields.grade;
+            this.radical = safeFields.radical;
+            this.kanjidicFrequency = safeFields.kanjidicFrequency;
+            this.jitenRank = safeFields.jitenRank;
         }
 
         private static List<String> immutableList(List<String> values) {
@@ -142,6 +132,34 @@ public abstract class DictionaryLookup {
                 return onReadings.get(0);
             }
             return nanoriReadings.isEmpty() ? "" : nanoriReadings.get(0);
+        }
+    }
+
+    public record KanjiEntryFields(
+            String literal,
+            List<String> meanings,
+            List<String> onReadings,
+            List<String> kunReadings,
+            List<String> nanoriReadings,
+            int strokeCount,
+            int grade,
+            int radical,
+            int kanjidicFrequency,
+            Integer jitenRank
+    ) {
+        private static KanjiEntryFields empty() {
+            return new KanjiEntryFields(
+                    "",
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    null
+            );
         }
     }
 }

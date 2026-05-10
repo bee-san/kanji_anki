@@ -723,28 +723,11 @@ public final class BridgeScheduler {
 
     private void addFamilyItem(Map<String, List<Records.StudyItem>> byFamily, Records.StudyItem item) {
         String itemFamilyKey = familyKey(item);
-        List<Records.StudyItem> family = byFamily.get(itemFamilyKey);
-        if (family == null) {
-            family = new ArrayList<>();
-            byFamily.put(itemFamilyKey, family);
-        }
-        family.add(item);
+        byFamily.computeIfAbsent(itemFamilyKey, ignored -> new ArrayList<>()).add(item);
     }
 
     public Set<String> tokenSet(List<String> tokens) {
         return new HashSet<>(tokens);
-    }
-
-    private static String normalizeRating(String rating) {
-        if (rating == null) {
-            return RATING_AGAIN;
-        }
-        switch (rating) {
-            case RATING_AGAIN, RATING_HARD, RATING_GOOD, RATING_EASY:
-                return rating;
-            default:
-                return RATING_AGAIN;
-        }
     }
 
     private static double round(double value) {
@@ -1022,6 +1005,16 @@ public final class BridgeScheduler {
                 return RATING_AGAIN;
             }
             return normalizeRating(request.rating);
+        }
+
+        private static String normalizeRating(String rating) {
+            if (rating == null) {
+                return RATING_AGAIN;
+            }
+            return switch (rating) {
+                case RATING_AGAIN, RATING_HARD, RATING_GOOD, RATING_EASY -> rating;
+                default -> RATING_AGAIN;
+            };
         }
 
         private static String reviewedTaskType(Records.StudyItem item) {

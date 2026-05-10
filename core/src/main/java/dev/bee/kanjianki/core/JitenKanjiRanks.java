@@ -32,30 +32,33 @@ public final class JitenKanjiRanks {
         BufferedReader buffered = new BufferedReader(reader);
         String line;
         while ((line = buffered.readLine()) != null) {
-            line = line.trim();
-            if (line.isEmpty() || line.startsWith("#")) {
-                continue;
-            }
-            String[] cells = line.split("[,\\t]");
-            if (cells.length < 2) {
-                continue;
-            }
-            String kanji;
-            int rank;
-            if (isInteger(cells[0].trim())) {
-                rank = Integer.parseInt(cells[0].trim());
-                kanji = cells[1].trim();
-            } else if (isInteger(cells[1].trim())) {
-                kanji = cells[0].trim();
-                rank = Integer.parseInt(cells[1].trim());
-            } else {
-                continue;
-            }
-            if (!kanji.isEmpty() && TextUtil.isKanji(kanji.codePointAt(0))) {
-                ranks.put(kanji, rank);
+            RankEntry entry = parseLine(line);
+            if (entry != null) {
+                ranks.put(entry.kanji, entry.rank);
             }
         }
         return new JitenKanjiRanks(ranks);
+    }
+
+    private static RankEntry parseLine(String rawLine) {
+        String line = rawLine.trim();
+        if (line.isEmpty() || line.startsWith("#")) {
+            return null;
+        }
+        String[] cells = line.split("[,\\t]");
+        if (cells.length < 2) {
+            return null;
+        }
+        String first = cells[0].trim();
+        String second = cells[1].trim();
+        if (isInteger(first)) {
+            return rankEntry(second, Integer.parseInt(first));
+        }
+        return isInteger(second) ? rankEntry(first, Integer.parseInt(second)) : null;
+    }
+
+    private static RankEntry rankEntry(String kanji, int rank) {
+        return !kanji.isEmpty() && TextUtil.isKanji(kanji.codePointAt(0)) ? new RankEntry(kanji, rank) : null;
     }
 
     private static boolean isInteger(String value) {
@@ -72,5 +75,8 @@ public final class JitenKanjiRanks {
             }
         }
         return true;
+    }
+
+    private record RankEntry(String kanji, int rank) {
     }
 }

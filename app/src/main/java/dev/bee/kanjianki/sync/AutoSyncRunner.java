@@ -31,8 +31,8 @@ public final class AutoSyncRunner {
         if (store.hasSuccessfulSyncSince(localDayStart(now))) {
             return Result.skipped("AnkiDroid already synced today.");
         }
-        if (gateway instanceof AnkiDroidGateway) {
-            AnkiDroidGateway.ProviderStatus provider = ((AnkiDroidGateway) gateway).status();
+        if (gateway instanceof AnkiDroidGateway ankiDroidGateway) {
+            AnkiDroidGateway.ProviderStatus provider = ankiDroidGateway.status();
             if (!provider.canSync) {
                 store.recordAutoSyncAttempt(now, false);
                 store.saveFailedSync(now, now, "config_error", "permanent", provider.message);

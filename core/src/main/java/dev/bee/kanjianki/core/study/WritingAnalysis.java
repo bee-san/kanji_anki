@@ -42,8 +42,7 @@ public final class WritingAnalysis {
             String message,
             List<RecognitionCandidate> candidates,
             StrokeOrderEvaluator.StrokeOrderResult strokeOrder,
-            HintLevel hintLevel,
-            int hintsUsed
+            Object... hintOptions
     ) {
         this.status = status;
         this.rating = rating;
@@ -51,8 +50,8 @@ public final class WritingAnalysis {
         this.message = message == null ? "" : message;
         this.candidates = Collections.unmodifiableList(new ArrayList<>(candidates == null ? Collections.emptyList() : candidates));
         this.strokeOrder = strokeOrder;
-        this.hintLevel = hintLevel == null ? HintLevel.BLIND : hintLevel;
-        this.hintsUsed = Math.max(0, hintsUsed);
+        this.hintLevel = hintLevelFrom(hintOptions);
+        this.hintsUsed = hintsUsedFrom(hintOptions);
     }
 
     public boolean failed() {
@@ -87,5 +86,17 @@ public final class WritingAnalysis {
 
     public int hintsUsed() {
         return hintsUsed;
+    }
+
+    private static HintLevel hintLevelFrom(Object[] hintOptions) {
+        return hintOptions != null && hintOptions.length > 0 && hintOptions[0] instanceof HintLevel level
+                ? level
+                : HintLevel.BLIND;
+    }
+
+    private static int hintsUsedFrom(Object[] hintOptions) {
+        return hintOptions != null && hintOptions.length > 1 && hintOptions[1] instanceof Integer value
+                ? Math.max(0, value)
+                : 0;
     }
 }

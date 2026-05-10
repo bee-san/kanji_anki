@@ -108,6 +108,17 @@ public class DictionaryLookupTest {
             int kanjidicFrequency,
             Integer jitenRank
     ) {
-        return new DictionaryLookup.KanjiEntry(literal, meanings, onReadings, kunReadings, Collections.emptyList(), 12, 3, 61, kanjidicFrequency, jitenRank);
+        return new DictionaryLookup.KanjiEntry(new DictionaryLookup.KanjiEntryFields(
+                literal,
+                meanings,
+                onReadings,
+                kunReadings,
+                Collections.emptyList(),
+                12,
+                3,
+                61,
+                kanjidicFrequency,
+                jitenRank
+        ));
     }
 }

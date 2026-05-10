@@ -210,35 +210,12 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Stats");
-                assertHasText(activity, "Kani is not currently working for you");
-                assertHasText(activity, "Weak kanji improved");
-                assertHasText(activity, "Anki support gained");
+                assertHasTexts(activity, "Stats", "Kani is not currently working for you", "Weak kanji improved", "Anki support gained");
             });
 
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Anki setup");
-                assertHasText(activity, "Study tuning");
-                assertHasText(activity, "Reminders & sync");
-                assertHasText(activity, "App & data");
-                assertHasText(activity, "Note type");
-                assertHasText(activity, "Using Kiku");
-                assertHasText(activity, "Expression field");
-                assertHasText(activity, "Reading field");
-                assertHasText(activity, "Meaning field");
-                assertHasText(activity, "Frequency sort field");
-                assertHasText(activity, "Choose from AnkiDroid");
-                assertHasText(activity, "Save note type");
-                assertHasText(activity, "Frequency range");
-                assertHasText(activity, "Default: 100-3000");
-                assertHasText(activity, "Min rank");
-                assertHasText(activity, "Max rank");
-                assertNoText(activity, "Daily workload");
-                assertNoText(activity, "Daily reminder");
-                assertNoText(activity, "App updates");
-            });
+            scenario.onActivity(MainActivityInstrumentedTest::assertCollapsedSettingsScreen);
             scenario.onActivity(activity -> {
                 List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
                 assertTrue(sliders.size() >= 2);
@@ -268,37 +245,19 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "95%");
             clickText(scenario, "Save retention");
             clickText(scenario, "Reminders & sync");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Daily reminder");
-                assertHasText(activity, "Daily Anki sync");
-            });
+            scenario.onActivity(activity -> assertHasTexts(activity, "Daily reminder", "Daily Anki sync"));
             clickText(scenario, "Morning 08:00");
             clickText(scenario, "Enable reminder");
             clickTextIfPresent("Allow");
             waitForText(scenario, "Daily around 08:00");
 
-            try (LocalStore store = new LocalStore(context)) {
-                assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
-                assertEquals(70, store.adaptiveLoadWorkPercent());
-                assertEquals(5, store.adaptiveLoadMaxItems());
-                assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
-                assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
-                assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
-                LocalStore.ReminderSettings reminder = store.reminderSettings();
-                assertTrue(reminder.enabled);
-                assertEquals(8, reminder.hour);
-                assertEquals(0, reminder.minute);
-            }
+            assertNavigationSettingsPersisted();
 
             clickText(scenario, "App & data");
             waitForText(scenario, "App updates");
             clickText(scenario, "Open updater");
             waitForText(scenario, "GitHub updater");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "GitHub updater");
-                assertHasText(activity, "Current version");
-                assertHasText(activity, "Check for update");
-            });
+            scenario.onActivity(activity -> assertHasTexts(activity, "GitHub updater", "Current version", "Check for update"));
         }
     }
 
@@ -472,23 +431,11 @@ public final class MainActivityInstrumentedTest {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Today's focus");
-                assertHasText(activity, "Focus queue");
-                assertHasText(activity, RAMEN_RADICAL_GAP);
-                assertHasText(activity, "From 拉麺");
+                assertHasTexts(activity, "Today's focus", "Focus queue", RAMEN_RADICAL_GAP, "From 拉麺");
             });
 
             clickText(scenario, "拉");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Why it is here");
-                assertHasText(activity, IMPORTED_FROM_SUSPENDED_CARDS);
-                assertHasText(activity, "Review this now");
-                assertHasText(activity, "Copy Anki search");
-                assertHasText(activity, "Recovery timeline");
-                assertHasText(activity, "Active repair");
-                assertHasText(activity, "Mature support 0 / target 2");
-                assertHasText(activity, "Kani started watching");
-            });
+            scenario.onActivity(MainActivityInstrumentedTest::assertKanjiDetailReady);
 
             clickText(scenario, "Copy Anki search");
             scenario.onActivity(activity -> {
@@ -501,38 +448,13 @@ public final class MainActivityInstrumentedTest {
             });
 
             clickText(scenario, "Review this now");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Name this kanji");
-                assertHasText(activity, "Kanji -> meaning");
-                assertHasText(activity, "Answer hidden until reveal");
-                assertHasText(activity, "What does it mean?");
-                assertHasText(activity, REVEAL);
-                assertNoText(activity, "Example: 拉麺  らーめん");
-                assertNoText(activity, "From: 拉麺");
-            });
+            scenario.onActivity(MainActivityInstrumentedTest::assertHiddenRecognitionCard);
 
             clickText(scenario, REVEAL);
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Answer");
-                assertHasText(activity, "Latin, kidnap");
-                assertHasText(activity, "Reading: らーめん");
-                assertHasText(activity, "From: 拉麺");
-                assertHasText(activity, "Fail");
-                assertHasText(activity, "Pass");
-                assertNoText(activity, CHECK);
-            });
+            scenario.onActivity(MainActivityInstrumentedTest::assertRevealedRecognitionCard);
 
             clickText(scenario, "Fail");
-            try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
-                assertEquals(1, stats.total);
-                assertEquals(1, stats.again);
-                assertEquals(0, stats.writingRequired);
-                List<Records.StudyItem> items = store.studyItems();
-                assertEquals(1, items.size());
-                assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
-                assertFalse(items.get(0).writingRemediationPending);
-            }
+            assertFailedRecognitionReviewStored();
         }
     }
 
@@ -751,7 +673,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Hint used");
                 assertHasText(activity, "ink stayed on the canvas");
                 assertHasText(activity, "current stroke hinted");
-                MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+                DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
                 assertTrue(pad.hasInk());
                 assertHasText(activity, "Reference");
@@ -836,7 +758,7 @@ public final class MainActivityInstrumentedTest {
                 assertNoText(activity, CLEAN_MATCH);
                 assertNoText(activity, "Replay");
                 assertNoText(activity, NEXT_CARD);
-                MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+                DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
                 assertFalse(pad.hasReplaySnapshot());
             });
@@ -889,10 +811,8 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Name this kanji");
-                assertHasText(activity, "Kanji -> meaning");
-                assertHasText(activity, "Answer hidden until reveal");
-                assertNoText(activity, "拉麺");
+                assertHasTexts(activity, "Name this kanji", "Kanji -> meaning", "Answer hidden until reveal");
+                assertNoTexts(activity, "拉麺");
                 View root = activity.findViewById(android.R.id.content);
                 View reveal = findExactText(root, REVEAL);
                 assertNotNull(reveal);
@@ -902,10 +822,7 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, REVEAL);
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Answer");
-                assertHasText(activity, "拉");
-                assertHasText(activity, "Fail");
-                assertHasText(activity, "Pass");
+                assertHasTexts(activity, "Answer", "拉", "Fail", "Pass");
                 Rect failBounds = new Rect();
                 Rect passBounds = new Rect();
                 View root = activity.findViewById(android.R.id.content);
@@ -923,21 +840,7 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Pass");
 
-            try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
-                assertEquals(1, stats.total);
-                assertEquals(1, stats.good);
-                assertEquals(0, stats.writingRequired);
-                List<Records.StudyItem> items = store.studyItems();
-                assertEquals(1, items.size());
-                Records.StudyItem item = items.get(0);
-                assertEquals("拉", item.kanji);
-                assertEquals("learning", item.state);
-                assertEquals(1, item.totalReviews);
-                assertEquals(1, item.learningStep);
-                assertEquals(0, item.writingLevel);
-                assertEquals(1, item.recognitionStage);
-            }
+            assertKnownAnswerRecognitionReviewStored();
         }
     }
 
@@ -948,20 +851,11 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "0 / 2");
-                assertHasText(activity, "Similar choice");
-                assertHasText(activity, "Which kanji means Latin, kidnap?");
-                assertHasText(activity, "拉");
-                assertHasText(activity, "提");
-                assertNoText(activity, "Kanji -> meaning");
-            });
+            scenario.onActivity(activity -> assertSimilarChoiceCard(activity, "0 / 2", "Which kanji means Latin, kidnap?", "拉", "提"));
 
             clickText(scenario, "提");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Similar writing");
-                assertHasText(activity, "Reference");
-                assertHasText(activity, "Latin, kidnap");
+                assertHasTexts(activity, "Similar writing", "Reference", "Latin, kidnap");
                 drawGuideKanji(activity, "拉");
             });
             clickText(scenario, CHECK);
@@ -978,15 +872,10 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "Which kanji means Latin, kidnap?");
             clickText(scenario, "拉");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "3 / 4");
-                assertHasText(activity, "Name this kanji");
-                assertHasText(activity, "Kanji -> meaning");
+                assertHasTexts(activity, "3 / 4", "Name this kanji", "Kanji -> meaning");
             });
 
-            try (LocalStore store = new LocalStore(context)) {
-                assertEquals(0, store.reviewStatsSince(0L).total);
-                assertEquals(2, countSimilarRepairs(store));
-            }
+            assertSimilarRepairsQueuedWithoutReviews();
         }
     }
 
@@ -1147,47 +1036,20 @@ public final class MainActivityInstrumentedTest {
 
             forceStudyItemDue("拉", -1, false);
             clickText(scenario, STUDY_NOW);
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Type the meaning");
-                assertHasText(activity, "Type the meaning");
-                assertHasText(activity, "Meaning");
-                assertHasText(activity, REVEAL);
-            });
+            scenario.onActivity(activity -> assertHasTexts(activity, "Type the meaning", "Meaning", REVEAL));
             enterFirstEditText(scenario, "kidnap");
             clickText(scenario, REVEAL);
 
-            try (LocalStore afterCorrect = new LocalStore(context)) {
-                Records.ReviewStats stats = afterCorrect.reviewStatsSince(0L);
-                assertEquals(2, stats.total);
-                assertEquals(1, stats.good);
-                List<Records.StudyItem> items = afterCorrect.studyItems();
-                assertEquals(1, items.size());
-                assertEquals(0, items.get(0).recognitionStage);
-                assertEquals(1, items.get(0).typingMeaningMemory.totalReviews);
-            }
+            assertCorrectTypingMeaningReviewStored();
 
             forceStudyItemDue("拉", -1, false);
             clickText(scenario, STUDY_NOW);
             enterFirstEditText(scenario, "wrong");
             clickText(scenario, REVEAL);
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Answer");
-                assertHasText(activity, "Latin, kidnap");
-                assertHasText(activity, "Fail");
-                assertHasText(activity, "Pass");
-            });
+            scenario.onActivity(activity -> assertHasTexts(activity, "Answer", "Latin, kidnap", "Fail", "Pass"));
             clickText(scenario, "Fail");
 
-            try (LocalStore afterWrong = new LocalStore(context)) {
-                Records.ReviewStats stats = afterWrong.reviewStatsSince(0L);
-                assertEquals(3, stats.total);
-                assertEquals(2, stats.again);
-                List<Records.StudyItem> items = afterWrong.studyItems();
-                assertEquals(1, items.size());
-                assertEquals(-1, items.get(0).recognitionStage);
-                assertFalse(items.get(0).writingRemediationPending);
-                assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
-            }
+            assertWrongTypingMeaningReviewStored();
         }
     }
 
@@ -1324,7 +1186,7 @@ public final class MainActivityInstrumentedTest {
                 assertNoText(activity, "I could not read that as the target kanji yet");
                 assertNoText(activity, NEXT_CARD);
                 assertNoText(activity, "Replay");
-                MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+                DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
                 assertFalse(pad.hasInk());
                 assertFalse(pad.isReplayOverlayVisibleForTests());
@@ -1384,7 +1246,7 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testDrawingPadTracksInkAndClear() {
-        MainActivity.DrawingPadView pad = new MainActivity.DrawingPadView(context);
+        DrawingPadView pad = new DrawingPadView(context);
         assertFalse(pad.hasInk());
 
         long now = System.currentTimeMillis();
@@ -1919,8 +1781,146 @@ public final class MainActivityInstrumentedTest {
         scenario.onActivity(activity -> assertHasText(activity, text));
     }
 
+    private static void assertCollapsedSettingsScreen(MainActivity activity) {
+        assertHasTexts(
+                activity,
+                "Anki setup",
+                "Study tuning",
+                "Reminders & sync",
+                "App & data",
+                "Note type",
+                "Using Kiku",
+                "Expression field",
+                "Reading field",
+                "Meaning field",
+                "Frequency sort field",
+                "Choose from AnkiDroid",
+                "Save note type",
+                "Frequency range",
+                "Default: 100-3000",
+                "Min rank",
+                "Max rank"
+        );
+        assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
+    }
+
+    private void assertNavigationSettingsPersisted() {
+        try (LocalStore store = new LocalStore(context)) {
+            assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
+            assertEquals(70, store.adaptiveLoadWorkPercent());
+            assertEquals(5, store.adaptiveLoadMaxItems());
+            assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
+            assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
+            assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
+            LocalStore.ReminderSettings reminder = store.reminderSettings();
+            assertTrue(reminder.enabled);
+            assertEquals(8, reminder.hour);
+            assertEquals(0, reminder.minute);
+        }
+    }
+
+    private static void assertKanjiDetailReady(MainActivity activity) {
+        assertHasTexts(
+                activity,
+                "Why it is here",
+                IMPORTED_FROM_SUSPENDED_CARDS,
+                "Review this now",
+                "Copy Anki search",
+                "Recovery timeline",
+                "Active repair",
+                "Mature support 0 / target 2",
+                "Kani started watching"
+        );
+    }
+
+    private static void assertHiddenRecognitionCard(MainActivity activity) {
+        assertHasTexts(activity, "Name this kanji", "Kanji -> meaning", "Answer hidden until reveal", "What does it mean?", REVEAL);
+        assertNoTexts(activity, "Example: 拉麺  らーめん", "From: 拉麺");
+    }
+
+    private static void assertRevealedRecognitionCard(MainActivity activity) {
+        assertHasTexts(activity, "Answer", "Latin, kidnap", "Reading: らーめん", "From: 拉麺", "Fail", "Pass");
+        assertNoTexts(activity, CHECK);
+    }
+
+    private void assertFailedRecognitionReviewStored() {
+        try (LocalStore store = new LocalStore(context)) {
+            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            assertEquals(1, stats.total);
+            assertEquals(1, stats.again);
+            assertEquals(0, stats.writingRequired);
+            List<Records.StudyItem> items = store.studyItems();
+            assertEquals(1, items.size());
+            assertEquals(1, items.get(0).consecutiveFailedRecognitionDays);
+            assertFalse(items.get(0).writingRemediationPending);
+        }
+    }
+
+    private void assertKnownAnswerRecognitionReviewStored() {
+        try (LocalStore store = new LocalStore(context)) {
+            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            assertEquals(1, stats.total);
+            assertEquals(1, stats.good);
+            assertEquals(0, stats.writingRequired);
+            Records.StudyItem item = onlyStudyItem(store);
+            assertEquals("拉", item.kanji);
+            assertEquals("learning", item.state);
+            assertEquals(1, item.totalReviews);
+            assertEquals(1, item.learningStep);
+            assertEquals(0, item.writingLevel);
+            assertEquals(1, item.recognitionStage);
+        }
+    }
+
+    private static void assertSimilarChoiceCard(MainActivity activity, String progress, String prompt, String firstChoice, String secondChoice) {
+        assertHasTexts(activity, progress, "Similar choice", prompt, firstChoice, secondChoice);
+        assertNoTexts(activity, "Kanji -> meaning");
+    }
+
+    private void assertSimilarRepairsQueuedWithoutReviews() {
+        try (LocalStore store = new LocalStore(context)) {
+            assertEquals(0, store.reviewStatsSince(0L).total);
+            assertEquals(2, countSimilarRepairs(store));
+        }
+    }
+
+    private void assertCorrectTypingMeaningReviewStored() {
+        try (LocalStore store = new LocalStore(context)) {
+            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            assertEquals(2, stats.total);
+            assertEquals(1, stats.good);
+            Records.StudyItem item = onlyStudyItem(store);
+            assertEquals(0, item.recognitionStage);
+            assertEquals(1, item.typingMeaningMemory.totalReviews);
+        }
+    }
+
+    private void assertWrongTypingMeaningReviewStored() {
+        try (LocalStore store = new LocalStore(context)) {
+            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            assertEquals(3, stats.total);
+            assertEquals(2, stats.again);
+            Records.StudyItem item = onlyStudyItem(store);
+            assertEquals(-1, item.recognitionStage);
+            assertFalse(item.writingRemediationPending);
+            assertEquals(1, item.consecutiveFailedRecognitionDays);
+        }
+    }
+
+    private static Records.StudyItem onlyStudyItem(LocalStore store) {
+        List<Records.StudyItem> items = store.studyItems();
+        assertEquals(1, items.size());
+        return items.get(0);
+    }
+
     private static void assertHasText(MainActivity activity, String text) {
         assertNotNull("Missing text: " + text, findText(activity.findViewById(android.R.id.content), text));
+    }
+
+    private static void assertHasTexts(MainActivity activity, String... texts) {
+        for (String text : texts) {
+            assertHasText(activity, text);
+        }
     }
 
     private static void assertNoText(MainActivity activity, String text) {
@@ -1930,8 +1930,14 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
+    private static void assertNoTexts(MainActivity activity, String... texts) {
+        for (String text : texts) {
+            assertNoText(activity, text);
+        }
+    }
+
     private static void drawGuideKanji(MainActivity activity, String kanji) {
-        MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+        DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
         assertNotNull(pad);
         pad.layout(0, 0, 1000, 1000);
         StrokeGuide guide = strokeGuide(activity, kanji);
@@ -1956,7 +1962,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void drawGuideKanjiWithFirstStrokeReversed(MainActivity activity, String kanji) {
-        MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+        DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
         assertNotNull(pad);
         pad.layout(0, 0, 1000, 1000);
         StrokeGuide guide = strokeGuide(activity, kanji);
@@ -1992,7 +1998,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void drawFreeformStroke(MainActivity activity) {
-        MainActivity.DrawingPadView pad = findType(activity.findViewById(android.R.id.content), MainActivity.DrawingPadView.class);
+        DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
         assertNotNull(pad);
         pad.layout(0, 0, 1000, 1000);
         long now = System.currentTimeMillis();

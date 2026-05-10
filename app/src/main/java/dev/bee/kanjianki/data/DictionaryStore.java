@@ -35,6 +35,9 @@ import java.util.Map;
 import java.util.Set;
 
 public final class DictionaryStore extends DictionaryLookup {
+    private static final String COLUMN_LITERAL = "literal";
+    private static final String INSTALLING_SUFFIX = ".installing";
+    private static final String BUNDLED_SUFFIX = ".bundled";
     private static final String PRIVATE_DIR = "dictionaries";
     private static final String PRIVATE_DB = "kanji_dictionary.db";
     private static final String PRIVATE_MANIFEST = "dictionary_sources.json";
@@ -43,7 +46,7 @@ public final class DictionaryStore extends DictionaryLookup {
     private static final String SUPPORTED_SCHEMA_VERSION = "1";
     private static final String LIST_SEPARATOR = "\u001f";
     private static final Set<String> REQUIRED_KANJI_COLUMNS = new HashSet<>(Arrays.asList(
-            "literal",
+            COLUMN_LITERAL,
             "meanings",
             "on_readings",
             "kun_readings",
@@ -55,7 +58,7 @@ public final class DictionaryStore extends DictionaryLookup {
             "jiten_rank"
     ));
     private static final Set<String> REQUIRED_JITEN_RANK_COLUMNS = new HashSet<>(Arrays.asList(
-            "literal",
+            COLUMN_LITERAL,
             "rank"
     ));
     private static final Set<String> REQUIRED_META_KEYS = new HashSet<>(Arrays.asList(
@@ -93,9 +96,9 @@ public final class DictionaryStore extends DictionaryLookup {
     }
 
     public InstallResult installVerifiedDictionary(File database, File manifest, File checksum) {
-        File temp = new File(databaseFile.getParentFile(), PRIVATE_DB + ".installing");
-        File tempManifest = new File(databaseFile.getParentFile(), PRIVATE_MANIFEST + ".installing");
-        File tempChecksum = new File(databaseFile.getParentFile(), PRIVATE_CHECKSUM + ".installing");
+        File temp = new File(databaseFile.getParentFile(), PRIVATE_DB + INSTALLING_SUFFIX);
+        File tempManifest = new File(databaseFile.getParentFile(), PRIVATE_MANIFEST + INSTALLING_SUFFIX);
+        File tempChecksum = new File(databaseFile.getParentFile(), PRIVATE_CHECKSUM + INSTALLING_SUFFIX);
         try {
             copy(database, temp);
             String manifestText = readText(manifest);
@@ -141,8 +144,8 @@ public final class DictionaryStore extends DictionaryLookup {
                 if (!cursor.moveToFirst()) {
                     return null;
                 }
-                return new KanjiEntry(
-                        string(cursor, "literal"),
+                return new KanjiEntry(new KanjiEntryFields(
+                        string(cursor, COLUMN_LITERAL),
                         splitList(string(cursor, "meanings")),
                         splitList(string(cursor, "on_readings")),
                         splitList(string(cursor, "kun_readings")),
@@ -152,7 +155,7 @@ public final class DictionaryStore extends DictionaryLookup {
                         integer(cursor, "radical"),
                         integer(cursor, "kanjidic_frequency"),
                         nullableInteger(cursor, "jiten_rank")
-                );
+                ));
             } finally {
                 cursor.close();
             }
@@ -216,9 +219,9 @@ public final class DictionaryStore extends DictionaryLookup {
                 && bundledHash.equals(readMarker(marker))) {
             return;
         }
-        File temp = new File(directory, PRIVATE_DB + ".bundled");
-        File tempManifest = new File(directory, PRIVATE_MANIFEST + ".bundled");
-        File tempChecksum = new File(directory, PRIVATE_CHECKSUM + ".bundled");
+        File temp = new File(directory, PRIVATE_DB + BUNDLED_SUFFIX);
+        File tempManifest = new File(directory, PRIVATE_MANIFEST + BUNDLED_SUFFIX);
+        File tempChecksum = new File(directory, PRIVATE_CHECKSUM + BUNDLED_SUFFIX);
         try (InputStream source = context.getAssets().open(DictionaryAssets.DATABASE_ASSET)) {
             copy(source, temp);
         }
@@ -261,37 +264,44 @@ public final class DictionaryStore extends DictionaryLookup {
     private static ValidationResult validateManifest(String manifest, String expectedHash) {
         try {
             JSONObject root = new JSONObject(manifest);
-            JSONArray assets = root.optJSONArray("assets");
-            boolean hasDatabaseAsset = false;
-            if (assets != null) {
-                for (int i = 0; i < assets.length(); i++) {
-                    JSONObject asset = assets.getJSONObject(i);
-                    if (DictionaryAssets.DATABASE_ASSET_NAME.equals(asset.optString("path"))) {
-                        hasDatabaseAsset = expectedHash.equalsIgnoreCase(asset.optString("sha256"));
-                    }
-                }
-            }
-            if (!hasDatabaseAsset) {
+            if (!hasMatchingDatabaseAsset(root.optJSONArray("assets"), expectedHash)) {
                 return ValidationResult.rejected("Dictionary manifest does not match the database checksum.");
             }
-            JSONArray sources = root.optJSONArray("sources");
-            boolean hasKanjidic2 = false;
-            if (sources != null) {
-                for (int i = 0; i < sources.length(); i++) {
-                    JSONObject source = sources.getJSONObject(i);
-                    if ("kanjidic2".equals(source.optString("id"))
-                            && !source.optString("source_sha256").isEmpty()
-                            && !source.optString("database_version").isEmpty()) {
-                        hasKanjidic2 = true;
-                    }
-                }
-            }
-            return hasKanjidic2
+            return hasKanjidic2Source(root.optJSONArray("sources"))
                     ? ValidationResult.ok()
                     : ValidationResult.rejected("Dictionary manifest is missing KANJIDIC2 metadata.");
         } catch (JSONException error) {
             return ValidationResult.rejected("Dictionary manifest is invalid JSON.");
         }
+    }
+
+    private static boolean hasMatchingDatabaseAsset(JSONArray assets, String expectedHash) throws JSONException {
+        if (assets == null) {
+            return false;
+        }
+        for (int i = 0; i < assets.length(); i++) {
+            JSONObject asset = assets.getJSONObject(i);
+            if (DictionaryAssets.DATABASE_ASSET_NAME.equals(asset.optString("path"))
+                    && expectedHash.equalsIgnoreCase(asset.optString("sha256"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasKanjidic2Source(JSONArray sources) throws JSONException {
+        if (sources == null) {
+            return false;
+        }
+        for (int i = 0; i < sources.length(); i++) {
+            JSONObject source = sources.getJSONObject(i);
+            if ("kanjidic2".equals(source.optString("id"))
+                    && !source.optString("source_sha256").isEmpty()
+                    && !source.optString("database_version").isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ValidationResult validateSqlite(File database) {
