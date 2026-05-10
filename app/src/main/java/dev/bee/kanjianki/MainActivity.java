@@ -620,14 +620,25 @@ public final class MainActivity extends Activity {
     }
 
     private View homeActionRow() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBaselineAligned(false);
-        row.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
-        row.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
-        row.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
-        row.addView(pillButton("Settings", R.drawable.ic_settings_24, this::renderSettings));
-        return row;
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setBaselineAligned(false);
+
+        LinearLayout firstRow = new LinearLayout(this);
+        firstRow.setOrientation(LinearLayout.HORIZONTAL);
+        firstRow.setBaselineAligned(false);
+        firstRow.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
+        firstRow.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
+        firstRow.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
+        column.addView(firstRow);
+
+        LinearLayout secondRow = new LinearLayout(this);
+        secondRow.setOrientation(LinearLayout.HORIZONTAL);
+        secondRow.setBaselineAligned(false);
+        secondRow.addView(pillButton("Settings", R.drawable.ic_settings_24, this::renderSettings));
+        column.addView(secondRow);
+
+        return column;
     }
 
     private void renderBrowseKanji() {
@@ -1084,7 +1095,6 @@ public final class MainActivity extends Activity {
         LocalStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
         content.addView(fullWidthHomeButton());
         content.addView(text("Stats", 34, INK, true));
-        content.addView(studyTimePanel(studyTime));
         content.addView(statsVerdictPanel(stats));
         content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
         addSpace(10);
@@ -1103,6 +1113,7 @@ public final class MainActivity extends Activity {
                 supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
+        content.addView(studyTimePanel(studyTime));
     }
 
     private LinearLayout statsVerdictPanel(LocalStore.KaniOutcomeStats stats) {
