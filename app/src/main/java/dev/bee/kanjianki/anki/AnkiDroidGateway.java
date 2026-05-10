@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.OperationCanceledException;
+import android.util.Log;
 
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SyncValidator;
@@ -27,43 +28,70 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class AnkiDroidGateway implements CollectionGateway {
+    private static final String TAG = "AnkiDroidGateway";
     private static final char FIELD_SEPARATOR = '\u001f';
+    private static final String CONTENT_SCHEME = "content";
     private static final String ARCHIVED_TAG = "kani_archived";
     private static final String LEGACY_ARCHIVED_TAG = "kanji_anki_archived";
+    private static final String READ_WRITE_DATABASE_PERMISSION = "com.ichi2.anki.permission.READ_WRITE_DATABASE";
+    private static final String DEBUG_READ_WRITE_DATABASE_PERMISSION = "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE";
+    private static final String COLUMN_ID = "_id";
+    private static final String COLUMN_NAME = "name";
+    private static final String COLUMN_FIELD_NAMES = "field_names";
+    private static final String COLUMN_FIELDS = "flds";
+    private static final String COLUMN_TAGS = "tags";
+    private static final String COLUMN_MODEL_ID = "mid";
+    private static final String COLUMN_NOTE_ID = "note_id";
+    private static final String COLUMN_ORD = "ord";
+    private static final String COLUMN_DECK_ID = "deck_id";
+    private static final String COLUMN_QUEUE = "queue";
+    private static final String COLUMN_TYPE = "type";
+    private static final String COLUMN_DUE = "due";
+    private static final String COLUMN_INTERVAL = "interval";
+    private static final String COLUMN_REPS = "reps";
+    private static final String COLUMN_LAPSES = "lapses";
+    private static final String COLUMN_FSRS_STABILITY = "fsrs_stability";
+    private static final String COLUMN_FSRS_DIFFICULTY = "fsrs_difficulty";
+    private static final String COLUMN_FSRS_RETRIEVABILITY = "fsrs_retrievability";
+    private static final String COLUMN_STABILITY = "stability";
+    private static final String COLUMN_DIFFICULTY = "difficulty";
+    private static final String COLUMN_RETRIEVABILITY = "retrievability";
+    private static final String COLUMN_DATA = "data";
     private static final String[] CARD_COLUMNS_WITH_FSRS = {
-            "note_id",
-            "ord",
-            "deck_id",
-            "queue",
-            "type",
-            "due",
-            "interval",
-            "reps",
-            "lapses",
-            "fsrs_stability",
-            "fsrs_difficulty",
-            "fsrs_retrievability",
-            "stability",
-            "difficulty",
-            "retrievability",
-            "data"
+            COLUMN_NOTE_ID,
+            COLUMN_ORD,
+            COLUMN_DECK_ID,
+            COLUMN_QUEUE,
+            COLUMN_TYPE,
+            COLUMN_DUE,
+            COLUMN_INTERVAL,
+            COLUMN_REPS,
+            COLUMN_LAPSES,
+            COLUMN_FSRS_STABILITY,
+            COLUMN_FSRS_DIFFICULTY,
+            COLUMN_FSRS_RETRIEVABILITY,
+            COLUMN_STABILITY,
+            COLUMN_DIFFICULTY,
+            COLUMN_RETRIEVABILITY,
+            COLUMN_DATA
     };
     private static final String[] CARD_COLUMNS_WITH_SCHEDULER = {
-            "note_id",
-            "ord",
-            "deck_id",
-            "queue",
-            "type",
-            "due",
-            "interval",
-            "reps",
-            "lapses"
+            COLUMN_NOTE_ID,
+            COLUMN_ORD,
+            COLUMN_DECK_ID,
+            COLUMN_QUEUE,
+            COLUMN_TYPE,
+            COLUMN_DUE,
+            COLUMN_INTERVAL,
+            COLUMN_REPS,
+            COLUMN_LAPSES
     };
-    private static final String[] CARD_COLUMNS_MINIMAL = {"note_id", "ord", "deck_id"};
+    private static final String[] CARD_COLUMNS_MINIMAL = {COLUMN_NOTE_ID, COLUMN_ORD, COLUMN_DECK_ID};
     private static final Pattern FSRS_DATA_VALUE = Pattern.compile(
             "(?:\"|')?(stability|difficulty|retrievability|s|d|r)(?:\"|')?\\s*[:=]\\s*\"?([-+]?[0-9]+(?:\\.[0-9]+)?)\"?",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern FINITE_DOUBLE_VALUE = Pattern.compile("[-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?");
 
     private final Context context;
     private final ContentResolver resolver;
@@ -120,7 +148,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             ModelMapping mapping = findConfiguredModel(target, settings);
             reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
             Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
-            List<Records.Card> cards = queryCards(target, settings, notes.keySet(), reporter);
+            List<Records.Card> cards = queryCardsByNote(target, settings, notes.keySet(), reporter);
             validateTemplateCards(cards, settings);
             cards = cardsWithNotes(cards, notes.keySet());
             return new Records.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
@@ -198,21 +226,19 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private boolean tagNoteArchived(ProviderTarget target, long noteId) {
         Uri noteUri = uriFor(target.authority, "notes", String.valueOf(noteId));
         String tags = "";
-        Cursor cursor = resolver.query(noteUri, new String[]{"tags"}, null, null, null);
-        if (cursor != null) {
-            try {
+        Cursor rawCursor = resolver.query(noteUri, new String[]{COLUMN_TAGS}, null, null, null);
+        if (rawCursor != null) {
+            try (Cursor cursor = rawCursor) {
                 if (cursor.moveToFirst()) {
-                    tags = value(cursor, "tags");
+                    tags = value(cursor, COLUMN_TAGS);
                 }
-            } finally {
-                cursor.close();
             }
         }
         if (!isArchivedTagPresent(Arrays.asList(tags.split("\\s+")))) {
             tags = (tags + " " + ARCHIVED_TAG).trim();
         }
         ContentValues values = new ContentValues();
-        values.put("tags", tags);
+        values.put(COLUMN_TAGS, tags);
         return resolver.update(noteUri, values, null, null) > 0;
     }
 
@@ -264,15 +290,13 @@ public final class AnkiDroidGateway implements CollectionGateway {
             throw SyncFailure.retryable("AnkiDroid returned no note model cursor.");
         }
         List<NoteType> noteTypes = new ArrayList<>();
-        try {
-            while (cursor.moveToNext()) {
-                String name = value(cursor, "name");
-                long id = longValue(cursor, "_id", 0);
-                List<String> fields = splitFields(value(cursor, "field_names"));
+        try (Cursor noteTypeCursor = cursor) {
+            while (noteTypeCursor.moveToNext()) {
+                String name = value(noteTypeCursor, COLUMN_NAME);
+                long id = longValue(noteTypeCursor, COLUMN_ID, 0);
+                List<String> fields = splitFields(value(noteTypeCursor, COLUMN_FIELD_NAMES));
                 noteTypes.add(new NoteType(id, name, fields));
             }
-        } finally {
-            cursor.close();
         }
         noteTypes.sort(Comparator
                 .comparing((NoteType noteType) -> !noteType.name.equalsIgnoreCase(Records.Settings.kikuDefaults().modelName))
@@ -281,10 +305,17 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
+        Exception searchFailure = null;
         try {
             return queryNotesBySearch(target, mapping, settings, "note:\"" + settings.modelName + "\"");
-        } catch (Throwable ignored) {
+        } catch (Exception error) {
+            searchFailure = error;
+        }
+        try {
             return queryNotesBySql(target, mapping, settings);
+        } catch (SyncFailure sqlFailure) {
+            sqlFailure.addSuppressed(searchFailure);
+            throw sqlFailure;
         }
     }
 
@@ -300,17 +331,15 @@ public final class AnkiDroidGateway implements CollectionGateway {
         if (cursor == null) {
             throw SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
         }
-        try {
-            while (cursor.moveToNext()) {
-                long noteId = longValue(cursor, "_id", 0);
-                long modelId = longValue(cursor, "mid", mapping.modelId);
+        try (Cursor noteCursor = cursor) {
+            while (noteCursor.moveToNext()) {
+                long noteId = longValue(noteCursor, COLUMN_ID, 0);
+                long modelId = longValue(noteCursor, COLUMN_MODEL_ID, mapping.modelId);
                 if (modelId != mapping.modelId) {
                     continue;
                 }
-                addNoteFromCursor(notes, noteId, cursor, mapping, settings);
+                addNoteFromCursor(notes, noteId, noteCursor, mapping, settings);
             }
-        } finally {
-            cursor.close();
         }
         return notes;
     }
@@ -327,20 +356,18 @@ public final class AnkiDroidGateway implements CollectionGateway {
         if (cursor == null) {
             throw SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
         }
-        try {
-            while (cursor.moveToNext()) {
-                addNoteFromCursor(notes, longValue(cursor, "_id", 0), cursor, mapping, settings);
+        try (Cursor noteCursor = cursor) {
+            while (noteCursor.moveToNext()) {
+                addNoteFromCursor(notes, longValue(noteCursor, COLUMN_ID, 0), noteCursor, mapping, settings);
             }
-        } finally {
-            cursor.close();
         }
         return notes;
     }
 
     private void addNoteFromCursor(Map<Long, Records.Note> notes, long noteId, Cursor cursor, ModelMapping mapping, Records.Settings settings) {
-        List<String> values = splitFields(value(cursor, "flds"));
-        Map<String, String> fieldMap = selectedFields(mapping, values, settings);
-        List<String> tags = splitTags(value(cursor, "tags"));
+        List<String> values = splitFields(value(cursor, COLUMN_FIELDS));
+        Map<String, String> fieldMap = selectRequiredFields(mapping.fields, values, settings);
+        List<String> tags = splitTags(value(cursor, COLUMN_TAGS));
         if (!isArchivedTagPresent(tags)) {
             notes.put(noteId, new Records.Note(noteId, mapping.modelId, mapping.name, fieldMap, tags));
         }
@@ -348,14 +375,6 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     private static boolean isArchivedTagPresent(List<String> tags) {
         return tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG);
-    }
-
-    private List<Records.Card> queryCards(ProviderTarget target, Records.Settings settings, Set<Long> noteIds, SyncProgress.Listener progress) throws SyncFailure {
-        return queryCardsByNote(target, settings, noteIds, progress);
-    }
-
-    private Map<String, String> selectedFields(ModelMapping mapping, List<String> values, Records.Settings settings) {
-        return selectRequiredFields(mapping.fields, values, settings);
     }
 
     static Map<String, String> selectRequiredFields(List<String> modelFields, List<String> values, Records.Settings settings) {
@@ -437,26 +456,26 @@ public final class AnkiDroidGateway implements CollectionGateway {
             throw SyncFailure.retryable("AnkiDroid returned no per-note card cursor.");
         }
         List<Records.Card> cards = new ArrayList<>();
-        try {
-            while (cursor.moveToNext()) {
-                int ord = intValue(cursor, "ord", 0);
+        try (Cursor cardCursor = cursor) {
+            while (cardCursor.moveToNext()) {
+                int ord = intValue(cardCursor, COLUMN_ORD, 0);
                 boolean suspendedFromSearch = suspendedNoteIds.contains(noteId);
-                int queue = intValue(cursor, "queue", suspendedFromSearch ? -1 : 0);
+                int queue = intValue(cardCursor, COLUMN_QUEUE, suspendedFromSearch ? -1 : 0);
                 boolean suspended = suspendedFromSearch || queue < 0;
-                FsrsMemoryState fsrs = fsrsMemoryState(cursor);
-                String deckId = value(cursor, "deck_id");
+                FsrsMemoryState fsrs = fsrsMemoryState(cardCursor);
+                String deckId = value(cardCursor, COLUMN_DECK_ID);
                 cards.add(new Records.Card(
-                        longValue(cursor, "_id", noteId * 1000L + ord),
-                        longValue(cursor, "note_id", noteId),
+                        longValue(cardCursor, COLUMN_ID, noteId * 1000L + ord),
+                        longValue(cardCursor, COLUMN_NOTE_ID, noteId),
                         ord,
                         deckId,
                         deckId,
                         queue,
-                        intValue(cursor, "type", suspended ? 3 : 0),
-                        intValue(cursor, "due", 0),
-                        intValue(cursor, "interval", 0),
-                        intValue(cursor, "reps", 0),
-                        intValue(cursor, "lapses", 0),
+                        intValue(cardCursor, COLUMN_TYPE, suspended ? 3 : 0),
+                        intValue(cardCursor, COLUMN_DUE, 0),
+                        intValue(cardCursor, COLUMN_INTERVAL, 0),
+                        intValue(cardCursor, COLUMN_REPS, 0),
+                        intValue(cardCursor, COLUMN_LAPSES, 0),
                         suspended,
                         fsrs.stability,
                         fsrs.difficulty,
@@ -464,8 +483,6 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 ));
             }
             return cards;
-        } finally {
-            cursor.close();
         }
     }
 
@@ -480,18 +497,17 @@ public final class AnkiDroidGateway implements CollectionGateway {
                     null,
                     null
             );
-        } catch (Exception ignored) {
+        } catch (Exception error) {
+            Log.d(TAG, "AnkiDroid suspended-note search unavailable.", error);
             return ids;
         }
         if (cursor == null) {
             return ids;
         }
-        try {
-            while (cursor.moveToNext()) {
-                ids.add(longValue(cursor, "_id", 0));
+        try (Cursor suspendedCursor = cursor) {
+            while (suspendedCursor.moveToNext()) {
+                ids.add(longValue(suspendedCursor, COLUMN_ID, 0));
             }
-        } finally {
-            cursor.close();
         }
         return ids;
     }
@@ -511,7 +527,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private static Uri uriFor(String authority, String... segments) {
-        Uri.Builder builder = new Uri.Builder().scheme("content").authority(authority);
+        Uri.Builder builder = new Uri.Builder().scheme(CONTENT_SCHEME).authority(authority);
         for (String segment : segments) {
             builder.appendPath(segment);
         }
@@ -537,13 +553,13 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private static FsrsMemoryState fsrsMemoryState(Cursor cursor) {
-        Double stability = firstDouble(cursor, "fsrs_stability", "stability");
-        Double difficulty = firstDouble(cursor, "fsrs_difficulty", "difficulty");
-        Double retrievability = firstDouble(cursor, "fsrs_retrievability", "retrievability");
+        Double stability = firstDouble(cursor, COLUMN_FSRS_STABILITY, COLUMN_STABILITY);
+        Double difficulty = firstDouble(cursor, COLUMN_FSRS_DIFFICULTY, COLUMN_DIFFICULTY);
+        Double retrievability = firstDouble(cursor, COLUMN_FSRS_RETRIEVABILITY, COLUMN_RETRIEVABILITY);
         if (stability != null || difficulty != null || retrievability != null) {
             return new FsrsMemoryState(stability, difficulty, retrievability);
         }
-        return parseFsrsData(value(cursor, "data"));
+        return parseFsrsData(value(cursor, COLUMN_DATA));
     }
 
     private static Double firstDouble(Cursor cursor, String... columns) {
@@ -561,16 +577,11 @@ public final class AnkiDroidGateway implements CollectionGateway {
         if (index < 0 || cursor.isNull(index)) {
             return null;
         }
-        try {
-            String value = cursor.getString(index);
-            if (value == null || value.trim().isEmpty()) {
-                return null;
-            }
-            double parsed = Double.parseDouble(value.trim());
-            return Double.isNaN(parsed) || Double.isInfinite(parsed) ? null : parsed;
-        } catch (RuntimeException ignored) {
+        String value = cursor.getString(index);
+        if (value == null) {
             return null;
         }
+        return parseDouble(value.trim());
     }
 
     private static FsrsMemoryState parseFsrsData(String data) {
@@ -599,12 +610,11 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private static Double parseDouble(String value) {
-        try {
-            double parsed = Double.parseDouble(value);
-            return Double.isNaN(parsed) || Double.isInfinite(parsed) ? null : parsed;
-        } catch (RuntimeException ignored) {
+        if (value == null || !FINITE_DOUBLE_VALUE.matcher(value).matches()) {
             return null;
         }
+        double parsed = Double.parseDouble(value);
+        return Double.isNaN(parsed) || Double.isInfinite(parsed) ? null : parsed;
     }
 
     private static final class FsrsMemoryState {
@@ -634,10 +644,10 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     private static final class ProviderTarget {
         private static final List<ProviderTarget> TARGETS = Arrays.asList(
-                new ProviderTarget("com.ichi2.anki.api.provider", "com.ichi2.anki.permission.READ_WRITE_DATABASE"),
-                new ProviderTarget("com.ichi2.anki.flashcards", "com.ichi2.anki.permission.READ_WRITE_DATABASE"),
-                new ProviderTarget("com.ichi2.anki.debug.api.provider", "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE"),
-                new ProviderTarget("com.ichi2.anki.debug.flashcards", "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE")
+                new ProviderTarget("com.ichi2.anki.api.provider", READ_WRITE_DATABASE_PERMISSION),
+                new ProviderTarget("com.ichi2.anki.flashcards", READ_WRITE_DATABASE_PERMISSION),
+                new ProviderTarget("com.ichi2.anki.debug.api.provider", DEBUG_READ_WRITE_DATABASE_PERMISSION),
+                new ProviderTarget("com.ichi2.anki.debug.flashcards", DEBUG_READ_WRITE_DATABASE_PERMISSION)
         );
 
         private final String authority;

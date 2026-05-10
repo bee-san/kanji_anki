@@ -6,18 +6,29 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class GitHubReleaseParser {
+    private static final int SEMVER_COMPONENTS = 3;
+    private static final int SHA256_HEX_LENGTH = 64;
+    private static final int UNICODE_ESCAPE_HEX_LENGTH = 4;
+    private static final String KEY_ASSETS = "assets";
+    private static final String KEY_BROWSER_DOWNLOAD_URL = "browser_download_url";
+    private static final String KEY_HTML_URL = "html_url";
+    private static final String KEY_NAME = "name";
+    private static final String KEY_TAG_NAME = "tag_name";
+    private static final Pattern SHA256_PATTERN = Pattern.compile("(?i)\\b([a-f0-9]{" + SHA256_HEX_LENGTH + "})\\b");
+    private static final Pattern VERSION_PATTERN = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)$");
+
     private GitHubReleaseParser() {
     }
 
     public static Records.ReleaseInfo parseLatest(String json) {
         String safeJson = json == null ? "" : json;
-        String tag = stringValue(safeJson, "tag_name");
-        String html = stringValue(safeJson, "html_url");
+        String tag = stringValue(safeJson, KEY_TAG_NAME);
+        String html = stringValue(safeJson, KEY_HTML_URL);
         List<Records.ReleaseAsset> assets = new ArrayList<>();
-        String assetsJson = arrayValue(safeJson, "assets");
+        String assetsJson = arrayValue(safeJson, KEY_ASSETS);
         for (String assetJson : objectValues(assetsJson)) {
-            String name = stringValue(assetJson, "name");
-            String url = stringValue(assetJson, "browser_download_url");
+            String name = stringValue(assetJson, KEY_NAME);
+            String url = stringValue(assetJson, KEY_BROWSER_DOWNLOAD_URL);
             if (!name.isEmpty() && !url.isEmpty()) {
                 assets.add(new Records.ReleaseAsset(name, url));
             }
@@ -28,7 +39,7 @@ public final class GitHubReleaseParser {
     public static boolean isNewerSemver(String currentVersion, String tagName) {
         int[] current = parseVersion(currentVersion == null ? "" : currentVersion.replaceFirst("^v", ""));
         int[] remote = parseVersion(tagName == null ? "" : tagName.replaceFirst("^v", ""));
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < SEMVER_COMPONENTS; i++) {
             if (remote[i] != current[i]) {
                 return remote[i] > current[i];
             }
@@ -40,7 +51,7 @@ public final class GitHubReleaseParser {
         if (checksumText == null) {
             return "";
         }
-        Matcher matcher = Pattern.compile("(?i)\\b([a-f0-9]{64})\\b").matcher(checksumText);
+        Matcher matcher = SHA256_PATTERN.matcher(checksumText);
         return matcher.find() ? matcher.group(1).toLowerCase() : "";
     }
 
@@ -66,17 +77,22 @@ public final class GitHubReleaseParser {
             return "";
         }
         int depth = 0;
-        for (int i = start; i < json.length(); i++) {
-            char c = json.charAt(i);
+        int index = start;
+        while (index < json.length()) {
+            char c = json.charAt(index);
             if (c == '"') {
-                i = readString(json, i).endIndex;
+                index = readString(json, index).endIndex + 1;
             } else if (c == '[') {
                 depth++;
+                index++;
             } else if (c == ']') {
                 depth--;
                 if (depth == 0) {
-                    return json.substring(start, i + 1);
+                    return json.substring(start, index + 1);
                 }
+                index++;
+            } else {
+                index++;
             }
         }
         return "";
@@ -89,40 +105,46 @@ public final class GitHubReleaseParser {
         }
         int depth = 0;
         int objectStart = -1;
-        for (int i = 0; i < arrayJson.length(); i++) {
-            char c = arrayJson.charAt(i);
+        int index = 0;
+        while (index < arrayJson.length()) {
+            char c = arrayJson.charAt(index);
             if (c == '"') {
-                i = readString(arrayJson, i).endIndex;
+                index = readString(arrayJson, index).endIndex + 1;
             } else if (c == '{') {
                 if (depth == 0) {
-                    objectStart = i;
+                    objectStart = index;
                 }
                 depth++;
+                index++;
             } else if (c == '}') {
                 depth--;
                 if (depth == 0 && objectStart >= 0) {
-                    out.add(arrayJson.substring(objectStart, i + 1));
+                    out.add(arrayJson.substring(objectStart, index + 1));
                     objectStart = -1;
                 }
+                index++;
+            } else {
+                index++;
             }
         }
         return out;
     }
 
     private static int findKeyColon(String json, String key) {
-        for (int i = 0; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (c != '"') {
-                continue;
-            }
-            ParsedString parsed = readString(json, i);
-            if (key.equals(parsed.value)) {
-                int colon = nextColon(json, parsed.endIndex + 1);
-                if (colon >= 0) {
-                    return colon;
+        int index = 0;
+        while (index < json.length()) {
+            if (json.charAt(index) == '"') {
+                ParsedString parsed = readString(json, index);
+                if (key.equals(parsed.value)) {
+                    int colon = nextColon(json, parsed.endIndex + 1);
+                    if (colon >= 0) {
+                        return colon;
+                    }
                 }
+                index = parsed.endIndex + 1;
+            } else {
+                index++;
             }
-            i = parsed.endIndex;
         }
         return -1;
     }
@@ -150,7 +172,7 @@ public final class GitHubReleaseParser {
     }
 
     private static int[] parseVersion(String version) {
-        Matcher matcher = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)$").matcher(version);
+        Matcher matcher = VERSION_PATTERN.matcher(version);
         if (!matcher.find()) {
             return new int[]{0, 0, 0};
         }
@@ -163,57 +185,69 @@ public final class GitHubReleaseParser {
 
     private static ParsedString readString(String json, int quoteIndex) {
         StringBuilder out = new StringBuilder();
-        for (int i = quoteIndex + 1; i < json.length(); i++) {
-            char c = json.charAt(i);
+        int index = quoteIndex + 1;
+        while (index < json.length()) {
+            char c = json.charAt(index);
             if (c == '"') {
-                return new ParsedString(out.toString(), i);
+                return new ParsedString(out.toString(), index);
             }
-            if (c != '\\' || i + 1 >= json.length()) {
+            if (c != '\\' || index + 1 >= json.length()) {
                 out.append(c);
-                continue;
-            }
-            char escaped = json.charAt(++i);
-            switch (escaped) {
-                case '"':
-                case '\\':
-                case '/':
-                    out.append(escaped);
-                    break;
-                case 'b':
-                    out.append('\b');
-                    break;
-                case 'f':
-                    out.append('\f');
-                    break;
-                case 'n':
-                    out.append('\n');
-                    break;
-                case 'r':
-                    out.append('\r');
-                    break;
-                case 't':
-                    out.append('\t');
-                    break;
-                case 'u':
-                    if (i + 4 < json.length()) {
-                        String hex = json.substring(i + 1, i + 5);
-                        try {
-                            out.append((char) Integer.parseInt(hex, 16));
-                            i += 4;
-                        } catch (NumberFormatException error) {
-                            out.append("\\u").append(hex);
-                            i += 4;
-                        }
-                    } else {
-                        out.append("\\u");
-                    }
-                    break;
-                default:
-                    out.append(escaped);
-                    break;
+                index++;
+            } else {
+                ParsedEscape escape = readEscape(json, index + 1);
+                out.append(escape.value);
+                index = escape.nextIndex;
             }
         }
         return new ParsedString(out.toString(), json.length() - 1);
+    }
+
+    private static ParsedEscape readEscape(String json, int escapeIndex) {
+        char escaped = json.charAt(escapeIndex);
+        switch (escaped) {
+            case '"':
+            case '\\':
+            case '/':
+                return new ParsedEscape(String.valueOf(escaped), escapeIndex + 1);
+            case 'b':
+                return new ParsedEscape("\b", escapeIndex + 1);
+            case 'f':
+                return new ParsedEscape("\f", escapeIndex + 1);
+            case 'n':
+                return new ParsedEscape("\n", escapeIndex + 1);
+            case 'r':
+                return new ParsedEscape("\r", escapeIndex + 1);
+            case 't':
+                return new ParsedEscape("\t", escapeIndex + 1);
+            case 'u':
+                return readUnicodeEscape(json, escapeIndex);
+            default:
+                return new ParsedEscape(String.valueOf(escaped), escapeIndex + 1);
+        }
+    }
+
+    private static ParsedEscape readUnicodeEscape(String json, int escapeIndex) {
+        if (escapeIndex + UNICODE_ESCAPE_HEX_LENGTH >= json.length()) {
+            return new ParsedEscape("\\u", escapeIndex + 1);
+        }
+        String hex = json.substring(escapeIndex + 1, escapeIndex + 1 + UNICODE_ESCAPE_HEX_LENGTH);
+        try {
+            char unicode = (char) Integer.parseInt(hex, 16);
+            return new ParsedEscape(String.valueOf(unicode), escapeIndex + 1 + UNICODE_ESCAPE_HEX_LENGTH);
+        } catch (NumberFormatException error) {
+            return new ParsedEscape("\\u" + hex, escapeIndex + 1 + UNICODE_ESCAPE_HEX_LENGTH);
+        }
+    }
+
+    private static final class ParsedEscape {
+        private final String value;
+        private final int nextIndex;
+
+        private ParsedEscape(String value, int nextIndex) {
+            this.value = value;
+            this.nextIndex = nextIndex;
+        }
     }
 
     private static final class ParsedString {
