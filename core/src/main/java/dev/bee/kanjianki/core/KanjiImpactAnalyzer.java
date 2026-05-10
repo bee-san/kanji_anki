@@ -276,6 +276,10 @@ public final class KanjiImpactAnalyzer {
             double normalized = value > 1.0 ? value / 100.0 : value;
             return clamp(normalized, 0.0, 1.0);
         }
+
+        private static Double fsrsAt(Double[] values, int index) {
+            return values == null || values.length <= index ? null : values[index];
+        }
     }
 
     private static final class RowMetrics {
@@ -312,10 +316,6 @@ public final class KanjiImpactAnalyzer {
         private static int countAt(int[] counts, int index) {
             return counts == null || counts.length <= index ? 0 : counts[index];
         }
-    }
-
-    private static Double fsrsAt(Double[] values, int index) {
-        return values == null || values.length <= index ? null : values[index];
     }
 
     private static double clamp(double value, double min, double max) {

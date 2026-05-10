@@ -1883,10 +1883,6 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
-    private static double normalizedWeakness(int weaknessScore) {
-        return Math.max(0, weaknessScore) / 100.0;
-    }
-
     private static List<KanjiImprovement> topThreeImprovements(List<KanjiImprovement> improvements) {
         return new ArrayList<>(improvements.subList(0, Math.min(3, improvements.size())));
     }
@@ -2949,16 +2945,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             String eventType,
             String title,
             String detail,
-            String sourceExpression,
-            String sourceReading,
-            String rating,
-            boolean writingRequired,
-            boolean writingPassed,
-            boolean manualOverride,
-            Integer weaknessScore,
-            Integer matureSupportCount,
-            Long syncId,
-            String dedupeKey
+            Object... eventValues
     ) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_KANJI, kanji);
@@ -2966,6 +2953,16 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put(COLUMN_EVENT_TYPE, eventType == null ? "" : eventType);
         values.put(COLUMN_TITLE, title == null ? "" : title);
         values.put(COLUMN_DETAIL, detail == null ? "" : detail);
+        String sourceExpression = stringValueAt(eventValues, 0);
+        String sourceReading = stringValueAt(eventValues, 1);
+        String rating = stringValueAt(eventValues, 2);
+        boolean writingRequired = booleanValueAt(eventValues, 3);
+        boolean writingPassed = booleanValueAt(eventValues, 4);
+        boolean manualOverride = booleanValueAt(eventValues, 5);
+        Integer weaknessScore = integerValueAt(eventValues, 6);
+        Integer matureSupportCount = integerValueAt(eventValues, 7);
+        Long syncId = longValueAt(eventValues, 8);
+        String dedupeKey = stringValueAt(eventValues, 9);
         values.put("source_expression", sourceExpression == null ? "" : sourceExpression);
         values.put("source_reading", sourceReading == null ? "" : sourceReading);
         values.put(COLUMN_RATING, rating == null ? "" : rating);
@@ -2989,6 +2986,22 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
         values.put(COLUMN_DEDUPE_KEY, dedupeKey);
         db.insertWithOnConflict(TABLE_KANJI_TIMELINE_EVENTS, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    private static String stringValueAt(Object[] values, int index) {
+        return values.length > index && values[index] instanceof String value ? value : "";
+    }
+
+    private static boolean booleanValueAt(Object[] values, int index) {
+        return values.length > index && values[index] instanceof Boolean value && value;
+    }
+
+    private static Integer integerValueAt(Object[] values, int index) {
+        return values.length > index && values[index] instanceof Integer value ? value : null;
+    }
+
+    private static Long longValueAt(Object[] values, int index) {
+        return values.length > index && values[index] instanceof Long value ? value : null;
     }
 
     private Map<String, RowSnapshot> rowSnapshots(SQLiteDatabase db) {
@@ -3267,63 +3280,111 @@ public final class LocalStore extends SQLiteOpenHelper {
         Map<Long, LinkedHashSet<String>> deckIdsByNote = new LinkedHashMap<>();
         Map<Long, LinkedHashSet<String>> deckNamesByNote = new LinkedHashMap<>();
         Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
+        backfillHistoricalCards(db, sync, settings, notes, deckIdsByNote, deckNamesByNote, aggregates);
+        backfillHistoricalNotes(db, sync, notes, deckIdsByNote, deckNamesByNote);
+        overlayDashboardRows(aggregates, currentDashboardRows(db));
+        insertHistoricalKanjiAggregates(db, sync.id, sync.finishedAt, aggregates);
+    }
+
+    private void backfillHistoricalCards(
+            SQLiteDatabase db,
+            HistoricalSyncRun sync,
+            Records.Settings settings,
+            Map<Long, HistoricalNoteSnapshot> notes,
+            Map<Long, LinkedHashSet<String>> deckIdsByNote,
+            Map<Long, LinkedHashSet<String>> deckNamesByNote,
+            Map<String, HistoricalKanjiAggregate> aggregates
+    ) {
         Cursor cards = db.query(TABLE_SOURCE_CARDS, null, null, null, null, null, "card_id ASC");
         try {
             while (cards.moveToNext()) {
-                long noteId = longValue(cards, COLUMN_NOTE_ID);
-                HistoricalNoteSnapshot note = notes.get(noteId);
+                HistoricalNoteSnapshot note = notes.get(longValue(cards, COLUMN_NOTE_ID));
                 if (note == null) {
                     continue;
                 }
-                long cardId = longValue(cards, COLUMN_CARD_ID);
-                String deck = string(cards, COLUMN_DECK_NAME);
-                linkedSetFor(deckIdsByNote, noteId).add(deck);
-                linkedSetFor(deckNamesByNote, noteId).add(deck);
-                int intervalDays = integer(cards, COLUMN_INTERVAL_DAYS);
-                int reps = integer(cards, COLUMN_REPS);
-                int lapses = integer(cards, COLUMN_LAPSES);
-                boolean mature = intervalDays >= settings.matureDays;
-
-                ContentValues cardValues = new ContentValues();
-                cardValues.put(COLUMN_SYNC_ID, sync.id);
-                cardValues.put(COLUMN_STARTED_AT, sync.startedAt);
-                cardValues.put(COLUMN_FINISHED_AT, sync.finishedAt);
-                cardValues.put(COLUMN_CARD_ID, cardId);
-                cardValues.put(COLUMN_NOTE_ID, noteId);
-                cardValues.put(COLUMN_DECK_ID, deck);
-                cardValues.put(COLUMN_DECK_NAME, deck);
-                cardValues.put(COLUMN_MODEL_ID, note.modelId);
-                cardValues.put(COLUMN_MODEL_NAME, note.modelName);
-                cardValues.put("ord", integer(cards, "ord"));
-                cardValues.put(COLUMN_QUEUE, integer(cards, COLUMN_QUEUE));
-                cardValues.put("type", integer(cards, "type"));
-                cardValues.put("due", integer(cards, "due"));
-                cardValues.put(COLUMN_INTERVAL_DAYS, intervalDays);
-                cardValues.put(COLUMN_REPS, reps);
-                cardValues.put(COLUMN_LAPSES, lapses);
-                cardValues.put("suspended", 0);
-                putNullableDouble(cardValues, COLUMN_FSRS_STABILITY, nullableDouble(cards, COLUMN_FSRS_STABILITY));
-                putNullableDouble(cardValues, COLUMN_FSRS_DIFFICULTY, nullableDouble(cards, COLUMN_FSRS_DIFFICULTY));
-                putNullableDouble(cardValues, COLUMN_FSRS_RETRIEVABILITY, nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY));
-                cardValues.put(COLUMN_MATURE, mature ? 1 : 0);
-                db.insertWithOnConflict(TABLE_SYNC_CARD_SNAPSHOTS, null, cardValues, SQLiteDatabase.CONFLICT_REPLACE);
-
-                for (String kanji : TextUtil.extractKanji(note.expression + " " + note.sentence)) {
-                    aggregateFor(aggregates, kanji).add(new CardMetrics(
-                            intervalDays,
-                            reps,
-                            lapses,
-                            false,
-                            mature,
-                            nullableDouble(cards, COLUMN_FSRS_STABILITY),
-                            nullableDouble(cards, COLUMN_FSRS_DIFFICULTY),
-                            nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY)
-                    ));
-                }
+                backfillHistoricalCard(db, cards, sync, settings, note, deckIdsByNote, deckNamesByNote, aggregates);
             }
         } finally {
             cards.close();
         }
+    }
+
+    private void backfillHistoricalCard(
+            SQLiteDatabase db,
+            Cursor cards,
+            HistoricalSyncRun sync,
+            Records.Settings settings,
+            HistoricalNoteSnapshot note,
+            Map<Long, LinkedHashSet<String>> deckIdsByNote,
+            Map<Long, LinkedHashSet<String>> deckNamesByNote,
+            Map<String, HistoricalKanjiAggregate> aggregates
+    ) {
+        String deck = string(cards, COLUMN_DECK_NAME);
+        linkedSetFor(deckIdsByNote, note.noteId).add(deck);
+        linkedSetFor(deckNamesByNote, note.noteId).add(deck);
+        int intervalDays = integer(cards, COLUMN_INTERVAL_DAYS);
+        int reps = integer(cards, COLUMN_REPS);
+        int lapses = integer(cards, COLUMN_LAPSES);
+        boolean mature = intervalDays >= settings.matureDays;
+        db.insertWithOnConflict(
+                TABLE_SYNC_CARD_SNAPSHOTS,
+                null,
+                historicalCardValues(cards, sync, note, deck, new HistoricalCardMetrics(intervalDays, reps, lapses, mature)),
+                SQLiteDatabase.CONFLICT_REPLACE
+        );
+        for (String kanji : TextUtil.extractKanji(note.expression + " " + note.sentence)) {
+            aggregateFor(aggregates, kanji).add(new CardMetrics(
+                    intervalDays,
+                    reps,
+                    lapses,
+                    false,
+                    mature,
+                    nullableDouble(cards, COLUMN_FSRS_STABILITY),
+                    nullableDouble(cards, COLUMN_FSRS_DIFFICULTY),
+                    nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY)
+            ));
+        }
+    }
+
+    private ContentValues historicalCardValues(
+            Cursor cards,
+            HistoricalSyncRun sync,
+            HistoricalNoteSnapshot note,
+            String deck,
+            HistoricalCardMetrics metrics
+    ) {
+        ContentValues cardValues = new ContentValues();
+        cardValues.put(COLUMN_SYNC_ID, sync.id);
+        cardValues.put(COLUMN_STARTED_AT, sync.startedAt);
+        cardValues.put(COLUMN_FINISHED_AT, sync.finishedAt);
+        cardValues.put(COLUMN_CARD_ID, longValue(cards, COLUMN_CARD_ID));
+        cardValues.put(COLUMN_NOTE_ID, note.noteId);
+        cardValues.put(COLUMN_DECK_ID, deck);
+        cardValues.put(COLUMN_DECK_NAME, deck);
+        cardValues.put(COLUMN_MODEL_ID, note.modelId);
+        cardValues.put(COLUMN_MODEL_NAME, note.modelName);
+        cardValues.put("ord", integer(cards, "ord"));
+        cardValues.put(COLUMN_QUEUE, integer(cards, COLUMN_QUEUE));
+        cardValues.put("type", integer(cards, "type"));
+        cardValues.put("due", integer(cards, "due"));
+        cardValues.put(COLUMN_INTERVAL_DAYS, metrics.intervalDays);
+        cardValues.put(COLUMN_REPS, metrics.reps);
+        cardValues.put(COLUMN_LAPSES, metrics.lapses);
+        cardValues.put("suspended", 0);
+        putNullableDouble(cardValues, COLUMN_FSRS_STABILITY, nullableDouble(cards, COLUMN_FSRS_STABILITY));
+        putNullableDouble(cardValues, COLUMN_FSRS_DIFFICULTY, nullableDouble(cards, COLUMN_FSRS_DIFFICULTY));
+        putNullableDouble(cardValues, COLUMN_FSRS_RETRIEVABILITY, nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY));
+        cardValues.put(COLUMN_MATURE, metrics.mature ? 1 : 0);
+        return cardValues;
+    }
+
+    private void backfillHistoricalNotes(
+            SQLiteDatabase db,
+            HistoricalSyncRun sync,
+            Map<Long, HistoricalNoteSnapshot> notes,
+            Map<Long, LinkedHashSet<String>> deckIdsByNote,
+            Map<Long, LinkedHashSet<String>> deckNamesByNote
+    ) {
         for (HistoricalNoteSnapshot note : notes.values()) {
             LinkedHashSet<String> deckIds = deckIdsByNote.get(note.noteId);
             LinkedHashSet<String> decks = deckNamesByNote.get(note.noteId);
@@ -3347,8 +3408,6 @@ public final class LocalStore extends SQLiteOpenHelper {
             noteValues.put("extracted_kanji", String.join("", TextUtil.extractKanji(note.expression + " " + note.sentence)));
             db.insertWithOnConflict(TABLE_SYNC_NOTE_SNAPSHOTS, null, noteValues, SQLiteDatabase.CONFLICT_REPLACE);
         }
-        overlayDashboardRows(aggregates, currentDashboardRows(db));
-        insertHistoricalKanjiAggregates(db, sync.id, sync.finishedAt, aggregates);
     }
 
     private Map<Long, LinkedHashSet<String>> deckNamesByNote(List<Records.Card> cards) {
@@ -4064,6 +4123,9 @@ public final class LocalStore extends SQLiteOpenHelper {
     ) {
     }
 
+    private record HistoricalCardMetrics(int intervalDays, int reps, int lapses, boolean mature) {
+    }
+
     private static final class HistoricalKanjiSnapshot {
         private final long syncId;
         private final KanjiImpactAnalyzer.MetricSnapshot metrics;
@@ -4674,6 +4736,10 @@ public final class LocalStore extends SQLiteOpenHelper {
             improvements.add(new KanjiImprovement(kanji, beforeWeakness, afterWeakness));
             beforeWeaknessSum += beforeWeakness;
             afterWeaknessSum += afterWeakness;
+        }
+
+        private static double normalizedWeakness(int weaknessScore) {
+            return Math.max(0, weaknessScore) / 100.0;
         }
 
         private void addSupportGain(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {

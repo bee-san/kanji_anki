@@ -175,29 +175,7 @@ public final class KanjiAnalyzer {
             RowSummary summary = new RowSummary();
             Set<Long> seenCards = new LinkedHashSet<>();
             for (Records.Example example : examples) {
-                if (seenCards.add(example.cardId) && summary.trimmed.size() < 8) {
-                    summary.trimmed.add(example);
-                }
-                if (SOURCE_SUSPENDED.equals(example.sourceType)) {
-                    summary.suspended++;
-                } else {
-                    summary.active++;
-                    if (example.mature) {
-                        summary.mature++;
-                    }
-                    summary.lapses += example.lapses;
-                    summary.reps += example.reps;
-                    if (example.reps >= 8 && !example.mature) {
-                        summary.intervalPressure++;
-                    }
-                    summary.fsrsPressure += fsrsPressure(example, settings);
-                }
-                if (summary.meaning.isEmpty() && !example.meaning.isEmpty()) {
-                    summary.meaning = example.meaning;
-                }
-                if (summary.reading.isEmpty() && !example.reading.isEmpty()) {
-                    summary.reading = example.reading;
-                }
+                summary.addExample(example, fsrsPressure(example, settings), seenCards);
             }
             return summary;
         }
@@ -261,6 +239,36 @@ public final class KanjiAnalyzer {
         private String meaning = "";
         private String reading = "";
         private final List<Records.Example> trimmed = new ArrayList<>();
+
+        private void addExample(Records.Example example, int fsrsPressureValue, Set<Long> seenCards) {
+            if (seenCards.add(example.cardId) && trimmed.size() < 8) {
+                trimmed.add(example);
+            }
+            if (SOURCE_SUSPENDED.equals(example.sourceType)) {
+                suspended++;
+            } else {
+                addActiveExample(example, fsrsPressureValue);
+            }
+            if (meaning.isEmpty() && !example.meaning.isEmpty()) {
+                meaning = example.meaning;
+            }
+            if (reading.isEmpty() && !example.reading.isEmpty()) {
+                reading = example.reading;
+            }
+        }
+
+        private void addActiveExample(Records.Example example, int fsrsPressureValue) {
+            active++;
+            if (example.mature) {
+                mature++;
+            }
+            lapses += example.lapses;
+            reps += example.reps;
+            if (example.reps >= 8 && !example.mature) {
+                intervalPressure++;
+            }
+            fsrsPressure += fsrsPressureValue;
+        }
     }
 
     private static final class Reason {

@@ -216,6 +216,18 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity(MainActivityInstrumentedTest::assertCollapsedSettingsScreen);
+            clickText(scenario, "App & data");
+            waitForText(scenario, "App updates");
+            clickText(scenario, "Open updater");
+            waitForText(scenario, "GitHub updater");
+            scenario.onActivity(activity -> assertHasTexts(activity, "GitHub updater", "Current version", "Check for update"));
+        }
+    }
+
+    @Test
+    public void testSettingsControlsPersist() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
                 List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
                 assertTrue(sliders.size() >= 2);
@@ -252,12 +264,6 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "Daily around 08:00");
 
             assertNavigationSettingsPersisted();
-
-            clickText(scenario, "App & data");
-            waitForText(scenario, "App updates");
-            clickText(scenario, "Open updater");
-            waitForText(scenario, "GitHub updater");
-            scenario.onActivity(activity -> assertHasTexts(activity, "GitHub updater", "Current version", "Check for update"));
         }
     }
 

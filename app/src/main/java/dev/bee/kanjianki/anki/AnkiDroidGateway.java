@@ -181,30 +181,16 @@ public final class AnkiDroidGateway implements CollectionGateway {
         if (target == null || snapshot.cards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No provider removal attempted.");
         }
-        Map<Long, Integer> cardsByNote = new LinkedHashMap<>();
-        Map<Long, Integer> suspendedByNote = new LinkedHashMap<>();
-        List<Records.Card> suspendedCards = new ArrayList<>();
-        for (Records.Card card : snapshot.cards) {
-            cardsByNote.put(card.noteId, cardsByNote.getOrDefault(card.noteId, 0) + 1);
-            if (card.suspended) {
-                suspendedCards.add(card);
-                suspendedByNote.put(card.noteId, suspendedByNote.getOrDefault(card.noteId, 0) + 1);
-            }
-        }
+        SuspendedCardIndex suspendedIndex = SuspendedCardIndex.from(snapshot.cards);
+        List<Records.Card> suspendedCards = suspendedIndex.suspendedCards;
         if (suspendedCards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No suspended cards needed provider cleanup.");
         }
 
         int tagged = 0;
         int failed = 0;
-        Set<Long> notesToTag = new LinkedHashSet<>();
-        for (Records.Card card : suspendedCards) {
-            if (cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))) {
-                notesToTag.add(card.noteId);
-            } else {
-                failed++;
-            }
-        }
+        Set<Long> notesToTag = suspendedIndex.notesFullySuspended();
+        failed += suspendedIndex.partiallySuspendedCardCount();
 
         for (Long noteId : notesToTag) {
             if (tagNoteArchived(target, noteId)) {
@@ -213,15 +199,18 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 failed++;
             }
         }
-        String message;
-        if (tagged > 0 && failed == 0) {
-            message = "Archived suspended notes were tagged in AnkiDroid and hidden from future syncs.";
-        } else if (tagged > 0) {
-            message = "Archived suspended notes were partly tagged in AnkiDroid; any leftovers stay in the local archive.";
-        } else {
-            message = "Archived suspended cards were kept in the local archive; AnkiDroid did not allow provider tagging.";
-        }
+        String message = removalMessage(tagged, failed);
         return new RemovalSummary(suspendedCards.size(), 0, tagged, message);
+    }
+
+    private String removalMessage(int tagged, int failed) {
+        if (tagged > 0 && failed == 0) {
+            return "Archived suspended notes were tagged in AnkiDroid and hidden from future syncs.";
+        }
+        if (tagged > 0) {
+            return "Archived suspended notes were partly tagged in AnkiDroid; any leftovers stay in the local archive.";
+        }
+        return "Archived suspended cards were kept in the local archive; AnkiDroid did not allow provider tagging.";
     }
 
     private boolean tagNoteArchived(ProviderTarget target, long noteId) {
@@ -418,27 +407,42 @@ public final class AnkiDroidGateway implements CollectionGateway {
         };
         int projectionIndex = 0;
         for (Long noteId : noteIds) {
-            boolean read = false;
-            while (!read && projectionIndex < projections.length) {
-                try {
-                    cards.addAll(queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex]));
-                    scanned++;
-                    if (shouldReportCardProgress(scanned, total)) {
-                        progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
-                    }
-                    read = true;
-                } catch (Throwable unsupportedColumns) {
-                    projectionIndex++;
-                    if (projectionIndex >= projections.length) {
-                        if (unsupportedColumns instanceof SyncFailure syncFailure) {
-                            throw syncFailure;
-                        }
-                        throw SyncFailure.retryable("AnkiDroid card projection failed: " + unsupportedColumns.getMessage(), unsupportedColumns);
-                    }
-                }
+            ProjectionReadResult result = readCardsForNote(target, noteId, suspendedNoteIds, projections, projectionIndex);
+            projectionIndex = result.projectionIndex;
+            cards.addAll(result.cards);
+            scanned++;
+            if (shouldReportCardProgress(scanned, total)) {
+                progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
             }
         }
         return cards;
+    }
+
+    private ProjectionReadResult readCardsForNote(
+            ProviderTarget target,
+            long noteId,
+            Set<Long> suspendedNoteIds,
+            String[][] projections,
+            int startProjectionIndex
+    ) throws SyncFailure {
+        int projectionIndex = startProjectionIndex;
+        while (projectionIndex < projections.length) {
+            try {
+                return new ProjectionReadResult(
+                        queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex]),
+                        projectionIndex
+                );
+            } catch (Throwable unsupportedColumns) {
+                projectionIndex++;
+                if (projectionIndex >= projections.length) {
+                    if (unsupportedColumns instanceof SyncFailure syncFailure) {
+                        throw syncFailure;
+                    }
+                    throw SyncFailure.retryable("AnkiDroid card projection failed: " + unsupportedColumns.getMessage(), unsupportedColumns);
+                }
+            }
+        }
+        return new ProjectionReadResult(Collections.emptyList(), projectionIndex);
     }
 
     private boolean shouldReportCardProgress(int scanned, int total) {
@@ -641,6 +645,59 @@ public final class AnkiDroidGateway implements CollectionGateway {
             this.name = name;
             this.fields = fields;
         }
+    }
+
+    private static final class SuspendedCardIndex {
+        private final Map<Long, Integer> cardsByNote;
+        private final Map<Long, Integer> suspendedByNote;
+        private final List<Records.Card> suspendedCards;
+
+        private SuspendedCardIndex(
+                Map<Long, Integer> cardsByNote,
+                Map<Long, Integer> suspendedByNote,
+                List<Records.Card> suspendedCards
+        ) {
+            this.cardsByNote = cardsByNote;
+            this.suspendedByNote = suspendedByNote;
+            this.suspendedCards = suspendedCards;
+        }
+
+        private static SuspendedCardIndex from(List<Records.Card> cards) {
+            Map<Long, Integer> cardsByNote = new LinkedHashMap<>();
+            Map<Long, Integer> suspendedByNote = new LinkedHashMap<>();
+            List<Records.Card> suspendedCards = new ArrayList<>();
+            for (Records.Card card : cards) {
+                cardsByNote.put(card.noteId, cardsByNote.getOrDefault(card.noteId, 0) + 1);
+                if (card.suspended) {
+                    suspendedCards.add(card);
+                    suspendedByNote.put(card.noteId, suspendedByNote.getOrDefault(card.noteId, 0) + 1);
+                }
+            }
+            return new SuspendedCardIndex(cardsByNote, suspendedByNote, suspendedCards);
+        }
+
+        private Set<Long> notesFullySuspended() {
+            Set<Long> notes = new LinkedHashSet<>();
+            for (Records.Card card : suspendedCards) {
+                if (cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))) {
+                    notes.add(card.noteId);
+                }
+            }
+            return notes;
+        }
+
+        private int partiallySuspendedCardCount() {
+            int failed = 0;
+            for (Records.Card card : suspendedCards) {
+                if (!cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))) {
+                    failed++;
+                }
+            }
+            return failed;
+        }
+    }
+
+    private record ProjectionReadResult(List<Records.Card> cards, int projectionIndex) {
     }
 
     private static final class ProviderTarget {

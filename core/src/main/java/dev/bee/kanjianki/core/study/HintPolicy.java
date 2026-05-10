@@ -48,8 +48,9 @@ public final class HintPolicy {
 
     private static HintVisibility blindVisibility(HintState state, int index, int current, int strokeCount) {
         boolean revealed = index >= current && index < Math.min(strokeCount, current + state.revealedStrokeCount());
+        float alpha = index == current ? 0.86f : 0.58f;
         return revealed
-                ? new HintVisibility(true, index == current ? 0.86f : 0.58f, false)
+                ? new HintVisibility(true, alpha, false)
                 : new HintVisibility(false, 0f, false);
     }
 
