@@ -33,7 +33,6 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -71,7 +70,6 @@ import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
-import dev.bee.kanjianki.sync.SyncProgress;
 import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
@@ -808,19 +806,8 @@ public final class MainActivity extends Activity {
     private void runSync() {
         base("home");
         content.addView(text("Syncing AnkiDroid", 34, INK, true));
-        TextView stage = text("Finding note type", 22, INK, true);
-        content.addView(stage);
-        ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progress.setIndeterminate(true);
-        progress.setContentDescription("Sync progress");
-        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(-1, dp(12));
-        progressParams.setMargins(0, dp(12), 0, dp(12));
-        content.addView(progress, progressParams);
-        TextView count = text("Reading collection details.", 17, MUTED, false);
-        TextView rate = text("", 15, MUTED, false);
-        content.addView(count);
-        content.addView(rate);
-        ManualSyncProgressView progressView = new ManualSyncProgressView(stage, progress, count, rate);
+        SyncProgressPanel progressView = new SyncProgressPanel(this);
+        content.addView(progressView);
         CollectionGateway syncGateway = collectionGatewayForTests == null ? gateway : collectionGatewayForTests;
         io.execute(() -> {
             ManualSyncEngine.SyncResult result = new ManualSyncEngine(
@@ -836,124 +823,6 @@ public final class MainActivity extends Activity {
             }
             main.post(() -> renderSyncResult(result));
         });
-    }
-
-    private final class ManualSyncProgressView {
-        private final TextView stage;
-        private final ProgressBar progressBar;
-        private final TextView count;
-        private final TextView rate;
-        private long scanStartedAt;
-        private int lastScannedCards = -1;
-        private int lastTotalCards = -1;
-
-        private ManualSyncProgressView(TextView stage, ProgressBar progressBar, TextView count, TextView rate) {
-            this.stage = stage;
-            this.progressBar = progressBar;
-            this.count = count;
-            this.rate = rate;
-        }
-
-        private void render(SyncProgress progress) {
-            stage.setText(syncStageText(progress.stage));
-            if (progress.totalKnown()) {
-                lastScannedCards = progress.scannedCards;
-                lastTotalCards = progress.totalCards;
-                if (progress.stage == SyncProgress.Stage.SCANNING_CARDS && scanStartedAt <= 0L) {
-                    scanStartedAt = SystemClock.elapsedRealtime();
-                }
-            }
-            if (lastTotalCards >= 0) {
-                renderKnownTotal(progress);
-                return;
-            }
-            progressBar.setIndeterminate(true);
-            count.setText(syncStageBody(progress.stage));
-            rate.setText("");
-            progressBar.setContentDescription("Sync progress: " + syncStageText(progress.stage));
-        }
-
-        private void renderKnownTotal(SyncProgress progress) {
-            progressBar.setIndeterminate(false);
-            progressBar.setMax(1000);
-            int value = lastTotalCards == 0
-                    ? 1000
-                    : Math.min(1000, Math.max(0, Math.round((lastScannedCards * 1000f) / lastTotalCards)));
-            progressBar.setProgress(value);
-            String cardText = lastScannedCards + " / " + lastTotalCards + " cards scanned";
-            count.setText(cardText);
-            rate.setText(scanRateText(progress.stage));
-            progressBar.setContentDescription("Sync progress: " + cardText);
-        }
-
-        private String scanRateText(SyncProgress.Stage stage) {
-            if (stage != SyncProgress.Stage.SCANNING_CARDS) {
-                return lastScannedCards >= lastTotalCards ? "Card scan finished." : "";
-            }
-            if (lastScannedCards <= 0 || scanStartedAt <= 0L) {
-                return "Scanning cards.";
-            }
-            long elapsedMillis = Math.max(1L, SystemClock.elapsedRealtime() - scanStartedAt);
-            double perSecond = lastScannedCards * 1000.0 / elapsedMillis;
-            String rateText = String.format(Locale.US, perSecond >= 10.0 ? "%.0f cards/sec" : "%.1f cards/sec", perSecond);
-            int remaining = Math.max(0, lastTotalCards - lastScannedCards);
-            if (remaining == 0) {
-                return rateText + " - finishing up";
-            }
-            if (lastScannedCards >= 3 && elapsedMillis >= 1000L && perSecond > 0.01) {
-                long etaMillis = Math.round((remaining / perSecond) * 1000.0);
-                return rateText + " - about " + shortDuration(etaMillis) + " left";
-            }
-            return rateText + " - estimating time left";
-        }
-
-        private String syncStageText(SyncProgress.Stage stage) {
-            if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
-                return "Finding note type";
-            }
-            if (stage == SyncProgress.Stage.READING_NOTES) {
-                return "Reading notes";
-            }
-            if (stage == SyncProgress.Stage.SCANNING_CARDS) {
-                return "Scanning cards";
-            }
-            if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
-                return "Building practice queue";
-            }
-            if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
-                return "Archiving imported suspended cards";
-            }
-            return "Syncing cards";
-        }
-
-        private String syncStageBody(SyncProgress.Stage stage) {
-            if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
-                return "Checking collection shape.";
-            }
-            if (stage == SyncProgress.Stage.READING_NOTES) {
-                return "Reading notes before the card total is known.";
-            }
-            if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
-                return "Saving the practice queue.";
-            }
-            if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
-                return "Updating archived suspended cards.";
-            }
-            return "Preparing card scan.";
-        }
-
-        private String shortDuration(long millis) {
-            long seconds = Math.max(1L, Math.round(millis / 1000.0));
-            if (seconds < 60L) {
-                return seconds + " sec";
-            }
-            long minutes = Math.max(1L, Math.round(seconds / 60.0));
-            if (minutes < 60L) {
-                return minutes + " min";
-            }
-            long hours = Math.max(1L, Math.round(minutes / 60.0));
-            return hours + " hr";
-        }
     }
 
     private void renderSyncResult(ManualSyncEngine.SyncResult result) {
@@ -4848,62 +4717,6 @@ public final class MainActivity extends Activity {
     }
 
     private View studyTopBar(Records.AdaptiveLoadPlan plan) {
-        StudyProgressSnapshot progressSnapshot = studyProgressSnapshot(plan);
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.VERTICAL);
-        bar.setPadding(0, 0, 0, dp(8));
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(studyIconButton(R.drawable.ic_close_24, "Close study", this::renderHome), new LinearLayout.LayoutParams(dp(56), dp(56)));
-
-        LinearLayout center = new LinearLayout(this);
-        center.setOrientation(LinearLayout.VERTICAL);
-        center.setGravity(Gravity.CENTER);
-
-        TextView progress = text(progressSnapshot.text(), 18, STUDY_HERO_PLUM, true);
-        progress.setGravity(Gravity.CENTER);
-        progress.setIncludeFontPadding(false);
-        center.addView(progress, new LinearLayout.LayoutParams(-1, -2));
-
-        StudyProgressPillView progressPill = new StudyProgressPillView(this, STUDY_HERO_TRACK, STUDY_HERO_PINK);
-        progressPill.setFraction(progressSnapshot.fraction);
-        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(180), dp(7));
-        progressLp.gravity = Gravity.CENTER_HORIZONTAL;
-        progressLp.setMargins(0, dp(8), 0, 0);
-        center.addView(progressPill, progressLp);
-
-        LinearLayout.LayoutParams centerLp = new LinearLayout.LayoutParams(0, -2, 1);
-        centerLp.setMargins(dp(10), 0, dp(10), 0);
-        row.addView(center, centerLp);
-
-        row.addView(studyIconButton(R.drawable.ic_settings_24, NAV_SETTINGS, this::renderSettings), new LinearLayout.LayoutParams(dp(56), dp(56)));
-        bar.addView(row);
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, 0, 0, dp(18));
-        bar.setLayoutParams(lp);
-        return bar;
-    }
-
-    private View studyIconButton(int iconRes, String description, Runnable action) {
-        FrameLayout button = new FrameLayout(this);
-        button.setBackground(panel(Color.rgb(255, 242, 248), Color.TRANSPARENT, dp(28)));
-        button.setClickable(true);
-        button.setFocusable(true);
-        button.setContentDescription(description);
-        button.setElevation(dp(3));
-        button.setOnClickListener(v -> action.run());
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(iconRes);
-        icon.setColorFilter(STUDY_HERO_PINK_DARK);
-        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER);
-        button.addView(icon, iconLp);
-        return button;
-    }
-
-    private StudyProgressSnapshot studyProgressSnapshot(Records.AdaptiveLoadPlan plan) {
         initializeSessionProgressTarget(plan);
         int completed = sessionProgressCompleted;
         int target = sessionProgressMax;
@@ -4916,23 +4729,7 @@ public final class MainActivity extends Activity {
         }
         int visibleCompleted = Math.max(0, Math.min(target, completed));
         float fraction = target <= 0 ? 0f : Math.max(0f, Math.min(1f, completed / (float) target));
-        return new StudyProgressSnapshot(visibleCompleted, target, fraction);
-    }
-
-    private static final class StudyProgressSnapshot {
-        private final int completed;
-        private final int target;
-        private final float fraction;
-
-        private StudyProgressSnapshot(int completed, int target, float fraction) {
-            this.completed = Math.max(0, completed);
-            this.target = Math.max(0, target);
-            this.fraction = Math.max(0f, Math.min(1f, fraction));
-        }
-
-        private String text() {
-            return completed + " / " + target;
-        }
+        return new StudyTopBarView(this, visibleCompleted, target, fraction, this::renderHome, this::renderSettings);
     }
 
     private LinearLayout softStudyCard() {
