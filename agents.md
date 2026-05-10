@@ -279,6 +279,9 @@ secrets.
    gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
    ```
 
+If you create a GitHub Release directly in the UI, publishing that release also
+triggers this same workflow automatically.
+
 6. Fetch the release asset URLs.
 
    ```sh

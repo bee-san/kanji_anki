@@ -117,4 +117,4 @@ gradle :app:assembleRelease
 
 ## Release
 
-Push a semver tag such as `v0.3.0`. GitHub Actions builds the signed APK, writes a matching `.sha256`, and publishes both files to the release.
+Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that tag name. GitHub Actions builds the signed APK, writes a matching `.sha256`, and publishes both files to the release.

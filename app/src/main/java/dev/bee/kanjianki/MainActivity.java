@@ -180,9 +180,13 @@ public final class MainActivity extends Activity {
     private int currentPracticeLevel;
     private int studyRunStartingCompleted = -1;
     private int sessionCompletedSimilarStudyTasks;
+    private int sessionProgressCompleted;
+    private int sessionProgressMax;
     private float flashcardTouchStartX;
     private float flashcardTouchStartY;
     private final Set<String> sessionPassedFocusKanji = new HashSet<>();
+    private final Set<String> sessionCompletedTaskKeys = new HashSet<>();
+    private final Set<String> sessionSeenTaskKeys = new HashSet<>();
     private HintState currentHintState = HintState.initial();
     private Map<String, StrokeGuide> strokeGuides;
     private WritingRecognizer writingRecognizer;
@@ -316,8 +320,6 @@ public final class MainActivity extends Activity {
         studyActionBar.setBackgroundColor(STUDY_BG_SOFT);
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout nav = nav(selected, 0);
-        root.addView(nav, new LinearLayout.LayoutParams(-1, dp(96)));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             int top;
             int bottom;
@@ -329,11 +331,7 @@ public final class MainActivity extends Activity {
                 top = insets.getSystemWindowInsetTop();
                 bottom = insets.getSystemWindowInsetBottom();
             }
-            content.setPadding(dp(18), dp(18) + top, dp(18), dp(18));
-            nav.setPadding(dp(18), dp(10), dp(18), dp(10) + bottom);
-            ViewGroup.LayoutParams navParams = nav.getLayoutParams();
-            navParams.height = dp(96) + bottom;
-            nav.setLayoutParams(navParams);
+            content.setPadding(dp(18), dp(18) + top, dp(18), dp(18) + bottom);
             return insets;
         });
         root.requestApplyInsets();
@@ -465,10 +463,10 @@ public final class MainActivity extends Activity {
         ));
         row.addView(metricCard(
                 R.drawable.ic_flame_24,
-                Color.rgb(247, 159, 0),
+                streakAccent(streak),
                 "Streak",
                 streakHeadline(streak),
-                streak.bestDays > 0 ? "Best: " + streakDayCount(streak.bestDays) : "Start today",
+                streakMetricBody(streak),
                 null
         ));
         row.addView(metricCard(
@@ -608,6 +606,7 @@ public final class MainActivity extends Activity {
         row.setBaselineAligned(false);
         row.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
         row.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
+        row.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
         row.addView(pillButton("Settings", R.drawable.ic_settings_24, this::renderSettings));
         return row;
     }
@@ -676,6 +675,29 @@ public final class MainActivity extends Activity {
         button.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(56), 1);
         lp.setMargins(dp(3), dp(6), dp(3), dp(6));
+        button.setLayoutParams(lp);
+        return button;
+    }
+
+    private View fullWidthHomeButton() {
+        LinearLayout button = new LinearLayout(this);
+        button.setOrientation(LinearLayout.HORIZONTAL);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(12), 0, dp(12), 0);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_home_24);
+        icon.setColorFilter(INK);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+        iconLp.setMargins(0, 0, dp(8), 0);
+        button.addView(icon, iconLp);
+        TextView text = text("Home", 15, INK, true);
+        text.setGravity(Gravity.CENTER);
+        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
+        button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
+        button.setClickable(true);
+        button.setOnClickListener(v -> renderHome());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(56));
+        lp.setMargins(0, 0, 0, dp(10));
         button.setLayoutParams(lp);
         return button;
     }
@@ -781,6 +803,17 @@ public final class MainActivity extends Activity {
             return "Streak logged today. " + countText(streak.reviewsToday, "writing review today", "writing reviews today") + "." + best;
         }
         return "Study one problem kanji today to keep it alive." + best;
+    }
+
+    private int streakAccent(LocalStore.StudyStreak streak) {
+        return streak != null && streak.studiedToday ? Color.rgb(247, 159, 0) : Color.rgb(160, 160, 166);
+    }
+
+    private String streakMetricBody(LocalStore.StudyStreak streak) {
+        if (streak != null && streak.studiedToday) {
+            return streak.bestDays > 0 ? "Best: " + streakDayCount(streak.bestDays) : "Done today";
+        }
+        return "Not done today";
     }
 
     private String humanSyncTime(long timestampMillis) {
@@ -1028,11 +1061,13 @@ public final class MainActivity extends Activity {
 
     private void renderStats() {
         base("stats");
+        LocalStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
+        content.addView(fullWidthHomeButton());
         content.addView(text("Stats", 34, INK, true));
+        content.addView(statsVerdictPanel(stats));
         content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
         addSpace(10);
 
-        LocalStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
         content.addView(outcomePanel(
                 "Weak kanji improved",
                 countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved") + " after Kani practice",
@@ -1047,6 +1082,21 @@ public final class MainActivity extends Activity {
                 supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
+    }
+
+    private LinearLayout statsVerdictPanel(LocalStore.KaniOutcomeStats stats) {
+        boolean working = stats != null && stats.weakKanjiImproved.improvedCount > 0;
+        LinearLayout box = panelBox(working ? Color.rgb(238, 252, 250) : Color.rgb(246, 246, 248), working ? TEAL : Color.rgb(178, 178, 186));
+        box.addView(text(working ? "Kani is working for you" : "Kani is not currently working for you", 24, working ? TEAL : MUTED, true));
+        box.addView(text(
+                working
+                        ? "Your weak kanji are measurably improving after Kani practice and follow-up AnkiDroid syncs."
+                        : "Kani has not produced measurable weak-kanji improvement yet. Study, then sync AnkiDroid again so this page can compare before and after.",
+                15,
+                working ? INK : MUTED,
+                false
+        ));
+        return box;
     }
 
     private LinearLayout outcomePanel(String title, String value, String body, List<String> examples, int stroke) {
@@ -1070,7 +1120,9 @@ public final class MainActivity extends Activity {
 
     private List<String> weaknessImprovementExamples(LocalStore.WeakKanjiImprovedMetric metric) {
         List<String> examples = new java.util.ArrayList<>();
-        for (LocalStore.KanjiImprovement example : metric.examples) {
+        int maxExamples = Math.min(3, metric.examples.size());
+        for (int i = 0; i < maxExamples; i++) {
+            LocalStore.KanjiImprovement example = metric.examples.get(i);
             examples.add(example.kanji + "  " + formatWeakness(example.beforeWeakness) + " -> " + formatWeakness(example.afterWeakness));
         }
         return examples;
@@ -1399,6 +1451,7 @@ public final class MainActivity extends Activity {
 
     private void renderBrowseKanji(String query) {
         base("home");
+        content.addView(fullWidthHomeButton());
         content.addView(text("Browse Kanji", 34, INK, true));
         content.addView(text("Local kanji from synced Kani data and study history.", 16, MUTED, false));
         addSpace(10);
@@ -1457,10 +1510,14 @@ public final class MainActivity extends Activity {
         Records.DashboardRow row = timeline.currentRow;
         Records.KanjiInventoryItem inventory = timeline.inventoryItem;
         if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
+            content.addView(fullWidthHomeButton());
             emptyState("Kanji not found", "This row may have disappeared after a sync.");
             return;
         }
         String displayKanji = row == null ? (inventory == null ? kanji : inventory.kanji) : row.kanji;
+        if (!fromBrowse) {
+            content.addView(fullWidthHomeButton());
+        }
         TextView glyph = text(displayKanji, 92, INK, true);
         glyph.setGravity(Gravity.CENTER);
         content.addView(glyph);
@@ -1747,6 +1804,7 @@ public final class MainActivity extends Activity {
         List<Records.StudyItem> seeded = studyQueue(rows, now, true, plan);
         Records.AdaptiveLoadPlan seededPlan = adaptivePlan(rows, seeded, now);
         activeStudyPlan = seededPlan;
+        initializeSessionProgressTarget(seededPlan);
         Set<String> focus = continueAllKanjiSession || seededPlan.allKanjiMode
                 ? null
                 : new HashSet<>(seededPlan.focusKanji);
@@ -1784,6 +1842,7 @@ public final class MainActivity extends Activity {
             return;
         }
         store.saveStudyItem(activeSession.item);
+        registerStudyTaskShown(sessionTaskKey(activeSession));
         renderSession(activeSession);
     }
 
@@ -1831,6 +1890,7 @@ public final class MainActivity extends Activity {
                 "writing_remediation".equals(repeat.taskType),
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
+        registerStudyTaskShown(learningRepeatKey(activeLearningRepeat));
         renderSession(activeSession);
     }
 
@@ -1919,6 +1979,7 @@ public final class MainActivity extends Activity {
         );
         activeLearningRepeat = null;
         store.saveStudyItem(activeSession.item);
+        registerStudyTaskShown(sessionTaskKey(activeSession));
         renderSession(activeSession);
     }
 
@@ -1943,6 +2004,8 @@ public final class MainActivity extends Activity {
         activeLearningRepeat = null;
         activeSimilarRepair = null;
         activeSimilarChoice = card;
+        initializeSessionProgressTarget(activeStudyPlan);
+        registerStudyTaskShown(similarChoiceKey(card));
         prepareStudyContent(activeStudyPlan, false);
         activeAnalysis = null;
         checkingWriting = false;
@@ -2049,6 +2112,8 @@ public final class MainActivity extends Activity {
                 true,
                 activeSimilarRepair.promptMeaning
         );
+        initializeSessionProgressTarget(activeStudyPlan);
+        registerStudyTaskShown(similarRepairKey(activeSimilarRepair));
         renderSession(activeSession);
     }
 
@@ -2304,17 +2369,93 @@ public final class MainActivity extends Activity {
         sessionPassedFocusKanji.clear();
         sessionCompletedSimilarStudyTasks = 0;
         studyRunStartingCompleted = -1;
+        sessionProgressCompleted = 0;
+        sessionProgressMax = 0;
+        sessionCompletedTaskKeys.clear();
+        sessionSeenTaskKeys.clear();
     }
 
     private void markStudyRunPassed(String kanji) {
-        if (kanji == null || kanji.isEmpty()) {
+        if (activeLearningRepeat != null) {
+            markStudyTaskCompleted(learningRepeatKey(activeLearningRepeat));
             return;
         }
-        sessionPassedFocusKanji.add(kanji);
+        if (activeSession != null) {
+            markStudyTaskCompleted(sessionTaskKey(activeSession));
+            return;
+        }
+        if (kanji != null && !kanji.isEmpty()) {
+            markStudyTaskCompleted("kanji:" + kanji);
+        }
     }
 
     private void markSimilarStudyTaskCompleted() {
+        if (activeSimilarChoice != null) {
+            markStudyTaskCompleted(similarChoiceKey(activeSimilarChoice));
+        } else if (activeSimilarRepair != null) {
+            markStudyTaskCompleted(similarRepairKey(activeSimilarRepair));
+        } else {
+            sessionProgressCompleted++;
+            sessionProgressMax = Math.max(sessionProgressMax, sessionProgressCompleted);
+        }
         sessionCompletedSimilarStudyTasks++;
+    }
+
+    private void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan) {
+        if (sessionProgressMax <= 0 && plan != null) {
+            sessionProgressMax = Math.max(0, plan.target);
+        }
+    }
+
+    private void registerStudyTaskShown(String key) {
+        if (key == null || key.isEmpty()) {
+            return;
+        }
+        boolean extraSessionTask = key.startsWith("repeat:") || key.startsWith("similar-choice:") || key.startsWith("similar-repair:");
+        if (sessionSeenTaskKeys.add(key) && sessionProgressMax > 0 && extraSessionTask) {
+            sessionProgressMax++;
+        } else if (sessionProgressMax <= 0) {
+            sessionProgressMax = 1;
+        }
+    }
+
+    private void markStudyTaskCompleted(String key) {
+        if (key == null || key.isEmpty()) {
+            return;
+        }
+        registerStudyTaskShown(key);
+        if (sessionCompletedTaskKeys.add(key)) {
+            sessionProgressCompleted++;
+            sessionProgressMax = Math.max(sessionProgressMax, sessionProgressCompleted);
+        }
+    }
+
+    private String sessionTaskKey(Records.StudySession session) {
+        if (session == null) {
+            return "";
+        }
+        return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token;
+    }
+
+    private String learningRepeatKey(Records.LearningRepeat repeat) {
+        if (repeat == null) {
+            return "";
+        }
+        return "repeat:" + repeat.taskType + ":" + repeat.kanji + ":" + repeat.answerSignature + ":" + repeat.stepIndex + ":" + repeat.activeToken;
+    }
+
+    private String similarChoiceKey(Records.SimilarKanjiChoiceCard choice) {
+        if (choice == null) {
+            return "";
+        }
+        return "similar-choice:" + choice.targetKanji + ":" + choice.choiceSignature;
+    }
+
+    private String similarRepairKey(Records.SimilarKanjiWritingRepair repair) {
+        if (repair == null) {
+            return "";
+        }
+        return "similar-repair:" + repair.id + ":" + repair.activeToken;
     }
 
     private String learningRepeatLine(Records.LearningRepeat repeat) {
@@ -2614,6 +2755,12 @@ public final class MainActivity extends Activity {
         }
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
+                if (isTypingMeaningTask(activeSession)
+                        && typingAnswerInput != null
+                        && isTouchInsideView(typingAnswerInput, event)) {
+                    flashcardTouchTracking = false;
+                    return false;
+                }
                 flashcardTouchTracking = isTouchInsideView(flashcardGestureArea, event);
                 if (flashcardTouchTracking) {
                     flashcardTouchStartX = event.getRawX();
@@ -2919,8 +3066,8 @@ public final class MainActivity extends Activity {
             nextStep = repeat.stepIndex + 1;
             if (nextStep >= steps.size()) {
                 store.clearLearningRepeat(repeat);
-                activeLearningRepeat = null;
                 markStudyRunPassed(request.kanji);
+                activeLearningRepeat = null;
                 Toast.makeText(this, "Learning repeat complete.", Toast.LENGTH_SHORT).show();
                 renderStudy();
                 return;
@@ -3596,6 +3743,7 @@ public final class MainActivity extends Activity {
     private void renderSettings() {
         base("settings");
         Records.Settings current = settings();
+        content.addView(fullWidthHomeButton());
         content.addView(text("Settings", 34, INK, true));
         content.addView(text("Tune FSRS retention, which Anki cards enter practice, and when Kani reminds you.", 16, MUTED, false));
         addSpace(12);
@@ -4645,12 +4793,9 @@ public final class MainActivity extends Activity {
     }
 
     private StudyProgressSnapshot studyProgressSnapshot(Records.AdaptiveLoadPlan plan) {
-        int focusTarget = studyProgressTarget(plan);
-        int completed = studyProgressCompleted(plan) + sessionCompletedSimilarStudyTasks;
-        int target = focusTarget + sessionCompletedSimilarStudyTasks;
-        if (store != null) {
-            target += store.dueSimilarStudyTaskCount(System.currentTimeMillis());
-        }
+        initializeSessionProgressTarget(plan);
+        int completed = sessionProgressCompleted;
+        int target = sessionProgressMax;
         boolean activeTask = activeSession != null || activeSimilarChoice != null || activeSimilarRepair != null;
         if (activeTask && target <= completed) {
             target = completed + 1;

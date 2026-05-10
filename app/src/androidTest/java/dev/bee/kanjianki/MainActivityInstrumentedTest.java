@@ -203,15 +203,10 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testNavigationSettingsAndEmptyStates() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Nothing to study yet");
-                assertHasText(activity, "Sync from AnkiDroid first");
-            });
-
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Stats");
+                assertHasText(activity, "Kani is not currently working for you");
                 assertHasText(activity, "Weak kanji improved");
                 assertHasText(activity, "Anki support gained");
             });
@@ -352,7 +347,7 @@ public final class MainActivityInstrumentedTest {
                             statsDashboardRow("痛", 82, 1),
                             statsDashboardRow("薬", 76, 0),
                             statsDashboardRow("疲", 69, 0),
-                            statsDashboardRow("平", 40, 1)
+                            statsDashboardRow("平", 74, 1)
                     ),
                     Records.Settings.kikuDefaults(),
                     now - 30_000L,
@@ -370,7 +365,7 @@ public final class MainActivityInstrumentedTest {
                             statsDashboardRow("痛", 46, 3),
                             statsDashboardRow("薬", 51, 2),
                             statsDashboardRow("疲", 44, 1),
-                            statsDashboardRow("平", 38, 1)
+                            statsDashboardRow("平", 50, 1)
                     ),
                     Records.Settings.kikuDefaults(),
                     now - 5_000L,
@@ -384,12 +379,14 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "Kani is working for you");
                 assertHasText(activity, "Weak kanji improved");
-                assertHasText(activity, "3 weak kanji improved after Kani practice");
-                assertHasText(activity, "Average weakness dropped from 0.76 to 0.47 after Kani practice.");
+                assertHasText(activity, "4 weak kanji improved after Kani practice");
+                assertHasText(activity, "Average weakness dropped from 0.75 to 0.48 after Kani practice.");
                 assertHasText(activity, "痛  0.82 -> 0.46");
                 assertHasText(activity, "薬  0.76 -> 0.51");
                 assertHasText(activity, "疲  0.69 -> 0.44");
+                assertNoText(activity, "平  0.74 -> 0.50");
                 assertHasText(activity, "Anki support gained");
                 assertHasText(activity, "3 kanji gained Anki support");
                 assertHasText(activity, "2 of them gained their first mature supporting card.");
@@ -428,6 +425,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
+                assertHasText(activity, "Kani is not currently working for you");
                 assertHasText(activity, "0 weak kanji improved after Kani practice");
                 assertHasText(activity, "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.");
                 assertHasText(activity, "0 kanji gained Anki support");
@@ -532,7 +530,7 @@ public final class MainActivityInstrumentedTest {
     public void testKanjiDetailTimelineShowsReviewAfterStudy() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             clickText(scenario, "Reveal");
             clickText(scenario, "Pass");
             scenario.onActivity(activity -> {
@@ -692,7 +690,7 @@ public final class MainActivityInstrumentedTest {
     public void testMissingStrokeGuideIsExplainedBeforeDrawing() {
         seedDueWritingItem(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards"), 0);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "No numbered stroke guide is bundled");
                 assertHasText(activity, "Stroke-order feedback will be limited");
@@ -706,7 +704,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem(3);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Writing repair");
                 assertHasText(activity, "Recognition has missed on multiple days");
@@ -736,7 +734,7 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Writing repair");
                 assertHasText(activity, "Reference");
@@ -758,7 +756,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
             clickText(scenario, "Check");
             waitForText(scenario, "likely wrong direction");
@@ -777,7 +775,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem(dashboardRow("鿃", "rare shape", "ソウ", "Imported from suspended cards"), 0);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("鿃"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(MainActivityInstrumentedTest::drawFreeformStroke);
             clickText(scenario, "Check");
             scenario.onActivity(activity -> {
@@ -792,7 +790,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
             waitForText(scenario, "Clean match");
@@ -819,7 +817,7 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Writing repair");
                 assertHasText(activity, "Reference");
@@ -840,7 +838,7 @@ public final class MainActivityInstrumentedTest {
     public void testStudyLoopActionsArePinnedOutsideScrollableContent() {
         seedDueWritingItem();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 View root = activity.findViewById(android.R.id.content);
                 View check = findExactText(root, "Check");
@@ -857,7 +855,7 @@ public final class MainActivityInstrumentedTest {
     public void testNewKanjiStartsAsHiddenFlashcardAndKnownAnswerLogsRecognitionReview() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Name this kanji");
                 assertHasText(activity, "Kanji -> meaning");
@@ -920,7 +918,7 @@ public final class MainActivityInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "0 / 2");
                 assertHasText(activity, "Similar choice");
@@ -991,7 +989,7 @@ public final class MainActivityInstrumentedTest {
         seedFocusCompleteWithInventorySimilarChoice();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "1 / 2");
                 assertHasText(activity, "Similar choice");
@@ -1023,7 +1021,7 @@ public final class MainActivityInstrumentedTest {
         }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Learning step 1 / 2. Practice only.");
                 assertHasText(activity, "Reveal");
@@ -1061,7 +1059,7 @@ public final class MainActivityInstrumentedTest {
         }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "0 / 2");
                 assertHasText(activity, "Learning step 1 / 2. Practice only.");
@@ -1078,7 +1076,7 @@ public final class MainActivityInstrumentedTest {
     public void testMissedRecognitionCountsTowardInternalWritingThreshold() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             clickText(scenario, "Reveal");
             clickText(scenario, "Fail");
 
@@ -1104,12 +1102,12 @@ public final class MainActivityInstrumentedTest {
     public void testTypingMeaningAutoPassesCorrectAnswerAndAllowsManualWrongGrading() {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             clickText(scenario, "Reveal");
             clickText(scenario, "Fail");
 
             forceStudyItemDue("拉", -1, false);
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Type the meaning");
                 assertHasText(activity, "Typing -> meaning");
@@ -1133,7 +1131,7 @@ public final class MainActivityInstrumentedTest {
             }
 
             forceStudyItemDue("拉", -1, false);
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             enterFirstEditText(scenario, "wrong");
             clickText(scenario, "Reveal");
             scenario.onActivity(activity -> {
@@ -1165,7 +1163,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
             waitForText(scenario, "Clean match");
@@ -1205,7 +1203,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem(2);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             clickText(scenario, "More help");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
@@ -1231,7 +1229,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem(2);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanjiWithFirstStrokeReversed(activity, "拉"));
             clickText(scenario, "Check");
             waitForText(scenario, "Try cleaner");
@@ -1260,7 +1258,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem(2);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
             scenario.onActivity(activity -> {
@@ -1292,7 +1290,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
             scenario.onActivity(activity -> {
@@ -1318,7 +1316,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
             scenario.onActivity(activity -> {
@@ -1345,7 +1343,7 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeUnavailableRecognizer());
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            clickText(scenario, "Study");
+            clickText(scenario, "Study now");
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, "Check");
             scenario.onActivity(activity -> {
