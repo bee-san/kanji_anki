@@ -46,20 +46,16 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
-import dev.bee.kanjianki.core.StudyCue;
-import dev.bee.kanjianki.core.StudyCueFormatter;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
-import dev.bee.kanjianki.core.study.StudyRating;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
-import dev.bee.kanjianki.core.study.WritingRatingMapper;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
@@ -109,8 +105,6 @@ public final class MainActivity extends Activity {
     private static final int STUDY_BG_SOFT = Color.rgb(255, 246, 251);
     private static final int STUDY_HERO_PANEL = Color.rgb(253, 241, 247);
     private static final int STUDY_HERO_PINK = Color.rgb(248, 45, 114);
-    private static final int STUDY_HERO_PINK_DARK = Color.rgb(230, 42, 109);
-    private static final int STUDY_HERO_TRACK = Color.rgb(251, 221, 236);
     private static final int STUDY_HERO_PLUM = Color.rgb(33, 7, 44);
     private static final int STUDY_HERO_MUTED = Color.rgb(102, 82, 110);
     private static final long DAY_MILLIS = 86_400_000L;
@@ -138,7 +132,6 @@ public final class MainActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final HintProgression hintProgression = new HintProgression();
-    private final WritingRatingMapper writingRatingMapper = new WritingRatingMapper();
     private LocalStore store;
     private AnkiDroidGateway gateway;
     private LinearLayout content;
@@ -1494,7 +1487,7 @@ public final class MainActivity extends Activity {
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
         if (session.row != null) {
-            addStudyCueLines(details, studyCue(session));
+            addStudyCueLines(details, session);
         } else {
             details.addView(text(session.prompt, 15, MUTED, false));
         }
@@ -2391,7 +2384,7 @@ public final class MainActivity extends Activity {
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
         if (session.row != null) {
-            addStudyCueLines(details, studyCue(session));
+            addStudyCueLines(details, session);
         } else {
             details.addView(text(session.prompt, 15, MUTED, false));
         }
@@ -2400,56 +2393,18 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private void addStudyCueLines(LinearLayout details, StudyCue cue) {
-        List<String> lines = StudyCueFormatter.answerLines(cue);
+    private void addStudyCueLines(LinearLayout details, Records.StudySession session) {
+        List<String> lines = StudyCueTexts.answerLines(
+                dictionaryLookup(),
+                session,
+                exampleForSession(session),
+                isWordReadingTask(session)
+        );
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             int color = line.startsWith("Reading:") ? STUDY_PINK_DARK : STUDY_PLUM;
             details.addView(text(line, i == 0 ? 17 : 15, color, true));
         }
-    }
-
-    private StudyCue studyCue(Records.StudySession session) {
-        if (session == null || session.row == null) {
-            return new StudyCue("", "", "", "");
-        }
-        if (isWordReadingTask(session)) {
-            return wordReadingCue(session);
-        }
-        Records.Example example = exampleForSession(session);
-        String sourceExpression = example == null ? "" : example.expression;
-        String sourceReading = example == null ? session.row.reading : example.reading;
-        String ankiMeaning = example != null && !example.meaning.isEmpty()
-                ? example.meaning
-                : session.row.primaryMeaning;
-        return dictionaryLookup().studyCue(
-                session.item.kanji,
-                ankiMeaning,
-                session.row.reading,
-                sourceExpression,
-                sourceReading
-        );
-    }
-
-    private StudyCue wordReadingCue(Records.StudySession session) {
-        Records.Example example = exampleForSession(session);
-        String sourceExpression = example == null ? "" : example.expression;
-        String sourceReading = example == null ? session.row.reading : example.reading;
-        String cueReading = firstNonEmpty(
-                sourceReading,
-                session.row.reading
-        );
-        String fromExpression = firstNonEmpty(sourceExpression);
-        return new StudyCue("", cueReading, fromExpression, DictionaryLookup.SOURCE_ANKI);
-    }
-
-    private String firstNonEmpty(String... values) {
-        for (String value : values) {
-            if (value != null && !value.trim().isEmpty()) {
-                return value.trim();
-            }
-        }
-        return "";
     }
 
     private DictionaryLookup dictionaryLookup() {
@@ -2774,41 +2729,23 @@ public final class MainActivity extends Activity {
         if (activeSession == null) {
             return;
         }
-        StudyRating mappedRating = mappedRating(rating, override);
-        Records.ReviewRequest request = reviewRequest(mappedRating, override);
+        StudyReviewRequests.MappedReview mappedReview = StudyReviewRequests.from(
+                activeSession,
+                activeAnalysis,
+                hintsUsed,
+                rating,
+                override
+        );
+        Records.ReviewRequest request = mappedReview.request();
         if (activeSimilarRepair != null) {
             submitSimilarWritingRepair(request);
             return;
         }
         if (activeLearningRepeat != null) {
-            submitLearningRepeat(request, mappedRating.code());
+            submitLearningRepeat(request, mappedReview.ratingCode());
             return;
         }
         submitNormalReview(request);
-    }
-
-    private StudyRating mappedRating(String rating, boolean override) {
-        StudyRating requestedRating = StudyRating.fromCode(rating);
-        return writingRatingMapper.applyRequestedRating(requestedRating, activeSession.writingRequired, activeAnalysis, override);
-    }
-
-    private Records.ReviewRequest reviewRequest(StudyRating mappedRating, boolean override) {
-        boolean writingRequired = activeSession.writingRequired;
-        boolean passed = !writingRequired || (activeAnalysis != null && activeAnalysis.writingPassed);
-        boolean cleanWriting = activeAnalysis != null && activeAnalysis.status == WritingAnalysis.Status.PASS;
-        return new Records.ReviewRequest(
-                activeSession.item.kanji,
-                activeSession.token,
-                mappedRating.code(),
-                writingRequired,
-                passed,
-                cleanWriting,
-                override,
-                hintsUsed,
-                activeSession.taskType,
-                activeSession.item.answerSignature,
-                activeSession.prompt
-        );
     }
 
     private void submitNormalReview(Records.ReviewRequest request) {
@@ -3853,7 +3790,7 @@ public final class MainActivity extends Activity {
         addFieldMappingInput(box, "Frequency field", frequencyField);
         addFieldMappingInput(box, "Frequency sort field", frequencySortField);
 
-        FieldMappingInputs fieldMappings = new FieldMappingInputs(
+        NoteTypeFieldMappings.Inputs fieldMappings = new NoteTypeFieldMappings.Inputs(
                 noteType,
                 expressionField,
                 readingField,
@@ -3863,7 +3800,7 @@ public final class MainActivity extends Activity {
                 frequencySortField
         );
         Button choose = secondaryButton("Choose from AnkiDroid");
-        choose.setOnClickListener(v -> chooseNoteType(fieldMappings));
+        choose.setOnClickListener(v -> NoteTypeFieldMappings.choose(this, gateway, io, main, fieldMappings));
         box.addView(choose);
         Button kiku = secondaryButton("Use Kiku");
         kiku.setOnClickListener(v -> {
@@ -3926,100 +3863,6 @@ public final class MainActivity extends Activity {
     private void addFieldMappingInput(LinearLayout box, String label, EditText input) {
         box.addView(text(label, 14, INK, true));
         box.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
-    }
-
-    private void chooseNoteType(FieldMappingInputs inputs) {
-        Toast.makeText(this, "Reading AnkiDroid note types.", Toast.LENGTH_SHORT).show();
-        io.execute(() -> {
-            try {
-                List<AnkiDroidGateway.NoteType> noteTypes = gateway.noteTypes();
-                main.post(() -> showNoteTypeDialog(inputs, noteTypes));
-            } catch (Throwable error) {
-                String message = error.getMessage() == null || error.getMessage().trim().isEmpty()
-                        ? "Could not read AnkiDroid note types."
-                        : error.getMessage();
-                main.post(() -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
-            }
-        });
-    }
-
-    private void showNoteTypeDialog(FieldMappingInputs inputs, List<AnkiDroidGateway.NoteType> noteTypes) {
-        if (noteTypes == null || noteTypes.isEmpty()) {
-            Toast.makeText(this, "No note types found in AnkiDroid.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        String[] labels = new String[noteTypes.size()];
-        for (int i = 0; i < noteTypes.size(); i++) {
-            AnkiDroidGateway.NoteType noteType = noteTypes.get(i);
-            labels[i] = noteType.name + " (" + countText(noteType.fields.size(), "field", "fields") + ")";
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("Choose note type")
-                .setItems(labels, (dialog, which) -> {
-                    AnkiDroidGateway.NoteType selected = noteTypes.get(which);
-                    inputs.noteType.setText(selected.name);
-                    applyFieldGuesses(selected, inputs);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void applyFieldGuesses(
-            AnkiDroidGateway.NoteType noteType,
-            FieldMappingInputs inputs
-    ) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        inputs.expression.setText(firstMatchingField(noteType.fields, defaults.expressionField, "Front", "Japanese", "Word", "Vocabulary", "Term"));
-        inputs.reading.setText(firstMatchingField(noteType.fields, defaults.readingField, "Reading", "Kana", "Pronunciation"));
-        inputs.meaning.setText(firstMatchingField(noteType.fields, defaults.meaningField, LABEL_MEANING, "Back", "Definition", "Glossary"));
-        inputs.sentence.setText(firstMatchingField(noteType.fields, defaults.sentenceField, "Context", "Example", "ExampleSentence"));
-        inputs.frequency.setText(firstMatchingField(noteType.fields, defaults.frequencyField, "Freq"));
-        inputs.frequencySort.setText(firstMatchingField(noteType.fields, defaults.frequencySortField, "FrequencySort", defaults.frequencyField));
-        if (inputs.expression.getText().toString().trim().isEmpty() && !noteType.fields.isEmpty()) {
-            inputs.expression.setText(noteType.fields.get(0));
-        }
-        if (inputs.meaning.getText().toString().trim().isEmpty() && noteType.fields.size() > 1) {
-            inputs.meaning.setText(noteType.fields.get(1));
-        }
-    }
-
-    private static final class FieldMappingInputs {
-        private final EditText noteType;
-        private final EditText expression;
-        private final EditText reading;
-        private final EditText meaning;
-        private final EditText sentence;
-        private final EditText frequency;
-        private final EditText frequencySort;
-
-        private FieldMappingInputs(
-                EditText noteType,
-                EditText expression,
-                EditText reading,
-                EditText meaning,
-                EditText sentence,
-                EditText frequency,
-                EditText frequencySort
-        ) {
-            this.noteType = noteType;
-            this.expression = expression;
-            this.reading = reading;
-            this.meaning = meaning;
-            this.sentence = sentence;
-            this.frequency = frequency;
-            this.frequencySort = frequencySort;
-        }
-    }
-
-    private String firstMatchingField(List<String> fields, String... candidates) {
-        for (String candidate : candidates) {
-            for (String field : fields) {
-                if (field.equalsIgnoreCase(candidate)) {
-                    return field;
-                }
-            }
-        }
-        return "";
     }
 
     private EditText rankInput(int value) {
@@ -4956,7 +4799,7 @@ public final class MainActivity extends Activity {
     private String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
         DictionaryLookup.KanjiEntry entry = dictionaryLookup().lookupKanji(kanji);
         if (entry != null) {
-            String meaning = StudyCueFormatter.displayGlosses(entry.meanings, 2);
+            String meaning = StudyCueTexts.displayGlosses(entry.meanings, 2);
             if (!meaning.isEmpty()) {
                 return compact(meaning, maxChars);
             }
@@ -4973,7 +4816,7 @@ public final class MainActivity extends Activity {
     }
 
     private String cleanLearnerText(String raw, String fallback, int maxChars) {
-        return StudyCueFormatter.cleanFallbackMeaning(raw, fallback, maxChars);
+        return StudyCueTexts.cleanFallbackMeaning(raw, fallback, maxChars);
     }
 
     private String compact(String value, int maxChars) {
