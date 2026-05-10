@@ -35,7 +35,15 @@ public final class BridgeScheduler {
             long nowMillis,
             long startOfDayMillis
     ) {
-        return seedQueueInternal(rows, rows, existing, settings, nowMillis, startOfDayMillis, settings.newPerDay, false);
+        return seedQueueInternal(new SeedQueueRequest(
+                rows,
+                rows,
+                existing,
+                settings,
+                nowMillis,
+                startOfDayMillis,
+                new SeedQueueLimits(settings.newPerDay, false)
+        ));
     }
 
     public List<Records.StudyItem> seedQueue(
@@ -50,99 +58,28 @@ public final class BridgeScheduler {
             return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis);
         }
         List<Records.DashboardRow> admissionRows = plan.allKanjiMode ? rows : rowsForFocus(rows, plan.focusKanji);
-        return seedQueueInternal(
+        return seedQueueInternal(new SeedQueueRequest(
                 rows,
                 admissionRows,
                 existing,
                 settings,
                 nowMillis,
                 startOfDayMillis,
-                plan.newAdmissionLimit,
-                plan.allKanjiMode
-        );
+                new SeedQueueLimits(plan.newAdmissionLimit, plan.allKanjiMode)
+        ));
     }
 
-    private List<Records.StudyItem> seedQueueInternal(
-            List<Records.DashboardRow> allRows,
-            List<Records.DashboardRow> admissionRows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
-            long nowMillis,
-            long startOfDayMillis,
-            int newAdmissionLimit,
-            boolean allKanjiMode
-    ) {
-        int activeQueueCap = allKanjiMode ? Integer.MAX_VALUE : settings.activeQueueCap;
-        int admissionLimit = allKanjiMode ? Integer.MAX_VALUE : Math.max(0, newAdmissionLimit);
-        Map<String, Records.DashboardRow> rowByFamily = new HashMap<>();
-        Map<String, List<Records.DashboardRow>> rowsByKanji = new HashMap<>();
-        for (Records.DashboardRow row : allRows) {
-            rowByFamily.put(rowFamilyKey(row), row);
-            List<Records.DashboardRow> familyRows = rowsByKanji.get(row.kanji);
-            if (familyRows == null) {
-                familyRows = new ArrayList<>();
-                rowsByKanji.put(row.kanji, familyRows);
-            }
-            familyRows.add(row);
+    private List<Records.StudyItem> seedQueueInternal(SeedQueueRequest request) {
+        SeedRowIndex rowIndex = indexSeedRows(request.allRows);
+        SeedQueueState state = reconcileExistingItems(request, rowIndex);
+        for (Records.DashboardRow row : request.admissionRows) {
+            admitSeedRow(request, state, row);
         }
-
-        Map<String, Records.StudyItem> byFamily = new HashMap<>();
-        List<Records.StudyItem> out = new ArrayList<>();
-        int activeCount = 0;
-        int newToday = 0;
-        for (Records.StudyItem item : existing) {
-            Records.DashboardRow row = rowByFamily.get(familyKey(item));
-            List<Records.DashboardRow> familyRows = rowsByKanji.get(item.kanji);
-            if (row == null && familyRows != null && (item.answerSignature.isEmpty() || familyRows.size() == 1)) {
-                row = familyRows.get(0);
-            }
-            Records.StudyItem current = item;
-            if (row != null) {
-                current = alignAnswerSignature(current, row, nowMillis);
-            }
-            if (!STATE_RETIRED.equals(item.state)
-                    && (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0))) {
-                current = retiredCopy(current);
-            }
-            byFamily.put(familyKey(current), current);
-            out.add(current);
-            if (!STATE_RETIRED.equals(current.state)) {
-                activeCount++;
-                if (current.createdAtMillis >= startOfDayMillis) {
-                    newToday++;
-                }
-            }
-        }
-
-        for (Records.DashboardRow row : admissionRows) {
-            String rowKey = rowFamilyKey(row);
-            Records.StudyItem current = byFamily.get(rowKey);
-            if (current != null) {
-                if (STATE_RETIRED.equals(current.state)
-                        && row.matureSupportCount < settings.matureSupportThreshold
-                        && activeCount < activeQueueCap
-                        && newToday < admissionLimit) {
-                    Records.StudyItem reopened = newStudyItem(row.kanji, nowMillis, answerSignature(row));
-                    out.remove(current);
-                    out.add(reopened);
-                    byFamily.put(rowKey, reopened);
-                    activeCount++;
-                    newToday++;
-                }
-                continue;
-            }
-            if (activeCount >= activeQueueCap || newToday >= admissionLimit) {
-                continue;
-            }
-            out.add(newStudyItem(row.kanji, nowMillis, answerSignature(row)));
-            activeCount++;
-            newToday++;
-        }
-        out.sort(Comparator
+        state.items.sort(Comparator
                 .comparing((Records.StudyItem item) -> item.state.equals(STATE_RETIRED))
                 .thenComparingLong(item -> item.dueAtMillis)
                 .thenComparing(item -> item.kanji));
-        return out;
+        return state.items;
     }
 
     public Records.StudySession nextSession(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis) {
@@ -201,6 +138,115 @@ public final class BridgeScheduler {
             }
         }
         return out;
+    }
+
+    private SeedRowIndex indexSeedRows(List<Records.DashboardRow> rows) {
+        SeedRowIndex index = new SeedRowIndex();
+        for (Records.DashboardRow row : rows) {
+            index.rowByFamily.put(rowFamilyKey(row), row);
+            List<Records.DashboardRow> familyRows = index.rowsByKanji.get(row.kanji);
+            if (familyRows == null) {
+                familyRows = new ArrayList<>();
+                index.rowsByKanji.put(row.kanji, familyRows);
+            }
+            familyRows.add(row);
+        }
+        return index;
+    }
+
+    private SeedQueueState reconcileExistingItems(SeedQueueRequest request, SeedRowIndex rowIndex) {
+        SeedQueueState state = new SeedQueueState();
+        for (Records.StudyItem item : request.existing) {
+            Records.StudyItem current = alignOrRetireSeedItem(request, rowIndex, item);
+            state.byFamily.put(familyKey(current), current);
+            state.items.add(current);
+            state.trackActiveItem(current, request.startOfDayMillis);
+        }
+        return state;
+    }
+
+    private Records.StudyItem alignOrRetireSeedItem(
+            SeedQueueRequest request,
+            SeedRowIndex rowIndex,
+            Records.StudyItem item
+    ) {
+        Records.DashboardRow row = seedRowForItem(rowIndex, item);
+        Records.StudyItem current = row == null ? item : alignAnswerSignature(item, row, request.nowMillis);
+        if (shouldRetireSeedItem(request.settings, row, item, current)) {
+            return retiredCopy(current);
+        }
+        return current;
+    }
+
+    private Records.DashboardRow seedRowForItem(SeedRowIndex rowIndex, Records.StudyItem item) {
+        Records.DashboardRow row = rowIndex.rowByFamily.get(familyKey(item));
+        List<Records.DashboardRow> familyRows = rowIndex.rowsByKanji.get(item.kanji);
+        if (row != null || familyRows == null || (!item.answerSignature.isEmpty() && familyRows.size() != 1)) {
+            return row;
+        }
+        return familyRows.get(0);
+    }
+
+    private boolean shouldRetireSeedItem(
+            Records.Settings settings,
+            Records.DashboardRow row,
+            Records.StudyItem original,
+            Records.StudyItem current
+    ) {
+        return !STATE_RETIRED.equals(original.state)
+                && (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0));
+    }
+
+    private void admitSeedRow(SeedQueueRequest request, SeedQueueState state, Records.DashboardRow row) {
+        String rowKey = rowFamilyKey(row);
+        Records.StudyItem current = state.byFamily.get(rowKey);
+        if (current == null) {
+            addNewSeedItemIfRoom(request, state, row, rowKey);
+        } else if (canReopenRetiredSeedItem(request, state, row, current)) {
+            reopenSeedItem(request, state, row, rowKey, current);
+        }
+    }
+
+    private void addNewSeedItemIfRoom(
+            SeedQueueRequest request,
+            SeedQueueState state,
+            Records.DashboardRow row,
+            String rowKey
+    ) {
+        if (!state.hasAdmissionRoom(request)) {
+            return;
+        }
+        Records.StudyItem item = newStudyItem(row.kanji, request.nowMillis, answerSignature(row));
+        state.items.add(item);
+        state.byFamily.put(rowKey, item);
+        state.activeCount++;
+        state.newToday++;
+    }
+
+    private boolean canReopenRetiredSeedItem(
+            SeedQueueRequest request,
+            SeedQueueState state,
+            Records.DashboardRow row,
+            Records.StudyItem current
+    ) {
+        return STATE_RETIRED.equals(current.state)
+                && row.matureSupportCount < request.settings.matureSupportThreshold
+                && state.hasAdmissionRoom(request);
+    }
+
+    private void reopenSeedItem(
+            SeedQueueRequest request,
+            SeedQueueState state,
+            Records.DashboardRow row,
+            String rowKey,
+            Records.StudyItem current
+    ) {
+        Records.StudyItem reopened = newStudyItem(row.kanji, request.nowMillis, answerSignature(row));
+        state.items.remove(current);
+        state.items.add(reopened);
+        state.byFamily.put(rowKey, reopened);
+        state.activeCount++;
+        state.newToday++;
     }
 
     private Records.StudyItem retiredCopy(Records.StudyItem item) {
@@ -356,199 +402,255 @@ public final class BridgeScheduler {
             Records.SchedulerParameters parameters,
             Records.Settings settings
     ) {
-        if (parameters == null) {
-            parameters = Records.SchedulerParameters.defaults();
+        Records.SchedulerParameters resolvedParameters = resolveParameters(parameters);
+        Records.Settings resolvedSettings = resolveSettings(settings);
+        Records.ReviewResult duplicate = duplicateReviewResult(item, request, consumedTokens);
+        if (duplicate != null) {
+            return duplicate;
         }
-        if (settings == null) {
-            settings = Records.Settings.kikuDefaults();
-        }
+        consumedTokens.add(request.token);
+        ReviewContext context = ReviewContext.from(item, request, resolvedParameters, resolvedSettings, nowMillis);
+        ReviewState state = ReviewState.from(context);
+        applyReviewSchedule(context, state);
+        updateWritingLevel(context, state);
+        updateRecognitionProgress(context, state);
+        updateSuppression(context, state);
+        return new Records.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.");
+    }
+
+    private Records.SchedulerParameters resolveParameters(Records.SchedulerParameters parameters) {
+        return parameters == null ? Records.SchedulerParameters.defaults() : parameters;
+    }
+
+    private Records.Settings resolveSettings(Records.Settings settings) {
+        return settings == null ? Records.Settings.kikuDefaults() : settings;
+    }
+
+    private Records.ReviewResult duplicateReviewResult(
+            Records.StudyItem item,
+            Records.ReviewRequest request,
+            Set<String> consumedTokens
+    ) {
         if (consumedTokens.contains(request.token)) {
             return new Records.ReviewResult(item, "duplicate", true, "Review token already consumed.");
         }
         if (item.activeToken != null && !item.activeToken.isEmpty() && !item.activeToken.equals(request.token)) {
             return new Records.ReviewResult(item, "duplicate", true, "Review token does not match the active session.");
         }
-        consumedTokens.add(request.token);
-        String rating = normalizeRating(request.rating);
-        boolean writingRemediationReview = request.writingRequired && item.writingRemediationPending;
-        String reviewedTaskType = item.writingRemediationPending
-                ? TASK_WRITING_REMEDIATION
-                : recognitionTaskType(item.recognitionStage);
-        if (writingRemediationReview && request.manualOverride) {
-            rating = RATING_HARD;
-        } else if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
-            rating = RATING_AGAIN;
-        }
-        boolean writingReviewCanMoveHelp = request.writingRequired && !request.manualOverride;
-        boolean cleanWritingPass = writingReviewCanMoveHelp
-                && request.writingPassed
-                && request.writingClean
-                && request.hintsUsed <= 0;
-        boolean failedWriting = writingReviewCanMoveHelp && !request.writingPassed;
+        return null;
+    }
 
-        Records.TaskMemory previousTaskMemory = item.memoryForTaskType(reviewedTaskType);
-        int total = item.totalReviews + 1;
-        int lapses = item.lapses;
-        int taskTotal = previousTaskMemory.totalReviews + 1;
-        int taskLapses = previousTaskMemory.lapses;
-        int step = previousTaskMemory.learningStep;
-        int writingLevel = item.writingLevel;
-        int recognitionStage = item.recognitionStage;
-        int failedRecognitionDays = item.consecutiveFailedRecognitionDays;
-        long lastFailedRecognitionDay = item.lastFailedRecognitionDayMillis;
-        int recognitionPasses = previousTaskMemory.consecutivePasses;
-        long lastRecognitionPassDueAt = previousTaskMemory.lastPassedDueAtMillis;
-        boolean writingRemediationPending = item.writingRemediationPending;
-        double stability = previousTaskMemory.stability;
-        double difficulty = previousTaskMemory.difficulty;
-        long due;
-        int scheduledIntervalDays;
-        String state;
-
-        switch (rating) {
+    private void applyReviewSchedule(ReviewContext context, ReviewState state) {
+        switch (context.rating) {
             case RATING_AGAIN:
-                lapses++;
-                taskLapses++;
-                step = 0;
-                stability = Math.max(0.2, stability * parameters.againMultiplier);
-                difficulty = Math.min(10.0, difficulty + 0.7);
-                due = nowMillis + 10 * MINUTE;
-                scheduledIntervalDays = 0;
-                state = STATE_LEARNING;
+                applyAgainSchedule(context, state);
                 break;
             case RATING_HARD:
-                step = Math.max(1, step);
-                stability = Math.max(0.5, stability * parameters.hardMultiplier);
-                difficulty = Math.min(10.0, difficulty + 0.2);
-                due = nowMillis + DAY;
-                scheduledIntervalDays = 1;
-                state = STATE_REVIEW;
+                applyHardSchedule(context, state);
                 break;
             case RATING_EASY:
-                step = 2;
-                stability = Math.max(2.5, stability * parameters.easyMultiplier);
-                difficulty = Math.max(1.0, difficulty - 0.35);
-                long easyInterval = reviewInterval(stability, parameters);
-                scheduledIntervalDays = intervalDays(easyInterval);
-                due = nowMillis + easyInterval;
-                state = STATE_REVIEW;
+                applyEasySchedule(context, state);
                 break;
             case RATING_GOOD:
             default:
-                step = Math.min(2, step + 1);
-                stability = Math.max(1.0, stability * parameters.goodMultiplier);
-                difficulty = Math.max(1.0, difficulty - 0.1);
-                long goodInterval = step < 2 ? 10 * MINUTE : reviewInterval(stability, parameters);
-                scheduledIntervalDays = step < 2 ? 0 : intervalDays(goodInterval);
-                due = nowMillis + goodInterval;
-                state = step < 2 ? STATE_LEARNING : STATE_REVIEW;
+                applyGoodSchedule(context, state);
                 break;
         }
-        if (failedWriting) {
-            writingLevel = Math.max(0, writingLevel - 1);
-        } else if (cleanWritingPass) {
-            writingLevel = Math.min(3, writingLevel + 1);
-        }
-        if (!request.writingRequired) {
-            if (RATING_AGAIN.equals(rating)) {
-                if (previousTaskMemory.dueAtMillis <= nowMillis
-                        && (failedRecognitionDays <= 0 || lastFailedRecognitionDay != previousTaskMemory.dueAtMillis)) {
-                    failedRecognitionDays++;
-                    lastFailedRecognitionDay = previousTaskMemory.dueAtMillis;
-                }
-                if (failedRecognitionDays >= settings.writingTriggerMissDays) {
-                    failedRecognitionDays = 0;
-                    lastFailedRecognitionDay = 0L;
-                    if (recognitionStage <= MIN_RECOGNITION_STAGE) {
-                        writingRemediationPending = true;
-                    } else {
-                        recognitionStage = Math.max(MIN_RECOGNITION_STAGE, recognitionStage - 1);
-                        writingRemediationPending = false;
-                    }
-                }
-            } else {
-                if (previousTaskMemory.dueAtMillis <= nowMillis
-                        && (recognitionPasses <= 0 || lastRecognitionPassDueAt != previousTaskMemory.dueAtMillis)) {
-                    recognitionPasses++;
-                    lastRecognitionPassDueAt = previousTaskMemory.dueAtMillis;
-                }
-                if (recognitionPasses >= settings.recognitionPromotionPasses) {
-                    recognitionStage = Math.min(MAX_RECOGNITION_STAGE, recognitionStage + 1);
-                    recognitionPasses = 0;
-                    lastRecognitionPassDueAt = 0L;
-                }
-                failedRecognitionDays = 0;
-                lastFailedRecognitionDay = 0L;
-                writingRemediationPending = false;
-            }
-        } else if (writingRemediationReview) {
-            if (request.manualOverride || request.writingPassed) {
-                recognitionStage = MIN_RECOGNITION_STAGE;
-                failedRecognitionDays = 0;
-                lastFailedRecognitionDay = 0L;
-                writingRemediationPending = false;
-            } else {
-                writingRemediationPending = true;
-            }
-        }
+    }
 
-        String suppressedByTaskType = item.suppressedByTaskType;
-        long suppressedAtMillis = item.suppressedAtMillis;
-        int matureIntervalDays = scheduledIntervalDays;
-        if (RATING_AGAIN.equals(rating)) {
-            suppressedByTaskType = "";
-            suppressedAtMillis = 0L;
-            matureIntervalDays = 0;
-        } else if (dominatesLowerSiblings(reviewedTaskType)
-                && previousTaskMemory.totalReviews > 0
-                && previousTaskMemory.dueAtMillis <= nowMillis
-                && scheduledIntervalDays >= settings.matureDays) {
-            suppressedByTaskType = reviewedTaskType;
-            suppressedAtMillis = nowMillis;
-        }
+    private void applyAgainSchedule(ReviewContext context, ReviewState state) {
+        state.lapses++;
+        state.taskLapses++;
+        state.step = 0;
+        state.stability = Math.max(0.2, state.stability * context.parameters.againMultiplier);
+        state.difficulty = Math.min(10.0, state.difficulty + 0.7);
+        state.due = context.nowMillis + 10 * MINUTE;
+        state.scheduledIntervalDays = 0;
+        state.state = STATE_LEARNING;
+    }
 
-        Records.StudyItem updated = new Records.StudyItem(
-                item.kanji,
-                state,
-                due,
-                round(stability),
-                round(difficulty),
-                total,
-                lapses,
-                step,
-                writingLevel,
-                recognitionStage,
-                failedRecognitionDays,
-                lastFailedRecognitionDay,
-                writingRemediationPending,
-                suppressedByTaskType,
-                suppressedAtMillis,
-                matureIntervalDays,
-                item.answerSignature,
+    private void applyHardSchedule(ReviewContext context, ReviewState state) {
+        state.step = Math.max(1, state.step);
+        state.stability = Math.max(0.5, state.stability * context.parameters.hardMultiplier);
+        state.difficulty = Math.min(10.0, state.difficulty + 0.2);
+        state.due = context.nowMillis + DAY;
+        state.scheduledIntervalDays = 1;
+        state.state = STATE_REVIEW;
+    }
+
+    private void applyEasySchedule(ReviewContext context, ReviewState state) {
+        state.step = 2;
+        state.stability = Math.max(2.5, state.stability * context.parameters.easyMultiplier);
+        state.difficulty = Math.max(1.0, state.difficulty - 0.35);
+        long interval = reviewInterval(state.stability, context.parameters);
+        state.scheduledIntervalDays = intervalDays(interval);
+        state.due = context.nowMillis + interval;
+        state.state = STATE_REVIEW;
+    }
+
+    private void applyGoodSchedule(ReviewContext context, ReviewState state) {
+        state.step = Math.min(2, state.step + 1);
+        state.stability = Math.max(1.0, state.stability * context.parameters.goodMultiplier);
+        state.difficulty = Math.max(1.0, state.difficulty - 0.1);
+        long interval = state.step < 2 ? 10 * MINUTE : reviewInterval(state.stability, context.parameters);
+        state.scheduledIntervalDays = state.step < 2 ? 0 : intervalDays(interval);
+        state.due = context.nowMillis + interval;
+        state.state = state.step < 2 ? STATE_LEARNING : STATE_REVIEW;
+    }
+
+    private void updateWritingLevel(ReviewContext context, ReviewState state) {
+        if (context.failedWriting) {
+            state.writingLevel = Math.max(0, state.writingLevel - 1);
+        } else if (context.cleanWritingPass) {
+            state.writingLevel = Math.min(3, state.writingLevel + 1);
+        }
+    }
+
+    private void updateRecognitionProgress(ReviewContext context, ReviewState state) {
+        if (!context.request.writingRequired) {
+            updateRecognitionReviewProgress(context, state);
+        } else if (context.writingRemediationReview) {
+            updateWritingRemediationProgress(context, state);
+        }
+    }
+
+    private void updateRecognitionReviewProgress(ReviewContext context, ReviewState state) {
+        if (RATING_AGAIN.equals(context.rating)) {
+            incrementFailedRecognitionDays(context, state);
+            triggerWritingOrDemotionIfNeeded(context, state);
+        } else {
+            incrementRecognitionPasses(context, state);
+            promoteRecognitionIfReady(context, state);
+            state.failedRecognitionDays = 0;
+            state.lastFailedRecognitionDay = 0L;
+            state.writingRemediationPending = false;
+        }
+    }
+
+    private void incrementFailedRecognitionDays(ReviewContext context, ReviewState state) {
+        if (context.previousTaskMemory.dueAtMillis <= context.nowMillis
+                && (state.failedRecognitionDays <= 0
+                || state.lastFailedRecognitionDay != context.previousTaskMemory.dueAtMillis)) {
+            state.failedRecognitionDays++;
+            state.lastFailedRecognitionDay = context.previousTaskMemory.dueAtMillis;
+        }
+    }
+
+    private void triggerWritingOrDemotionIfNeeded(ReviewContext context, ReviewState state) {
+        if (state.failedRecognitionDays < context.settings.writingTriggerMissDays) {
+            return;
+        }
+        state.failedRecognitionDays = 0;
+        state.lastFailedRecognitionDay = 0L;
+        if (state.recognitionStage <= MIN_RECOGNITION_STAGE) {
+            state.writingRemediationPending = true;
+        } else {
+            state.recognitionStage = Math.max(MIN_RECOGNITION_STAGE, state.recognitionStage - 1);
+            state.writingRemediationPending = false;
+        }
+    }
+
+    private void incrementRecognitionPasses(ReviewContext context, ReviewState state) {
+        if (context.previousTaskMemory.dueAtMillis <= context.nowMillis
+                && (state.recognitionPasses <= 0
+                || state.lastRecognitionPassDueAt != context.previousTaskMemory.dueAtMillis)) {
+            state.recognitionPasses++;
+            state.lastRecognitionPassDueAt = context.previousTaskMemory.dueAtMillis;
+        }
+    }
+
+    private void promoteRecognitionIfReady(ReviewContext context, ReviewState state) {
+        if (state.recognitionPasses < context.settings.recognitionPromotionPasses) {
+            return;
+        }
+        state.recognitionStage = Math.min(MAX_RECOGNITION_STAGE, state.recognitionStage + 1);
+        state.recognitionPasses = 0;
+        state.lastRecognitionPassDueAt = 0L;
+    }
+
+    private void updateWritingRemediationProgress(ReviewContext context, ReviewState state) {
+        if (context.request.manualOverride || context.request.writingPassed) {
+            state.recognitionStage = MIN_RECOGNITION_STAGE;
+            state.failedRecognitionDays = 0;
+            state.lastFailedRecognitionDay = 0L;
+            state.writingRemediationPending = false;
+        } else {
+            state.writingRemediationPending = true;
+        }
+    }
+
+    private void updateSuppression(ReviewContext context, ReviewState state) {
+        state.suppressedByTaskType = context.item.suppressedByTaskType;
+        state.suppressedAtMillis = context.item.suppressedAtMillis;
+        state.matureIntervalDays = state.scheduledIntervalDays;
+        if (RATING_AGAIN.equals(context.rating)) {
+            state.suppressedByTaskType = "";
+            state.suppressedAtMillis = 0L;
+            state.matureIntervalDays = 0;
+        } else if (reviewCreatesMatureSuppression(context, state)) {
+            state.suppressedByTaskType = context.reviewedTaskType;
+            state.suppressedAtMillis = context.nowMillis;
+        }
+    }
+
+    private boolean reviewCreatesMatureSuppression(ReviewContext context, ReviewState state) {
+        return dominatesLowerSiblings(context.reviewedTaskType)
+                && context.previousTaskMemory.totalReviews > 0
+                && context.previousTaskMemory.dueAtMillis <= context.nowMillis
+                && state.scheduledIntervalDays >= context.settings.matureDays;
+    }
+
+    private Records.StudyItem updatedStudyItem(ReviewContext context, ReviewState state) {
+        return new Records.StudyItem(
+                context.item.kanji,
+                state.state,
+                state.due,
+                round(state.stability),
+                round(state.difficulty),
+                state.total,
+                state.lapses,
+                state.step,
+                state.writingLevel,
+                state.recognitionStage,
+                state.failedRecognitionDays,
+                state.lastFailedRecognitionDay,
+                state.writingRemediationPending,
+                state.suppressedByTaskType,
+                state.suppressedAtMillis,
+                state.matureIntervalDays,
+                context.item.answerSignature,
                 null,
-                item.createdAtMillis,
-                item.typingMeaningMemory,
-                item.kanjiMeaningMemory,
-                item.fontMeaningMemory,
-                item.wordReadingMemory,
-                item.writingRemediationMemory
-        ).withTaskMemory(
-                reviewedTaskType,
-                new Records.TaskMemory(
-                        state,
-                        due,
-                        round(stability),
-                        round(difficulty),
-                        taskTotal,
-                        taskLapses,
-                        step,
-                        rating,
-                        scheduledIntervalDays,
-                        RATING_AGAIN.equals(rating) || request.writingRequired ? 0 : recognitionPasses,
-                        RATING_AGAIN.equals(rating) || request.writingRequired ? 0L : lastRecognitionPassDueAt
-                )
+                context.item.createdAtMillis,
+                context.item.typingMeaningMemory,
+                context.item.kanjiMeaningMemory,
+                context.item.fontMeaningMemory,
+                context.item.wordReadingMemory,
+                context.item.writingRemediationMemory
+        ).withTaskMemory(context.reviewedTaskType, updatedTaskMemory(context, state));
+    }
+
+    private Records.TaskMemory updatedTaskMemory(ReviewContext context, ReviewState state) {
+        return new Records.TaskMemory(
+                state.state,
+                state.due,
+                round(state.stability),
+                round(state.difficulty),
+                state.taskTotal,
+                state.taskLapses,
+                state.step,
+                context.rating,
+                state.scheduledIntervalDays,
+                taskMemoryRecognitionPasses(context, state),
+                taskMemoryRecognitionPassDueAt(context, state)
         );
-        return new Records.ReviewResult(updated, rating, false, "Review applied.");
+    }
+
+    private int taskMemoryRecognitionPasses(ReviewContext context, ReviewState state) {
+        return RATING_AGAIN.equals(context.rating) || context.request.writingRequired ? 0 : state.recognitionPasses;
+    }
+
+    private long taskMemoryRecognitionPassDueAt(ReviewContext context, ReviewState state) {
+        return RATING_AGAIN.equals(context.rating) || context.request.writingRequired ? 0L : state.lastRecognitionPassDueAt;
     }
 
     public int dueCount(List<Records.StudyItem> items, long nowMillis) {
@@ -585,22 +687,9 @@ public final class BridgeScheduler {
         }
         Map<String, List<Records.StudyItem>> byFamily = new HashMap<>();
         for (Records.StudyItem item : items) {
-            if (STATE_RETIRED.equals(item.state)) {
-                continue;
+            if (isActiveQueueCandidate(item, currentRows, currentFamilies, allowedKanji)) {
+                addFamilyItem(byFamily, item);
             }
-            if (allowedKanji != null && !allowedKanji.contains(item.kanji)) {
-                continue;
-            }
-            if (!currentFamilies.contains(familyKey(item)) && !(item.answerSignature.isEmpty() && currentRows.contains(item.kanji))) {
-                continue;
-            }
-            String familyKey = familyKey(item);
-            List<Records.StudyItem> family = byFamily.get(familyKey);
-            if (family == null) {
-                family = new ArrayList<>();
-                byFamily.put(familyKey, family);
-            }
-            family.add(item);
         }
         List<Records.StudyItem> out = new ArrayList<>();
         for (List<Records.StudyItem> family : byFamily.values()) {
@@ -610,6 +699,36 @@ public final class BridgeScheduler {
             }
         }
         return out;
+    }
+
+    private boolean isActiveQueueCandidate(
+            Records.StudyItem item,
+            Set<String> currentRows,
+            Set<String> currentFamilies,
+            Set<String> allowedKanji
+    ) {
+        return !STATE_RETIRED.equals(item.state)
+                && (allowedKanji == null || allowedKanji.contains(item.kanji))
+                && hasCurrentQueueRow(item, currentRows, currentFamilies);
+    }
+
+    private boolean hasCurrentQueueRow(
+            Records.StudyItem item,
+            Set<String> currentRows,
+            Set<String> currentFamilies
+    ) {
+        return currentFamilies.contains(familyKey(item))
+                || (item.answerSignature.isEmpty() && currentRows.contains(item.kanji));
+    }
+
+    private void addFamilyItem(Map<String, List<Records.StudyItem>> byFamily, Records.StudyItem item) {
+        String itemFamilyKey = familyKey(item);
+        List<Records.StudyItem> family = byFamily.get(itemFamilyKey);
+        if (family == null) {
+            family = new ArrayList<>();
+            byFamily.put(itemFamilyKey, family);
+        }
+        family.add(item);
     }
 
     public Set<String> tokenSet(List<String> tokens) {
@@ -781,5 +900,176 @@ public final class BridgeScheduler {
             return "";
         }
         return value.trim().replaceAll("\\s+", " ");
+    }
+
+    private static final class SeedQueueLimits {
+        final int newAdmissionLimit;
+        final boolean allKanjiMode;
+
+        SeedQueueLimits(int newAdmissionLimit, boolean allKanjiMode) {
+            this.newAdmissionLimit = newAdmissionLimit;
+            this.allKanjiMode = allKanjiMode;
+        }
+
+        int activeQueueCap(Records.Settings settings) {
+            return allKanjiMode ? Integer.MAX_VALUE : settings.activeQueueCap;
+        }
+
+        int admissionLimit() {
+            return allKanjiMode ? Integer.MAX_VALUE : Math.max(0, newAdmissionLimit);
+        }
+    }
+
+    private static final class SeedQueueRequest {
+        final List<Records.DashboardRow> allRows;
+        final List<Records.DashboardRow> admissionRows;
+        final List<Records.StudyItem> existing;
+        final Records.Settings settings;
+        final long nowMillis;
+        final long startOfDayMillis;
+        final SeedQueueLimits limits;
+
+        SeedQueueRequest(
+                List<Records.DashboardRow> allRows,
+                List<Records.DashboardRow> admissionRows,
+                List<Records.StudyItem> existing,
+                Records.Settings settings,
+                long nowMillis,
+                long startOfDayMillis,
+                SeedQueueLimits limits
+        ) {
+            this.allRows = allRows;
+            this.admissionRows = admissionRows;
+            this.existing = existing;
+            this.settings = settings;
+            this.nowMillis = nowMillis;
+            this.startOfDayMillis = startOfDayMillis;
+            this.limits = limits;
+        }
+    }
+
+    private static final class SeedRowIndex {
+        final Map<String, Records.DashboardRow> rowByFamily = new HashMap<>();
+        final Map<String, List<Records.DashboardRow>> rowsByKanji = new HashMap<>();
+    }
+
+    private static final class SeedQueueState {
+        final Map<String, Records.StudyItem> byFamily = new HashMap<>();
+        final List<Records.StudyItem> items = new ArrayList<>();
+        int activeCount;
+        int newToday;
+
+        void trackActiveItem(Records.StudyItem item, long startOfDayMillis) {
+            if (STATE_RETIRED.equals(item.state)) {
+                return;
+            }
+            activeCount++;
+            if (item.createdAtMillis >= startOfDayMillis) {
+                newToday++;
+            }
+        }
+
+        boolean hasAdmissionRoom(SeedQueueRequest request) {
+            return activeCount < request.limits.activeQueueCap(request.settings)
+                    && newToday < request.limits.admissionLimit();
+        }
+    }
+
+    private static final class ReviewContext {
+        Records.StudyItem item;
+        Records.ReviewRequest request;
+        Records.SchedulerParameters parameters;
+        Records.Settings settings;
+        Records.TaskMemory previousTaskMemory;
+        long nowMillis;
+        String rating;
+        String reviewedTaskType;
+        boolean writingRemediationReview;
+        boolean cleanWritingPass;
+        boolean failedWriting;
+
+        static ReviewContext from(
+                Records.StudyItem item,
+                Records.ReviewRequest request,
+                Records.SchedulerParameters parameters,
+                Records.Settings settings,
+                long nowMillis
+        ) {
+            ReviewContext context = new ReviewContext();
+            context.item = item;
+            context.request = request;
+            context.parameters = parameters;
+            context.settings = settings;
+            context.nowMillis = nowMillis;
+            context.rating = reviewRating(item, request);
+            context.reviewedTaskType = reviewedTaskType(item);
+            context.previousTaskMemory = item.memoryForTaskType(context.reviewedTaskType);
+            context.writingRemediationReview = request.writingRequired && item.writingRemediationPending;
+            boolean writingReviewCanMoveHelp = request.writingRequired && !request.manualOverride;
+            context.cleanWritingPass = writingReviewCanMoveHelp
+                    && request.writingPassed
+                    && request.writingClean
+                    && request.hintsUsed <= 0;
+            context.failedWriting = writingReviewCanMoveHelp && !request.writingPassed;
+            return context;
+        }
+
+        private static String reviewRating(Records.StudyItem item, Records.ReviewRequest request) {
+            if (request.writingRequired && item.writingRemediationPending && request.manualOverride) {
+                return RATING_HARD;
+            }
+            if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
+                return RATING_AGAIN;
+            }
+            return normalizeRating(request.rating);
+        }
+
+        private static String reviewedTaskType(Records.StudyItem item) {
+            return item.writingRemediationPending
+                    ? TASK_WRITING_REMEDIATION
+                    : recognitionTaskType(item.recognitionStage);
+        }
+    }
+
+    private static final class ReviewState {
+        int total;
+        int lapses;
+        int taskTotal;
+        int taskLapses;
+        int step;
+        int writingLevel;
+        int recognitionStage;
+        int failedRecognitionDays;
+        int recognitionPasses;
+        int scheduledIntervalDays;
+        int matureIntervalDays;
+        long lastFailedRecognitionDay;
+        long lastRecognitionPassDueAt;
+        long due;
+        long suppressedAtMillis;
+        boolean writingRemediationPending;
+        double stability;
+        double difficulty;
+        String state;
+        String suppressedByTaskType;
+
+        static ReviewState from(ReviewContext context) {
+            ReviewState state = new ReviewState();
+            state.total = context.item.totalReviews + 1;
+            state.lapses = context.item.lapses;
+            state.taskTotal = context.previousTaskMemory.totalReviews + 1;
+            state.taskLapses = context.previousTaskMemory.lapses;
+            state.step = context.previousTaskMemory.learningStep;
+            state.writingLevel = context.item.writingLevel;
+            state.recognitionStage = context.item.recognitionStage;
+            state.failedRecognitionDays = context.item.consecutiveFailedRecognitionDays;
+            state.lastFailedRecognitionDay = context.item.lastFailedRecognitionDayMillis;
+            state.recognitionPasses = context.previousTaskMemory.consecutivePasses;
+            state.lastRecognitionPassDueAt = context.previousTaskMemory.lastPassedDueAtMillis;
+            state.writingRemediationPending = context.item.writingRemediationPending;
+            state.stability = context.previousTaskMemory.stability;
+            state.difficulty = context.previousTaskMemory.difficulty;
+            return state;
+        }
     }
 }

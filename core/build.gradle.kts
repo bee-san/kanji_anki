@@ -43,5 +43,5 @@ tasks.check {
 }
 
 dependencies {
-    testImplementation("junit:junit:4.13.2")
+    testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

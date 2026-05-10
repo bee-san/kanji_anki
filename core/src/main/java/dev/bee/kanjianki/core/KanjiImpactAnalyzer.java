@@ -56,18 +56,18 @@ public final class KanjiImpactAnalyzer {
         return new Row(
                 history.kanji,
                 bucket,
-                baselineDifficulty,
-                currentDifficulty,
-                baselineRetention,
-                currentRetention,
-                currentDifficulty - baselineDifficulty,
-                currentRetention - baselineRetention,
-                baselineMature,
-                currentMature,
-                Math.max(0, history.commonCards),
-                Math.max(0, history.newCards),
-                history.current == null ? 0 : history.current.totalCards(),
-                history.reviewCount,
+                new RowMetrics(
+                        baselineDifficulty,
+                        currentDifficulty,
+                        baselineRetention,
+                        currentRetention,
+                        baselineMature,
+                        currentMature,
+                        Math.max(0, history.commonCards),
+                        Math.max(0, history.newCards),
+                        history.current == null ? 0 : history.current.totalCards(),
+                        history.reviewCount
+                ),
                 adviceFor(bucket)
         );
     }
@@ -144,37 +144,26 @@ public final class KanjiImpactAnalyzer {
         public final int reviewCount;
         public final String advice;
 
-        public Row(
+        private Row(
                 String kanji,
                 String bucket,
-                double baselineDifficulty,
-                double currentDifficulty,
-                double baselineRetention,
-                double currentRetention,
-                double difficultyDelta,
-                double retentionDelta,
-                int baselineMatureCards,
-                int currentMatureCards,
-                int sameCardCount,
-                int newCardCount,
-                int currentCardCount,
-                int reviewCount,
+                RowMetrics metrics,
                 String advice
         ) {
             this.kanji = kanji == null ? "" : kanji;
             this.bucket = bucket == null ? BUCKET_NEEDS_MORE_CARDS : bucket;
-            this.baselineDifficulty = baselineDifficulty;
-            this.currentDifficulty = currentDifficulty;
-            this.baselineRetention = clamp(baselineRetention, 0.0, 1.0);
-            this.currentRetention = clamp(currentRetention, 0.0, 1.0);
-            this.difficultyDelta = difficultyDelta;
-            this.retentionDelta = retentionDelta;
-            this.baselineMatureCards = Math.max(0, baselineMatureCards);
-            this.currentMatureCards = Math.max(0, currentMatureCards);
-            this.sameCardCount = Math.max(0, sameCardCount);
-            this.newCardCount = Math.max(0, newCardCount);
-            this.currentCardCount = Math.max(0, currentCardCount);
-            this.reviewCount = Math.max(0, reviewCount);
+            this.baselineDifficulty = metrics.baselineDifficulty;
+            this.currentDifficulty = metrics.currentDifficulty;
+            this.baselineRetention = clamp(metrics.baselineRetention, 0.0, 1.0);
+            this.currentRetention = clamp(metrics.currentRetention, 0.0, 1.0);
+            this.difficultyDelta = metrics.currentDifficulty - metrics.baselineDifficulty;
+            this.retentionDelta = metrics.currentRetention - metrics.baselineRetention;
+            this.baselineMatureCards = Math.max(0, metrics.baselineMatureCards);
+            this.currentMatureCards = Math.max(0, metrics.currentMatureCards);
+            this.sameCardCount = Math.max(0, metrics.sameCardCount);
+            this.newCardCount = Math.max(0, metrics.newCardCount);
+            this.currentCardCount = Math.max(0, metrics.currentCardCount);
+            this.reviewCount = Math.max(0, metrics.reviewCount);
             this.advice = advice == null ? "" : advice;
         }
 
@@ -209,18 +198,16 @@ public final class KanjiImpactAnalyzer {
                 MetricSnapshot current,
                 MetricSnapshot sameCardBaseline,
                 MetricSnapshot sameCardCurrent,
-                int commonCards,
-                int newCards,
-                int reviewCount
+                int... counts
         ) {
             this.kanji = kanji == null ? "" : kanji;
             this.baseline = baseline;
             this.current = current;
             this.sameCardBaseline = sameCardBaseline;
             this.sameCardCurrent = sameCardCurrent;
-            this.commonCards = Math.max(0, commonCards);
-            this.newCards = Math.max(0, newCards);
-            this.reviewCount = Math.max(0, reviewCount);
+            this.commonCards = Math.max(0, countAt(counts, 0));
+            this.newCards = Math.max(0, countAt(counts, 1));
+            this.reviewCount = Math.max(0, countAt(counts, 2));
         }
     }
 
@@ -242,9 +229,7 @@ public final class KanjiImpactAnalyzer {
                 double averageIntervalDays,
                 int reps,
                 int lapses,
-                Double fsrsStability,
-                Double fsrsDifficulty,
-                Double fsrsRetrievability
+                Double... fsrsValues
         ) {
             this.activeCards = Math.max(0, activeCards);
             this.suspendedCards = Math.max(0, suspendedCards);
@@ -252,9 +237,9 @@ public final class KanjiImpactAnalyzer {
             this.averageIntervalDays = Math.max(0.0, averageIntervalDays);
             this.reps = Math.max(0, reps);
             this.lapses = Math.max(0, lapses);
-            this.fsrsStability = fsrsStability;
-            this.fsrsDifficulty = fsrsDifficulty;
-            this.fsrsRetrievability = fsrsRetrievability;
+            this.fsrsStability = fsrsAt(fsrsValues, 0);
+            this.fsrsDifficulty = fsrsAt(fsrsValues, 1);
+            this.fsrsRetrievability = fsrsAt(fsrsValues, 2);
         }
 
         public int totalCards() {
@@ -287,6 +272,46 @@ public final class KanjiImpactAnalyzer {
             double normalized = value > 1.0 ? value / 100.0 : value;
             return clamp(normalized, 0.0, 1.0);
         }
+    }
+
+    private static final class RowMetrics {
+        private final double baselineDifficulty;
+        private final double currentDifficulty;
+        private final double baselineRetention;
+        private final double currentRetention;
+        private final int baselineMatureCards;
+        private final int currentMatureCards;
+        private final int sameCardCount;
+        private final int newCardCount;
+        private final int currentCardCount;
+        private final int reviewCount;
+
+        private RowMetrics(
+                double baselineDifficulty,
+                double currentDifficulty,
+                double baselineRetention,
+                double currentRetention,
+                int... counts
+        ) {
+            this.baselineDifficulty = baselineDifficulty;
+            this.currentDifficulty = currentDifficulty;
+            this.baselineRetention = baselineRetention;
+            this.currentRetention = currentRetention;
+            this.baselineMatureCards = countAt(counts, 0);
+            this.currentMatureCards = countAt(counts, 1);
+            this.sameCardCount = countAt(counts, 2);
+            this.newCardCount = countAt(counts, 3);
+            this.currentCardCount = countAt(counts, 4);
+            this.reviewCount = countAt(counts, 5);
+        }
+    }
+
+    private static int countAt(int[] counts, int index) {
+        return counts == null || counts.length <= index ? 0 : counts[index];
+    }
+
+    private static Double fsrsAt(Double[] values, int index) {
+        return values == null || values.length <= index ? null : values[index];
     }
 
     private static double clamp(double value, double min, double max) {

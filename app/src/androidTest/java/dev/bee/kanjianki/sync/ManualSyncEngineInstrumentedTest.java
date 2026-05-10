@@ -92,7 +92,7 @@ public final class ManualSyncEngineInstrumentedTest {
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                 context,
                 store,
-                new FakeGateway(manyProblemSnapshot(settings), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
+                new FakeGateway(manyProblemSnapshot(), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
                 settings
         ).run();
 
@@ -151,7 +151,7 @@ public final class ManualSyncEngineInstrumentedTest {
         return new Records.CollectionSnapshot(Arrays.asList(active, suspended), Arrays.asList(activeCard, suspendedCard));
     }
 
-    private Records.CollectionSnapshot manyProblemSnapshot(Records.Settings settings) {
+    private Records.CollectionSnapshot manyProblemSnapshot() {
         Records.Note first = note(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
         Records.Note second = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
         Records.Note third = note(3L, "裂ける", "さける", "split", "裂ける音。");
@@ -243,8 +243,8 @@ public final class ManualSyncEngineInstrumentedTest {
 
         @Override
         public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) {
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             progress.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size()));
             for (int i = 0; i < snapshot.cards.size(); i++) {
                 progress.onSyncProgress(SyncProgress.cardsScanned(i + 1, snapshot.cards.size()));
@@ -259,7 +259,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
         @Override
         public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
             return removal;
         }
     }

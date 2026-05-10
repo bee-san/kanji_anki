@@ -99,7 +99,7 @@ dependencies {
     implementation(project(":core"))
     implementation("androidx.work:work-runtime:2.11.2")
     implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
-    testImplementation("junit:junit:4.13.2")
+    testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

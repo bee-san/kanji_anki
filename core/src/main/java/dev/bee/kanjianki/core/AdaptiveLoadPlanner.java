@@ -21,6 +21,10 @@ public final class AdaptiveLoadPlanner {
     public static final int MAX_MAX_ITEMS = 20;
     private static final int AUTO_PARETO_CAP = 20;
 
+    public Records.AdaptiveLoadPlan plan(PlanRequest request) {
+        return planInternal(PlanInputs.from(request));
+    }
+
     public Records.AdaptiveLoadPlan plan(
             List<Records.DashboardRow> rows,
             List<Records.StudyItem> items,
@@ -30,7 +34,7 @@ public final class AdaptiveLoadPlanner {
             int workloadPercent,
             long nowMillis
     ) {
-        return plan(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, nowMillis, Records.Settings.kikuDefaults());
+        return plan(new PlanRequest.Builder(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, nowMillis).build());
     }
 
     public Records.AdaptiveLoadPlan plan(
@@ -40,155 +44,308 @@ public final class AdaptiveLoadPlanner {
             int currentStreakDays,
             Set<String> studiedToday,
             int workloadPercent,
-            String workloadMode,
-            long nowMillis,
-            Records.Settings settings
+            Object... options
     ) {
-        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, nowMillis, settings, Integer.MAX_VALUE);
+        return plan(PlanRequest.fromLegacy(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, options));
     }
 
-    public Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
-            int currentStreakDays,
-            Set<String> studiedToday,
-            int workloadPercent,
-            String workloadMode,
-            int maxItems,
-            long nowMillis,
-            Records.Settings settings
-    ) {
-        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, nowMillis, settings, normalizeMaxItems(maxItems));
-    }
-
-    public Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
-            int currentStreakDays,
-            Set<String> studiedToday,
-            int workloadPercent,
-            long nowMillis,
-            Records.Settings settings
-    ) {
-        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, MODE_MANUAL, nowMillis, settings, Integer.MAX_VALUE);
-    }
-
-    private Records.AdaptiveLoadPlan planInternal(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
-            int currentStreakDays,
-            Set<String> studiedToday,
-            int workloadPercent,
-            String workloadMode,
-            long nowMillis,
-            Records.Settings settings,
-            int maxItems
-    ) {
-        List<Records.DashboardRow> safeRows = rows == null ? Collections.emptyList() : rows;
-        List<Records.StudyItem> safeItems = items == null ? Collections.emptyList() : items;
-        Records.ReviewStats stats = recentStats == null ? new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0) : recentStats;
-        Set<String> studied = studiedToday == null ? Collections.emptySet() : studiedToday;
-        Records.Settings effectiveSettings = settings == null ? Records.Settings.kikuDefaults() : settings;
-        int snapped = snapWorkloadPercent(workloadPercent);
-        boolean autoMode = isAutoMode(workloadMode);
-        int itemCap = maxItems == Integer.MAX_VALUE ? Integer.MAX_VALUE : normalizeMaxItems(maxItems);
-
-        Map<String, Records.StudyItem> itemByKanji = new HashMap<>();
-        for (Records.StudyItem item : safeItems) {
-            itemByKanji.put(item.kanji, item);
-        }
-
-        List<Candidate> candidates = new ArrayList<>();
-        for (Records.DashboardRow row : safeRows) {
-            candidates.add(new Candidate(row, itemByKanji.get(row.kanji), nowMillis, effectiveSettings));
-        }
-        candidates.sort(autoMode ? AUTO_CANDIDATE_ORDER : CANDIDATE_ORDER);
-
+    private Records.AdaptiveLoadPlan planInternal(PlanInputs inputs) {
+        List<Candidate> candidates = candidatesFor(inputs);
         if (candidates.isEmpty()) {
-            return new Records.AdaptiveLoadPlan(
-                    autoMode,
-                    snapped,
-                    0,
-                    0,
-                    Collections.emptyList(),
-                    0,
-                    !autoMode && snapped >= 100,
-                    "No current problem kanji."
-            );
+            return emptyPlan(inputs);
         }
 
-        boolean allKanji = !autoMode && snapped >= 100;
-        if (allKanji) {
-            List<String> focus = kanjiList(candidates);
-            boolean allIncluded = true;
-            if (itemCap != Integer.MAX_VALUE && focus.size() > itemCap) {
-                focus = new ArrayList<>(focus.subList(0, itemCap));
-                allIncluded = false;
-            }
-            int remaining = remainingCount(focus, itemByKanji, studied, nowMillis);
-            return new Records.AdaptiveLoadPlan(
-                    false,
-                    snapped,
-                    focus.size(),
-                    remaining,
-                    focus,
-                    focus.size(),
-                    allIncluded,
-                    allIncluded
-                            ? "All current problem kanji are available today."
-                            : "All kanji mode is capped to today's maximum."
-            );
+        if (inputs.allKanjiMode()) {
+            return allKanjiPlan(candidates, inputs);
         }
 
         int recoveryDue = recoveryDueCount(candidates);
-        int ceiling;
-        int adjustedTarget;
-        AutoTarget autoTarget = null;
-        if (autoMode) {
-            autoTarget = autoParetoTarget(candidates);
-            ceiling = Math.min(Math.min(candidates.size(), AUTO_PARETO_CAP), itemCap);
-            adjustedTarget = adjustedAutoTarget(autoTarget.target, ceiling, stats, currentStreakDays, recoveryDue);
-        } else {
-            ceiling = Math.min(targetCeiling(snapped), itemCap);
-            adjustedTarget = adjustedTarget(ceiling, stats, currentStreakDays, recoveryDue);
-        }
-        int cappedRecoveryDue = Math.min(recoveryDue, itemCap);
-        int displayTarget = Math.min(itemCap, Math.max(adjustedTarget, cappedRecoveryDue));
-        int newAdmissionLimit = Math.max(0, displayTarget - cappedRecoveryDue);
+        TargetPlan targetPlan = targetPlanFor(candidates, inputs, recoveryDue);
+        int cappedRecoveryDue = Math.min(recoveryDue, inputs.itemCap);
+        List<String> focusKanji = focusKanji(candidates, Math.min(inputs.itemCap, Math.max(targetPlan.adjustedTarget, cappedRecoveryDue)));
+        int remaining = remainingCount(focusKanji, inputs.itemByKanji, inputs.studiedToday, inputs.nowMillis);
+        return new Records.AdaptiveLoadPlan(
+                inputs.autoMode,
+                inputs.workloadPercent,
+                focusKanji.size(),
+                remaining,
+                focusKanji,
+                Math.max(0, focusKanji.size() - cappedRecoveryDue),
+                false,
+                statusFor(targetPlan, inputs, recoveryDue)
+        );
+    }
 
+    private static List<Candidate> candidatesFor(PlanInputs inputs) {
+        List<Candidate> candidates = new ArrayList<>();
+        for (Records.DashboardRow row : inputs.rows) {
+            candidates.add(new Candidate(row, inputs.itemByKanji.get(row.kanji), inputs.nowMillis, inputs.settings));
+        }
+        candidates.sort(inputs.autoMode ? AUTO_CANDIDATE_ORDER : CANDIDATE_ORDER);
+        return candidates;
+    }
+
+    private static Records.AdaptiveLoadPlan emptyPlan(PlanInputs inputs) {
+        return new Records.AdaptiveLoadPlan(
+                inputs.autoMode,
+                inputs.workloadPercent,
+                0,
+                0,
+                Collections.emptyList(),
+                0,
+                inputs.allKanjiMode(),
+                "No current problem kanji."
+        );
+    }
+
+    private static Records.AdaptiveLoadPlan allKanjiPlan(List<Candidate> candidates, PlanInputs inputs) {
+        List<String> focus = kanjiList(candidates);
+        boolean allIncluded = true;
+        if (inputs.itemCap != Integer.MAX_VALUE && focus.size() > inputs.itemCap) {
+            focus = new ArrayList<>(focus.subList(0, inputs.itemCap));
+            allIncluded = false;
+        }
+        int remaining = remainingCount(focus, inputs.itemByKanji, inputs.studiedToday, inputs.nowMillis);
+        return new Records.AdaptiveLoadPlan(
+                false,
+                inputs.workloadPercent,
+                focus.size(),
+                remaining,
+                focus,
+                focus.size(),
+                allIncluded,
+                allIncluded
+                        ? "All current problem kanji are available today."
+                        : "All kanji mode is capped to today's maximum."
+        );
+    }
+
+    private static TargetPlan targetPlanFor(List<Candidate> candidates, PlanInputs inputs, int recoveryDue) {
+        if (inputs.autoMode) {
+            AutoTarget autoTarget = autoParetoTarget(candidates);
+            int ceiling = Math.min(Math.min(candidates.size(), AUTO_PARETO_CAP), inputs.itemCap);
+            int adjustedTarget = adjustedAutoTarget(autoTarget.target, ceiling, inputs.stats, inputs.currentStreakDays, recoveryDue);
+            return new TargetPlan(ceiling, adjustedTarget, autoTarget);
+        }
+        int ceiling = Math.min(targetCeiling(inputs.workloadPercent), inputs.itemCap);
+        return new TargetPlan(ceiling, adjustedTarget(ceiling, inputs.stats, inputs.currentStreakDays, recoveryDue), null);
+    }
+
+    private static List<String> focusKanji(List<Candidate> candidates, int displayTarget) {
         LinkedHashSet<String> focus = new LinkedHashSet<>();
+        addDueRecovery(candidates, focus, displayTarget);
+        addByPriority(candidates, focus, displayTarget);
+        return new ArrayList<>(focus);
+    }
+
+    private static void addDueRecovery(List<Candidate> candidates, LinkedHashSet<String> focus, int displayTarget) {
         for (Candidate candidate : candidates) {
             if (focus.size() >= displayTarget) {
-                break;
+                return;
             }
             if (candidate.recoveryDue) {
                 focus.add(candidate.row.kanji);
             }
         }
+    }
+
+    private static void addByPriority(List<Candidate> candidates, LinkedHashSet<String> focus, int displayTarget) {
         for (Candidate candidate : candidates) {
             if (focus.size() >= displayTarget) {
-                break;
+                return;
             }
             focus.add(candidate.row.kanji);
         }
+    }
 
-        List<String> focusKanji = new ArrayList<>(focus);
-        int remaining = remainingCount(focusKanji, itemByKanji, studied, nowMillis);
-        return new Records.AdaptiveLoadPlan(
-                autoMode,
-                snapped,
-                focusKanji.size(),
-                remaining,
-                focusKanji,
-                newAdmissionLimit,
-                false,
-                autoMode
-                        ? autoStatusFor(adjustedTarget, autoTarget, stats, recoveryDue)
-                        : statusFor(snapped, adjustedTarget, ceiling, stats, recoveryDue)
-        );
+    private static String statusFor(TargetPlan targetPlan, PlanInputs inputs, int recoveryDue) {
+        if (inputs.autoMode) {
+            return autoStatusFor(targetPlan.adjustedTarget, targetPlan.autoTarget, inputs.stats, recoveryDue);
+        }
+        return statusFor(inputs.workloadPercent, targetPlan.adjustedTarget, targetPlan.ceiling, inputs.stats, recoveryDue);
+    }
+
+    public static final class PlanRequest {
+        private final List<Records.DashboardRow> rows;
+        private final List<Records.StudyItem> items;
+        private final Records.ReviewStats recentStats;
+        private final int currentStreakDays;
+        private final Set<String> studiedToday;
+        private final int workloadPercent;
+        private final String workloadMode;
+        private final int maxItems;
+        private final long nowMillis;
+        private final Records.Settings settings;
+
+        private PlanRequest(Builder builder) {
+            this.rows = builder.rows;
+            this.items = builder.items;
+            this.recentStats = builder.recentStats;
+            this.currentStreakDays = builder.currentStreakDays;
+            this.studiedToday = builder.studiedToday;
+            this.workloadPercent = builder.workloadPercent;
+            this.workloadMode = builder.workloadMode;
+            this.maxItems = builder.maxItems;
+            this.nowMillis = builder.nowMillis;
+            this.settings = builder.settings;
+        }
+
+        private static PlanRequest fromLegacy(
+                List<Records.DashboardRow> rows,
+                List<Records.StudyItem> items,
+                Records.ReviewStats recentStats,
+                int currentStreakDays,
+                Set<String> studiedToday,
+                int workloadPercent,
+                Object[] options
+        ) {
+            Builder builder = new Builder(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, 0L);
+            Object[] safeOptions = options == null ? new Object[0] : options;
+            if (safeOptions.length == 2) {
+                applyNowAndSettings(builder, safeOptions[0], safeOptions[1], true);
+            } else if (safeOptions.length == 3) {
+                builder.workloadMode((String) safeOptions[0]);
+                applyNowAndSettings(builder, safeOptions[1], safeOptions[2], false);
+            } else if (safeOptions.length >= 4) {
+                builder.workloadMode((String) safeOptions[0]);
+                builder.maxItems((Integer) safeOptions[1]);
+                applyNowAndSettings(builder, safeOptions[2], safeOptions[3], false);
+            } else {
+                applyLooseOptions(builder, safeOptions);
+            }
+            return builder.build();
+        }
+
+        private static void applyNowAndSettings(Builder builder, Object nowMillis, Object settings, boolean manualMode) {
+            if (manualMode) {
+                builder.workloadMode(MODE_MANUAL);
+            }
+            if (nowMillis instanceof Long value) {
+                builder.nowMillis(value);
+            }
+            builder.settings((Records.Settings) settings);
+        }
+
+        private static void applyLooseOptions(Builder builder, Object[] options) {
+            for (Object option : options) {
+                if (option instanceof Long nowMillis) {
+                    builder.nowMillis(nowMillis);
+                } else if (option instanceof Records.Settings settings) {
+                    builder.settings(settings);
+                }
+            }
+        }
+
+        public static final class Builder {
+            private final List<Records.DashboardRow> rows;
+            private final List<Records.StudyItem> items;
+            private final Records.ReviewStats recentStats;
+            private final int currentStreakDays;
+            private final Set<String> studiedToday;
+            private final int workloadPercent;
+            private String workloadMode = MODE_MANUAL;
+            private int maxItems = Integer.MAX_VALUE;
+            private long nowMillis;
+            private Records.Settings settings = Records.Settings.kikuDefaults();
+
+            public Builder(
+                    List<Records.DashboardRow> rows,
+                    List<Records.StudyItem> items,
+                    Records.ReviewStats recentStats,
+                    int currentStreakDays,
+                    Set<String> studiedToday,
+                    int workloadPercent,
+                    long nowMillis
+            ) {
+                this.rows = rows;
+                this.items = items;
+                this.recentStats = recentStats;
+                this.currentStreakDays = currentStreakDays;
+                this.studiedToday = studiedToday;
+                this.workloadPercent = workloadPercent;
+                this.nowMillis = nowMillis;
+            }
+
+            public Builder workloadMode(String workloadMode) {
+                this.workloadMode = workloadMode;
+                return this;
+            }
+
+            public Builder maxItems(int maxItems) {
+                this.maxItems = maxItems;
+                return this;
+            }
+
+            public Builder nowMillis(long nowMillis) {
+                this.nowMillis = nowMillis;
+                return this;
+            }
+
+            public Builder settings(Records.Settings settings) {
+                this.settings = settings;
+                return this;
+            }
+
+            public PlanRequest build() {
+                return new PlanRequest(this);
+            }
+        }
+    }
+
+    private static final class PlanInputs {
+        private final List<Records.DashboardRow> rows;
+        private final Records.ReviewStats stats;
+        private final Set<String> studiedToday;
+        private final int currentStreakDays;
+        private final int workloadPercent;
+        private final boolean autoMode;
+        private final int itemCap;
+        private final long nowMillis;
+        private final Records.Settings settings;
+        private final Map<String, Records.StudyItem> itemByKanji;
+
+        private PlanInputs(PlanRequest request) {
+            this.rows = request.rows == null ? Collections.emptyList() : request.rows;
+            this.stats = request.recentStats == null ? new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0) : request.recentStats;
+            this.studiedToday = request.studiedToday == null ? Collections.emptySet() : request.studiedToday;
+            this.currentStreakDays = request.currentStreakDays;
+            this.workloadPercent = snapWorkloadPercent(request.workloadPercent);
+            this.autoMode = isAutoMode(request.workloadMode);
+            this.itemCap = request.maxItems == Integer.MAX_VALUE ? Integer.MAX_VALUE : normalizeMaxItems(request.maxItems);
+            this.nowMillis = request.nowMillis;
+            this.settings = request.settings == null ? Records.Settings.kikuDefaults() : request.settings;
+            this.itemByKanji = itemIndex(request.items);
+        }
+
+        private static PlanInputs from(PlanRequest request) {
+            return new PlanInputs(request == null
+                    ? new PlanRequest.Builder(null, null, null, 0, null, DEFAULT_WORKLOAD_PERCENT, 0L).build()
+                    : request);
+        }
+
+        private static Map<String, Records.StudyItem> itemIndex(List<Records.StudyItem> items) {
+            Map<String, Records.StudyItem> itemByKanji = new HashMap<>();
+            for (Records.StudyItem item : items == null ? Collections.<Records.StudyItem>emptyList() : items) {
+                itemByKanji.put(item.kanji, item);
+            }
+            return itemByKanji;
+        }
+
+        private boolean allKanjiMode() {
+            return !autoMode && workloadPercent >= 100;
+        }
+    }
+
+    private static final class TargetPlan {
+        private final int ceiling;
+        private final int adjustedTarget;
+        private final AutoTarget autoTarget;
+
+        private TargetPlan(int ceiling, int adjustedTarget, AutoTarget autoTarget) {
+            this.ceiling = ceiling;
+            this.adjustedTarget = adjustedTarget;
+            this.autoTarget = autoTarget;
+        }
     }
 
     public static String normalizeWorkloadMode(String mode) {

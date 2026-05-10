@@ -1531,7 +1531,7 @@ public final class MainActivityInstrumentedTest {
             } catch (SQLiteDatabaseLockedException busy) {
                 // The live sync button test polls while the app is committing a large collection import.
             }
-            Thread.sleep(100);
+            SystemClock.sleep(100);
         }
         return null;
     }
@@ -1810,8 +1810,8 @@ public final class MainActivityInstrumentedTest {
 
         @Override
         public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) {
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             progress.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size()));
             progress.onSyncProgress(SyncProgress.cardsScanned(1, snapshot.cards.size()));
             try {
@@ -1830,7 +1830,7 @@ public final class MainActivityInstrumentedTest {
 
         @Override
         public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
             return removeArchivedSuspendedCards(snapshot);
         }
     }
@@ -2192,6 +2192,7 @@ public final class MainActivityInstrumentedTest {
 
         @Override
         public void close() {
+            // Fake recognizer has no model resources to release.
         }
     }
 
@@ -2213,6 +2214,7 @@ public final class MainActivityInstrumentedTest {
 
         @Override
         public void close() {
+            // Fake recognizer has no model resources to release.
         }
     }
 }

@@ -14,7 +14,7 @@ public final class SyncProgress {
         this.totalCards = totalCards;
     }
 
-    public static SyncProgress stage(Stage stage) {
+    public static SyncProgress atStage(Stage stage) {
         return new SyncProgress(stage, 0, -1);
     }
 

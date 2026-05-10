@@ -44,8 +44,7 @@ public final class SimilarKanjiIndex {
             Pair pair = parsePair(line);
             if (pair != null) {
                 String key = pair.key();
-                if (!pairsByKey.containsKey(key)) {
-                    pairsByKey.put(key, pair);
+                if (pairsByKey.computeIfAbsent(key, ignored -> pair) == pair) {
                     similarByKanji.computeIfAbsent(pair.kanjiA, ignored -> new TreeSet<>()).add(pair.kanjiB);
                     similarByKanji.computeIfAbsent(pair.kanjiB, ignored -> new TreeSet<>()).add(pair.kanjiA);
                 }

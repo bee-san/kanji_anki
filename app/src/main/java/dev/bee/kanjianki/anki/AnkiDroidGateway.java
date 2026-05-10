@@ -145,9 +145,9 @@ public final class AnkiDroidGateway implements CollectionGateway {
             throw SyncFailure.permanent("AnkiDroid permission is missing: " + target.permission);
         }
         try {
-            reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.FINDING_NOTE_TYPE));
+            reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE));
             ModelMapping mapping = findConfiguredModel(target, settings);
-            reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.READING_NOTES));
+            reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
             List<Records.Card> cards = queryCardsByNote(target, settings, notes.keySet(), reporter);
             validateTemplateCards(cards, settings);
@@ -176,7 +176,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     @Override
     public RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
         SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
-        reporter.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
+        reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
         ProviderTarget target = resolveProviderTarget();
         if (target == null || snapshot.cards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No provider removal attempted.");

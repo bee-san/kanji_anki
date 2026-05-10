@@ -16,6 +16,7 @@ import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.io.InputStreamReader;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,7 +61,7 @@ public final class ManualSyncEngine {
         long started = System.currentTimeMillis();
         try {
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
-            progress.onSyncProgress(SyncProgress.stage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
             JitenKanjiRanks ranks = loadRanks();
             List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
                     .importFrom(snapshot, settings);
@@ -142,11 +143,11 @@ public final class ManualSyncEngine {
         );
     }
 
-    public JitenKanjiRanks loadRanks() throws Exception {
+    public JitenKanjiRanks loadRanks() throws IOException {
         return DictionaryStore.open(context).jitenRanks();
     }
 
-    public SimilarKanjiIndex loadSimilarKanjiIndex() throws Exception {
+    public SimilarKanjiIndex loadSimilarKanjiIndex() throws IOException {
         try (InputStreamReader reader = new InputStreamReader(context.getResources().openRawResource(R.raw.similar_kanji), StandardCharsets.UTF_8)) {
             return SimilarKanjiIndex.parseTsv(reader);
         }
