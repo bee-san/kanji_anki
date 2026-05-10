@@ -748,6 +748,20 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testAdaptiveLoadMaxItemsDefaultsAndClamps() {
+        assertEquals(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS, store.adaptiveLoadMaxItems());
+
+        store.saveAdaptiveLoadMaxItems(0);
+        assertEquals(AdaptiveLoadPlanner.MIN_MAX_ITEMS, store.adaptiveLoadMaxItems());
+
+        store.saveAdaptiveLoadMaxItems(99);
+        assertEquals(AdaptiveLoadPlanner.MAX_MAX_ITEMS, store.adaptiveLoadMaxItems());
+
+        store.saveAdaptiveLoadMaxItems(5);
+        assertEquals(5, store.adaptiveLoadMaxItems());
+    }
+
+    @Test
     public void testStudyTaskAnsweredLogSuppressesDuplicateTaskKeys() {
         assertTrue(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 2000L, 12_000L, "good"));
         assertFalse(store.recordStudyTaskAnswered("task-1", "拉", "kanji_meaning", 1000L, 3000L, 24_000L, "easy"));

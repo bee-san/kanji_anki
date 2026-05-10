@@ -1136,6 +1136,17 @@ public final class LocalStore extends SQLiteOpenHelper {
         putIntSetting(AdaptiveLoadPlanner.SETTING_KEY, AdaptiveLoadPlanner.snapWorkloadPercent(percent));
     }
 
+    public int adaptiveLoadMaxItems() {
+        return AdaptiveLoadPlanner.normalizeMaxItems(getIntSetting(
+                "adaptive_load_max_items",
+                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+        ));
+    }
+
+    public void saveAdaptiveLoadMaxItems(int maxItems) {
+        putIntSetting("adaptive_load_max_items", AdaptiveLoadPlanner.normalizeMaxItems(maxItems));
+    }
+
     public String adaptiveLoadMode() {
         return AdaptiveLoadPlanner.normalizeWorkloadMode(getStringSetting(
                 AdaptiveLoadPlanner.MODE_SETTING_KEY,

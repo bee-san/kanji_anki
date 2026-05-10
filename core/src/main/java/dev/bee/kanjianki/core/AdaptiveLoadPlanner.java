@@ -17,6 +17,9 @@ public final class AdaptiveLoadPlanner {
     public static final String MODE_MANUAL = "manual";
     public static final int DEFAULT_WORKLOAD_PERCENT = 20;
     public static final String DEFAULT_WORKLOAD_MODE = MODE_AUTO;
+    public static final int DEFAULT_MAX_ITEMS = 5;
+    public static final int MIN_MAX_ITEMS = 1;
+    public static final int MAX_MAX_ITEMS = 20;
     private static final int AUTO_PARETO_CAP = 20;
 
     public Records.AdaptiveLoadPlan plan(
@@ -42,7 +45,22 @@ public final class AdaptiveLoadPlanner {
             long nowMillis,
             Records.Settings settings
     ) {
-        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, nowMillis, settings);
+        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, nowMillis, settings, Integer.MAX_VALUE);
+    }
+
+    public Records.AdaptiveLoadPlan plan(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> items,
+            Records.ReviewStats recentStats,
+            int currentStreakDays,
+            Set<String> studiedToday,
+            int workloadPercent,
+            String workloadMode,
+            int maxItems,
+            long nowMillis,
+            Records.Settings settings
+    ) {
+        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, nowMillis, settings, normalizeMaxItems(maxItems));
     }
 
     public Records.AdaptiveLoadPlan plan(
@@ -55,7 +73,7 @@ public final class AdaptiveLoadPlanner {
             long nowMillis,
             Records.Settings settings
     ) {
-        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, MODE_MANUAL, nowMillis, settings);
+        return planInternal(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, MODE_MANUAL, nowMillis, settings, Integer.MAX_VALUE);
     }
 
     private Records.AdaptiveLoadPlan planInternal(
@@ -67,7 +85,8 @@ public final class AdaptiveLoadPlanner {
             int workloadPercent,
             String workloadMode,
             long nowMillis,
-            Records.Settings settings
+            Records.Settings settings,
+            int maxItems
     ) {
         List<Records.DashboardRow> safeRows = rows == null ? Collections.emptyList() : rows;
         List<Records.StudyItem> safeItems = items == null ? Collections.emptyList() : items;
@@ -76,6 +95,7 @@ public final class AdaptiveLoadPlanner {
         Records.Settings effectiveSettings = settings == null ? Records.Settings.kikuDefaults() : settings;
         int snapped = snapWorkloadPercent(workloadPercent);
         boolean autoMode = isAutoMode(workloadMode);
+        int itemCap = maxItems == Integer.MAX_VALUE ? Integer.MAX_VALUE : normalizeMaxItems(maxItems);
 
         Map<String, Records.StudyItem> itemByKanji = new HashMap<>();
         for (Records.StudyItem item : safeItems) {
@@ -104,6 +124,11 @@ public final class AdaptiveLoadPlanner {
         boolean allKanji = !autoMode && snapped >= 100;
         if (allKanji) {
             List<String> focus = kanjiList(candidates);
+            boolean allIncluded = true;
+            if (itemCap != Integer.MAX_VALUE && focus.size() > itemCap) {
+                focus = new ArrayList<>(focus.subList(0, itemCap));
+                allIncluded = false;
+            }
             int remaining = remainingCount(focus, itemByKanji, studied, nowMillis);
             return new Records.AdaptiveLoadPlan(
                     false,
@@ -112,8 +137,10 @@ public final class AdaptiveLoadPlanner {
                     remaining,
                     focus,
                     focus.size(),
-                    true,
-                    "All current problem kanji are available today."
+                    allIncluded,
+                    allIncluded
+                            ? "All current problem kanji are available today."
+                            : "All kanji mode is capped to today's maximum."
             );
         }
 
@@ -123,17 +150,21 @@ public final class AdaptiveLoadPlanner {
         AutoTarget autoTarget = null;
         if (autoMode) {
             autoTarget = autoParetoTarget(candidates);
-            ceiling = Math.min(candidates.size(), AUTO_PARETO_CAP);
+            ceiling = Math.min(Math.min(candidates.size(), AUTO_PARETO_CAP), itemCap);
             adjustedTarget = adjustedAutoTarget(autoTarget.target, ceiling, stats, currentStreakDays, recoveryDue);
         } else {
-            ceiling = targetCeiling(snapped);
+            ceiling = Math.min(targetCeiling(snapped), itemCap);
             adjustedTarget = adjustedTarget(ceiling, stats, currentStreakDays, recoveryDue);
         }
-        int displayTarget = Math.max(adjustedTarget, recoveryDue);
-        int newAdmissionLimit = Math.max(0, adjustedTarget - recoveryDue);
+        int cappedRecoveryDue = Math.min(recoveryDue, itemCap);
+        int displayTarget = Math.min(itemCap, Math.max(adjustedTarget, cappedRecoveryDue));
+        int newAdmissionLimit = Math.max(0, displayTarget - cappedRecoveryDue);
 
         LinkedHashSet<String> focus = new LinkedHashSet<>();
         for (Candidate candidate : candidates) {
+            if (focus.size() >= displayTarget) {
+                break;
+            }
             if (candidate.recoveryDue) {
                 focus.add(candidate.row.kanji);
             }
@@ -183,6 +214,10 @@ public final class AdaptiveLoadPlanner {
             return Integer.MAX_VALUE;
         }
         return Math.max(1, Math.min(20, 1 + snapped / 5));
+    }
+
+    public static int normalizeMaxItems(int value) {
+        return Math.max(MIN_MAX_ITEMS, Math.min(MAX_MAX_ITEMS, value));
     }
 
     public static String workloadLabel(int workloadPercent) {

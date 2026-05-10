@@ -556,6 +556,77 @@ public class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    public void autoWorkloadRespectsMaxItems() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                rows(12),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                5,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertEquals(5, plan.target);
+        assertEquals(5, plan.focusKanji.size());
+        assertEquals(5, plan.newAdmissionLimit);
+    }
+
+    @Test
+    public void dueRecoveryIsCappedByMaxItems() {
+        List<Records.StudyItem> due = Arrays.asList(
+                reviewed("字0", 0L),
+                reviewed("字1", 0L),
+                reviewed("字2", 0L),
+                reviewed("字3", 0L),
+                reviewed("字4", 0L),
+                reviewed("字5", 0L)
+        );
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                rows(8),
+                due,
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                5,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertEquals(5, plan.target);
+        assertEquals(5, plan.focusKanji.size());
+        assertEquals(0, plan.newAdmissionLimit);
+        assertFalse(plan.focusKanji.contains("字5"));
+    }
+
+    @Test
+    public void manualAllKanjiModeIsLimitedByMaxItems() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                rows(8),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                100,
+                AdaptiveLoadPlanner.MODE_MANUAL,
+                5,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertFalse(plan.allKanjiMode);
+        assertEquals(5, plan.target);
+        assertEquals(5, plan.focusKanji.size());
+        assertTrue(plan.status.contains("capped"));
+    }
+
+    @Test
     public void fsrsRiskCoversInvalidPercentAndMatureStabilityBranches() {
         Records.DashboardRow percentRisk = row("百", 10, 75.0, 6.0, 2.0, 10, 5);
         Records.DashboardRow invalidRisk = row("無", 50, 101.0, null, null, 3, 1);
