@@ -10,10 +10,86 @@ import java.util.Objects;
 public final class Records {
     public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
     public static final int DEFAULT_RECOGNITION_PROMOTION_PASSES = 3;
+    public static final int DEFAULT_REAL_DUE_REVIEWS_TO_MOVE = 3;
     public static final int DEFAULT_SUSPENDED_RANK_MIN = 100;
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
+
+    /**
+     * Ladder rungs that a study item can be on, from lowest to highest.
+     * New cards start on {@link #KANJI_MEANING}. The {@link #SIMILAR_KANJI}
+     * rung is included in the ladder only when {@code hasSimilarKanji} is
+     * true for the card; otherwise promotion and demotion skip over it.
+     */
+    public enum LadderRung {
+        WRITE_KANJI("write_kanji"),
+        TYPE_MEANING("type_meaning"),
+        SIMILAR_KANJI("similar_kanji"),
+        KANJI_MEANING("kanji_meaning"),
+        FONT_MEANING("font_meaning"),
+        WORD_READING("word_reading");
+
+        private final String wireName;
+
+        LadderRung(String wireName) {
+            this.wireName = wireName;
+        }
+
+        public String wireName() {
+            return wireName;
+        }
+
+        public static LadderRung startingRung() {
+            return KANJI_MEANING;
+        }
+
+        public static LadderRung fromWireName(String name) {
+            if (name == null) {
+                return KANJI_MEANING;
+            }
+            for (LadderRung rung : values()) {
+                if (rung.wireName.equals(name)) {
+                    return rung;
+                }
+            }
+            return KANJI_MEANING;
+        }
+    }
+
+    /**
+     * Phase of the card within Anki learning/relearning/review semantics.
+     * Learning and relearning repeats are practice-only and must not count
+     * toward ladder promotion or demotion; only {@link #REVIEW}-phase
+     * answers on a due card advance the ladder streaks.
+     */
+    public enum SchedulerPhase {
+        NEW_LEARNING("new_learning"),
+        REVIEW("review"),
+        RELEARNING("relearning");
+
+        private final String wireName;
+
+        SchedulerPhase(String wireName) {
+            this.wireName = wireName;
+        }
+
+        public String wireName() {
+            return wireName;
+        }
+
+        public static SchedulerPhase fromWireName(String name) {
+            if (name == null) {
+                return NEW_LEARNING;
+            }
+            for (SchedulerPhase phase : values()) {
+                if (phase.wireName.equals(name)) {
+                    return phase;
+                }
+            }
+            return NEW_LEARNING;
+        }
+    }
     private static final String CONTEXT_SETTINGS = "Settings";
     private static final String CONTEXT_CARD = "Card";
     private static final String CONTEXT_EXAMPLE = "Example";

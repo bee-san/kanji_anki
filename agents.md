@@ -58,13 +58,85 @@ assertFalse(equalsNonPoint);
 
 ## Study Scheduler Notes
 
-When adding repeated-pass or repeated-failure rules, count only persisted
-FSRS-due review attempts. The short learning-step repeats, such as the default
-1m and 10m practice steps, are practice-only and must not advance promotion,
-demotion, or other long-term scheduler thresholds. If FSRS schedules a real
-review for the same local day, that due review can count; the boundary is the
-task's persisted FSRS due time, not the calendar day or the learning-repeat
-queue.
+The study scheduler is centered on a single ladder state machine, not on side
+queues. Every persisted study item has exactly one current rung and one phase.
+
+Ladder order from lowest to highest rung:
+
+1. `write_kanji`
+2. `type_meaning`
+3. `similar_kanji`
+4. `kanji_meaning`
+5. `font_meaning`
+6. `word_reading`
+
+New cards start at `kanji_meaning`. The `similar_kanji` rung exists only when
+the app can produce valid similar-kanji content for that card (the
+`hasSimilarKanji` predicate is answered by the `similar_kanji_pairs` table).
+When the predicate is false, promotion and demotion cross over that rung
+without pausing.
+
+Phases: `new_learning`, `review`, `relearning`. Learning and relearning follow
+Anki semantics:
+
+- `Again` returns to the first step.
+- `Good` advances one step; graduates past the last step.
+- `Hard` on the first step uses a delay between Again and Good; on later
+  steps it repeats the current step.
+- `Easy` graduates the card immediately.
+
+Learning and relearning repeats are practice-only. They do not advance
+promotion, demotion, or any long-term scheduler threshold. Only persisted
+FSRS-due review attempts in the `review` phase count toward ladder movement.
+The boundary is the task's persisted FSRS due time, not the calendar day or
+any learning-repeat queue.
+
+Ladder movement uses a single user setting, `realDueReviewsToMove`, default
+3. `realDueReviewsToMove` due-review passes in a row promote the rung.
+`realDueReviewsToMove` due-review `Again`s in a row demote the rung. At
+`write_kanji` the demotion floor is reached and further `Again`s keep the
+card on that rung. At `word_reading` the promotion ceiling is reached and
+further passes keep the card on that rung.
+
+On a due review `Again`, the card enters `relearning` at step 0 if
+relearning steps exist. If relearning steps are empty, the card skips
+relearning and gets the default post-lapse interval (1 day) per the Anki
+manual.
+
+The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
+For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;
+only `again` counts as a fail.
+
+Study UI renders one current rung at a time. Rung rendering:
+
+- `write_kanji` → handwriting pad and writing evaluation.
+- `type_meaning` → typed answer box.
+- `similar_kanji` → multiple-choice selector from visually similar kanji.
+- `kanji_meaning` → standard recognition card.
+- `font_meaning` → recognition card with font variation.
+- `word_reading` → reading prompt.
+
+The study UI exposes `Pass` and `Fail` labels. In the core scheduler the
+wire format stays `good`/`again`/`hard`/`easy`; the UI translates
+`Pass` → `good` and `Fail` → `again` at the boundary. The `write_kanji` rung
+offers only `Pass` and `Fail`; `Hard` and `Easy` are not shown for that rung.
+
+The study subsystem must never keep a parallel "main study item plus side
+task queue" model. `learning_repeats`, `similar_kanji_choice_state`, and
+`similar_kanji_repair_queue` are not scheduler queues. The scheduler
+consumes `study_items` only. `similar_kanji_pairs` is retained as the data
+source for `hasSimilarKanji(row)`, not as a queue.
+
+Legacy field mapping used by the DB v16 migration (fresh start):
+
+- `writing_remediation_pending = 1` → rung `write_kanji`
+- `recognition_stage = -1` → rung `type_meaning`
+- `recognition_stage = 0` → rung `kanji_meaning` (new-card default)
+- `recognition_stage = 1` → rung `font_meaning`
+- `recognition_stage = 2` → rung `word_reading`
+
+The `similar_kanji` rung has no legacy source; it is only reached through
+post-migration demotion from `kanji_meaning` when `hasSimilarKanji` is true.
 
 ## What Was Tested For v0.3.6
 
