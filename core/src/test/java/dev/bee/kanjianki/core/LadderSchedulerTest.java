@@ -453,6 +453,26 @@ public class LadderSchedulerTest {
         assertEquals(BridgeScheduler.TASK_WORD_READING, Records.LadderRung.WORD_READING.wireName());
     }
 
+    @Test
+    public void ladderRungFromWireNameRoundTripsAllValues() {
+        for (Records.LadderRung rung : Records.LadderRung.values()) {
+            assertEquals(rung, Records.LadderRung.fromWireName(rung.wireName()));
+        }
+        // Unknown or null defaults to KANJI_MEANING
+        assertEquals(Records.LadderRung.KANJI_MEANING, Records.LadderRung.fromWireName(null));
+        assertEquals(Records.LadderRung.KANJI_MEANING, Records.LadderRung.fromWireName("unknown"));
+    }
+
+    @Test
+    public void schedulerPhaseFromWireNameRoundTripsAllValues() {
+        for (Records.SchedulerPhase phase : Records.SchedulerPhase.values()) {
+            assertEquals(phase, Records.SchedulerPhase.fromWireName(phase.wireName()));
+        }
+        // Unknown or null defaults to NEW_LEARNING
+        assertEquals(Records.SchedulerPhase.NEW_LEARNING, Records.SchedulerPhase.fromWireName(null));
+        assertEquals(Records.SchedulerPhase.NEW_LEARNING, Records.SchedulerPhase.fromWireName("unknown"));
+    }
+
     // ---- Edge-case coverage for countsAsRealDue and null guards ----
 
     @Test
