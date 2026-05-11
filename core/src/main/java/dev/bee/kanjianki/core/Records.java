@@ -181,6 +181,7 @@ public final class Records {
         public final int newPerDay;
         public final int writingTriggerMissDays;
         public final int recognitionPromotionPasses;
+        public final int realDueReviewsToMove;
 
         public Settings(
                 String modelName,
@@ -216,6 +217,7 @@ public final class Records {
             this.newPerDay = args.newPerDay;
             this.writingTriggerMissDays = Math.max(1, args.writingTriggerMissDays);
             this.recognitionPromotionPasses = Math.max(1, args.recognitionPromotionPasses);
+            this.realDueReviewsToMove = Math.max(1, args.realDueReviewsToMove);
         }
 
         private static final class SettingsArgs {
@@ -229,9 +231,10 @@ public final class Records {
             int newPerDay;
             int writingTriggerMissDays = DEFAULT_WRITING_TRIGGER_MISS_DAYS;
             int recognitionPromotionPasses = DEFAULT_RECOGNITION_PROMOTION_PASSES;
+            int realDueReviewsToMove = DEFAULT_REAL_DUE_REVIEWS_TO_MOVE;
 
             static SettingsArgs from(Object[] rest) {
-                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10);
+                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11);
                 SettingsArgs args = new SettingsArgs();
                 args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS);
                 args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS);
@@ -250,8 +253,19 @@ public final class Records {
                     args.activeQueueCap = intArg(rest, 6, CONTEXT_SETTINGS);
                     args.newPerDay = intArg(rest, 7, CONTEXT_SETTINGS);
                     args.writingTriggerMissDays = intArg(rest, 8, CONTEXT_SETTINGS);
-                    if (rest.length == 10) {
+                    if (rest.length >= 10) {
                         args.recognitionPromotionPasses = intArg(rest, 9, CONTEXT_SETTINGS);
+                    }
+                    if (rest.length == 11) {
+                        args.realDueReviewsToMove = intArg(rest, 10, CONTEXT_SETTINGS);
+                    } else if (rest.length >= 10) {
+                        // If only the two legacy promotion knobs are provided, use their
+                        // stricter value as the ladder-move threshold so behaviour stays
+                        // consistent until callers migrate to the new setting.
+                        args.realDueReviewsToMove = Math.max(
+                                args.writingTriggerMissDays,
+                                args.recognitionPromotionPasses
+                        );
                     }
                 }
                 return args;
@@ -275,7 +289,8 @@ public final class Records {
                     24,
                     3,
                     DEFAULT_WRITING_TRIGGER_MISS_DAYS,
-                    DEFAULT_RECOGNITION_PROMOTION_PASSES
+                    DEFAULT_RECOGNITION_PROMOTION_PASSES,
+                    DEFAULT_REAL_DUE_REVIEWS_TO_MOVE
             );
         }
 
@@ -958,6 +973,13 @@ public final class Records {
         public final TaskMemory fontMeaningMemory;
         public final TaskMemory wordReadingMemory;
         public final TaskMemory writingRemediationMemory;
+        public final LadderRung rung;
+        public final SchedulerPhase phase;
+        public final int realPassStreak;
+        public final int realAgainStreak;
+        public final long lastRealReviewDueAtMillis;
+        public final boolean hasSimilarKanji;
+        public final TaskMemory similarKanjiMemory;
 
         public StudyItem(
                 String kanji,
@@ -993,6 +1015,45 @@ public final class Records {
             this.fontMeaningMemory = args.fontMeaningMemory == null ? TaskMemory.initial() : args.fontMeaningMemory;
             this.wordReadingMemory = args.wordReadingMemory == null ? TaskMemory.initial() : args.wordReadingMemory;
             this.writingRemediationMemory = args.writingRemediationMemory == null ? TaskMemory.initial() : args.writingRemediationMemory;
+            this.rung = args.rung == null
+                    ? derivedRung(this.writingRemediationPending, this.recognitionStage)
+                    : args.rung;
+            this.phase = args.phase == null
+                    ? derivedPhase(this.state, this.totalReviews, this.writingRemediationPending)
+                    : args.phase;
+            this.realPassStreak = Math.max(0, args.realPassStreak);
+            this.realAgainStreak = Math.max(0, args.realAgainStreak < 0
+                    ? this.consecutiveFailedRecognitionDays
+                    : args.realAgainStreak);
+            this.lastRealReviewDueAtMillis = Math.max(0L, args.lastRealReviewDueAtMillis);
+            this.hasSimilarKanji = args.hasSimilarKanji;
+            this.similarKanjiMemory = args.similarKanjiMemory == null ? TaskMemory.initial() : args.similarKanjiMemory;
+        }
+
+        private static LadderRung derivedRung(boolean writingRemediationPending, int recognitionStage) {
+            if (writingRemediationPending) {
+                return LadderRung.WRITE_KANJI;
+            }
+            switch (Math.max(-1, Math.min(2, recognitionStage))) {
+                case -1:
+                    return LadderRung.TYPE_MEANING;
+                case 1:
+                    return LadderRung.FONT_MEANING;
+                case 2:
+                    return LadderRung.WORD_READING;
+                default:
+                    return LadderRung.KANJI_MEANING;
+            }
+        }
+
+        private static SchedulerPhase derivedPhase(String state, int totalReviews, boolean writingRemediationPending) {
+            if ("review".equals(state) || "retired".equals(state)) {
+                return SchedulerPhase.REVIEW;
+            }
+            if (writingRemediationPending || totalReviews > 0) {
+                return SchedulerPhase.RELEARNING;
+            }
+            return SchedulerPhase.NEW_LEARNING;
         }
 
         private static final class StudyItemArgs {
@@ -1014,9 +1075,16 @@ public final class Records {
             TaskMemory fontMeaningMemory;
             TaskMemory wordReadingMemory;
             TaskMemory writingRemediationMemory;
+            LadderRung rung;
+            SchedulerPhase phase;
+            int realPassStreak;
+            int realAgainStreak = -1;
+            long lastRealReviewDueAtMillis;
+            boolean hasSimilarKanji;
+            TaskMemory similarKanjiMemory;
 
             static StudyItemArgs from(String state, long dueAtMillis, double stability, double difficulty, int totalReviews, Object[] rest) {
-                requireArgCount(CONTEXT_STUDY_ITEM, rest, 5, 9, 13, 17, 18);
+                requireArgCount(CONTEXT_STUDY_ITEM, rest, 5, 9, 13, 17, 18, 25);
                 StudyItemArgs args = new StudyItemArgs();
                 args.lapses = intArg(rest, 0, CONTEXT_STUDY_ITEM);
                 args.learningStep = intArg(rest, 1, CONTEXT_STUDY_ITEM);
@@ -1049,6 +1117,15 @@ public final class Records {
                 if (memoryStart >= 0) {
                     args.applyMemories(rest, memoryStart);
                 }
+                if (rest.length == 25) {
+                    args.rung = (LadderRung) arg(rest, 18, CONTEXT_STUDY_ITEM);
+                    args.phase = (SchedulerPhase) arg(rest, 19, CONTEXT_STUDY_ITEM);
+                    args.realPassStreak = intArg(rest, 20, CONTEXT_STUDY_ITEM);
+                    args.realAgainStreak = intArg(rest, 21, CONTEXT_STUDY_ITEM);
+                    args.lastRealReviewDueAtMillis = longArg(rest, 22, CONTEXT_STUDY_ITEM);
+                    args.hasSimilarKanji = booleanArg(rest, 23, CONTEXT_STUDY_ITEM);
+                    args.similarKanjiMemory = (TaskMemory) arg(rest, 24, CONTEXT_STUDY_ITEM);
+                }
                 return args;
             }
 
@@ -1058,6 +1135,7 @@ public final class Records {
                 fontMeaningMemory = seedMemoryForStage(1, this, state, dueAtMillis, stability, difficulty, totalReviews);
                 wordReadingMemory = seedMemoryForStage(2, this, state, dueAtMillis, stability, difficulty, totalReviews);
                 writingRemediationMemory = seedMemoryForWriting(this, state, dueAtMillis, stability, difficulty, totalReviews);
+                similarKanjiMemory = TaskMemory.initial();
             }
 
             private void applyMemories(Object[] rest, int start) {
@@ -1125,159 +1203,280 @@ public final class Records {
         }
 
         public StudyItem withToken(String token) {
-            return new StudyItem(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    token,
-                    createdAtMillis,
-                    typingMeaningMemory,
-                    kanjiMeaningMemory,
-                    fontMeaningMemory,
-                    wordReadingMemory,
-                    writingRemediationMemory
-            );
+            return copyBuilder().activeToken(token).build();
         }
 
         public StudyItem withSuppression(String suppressedByTaskType, long suppressedAtMillis, int matureIntervalDays) {
-            return new StudyItem(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    activeToken,
-                    createdAtMillis,
-                    typingMeaningMemory,
-                    kanjiMeaningMemory,
-                    fontMeaningMemory,
-                    wordReadingMemory,
-                    writingRemediationMemory
-            );
+            return copyBuilder()
+                    .suppressedByTaskType(suppressedByTaskType)
+                    .suppressedAtMillis(suppressedAtMillis)
+                    .matureIntervalDays(matureIntervalDays)
+                    .build();
         }
 
         public StudyItem withAnswerSignature(String answerSignature) {
-            return new StudyItem(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    activeToken,
-                    createdAtMillis,
-                    typingMeaningMemory,
-                    kanjiMeaningMemory,
-                    fontMeaningMemory,
-                    wordReadingMemory,
-                    writingRemediationMemory
-            );
+            return copyBuilder().answerSignature(answerSignature).build();
+        }
+
+        public StudyItem withRung(LadderRung rung) {
+            return copyBuilder().rung(rung).build();
+        }
+
+        public StudyItem withPhase(SchedulerPhase phase) {
+            return copyBuilder().phase(phase).build();
+        }
+
+        public StudyItem withRungAndPhase(LadderRung rung, SchedulerPhase phase) {
+            return copyBuilder().rung(rung).phase(phase).build();
+        }
+
+        public StudyItem withLadderProgress(
+                LadderRung rung,
+                SchedulerPhase phase,
+                int stepIndex,
+                int realPassStreak,
+                int realAgainStreak,
+                long lastRealReviewDueAtMillis
+        ) {
+            return copyBuilder()
+                    .rung(rung)
+                    .phase(phase)
+                    .learningStep(stepIndex)
+                    .realPassStreak(realPassStreak)
+                    .realAgainStreak(realAgainStreak)
+                    .lastRealReviewDueAtMillis(lastRealReviewDueAtMillis)
+                    .build();
+        }
+
+        public StudyItem withHasSimilarKanji(boolean hasSimilarKanji) {
+            return copyBuilder().hasSimilarKanji(hasSimilarKanji).build();
+        }
+
+        public StudyItem withSimilarKanjiMemory(TaskMemory memory) {
+            return copyBuilder().similarKanjiMemory(memory).build();
         }
 
         public TaskMemory memoryForTaskType(String taskType) {
-            if ("writing_remediation".equals(taskType)) {
-                return writingRemediationMemory;
+            if (taskType == null) {
+                return kanjiMeaningMemory;
             }
-            if ("typing_meaning".equals(taskType)) {
-                return typingMeaningMemory;
+            switch (taskType) {
+                case "writing_remediation":
+                case "write_kanji":
+                    return writingRemediationMemory;
+                case "typing_meaning":
+                case "type_meaning":
+                    return typingMeaningMemory;
+                case "similar_kanji":
+                    return similarKanjiMemory;
+                case "word_reading":
+                    return wordReadingMemory;
+                case "font_meaning":
+                    return fontMeaningMemory;
+                default:
+                    return kanjiMeaningMemory;
             }
-            if ("word_reading".equals(taskType)) {
-                return wordReadingMemory;
+        }
+
+        public TaskMemory memoryForRung(LadderRung rung) {
+            if (rung == null) {
+                return kanjiMeaningMemory;
             }
-            if ("font_meaning".equals(taskType)) {
-                return fontMeaningMemory;
+            switch (rung) {
+                case WRITE_KANJI:
+                    return writingRemediationMemory;
+                case TYPE_MEANING:
+                    return typingMeaningMemory;
+                case SIMILAR_KANJI:
+                    return similarKanjiMemory;
+                case FONT_MEANING:
+                    return fontMeaningMemory;
+                case WORD_READING:
+                    return wordReadingMemory;
+                case KANJI_MEANING:
+                default:
+                    return kanjiMeaningMemory;
             }
-            return kanjiMeaningMemory;
         }
 
         public StudyItem withTaskMemory(String taskType, TaskMemory memory) {
-            TaskMemory typingMemory = typingMeaningMemory;
-            TaskMemory kanjiMemory = kanjiMeaningMemory;
-            TaskMemory fontMemory = fontMeaningMemory;
-            TaskMemory wordMemory = wordReadingMemory;
-            TaskMemory writingMemory = writingRemediationMemory;
-            if ("writing_remediation".equals(taskType)) {
-                writingMemory = memory;
-            } else if ("typing_meaning".equals(taskType)) {
-                typingMemory = memory;
-            } else if ("word_reading".equals(taskType)) {
-                wordMemory = memory;
-            } else if ("font_meaning".equals(taskType)) {
-                fontMemory = memory;
-            } else {
-                kanjiMemory = memory;
+            if (taskType == null) {
+                return copyBuilder().kanjiMeaningMemory(memory).build();
             }
-            return withTaskMemories(typingMemory, kanjiMemory, fontMemory, wordMemory, writingMemory);
+            switch (taskType) {
+                case "writing_remediation":
+                case "write_kanji":
+                    return copyBuilder().writingRemediationMemory(memory).build();
+                case "typing_meaning":
+                case "type_meaning":
+                    return copyBuilder().typingMeaningMemory(memory).build();
+                case "similar_kanji":
+                    return copyBuilder().similarKanjiMemory(memory).build();
+                case "word_reading":
+                    return copyBuilder().wordReadingMemory(memory).build();
+                case "font_meaning":
+                    return copyBuilder().fontMeaningMemory(memory).build();
+                default:
+                    return copyBuilder().kanjiMeaningMemory(memory).build();
+            }
         }
 
         public StudyItem withTaskMemories(TaskMemory kanjiMemory, TaskMemory fontMemory, TaskMemory wordMemory, TaskMemory writingMemory) {
-            return withTaskMemories(typingMeaningMemory, kanjiMemory, fontMemory, wordMemory, writingMemory);
+            return copyBuilder()
+                    .kanjiMeaningMemory(kanjiMemory)
+                    .fontMeaningMemory(fontMemory)
+                    .wordReadingMemory(wordMemory)
+                    .writingRemediationMemory(writingMemory)
+                    .build();
         }
 
         public StudyItem withTaskMemories(TaskMemory typingMemory, TaskMemory kanjiMemory, TaskMemory fontMemory, TaskMemory wordMemory, TaskMemory writingMemory) {
-            return new StudyItem(
-                    kanji,
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    learningStep,
-                    writingLevel,
-                    recognitionStage,
-                    consecutiveFailedRecognitionDays,
-                    lastFailedRecognitionDayMillis,
-                    writingRemediationPending,
-                    suppressedByTaskType,
-                    suppressedAtMillis,
-                    matureIntervalDays,
-                    answerSignature,
-                    activeToken,
-                    createdAtMillis,
-                    typingMemory,
-                    kanjiMemory,
-                    fontMemory,
-                    wordMemory,
-                    writingMemory
-            );
+            return copyBuilder()
+                    .typingMeaningMemory(typingMemory)
+                    .kanjiMeaningMemory(kanjiMemory)
+                    .fontMeaningMemory(fontMemory)
+                    .wordReadingMemory(wordMemory)
+                    .writingRemediationMemory(writingMemory)
+                    .build();
+        }
+
+        public StudyItemBuilder copyBuilder() {
+            return new StudyItemBuilder(this);
+        }
+
+        public static final class StudyItemBuilder {
+            private String kanji;
+            private String state;
+            private long dueAtMillis;
+            private double stability;
+            private double difficulty;
+            private int totalReviews;
+            private int lapses;
+            private int learningStep;
+            private int writingLevel;
+            private int recognitionStage;
+            private int consecutiveFailedRecognitionDays;
+            private long lastFailedRecognitionDayMillis;
+            private boolean writingRemediationPending;
+            private String suppressedByTaskType;
+            private long suppressedAtMillis;
+            private int matureIntervalDays;
+            private String answerSignature;
+            private String activeToken;
+            private long createdAtMillis;
+            private TaskMemory typingMeaningMemory;
+            private TaskMemory kanjiMeaningMemory;
+            private TaskMemory fontMeaningMemory;
+            private TaskMemory wordReadingMemory;
+            private TaskMemory writingRemediationMemory;
+            private LadderRung rung;
+            private SchedulerPhase phase;
+            private int realPassStreak;
+            private int realAgainStreak;
+            private long lastRealReviewDueAtMillis;
+            private boolean hasSimilarKanji;
+            private TaskMemory similarKanjiMemory;
+
+            StudyItemBuilder(StudyItem src) {
+                this.kanji = src.kanji;
+                this.state = src.state;
+                this.dueAtMillis = src.dueAtMillis;
+                this.stability = src.stability;
+                this.difficulty = src.difficulty;
+                this.totalReviews = src.totalReviews;
+                this.lapses = src.lapses;
+                this.learningStep = src.learningStep;
+                this.writingLevel = src.writingLevel;
+                this.recognitionStage = src.recognitionStage;
+                this.consecutiveFailedRecognitionDays = src.consecutiveFailedRecognitionDays;
+                this.lastFailedRecognitionDayMillis = src.lastFailedRecognitionDayMillis;
+                this.writingRemediationPending = src.writingRemediationPending;
+                this.suppressedByTaskType = src.suppressedByTaskType;
+                this.suppressedAtMillis = src.suppressedAtMillis;
+                this.matureIntervalDays = src.matureIntervalDays;
+                this.answerSignature = src.answerSignature;
+                this.activeToken = src.activeToken;
+                this.createdAtMillis = src.createdAtMillis;
+                this.typingMeaningMemory = src.typingMeaningMemory;
+                this.kanjiMeaningMemory = src.kanjiMeaningMemory;
+                this.fontMeaningMemory = src.fontMeaningMemory;
+                this.wordReadingMemory = src.wordReadingMemory;
+                this.writingRemediationMemory = src.writingRemediationMemory;
+                this.rung = src.rung;
+                this.phase = src.phase;
+                this.realPassStreak = src.realPassStreak;
+                this.realAgainStreak = src.realAgainStreak;
+                this.lastRealReviewDueAtMillis = src.lastRealReviewDueAtMillis;
+                this.hasSimilarKanji = src.hasSimilarKanji;
+                this.similarKanjiMemory = src.similarKanjiMemory;
+            }
+
+            public StudyItemBuilder state(String value) { this.state = value; return this; }
+            public StudyItemBuilder dueAtMillis(long value) { this.dueAtMillis = value; return this; }
+            public StudyItemBuilder stability(double value) { this.stability = value; return this; }
+            public StudyItemBuilder difficulty(double value) { this.difficulty = value; return this; }
+            public StudyItemBuilder totalReviews(int value) { this.totalReviews = value; return this; }
+            public StudyItemBuilder lapses(int value) { this.lapses = value; return this; }
+            public StudyItemBuilder learningStep(int value) { this.learningStep = value; return this; }
+            public StudyItemBuilder writingLevel(int value) { this.writingLevel = value; return this; }
+            public StudyItemBuilder recognitionStage(int value) { this.recognitionStage = value; return this; }
+            public StudyItemBuilder consecutiveFailedRecognitionDays(int value) { this.consecutiveFailedRecognitionDays = value; return this; }
+            public StudyItemBuilder lastFailedRecognitionDayMillis(long value) { this.lastFailedRecognitionDayMillis = value; return this; }
+            public StudyItemBuilder writingRemediationPending(boolean value) { this.writingRemediationPending = value; return this; }
+            public StudyItemBuilder suppressedByTaskType(String value) { this.suppressedByTaskType = value; return this; }
+            public StudyItemBuilder suppressedAtMillis(long value) { this.suppressedAtMillis = value; return this; }
+            public StudyItemBuilder matureIntervalDays(int value) { this.matureIntervalDays = value; return this; }
+            public StudyItemBuilder answerSignature(String value) { this.answerSignature = value; return this; }
+            public StudyItemBuilder activeToken(String value) { this.activeToken = value; return this; }
+            public StudyItemBuilder createdAtMillis(long value) { this.createdAtMillis = value; return this; }
+            public StudyItemBuilder typingMeaningMemory(TaskMemory value) { this.typingMeaningMemory = value; return this; }
+            public StudyItemBuilder kanjiMeaningMemory(TaskMemory value) { this.kanjiMeaningMemory = value; return this; }
+            public StudyItemBuilder fontMeaningMemory(TaskMemory value) { this.fontMeaningMemory = value; return this; }
+            public StudyItemBuilder wordReadingMemory(TaskMemory value) { this.wordReadingMemory = value; return this; }
+            public StudyItemBuilder writingRemediationMemory(TaskMemory value) { this.writingRemediationMemory = value; return this; }
+            public StudyItemBuilder rung(LadderRung value) { this.rung = value; return this; }
+            public StudyItemBuilder phase(SchedulerPhase value) { this.phase = value; return this; }
+            public StudyItemBuilder realPassStreak(int value) { this.realPassStreak = value; return this; }
+            public StudyItemBuilder realAgainStreak(int value) { this.realAgainStreak = value; return this; }
+            public StudyItemBuilder lastRealReviewDueAtMillis(long value) { this.lastRealReviewDueAtMillis = value; return this; }
+            public StudyItemBuilder hasSimilarKanji(boolean value) { this.hasSimilarKanji = value; return this; }
+            public StudyItemBuilder similarKanjiMemory(TaskMemory value) { this.similarKanjiMemory = value; return this; }
+
+            public StudyItem build() {
+                return new StudyItem(
+                        kanji,
+                        state,
+                        dueAtMillis,
+                        stability,
+                        difficulty,
+                        totalReviews,
+                        lapses,
+                        learningStep,
+                        writingLevel,
+                        recognitionStage,
+                        consecutiveFailedRecognitionDays,
+                        lastFailedRecognitionDayMillis,
+                        writingRemediationPending,
+                        suppressedByTaskType,
+                        suppressedAtMillis,
+                        matureIntervalDays,
+                        answerSignature,
+                        activeToken,
+                        createdAtMillis,
+                        typingMeaningMemory,
+                        kanjiMeaningMemory,
+                        fontMeaningMemory,
+                        wordReadingMemory,
+                        writingRemediationMemory,
+                        rung,
+                        phase,
+                        realPassStreak,
+                        realAgainStreak,
+                        lastRealReviewDueAtMillis,
+                        hasSimilarKanji,
+                        similarKanjiMemory
+                );
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -9,6 +10,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * The ladder scheduler. Every persisted study item has one {@link Records.LadderRung}
+ * (the task shape the learner sees) and one {@link Records.SchedulerPhase}
+ * (new_learning / review / relearning). Learning and relearning follow Anki
+ * semantics: {@code Again} resets to step 0, {@code Good} advances one step
+ * and graduates past the last step, {@code Hard} on step 0 uses a delay
+ * between Again and Good, {@code Hard} on later steps repeats the current
+ * step, and {@code Easy} graduates immediately.
+ * <p>
+ * Only persisted due-review attempts in the {@code REVIEW} phase advance the
+ * ladder streaks. Reaching {@code realDueReviewsToMove} passes in a row
+ * promotes the rung; reaching that many {@code Again}s in a row demotes it.
+ * The {@link Records.LadderRung#SIMILAR_KANJI} rung is only part of the
+ * ladder when {@link Records.StudyItem#hasSimilarKanji} is true for the
+ * card; otherwise promotion and demotion skip over it without pausing.
+ */
 public final class BridgeScheduler {
     private static final long MINUTE = 60_000L;
     private static final long DAY = 86_400_000L;
@@ -18,14 +35,21 @@ public final class BridgeScheduler {
     private static final String STATE_LEARNING = "learning";
     private static final String STATE_REVIEW = "review";
     private static final String STATE_RETIRED = "retired";
-    private static final String RATING_AGAIN = "again";
-    private static final String RATING_HARD = "hard";
-    private static final String RATING_GOOD = "good";
-    private static final String RATING_EASY = "easy";
-    public static final String TASK_TYPING_MEANING = "typing_meaning";
+    static final String RATING_AGAIN = "again";
+    static final String RATING_HARD = "hard";
+    static final String RATING_GOOD = "good";
+    static final String RATING_EASY = "easy";
+
+    public static final String TASK_WRITE_KANJI = "write_kanji";
+    public static final String TASK_TYPE_MEANING = "type_meaning";
+    public static final String TASK_SIMILAR_KANJI = "similar_kanji";
     public static final String TASK_KANJI_MEANING = "kanji_meaning";
     public static final String TASK_FONT_MEANING = "font_meaning";
     public static final String TASK_WORD_READING = "word_reading";
+
+    // Legacy wire-format aliases retained for callers that still persist or
+    // read these task-type strings (review_log, task memory lookup).
+    public static final String TASK_TYPING_MEANING = "typing_meaning";
     public static final String TASK_WRITING_REMEDIATION = "writing_remediation";
 
     public List<Records.StudyItem> seedQueue(
@@ -112,15 +136,8 @@ public final class BridgeScheduler {
         String token = best.activeToken == null || best.activeToken.isEmpty()
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
-        String taskType;
-        boolean writingRequired;
-        if (best.writingRemediationPending) {
-            taskType = TASK_WRITING_REMEDIATION;
-            writingRequired = true;
-        } else {
-            taskType = recognitionTaskType(best.recognitionStage);
-            writingRequired = false;
-        }
+        String taskType = rungTaskType(best.rung);
+        boolean writingRequired = best.rung == Records.LadderRung.WRITE_KANJI;
         String prompt = row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
     }
@@ -250,32 +267,10 @@ public final class BridgeScheduler {
     }
 
     private Records.StudyItem retiredCopy(Records.StudyItem item) {
-        return new Records.StudyItem(
-                item.kanji,
-                STATE_RETIRED,
-                item.dueAtMillis,
-                item.stability,
-                item.difficulty,
-                item.totalReviews,
-                item.lapses,
-                item.learningStep,
-                item.writingLevel,
-                item.recognitionStage,
-                item.consecutiveFailedRecognitionDays,
-                item.lastFailedRecognitionDayMillis,
-                item.writingRemediationPending,
-                item.suppressedByTaskType,
-                item.suppressedAtMillis,
-                item.matureIntervalDays,
-                item.answerSignature,
-                null,
-                item.createdAtMillis,
-                item.typingMeaningMemory,
-                item.kanjiMeaningMemory,
-                item.fontMeaningMemory,
-                item.wordReadingMemory,
-                item.writingRemediationMemory
-        );
+        return item.copyBuilder()
+                .state(STATE_RETIRED)
+                .activeToken(null)
+                .build();
     }
 
     private Records.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature) {
@@ -298,7 +293,19 @@ public final class BridgeScheduler {
                 0,
                 answerSignature,
                 null,
-                nowMillis
+                nowMillis,
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial(),
+                Records.TaskMemory.initial(),
+                Records.LadderRung.startingRung(),
+                Records.SchedulerPhase.NEW_LEARNING,
+                0,
+                0,
+                0L,
+                false,
+                Records.TaskMemory.initial()
         );
     }
 
@@ -307,34 +314,42 @@ public final class BridgeScheduler {
         if (signature.isEmpty() || item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
             return item.withAnswerSignature(signature);
         }
-        int fallbackStage = Math.max(MIN_RECOGNITION_STAGE, item.recognitionStage - 1);
         boolean retired = STATE_RETIRED.equals(item.state);
-        return new Records.StudyItem(
-                item.kanji,
-                retired ? item.state : STATE_LEARNING,
-                retired ? item.dueAtMillis : nowMillis,
-                retired ? item.stability : 0.4,
-                retired ? item.difficulty : 5.0,
-                retired ? item.totalReviews : 0,
-                retired ? item.lapses : 0,
-                retired ? item.learningStep : 0,
-                item.writingLevel,
-                fallbackStage,
-                retired ? item.consecutiveFailedRecognitionDays : 0,
-                retired ? item.lastFailedRecognitionDayMillis : 0L,
-                retired && item.writingRemediationPending,
-                null,
-                0L,
-                0,
-                signature,
-                null,
-                item.createdAtMillis,
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial()
-        );
+        if (retired) {
+            return item.copyBuilder().answerSignature(signature).build();
+        }
+        // The answer signature under the card changed; reset short-term state
+        // and demote one rung so the learner re-proves competence on the new
+        // material.
+        Records.LadderRung fallbackRung = demoteRung(item.rung, item.hasSimilarKanji);
+        return item.copyBuilder()
+                .state(STATE_LEARNING)
+                .dueAtMillis(nowMillis)
+                .stability(0.4)
+                .difficulty(5.0)
+                .totalReviews(0)
+                .lapses(0)
+                .learningStep(0)
+                .consecutiveFailedRecognitionDays(0)
+                .lastFailedRecognitionDayMillis(0L)
+                .writingRemediationPending(false)
+                .suppressedByTaskType(null)
+                .suppressedAtMillis(0L)
+                .matureIntervalDays(0)
+                .answerSignature(signature)
+                .activeToken(null)
+                .typingMeaningMemory(Records.TaskMemory.initial())
+                .kanjiMeaningMemory(Records.TaskMemory.initial())
+                .fontMeaningMemory(Records.TaskMemory.initial())
+                .wordReadingMemory(Records.TaskMemory.initial())
+                .writingRemediationMemory(Records.TaskMemory.initial())
+                .similarKanjiMemory(Records.TaskMemory.initial())
+                .rung(fallbackRung)
+                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .realPassStreak(0)
+                .realAgainStreak(0)
+                .lastRealReviewDueAtMillis(0L)
+                .build();
     }
 
     private static int compareDueItems(
@@ -358,13 +373,18 @@ public final class BridgeScheduler {
     }
 
     private static int duePriority(Records.StudyItem item) {
-        if (item.writingRemediationPending) {
+        if (item.rung == Records.LadderRung.WRITE_KANJI) {
             return 0;
         }
-        if (STATE_LEARNING.equals(item.state) || (item.totalReviews > 0 && item.learningStep < 2)) {
+        if (item.phase == Records.SchedulerPhase.RELEARNING) {
             return 0;
         }
-        if (STATE_REVIEW.equals(item.state) || item.totalReviews > 0) {
+        if (item.phase == Records.SchedulerPhase.NEW_LEARNING) {
+            // Brand-new cards (no reviews yet) sort after due reviews per
+            // Anki semantics; cards mid-learning stay urgent.
+            return item.totalReviews > 0 ? 0 : 2;
+        }
+        if (item.phase == Records.SchedulerPhase.REVIEW) {
             return 1;
         }
         return 2;
@@ -402,28 +422,31 @@ public final class BridgeScheduler {
             Records.SchedulerParameters parameters,
             Records.Settings settings
     ) {
-        Records.SchedulerParameters resolvedParameters = resolveParameters(parameters);
-        Records.Settings resolvedSettings = resolveSettings(settings);
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, Records.LearningStepSettings.defaults());
+    }
+
+    public Records.ReviewResult applyReview(
+            Records.StudyItem item,
+            Records.ReviewRequest request,
+            Set<String> consumedTokens,
+            long nowMillis,
+            Records.SchedulerParameters parameters,
+            Records.Settings settings,
+            Records.LearningStepSettings learningSettings
+    ) {
+        Records.SchedulerParameters resolvedParameters = parameters == null ? Records.SchedulerParameters.defaults() : parameters;
+        Records.Settings resolvedSettings = settings == null ? Records.Settings.kikuDefaults() : settings;
+        Records.LearningStepSettings resolvedSteps = learningSettings == null ? Records.LearningStepSettings.defaults() : learningSettings;
         Records.ReviewResult duplicate = duplicateReviewResult(item, request, consumedTokens);
         if (duplicate != null) {
             return duplicate;
         }
         consumedTokens.add(request.token);
-        ReviewContext context = ReviewContext.from(item, request, resolvedParameters, resolvedSettings, nowMillis);
+        ReviewContext context = ReviewContext.from(item, request, resolvedParameters, resolvedSettings, resolvedSteps, nowMillis);
         ReviewState state = ReviewState.from(context);
-        applyReviewSchedule(context, state);
+        applyLadderTransition(context, state);
         updateWritingLevel(context, state);
-        updateRecognitionProgress(context, state);
-        updateSuppression(context, state);
         return new Records.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.");
-    }
-
-    private Records.SchedulerParameters resolveParameters(Records.SchedulerParameters parameters) {
-        return parameters == null ? Records.SchedulerParameters.defaults() : parameters;
-    }
-
-    private Records.Settings resolveSettings(Records.Settings settings) {
-        return settings == null ? Records.Settings.kikuDefaults() : settings;
     }
 
     private Records.ReviewResult duplicateReviewResult(
@@ -440,65 +463,218 @@ public final class BridgeScheduler {
         return null;
     }
 
-    private void applyReviewSchedule(ReviewContext context, ReviewState state) {
-        switch (context.rating) {
-            case RATING_AGAIN:
-                applyAgainSchedule(context, state);
+    private void applyLadderTransition(ReviewContext context, ReviewState state) {
+        switch (context.phase) {
+            case NEW_LEARNING:
+                applyLearningTransition(context, state, true);
                 break;
-            case RATING_HARD:
-                applyHardSchedule(context, state);
+            case RELEARNING:
+                applyLearningTransition(context, state, false);
                 break;
-            case RATING_EASY:
-                applyEasySchedule(context, state);
-                break;
-            case RATING_GOOD:
+            case REVIEW:
             default:
-                applyGoodSchedule(context, state);
+                applyReviewTransition(context, state);
                 break;
         }
     }
 
-    private void applyAgainSchedule(ReviewContext context, ReviewState state) {
-        state.lapses++;
-        state.taskLapses++;
-        state.step = 0;
-        state.stability = Math.max(0.2, state.stability * context.parameters.againMultiplier);
-        state.difficulty = Math.min(10.0, state.difficulty + 0.7);
-        state.due = context.nowMillis + 10 * MINUTE;
-        state.scheduledIntervalDays = 0;
-        state.state = STATE_LEARNING;
+    private void applyLearningTransition(ReviewContext context, ReviewState state, boolean isNewLearning) {
+        List<Integer> steps = isNewLearning
+                ? context.learningSettings.newStepsMinutes
+                : context.learningSettings.reviewStepsMinutes;
+        if (steps == null || steps.isEmpty()) {
+            // No learning steps configured; graduate immediately to review.
+            graduateToReview(context, state);
+            return;
+        }
+        switch (context.rating) {
+            case RATING_AGAIN:
+                state.stepIndex = 0;
+                state.due = context.nowMillis + stepDelayMillis(steps.get(0));
+                state.phase = isNewLearning ? Records.SchedulerPhase.NEW_LEARNING : Records.SchedulerPhase.RELEARNING;
+                state.schedulerState = STATE_LEARNING;
+                break;
+            case RATING_HARD:
+                applyLearningHard(context, state, steps, isNewLearning);
+                break;
+            case RATING_EASY:
+                graduateToReview(context, state);
+                break;
+            case RATING_GOOD:
+            default:
+                applyLearningGood(context, state, steps, isNewLearning);
+                break;
+        }
+        // Learning / relearning repeats are practice-only; ladder streaks and
+        // rung move markers must not advance here.
     }
 
-    private void applyHardSchedule(ReviewContext context, ReviewState state) {
-        state.step = Math.max(1, state.step);
-        state.stability = Math.max(0.5, state.stability * context.parameters.hardMultiplier);
-        state.difficulty = Math.min(10.0, state.difficulty + 0.2);
-        state.due = context.nowMillis + DAY;
-        state.scheduledIntervalDays = 1;
-        state.state = STATE_REVIEW;
+    private void applyLearningHard(ReviewContext context, ReviewState state, List<Integer> steps, boolean isNewLearning) {
+        int idx = Math.max(0, state.stepIndex);
+        if (idx == 0 && steps.size() >= 2) {
+            // Anki "Hard on first step" uses a delay half-way between Again
+            // and Good delays. Again delay is step 0, Good delay is step 1.
+            long avg = (stepDelayMillis(steps.get(0)) + stepDelayMillis(steps.get(1))) / 2L;
+            state.due = context.nowMillis + Math.max(stepDelayMillis(steps.get(0)), avg);
+        } else {
+            // On later steps, Hard repeats the current step.
+            int safeIdx = Math.min(idx, steps.size() - 1);
+            state.due = context.nowMillis + stepDelayMillis(steps.get(safeIdx));
+        }
+        state.stepIndex = idx;
+        state.phase = isNewLearning ? Records.SchedulerPhase.NEW_LEARNING : Records.SchedulerPhase.RELEARNING;
+        state.schedulerState = STATE_LEARNING;
     }
 
-    private void applyEasySchedule(ReviewContext context, ReviewState state) {
-        state.step = 2;
-        state.stability = Math.max(2.5, state.stability * context.parameters.easyMultiplier);
-        state.difficulty = Math.max(1.0, state.difficulty - 0.35);
+    private void applyLearningGood(ReviewContext context, ReviewState state, List<Integer> steps, boolean isNewLearning) {
+        int nextIdx = state.stepIndex + 1;
+        if (nextIdx >= steps.size()) {
+            graduateToReview(context, state);
+            return;
+        }
+        state.stepIndex = nextIdx;
+        state.due = context.nowMillis + stepDelayMillis(steps.get(nextIdx));
+        state.phase = isNewLearning ? Records.SchedulerPhase.NEW_LEARNING : Records.SchedulerPhase.RELEARNING;
+        state.schedulerState = STATE_LEARNING;
+    }
+
+    private void graduateToReview(ReviewContext context, ReviewState state) {
+        // Preserve the Anki behaviour of granting an initial interval when
+        // the card graduates. Use the current stability for Good / Easy paths,
+        // floored to at least one day.
+        state.stepIndex = 0;
+        state.stability = Math.max(1.0, state.stability * context.parameters.goodMultiplier);
+        state.difficulty = Math.max(1.0, state.difficulty - 0.1);
         long interval = reviewInterval(state.stability, context.parameters);
         state.scheduledIntervalDays = intervalDays(interval);
         state.due = context.nowMillis + interval;
-        state.state = STATE_REVIEW;
+        state.phase = Records.SchedulerPhase.REVIEW;
+        state.schedulerState = STATE_REVIEW;
     }
 
-    private void applyGoodSchedule(ReviewContext context, ReviewState state) {
-        state.step = Math.min(2, state.step + 1);
-        state.stability = Math.max(1.0, state.stability * context.parameters.goodMultiplier);
-        state.difficulty = Math.max(1.0, state.difficulty - 0.1);
-        long interval = state.step < 2 ? 10 * MINUTE : reviewInterval(state.stability, context.parameters);
-        state.scheduledIntervalDays = state.step < 2 ? 0 : intervalDays(interval);
+    private void applyReviewTransition(ReviewContext context, ReviewState state) {
+        switch (context.rating) {
+            case RATING_AGAIN:
+                applyReviewAgain(context, state);
+                break;
+            case RATING_HARD:
+                applyReviewPass(context, state, context.parameters.hardMultiplier, 0.2);
+                break;
+            case RATING_EASY:
+                applyReviewPass(context, state, context.parameters.easyMultiplier, -0.35);
+                break;
+            case RATING_GOOD:
+            default:
+                applyReviewPass(context, state, context.parameters.goodMultiplier, -0.1);
+                break;
+        }
+    }
+
+    private void applyReviewAgain(ReviewContext context, ReviewState state) {
+        state.lapses++;
+        state.taskLapses++;
+        state.difficulty = Math.min(10.0, state.difficulty + 0.7);
+        state.stability = Math.max(0.2, state.stability * context.parameters.againMultiplier);
+
+        List<Integer> relearning = context.learningSettings.reviewStepsMinutes;
+        if (relearning != null && !relearning.isEmpty()) {
+            state.phase = Records.SchedulerPhase.RELEARNING;
+            state.stepIndex = 0;
+            state.due = context.nowMillis + stepDelayMillis(relearning.get(0));
+            state.schedulerState = STATE_LEARNING;
+            state.scheduledIntervalDays = 0;
+        } else {
+            // Anki manual: if relearning steps are blank, skip relearning and
+            // use a 1-day default post-lapse interval.
+            state.phase = Records.SchedulerPhase.REVIEW;
+            state.stepIndex = 0;
+            state.due = context.nowMillis + DAY;
+            state.schedulerState = STATE_REVIEW;
+            state.scheduledIntervalDays = 1;
+        }
+
+        if (countsAsRealDue(context, state)) {
+            state.realPassStreak = 0;
+            state.realAgainStreak++;
+            state.lastRealReviewDueAtMillis = context.item.dueAtMillis;
+            if (state.realAgainStreak >= context.settings.realDueReviewsToMove) {
+                state.rung = demoteRung(state.rung, context.item.hasSimilarKanji);
+                state.realAgainStreak = 0;
+                state.realPassStreak = 0;
+            }
+        }
+    }
+
+    private void applyReviewPass(ReviewContext context, ReviewState state, double multiplier, double difficultyDelta) {
+        state.stability = Math.max(1.0, state.stability * multiplier);
+        state.difficulty = Math.max(1.0, Math.min(10.0, state.difficulty + difficultyDelta));
+        long interval = reviewInterval(state.stability, context.parameters);
+        state.scheduledIntervalDays = intervalDays(interval);
         state.due = context.nowMillis + interval;
-        state.state = state.step < 2 ? STATE_LEARNING : STATE_REVIEW;
+        state.phase = Records.SchedulerPhase.REVIEW;
+        state.schedulerState = STATE_REVIEW;
+        state.stepIndex = 0;
+
+        if (countsAsRealDue(context, state)) {
+            state.realAgainStreak = 0;
+            state.realPassStreak++;
+            state.lastRealReviewDueAtMillis = context.item.dueAtMillis;
+            if (state.realPassStreak >= context.settings.realDueReviewsToMove) {
+                state.rung = promoteRung(state.rung, context.item.hasSimilarKanji);
+                state.realPassStreak = 0;
+                state.realAgainStreak = 0;
+            }
+        }
+    }
+
+    /**
+     * True when the answer being graded is a real due review in the REVIEW
+     * phase: the card's current FSRS due slot has already elapsed, and that
+     * slot has not already been counted toward the ladder streak.
+     */
+    private boolean countsAsRealDue(ReviewContext context, ReviewState state) {
+        if (context.phase != Records.SchedulerPhase.REVIEW) {
+            return false;
+        }
+        long currentDueSlot = context.item.dueAtMillis;
+        if (currentDueSlot > context.nowMillis) {
+            return false;
+        }
+        if (state.lastRealReviewDueAtMillis != 0L
+                && state.lastRealReviewDueAtMillis == currentDueSlot) {
+            return false;
+        }
+        return true;
+    }
+
+    static Records.LadderRung promoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
+        Records.LadderRung[] order = Records.LadderRung.values();
+        for (int i = current.ordinal() + 1; i < order.length; i++) {
+            Records.LadderRung candidate = order[i];
+            if (candidate == Records.LadderRung.SIMILAR_KANJI && !hasSimilarKanji) {
+                continue;
+            }
+            return candidate;
+        }
+        return current;
+    }
+
+    static Records.LadderRung demoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
+        Records.LadderRung[] order = Records.LadderRung.values();
+        for (int i = current.ordinal() - 1; i >= 0; i--) {
+            Records.LadderRung candidate = order[i];
+            if (candidate == Records.LadderRung.SIMILAR_KANJI && !hasSimilarKanji) {
+                continue;
+            }
+            return candidate;
+        }
+        return current;
     }
 
     private void updateWritingLevel(ReviewContext context, ReviewState state) {
+        if (context.rung != Records.LadderRung.WRITE_KANJI) {
+            return;
+        }
         if (context.failedWriting) {
             state.writingLevel = Math.max(0, state.writingLevel - 1);
         } else if (context.cleanWritingPass) {
@@ -506,151 +682,50 @@ public final class BridgeScheduler {
         }
     }
 
-    private void updateRecognitionProgress(ReviewContext context, ReviewState state) {
-        if (!context.request.writingRequired) {
-            updateRecognitionReviewProgress(context, state);
-        } else if (context.writingRemediationReview) {
-            updateWritingRemediationProgress(context, state);
-        }
-    }
-
-    private void updateRecognitionReviewProgress(ReviewContext context, ReviewState state) {
-        if (RATING_AGAIN.equals(context.rating)) {
-            incrementFailedRecognitionDays(context, state);
-            triggerWritingOrDemotionIfNeeded(context, state);
-        } else {
-            incrementRecognitionPasses(context, state);
-            promoteRecognitionIfReady(context, state);
-            state.failedRecognitionDays = 0;
-            state.lastFailedRecognitionDay = 0L;
-            state.writingRemediationPending = false;
-        }
-    }
-
-    private void incrementFailedRecognitionDays(ReviewContext context, ReviewState state) {
-        if (context.previousTaskMemory.dueAtMillis <= context.nowMillis
-                && (state.failedRecognitionDays <= 0
-                || state.lastFailedRecognitionDay != context.previousTaskMemory.dueAtMillis)) {
-            state.failedRecognitionDays++;
-            state.lastFailedRecognitionDay = context.previousTaskMemory.dueAtMillis;
-        }
-    }
-
-    private void triggerWritingOrDemotionIfNeeded(ReviewContext context, ReviewState state) {
-        if (state.failedRecognitionDays < context.settings.writingTriggerMissDays) {
-            return;
-        }
-        state.failedRecognitionDays = 0;
-        state.lastFailedRecognitionDay = 0L;
-        if (state.recognitionStage <= MIN_RECOGNITION_STAGE) {
-            state.writingRemediationPending = true;
-        } else {
-            state.recognitionStage = Math.max(MIN_RECOGNITION_STAGE, state.recognitionStage - 1);
-            state.writingRemediationPending = false;
-        }
-    }
-
-    private void incrementRecognitionPasses(ReviewContext context, ReviewState state) {
-        if (context.previousTaskMemory.dueAtMillis <= context.nowMillis
-                && (state.recognitionPasses <= 0
-                || state.lastRecognitionPassDueAt != context.previousTaskMemory.dueAtMillis)) {
-            state.recognitionPasses++;
-            state.lastRecognitionPassDueAt = context.previousTaskMemory.dueAtMillis;
-        }
-    }
-
-    private void promoteRecognitionIfReady(ReviewContext context, ReviewState state) {
-        if (state.recognitionPasses < context.settings.recognitionPromotionPasses) {
-            return;
-        }
-        state.recognitionStage = Math.min(MAX_RECOGNITION_STAGE, state.recognitionStage + 1);
-        state.recognitionPasses = 0;
-        state.lastRecognitionPassDueAt = 0L;
-    }
-
-    private void updateWritingRemediationProgress(ReviewContext context, ReviewState state) {
-        if (context.request.manualOverride || context.request.writingPassed) {
-            state.recognitionStage = MIN_RECOGNITION_STAGE;
-            state.failedRecognitionDays = 0;
-            state.lastFailedRecognitionDay = 0L;
-            state.writingRemediationPending = false;
-        } else {
-            state.writingRemediationPending = true;
-        }
-    }
-
-    private void updateSuppression(ReviewContext context, ReviewState state) {
-        state.suppressedByTaskType = context.item.suppressedByTaskType;
-        state.suppressedAtMillis = context.item.suppressedAtMillis;
-        state.matureIntervalDays = state.scheduledIntervalDays;
-        if (RATING_AGAIN.equals(context.rating)) {
-            state.suppressedByTaskType = "";
-            state.suppressedAtMillis = 0L;
-            state.matureIntervalDays = 0;
-        } else if (reviewCreatesMatureSuppression(context, state)) {
-            state.suppressedByTaskType = context.reviewedTaskType;
-            state.suppressedAtMillis = context.nowMillis;
-        }
-    }
-
-    private boolean reviewCreatesMatureSuppression(ReviewContext context, ReviewState state) {
-        return dominatesLowerSiblings(context.reviewedTaskType)
-                && context.previousTaskMemory.totalReviews > 0
-                && context.previousTaskMemory.dueAtMillis <= context.nowMillis
-                && state.scheduledIntervalDays >= context.settings.matureDays;
-    }
-
     private Records.StudyItem updatedStudyItem(ReviewContext context, ReviewState state) {
-        return new Records.StudyItem(
-                context.item.kanji,
-                state.state,
-                state.due,
-                round(state.stability),
-                round(state.difficulty),
-                state.total,
-                state.lapses,
-                state.step,
-                state.writingLevel,
-                state.recognitionStage,
-                state.failedRecognitionDays,
-                state.lastFailedRecognitionDay,
-                state.writingRemediationPending,
-                state.suppressedByTaskType,
-                state.suppressedAtMillis,
-                state.matureIntervalDays,
-                context.item.answerSignature,
-                null,
-                context.item.createdAtMillis,
-                context.item.typingMeaningMemory,
-                context.item.kanjiMeaningMemory,
-                context.item.fontMeaningMemory,
-                context.item.wordReadingMemory,
-                context.item.writingRemediationMemory
-        ).withTaskMemory(context.reviewedTaskType, updatedTaskMemory(context, state));
-    }
-
-    private Records.TaskMemory updatedTaskMemory(ReviewContext context, ReviewState state) {
-        return new Records.TaskMemory(
-                state.state,
+        Records.TaskMemory updatedMemory = new Records.TaskMemory(
+                state.schedulerState,
                 state.due,
                 round(state.stability),
                 round(state.difficulty),
                 state.taskTotal,
                 state.taskLapses,
-                state.step,
+                state.stepIndex,
                 context.rating,
                 state.scheduledIntervalDays,
-                taskMemoryRecognitionPasses(context, state),
-                taskMemoryRecognitionPassDueAt(context, state)
+                taskMemoryConsecutivePasses(context, state),
+                taskMemoryLastPassedDueAt(context, state)
         );
+        Records.StudyItem base = context.item.copyBuilder()
+                .state(state.schedulerState)
+                .dueAtMillis(state.due)
+                .stability(round(state.stability))
+                .difficulty(round(state.difficulty))
+                .totalReviews(state.total)
+                .lapses(state.lapses)
+                .learningStep(state.stepIndex)
+                .writingLevel(state.writingLevel)
+                .recognitionStage(rungToLegacyStage(state.rung))
+                .writingRemediationPending(state.rung == Records.LadderRung.WRITE_KANJI)
+                .consecutiveFailedRecognitionDays(state.realAgainStreak)
+                .lastFailedRecognitionDayMillis(state.lastRealReviewDueAtMillis)
+                .matureIntervalDays(state.scheduledIntervalDays)
+                .rung(state.rung)
+                .phase(state.phase)
+                .realPassStreak(state.realPassStreak)
+                .realAgainStreak(state.realAgainStreak)
+                .lastRealReviewDueAtMillis(state.lastRealReviewDueAtMillis)
+                .activeToken(null)
+                .build();
+        return base.withTaskMemory(context.reviewedTaskType, updatedMemory);
     }
 
-    private int taskMemoryRecognitionPasses(ReviewContext context, ReviewState state) {
-        return RATING_AGAIN.equals(context.rating) || context.request.writingRequired ? 0 : state.recognitionPasses;
+    private int taskMemoryConsecutivePasses(ReviewContext context, ReviewState state) {
+        return RATING_AGAIN.equals(context.rating) ? 0 : state.realPassStreak;
     }
 
-    private long taskMemoryRecognitionPassDueAt(ReviewContext context, ReviewState state) {
-        return RATING_AGAIN.equals(context.rating) || context.request.writingRequired ? 0L : state.lastRecognitionPassDueAt;
+    private long taskMemoryLastPassedDueAt(ReviewContext context, ReviewState state) {
+        return RATING_AGAIN.equals(context.rating) ? 0L : state.lastRealReviewDueAtMillis;
     }
 
     public int dueCount(List<Records.StudyItem> items, long nowMillis) {
@@ -740,25 +815,39 @@ public final class BridgeScheduler {
         return Math.round(days * DAY);
     }
 
-    private static String recognitionTaskType(int stage) {
-        switch (Math.max(MIN_RECOGNITION_STAGE, Math.min(MAX_RECOGNITION_STAGE, stage))) {
-            case -1:
-                return TASK_TYPING_MEANING;
-            case 1:
-                return TASK_FONT_MEANING;
-            case 2:
-                return TASK_WORD_READING;
+    private static long stepDelayMillis(int minutes) {
+        return Math.max(1L, (long) Math.max(1, minutes)) * MINUTE;
+    }
+
+    private static String rungTaskType(Records.LadderRung rung) {
+        if (rung == null) {
+            return TASK_KANJI_MEANING;
+        }
+        return rung.wireName();
+    }
+
+    private static int rungToLegacyStage(Records.LadderRung rung) {
+        if (rung == null) {
+            return 0;
+        }
+        switch (rung) {
+            case TYPE_MEANING:
+                return MIN_RECOGNITION_STAGE;
+            case FONT_MEANING:
+                return 1;
+            case WORD_READING:
+                return MAX_RECOGNITION_STAGE;
+            case WRITE_KANJI:
+            case SIMILAR_KANJI:
+            case KANJI_MEANING:
             default:
-                return TASK_KANJI_MEANING;
+                return 0;
         }
     }
 
     private static Records.StudyItem activeFamilyItem(List<Records.StudyItem> family, long nowMillis) {
         Records.StudyItem best = null;
         for (Records.StudyItem item : family) {
-            if (suppressedByMatureSibling(item, family)) {
-                continue;
-            }
             if (best == null || compareFamilyActivity(item, best, nowMillis) < 0) {
                 best = item;
             }
@@ -767,7 +856,7 @@ public final class BridgeScheduler {
     }
 
     private static int compareFamilyActivity(Records.StudyItem left, Records.StudyItem right, long nowMillis) {
-        int rank = Integer.compare(-taskRank(left), -taskRank(right));
+        int rank = Integer.compare(-left.rung.ordinal(), -right.rung.ordinal());
         if (rank != 0) {
             return rank;
         }
@@ -776,19 +865,6 @@ public final class BridgeScheduler {
             return due;
         }
         return Long.compare(left.dueAtMillis, right.dueAtMillis);
-    }
-
-    private static boolean suppressedByMatureSibling(Records.StudyItem item, List<Records.StudyItem> family) {
-        for (Records.StudyItem sibling : family) {
-            if (sibling.suppressedByTaskType == null || sibling.suppressedByTaskType.isEmpty()) {
-                continue;
-            }
-            int dominantRank = taskRank(sibling.suppressedByTaskType);
-            if (ladderRank(item) < dominantRank && sameAnswerSignature(item, sibling)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static String familyKey(Records.StudyItem item) {
@@ -801,51 +877,6 @@ public final class BridgeScheduler {
 
     private static String familyKey(String kanji, String answerSignature) {
         return kanji + "\u0000" + (answerSignature == null ? "" : answerSignature);
-    }
-
-    private static boolean sameAnswerSignature(Records.StudyItem left, Records.StudyItem right) {
-        String leftSignature = left.answerSignature == null ? "" : left.answerSignature;
-        String rightSignature = right.answerSignature == null ? "" : right.answerSignature;
-        return leftSignature.equals(rightSignature);
-    }
-
-    private static int taskRank(Records.StudyItem item) {
-        if (item.writingRemediationPending) {
-            return 5;
-        }
-        return taskRank(recognitionTaskType(item.recognitionStage));
-    }
-
-    private static int ladderRank(Records.StudyItem item) {
-        if (item.writingRemediationPending) {
-            return taskRank(TASK_WRITING_REMEDIATION);
-        }
-        return taskRank(recognitionTaskType(item.recognitionStage));
-    }
-
-    private static int taskRank(String taskType) {
-        if (TASK_WRITING_REMEDIATION.equals(taskType)) {
-            return 0;
-        }
-        if (TASK_TYPING_MEANING.equals(taskType)) {
-            return 1;
-        }
-        if (TASK_KANJI_MEANING.equals(taskType)) {
-            return 2;
-        }
-        if (TASK_FONT_MEANING.equals(taskType)) {
-            return 3;
-        }
-        if (TASK_WORD_READING.equals(taskType)) {
-            return 4;
-        }
-        return 2;
-    }
-
-    private static boolean dominatesLowerSiblings(String taskType) {
-        return TASK_KANJI_MEANING.equals(taskType)
-                || TASK_FONT_MEANING.equals(taskType)
-                || TASK_WORD_READING.equals(taskType);
     }
 
     private static int intervalDays(long intervalMillis) {
@@ -963,11 +994,13 @@ public final class BridgeScheduler {
         Records.ReviewRequest request;
         Records.SchedulerParameters parameters;
         Records.Settings settings;
+        Records.LearningStepSettings learningSettings;
         Records.TaskMemory previousTaskMemory;
+        Records.LadderRung rung;
+        Records.SchedulerPhase phase;
         long nowMillis;
         String rating;
         String reviewedTaskType;
-        boolean writingRemediationReview;
         boolean cleanWritingPass;
         boolean failedWriting;
 
@@ -976,6 +1009,7 @@ public final class BridgeScheduler {
                 Records.ReviewRequest request,
                 Records.SchedulerParameters parameters,
                 Records.Settings settings,
+                Records.LearningStepSettings learningSettings,
                 long nowMillis
         ) {
             ReviewContext context = new ReviewContext();
@@ -983,12 +1017,15 @@ public final class BridgeScheduler {
             context.request = request;
             context.parameters = parameters;
             context.settings = settings;
+            context.learningSettings = learningSettings;
             context.nowMillis = nowMillis;
-            context.rating = reviewRating(item, request);
-            context.reviewedTaskType = reviewedTaskType(item);
-            context.previousTaskMemory = item.memoryForTaskType(context.reviewedTaskType);
-            context.writingRemediationReview = request.writingRequired && item.writingRemediationPending;
-            boolean writingReviewCanMoveHelp = request.writingRequired && !request.manualOverride;
+            context.rung = item.rung == null ? Records.LadderRung.KANJI_MEANING : item.rung;
+            context.phase = item.phase == null ? Records.SchedulerPhase.NEW_LEARNING : item.phase;
+            context.reviewedTaskType = context.rung.wireName();
+            context.previousTaskMemory = item.memoryForRung(context.rung);
+            context.rating = resolveRating(item, request, context.rung);
+            boolean writingRung = context.rung == Records.LadderRung.WRITE_KANJI;
+            boolean writingReviewCanMoveHelp = writingRung && request.writingRequired && !request.manualOverride;
             context.cleanWritingPass = writingReviewCanMoveHelp
                     && request.writingPassed
                     && request.writingClean
@@ -997,11 +1034,15 @@ public final class BridgeScheduler {
             return context;
         }
 
-        private static String reviewRating(Records.StudyItem item, Records.ReviewRequest request) {
-            if (request.writingRequired && item.writingRemediationPending && request.manualOverride) {
-                return RATING_HARD;
-            }
-            if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
+        private static String resolveRating(Records.StudyItem item, Records.ReviewRequest request, Records.LadderRung rung) {
+            if (rung == Records.LadderRung.WRITE_KANJI) {
+                if (request.manualOverride) {
+                    return RATING_HARD;
+                }
+                if (request.writingRequired && !request.writingPassed) {
+                    return RATING_AGAIN;
+                }
+            } else if (request.writingRequired && !request.writingPassed && !request.manualOverride) {
                 return RATING_AGAIN;
             }
             return normalizeRating(request.rating);
@@ -1016,12 +1057,6 @@ public final class BridgeScheduler {
                 default -> RATING_AGAIN;
             };
         }
-
-        private static String reviewedTaskType(Records.StudyItem item) {
-            return item.writingRemediationPending
-                    ? TASK_WRITING_REMEDIATION
-                    : recognitionTaskType(item.recognitionStage);
-        }
     }
 
     private static final class ReviewState {
@@ -1029,22 +1064,18 @@ public final class BridgeScheduler {
         int lapses;
         int taskTotal;
         int taskLapses;
-        int step;
+        int stepIndex;
         int writingLevel;
-        int recognitionStage;
-        int failedRecognitionDays;
-        int recognitionPasses;
         int scheduledIntervalDays;
-        int matureIntervalDays;
-        long lastFailedRecognitionDay;
-        long lastRecognitionPassDueAt;
+        int realPassStreak;
+        int realAgainStreak;
+        long lastRealReviewDueAtMillis;
         long due;
-        long suppressedAtMillis;
-        boolean writingRemediationPending;
+        Records.LadderRung rung;
+        Records.SchedulerPhase phase;
         double stability;
         double difficulty;
-        String state;
-        String suppressedByTaskType;
+        String schedulerState;
 
         static ReviewState from(ReviewContext context) {
             ReviewState state = new ReviewState();
@@ -1052,17 +1083,30 @@ public final class BridgeScheduler {
             state.lapses = context.item.lapses;
             state.taskTotal = context.previousTaskMemory.totalReviews + 1;
             state.taskLapses = context.previousTaskMemory.lapses;
-            state.step = context.previousTaskMemory.learningStep;
+            state.stepIndex = context.previousTaskMemory.learningStep;
             state.writingLevel = context.item.writingLevel;
-            state.recognitionStage = context.item.recognitionStage;
-            state.failedRecognitionDays = context.item.consecutiveFailedRecognitionDays;
-            state.lastFailedRecognitionDay = context.item.lastFailedRecognitionDayMillis;
-            state.recognitionPasses = context.previousTaskMemory.consecutivePasses;
-            state.lastRecognitionPassDueAt = context.previousTaskMemory.lastPassedDueAtMillis;
-            state.writingRemediationPending = context.item.writingRemediationPending;
+            state.rung = context.rung;
+            state.phase = context.phase;
+            state.realPassStreak = context.item.realPassStreak;
+            state.realAgainStreak = context.item.realAgainStreak;
+            state.lastRealReviewDueAtMillis = context.item.lastRealReviewDueAtMillis;
             state.stability = context.previousTaskMemory.stability;
             state.difficulty = context.previousTaskMemory.difficulty;
+            state.schedulerState = context.item.state;
             return state;
         }
+    }
+
+    // -------- Non-public helpers kept package-private for testing. --------
+
+    static List<Records.LadderRung> rungsForItem(Records.StudyItem item) {
+        List<Records.LadderRung> out = new ArrayList<>();
+        for (Records.LadderRung rung : Records.LadderRung.values()) {
+            if (rung == Records.LadderRung.SIMILAR_KANJI && !item.hasSimilarKanji) {
+                continue;
+            }
+            out.add(rung);
+        }
+        return Collections.unmodifiableList(out);
     }
 }
