@@ -1047,7 +1047,7 @@ public final class Records {
         }
 
         private static SchedulerPhase derivedPhase(String state, int totalReviews, boolean writingRemediationPending) {
-            if ("review".equals(state) || "retired".equals(state)) {
+            if (LEARNING_REPEAT_REVIEW.equals(state) || "retired".equals(state)) {
                 return SchedulerPhase.REVIEW;
             }
             if (writingRemediationPending || totalReviews > 0) {
@@ -1261,17 +1261,17 @@ public final class Records {
                 return kanjiMeaningMemory;
             }
             switch (taskType) {
-                case "writing_remediation":
-                case "write_kanji":
+                case BridgeScheduler.TASK_WRITING_REMEDIATION:
+                case BridgeScheduler.TASK_WRITE_KANJI:
                     return writingRemediationMemory;
-                case "typing_meaning":
-                case "type_meaning":
+                case BridgeScheduler.TASK_TYPING_MEANING:
+                case BridgeScheduler.TASK_TYPE_MEANING:
                     return typingMeaningMemory;
-                case "similar_kanji":
+                case BridgeScheduler.TASK_SIMILAR_KANJI:
                     return similarKanjiMemory;
-                case "word_reading":
+                case BridgeScheduler.TASK_WORD_READING:
                     return wordReadingMemory;
-                case "font_meaning":
+                case BridgeScheduler.TASK_FONT_MEANING:
                     return fontMeaningMemory;
                 default:
                     return kanjiMeaningMemory;
@@ -1304,17 +1304,17 @@ public final class Records {
                 return copyBuilder().kanjiMeaningMemory(memory).build();
             }
             switch (taskType) {
-                case "writing_remediation":
-                case "write_kanji":
+                case BridgeScheduler.TASK_WRITING_REMEDIATION:
+                case BridgeScheduler.TASK_WRITE_KANJI:
                     return copyBuilder().writingRemediationMemory(memory).build();
-                case "typing_meaning":
-                case "type_meaning":
+                case BridgeScheduler.TASK_TYPING_MEANING:
+                case BridgeScheduler.TASK_TYPE_MEANING:
                     return copyBuilder().typingMeaningMemory(memory).build();
-                case "similar_kanji":
+                case BridgeScheduler.TASK_SIMILAR_KANJI:
                     return copyBuilder().similarKanjiMemory(memory).build();
-                case "word_reading":
+                case BridgeScheduler.TASK_WORD_READING:
                     return copyBuilder().wordReadingMemory(memory).build();
-                case "font_meaning":
+                case BridgeScheduler.TASK_FONT_MEANING:
                     return copyBuilder().fontMeaningMemory(memory).build();
                 default:
                     return copyBuilder().kanjiMeaningMemory(memory).build();

@@ -82,6 +82,9 @@ public final class BridgeScheduler {
             return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis);
         }
         List<Records.DashboardRow> admissionRows = plan.allKanjiMode ? rows : rowsForFocus(rows, plan.focusKanji);
+        int cappedAdmission = plan.allKanjiMode
+                ? plan.newAdmissionLimit
+                : Math.min(plan.newAdmissionLimit, settings.newPerDay);
         return seedQueueInternal(new SeedQueueRequest(
                 rows,
                 admissionRows,
@@ -89,7 +92,7 @@ public final class BridgeScheduler {
                 settings,
                 nowMillis,
                 startOfDayMillis,
-                new SeedQueueLimits(plan.newAdmissionLimit, plan.allKanjiMode)
+                new SeedQueueLimits(cappedAdmission, plan.allKanjiMode)
         ));
     }
 
@@ -640,11 +643,8 @@ public final class BridgeScheduler {
         if (currentDueSlot > context.nowMillis) {
             return false;
         }
-        if (state.lastRealReviewDueAtMillis != 0L
-                && state.lastRealReviewDueAtMillis == currentDueSlot) {
-            return false;
-        }
-        return true;
+        return state.lastRealReviewDueAtMillis == 0L
+                || state.lastRealReviewDueAtMillis != currentDueSlot;
     }
 
     static Records.LadderRung promoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
@@ -816,7 +816,7 @@ public final class BridgeScheduler {
     }
 
     private static long stepDelayMillis(int minutes) {
-        return Math.max(1L, (long) Math.max(1, minutes)) * MINUTE;
+        return Math.max(1L, Math.max(1, minutes)) * MINUTE;
     }
 
     private static String rungTaskType(Records.LadderRung rung) {
@@ -1023,7 +1023,7 @@ public final class BridgeScheduler {
             context.phase = item.phase == null ? Records.SchedulerPhase.NEW_LEARNING : item.phase;
             context.reviewedTaskType = context.rung.wireName();
             context.previousTaskMemory = item.memoryForRung(context.rung);
-            context.rating = resolveRating(item, request, context.rung);
+            context.rating = resolveRating(request, context.rung);
             boolean writingRung = context.rung == Records.LadderRung.WRITE_KANJI;
             boolean writingReviewCanMoveHelp = writingRung && request.writingRequired && !request.manualOverride;
             context.cleanWritingPass = writingReviewCanMoveHelp
@@ -1034,7 +1034,7 @@ public final class BridgeScheduler {
             return context;
         }
 
-        private static String resolveRating(Records.StudyItem item, Records.ReviewRequest request, Records.LadderRung rung) {
+        private static String resolveRating(Records.ReviewRequest request, Records.LadderRung rung) {
             if (rung == Records.LadderRung.WRITE_KANJI) {
                 if (request.manualOverride) {
                     return RATING_HARD;
