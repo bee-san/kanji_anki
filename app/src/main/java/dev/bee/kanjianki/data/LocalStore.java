@@ -57,6 +57,7 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final String WHERE_SETTING_KEY = "key=?";
     private static final String WHERE_SIMILAR_CHOICE = "target_kanji=? AND choice_signature=?";
     private static final String ORDER_ID_DESC = "id DESC";
+    private static final String SQL_DELETE_FROM = "DELETE FROM ";
     private static final String ORDER_KANJI_ASC = "kanji ASC";
     private static final String ORDER_SIMILAR_PAIR = "kanji_a ASC, kanji_b ASC, source ASC";
     private static final String COLUMN_ACTIVE_TOKEN = "active_token";
@@ -303,9 +304,9 @@ public final class LocalStore extends SQLiteOpenHelper {
         // tables themselves are retained for compile compatibility with
         // existing LocalStore helpers; they are removed from the scheduler
         // path in later commits.
-        db.execSQL("DELETE FROM " + TABLE_LEARNING_REPEATS);
-        db.execSQL("DELETE FROM " + TABLE_SIMILAR_KANJI_CHOICE_STATE);
-        db.execSQL("DELETE FROM " + TABLE_SIMILAR_KANJI_REPAIR_QUEUE);
+        db.execSQL(SQL_DELETE_FROM + TABLE_LEARNING_REPEATS);
+        db.execSQL(SQL_DELETE_FROM + TABLE_SIMILAR_KANJI_CHOICE_STATE);
+        db.execSQL(SQL_DELETE_FROM + TABLE_SIMILAR_KANJI_REPAIR_QUEUE);
     }
 
     private void createStudyTaskLogTable(SQLiteDatabase db) {
