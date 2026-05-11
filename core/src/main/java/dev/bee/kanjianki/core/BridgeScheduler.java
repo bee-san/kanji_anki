@@ -124,9 +124,13 @@ public final class BridgeScheduler {
             rowByKanji.put(row.kanji, row);
         }
         Records.StudyItem best = null;
+        boolean hasDueReview = false;
         for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, allowedKanji)) {
             if (item.dueAtMillis > nowMillis) {
                 continue;
+            }
+            if (!isUntouchedNewCard(item)) {
+                hasDueReview = true;
             }
             if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
                 best = item;
@@ -134,6 +138,24 @@ public final class BridgeScheduler {
         }
         if (best == null) {
             return null;
+        }
+        // If there are due reviews, skip brand-new cards entirely so that
+        // new kanji only appear after all reviews are finished.
+        if (hasDueReview && isUntouchedNewCard(best)) {
+            // All non-new items were already exhausted by the priority sort,
+            // so pick the first non-new due item instead.
+            Records.StudyItem nonNew = null;
+            for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, allowedKanji)) {
+                if (item.dueAtMillis > nowMillis || isUntouchedNewCard(item)) {
+                    continue;
+                }
+                if (nonNew == null || compareDueItems(item, nonNew, rowByKanji) < 0) {
+                    nonNew = item;
+                }
+            }
+            if (nonNew != null) {
+                best = nonNew;
+            }
         }
         Records.DashboardRow row = rowByKanji.get(best.kanji);
         String token = best.activeToken == null || best.activeToken.isEmpty()
@@ -143,6 +165,10 @@ public final class BridgeScheduler {
         boolean writingRequired = best.rung == Records.LadderRung.WRITE_KANJI;
         String prompt = row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
+    }
+
+    private static boolean isUntouchedNewCard(Records.StudyItem item) {
+        return item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews == 0;
     }
 
     private List<Records.DashboardRow> rowsForFocus(List<Records.DashboardRow> rows, List<String> focusKanji) {
@@ -485,11 +511,6 @@ public final class BridgeScheduler {
         List<Integer> steps = isNewLearning
                 ? context.learningSettings.newStepsMinutes
                 : context.learningSettings.reviewStepsMinutes;
-        if (steps == null || steps.isEmpty()) {
-            // No learning steps configured; graduate immediately to review.
-            graduateToReview(context, state);
-            return;
-        }
         switch (context.rating) {
             case RATING_AGAIN:
                 state.stepIndex = 0;
@@ -634,11 +655,12 @@ public final class BridgeScheduler {
      * True when the answer being graded is a real due review in the REVIEW
      * phase: the card's current FSRS due slot has already elapsed, and that
      * slot has not already been counted toward the ladder streak.
+     * <p>
+     * This method is only called from {@code applyReviewTransition} which is
+     * dispatched exclusively for REVIEW-phase items, so the phase guard is
+     * omitted.
      */
     private boolean countsAsRealDue(ReviewContext context, ReviewState state) {
-        if (context.phase != Records.SchedulerPhase.REVIEW) {
-            return false;
-        }
         long currentDueSlot = context.item.dueAtMillis;
         if (currentDueSlot > context.nowMillis) {
             return false;
@@ -820,16 +842,10 @@ public final class BridgeScheduler {
     }
 
     private static String rungTaskType(Records.LadderRung rung) {
-        if (rung == null) {
-            return TASK_KANJI_MEANING;
-        }
         return rung.wireName();
     }
 
     private static int rungToLegacyStage(Records.LadderRung rung) {
-        if (rung == null) {
-            return 0;
-        }
         switch (rung) {
             case TYPE_MEANING:
                 return MIN_RECOGNITION_STAGE;
@@ -1019,8 +1035,8 @@ public final class BridgeScheduler {
             context.settings = settings;
             context.learningSettings = learningSettings;
             context.nowMillis = nowMillis;
-            context.rung = item.rung == null ? Records.LadderRung.KANJI_MEANING : item.rung;
-            context.phase = item.phase == null ? Records.SchedulerPhase.NEW_LEARNING : item.phase;
+            context.rung = item.rung;
+            context.phase = item.phase;
             context.reviewedTaskType = context.rung.wireName();
             context.previousTaskMemory = item.memoryForRung(context.rung);
             context.rating = resolveRating(request, context.rung);
