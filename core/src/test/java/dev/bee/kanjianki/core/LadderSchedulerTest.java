@@ -563,6 +563,73 @@ public class LadderSchedulerTest {
         assertEquals(custom, item.withTaskMemory("unknown", custom).kanjiMeaningMemory);
     }
 
+    @Test
+    public void writingFailureOnNonWriteKanjiRungResolvesAsAgain() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        // Item on FONT_MEANING rung with a writing failure (writingRequired=true, writingPassed=false)
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.FONT_MEANING, 500L);
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("wf1"),
+                new Records.ReviewRequest("裂", "wf1", "good", true, false, false, 0),
+                consumed,
+                1000L
+        );
+        // Writing failure on non-write_kanji rung should resolve as "again"
+        assertEquals("again", result.appliedRating);
+    }
+
+    @Test
+    public void writingPassOnNonWriteKanjiRungKeepsOriginalRating() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.FONT_MEANING, 500L);
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("wp1"),
+                new Records.ReviewRequest("裂", "wp1", "good", true, true, false, 0),
+                consumed,
+                1000L
+        );
+        // Writing pass keeps the original rating
+        assertEquals("good", result.appliedRating);
+    }
+
+    @Test
+    public void manualOverrideOnNonWriteKanjiDoesNotForceAgain() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.FONT_MEANING, 500L);
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("mo1"),
+                new Records.ReviewRequest("裂", "mo1", "good", true, false, true, 0),
+                consumed,
+                1000L
+        );
+        // Manual override exempts the writing failure from forcing "again"
+        assertEquals("good", result.appliedRating);
+    }
+
+    @Test
+    public void newLearningWithHardOnFirstStepUsesShortDelay() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = newCard("裂");
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("h1"),
+                new Records.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
+                consumed,
+                1000L
+        );
+        // Hard on step 0 uses a delay between Again and Good; stays in learning
+        assertEquals(Records.SchedulerPhase.NEW_LEARNING, result.item.phase);
+        assertEquals(0, result.item.learningStep); // stays on step 0
+        assertTrue("Hard delay should be positive", result.item.dueAtMillis > 1000L);
+    }
+
     // ---- Helpers ----
 
     private static Records.StudyItem newCard(String kanji) {
