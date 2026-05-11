@@ -1079,6 +1079,28 @@ public final class LocalStore extends SQLiteOpenHelper {
         return out;
     }
 
+    /**
+     * Re-applies the {@link Records.StudyItem#hasSimilarKanji} predicate to
+     * each item in the given list using the current
+     * {@code similar_kanji_pairs} contents. Call this after
+     * {@link BridgeScheduler#seedQueue} produces new items but before
+     * persisting them so the ladder scheduler's {@code similar_kanji} rung
+     * inclusion decision is consistent with the just-rebuilt similarity
+     * data, without waiting for a follow-up DB reload.
+     */
+    public List<Records.StudyItem> annotateSimilarKanjiAvailability(List<Records.StudyItem> items) {
+        if (items == null || items.isEmpty()) {
+            return items == null ? Collections.emptyList() : items;
+        }
+        Set<String> withSimilar = kanjiWithSimilarNeighbors(getReadableDatabase());
+        List<Records.StudyItem> out = new ArrayList<>(items.size());
+        for (Records.StudyItem item : items) {
+            boolean hasSimilar = withSimilar.contains(item.kanji);
+            out.add(hasSimilar == item.hasSimilarKanji ? item : item.withHasSimilarKanji(hasSimilar));
+        }
+        return out;
+    }
+
     public List<Records.SuspendedImport> suspendedImports() {
         SQLiteDatabase db = getReadableDatabase();
         Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();

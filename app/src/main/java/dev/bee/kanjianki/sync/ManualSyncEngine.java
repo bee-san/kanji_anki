@@ -93,6 +93,10 @@ public final class ManualSyncEngine {
                     startOfDay(finished),
                     plan
             );
+            // Apply the hasSimilarKanji predicate using the similarity data
+            // just written, so newly-admitted items immediately know whether
+            // the similar_kanji rung is available for them.
+            seeded = store.annotateSimilarKanjiAvailability(seeded);
             store.replaceStudyItems(seeded, syncId, finished, settings);
             return new SyncResult(true, false, rows.size(), imports.size(), removal.message, plan.status);
         } catch (AnkiDroidGateway.SyncFailure error) {

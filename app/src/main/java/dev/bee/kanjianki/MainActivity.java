@@ -1022,6 +1022,7 @@ public final class MainActivity extends Activity {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.AdaptiveLoadPlan effectivePlan = plan == null ? adaptivePlan(rows, currentItems, now) : plan;
         List<Records.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan);
+        seeded = store.annotateSimilarKanjiAvailability(seeded);
         store.replaceStudyItems(seeded);
         return seeded;
     }
