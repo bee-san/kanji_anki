@@ -13,6 +13,7 @@ public final class SyncSettings {
     public static final String FREQUENCY_SORT_FIELD_SETTING_KEY = "frequency_sort_field";
     public static final String WRITING_TRIGGER_MISS_DAYS_SETTING_KEY = "writing_trigger_miss_days";
     public static final String RECOGNITION_PROMOTION_PASSES_SETTING_KEY = "recognition_promotion_passes";
+    public static final String REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY = "real_due_reviews_to_move";
 
     private SyncSettings() {
     }
@@ -43,6 +44,9 @@ public final class SyncSettings {
         int recognitionPromotionPasses = store == null
                 ? defaults.recognitionPromotionPasses
                 : store.getIntSetting(RECOGNITION_PROMOTION_PASSES_SETTING_KEY, defaults.recognitionPromotionPasses);
+        int realDueReviewsToMove = store == null
+                ? defaults.realDueReviewsToMove
+                : store.getIntSetting(REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, defaults.realDueReviewsToMove);
         return new Records.Settings(
                 modelName,
                 defaults.templateName,
@@ -59,7 +63,8 @@ public final class SyncSettings {
                 defaults.activeQueueCap,
                 defaults.newPerDay,
                 writingTriggerMissDays,
-                recognitionPromotionPasses
+                recognitionPromotionPasses,
+                realDueReviewsToMove
         );
     }
 
