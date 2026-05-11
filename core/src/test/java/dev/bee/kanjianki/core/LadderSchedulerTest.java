@@ -453,6 +453,116 @@ public class LadderSchedulerTest {
         assertEquals(BridgeScheduler.TASK_WORD_READING, Records.LadderRung.WORD_READING.wireName());
     }
 
+    // ---- Edge-case coverage for countsAsRealDue and null guards ----
+
+    @Test
+    public void reviewOnNotYetDueCardDoesNotCountForStreak() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        // Card due in the far future: nowMillis < dueAtMillis
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 999_999_999L);
+        HashSet<String> consumed = new HashSet<>();
+
+        // Apply 5 reviews at nowMillis=1000 (before due). None should count for streak.
+        Records.StudyItem current = item;
+        for (int i = 0; i < 5; i++) {
+            current = current.withToken("nd" + i);
+            Records.ReviewResult result = scheduler.applyReview(
+                    current, passRequest("裂", "nd" + i), consumed, 1000L + i);
+            current = result.item;
+        }
+        // Should NOT have promoted because the reviews were not "due"
+        assertEquals(Records.LadderRung.KANJI_MEANING, current.rung);
+        assertEquals(0, current.realPassStreak);
+    }
+
+    @Test
+    public void sameDueSlotReviewDoesNotCountTwiceForStreak() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        // Item due at 500, first review at 1000 counts, second at 1001 with same dueSlot shouldn't
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 500L);
+        HashSet<String> consumed = new HashSet<>();
+
+        // First review: counts (nowMillis > dueAt, first time this due slot is seen)
+        Records.ReviewResult r1 = scheduler.applyReview(
+                item.withToken("s1"), passRequest("裂", "s1"), consumed, 1000L);
+        assertEquals(1, r1.item.realPassStreak);
+
+        // Second review on the same item without it becoming due again:
+        // The dueAtMillis has now been updated to a far-future value by the scheduler.
+        // If we manually set dueAtMillis back to the original 500 (simulating same slot),
+        // the lastRealReviewDueAtMillis will already be 500, so it should be a no-op for streak.
+        Records.StudyItem sameSlot = r1.item.copyBuilder().dueAtMillis(500L).build();
+        Records.ReviewResult r2 = scheduler.applyReview(
+                sameSlot.withToken("s2"), passRequest("裂", "s2"), consumed, 1001L);
+        // Streak should not advance further because same due slot
+        assertEquals(1, r2.item.realPassStreak);
+    }
+
+    @Test
+    public void hardCountsAsPassForStreakAdvancement() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 500L);
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("h1"),
+                new Records.ReviewRequest("裂", "h1", "hard", false, false, false, 0),
+                consumed,
+                1000L
+        );
+        assertEquals("Hard should count as pass", 1, result.item.realPassStreak);
+        assertEquals(0, result.item.realAgainStreak);
+    }
+
+    @Test
+    public void easyCountsAsPassForStreakAdvancement() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 500L);
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("e1"),
+                new Records.ReviewRequest("裂", "e1", "easy", false, false, false, 0),
+                consumed,
+                1000L
+        );
+        assertEquals("Easy should count as pass", 1, result.item.realPassStreak);
+        assertEquals(0, result.item.realAgainStreak);
+    }
+
+    @Test
+    public void memoryForTaskTypeReturnsCorrectMemoryPerRung() {
+        Records.StudyItem item = newCard("裂");
+        // These exercise the switch branches in memoryForTaskType
+        assertEquals(item.writingRemediationMemory, item.memoryForTaskType("write_kanji"));
+        assertEquals(item.writingRemediationMemory, item.memoryForTaskType("writing_remediation"));
+        assertEquals(item.typingMeaningMemory, item.memoryForTaskType("type_meaning"));
+        assertEquals(item.typingMeaningMemory, item.memoryForTaskType("typing_meaning"));
+        assertEquals(item.similarKanjiMemory, item.memoryForTaskType("similar_kanji"));
+        assertEquals(item.wordReadingMemory, item.memoryForTaskType("word_reading"));
+        assertEquals(item.fontMeaningMemory, item.memoryForTaskType("font_meaning"));
+        assertEquals(item.kanjiMeaningMemory, item.memoryForTaskType("kanji_meaning"));
+        assertEquals(item.kanjiMeaningMemory, item.memoryForTaskType(null));
+        assertEquals(item.kanjiMeaningMemory, item.memoryForTaskType("unknown_type"));
+    }
+
+    @Test
+    public void withTaskMemoryUpdatesCorrectFieldPerType() {
+        Records.StudyItem item = newCard("裂");
+        Records.TaskMemory custom = Records.TaskMemory.fromStudyFields("review", 5000L, 2.0, 4.5, 3, 1, 2, 10);
+
+        assertEquals(custom, item.withTaskMemory("write_kanji", custom).writingRemediationMemory);
+        assertEquals(custom, item.withTaskMemory("writing_remediation", custom).writingRemediationMemory);
+        assertEquals(custom, item.withTaskMemory("type_meaning", custom).typingMeaningMemory);
+        assertEquals(custom, item.withTaskMemory("typing_meaning", custom).typingMeaningMemory);
+        assertEquals(custom, item.withTaskMemory("similar_kanji", custom).similarKanjiMemory);
+        assertEquals(custom, item.withTaskMemory("word_reading", custom).wordReadingMemory);
+        assertEquals(custom, item.withTaskMemory("font_meaning", custom).fontMeaningMemory);
+        assertEquals(custom, item.withTaskMemory("kanji_meaning", custom).kanjiMeaningMemory);
+        assertEquals(custom, item.withTaskMemory(null, custom).kanjiMeaningMemory);
+        assertEquals(custom, item.withTaskMemory("unknown", custom).kanjiMeaningMemory);
+    }
+
     // ---- Helpers ----
 
     private static Records.StudyItem newCard(String kanji) {
