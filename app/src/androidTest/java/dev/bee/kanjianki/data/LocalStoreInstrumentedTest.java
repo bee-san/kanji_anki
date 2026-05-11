@@ -405,6 +405,15 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "font_meaning_memory"));
         assertTrue(hasColumn("study_items", "word_reading_memory"));
         assertTrue(hasColumn("study_items", "writing_remediation_memory"));
+        // Added in DB v16 for the ladder scheduler. The v16 migration does
+        // a fresh-start rebuild of study_items, but the rebuilt shape must
+        // include the ladder state columns.
+        assertTrue(hasColumn("study_items", "rung"));
+        assertTrue(hasColumn("study_items", "phase"));
+        assertTrue(hasColumn("study_items", "real_pass_streak"));
+        assertTrue(hasColumn("study_items", "real_again_streak"));
+        assertTrue(hasColumn("study_items", "last_real_review_due_at"));
+        assertTrue(hasColumn("study_items", "similar_kanji_memory"));
     }
 
     private void assertMigratedPracticeAndReviewColumns() {

@@ -25,7 +25,7 @@ import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
     private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final int DB_VERSION = 15;
+    private static final int DB_VERSION = 16;
     private static final String TABLE_SETTINGS = "settings";
     private static final String TABLE_SYNC_RUNS = "sync_runs";
     private static final String TABLE_SOURCE_NOTES = "source_notes";
@@ -148,7 +148,13 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final String COLUMN_WRITING_REMEDIATION_PENDING = "writing_remediation_pending";
     private static final String COLUMN_WRITING_PASSED = "writing_passed";
     private static final String COLUMN_WRITING_REQUIRED = "writing_required";
-    private static final String STUDY_ITEMS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_STUDY_ITEMS + " (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
+    private static final String COLUMN_RUNG = "rung";
+    private static final String COLUMN_PHASE = "phase";
+    private static final String COLUMN_REAL_PASS_STREAK = "real_pass_streak";
+    private static final String COLUMN_REAL_AGAIN_STREAK = "real_again_streak";
+    private static final String COLUMN_LAST_REAL_REVIEW_DUE_AT = "last_real_review_due_at";
+    private static final String COLUMN_SIMILAR_KANJI_MEMORY = "similar_kanji_memory";
+    private static final String STUDY_ITEMS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_STUDY_ITEMS + " (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', rung TEXT NOT NULL DEFAULT 'kanji_meaning', phase TEXT NOT NULL DEFAULT 'new_learning', real_pass_streak INTEGER NOT NULL DEFAULT 0, real_again_streak INTEGER NOT NULL DEFAULT 0, last_real_review_due_at INTEGER NOT NULL DEFAULT 0, similar_kanji_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     private static final String LEARNING_REPEATS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_LEARNING_REPEATS + " (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
     private static final String REVIEW_LOG_TABLE_SQL = SQL_CREATE_TABLE + TABLE_REVIEW_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
     private static final String STUDY_TASK_LOG_TABLE_SQL = SQL_CREATE_TABLE_IF_NEEDED + TABLE_STUDY_TASK_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, task_key TEXT NOT NULL UNIQUE, kanji TEXT NOT NULL, task_type TEXT NOT NULL, started_at INTEGER NOT NULL, answered_at INTEGER NOT NULL, active_elapsed_ms INTEGER NOT NULL, outcome TEXT NOT NULL)";
@@ -277,6 +283,29 @@ public final class LocalStore extends SQLiteOpenHelper {
         if (oldVersion < 15) {
             createStudyTaskLogTable(db);
         }
+        if (oldVersion < 16) {
+            rebuildStudyItemsForLadderScheduler(db);
+        }
+    }
+
+    private void rebuildStudyItemsForLadderScheduler(SQLiteDatabase db) {
+        // Fresh start per the ladder scheduler migration plan. The previous
+        // study_items shape was tied to recognitionStage / writingRemediation
+        // semantics; the new shape stores rung, phase, and ladder streak
+        // counters directly. Old rows are dropped and users rebuild progress.
+        db.execSQL("DROP INDEX IF EXISTS idx_study_due");
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_STUDY_ITEMS);
+        db.execSQL(STUDY_ITEMS_TABLE_SQL);
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON " + TABLE_STUDY_ITEMS + "(state, due_at)");
+        // learning_repeats, similar_kanji_choice_state, and
+        // similar_kanji_repair_queue are emptied here so the ladder scheduler
+        // is the only source of truth for what the learner sees next. The
+        // tables themselves are retained for compile compatibility with
+        // existing LocalStore helpers; they are removed from the scheduler
+        // path in later commits.
+        db.execSQL("DELETE FROM " + TABLE_LEARNING_REPEATS);
+        db.execSQL("DELETE FROM " + TABLE_SIMILAR_KANJI_CHOICE_STATE);
+        db.execSQL("DELETE FROM " + TABLE_SIMILAR_KANJI_REPAIR_QUEUE);
     }
 
     private void createStudyTaskLogTable(SQLiteDatabase db) {
@@ -1014,7 +1043,40 @@ public final class LocalStore extends SQLiteOpenHelper {
                 items.add(readStudyItem(cursor));
             }
         }
+        Set<String> withSimilar = kanjiWithSimilarNeighbors(db);
+        for (int i = 0; i < items.size(); i++) {
+            Records.StudyItem current = items.get(i);
+            boolean hasSimilar = withSimilar.contains(current.kanji);
+            if (hasSimilar != current.hasSimilarKanji) {
+                items.set(i, current.withHasSimilarKanji(hasSimilar));
+            }
+        }
         return items;
+    }
+
+    /**
+     * Returns the set of kanji that have at least one entry in the
+     * {@code similar_kanji_pairs} table, either as kanji_a or kanji_b.
+     * This set is the data source for
+     * {@link Records.StudyItem#hasSimilarKanji}: when a study item's kanji
+     * is present here, the {@code similar_kanji} rung is included in the
+     * ladder for that card.
+     */
+    private Set<String> kanjiWithSimilarNeighbors(SQLiteDatabase db) {
+        Set<String> out = new HashSet<>();
+        try (Cursor cursor = db.rawQuery(
+                "SELECT kanji_a FROM " + TABLE_SIMILAR_KANJI_PAIRS
+                        + " UNION SELECT kanji_b FROM " + TABLE_SIMILAR_KANJI_PAIRS,
+                null
+        )) {
+            while (cursor.moveToNext()) {
+                String k = cursor.getString(0);
+                if (k != null && !k.isEmpty()) {
+                    out.add(k);
+                }
+            }
+        }
+        return out;
     }
 
     public List<Records.SuspendedImport> suspendedImports() {
@@ -3282,6 +3344,12 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put(COLUMN_FONT_MEANING_MEMORY, item.fontMeaningMemory.encode());
         values.put(COLUMN_WORD_READING_MEMORY, item.wordReadingMemory.encode());
         values.put(COLUMN_WRITING_REMEDIATION_MEMORY, item.writingRemediationMemory.encode());
+        values.put(COLUMN_RUNG, item.rung == null ? Records.LadderRung.KANJI_MEANING.wireName() : item.rung.wireName());
+        values.put(COLUMN_PHASE, item.phase == null ? Records.SchedulerPhase.NEW_LEARNING.wireName() : item.phase.wireName());
+        values.put(COLUMN_REAL_PASS_STREAK, item.realPassStreak);
+        values.put(COLUMN_REAL_AGAIN_STREAK, item.realAgainStreak);
+        values.put(COLUMN_LAST_REAL_REVIEW_DUE_AT, item.lastRealReviewDueAtMillis);
+        values.put(COLUMN_SIMILAR_KANJI_MEMORY, item.similarKanjiMemory == null ? "" : item.similarKanjiMemory.encode());
         values.put(COLUMN_ACTIVE_TOKEN, item.activeToken);
         values.put(COLUMN_CREATED_AT, item.createdAtMillis);
         db.insertWithOnConflict(TABLE_STUDY_ITEMS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
@@ -3306,6 +3374,15 @@ public final class LocalStore extends SQLiteOpenHelper {
         Records.TaskMemory writingFallback = writingRemediationPending
                 ? Records.TaskMemory.fromStudyFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
                 : Records.TaskMemory.initial();
+        Records.LadderRung rung = Records.LadderRung.fromWireName(string(cursor, COLUMN_RUNG));
+        Records.SchedulerPhase phase = Records.SchedulerPhase.fromWireName(string(cursor, COLUMN_PHASE));
+        int realPassStreak = integer(cursor, COLUMN_REAL_PASS_STREAK);
+        int realAgainStreak = integer(cursor, COLUMN_REAL_AGAIN_STREAK);
+        long lastRealReviewDueAtMillis = longValue(cursor, COLUMN_LAST_REAL_REVIEW_DUE_AT);
+        Records.TaskMemory similarKanjiMemory = Records.TaskMemory.decode(
+                string(cursor, COLUMN_SIMILAR_KANJI_MEMORY),
+                Records.TaskMemory.initial()
+        );
         return new Records.StudyItem(
                 string(cursor, COLUMN_KANJI),
                 state,
@@ -3330,7 +3407,14 @@ public final class LocalStore extends SQLiteOpenHelper {
                 Records.TaskMemory.decode(string(cursor, COLUMN_KANJI_MEANING_MEMORY), kanjiFallback),
                 Records.TaskMemory.decode(string(cursor, COLUMN_FONT_MEANING_MEMORY), fontFallback),
                 Records.TaskMemory.decode(string(cursor, COLUMN_WORD_READING_MEMORY), wordFallback),
-                Records.TaskMemory.decode(string(cursor, COLUMN_WRITING_REMEDIATION_MEMORY), writingFallback)
+                Records.TaskMemory.decode(string(cursor, COLUMN_WRITING_REMEDIATION_MEMORY), writingFallback),
+                rung,
+                phase,
+                realPassStreak,
+                realAgainStreak,
+                lastRealReviewDueAtMillis,
+                false,
+                similarKanjiMemory
         );
     }
 
