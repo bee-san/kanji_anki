@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 
@@ -18,6 +19,7 @@ public final class BootReminderReceiver extends BroadcastReceiver {
             ReminderScheduler.schedule(context);
             AutoSyncScheduler.schedule(context);
             AutoUpdateScheduler.schedule(context);
+            DatabaseBackupScheduler.schedule(context);
         }
     }
 }

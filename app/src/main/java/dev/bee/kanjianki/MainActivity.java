@@ -39,6 +39,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.widget.TextViewCompat;
 
+import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -198,6 +199,7 @@ public final class MainActivity extends Activity {
         ReminderScheduler.schedule(this);
         AutoSyncScheduler.schedule(this);
         AutoUpdateScheduler.schedule(this);
+        DatabaseBackupScheduler.schedule(this);
         handleLaunchIntent(getIntent());
     }
 
