@@ -2605,8 +2605,11 @@ public final class MainActivity extends Activity {
         downloadModelButton.setOnClickListener(v -> downloadWritingModel());
         primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        nextAfterPassButton = pinkPrimaryButton("Next");
-        nextAfterPassButton.setOnClickListener(v -> submitReview(activeAnalysis == null ? RATING_AGAIN : activeAnalysis.rating, false));
+        nextAfterPassButton = pinkPrimaryButton("Pass");
+        // Write_kanji rung exposes only Pass / Fail per the ladder contract.
+        // A successful writing recognition is always treated as Good; Hard /
+        // Easy grading from the recognizer is not surfaced on this rung.
+        nextAfterPassButton.setOnClickListener(v -> submitReview("good", false));
         primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
         studyActionBar.addView(primaryActions);
 
@@ -4896,13 +4899,10 @@ public final class MainActivity extends Activity {
     }
 
     private String nextReviewButtonText(WritingAnalysis analysis) {
-        if (analysis != null && !analysis.writingPassed) {
-            return "Save miss";
-        }
-        if (analysis != null && analysis.status == WritingAnalysis.Status.CLOSE) {
-            return "Save hard";
-        }
-        return "Next card";
+        // The write_kanji rung is Pass-only per the ladder contract; the
+        // button label does not surface Hard / Easy / miss variants even
+        // when the recognizer rating is available.
+        return "Pass";
     }
 
     private String attemptProgressText(WritingAnalysis analysis) {
