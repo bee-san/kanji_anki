@@ -294,13 +294,13 @@ public class LadderSchedulerTest {
                 noRelearningSteps
         );
 
-        // LearningStepSettings normalizes empty review steps to defaults; but if callers
-        // explicitly pass an empty list, ensure the scheduler still skips to review.
-        // The normalization uses defaults([10m]); we still enter RELEARNING.
-        // Document that behavior: users configuring zero relearning steps is not exposed here.
-        assertTrue("Phase is either REVIEW (skip) or RELEARNING (normalized default)",
-                result.item.phase == Records.SchedulerPhase.REVIEW
-                        || result.item.phase == Records.SchedulerPhase.RELEARNING);
+        // LearningStepSettings normalizes empty review steps to a default list
+        // ([10m]), so the scheduler always enters RELEARNING on Again. The
+        // "skip relearning with 1-day interval" path in applyReviewAgain is
+        // only reachable if the list were truly empty post-normalization, which
+        // the current normalizeSteps implementation prevents.
+        assertEquals("Phase enters RELEARNING (normalized default applies)",
+                Records.SchedulerPhase.RELEARNING, result.item.phase);
     }
 
     // ---- Ladder floor and ceiling ----
@@ -735,5 +735,168 @@ public class LadderSchedulerTest {
 
     private static Records.ReviewRequest failRequest(String kanji, String token) {
         return new Records.ReviewRequest(kanji, token, "again", false, false, false, 0);
+    }
+
+    // ---- Mixed pass/fail streak-breaking tests ----
+
+    @Test
+    public void mixedPassFailSequenceResetsStreakAndRequiresFreshThreshold() {
+        // 2 passes → 1 fail → must need a fresh 3 passes to promote
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 0L);
+        long now = 1000L;
+
+        // Accumulate 2 passes (short of the default threshold of 3)
+        for (int i = 0; i < 2; i++) {
+            Records.ReviewResult r = scheduler.applyReview(
+                    item.withToken("p" + i), passRequest("裂", "p" + i), consumed, now);
+            item = r.item;
+            now = item.dueAtMillis;
+            item = item.copyBuilder().dueAtMillis(now).phase(Records.SchedulerPhase.REVIEW).state("review").build();
+        }
+        assertEquals("Pass streak is 2 before fail", 2, item.realPassStreak);
+        assertEquals("Still on KANJI_MEANING", Records.LadderRung.KANJI_MEANING, item.rung);
+
+        // Now fail once — streak should reset
+        Records.ReviewResult failResult = scheduler.applyReview(
+                item.withToken("f0"), failRequest("裂", "f0"), consumed, now);
+        item = failResult.item;
+        assertEquals("Pass streak reset to 0 after fail", 0, item.realPassStreak);
+        assertEquals("Again streak is 1", 1, item.realAgainStreak);
+        assertEquals("Still on KANJI_MEANING after single fail", Records.LadderRung.KANJI_MEANING, item.rung);
+
+        // Now need a fresh 3 passes to promote (not just 1 more)
+        now = Math.max(item.dueAtMillis, now + 86_400_000L);
+        item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(Records.SchedulerPhase.REVIEW).state("review").build();
+        for (int i = 0; i < 2; i++) {
+            Records.ReviewResult r = scheduler.applyReview(
+                    item.withToken("q" + i), passRequest("裂", "q" + i), consumed, now);
+            item = r.item;
+            now = item.dueAtMillis;
+            item = item.copyBuilder().dueAtMillis(now).phase(Records.SchedulerPhase.REVIEW).state("review").build();
+        }
+        assertEquals("Still on KANJI_MEANING after only 2 fresh passes", Records.LadderRung.KANJI_MEANING, item.rung);
+
+        // Third pass promotes
+        Records.ReviewResult promoteResult = scheduler.applyReview(
+                item.withToken("q2"), passRequest("裂", "q2"), consumed, now);
+        assertEquals("Promoted to FONT_MEANING after 3 fresh passes",
+                Records.LadderRung.FONT_MEANING, promoteResult.item.rung);
+    }
+
+    // ---- hasSimilarKanji=true promotion via full applyReview path ----
+
+    @Test
+    public void promotionLandsOnSimilarKanjiWhenAvailable() {
+        // Card at TYPE_MEANING with hasSimilarKanji=true: 3 passes should
+        // promote to SIMILAR_KANJI (not skip to KANJI_MEANING).
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.TYPE_MEANING, 0L)
+                .copyBuilder().rung(Records.LadderRung.TYPE_MEANING).build()
+                .withHasSimilarKanji(true);
+        long now = 1000L;
+
+        for (int i = 0; i < DEFAULT_THRESHOLD; i++) {
+            Records.ReviewResult r = scheduler.applyReview(
+                    item.withToken("s" + i), passRequest("裂", "s" + i), consumed, now);
+            item = r.item;
+            // Preserve hasSimilarKanji across rebuilds
+            now = item.dueAtMillis;
+            item = item.copyBuilder().dueAtMillis(now).phase(Records.SchedulerPhase.REVIEW).state("review").build()
+                    .withHasSimilarKanji(true);
+        }
+
+        assertEquals("Promoted to SIMILAR_KANJI when hasSimilarKanji is true",
+                Records.LadderRung.SIMILAR_KANJI, item.rung);
+    }
+
+    @Test
+    public void promotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
+        // Card at TYPE_MEANING with hasSimilarKanji=false: 3 passes should
+        // skip SIMILAR_KANJI and promote directly to KANJI_MEANING.
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.TYPE_MEANING, 0L)
+                .copyBuilder().rung(Records.LadderRung.TYPE_MEANING).build()
+                .withHasSimilarKanji(false);
+        long now = 1000L;
+
+        for (int i = 0; i < DEFAULT_THRESHOLD; i++) {
+            Records.ReviewResult r = scheduler.applyReview(
+                    item.withToken("ns" + i), passRequest("裂", "ns" + i), consumed, now);
+            item = r.item;
+            now = item.dueAtMillis;
+            item = item.copyBuilder().dueAtMillis(now).phase(Records.SchedulerPhase.REVIEW).state("review").build()
+                    .withHasSimilarKanji(false);
+        }
+
+        assertEquals("Promoted to KANJI_MEANING, skipping SIMILAR_KANJI",
+                Records.LadderRung.KANJI_MEANING, item.rung);
+    }
+
+    // ---- Custom realDueReviewsToMove threshold ----
+
+    @Test
+    public void customThresholdRequiresMorePassesToPromote() {
+        // Use a threshold of 5 instead of the default 3.
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 0L);
+        Records.Settings customSettings = new Records.Settings(
+                "Kiku", "Mining", "Expression", "ExpressionReading", "MainDefinition", "Sentence",
+                "Frequency", "FreqSort", 21, 2, 100, 3000, 24, 3, 5, 5, 5);
+        long now = 1000L;
+
+        // After 4 passes (less than threshold 5), should NOT promote
+        for (int i = 0; i < 4; i++) {
+            Records.ReviewResult r = scheduler.applyReview(
+                    item.withToken("ct" + i), passRequest("裂", "ct" + i), consumed, now,
+                    null, customSettings, null);
+            item = r.item;
+            now = item.dueAtMillis;
+            item = item.copyBuilder().dueAtMillis(now).phase(Records.SchedulerPhase.REVIEW).state("review").build();
+        }
+        assertEquals("Still on KANJI_MEANING after 4/5 passes",
+                Records.LadderRung.KANJI_MEANING, item.rung);
+
+        // 5th pass promotes
+        Records.ReviewResult r = scheduler.applyReview(
+                item.withToken("ct4"), passRequest("裂", "ct4"), consumed, now,
+                null, customSettings, null);
+        assertEquals("Promoted to FONT_MEANING after 5 passes with custom threshold",
+                Records.LadderRung.FONT_MEANING, r.item.rung);
+    }
+
+    @Test
+    public void customThresholdRequiresMoreFailsToDemote() {
+        // Use a threshold of 5: need 5 consecutive Again to demote.
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 0L);
+        Records.Settings customSettings = new Records.Settings(
+                "Kiku", "Mining", "Expression", "ExpressionReading", "MainDefinition", "Sentence",
+                "Frequency", "FreqSort", 21, 2, 100, 3000, 24, 3, 5, 5, 5);
+        long now = 1000L;
+
+        // After 4 fails (less than threshold 5), should NOT demote
+        for (int i = 0; i < 4; i++) {
+            Records.ReviewResult r = scheduler.applyReview(
+                    item.withToken("df" + i), failRequest("裂", "df" + i), consumed, now,
+                    null, customSettings, null);
+            item = r.item;
+            now = Math.max(item.dueAtMillis, now + 86_400_000L);
+            item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(Records.SchedulerPhase.REVIEW).state("review").build();
+        }
+        assertEquals("Still on KANJI_MEANING after 4/5 fails",
+                Records.LadderRung.KANJI_MEANING, item.rung);
+
+        // 5th fail demotes
+        Records.ReviewResult r = scheduler.applyReview(
+                item.withToken("df4"), failRequest("裂", "df4"), consumed, now,
+                null, customSettings, null);
+        assertEquals("Demoted to TYPE_MEANING after 5 fails with custom threshold",
+                Records.LadderRung.TYPE_MEANING, r.item.rung);
     }
 }

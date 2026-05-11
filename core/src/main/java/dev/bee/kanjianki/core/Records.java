@@ -53,6 +53,7 @@ public final class Records {
                     return rung;
                 }
             }
+            System.err.println("LadderRung.fromWireName: unknown wire name '" + name + "', defaulting to KANJI_MEANING");
             return KANJI_MEANING;
         }
     }
@@ -87,6 +88,7 @@ public final class Records {
                     return phase;
                 }
             }
+            System.err.println("SchedulerPhase.fromWireName: unknown wire name '" + name + "', defaulting to NEW_LEARNING");
             return NEW_LEARNING;
         }
     }
@@ -1376,6 +1378,8 @@ public final class Records {
             private long lastRealReviewDueAtMillis;
             private boolean hasSimilarKanji;
             private TaskMemory similarKanjiMemory;
+            private boolean legacyFieldModified;
+            private boolean rungExplicitlySet;
 
             StudyItemBuilder(StudyItem src) {
                 this.kanji = src.kanji;
@@ -1419,10 +1423,10 @@ public final class Records {
             public StudyItemBuilder lapses(int value) { this.lapses = value; return this; }
             public StudyItemBuilder learningStep(int value) { this.learningStep = value; return this; }
             public StudyItemBuilder writingLevel(int value) { this.writingLevel = value; return this; }
-            public StudyItemBuilder recognitionStage(int value) { this.recognitionStage = value; return this; }
+            public StudyItemBuilder recognitionStage(int value) { this.recognitionStage = value; this.legacyFieldModified = true; return this; }
             public StudyItemBuilder consecutiveFailedRecognitionDays(int value) { this.consecutiveFailedRecognitionDays = value; return this; }
             public StudyItemBuilder lastFailedRecognitionDayMillis(long value) { this.lastFailedRecognitionDayMillis = value; return this; }
-            public StudyItemBuilder writingRemediationPending(boolean value) { this.writingRemediationPending = value; return this; }
+            public StudyItemBuilder writingRemediationPending(boolean value) { this.writingRemediationPending = value; this.legacyFieldModified = true; return this; }
             public StudyItemBuilder suppressedByTaskType(String value) { this.suppressedByTaskType = value; return this; }
             public StudyItemBuilder suppressedAtMillis(long value) { this.suppressedAtMillis = value; return this; }
             public StudyItemBuilder matureIntervalDays(int value) { this.matureIntervalDays = value; return this; }
@@ -1434,7 +1438,7 @@ public final class Records {
             public StudyItemBuilder fontMeaningMemory(TaskMemory value) { this.fontMeaningMemory = value; return this; }
             public StudyItemBuilder wordReadingMemory(TaskMemory value) { this.wordReadingMemory = value; return this; }
             public StudyItemBuilder writingRemediationMemory(TaskMemory value) { this.writingRemediationMemory = value; return this; }
-            public StudyItemBuilder rung(LadderRung value) { this.rung = value; return this; }
+            public StudyItemBuilder rung(LadderRung value) { this.rung = value; this.rungExplicitlySet = true; return this; }
             public StudyItemBuilder phase(SchedulerPhase value) { this.phase = value; return this; }
             public StudyItemBuilder realPassStreak(int value) { this.realPassStreak = value; return this; }
             public StudyItemBuilder realAgainStreak(int value) { this.realAgainStreak = value; return this; }
@@ -1443,6 +1447,10 @@ public final class Records {
             public StudyItemBuilder similarKanjiMemory(TaskMemory value) { this.similarKanjiMemory = value; return this; }
 
             public StudyItem build() {
+                // If legacy fields (writingRemediationPending, recognitionStage)
+                // were modified without an explicit rung() call, pass null to
+                // force re-derivation in the constructor.
+                LadderRung effectiveRung = (legacyFieldModified && !rungExplicitlySet) ? null : rung;
                 return new StudyItem(
                         kanji,
                         state,
@@ -1468,7 +1476,7 @@ public final class Records {
                         fontMeaningMemory,
                         wordReadingMemory,
                         writingRemediationMemory,
-                        rung,
+                        effectiveRung,
                         phase,
                         realPassStreak,
                         realAgainStreak,

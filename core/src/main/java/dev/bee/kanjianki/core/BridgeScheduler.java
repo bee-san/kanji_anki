@@ -158,6 +158,11 @@ public final class BridgeScheduler {
             }
         }
         Records.DashboardRow row = rowByKanji.get(best.kanji);
+        if (row == null) {
+            // Should be unreachable — activeQueueItems filters to kanji with
+            // matching rows — but guard against NPE defensively.
+            return null;
+        }
         String token = best.activeToken == null || best.activeToken.isEmpty()
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
@@ -511,6 +516,12 @@ public final class BridgeScheduler {
         List<Integer> steps = isNewLearning
                 ? context.learningSettings.newStepsMinutes
                 : context.learningSettings.reviewStepsMinutes;
+        if (steps == null || steps.isEmpty()) {
+            // Safety: normalizeSteps should prevent this, but if steps are
+            // somehow empty, graduate immediately rather than crashing.
+            graduateToReview(context, state);
+            return;
+        }
         switch (context.rating) {
             case RATING_AGAIN:
                 state.stepIndex = 0;
@@ -704,6 +715,13 @@ public final class BridgeScheduler {
         }
     }
 
+    /**
+     * Builds the updated study item after a review. The item-level stability
+     * and difficulty fields mirror the active rung's TaskMemory values — they
+     * are per-rung, not global. This is intentional: FSRS parameters are
+     * rung-specific, and external code reading item.stability sees the most
+     * recent rung's state for display and persistence purposes.
+     */
     private Records.StudyItem updatedStudyItem(ReviewContext context, ReviewState state) {
         Records.TaskMemory updatedMemory = new Records.TaskMemory(
                 state.schedulerState,
@@ -823,6 +841,11 @@ public final class BridgeScheduler {
         byFamily.computeIfAbsent(itemFamilyKey, ignored -> new ArrayList<>()).add(item);
     }
 
+    /**
+     * Creates a mutable token set from the given list of previously consumed
+     * tokens. The returned set is <strong>not thread-safe</strong>; callers must
+     * synchronize externally if the set will be shared across threads.
+     */
     public Set<String> tokenSet(List<String> tokens) {
         return new HashSet<>(tokens);
     }

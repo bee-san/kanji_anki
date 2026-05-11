@@ -4160,8 +4160,12 @@ public final class MainActivity extends Activity {
                 Toast.makeText(this, "Use whole numbers from 1 to 10.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, passCount);
-            store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, missCount);
+        store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, passCount);
+        store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, missCount);
+        // The ladder state machine uses a single threshold for both promotion
+        // and demotion. Persist the maximum of the two UI values so that the
+        // scheduler honours the user's intent for both directions.
+        store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, Math.max(passCount, missCount));
             Toast.makeText(this, "Ladder thresholds saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
