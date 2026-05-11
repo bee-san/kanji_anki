@@ -76,6 +76,7 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -122,11 +123,11 @@ public final class MainActivity extends Activity {
     private static final String SOURCE_ACTIVE = "active";
     private static final String SOURCE_SUSPENDED = "suspended";
     private static final String TASK_FONT_MEANING = "font_meaning";
-    private static final String TASK_SIMILAR_WRITING = "similar_writing";
+
     private static final String TASK_TARGETED_WRITING = "targeted_writing";
     private static final String TASK_TYPING_MEANING = "typing_meaning";
     private static final String TASK_WORD_READING = "word_reading";
-    private static final String TASK_WRITING_REMEDIATION = "writing_remediation";
+
     private static final String EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet";
     private static final String EMPTY_ACTIVE_PRACTICE_BODY = "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.";
 
@@ -140,9 +141,6 @@ public final class MainActivity extends Activity {
     private LinearLayout studyActionBar;
     private Records.StudySession activeSession;
     private Records.AdaptiveLoadPlan activeStudyPlan;
-    private Records.LearningRepeat activeLearningRepeat;
-    private Records.SimilarKanjiChoiceCard activeSimilarChoice;
-    private Records.SimilarKanjiWritingRepair activeSimilarRepair;
     private DrawingPadView drawingPad;
     private TextView studyStatus;
     private TextView resultStatus;
@@ -167,7 +165,6 @@ public final class MainActivity extends Activity {
     private boolean continueAllKanjiSession;
     private int hintsUsed;
     private int currentPracticeLevel;
-    private int sessionCompletedSimilarStudyTasks;
     private int sessionProgressCompleted;
     private int sessionProgressMax;
     private float flashcardTouchStartX;
@@ -1111,12 +1108,10 @@ public final class MainActivity extends Activity {
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
         chips.addView(chip(recognitionStageLabel(item), BLUE));
-        if (item.writingRemediationPending) {
-            chips.addView(chip("writing repair", CORAL));
-        } else if (!item.suppressedByTaskType.isEmpty()) {
-            chips.addView(chip("lower prompts hidden", TEAL));
-        } else if (item.consecutiveFailedRecognitionDays > 0) {
-            chips.addView(chip("miss days " + item.consecutiveFailedRecognitionDays, BLUE));
+        if (item.phase == Records.SchedulerPhase.RELEARNING) {
+            chips.addView(chip("relearning", CORAL));
+        } else if (item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
+            chips.addView(chip("learning", TEAL));
         }
         box.addView(chips);
         return box;
@@ -1144,11 +1139,18 @@ public final class MainActivity extends Activity {
     }
 
     private String recognitionStageLabel(Records.StudyItem item) {
-        switch (Math.max(0, Math.min(2, item.recognitionStage))) {
-            case 1:
+        switch (item.rung) {
+            case WRITE_KANJI:
+                return "write kanji";
+            case TYPE_MEANING:
+                return "type meaning";
+            case SIMILAR_KANJI:
+                return "similar kanji";
+            case FONT_MEANING:
                 return "font -> meaning";
-            case 2:
+            case WORD_READING:
                 return "word -> reading";
+            case KANJI_MEANING:
             default:
                 return "kanji -> meaning";
         }
@@ -1545,11 +1547,6 @@ public final class MainActivity extends Activity {
             renderStudyRunDone(activeStudyPlan);
             return;
         }
-        Records.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
-        if (repair != null) {
-            renderSimilarWritingRepair(repair, now);
-            return;
-        }
         if (rows.isEmpty()) {
             renderEmptyStudyQueue(now);
             return;
@@ -1564,20 +1561,9 @@ public final class MainActivity extends Activity {
             renderStudyRunDone(seededPlan);
             return;
         }
-        Records.LearningRepeat repeat = nextDueLearningRepeat(rows, seeded, now);
-        if (repeat != null) {
-            renderLearningRepeat(repeat, rows, seeded, now);
-            return;
-        }
-        activeLearningRepeat = null;
         activeSession = nextActiveSession(rows, seeded, seededPlan, now);
         if (activeSession == null) {
             renderNoStudySession(rows, seededPlan, now);
-            return;
-        }
-        Records.SimilarKanjiChoiceCard gate = store.dueSimilarChoiceForActiveTarget(activeSession.item.kanji, now);
-        if (gate != null) {
-            renderSimilarChoice(gate);
             return;
         }
         store.saveStudyItem(activeSession.item);
@@ -1588,11 +1574,6 @@ public final class MainActivity extends Activity {
     }
 
     private void renderEmptyStudyQueue(long now) {
-        Records.SimilarKanjiChoiceCard inventoryChoice = store.nextDueInventorySimilarChoice(Collections.emptySet(), now);
-        if (inventoryChoice != null) {
-            renderSimilarChoice(inventoryChoice);
-            return;
-        }
         prepareStudyContent(activeStudyPlan, false);
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
@@ -1608,11 +1589,6 @@ public final class MainActivity extends Activity {
     }
 
     private void renderNoStudySession(List<Records.DashboardRow> rows, Records.AdaptiveLoadPlan seededPlan, long now) {
-        Records.SimilarKanjiChoiceCard inventoryChoice = store.nextDueInventorySimilarChoice(activeKanjiSet(rows), now);
-        if (inventoryChoice != null) {
-            renderSimilarChoice(inventoryChoice);
-            return;
-        }
         if (!continueAllKanjiSession && seededPlan.focusComplete()) {
             renderFocusDone(seededPlan);
             return;
@@ -1626,59 +1602,6 @@ public final class MainActivity extends Activity {
         back.setOnClickListener(v -> renderHome());
         card.addView(back);
         content.addView(card);
-    }
-
-    private Set<String> activeKanjiSet(List<Records.DashboardRow> rows) {
-        Set<String> out = new HashSet<>();
-        for (Records.DashboardRow row : rows) {
-            out.add(row.kanji);
-        }
-        return out;
-    }
-
-    private Records.LearningRepeat nextDueLearningRepeat(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
-        for (Records.LearningRepeat repeat : store.dueLearningRepeats(now)) {
-            Records.DashboardRow row = findRow(rows, repeat.kanji);
-            Records.StudyItem item = findStudyItem(items, repeat);
-            if (!learningRepeatStillValid(repeat, row, item)) {
-                store.clearLearningRepeat(repeat);
-                continue;
-            }
-            return repeat;
-        }
-        return null;
-    }
-
-    private boolean learningRepeatStillValid(Records.LearningRepeat repeat, Records.DashboardRow row, Records.StudyItem item) {
-        if (row == null || item == null || STATE_RETIRED.equals(item.state)) {
-            return false;
-        }
-        return !TASK_WRITING_REMEDIATION.equals(repeat.taskType) || item.writingRemediationPending;
-    }
-
-    private void renderLearningRepeat(Records.LearningRepeat repeat, List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
-        Records.DashboardRow row = findRow(rows, repeat.kanji);
-        Records.StudyItem item = findStudyItem(items, repeat);
-        if (row == null || item == null) {
-            store.clearLearningRepeat(repeat);
-            renderStudy();
-            return;
-        }
-        String token = StudyTokenFactory.learningRepeat(repeat.kanji, repeat.activeToken);
-        activeLearningRepeat = repeat.withToken(token, now);
-        store.saveLearningRepeat(activeLearningRepeat);
-        activeSession = new Records.StudySession(
-                item.withToken(token),
-                row,
-                token,
-                repeat.taskType,
-                TASK_WRITING_REMEDIATION.equals(repeat.taskType),
-                row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
-        );
-        String taskKey = learningRepeatKey(activeLearningRepeat);
-        registerStudyTaskShown(taskKey);
-        startActiveStudyTask(taskKey, activeLearningRepeat.kanji, activeLearningRepeat.taskType, now);
-        renderSession(activeSession);
     }
 
     private void renderFocusDone(Records.AdaptiveLoadPlan plan) {
@@ -1774,22 +1697,16 @@ public final class MainActivity extends Activity {
                     now
             );
         }
-        Records.SimilarKanjiChoiceCard gate = store.dueSimilarChoiceForActiveTarget(item.kanji, now);
-        if (gate != null) {
-            renderSimilarChoice(gate);
-            return;
-        }
         String token = StudyTokenFactory.studyItem(item.kanji, item.activeToken);
-        String taskType = taskTypeForStudyItem(item);
+        String taskType = rungTaskType(item);
         activeSession = new Records.StudySession(
                 item.withToken(token),
                 row,
                 token,
                 taskType,
-                item.writingRemediationPending,
+                item.rung == Records.LadderRung.WRITE_KANJI,
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
-        activeLearningRepeat = null;
         store.saveStudyItem(activeSession.item);
         String taskKey = sessionTaskKey(activeSession);
         registerStudyTaskShown(taskKey);
@@ -1797,31 +1714,25 @@ public final class MainActivity extends Activity {
         renderSession(activeSession);
     }
 
+    private String rungTaskType(Records.StudyItem item) {
+        return item.rung.wireName();
+    }
+
     private String taskTypeForStudyItem(Records.StudyItem item) {
-        if (item.writingRemediationPending) {
-            return TASK_WRITING_REMEDIATION;
-        }
-        switch (Math.max(-1, Math.min(2, item.recognitionStage))) {
-            case -1:
-                return TASK_TYPING_MEANING;
-            case 1:
-                return TASK_FONT_MEANING;
-            case 2:
-                return TASK_WORD_READING;
-            default:
-                return "kanji_meaning";
+        return item.rung.wireName();
+    }
+
+    private void renderSession(Records.StudySession session) {
+        if (session.writingRequired) {
+            renderWritingSession(session);
+        } else if (BridgeScheduler.TASK_SIMILAR_KANJI.equals(session.taskType)) {
+            renderSimilarKanjiSession(session);
+        } else {
+            renderFlashcardSession(session);
         }
     }
 
-    private void renderSimilarChoice(Records.SimilarKanjiChoiceCard card) {
-        activeSession = null;
-        activeLearningRepeat = null;
-        activeSimilarRepair = null;
-        activeSimilarChoice = card;
-        initializeSessionProgressTarget(activeStudyPlan);
-        String taskKey = similarChoiceKey(card);
-        registerStudyTaskShown(taskKey);
-        startActiveStudyTask(taskKey, card.targetKanji, "similar_choice", System.currentTimeMillis());
+    private void renderSimilarKanjiSession(Records.StudySession session) {
         prepareStudyContent(activeStudyPlan, true);
         activeAnalysis = null;
         checkingWriting = false;
@@ -1836,25 +1747,47 @@ public final class MainActivity extends Activity {
             studyActionBar.setVisibility(View.GONE);
         }
 
+        List<String> choices = buildSimilarKanjiChoices(session.item.kanji);
+        if (choices.size() < 2) {
+            // Not enough similar kanji to show a choice — fall back to
+            // standard flashcard for this card.
+            renderFlashcardSession(session);
+            return;
+        }
+        Collections.shuffle(choices);
+
         LinearLayout cardShell = softStudyCard();
         cardShell.addView(modePill("Recognise"));
         cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
-        cardShell.addView(text("Similar choice", 16, STUDY_PINK_DARK, true));
-        cardShell.addView(text("Pick the kanji that matches the meaning before the normal card appears.", 15, STUDY_MUTED, false));
+        cardShell.addView(text("Similar kanji", 16, STUDY_PINK_DARK, true));
+        cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
         LinearLayout box = softInsetPanel();
-        box.addView(text("Which kanji means " + similarChoiceMeaning(card) + "?", 22, STUDY_PLUM, true));
-        box.addView(similarChoiceGrid(card));
+        String meaning = session.row != null ? session.row.primaryMeaning : "";
+        box.addView(text("Which kanji means " + meaning + "?", 22, STUDY_PLUM, true));
+        box.addView(similarKanjiGrid(choices, session.item.kanji));
         cardShell.addView(box);
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
         cardLp.setMargins(0, dp(6), 0, dp(12));
         content.addView(cardShell, cardLp);
     }
 
-    private View similarChoiceGrid(Records.SimilarKanjiChoiceCard card) {
+    private List<String> buildSimilarKanjiChoices(String targetKanji) {
+        List<Records.SimilarKanjiPair> pairs = store.similarPairsForKanji(targetKanji);
+        Set<String> choices = new LinkedHashSet<>();
+        choices.add(targetKanji);
+        for (Records.SimilarKanjiPair pair : pairs) {
+            String other = pair.kanjiA.equals(targetKanji) ? pair.kanjiB : pair.kanjiA;
+            choices.add(other);
+            if (choices.size() >= 4) {
+                break;
+            }
+        }
+        return new ArrayList<>(choices);
+    }
+
+    private View similarKanjiGrid(List<String> choices, String correctKanji) {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
-        List<String> choices = new ArrayList<>(card.choices);
-        Collections.shuffle(choices);
         LinearLayout row = null;
         for (int i = 0; i < choices.size(); i++) {
             if (i % 2 == 0) {
@@ -1868,10 +1801,15 @@ public final class MainActivity extends Activity {
             button.setTextSize(34);
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
-            button.setOnClickListener(v -> submitSimilarChoice(glyph));
+            button.setOnClickListener(v -> {
+                boolean correct = glyph.equals(correctKanji);
+                submitReview(correct ? "good" : "again", false);
+            });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
             lp.setMargins(dp(4), dp(8), dp(4), 0);
-            row.addView(button, lp);
+            if (row != null) {
+                row.addView(button, lp);
+            }
         }
         if (choices.size() % 2 == 1 && grid.getChildCount() > 0) {
             LinearLayout lastRow = (LinearLayout) grid.getChildAt(grid.getChildCount() - 1);
@@ -1881,98 +1819,6 @@ public final class MainActivity extends Activity {
             lastRow.addView(spacer, lp);
         }
         return grid;
-    }
-
-    private void submitSimilarChoice(String selectedKanji) {
-        if (activeSimilarChoice == null) {
-            renderStudy();
-            return;
-        }
-        String taskKey = similarChoiceKey(activeSimilarChoice);
-        long now = System.currentTimeMillis();
-        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(activeSimilarChoice, selectedKanji, now);
-        completeActiveStudyTask(taskKey, result.correct ? "correct" : "wrong", now);
-        if (result.correct) {
-            markSimilarStudyTaskCompleted();
-        }
-        Toast.makeText(
-                this,
-                result.correct ? "Correct." : "Queued similar writing repairs.",
-                Toast.LENGTH_SHORT
-        ).show();
-        renderStudy();
-    }
-
-    private void renderSimilarWritingRepair(Records.SimilarKanjiWritingRepair repair, long now) {
-        String token = StudyTokenFactory.similarRepair(repair.repairKanji, repair.activeToken);
-        activeSimilarChoice = null;
-        activeSimilarRepair = repair.withToken(token, now);
-        store.saveSimilarWritingRepair(activeSimilarRepair);
-        Records.DashboardRow row = rowForSimilarRepair(activeSimilarRepair.repairKanji);
-        Records.StudyItem item = new Records.StudyItem(
-                activeSimilarRepair.repairKanji,
-                STATE_LEARNING,
-                now,
-                0.4,
-                5.0,
-                0,
-                0,
-                0,
-                0,
-                token,
-                activeSimilarRepair.createdAtMillis
-        );
-        activeLearningRepeat = null;
-        activeSession = new Records.StudySession(
-                item,
-                row,
-                token,
-                TASK_SIMILAR_WRITING,
-                true,
-                activeSimilarRepair.promptMeaning
-        );
-        initializeSessionProgressTarget(activeStudyPlan);
-        String taskKey = similarRepairKey(activeSimilarRepair);
-        registerStudyTaskShown(taskKey);
-        startActiveStudyTask(taskKey, activeSimilarRepair.repairKanji, TASK_SIMILAR_WRITING, now);
-        renderSession(activeSession);
-    }
-
-    private Records.DashboardRow rowForSimilarRepair(String kanji) {
-        Records.DashboardRow row = store.rowForKanji(kanji);
-        if (row != null) {
-            return row;
-        }
-        Records.KanjiInventoryItem item = store.inventoryItemForKanji(kanji);
-        String meaning = item == null ? "" : item.primaryMeaning;
-        String reading = item == null ? "" : item.readings;
-        String search = item == null ? TextUtil.browserSearchForKanji(kanji, settings()) : item.browserSearch;
-        return new Records.DashboardRow(
-                kanji,
-                null,
-                meaning,
-                reading,
-                search,
-                0,
-                "similar_choice_repair",
-                "Practice after a similar-kanji choice miss.",
-                0,
-                0,
-                0,
-                Collections.emptyList()
-        );
-    }
-
-    private void renderSession(Records.StudySession session) {
-        activeSimilarChoice = null;
-        if (session == null || !TASK_SIMILAR_WRITING.equals(session.taskType)) {
-            activeSimilarRepair = null;
-        }
-        if (session.writingRequired) {
-            renderWritingSession(session);
-        } else {
-            renderFlashcardSession(session);
-        }
     }
 
     private void renderFlashcardSession(Records.StudySession session) {
@@ -2131,9 +1977,6 @@ public final class MainActivity extends Activity {
         card.addView(modePill(LABEL_PRACTICE));
         card.addView(text("Draw this kanji", 30, STUDY_PLUM, true));
         card.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
-        if (activeLearningRepeat != null) {
-            card.addView(text(learningRepeatLine(activeLearningRepeat), 15, STUDY_MUTED, false));
-        }
         if (session.row != null) {
             if (isRecallTask(session)) {
                 card.addView(text("Prompt: " + sessionClue(session), 17, STUDY_PLUM, true));
@@ -2141,10 +1984,6 @@ public final class MainActivity extends Activity {
                     card.addView(text("Reading: " + session.row.reading, 15, STUDY_MUTED, false));
                 }
                 card.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, STUDY_MUTED, false));
-            } else if (TASK_WRITING_REMEDIATION.equals(session.taskType)) {
-                card.addView(text("Recognition has missed on multiple days. Write it once with the guide before returning to recognition.", 15, STUDY_MUTED, false));
-            } else if (TASK_SIMILAR_WRITING.equals(session.taskType)) {
-                card.addView(text("Write the kanji from the similar-choice miss before retrying that choice.", 15, STUDY_MUTED, false));
             } else {
                 card.addView(text("Learn it from the reference, trace it, then check.", 15, STUDY_MUTED, false));
             }
@@ -2176,7 +2015,6 @@ public final class MainActivity extends Activity {
     }
 
     private void resetStudyRunProgress() {
-        sessionCompletedSimilarStudyTasks = 0;
         sessionProgressCompleted = 0;
         sessionProgressMax = 0;
         sessionCompletedTaskKeys.clear();
@@ -2184,10 +2022,6 @@ public final class MainActivity extends Activity {
     }
 
     private void markStudyRunPassed(String kanji) {
-        if (activeLearningRepeat != null) {
-            markStudyTaskCompleted(learningRepeatKey(activeLearningRepeat));
-            return;
-        }
         if (activeSession != null) {
             markStudyTaskCompleted(sessionTaskKey(activeSession));
             return;
@@ -2195,18 +2029,6 @@ public final class MainActivity extends Activity {
         if (kanji != null && !kanji.isEmpty()) {
             markStudyTaskCompleted("kanji:" + kanji);
         }
-    }
-
-    private void markSimilarStudyTaskCompleted() {
-        if (activeSimilarChoice != null) {
-            markStudyTaskCompleted(similarChoiceKey(activeSimilarChoice));
-        } else if (activeSimilarRepair != null) {
-            markStudyTaskCompleted(similarRepairKey(activeSimilarRepair));
-        } else {
-            sessionProgressCompleted++;
-            sessionProgressMax = Math.max(sessionProgressMax, sessionProgressCompleted);
-        }
-        sessionCompletedSimilarStudyTasks++;
     }
 
     private void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan) {
@@ -2223,10 +2045,8 @@ public final class MainActivity extends Activity {
         if (key == null || key.isEmpty()) {
             return;
         }
-        boolean extraSessionTask = key.startsWith("repeat:") || key.startsWith("similar-choice:") || key.startsWith("similar-repair:");
-        if (sessionSeenTaskKeys.add(key) && sessionProgressMax > 0 && extraSessionTask && continueAllKanjiSession) {
-            sessionProgressMax++;
-        } else if (sessionProgressMax <= 0) {
+        sessionSeenTaskKeys.add(key);
+        if (sessionProgressMax <= 0) {
             sessionProgressMax = 1;
         }
     }
@@ -2295,35 +2115,6 @@ public final class MainActivity extends Activity {
 
     private void abandonActiveStudyTask() {
         activeStudyTask = null;
-    }
-
-    private String learningRepeatKey(Records.LearningRepeat repeat) {
-        if (repeat == null) {
-            return "";
-        }
-        return "repeat:" + repeat.taskType + ":" + repeat.kanji + ":" + repeat.answerSignature + ":" + repeat.stepIndex + ":" + repeat.activeToken;
-    }
-
-    private String similarChoiceKey(Records.SimilarKanjiChoiceCard choice) {
-        if (choice == null) {
-            return "";
-        }
-        return "similar-choice:" + choice.targetKanji + ":" + choice.choiceSignature + ":" + choice.correctCount + ":" + choice.wrongCount;
-    }
-
-    private String similarRepairKey(Records.SimilarKanjiWritingRepair repair) {
-        if (repair == null) {
-            return "";
-        }
-        return "similar-repair:" + repair.id + ":" + repair.activeToken;
-    }
-
-    private String learningRepeatLine(Records.LearningRepeat repeat) {
-        Records.LearningStepSettings settings = store.learningStepSettings();
-        int total = Records.LEARNING_REPEAT_REVIEW.equals(repeat.repeatType)
-                ? settings.reviewStepsMinutes.size()
-                : settings.newStepsMinutes.size();
-        return "Learning step " + Math.min(total, repeat.stepIndex + 1) + " / " + Math.max(1, total) + ". Practice only.";
     }
 
     private String flashcardTitle(Records.StudySession session) {
@@ -2743,14 +2534,6 @@ public final class MainActivity extends Activity {
                 override
         );
         Records.ReviewRequest request = mappedReview.request();
-        if (activeSimilarRepair != null) {
-            submitSimilarWritingRepair(request);
-            return;
-        }
-        if (activeLearningRepeat != null) {
-            submitLearningRepeat(request, mappedReview.ratingCode());
-            return;
-        }
         submitNormalReview(request);
     }
 
@@ -2772,15 +2555,11 @@ public final class MainActivity extends Activity {
     }
 
     private void saveAppliedReview(Records.ReviewRequest request, Records.ReviewResult result, long now) {
-        String repeatType = learningRepeatTypeForReview(activeSession.item, request, result.appliedRating);
-        Records.StudyItem itemToSave = repeatType == null ? result.item : deferSameDaySrsDue(result.item, activeSession.taskType, now);
-        store.saveStudyItem(itemToSave);
-        store.saveReview(request, result.appliedRating, now, activeSession.item, itemToSave);
+        store.saveStudyItem(result.item);
+        store.saveReview(request, result.appliedRating, now, activeSession.item, result.item);
         if (!RATING_AGAIN.equals(result.appliedRating)) {
             markStudyRunPassed(request.kanji);
         }
-        String repeatTaskType = RATING_AGAIN.equals(result.appliedRating) ? taskTypeForStudyItem(itemToSave) : activeSession.taskType;
-        enqueueLearningRepeatIfNeeded(itemToSave, repeatTaskType, repeatType, now);
     }
 
     private void tuneSchedulerIfNeeded(Records.SchedulerParameters parameters, long now) {
@@ -2788,141 +2567,6 @@ public final class MainActivity extends Activity {
         if (tuned.lastAdjustedAtMillis != parameters.lastAdjustedAtMillis || tuned.lastAdjustmentReviewCount != parameters.lastAdjustmentReviewCount) {
             store.saveSchedulerParameters(tuned);
         }
-    }
-
-    private void submitSimilarWritingRepair(Records.ReviewRequest request) {
-        Records.SimilarKanjiWritingRepair repair = activeSimilarRepair;
-        if (repair == null) {
-            renderStudy();
-            return;
-        }
-        String taskKey = similarRepairKey(repair);
-        boolean passed = request.manualOverride || request.writingPassed;
-        long now = System.currentTimeMillis();
-        boolean saved = store.finishSimilarWritingRepair(repair.id, request.token, passed, now);
-        if (saved) {
-            completeActiveStudyTask(taskKey, passed ? "passed" : "failed", now);
-        }
-        if (saved && passed) {
-            markSimilarStudyTaskCompleted();
-        }
-        Toast.makeText(
-                this,
-                similarWritingRepairToast(saved, passed),
-                Toast.LENGTH_SHORT
-        ).show();
-        activeSimilarRepair = null;
-        renderStudy();
-    }
-
-    private String similarWritingRepairToast(boolean saved, boolean passed) {
-        if (!saved) {
-            return "Similar writing repair already changed.";
-        }
-        return passed ? "Similar writing repair complete." : "Similar writing repair stays queued.";
-    }
-
-    private void submitLearningRepeat(Records.ReviewRequest request, String rating) {
-        Records.LearningRepeat repeat = activeLearningRepeat;
-        if (repeat == null || activeSession == null || !repeat.activeToken.equals(request.token)) {
-            Toast.makeText(this, "Learning repeat already changed.", Toast.LENGTH_SHORT).show();
-            renderStudy();
-            return;
-        }
-        String taskKey = learningRepeatKey(repeat);
-        long now = System.currentTimeMillis();
-        completeActiveStudyTask(taskKey, rating, now);
-        Records.LearningStepSettings settings = store.learningStepSettings();
-        List<Integer> steps = Records.LEARNING_REPEAT_REVIEW.equals(repeat.repeatType)
-                ? settings.reviewStepsMinutes
-                : settings.newStepsMinutes;
-        if (steps.isEmpty()) {
-            store.clearLearningRepeat(repeat);
-            Toast.makeText(this, "Learning repeat cleared.", Toast.LENGTH_SHORT).show();
-            renderStudy();
-            return;
-        }
-        int nextStep;
-        if (RATING_AGAIN.equals(rating)) {
-            nextStep = 0;
-        } else if ("hard".equals(rating)) {
-            nextStep = Math.min(repeat.stepIndex, steps.size() - 1);
-        } else {
-            nextStep = repeat.stepIndex + 1;
-            if (nextStep >= steps.size()) {
-                store.clearLearningRepeat(repeat);
-                markStudyRunPassed(request.kanji);
-                activeLearningRepeat = null;
-                Toast.makeText(this, "Learning repeat complete.", Toast.LENGTH_SHORT).show();
-                renderStudy();
-                return;
-            }
-        }
-        long dueAt = now + steps.get(nextStep) * 60_000L;
-        store.saveLearningRepeat(repeat.withStep(nextStep, dueAt, now));
-        if (!RATING_AGAIN.equals(rating)) {
-            markStudyRunPassed(request.kanji);
-        }
-        Toast.makeText(this, "Learning repeat " + dueText(dueAt, now) + ".", Toast.LENGTH_SHORT).show();
-        renderStudy();
-    }
-
-    private String learningRepeatTypeForReview(Records.StudyItem originalItem, Records.ReviewRequest request, String appliedRating) {
-        boolean newCard = originalItem != null && originalItem.totalReviews <= 0;
-        if (newCard) {
-            return "easy".equals(appliedRating) ? null : Records.LEARNING_REPEAT_NEW;
-        }
-        boolean failed = RATING_AGAIN.equals(appliedRating)
-                || (request.writingRequired && !request.writingPassed && !request.manualOverride);
-        return failed ? Records.LEARNING_REPEAT_REVIEW : null;
-    }
-
-    private void enqueueLearningRepeatIfNeeded(Records.StudyItem item, String taskType, String repeatType, long now) {
-        if (repeatType == null) {
-            return;
-        }
-        Records.LearningStepSettings settings = store.learningStepSettings();
-        List<Integer> steps = Records.LEARNING_REPEAT_REVIEW.equals(repeatType)
-                ? settings.reviewStepsMinutes
-                : settings.newStepsMinutes;
-        if (steps.isEmpty()) {
-            return;
-        }
-        store.enqueueLearningRepeat(item, taskType, repeatType, 0, now + steps.get(0) * 60_000L, now);
-    }
-
-    private Records.StudyItem deferSameDaySrsDue(Records.StudyItem item, String taskType, long now) {
-        if (item == null || item.dueAtMillis <= now || !sameLocalDay(item.dueAtMillis, now)) {
-            return item;
-        }
-        long due = nextLocalDayStart(now);
-        Records.StudyItem deferred = new Records.StudyItem(
-                item.kanji,
-                item.state,
-                due,
-                item.stability,
-                item.difficulty,
-                item.totalReviews,
-                item.lapses,
-                item.learningStep,
-                item.writingLevel,
-                item.recognitionStage,
-                item.consecutiveFailedRecognitionDays,
-                item.lastFailedRecognitionDayMillis,
-                item.writingRemediationPending,
-                item.suppressedByTaskType,
-                item.suppressedAtMillis,
-                item.matureIntervalDays,
-                item.answerSignature,
-                item.activeToken,
-                item.createdAtMillis,
-                item.typingMeaningMemory,
-                item.kanjiMeaningMemory,
-                item.fontMeaningMemory,
-                item.wordReadingMemory,
-                item.writingRemediationMemory
-        );
-        return deferred.withTaskMemory(taskType, deferred.memoryForTaskType(taskType).withDueAtMillis(due));
     }
 
     private boolean sameLocalDay(long leftMillis, long rightMillis) {
@@ -2936,8 +2580,6 @@ public final class MainActivity extends Activity {
     private HintState initialHintState(Records.StudySession session) {
         int stored = Math.max(0, Math.min(3, session.item.writingLevel));
         if (TASK_TARGETED_WRITING.equals(session.taskType)
-                || TASK_WRITING_REMEDIATION.equals(session.taskType)
-                || TASK_SIMILAR_WRITING.equals(session.taskType)
                 || session.item.totalReviews == 0
                 || session.item.learningStep == 0) {
             return HintState.fromWritingLevel(Math.min(stored, 1));
@@ -3083,8 +2725,6 @@ public final class MainActivity extends Activity {
         }
         return "context_writing".equals(session.taskType)
                 || "guided_writing".equals(session.taskType)
-                || TASK_WRITING_REMEDIATION.equals(session.taskType)
-                || TASK_SIMILAR_WRITING.equals(session.taskType)
                 || (TASK_TARGETED_WRITING.equals(session.taskType) && session.item.learningStep < 2);
     }
 
@@ -3356,9 +2996,6 @@ public final class MainActivity extends Activity {
             return "Already saved.";
         }
         String streakText = streak == null || streak.currentDays <= 0 ? "" : " " + streakHeadline(streak) + ".";
-        if (result.item.writingRemediationPending) {
-            return "Saved. Writing repair is next for this kanji." + streakText;
-        }
         if (RATING_AGAIN.equals(result.appliedRating)) {
             return "Saved. This kanji will come back soon." + streakText;
         }
@@ -3403,18 +3040,6 @@ public final class MainActivity extends Activity {
     private Records.StudyItem findStudyItem(List<Records.StudyItem> items, String kanji) {
         for (Records.StudyItem item : items) {
             if (item.kanji.equals(kanji)) {
-                return item;
-            }
-        }
-        return null;
-    }
-
-    private Records.StudyItem findStudyItem(List<Records.StudyItem> items, Records.LearningRepeat repeat) {
-        if (repeat == null) {
-            return null;
-        }
-        for (Records.StudyItem item : items) {
-            if (item.kanji.equals(repeat.kanji) && item.answerSignature.equals(repeat.answerSignature)) {
                 return item;
             }
         }
@@ -4573,7 +4198,7 @@ public final class MainActivity extends Activity {
         initializeSessionProgressTarget(plan);
         int completed = sessionProgressCompleted;
         int target = sessionProgressMax;
-        boolean activeTask = activeSession != null || activeSimilarChoice != null || activeSimilarRepair != null;
+        boolean activeTask = activeSession != null;
         if (activeTask && target <= completed && continueAllKanjiSession) {
             target = completed + 1;
         }
@@ -4802,10 +4427,6 @@ public final class MainActivity extends Activity {
         return canonicalKanjiMeaning(session == null ? "" : session.item.kanji, raw, 96);
     }
 
-    private String similarChoiceMeaning(Records.SimilarKanjiChoiceCard card) {
-        return canonicalKanjiMeaning(card == null ? "" : card.targetKanji, card == null ? "" : card.primaryMeaning, 72);
-    }
-
     private String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
         DictionaryLookup.KanjiEntry entry = dictionaryLookup().lookupKanji(kanji);
         if (entry != null) {
@@ -4855,8 +4476,8 @@ public final class MainActivity extends Activity {
             case TASK_TYPING_MEANING -> "Type the meaning";
             case TASK_FONT_MEANING -> "Font -> meaning";
             case TASK_WORD_READING -> "Word -> reading";
-            case TASK_WRITING_REMEDIATION -> "Writing repair";
-            case TASK_SIMILAR_WRITING -> "Similar writing";
+            case BridgeScheduler.TASK_WRITE_KANJI -> "Write kanji";
+            case BridgeScheduler.TASK_SIMILAR_KANJI -> "Similar kanji";
             case "meaning_flashcard" -> "Quick recall";
             case "font_recognition" -> "Font check";
             case "repair_writing" -> "Write to repair";

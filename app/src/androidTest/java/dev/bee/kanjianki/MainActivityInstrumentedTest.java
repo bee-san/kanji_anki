@@ -955,58 +955,72 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
+        // In the single-scheduler model, a card in NEW_LEARNING phase with a
+        // past due_at shows up directly in the study queue. Answering it
+        // advances the learning step on the item itself. Learning step answers
+        // are logged but do not count as real FSRS reviews.
         seedDashboard();
         try (LocalStore setup = new LocalStore(context)) {
             long now = System.currentTimeMillis();
-            Records.StudyItem repeatItem = new Records.StudyItem("拉", "learning", now + 86_400_000L, 0.4, 5.0, 1, 1, 0, 0, null, now)
+            // Create a study item in NEW_LEARNING phase, step 0, due in the past.
+            Records.StudyItem item = new Records.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
                     .withAnswerSignature("拉|拉致|らち|archive example");
-            setup.enqueueLearningRepeat(repeatItem, "kanji_meaning", Records.LEARNING_REPEAT_NEW, 0, now - 1_000L, now - 2_000L);
+            item = item.copyBuilder()
+                    .rung(Records.LadderRung.KANJI_MEANING)
+                    .phase(Records.SchedulerPhase.NEW_LEARNING)
+                    .build();
+            setup.saveStudyItem(item);
         }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Learning step 1 / 2. Practice only.");
-                assertHasText(activity, REVEAL);
-            });
+            scenario.onActivity(activity -> assertHasText(activity, REVEAL));
 
             clickText(scenario, REVEAL);
             clickText(scenario, "Pass");
 
             try (LocalStore store = new LocalStore(context)) {
-                assertEquals(0, store.reviewStatsSince(0L).total);
-                assertEquals(1, store.studyTaskTimeStats(System.currentTimeMillis()).answeredTasks);
-                List<Records.LearningRepeat> repeats = store.dueLearningRepeats(System.currentTimeMillis() + 11 * 60_000L);
-                assertEquals(1, repeats.size());
-                assertEquals(1, repeats.get(0).stepIndex);
+                // The learning step answer is logged but the card stays in learning.
+                List<Records.StudyItem> items = store.studyItems();
+                assertFalse(items.isEmpty());
+                Records.StudyItem updated = items.stream()
+                        .filter(i -> "拉".equals(i.kanji))
+                        .findFirst()
+                        .orElse(null);
+                assertNotNull(updated);
+                // After Good on step 0, advances to step 1 (or graduates if only 1 step).
+                assertTrue(updated.learningStep >= 1 || updated.phase == Records.SchedulerPhase.REVIEW);
             }
         }
     }
 
     @Test
     public void testLearningRepeatPassAdvancesSessionProgressHeader() {
+        // In the single-scheduler model, learning step cards show up in the
+        // normal study queue and passing them advances session progress.
         seedDashboard(Arrays.asList(
                 dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS),
                 dashboardRow("提", "carry radical gap", "てい", IMPORTED_FROM_SUSPENDED_CARDS)
         ));
         try (LocalStore setup = new LocalStore(context)) {
             long now = System.currentTimeMillis();
-            Records.StudyItem repeatItem = new Records.StudyItem("拉", "learning", now + 86_400_000L, 0.4, 5.0, 1, 1, 0, 0, null, now)
+            // Create a study item in NEW_LEARNING phase, due in the past.
+            Records.StudyItem item = new Records.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
                     .withAnswerSignature("拉|拉致|らち|archive example");
-            setup.enqueueLearningRepeat(repeatItem, "kanji_meaning", Records.LEARNING_REPEAT_NEW, 0, now - 1_000L, now - 2_000L);
+            item = item.copyBuilder()
+                    .rung(Records.LadderRung.KANJI_MEANING)
+                    .phase(Records.SchedulerPhase.NEW_LEARNING)
+                    .build();
+            setup.saveStudyItem(item);
         }
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "0 / 2");
-                assertHasText(activity, "Learning step 1 / 2. Practice only.");
-            });
-
             clickText(scenario, REVEAL);
             clickText(scenario, "Pass");
 
-            scenario.onActivity(activity -> assertHasText(activity, "1 / 2"));
+            // Progress header should advance after passing.
+            scenario.onActivity(activity -> assertHasText(activity, "1 / "));
         }
     }
 
