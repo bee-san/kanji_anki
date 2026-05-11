@@ -630,6 +630,43 @@ public class LadderSchedulerTest {
         assertTrue("Hard delay should be positive", result.item.dueAtMillis > 1000L);
     }
 
+    @Test
+    public void hardInRelearningRepeatsCurrentStep() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        // Create a card in relearning phase
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 500L)
+                .withRungAndPhase(Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.RELEARNING);
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("rh1"),
+                new Records.ReviewRequest("裂", "rh1", "hard", false, false, false, 0),
+                consumed,
+                1000L
+        );
+        // Hard in relearning stays in relearning
+        assertEquals(Records.SchedulerPhase.RELEARNING, result.item.phase);
+    }
+
+    @Test
+    public void goodInRelearningAdvancesThroughSteps() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        // Create a card in relearning at step 0
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.KANJI_MEANING, 500L)
+                .withRungAndPhase(Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.RELEARNING);
+        HashSet<String> consumed = new HashSet<>();
+
+        // Default relearning steps: [10]. One good should graduate.
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("rg1"),
+                new Records.ReviewRequest("裂", "rg1", "good", false, false, false, 0),
+                consumed,
+                1000L
+        );
+        // With single relearning step [10], one Good graduates to review
+        assertEquals(Records.SchedulerPhase.REVIEW, result.item.phase);
+    }
+
     // ---- Helpers ----
 
     private static Records.StudyItem newCard(String kanji) {
