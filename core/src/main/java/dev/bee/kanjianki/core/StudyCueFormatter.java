@@ -6,8 +6,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public final class StudyCueFormatter {
+    private static final Pattern DATE_METADATA_PATTERN = Pattern.compile("\\[\\d{4}-\\d{2}-\\d{2}\\]");
+    private static final Pattern JM_DICT_PATTERN = Pattern.compile("(?i)\\bJMdict\\s*\\[[^\\]]*\\]\\s*");
+    private static final Pattern JITENDEX_PATTERN = Pattern.compile("(?i)\\bJitendex\\.org\\s*");
+    private static final Pattern NUMBERED_PREFIX_PATTERN = Pattern.compile("^\\d+\\.\\s*");
+    private static final Pattern GODAN_PATTERN = Pattern.compile("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+");
+    private static final Pattern ADJECTIVE_VERB_PATTERN = Pattern.compile("(?i)^(ichidan|suru|na-adjective|i-adjective|no-adjective)\\s+");
+    private static final Pattern LEADING_METADATA_SEPARATOR_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern NON_ALPHA_NUMERIC_PATTERN = Pattern.compile("[^a-z0-9-]");
+    private static final Pattern MULTI_WHITESPACE_PATTERN = Pattern.compile("\\s+");
+
     private static final Set<String> LEADING_METADATA = new HashSet<>(Arrays.asList(
             "noun",
             "nouns",
@@ -72,9 +83,9 @@ public final class StudyCueFormatter {
 
     public static String cleanFallbackMeaning(String raw, String fallback, int maxChars) {
         String value = raw == null ? "" : raw;
-        value = value.replaceAll("\\[\\d{4}-\\d{2}-\\d{2}\\]", " ");
-        value = value.replaceAll("(?i)\\bJMdict\\s*\\[[^\\]]*\\]\\s*", " ");
-        value = value.replaceAll("(?i)\\bJitendex\\.org\\s*", " ");
+        value = DATE_METADATA_PATTERN.matcher(value).replaceAll(" ");
+        value = JM_DICT_PATTERN.matcher(value).replaceAll(" ");
+        value = JITENDEX_PATTERN.matcher(value).replaceAll(" ");
         value = value.replace('\n', ' ').replace('\r', ' ').trim();
         boolean changed = true;
         while (changed && value.startsWith("(")) {
@@ -94,9 +105,9 @@ public final class StudyCueFormatter {
                 }
             }
         }
-        value = value.replaceAll("^\\d+\\.\\s*", "");
-        value = value.replaceAll("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+", "");
-        value = value.replaceAll("(?i)^(ichidan|suru|na-adjective|i-adjective|no-adjective)\\s+", "");
+        value = NUMBERED_PREFIX_PATTERN.matcher(value).replaceAll("");
+        value = GODAN_PATTERN.matcher(value).replaceAll("");
+        value = ADJECTIVE_VERB_PATTERN.matcher(value).replaceAll("");
         value = stripLeadingMetadataWords(value);
         value = cleanInline(value);
         if (value.isEmpty()) {
@@ -122,7 +133,7 @@ public final class StudyCueFormatter {
     }
 
     private static String stripLeadingMetadataWords(String value) {
-        String[] words = value.trim().split("\\s+");
+        String[] words = LEADING_METADATA_SEPARATOR_PATTERN.split(value.trim());
         int firstMeaningWord = 0;
         while (firstMeaningWord < words.length && isLeadingMetadataWord(words[firstMeaningWord])) {
             firstMeaningWord++;
@@ -134,7 +145,7 @@ public final class StudyCueFormatter {
     }
 
     private static boolean isLeadingMetadataWord(String word) {
-        String normalized = word.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "");
+        String normalized = NON_ALPHA_NUMERIC_PATTERN.matcher(word.toLowerCase(Locale.ROOT)).replaceAll("");
         return normalized.equals("5-dan")
                 || normalized.equals("na-adjective")
                 || normalized.equals("i-adjective")
@@ -146,11 +157,10 @@ public final class StudyCueFormatter {
         if (value == null) {
             return "";
         }
-        return value.replace('\t', ' ')
+        String normalized = value.replace('\t', ' ')
                 .replace('\n', ' ')
-                .replace('\r', ' ')
-                .replaceAll("\\s+", " ")
-                .trim();
+                .replace('\r', ' ');
+        return MULTI_WHITESPACE_PATTERN.matcher(normalized).replaceAll(" ").trim();
     }
 
     private static String compact(String value, int maxChars) {

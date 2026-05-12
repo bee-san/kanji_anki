@@ -3,7 +3,10 @@ package dev.bee.kanjianki.update;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
 import dev.bee.kanjianki.core.Records;
 
+import java.util.regex.Pattern;
+
 final class UpdatePolicy {
+    private static final Pattern CHECKSUM_PATTERN = Pattern.compile("(?i)[0-9a-f]{64}");
     static final int STATUS_SUCCESS = 0;
     static final int STATUS_PENDING_USER_ACTION = -1;
 
@@ -41,7 +44,7 @@ final class UpdatePolicy {
         if (expected == null || expected.trim().isEmpty()) {
             return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
         }
-        if (!expected.trim().matches("(?i)[0-9a-f]{64}")) {
+        if (!CHECKSUM_PATTERN.matcher(expected.trim()).matches()) {
             return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
         }
         return ValidationResult.success("Checksum digest found.");
@@ -89,7 +92,8 @@ final class UpdatePolicy {
         if (version == null) {
             return "";
         }
-        return version.trim().replaceFirst("^v", "");
+        String trimmed = version.trim();
+        return trimmed.startsWith("v") ? trimmed.substring(1) : trimmed;
     }
 
     static final class AssetSelection {

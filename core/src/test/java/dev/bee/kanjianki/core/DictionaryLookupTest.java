@@ -60,6 +60,11 @@ public class DictionaryLookupTest {
     }
 
     @Test
+    public void normalizeTreatsNullAsEmptyText() {
+        assertEquals("", DictionaryLookup.normalize(null));
+    }
+
+    @Test
     public void formatterBuildsMeaningReadingAndFromLines() {
         StudyCue cue = new StudyCue("sorrow", "ヒ", "悲しみ", DictionaryLookup.SOURCE_KANJIDIC2);
         List<String> lines = StudyCueFormatter.answerLines(cue);

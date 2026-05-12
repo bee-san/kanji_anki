@@ -31,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -914,7 +915,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, store.dueSimilarChoiceTaskCount(2000L));
         assertEquals(0, store.dueSimilarWritingRepairTaskCount(2000L));
         assertEquals(1, store.dueSimilarStudyTaskCount(2000L));
-        assertFalse("inventory-only cards should skip active targets", "拉".equals(store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji));
+        String inventoryTarget = store.nextDueInventorySimilarChoice(Collections.singleton("拉"), 2000L).targetKanji;
+        assertNotEquals("inventory-only cards should skip active targets", "拉", inventoryTarget);
     }
 
     private void assertWrongSimilarChoiceCreatesRepair(Records.SimilarKanjiChoiceResult wrong) {

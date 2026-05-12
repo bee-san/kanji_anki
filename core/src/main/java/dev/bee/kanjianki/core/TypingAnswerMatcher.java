@@ -3,8 +3,13 @@ package dev.bee.kanjianki.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 public final class TypingAnswerMatcher {
+    private static final Pattern NON_ALPHA_NUMERIC_PATTERN = Pattern.compile("[^a-z0-9\\s]");
+    private static final Pattern MULTI_WHITESPACE_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern ACCEPTED_MEANING_SPLIT = Pattern.compile("[,;/]");
+
     private TypingAnswerMatcher() {
     }
 
@@ -39,7 +44,7 @@ public final class TypingAnswerMatcher {
         if (value.isEmpty() || "Collection clue".equals(value)) {
             return;
         }
-        for (String part : value.split("[,;/]")) {
+        for (String part : ACCEPTED_MEANING_SPLIT.split(value)) {
             String normalized = normalizeAnswer(part);
             if (!normalized.isEmpty() && !containsNormalized(accepted, normalized)) {
                 accepted.add(part.trim());
@@ -60,9 +65,7 @@ public final class TypingAnswerMatcher {
         if (value == null) {
             return "";
         }
-        return value.toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
+        String cleaned = NON_ALPHA_NUMERIC_PATTERN.matcher(value.toLowerCase(Locale.ROOT)).replaceAll(" ");
+        return MULTI_WHITESPACE_PATTERN.matcher(cleaned).replaceAll(" ").trim();
     }
 }

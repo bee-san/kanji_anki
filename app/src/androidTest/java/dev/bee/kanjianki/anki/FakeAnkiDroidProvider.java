@@ -10,6 +10,8 @@ import android.os.Bundle;
 public final class FakeAnkiDroidProvider extends ContentProvider {
     public static final String AUTHORITY = "dev.bee.kanjianki.test.ankidroid";
     private static final char FIELD_SEPARATOR = '\u001f';
+    private static final java.util.regex.Pattern NOTES_CARDS_PATH = java.util.regex.Pattern.compile("/notes/\\d+/cards");
+    private static final java.util.regex.Pattern NOTES_ID_PATH = java.util.regex.Pattern.compile("/notes/\\d+");
 
     public static int topLevelCardsQueries;
     public static int perNoteCardsQueries;
@@ -122,7 +124,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         if ("/notes".equals(path) || "/notes_v2".equals(path)) {
             return notes(selection);
         }
-        if (path.matches("/notes/\\d+/cards")) {
+        if (NOTES_CARDS_PATH.matcher(path).matches()) {
             rejectFsrsProjection(projection);
             Cursor rejected = rejectedSchedulerProjectionCursor(uri, projection);
             if (rejected != null) {
@@ -313,7 +315,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     @Override
     public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
         String path = uri.getPath() == null ? "" : uri.getPath();
-        if (!path.matches("/notes/\\d+")) {
+        if (!NOTES_ID_PATH.matcher(path).matches()) {
             return 0;
         }
         long noteId = Long.parseLong(uri.getLastPathSegment());

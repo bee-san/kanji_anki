@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 public final class LocalStore extends SQLiteOpenHelper {
+    private static final java.util.regex.Pattern TAB_SEPARATOR = java.util.regex.Pattern.compile("\\t");
     private static final String DB_NAME = "kanji_anki_simple.db";
     private static final int DB_VERSION = 16;
     private static final String TABLE_SETTINGS = "settings";
@@ -2572,7 +2573,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             return Collections.emptyList();
         }
         List<String> out = new ArrayList<>();
-        String[] parts = encoded.split("\t", -1);
+        String[] parts = TAB_SEPARATOR.split(encoded, -1);
         for (String part : parts) {
             if (!part.isEmpty()) {
                 out.add(part);

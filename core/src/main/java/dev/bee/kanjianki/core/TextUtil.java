@@ -6,8 +6,17 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public final class TextUtil {
+    private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
+    private static final Pattern RT_TAG = Pattern.compile("(?is)<rt[^>]*>.*?</rt>");
+    private static final Pattern STYLE_TAG = Pattern.compile("(?is)<style[^>]*>.*?</style>");
+    private static final Pattern SCRIPT_TAG = Pattern.compile("(?is)<script[^>]*>.*?</script>");
+    private static final Pattern GENERIC_TAG = Pattern.compile("(?is)<[^>]+>");
+
+    private static final Pattern HTML_ENTITY_REGEX = Pattern.compile("[A-Za-z0-9_\\-]+");
+
     private TextUtil() {
     }
 
@@ -17,19 +26,20 @@ public final class TextUtil {
         }
         String noHtml = stripHtml(value);
         String normalized = Normalizer.normalize(noHtml, Normalizer.Form.NFKC);
-        return normalized.replace('\u3000', ' ').replaceAll("\\s+", " ").trim();
+        String withSpaces = normalized.replace('\u3000', ' ');
+        return MULTI_WHITESPACE.matcher(withSpaces).replaceAll(" ").trim();
     }
 
     public static String stripHtml(String value) {
         if (value == null || value.isEmpty()) {
             return "";
         }
-        String stripped = value
-                .replaceAll("(?is)<rt[^>]*>.*?</rt>", "")
-                .replaceAll("(?is)<style[^>]*>.*?</style>", " ")
-                .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
-                .replaceAll("(?is)<[^>]+>", " ");
-        return htmlEntities(stripped).replaceAll("\\s+", " ").trim();
+        String stripped = value;
+        String withoutRt = RT_TAG.matcher(stripped).replaceAll("");
+        String withoutStyle = STYLE_TAG.matcher(withoutRt).replaceAll(" ");
+        String withoutScript = SCRIPT_TAG.matcher(withoutStyle).replaceAll(" ");
+        String withoutTags = GENERIC_TAG.matcher(withoutScript).replaceAll(" ");
+        return MULTI_WHITESPACE.matcher(htmlEntities(withoutTags)).replaceAll(" ").trim();
     }
 
     public static String firstMeaningLine(String value) {
@@ -85,7 +95,7 @@ public final class TextUtil {
 
     private static String ankiSearchToken(String value) {
         String safe = ankiSearchValue(value == null ? "" : value.trim());
-        if (safe.matches("[A-Za-z0-9_\\-]+")) {
+        if (HTML_ENTITY_REGEX.matcher(safe).matches()) {
             return safe;
         }
         return "\"" + safe + "\"";
