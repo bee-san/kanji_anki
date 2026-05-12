@@ -2282,6 +2282,10 @@ public final class MainActivity extends Activity {
         if (flashcardCard == null) {
             return;
         }
+        int currentFullHeight = flashcardCard.getHeight();
+        if (currentFullHeight > 0) {
+            flashcardCard.setMinimumHeight(currentFullHeight);
+        }
         ViewGroup.LayoutParams params = flashcardCard.getLayoutParams();
         if (params instanceof LinearLayout.LayoutParams linearParams) {
             linearParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;

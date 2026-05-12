@@ -34,6 +34,7 @@ public final class SyncProgress {
         FINDING_NOTE_TYPE,
         READING_NOTES,
         SCANNING_CARDS,
+        PROCESSING_IMPORTED_CARDS,
         BUILDING_PRACTICE_QUEUE,
         ARCHIVING_IMPORTED_CARDS
     }

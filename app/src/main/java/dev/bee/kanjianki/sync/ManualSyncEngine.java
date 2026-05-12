@@ -61,13 +61,14 @@ public final class ManualSyncEngine {
         long started = System.currentTimeMillis();
         try {
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
-            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
             JitenKanjiRanks ranks = loadRanks();
             List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
                     .importFrom(snapshot, settings);
             List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(store.suspendedImports(), imports);
             List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, analysisImports, ranks, settings);
             SimilarKanjiIndex similarKanjiIndex = loadSimilarKanjiIndex();
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
             long finished = System.currentTimeMillis();
             long syncId = store.saveSuccessfulSync(
                     snapshot,

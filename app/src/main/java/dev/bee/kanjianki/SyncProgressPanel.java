@@ -72,7 +72,7 @@ final class SyncProgressPanel extends LinearLayout {
 
     private String scanRateText(SyncProgress.Stage stage) {
         if (stage != SyncProgress.Stage.SCANNING_CARDS) {
-            return lastScannedCards >= lastTotalCards ? "Card scan finished." : "";
+            return syncStageBody(stage);
         }
         if (lastScannedCards <= 0 || scanStartedAt <= 0L) {
             return "Scanning cards.";
@@ -101,6 +101,9 @@ final class SyncProgressPanel extends LinearLayout {
         if (stage == SyncProgress.Stage.SCANNING_CARDS) {
             return "Scanning cards";
         }
+        if (stage == SyncProgress.Stage.PROCESSING_IMPORTED_CARDS) {
+            return "Processing imported cards";
+        }
         if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
             return "Building practice queue";
         }
@@ -116,6 +119,9 @@ final class SyncProgressPanel extends LinearLayout {
         }
         if (stage == SyncProgress.Stage.READING_NOTES) {
             return "Reading notes before the card total is known.";
+        }
+        if (stage == SyncProgress.Stage.PROCESSING_IMPORTED_CARDS) {
+            return "AnkiDroid read finished. Processing imported cards locally.";
         }
         if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
             return "Saving the practice queue.";

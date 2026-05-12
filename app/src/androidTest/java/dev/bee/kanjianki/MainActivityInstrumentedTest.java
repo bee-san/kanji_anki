@@ -817,6 +817,8 @@ public final class MainActivityInstrumentedTest {
         seedDashboard();
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, STUDY_NOW);
+            int hiddenCardHeight = recognitionCardHeight(scenario);
+            assertTrue("Hidden card should be measured", hiddenCardHeight > 0);
             scenario.onActivity(activity -> {
                 assertHasTexts(activity, "Name this kanji", "Kanji -> meaning", "Answer hidden until reveal");
                 assertNoTexts(activity, "拉麺");
@@ -830,6 +832,8 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, REVEAL);
             scenario.onActivity(activity -> {
                 assertHasTexts(activity, "Answer", "拉", "Fail", "Pass");
+                assertTrue("Revealed card should keep full study height",
+                        recognitionCard(activity).getHeight() >= hiddenCardHeight - 2);
                 Rect failBounds = new Rect();
                 Rect passBounds = new Rect();
                 View root = activity.findViewById(android.R.id.content);
@@ -848,6 +852,47 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Pass");
 
             assertKnownAnswerRecognitionReviewStored();
+        }
+    }
+
+    @Test
+    public void testRevealedRecognitionCardPassesOnRightSwipe() {
+        seedDashboard();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, STUDY_NOW);
+            clickText(scenario, REVEAL);
+            swipeRecognitionCard(scenario, true);
+
+            assertKnownAnswerRecognitionReviewStored();
+        }
+    }
+
+    @Test
+    public void testRevealedRecognitionCardFailsOnLeftSwipe() {
+        seedDashboard();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, STUDY_NOW);
+            clickText(scenario, REVEAL);
+            swipeRecognitionCard(scenario, false);
+
+            assertFailedRecognitionReviewStored();
+        }
+    }
+
+    @Test
+    public void testHiddenRecognitionSwipeDoesNotGradeBeforeReveal() {
+        seedDashboard();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, STUDY_NOW);
+            swipeRecognitionCard(scenario, true);
+
+            scenario.onActivity(activity -> {
+                assertHasTexts(activity, "Name this kanji", "Answer hidden until reveal", REVEAL);
+                assertNoTexts(activity, "Latin, kidnap", "Fail", "Pass");
+            });
+            try (LocalStore store = new LocalStore(context)) {
+                assertEquals(0, store.reviewStatsSince(0L).total);
+            }
         }
     }
 
@@ -1332,6 +1377,21 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testSyncProgressPanelShowsProcessingImportedCardsAfterScan() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                SyncProgressPanel panel = new SyncProgressPanel(activity);
+                panel.render(SyncProgress.cardsScanned(2, 2));
+                panel.render(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
+
+                assertNotNull(findText(panel, "Processing imported cards"));
+                assertNotNull(findText(panel, "2 / 2 cards scanned"));
+                assertNotNull(findText(panel, "AnkiDroid read finished"));
+            });
+        }
+    }
+
+    @Test
     public void testLastSyncHeadlineInvitesAndStartsManualSync() {
         long yesterday = moveLocalDays(localDayStart(System.currentTimeMillis()), -1) + 10 * 60 * 60 * 1000L;
         saveSyncFinishedAt(yesterday);
@@ -1758,6 +1818,53 @@ public final class MainActivityInstrumentedTest {
         if (object != null) {
             object.click();
             device.waitForIdle(2000L);
+        }
+    }
+
+    private static int recognitionCardHeight(ActivityScenario<MainActivity> scenario) {
+        int[] height = new int[]{0};
+        scenario.onActivity(activity -> height[0] = recognitionCard(activity).getHeight());
+        return height[0];
+    }
+
+    private static View recognitionCard(MainActivity activity) {
+        View root = activity.findViewById(android.R.id.content);
+        View title = findExactText(root, "Name this kanji");
+        if (title == null) {
+            title = findExactText(root, "Type the meaning");
+        }
+        if (title == null) {
+            title = findExactText(root, "Read this word");
+        }
+        assertNotNull("Missing recognition card title", title);
+        ViewParent parent = title.getParent();
+        assertTrue("Recognition title parent should be the card", parent instanceof View);
+        return (View) parent;
+    }
+
+    private static void swipeRecognitionCard(ActivityScenario<MainActivity> scenario, boolean right) {
+        scenario.onActivity(activity -> {
+            View card = recognitionCard(activity);
+            Rect bounds = new Rect();
+            assertTrue("Recognition card should be visible", card.getGlobalVisibleRect(bounds));
+            float inset = Math.max(24f, bounds.width() * 0.18f);
+            float startX = right ? bounds.left + inset : bounds.right - inset;
+            float endX = right ? bounds.right - inset : bounds.left + inset;
+            float y = bounds.centerY();
+            long downTime = SystemClock.uptimeMillis();
+            dispatchActivityTouch(activity, downTime, downTime, MotionEvent.ACTION_DOWN, startX, y);
+            dispatchActivityTouch(activity, downTime, downTime + 16L, MotionEvent.ACTION_MOVE, (startX + endX) / 2f, y);
+            dispatchActivityTouch(activity, downTime, downTime + 32L, MotionEvent.ACTION_UP, endX, y);
+        });
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+    }
+
+    private static void dispatchActivityTouch(MainActivity activity, long downTime, long eventTime, int action, float x, float y) {
+        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
+        try {
+            activity.dispatchTouchEvent(event);
+        } finally {
+            event.recycle();
         }
     }
 
