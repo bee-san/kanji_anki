@@ -3,6 +3,9 @@ package dev.bee.kanjianki.data;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.sync.SyncSettings;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -15,6 +18,7 @@ import java.util.Set;
 public final class StudyStatsStore {
     private static final String TABLE_REVIEW_LOG = "review_log";
     private static final String TABLE_SYNC_KANJI_SNAPSHOTS = "sync_kanji_snapshots";
+    private static final String TABLE_STUDY_ITEMS = "study_items";
     private static final String COLUMN_KANJI = "kanji";
     private static final String COLUMN_RATING = "rating";
     private static final String COLUMN_REVIEWED_AT = "reviewed_at";
@@ -24,7 +28,13 @@ public final class StudyStatsStore {
     private static final String COLUMN_LAST_REVIEWED_AT = "last_reviewed_at";
     private static final String COLUMN_WEAKNESS_SCORE = "weakness_score";
     private static final String COLUMN_MATURE_SUPPORT_COUNT = "mature_support_count";
+    private static final String COLUMN_STATE = "state";
+    private static final String COLUMN_RUNG = "rung";
+    private static final String COLUMN_PHASE = "phase";
+    private static final String COLUMN_REAL_PASS_STREAK = "real_pass_streak";
+    private static final String COLUMN_REAL_AGAIN_STREAK = "real_again_streak";
     private static final String RATING_AGAIN = "again";
+    private static final String STATE_RETIRED = "retired";
     private final LocalStore store;
 
     public StudyStatsStore(LocalStore store) {
@@ -127,17 +137,20 @@ public final class StudyStatsStore {
     public KaniOutcomeStats kaniOutcomeStats() {
         SQLiteDatabase db = db();
         Map<String, ReviewWindow> reviewWindows = reviewWindowsByKanji(db);
-        if (reviewWindows.isEmpty()) {
-            return KaniOutcomeStats.empty();
-        }
-
-        OutcomeAccumulator accumulator = new OutcomeAccumulator();
+        List<OutcomeEvidence> outcomeEvidence = new ArrayList<>();
         for (ReviewWindow window : reviewWindows.values()) {
             OutcomeSnapshot before = latestOutcomeSnapshotBefore(db, window.kanji, window.firstReviewedAtMillis);
             OutcomeSnapshot after = latestOutcomeSnapshotAfter(db, window.kanji, window.lastReviewedAtMillis);
-            accumulator.add(window.kanji, before, after);
+            outcomeEvidence.add(new OutcomeEvidence(window.kanji, before, after));
         }
+        return calculateKaniOutcomeStats(outcomeEvidence, ladderItemEvidence(db), realDueReviewsToMove());
+    }
 
+    static KaniOutcomeStats calculateKaniOutcomeStats(List<OutcomeEvidence> outcomeEvidence, List<LadderItemEvidence> ladderItems, int realDueReviewsToMove) {
+        OutcomeAccumulator accumulator = new OutcomeAccumulator();
+        for (OutcomeEvidence evidence : safeList(outcomeEvidence)) {
+            accumulator.add(evidence.kanji, evidence.before, evidence.after);
+        }
         accumulator.improvements.sort((left, right) -> {
             int dropCompare = Double.compare(right.beforeWeakness - right.afterWeakness, left.beforeWeakness - left.afterWeakness);
             return dropCompare == 0 ? left.kanji.compareTo(right.kanji) : dropCompare;
@@ -156,10 +169,11 @@ public final class StudyStatsStore {
         );
         MatureSupportGainedMetric supportMetric = new MatureSupportGainedMetric(
                 accumulator.supportGains.size(),
+                accumulator.matureSupportGainSum,
                 accumulator.firstSupportCount,
                 topThreeSupportGains(accumulator.supportGains)
         );
-        return new KaniOutcomeStats(weakMetric, supportMetric);
+        return new KaniOutcomeStats(weakMetric, supportMetric, ladderHealth(safeList(ladderItems), realDueReviewsToMove));
     }
 
     private SQLiteDatabase db() {
@@ -295,6 +309,82 @@ public final class StudyStatsStore {
         return outcomeSnapshot(db, kanji, "kanji=? AND finished_at>?", reviewedAtMillis);
     }
 
+    private List<LadderItemEvidence> ladderItemEvidence(SQLiteDatabase db) {
+        Cursor cursor = db.query(
+                TABLE_STUDY_ITEMS,
+                new String[]{COLUMN_STATE, COLUMN_RUNG, COLUMN_PHASE, COLUMN_REAL_PASS_STREAK, COLUMN_REAL_AGAIN_STREAK},
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        List<LadderItemEvidence> out = new ArrayList<>();
+        try {
+            while (cursor.moveToNext()) {
+                out.add(new LadderItemEvidence(
+                        string(cursor, COLUMN_STATE),
+                        Records.LadderRung.fromWireName(string(cursor, COLUMN_RUNG)),
+                        Records.SchedulerPhase.fromWireName(string(cursor, COLUMN_PHASE)),
+                        integer(cursor, COLUMN_REAL_PASS_STREAK),
+                        integer(cursor, COLUMN_REAL_AGAIN_STREAK)
+                ));
+            }
+        } finally {
+            cursor.close();
+        }
+        return out;
+    }
+
+    private int realDueReviewsToMove() {
+        return store.getIntSetting(
+                SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY,
+                Records.Settings.kikuDefaults().realDueReviewsToMove
+        );
+    }
+
+    private static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int realDueReviewsToMove) {
+        int threshold = Math.max(1, realDueReviewsToMove);
+        Map<Records.LadderRung, Integer> distribution = emptyRungDistribution();
+        int total = 0;
+        int promotionReady = 0;
+        int demotionRisk = 0;
+        int demotionReady = 0;
+        for (LadderItemEvidence item : items) {
+            if (item == null || STATE_RETIRED.equals(item.state)) {
+                continue;
+            }
+            Records.LadderRung rung = item.rung == null ? Records.LadderRung.KANJI_MEANING : item.rung;
+            distribution.put(rung, distribution.get(rung) + 1);
+            total++;
+            if (item.phase != Records.SchedulerPhase.REVIEW) {
+                continue;
+            }
+            if (item.realPassStreak >= threshold) {
+                promotionReady++;
+            }
+            if (item.realAgainStreak > 0) {
+                demotionRisk++;
+                if (item.realAgainStreak >= threshold) {
+                    demotionReady++;
+                }
+            }
+        }
+        return new LadderHealthMetric(distribution, total, threshold, promotionReady, demotionRisk, demotionReady);
+    }
+
+    private static Map<Records.LadderRung, Integer> emptyRungDistribution() {
+        Map<Records.LadderRung, Integer> out = new LinkedHashMap<>();
+        for (Records.LadderRung rung : Records.LadderRung.values()) {
+            out.put(rung, 0);
+        }
+        return out;
+    }
+
+    private static <T> List<T> safeList(List<T> value) {
+        return value == null ? Collections.emptyList() : value;
+    }
+
     private OutcomeSnapshot outcomeSnapshot(SQLiteDatabase db, String kanji, String selection, long reviewedAtMillis) {
         Cursor cursor = db.query(
                 TABLE_SYNC_KANJI_SNAPSHOTS,
@@ -413,14 +503,20 @@ public final class StudyStatsStore {
     public static final class KaniOutcomeStats {
         public final WeakKanjiImprovedMetric weakKanjiImproved;
         public final MatureSupportGainedMetric matureSupportGained;
+        public final LadderHealthMetric ladderHealth;
 
         public KaniOutcomeStats(WeakKanjiImprovedMetric weakKanjiImproved, MatureSupportGainedMetric matureSupportGained) {
+            this(weakKanjiImproved, matureSupportGained, LadderHealthMetric.empty());
+        }
+
+        public KaniOutcomeStats(WeakKanjiImprovedMetric weakKanjiImproved, MatureSupportGainedMetric matureSupportGained, LadderHealthMetric ladderHealth) {
             this.weakKanjiImproved = weakKanjiImproved == null ? WeakKanjiImprovedMetric.empty() : weakKanjiImproved;
             this.matureSupportGained = matureSupportGained == null ? MatureSupportGainedMetric.empty() : matureSupportGained;
+            this.ladderHealth = ladderHealth == null ? LadderHealthMetric.empty() : ladderHealth;
         }
 
         public static KaniOutcomeStats empty() {
-            return new KaniOutcomeStats(WeakKanjiImprovedMetric.empty(), MatureSupportGainedMetric.empty());
+            return new KaniOutcomeStats(WeakKanjiImprovedMetric.empty(), MatureSupportGainedMetric.empty(), LadderHealthMetric.empty());
         }
     }
 
@@ -456,17 +552,23 @@ public final class StudyStatsStore {
 
     public static final class MatureSupportGainedMetric {
         public final int gainedSupportCount;
+        public final int matureSupportGained;
         public final int firstSupportCount;
         public final List<KanjiSupportGain> examples;
 
         public MatureSupportGainedMetric(int gainedSupportCount, int firstSupportCount, List<KanjiSupportGain> examples) {
+            this(gainedSupportCount, gainedSupportCount, firstSupportCount, examples);
+        }
+
+        public MatureSupportGainedMetric(int gainedSupportCount, int matureSupportGained, int firstSupportCount, List<KanjiSupportGain> examples) {
             this.gainedSupportCount = Math.max(0, gainedSupportCount);
+            this.matureSupportGained = Math.max(0, matureSupportGained);
             this.firstSupportCount = Math.max(0, firstSupportCount);
             this.examples = Collections.unmodifiableList(new ArrayList<>(examples == null ? Collections.emptyList() : examples));
         }
 
         public static MatureSupportGainedMetric empty() {
-            return new MatureSupportGainedMetric(0, 0, Collections.emptyList());
+            return new MatureSupportGainedMetric(0, 0, 0, Collections.emptyList());
         }
     }
 
@@ -479,6 +581,48 @@ public final class StudyStatsStore {
             this.kanji = kanji == null ? "" : kanji;
             this.beforeMatureSupport = Math.max(0, beforeMatureSupport);
             this.afterMatureSupport = Math.max(0, afterMatureSupport);
+        }
+    }
+
+    public static final class LadderHealthMetric {
+        public final Map<Records.LadderRung, Integer> rungCounts;
+        public final int totalActiveItems;
+        public final int realDueReviewsToMove;
+        public final int promotionReadyCount;
+        public final int demotionRiskCount;
+        public final int demotionReadyCount;
+
+        public LadderHealthMetric(
+                Map<Records.LadderRung, Integer> rungCounts,
+                int totalActiveItems,
+                int realDueReviewsToMove,
+                int promotionReadyCount,
+                int demotionRiskCount,
+                int demotionReadyCount
+        ) {
+            Map<Records.LadderRung, Integer> normalized = emptyRungDistribution();
+            if (rungCounts != null) {
+                for (Map.Entry<Records.LadderRung, Integer> entry : rungCounts.entrySet()) {
+                    if (entry.getKey() != null) {
+                        normalized.put(entry.getKey(), Math.max(0, entry.getValue() == null ? 0 : entry.getValue()));
+                    }
+                }
+            }
+            this.rungCounts = Collections.unmodifiableMap(normalized);
+            this.totalActiveItems = Math.max(0, totalActiveItems);
+            this.realDueReviewsToMove = Math.max(1, realDueReviewsToMove);
+            this.promotionReadyCount = Math.max(0, promotionReadyCount);
+            this.demotionRiskCount = Math.max(0, demotionRiskCount);
+            this.demotionReadyCount = Math.max(0, demotionReadyCount);
+        }
+
+        public int countFor(Records.LadderRung rung) {
+            Integer count = rungCounts.get(rung);
+            return count == null ? 0 : count;
+        }
+
+        public static LadderHealthMetric empty() {
+            return new LadderHealthMetric(emptyRungDistribution(), 0, Records.Settings.kikuDefaults().realDueReviewsToMove, 0, 0, 0);
         }
     }
 
@@ -508,10 +652,32 @@ public final class StudyStatsStore {
         }
     }
 
-    private record OutcomeSnapshot(int weaknessScore, int matureSupportCount) {
-        private OutcomeSnapshot {
+    record OutcomeSnapshot(int weaknessScore, int matureSupportCount) {
+        OutcomeSnapshot {
             weaknessScore = Math.max(0, weaknessScore);
             matureSupportCount = Math.max(0, matureSupportCount);
+        }
+    }
+
+    record OutcomeEvidence(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {
+        OutcomeEvidence {
+            kanji = kanji == null ? "" : kanji;
+        }
+    }
+
+    record LadderItemEvidence(
+            String state,
+            Records.LadderRung rung,
+            Records.SchedulerPhase phase,
+            int realPassStreak,
+            int realAgainStreak
+    ) {
+        LadderItemEvidence {
+            state = state == null ? "" : state;
+            rung = rung == null ? Records.LadderRung.KANJI_MEANING : rung;
+            phase = phase == null ? Records.SchedulerPhase.NEW_LEARNING : phase;
+            realPassStreak = Math.max(0, realPassStreak);
+            realAgainStreak = Math.max(0, realAgainStreak);
         }
     }
 
@@ -520,6 +686,7 @@ public final class StudyStatsStore {
         private final List<KanjiSupportGain> supportGains = new ArrayList<>();
         private double beforeWeaknessSum;
         private double afterWeaknessSum;
+        private int matureSupportGainSum;
         private int firstSupportCount;
 
         private void add(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {
@@ -547,10 +714,12 @@ public final class StudyStatsStore {
         }
 
         private void addSupportGain(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {
-            if (after.matureSupportCount <= before.matureSupportCount) {
+            int supportGain = after.matureSupportCount - before.matureSupportCount;
+            if (supportGain <= 0) {
                 return;
             }
             supportGains.add(new KanjiSupportGain(kanji, before.matureSupportCount, after.matureSupportCount));
+            matureSupportGainSum += supportGain;
             if (before.matureSupportCount == 0) {
                 firstSupportCount++;
             }

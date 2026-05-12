@@ -904,35 +904,63 @@ public final class MainActivity extends Activity {
         addSpace(10);
 
         content.addView(outcomePanel(
-                "Weak kanji improved",
-                countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved") + " after Kani practice",
+                "Weakness Burn-Down",
+                countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved"),
                 weaknessImprovementBody(stats.weakKanjiImproved),
                 weaknessImprovementExamples(stats.weakKanjiImproved),
                 TEAL
         ));
         content.addView(outcomePanel(
-                "Anki support gained",
-                countText(stats.matureSupportGained.gainedSupportCount, "kanji gained Anki support", "kanji gained Anki support"),
-                countText(stats.matureSupportGained.firstSupportCount, "of them gained their first mature supporting card", "of them gained their first mature supporting card") + ".",
+                "Anki Support Conversion",
+                countText(stats.matureSupportGained.matureSupportGained, "mature card gained", "mature cards gained"),
+                countText(stats.matureSupportGained.firstSupportCount, "kanji gained first mature support", "kanji gained first mature support") + ".",
                 supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
+        content.addView(ladderHealthPanel(stats.ladderHealth));
         content.addView(studyTimePanel(studyTime));
     }
 
     private LinearLayout statsVerdictPanel(StudyStatsStore.KaniOutcomeStats stats) {
-        boolean working = stats != null && stats.weakKanjiImproved.improvedCount > 0;
-        LinearLayout box = panelBox(working ? Color.rgb(238, 252, 250) : Color.rgb(246, 246, 248), working ? TEAL : Color.rgb(178, 178, 186));
+        boolean working = stats != null
+                && (stats.weakKanjiImproved.improvedCount > 0 || stats.matureSupportGained.matureSupportGained > 0);
+        boolean hasLadder = stats != null && stats.ladderHealth.totalActiveItems > 0;
+        int stroke = working ? TEAL : hasLadder ? GOLD : Color.rgb(178, 178, 186);
+        int background = working ? Color.rgb(238, 252, 250) : hasLadder ? Color.rgb(255, 250, 226) : Color.rgb(246, 246, 248);
+        LinearLayout box = panelBox(background, stroke);
         box.addView(text(working ? "Kani is working for you" : "Kani is not currently working for you", 24, working ? TEAL : MUTED, true));
-        box.addView(text(
-                working
-                        ? "Your weak kanji are measurably improving after Kani practice and follow-up AnkiDroid syncs."
-                        : "Kani has not produced measurable weak-kanji improvement yet. Study, then sync AnkiDroid again so this page can compare before and after.",
-                15,
-                working ? INK : MUTED,
-                false
-        ));
+        box.addView(text(statsVerdictBody(stats, working, hasLadder), 15, working ? INK : MUTED, false));
         return box;
+    }
+
+    private String statsVerdictBody(StudyStatsStore.KaniOutcomeStats stats, boolean working, boolean hasLadder) {
+        if (stats == null) {
+            return "No Kani evidence is available yet. Study weak kanji, then sync AnkiDroid so this page can compare before and after.";
+        }
+        StudyStatsStore.LadderHealthMetric ladder = stats.ladderHealth;
+        if (working) {
+            List<String> signals = new ArrayList<>();
+            if (stats.weakKanjiImproved.improvedCount > 0) {
+                signals.add(countText(stats.weakKanjiImproved.improvedCount, "weak kanji is burning down", "weak kanji are burning down"));
+            }
+            if (stats.matureSupportGained.matureSupportGained > 0) {
+                signals.add(countText(stats.matureSupportGained.matureSupportGained, "mature Anki card has been gained", "mature Anki cards have been gained"));
+            }
+            if (ladder.promotionReadyCount > 0) {
+                signals.add(countText(ladder.promotionReadyCount, "review-phase item is ready to climb", "review-phase items are ready to climb"));
+            }
+            String body = String.join(". ", signals) + ".";
+            if (ladder.demotionRiskCount > 0) {
+                body += " Watch " + countText(ladder.demotionRiskCount, "review-phase item with a miss streak", "review-phase items with miss streaks") + ".";
+            }
+            return body;
+        }
+        if (hasLadder) {
+            return "Kani is tracking "
+                    + countText(ladder.totalActiveItems, "active kanji", "active kanji")
+                    + ", but no weakness burn-down or mature Anki support conversion has landed yet. Study due reviews, then sync AnkiDroid.";
+        }
+        return "No before-and-after evidence yet. Do Kani reviews, then sync AnkiDroid so this page can compare weak kanji and mature support.";
     }
 
     private LinearLayout studyTimePanel(StudyStatsStore.StudyTaskTimeStats stats) {
@@ -953,13 +981,58 @@ public final class MainActivity extends Activity {
         return box;
     }
 
+    private LinearLayout ladderHealthPanel(StudyStatsStore.LadderHealthMetric metric) {
+        LinearLayout box = statPanel(
+                "Ladder Health",
+                countText(metric.totalActiveItems, "active kanji on the ladder", "active kanji on the ladder"),
+                ladderHealthBody(metric),
+                GOLD
+        );
+        for (String row : ladderDistributionRows(metric)) {
+            box.addView(text(row, 16, INK, false));
+        }
+        return box;
+    }
+
+    private String ladderHealthBody(StudyStatsStore.LadderHealthMetric metric) {
+        if (metric.totalActiveItems == 0) {
+            return "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder.";
+        }
+        String body = countText(metric.promotionReadyCount, "promotion-ready review item", "promotion-ready review items")
+                + " · "
+                + countText(metric.demotionRiskCount, "demotion-risk review item", "demotion-risk review items");
+        if (metric.demotionReadyCount > 0) {
+            body += " · " + countText(metric.demotionReadyCount, "at the demotion threshold", "at the demotion threshold");
+        }
+        return body + ". Threshold: " + metric.realDueReviewsToMove + " real due reviews.";
+    }
+
+    private List<String> ladderDistributionRows(StudyStatsStore.LadderHealthMetric metric) {
+        List<String> rows = new ArrayList<>();
+        for (Records.LadderRung rung : Records.LadderRung.values()) {
+            rows.add(ladderRungLabel(rung) + ": " + metric.countFor(rung));
+        }
+        return rows;
+    }
+
+    private String ladderRungLabel(Records.LadderRung rung) {
+        return switch (rung) {
+            case WRITE_KANJI -> "Write kanji";
+            case TYPE_MEANING -> "Type meaning";
+            case SIMILAR_KANJI -> "Similar kanji";
+            case KANJI_MEANING -> "Kanji meaning";
+            case FONT_MEANING -> "Font meaning";
+            case WORD_READING -> "Word reading";
+        };
+    }
+
     private String weaknessImprovementBody(StudyStatsStore.WeakKanjiImprovedMetric metric) {
         if (metric.improvedCount == 0) {
             return "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.";
         }
-        return "Average weakness dropped from "
+        return "Average weakness: "
                 + formatWeakness(metric.averageBeforeWeakness)
-                + " to "
+                + " -> "
                 + formatWeakness(metric.averageAfterWeakness)
                 + " after Kani practice.";
     }

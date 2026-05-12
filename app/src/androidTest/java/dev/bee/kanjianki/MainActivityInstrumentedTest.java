@@ -211,7 +211,7 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
-                assertHasTexts(activity, "Stats", "Kani is not currently working for you", "Weak kanji improved", "Anki support gained");
+                assertHasTexts(activity, "Stats", "Kani is not currently working for you", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
             });
 
             clickText(scenario, "Home");
@@ -363,19 +363,21 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Last 7 days: 0 sec");
                 assertHasText(activity, "Answered tasks: 0");
                 assertHasText(activity, "Avg / task: 0 sec");
-                assertHasText(activity, "Weak kanji improved");
-                assertHasText(activity, "4 weak kanji improved after Kani practice");
-                assertHasText(activity, "Average weakness dropped from 0.75 to 0.48 after Kani practice.");
+                assertHasText(activity, "Weakness Burn-Down");
+                assertHasText(activity, "4 weak kanji improved");
+                assertHasText(activity, "Average weakness: 0.75 -> 0.48 after Kani practice.");
                 assertHasText(activity, "痛  0.82 -> 0.46");
                 assertHasText(activity, "薬  0.76 -> 0.51");
                 assertHasText(activity, "疲  0.69 -> 0.44");
                 assertNoText(activity, "平  0.74 -> 0.50");
-                assertHasText(activity, "Anki support gained");
-                assertHasText(activity, "3 kanji gained Anki support");
-                assertHasText(activity, "2 of them gained their first mature supporting card.");
+                assertHasText(activity, "Anki Support Conversion");
+                assertHasText(activity, "5 mature cards gained");
+                assertHasText(activity, "2 kanji gained first mature support.");
                 assertHasText(activity, "痛  1 -> 3 mature cards");
                 assertHasText(activity, "薬  0 -> 2 mature cards");
                 assertHasText(activity, "疲  0 -> 1 mature cards");
+                assertHasText(activity, "Ladder Health");
+                assertHasText(activity, "0 active kanji on the ladder");
                 assertNoText(activity, "Anki impact");
                 assertNoText(activity, "Kani writing");
                 assertNoText(activity, "Now practicing");
@@ -405,10 +407,11 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Kani is not currently working for you");
-                assertHasText(activity, "0 weak kanji improved after Kani practice");
+                assertHasText(activity, "0 weak kanji improved");
                 assertHasText(activity, "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.");
-                assertHasText(activity, "0 kanji gained Anki support");
-                assertHasText(activity, "0 of them gained their first mature supporting card.");
+                assertHasText(activity, "0 mature cards gained");
+                assertHasText(activity, "0 kanji gained first mature support.");
+                assertHasText(activity, "0 active kanji on the ladder");
                 assertNoText(activity, "helped kanji");
                 assertNoText(activity, "not-helping-yet kanji");
                 assertNoText(activity, "needs-more-cards kanji");
