@@ -10,10 +10,6 @@ import java.util.regex.Pattern;
 
 public final class TextUtil {
     private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
-    private static final Pattern RT_TAG = Pattern.compile("(?is)<rt[^>]*>.*?</rt>");
-    private static final Pattern STYLE_TAG = Pattern.compile("(?is)<style[^>]*>.*?</style>");
-    private static final Pattern SCRIPT_TAG = Pattern.compile("(?is)<script[^>]*>.*?</script>");
-    private static final Pattern GENERIC_TAG = Pattern.compile("(?is)<[^>]+>");
 
     private static final Pattern HTML_ENTITY_REGEX = Pattern.compile("[A-Za-z0-9_\\-]+");
 
@@ -34,12 +30,78 @@ public final class TextUtil {
         if (value == null || value.isEmpty()) {
             return "";
         }
-        String stripped = value;
-        String withoutRt = RT_TAG.matcher(stripped).replaceAll("");
-        String withoutStyle = STYLE_TAG.matcher(withoutRt).replaceAll(" ");
-        String withoutScript = SCRIPT_TAG.matcher(withoutStyle).replaceAll(" ");
-        String withoutTags = GENERIC_TAG.matcher(withoutScript).replaceAll(" ");
-        return MULTI_WHITESPACE.matcher(htmlEntities(withoutTags)).replaceAll(" ").trim();
+        return MULTI_WHITESPACE.matcher(htmlEntities(stripHtmlTags(value))).replaceAll(" ").trim();
+    }
+
+    private static String stripHtmlTags(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        int index = 0;
+        while (index < value.length()) {
+            int tagStart = value.indexOf('<', index);
+            if (tagStart < 0) {
+                out.append(value, index, value.length());
+                break;
+            }
+            out.append(value, index, tagStart);
+
+            int tagEnd = value.indexOf('>', tagStart + 1);
+            if (tagEnd < 0) {
+                out.append(value, tagStart, value.length());
+                break;
+            }
+            if (tagEnd == tagStart + 1) {
+                out.append(value, tagStart, tagEnd + 1);
+                index = tagEnd + 1;
+                continue;
+            }
+
+            String tagName = openingTagName(value, tagStart + 1, tagEnd);
+            if ("rt".equals(tagName)) {
+                int closeEnd = closingTagEnd(value, tagEnd + 1, "rt");
+                if (closeEnd >= 0) {
+                    index = closeEnd;
+                    continue;
+                }
+            } else if ("style".equals(tagName) || "script".equals(tagName)) {
+                int closeEnd = closingTagEnd(value, tagEnd + 1, tagName);
+                if (closeEnd >= 0) {
+                    out.append(' ');
+                    index = closeEnd;
+                    continue;
+                }
+            }
+
+            out.append(' ');
+            index = tagEnd + 1;
+        }
+        return out.toString();
+    }
+
+    private static String openingTagName(String value, int index, int tagEnd) {
+        char first = value.charAt(index);
+        if (!Character.isLetter(first)) {
+            return "";
+        }
+        int nameEnd = index + 1;
+        while (nameEnd < tagEnd && isTagNameChar(value.charAt(nameEnd))) {
+            nameEnd++;
+        }
+        return value.substring(index, nameEnd).toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean isTagNameChar(char value) {
+        return Character.isLetterOrDigit(value);
+    }
+
+    private static int closingTagEnd(String value, int fromIndex, String tagName) {
+        String closingTag = "</" + tagName + ">";
+        int maxStart = value.length() - closingTag.length();
+        for (int index = fromIndex; index <= maxStart; index++) {
+            if (value.regionMatches(true, index, closingTag, 0, closingTag.length())) {
+                return index + closingTag.length();
+            }
+        }
+        return -1;
     }
 
     public static String firstMeaningLine(String value) {

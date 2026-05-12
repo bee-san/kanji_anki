@@ -36,6 +36,16 @@ public class TextUtilTest {
     }
 
     @Test
+    public void stripsHtmlTagsWithoutRegexBacktracking() {
+        assertEquals("提 presentation", TextUtil.stripHtml("<RUBY>提<RT data-x=\"1\">てい</RT></RUBY><h1>presentation</h1>"));
+        assertEquals(".x{} visible", TextUtil.stripHtml("<style>.x{} visible"));
+        assertEquals("alert(1) visible", TextUtil.stripHtml("<script>alert(1) visible"));
+        assertEquals("reading", TextUtil.stripHtml("<rt>reading"));
+        assertEquals("<broken visible", TextUtil.stripHtml("<broken visible"));
+        assertEquals("<> visible", TextUtil.stripHtml("<> visible"));
+    }
+
+    @Test
     public void meaningLineHandlesEmptySeparatorsAndLongText() {
         String longMeaning = "meaning ".repeat(20);
 
