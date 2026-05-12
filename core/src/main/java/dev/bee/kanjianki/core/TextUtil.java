@@ -6,8 +6,13 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public final class TextUtil {
+    private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
+
+    private static final Pattern HTML_ENTITY_REGEX = Pattern.compile("[A-Za-z0-9_\\-]+");
+
     private TextUtil() {
     }
 
@@ -17,19 +22,86 @@ public final class TextUtil {
         }
         String noHtml = stripHtml(value);
         String normalized = Normalizer.normalize(noHtml, Normalizer.Form.NFKC);
-        return normalized.replace('\u3000', ' ').replaceAll("\\s+", " ").trim();
+        String withSpaces = normalized.replace('\u3000', ' ');
+        return MULTI_WHITESPACE.matcher(withSpaces).replaceAll(" ").trim();
     }
 
     public static String stripHtml(String value) {
         if (value == null || value.isEmpty()) {
             return "";
         }
-        String stripped = value
-                .replaceAll("(?is)<rt[^>]*>.*?</rt>", "")
-                .replaceAll("(?is)<style[^>]*>.*?</style>", " ")
-                .replaceAll("(?is)<script[^>]*>.*?</script>", " ")
-                .replaceAll("(?is)<[^>]+>", " ");
-        return htmlEntities(stripped).replaceAll("\\s+", " ").trim();
+        return MULTI_WHITESPACE.matcher(htmlEntities(stripHtmlTags(value))).replaceAll(" ").trim();
+    }
+
+    private static String stripHtmlTags(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        int index = 0;
+        while (index < value.length()) {
+            int tagStart = value.indexOf('<', index);
+            if (tagStart < 0) {
+                out.append(value, index, value.length());
+                break;
+            }
+            out.append(value, index, tagStart);
+
+            int tagEnd = value.indexOf('>', tagStart + 1);
+            if (tagEnd < 0) {
+                out.append(value, tagStart, value.length());
+                break;
+            }
+            if (tagEnd == tagStart + 1) {
+                out.append(value, tagStart, tagEnd + 1);
+                index = tagEnd + 1;
+                continue;
+            }
+
+            String tagName = openingTagName(value, tagStart + 1, tagEnd);
+            if ("rt".equals(tagName)) {
+                int closeEnd = closingTagEnd(value, tagEnd + 1, "rt");
+                if (closeEnd >= 0) {
+                    index = closeEnd;
+                    continue;
+                }
+            } else if ("style".equals(tagName) || "script".equals(tagName)) {
+                int closeEnd = closingTagEnd(value, tagEnd + 1, tagName);
+                if (closeEnd >= 0) {
+                    out.append(' ');
+                    index = closeEnd;
+                    continue;
+                }
+            }
+
+            out.append(' ');
+            index = tagEnd + 1;
+        }
+        return out.toString();
+    }
+
+    private static String openingTagName(String value, int index, int tagEnd) {
+        char first = value.charAt(index);
+        if (!Character.isLetter(first)) {
+            return "";
+        }
+        int nameEnd = index + 1;
+        while (nameEnd < tagEnd && isTagNameChar(value.charAt(nameEnd))) {
+            nameEnd++;
+        }
+        return value.substring(index, nameEnd).toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean isTagNameChar(char value) {
+        return Character.isLetterOrDigit(value);
+    }
+
+    private static int closingTagEnd(String value, int fromIndex, String tagName) {
+        String closingTag = "</" + tagName + ">";
+        int maxStart = value.length() - closingTag.length();
+        for (int index = fromIndex; index <= maxStart; index++) {
+            if (value.regionMatches(true, index, closingTag, 0, closingTag.length())) {
+                return index + closingTag.length();
+            }
+        }
+        return -1;
     }
 
     public static String firstMeaningLine(String value) {
@@ -85,7 +157,7 @@ public final class TextUtil {
 
     private static String ankiSearchToken(String value) {
         String safe = ankiSearchValue(value == null ? "" : value.trim());
-        if (safe.matches("[A-Za-z0-9_\\-]+")) {
+        if (HTML_ENTITY_REGEX.matcher(safe).matches()) {
             return safe;
         }
         return "\"" + safe + "\"";

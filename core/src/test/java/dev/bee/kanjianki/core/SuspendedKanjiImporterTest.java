@@ -40,7 +40,8 @@ public class SuspendedKanjiImporterTest {
         assertEquals(Integer.valueOf(100), imports.get(0).jitenRank);
         assertEquals("裂", imports.get(1).kanji);
         assertEquals(Integer.valueOf(3000), imports.get(1).jitenRank);
-        assertFalse(imports.stream().anyMatch(item -> "謎".equals(item.kanji)));
+        boolean importedContainsMysteryKanji = imports.stream().anyMatch(item -> "謎".equals(item.kanji));
+        assertFalse(importedContainsMysteryKanji);
         assertEquals(20, imports.get(1).sources.get(0).cardId);
     }
 

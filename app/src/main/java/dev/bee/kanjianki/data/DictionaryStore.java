@@ -33,8 +33,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public final class DictionaryStore extends DictionaryLookup {
+    private static final Pattern SHA256_HEX_PATTERN = Pattern.compile("[0-9a-fA-F]{64}");
+    private static final Pattern CHECKSUM_PART_SEPARATOR = Pattern.compile("\\s+");
+
     private static final String COLUMN_LITERAL = "literal";
     private static final String INSTALLING_SUFFIX = ".installing";
     private static final String BUNDLED_SUFFIX = ".bundled";
@@ -243,7 +247,7 @@ public final class DictionaryStore extends DictionaryLookup {
     }
 
     private static ValidationResult validateDictionary(File database, String expectedHash, String manifest) {
-        if (expectedHash == null || !expectedHash.matches("[0-9a-fA-F]{64}")) {
+        if (expectedHash == null || !SHA256_HEX_PATTERN.matcher(expectedHash).matches()) {
             return ValidationResult.rejected("Dictionary checksum is missing or invalid.");
         }
         try {
@@ -443,7 +447,7 @@ public final class DictionaryStore extends DictionaryLookup {
 
     private static String firstSha256(String text) {
         String value = text == null ? "" : text.trim();
-        String[] parts = value.split("\\s+");
+        String[] parts = CHECKSUM_PART_SEPARATOR.split(value);
         return parts.length == 0 ? "" : parts[0].toLowerCase(Locale.ROOT);
     }
 

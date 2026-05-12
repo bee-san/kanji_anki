@@ -15,9 +15,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 public final class SimilarKanjiIndex {
     public static final String SOURCE_KIKU_VISUALLY_SIMILAR = "kiku:wk-visually-similar";
+    private static final Pattern TAB_SEPARATOR = Pattern.compile("\\t");
 
     private final Map<String, Set<String>> similarByKanji;
     private final List<Pair> pairs;
@@ -60,7 +62,7 @@ public final class SimilarKanjiIndex {
         if (trimmed.isEmpty() || trimmed.startsWith("#")) {
             return null;
         }
-        String[] cells = line.split("\t", -1);
+        String[] cells = TAB_SEPARATOR.split(line, -1);
         if (cells.length < 2 || "kanji_a".equals(cells[0])) {
             return null;
         }

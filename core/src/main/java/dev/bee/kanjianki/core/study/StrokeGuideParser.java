@@ -7,8 +7,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public final class StrokeGuideParser {
+    private static final Pattern TAB_SEPARATOR = Pattern.compile("\\t");
+    private static final Pattern PIPE_SEPARATOR = Pattern.compile("\\|");
+    private static final Pattern SEMICOLON_SEPARATOR = Pattern.compile(";");
+    private static final Pattern COMMA_SEPARATOR = Pattern.compile(",");
+
     private StrokeGuideParser() {
     }
 
@@ -23,7 +29,7 @@ public final class StrokeGuideParser {
             if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 continue;
             }
-            String[] columns = trimmed.split("\\t", 2);
+            String[] columns = TAB_SEPARATOR.split(trimmed, 2);
             if (columns.length != 2 || columns[0].isEmpty()) {
                 throw new IOException("Invalid stroke guide line " + lineNumber + ": expected kanji<TAB>stroke data.");
             }
@@ -34,14 +40,14 @@ public final class StrokeGuideParser {
 
     private static List<InkStroke> parseStrokes(String value, int lineNumber) throws IOException {
         List<InkStroke> strokes = new ArrayList<>();
-        for (String strokeValue : value.split("\\|")) {
+        for (String strokeValue : PIPE_SEPARATOR.split(value)) {
             String trimmed = strokeValue.trim();
             if (trimmed.isEmpty()) {
                 continue;
             }
             List<InkPoint> points = new ArrayList<>();
-            for (String pointValue : trimmed.split(";")) {
-                String[] xy = pointValue.trim().split(",");
+            for (String pointValue : SEMICOLON_SEPARATOR.split(trimmed)) {
+                String[] xy = COMMA_SEPARATOR.split(pointValue.trim());
                 if (xy.length != 2) {
                     throw new IOException("Invalid point on stroke guide line " + lineNumber + ": " + pointValue);
                 }

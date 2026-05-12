@@ -7,6 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class JitenKanjiRanks {
+    private static final java.util.regex.Pattern CSV_SEPARATOR = java.util.regex.Pattern.compile("[,\\t]");
+
     private static final JitenKanjiRanks EMPTY = new JitenKanjiRanks(new LinkedHashMap<>());
 
     private final Map<String, Integer> ranks;
@@ -45,7 +47,7 @@ public final class JitenKanjiRanks {
         if (line.isEmpty() || line.startsWith("#")) {
             return null;
         }
-        String[] cells = line.split("[,\\t]");
+        String[] cells = CSV_SEPARATOR.split(line);
         if (cells.length < 2) {
             return null;
         }

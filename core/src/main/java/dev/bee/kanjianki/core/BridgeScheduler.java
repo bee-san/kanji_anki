@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * The ladder scheduler. Every persisted study item has one {@link Records.LadderRung}
@@ -27,6 +28,8 @@ import java.util.UUID;
  * card; otherwise promotion and demotion skip over it without pausing.
  */
 public final class BridgeScheduler {
+    private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
+
     private static final long MINUTE = 60_000L;
     private static final long DAY = 86_400_000L;
     private static final int MIN_RECOGNITION_STAGE = -1;
@@ -952,7 +955,7 @@ public final class BridgeScheduler {
         if (value == null) {
             return "";
         }
-        return value.trim().replaceAll("\\s+", " ");
+        return MULTI_WHITESPACE.matcher(value.trim()).replaceAll(" ");
     }
 
     private static final class SeedQueueLimits {

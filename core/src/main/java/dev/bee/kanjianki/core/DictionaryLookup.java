@@ -5,8 +5,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public abstract class DictionaryLookup {
+    private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
+
     public static final String SOURCE_KANJIDIC2 = "KANJIDIC2";
     public static final String SOURCE_ANKI = "anki";
 
@@ -57,7 +60,7 @@ public abstract class DictionaryLookup {
     }
 
     protected static String normalize(String value) {
-        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
+        return value == null ? "" : MULTI_WHITESPACE.matcher(value.trim()).replaceAll(" ");
     }
 
     private static String firstNonEmpty(String... values) {

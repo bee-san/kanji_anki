@@ -9,7 +9,6 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class SimilarKanjiIndexTest {
@@ -94,9 +93,12 @@ public final class SimilarKanjiIndexTest {
         assertEquals(pair, same);
         assertEquals(pair.hashCode(), same.hashCode());
         assertEquals(0, pair.compareTo(same));
-        assertNotEquals(pair, differentSource);
-        assertNotEquals(pair, differentKanji);
-        assertNotEquals(pair, "not a pair");
+        boolean equalsDifferentSource = pair.equals(differentSource);
+        assertFalse(equalsDifferentSource);
+        boolean equalsDifferentKanji = pair.equals(differentKanji);
+        assertFalse(equalsDifferentKanji);
+        boolean equalsDifferentType = pair.equals("not a pair");
+        assertFalse(equalsDifferentType);
     }
 
     @Test

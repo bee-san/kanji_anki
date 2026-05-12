@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 public final class Records {
     public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
@@ -15,6 +16,7 @@ public final class Records {
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
+    private static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");
 
     /**
      * Ladder rungs that a study item can be on, from lowest to highest.
@@ -926,7 +928,7 @@ public final class Records {
             if (encoded == null || encoded.isEmpty()) {
                 return safeFallback;
             }
-            String[] parts = encoded.split("\t", -1);
+            String[] parts = TASK_MEMORY_SEPARATOR.split(encoded, -1);
             if (parts.length < 9) {
                 return safeFallback;
             }
@@ -1507,6 +1509,7 @@ public final class Records {
     }
 
     public static final class LearningStepSettings {
+        private static final Pattern STEP_SEPARATOR = Pattern.compile("[,\\s]+");
         public final List<Integer> newStepsMinutes;
         public final List<Integer> reviewStepsMinutes;
 
@@ -1528,7 +1531,7 @@ public final class Records {
             if (value == null || value.trim().isEmpty()) {
                 return Collections.emptyList();
             }
-            String[] parts = value.trim().split("[,\\s]+");
+            String[] parts = STEP_SEPARATOR.split(value.trim());
             List<Integer> parsed = new ArrayList<>();
             for (String part : parts) {
                 if (part.isEmpty()) {

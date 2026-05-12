@@ -93,6 +93,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern FINITE_DOUBLE_VALUE = Pattern.compile("[-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?");
+    private static final Pattern NOTES_WHITESPACE_SEPARATOR = Pattern.compile("\\s+");
 
     private final Context context;
     private final ContentResolver resolver;
@@ -224,7 +225,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 }
             }
         }
-        if (!isArchivedTagPresent(Arrays.asList(tags.split("\\s+")))) {
+        if (!isArchivedTagPresent(Arrays.asList(NOTES_WHITESPACE_SEPARATOR.split(tags)))) {
             tags = (tags + " " + ARCHIVED_TAG).trim();
         }
         ContentValues values = new ContentValues();
@@ -523,7 +524,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     private static List<String> splitTags(String value) {
         List<String> tags = new ArrayList<>();
-        for (String tag : value.split("\\s+")) {
+        for (String tag : NOTES_WHITESPACE_SEPARATOR.split(value)) {
             if (!tag.trim().isEmpty()) {
                 tags.add(tag.trim());
             }
