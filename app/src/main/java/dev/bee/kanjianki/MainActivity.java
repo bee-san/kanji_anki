@@ -3140,12 +3140,12 @@ public final class MainActivity extends Activity {
         base(NAV_SETTINGS_ROUTE);
         Records.Settings current = settings();
         content.addView(fullWidthHomeButton());
-        content.addView(settingsHero());
-        addSpace(12);
+        content.addView(settingsHero(current, store.reminderSettings(), store.autoSyncSettings(), store.autoUpdateStatus()));
+        addSpace(10);
 
         content.addView(settingsCategory(
-                "Anki setup",
-                "Note type, clue fields, and suspended-card import range",
+                "Anki source",
+                "What Kani reads from AnkiDroid, and which suspended cards become practice.",
                 R.drawable.ic_book_24,
                 settingsAnkiExpanded,
                 () -> {
@@ -3153,12 +3153,11 @@ public final class MainActivity extends Activity {
                     renderSettings();
                 },
                 noteTypeSettingsPanel(current),
-                frequencyRangeSettingsPanel(current),
-                fieldMappingPanel()
+                frequencyRangeSettingsPanel(current)
         ));
         content.addView(settingsCategory(
-                "Study tuning",
-                "Daily focus, FSRS retention, repeat steps, and ladder thresholds",
+                "Study behavior",
+                "How much appears today, how quickly repeats return, and when cards move rungs.",
                 R.drawable.ic_study_24,
                 settingsStudyExpanded,
                 () -> {
@@ -3171,8 +3170,8 @@ public final class MainActivity extends Activity {
                 ladderThresholdSettingsPanel()
         ));
         content.addView(settingsCategory(
-                "Reminders & sync",
-                "Daily study nudges and automatic AnkiDroid refreshes",
+                "Automation",
+                "Background nudges, daily AnkiDroid refreshes, and app update checks.",
                 R.drawable.ic_sync_24,
                 settingsSyncExpanded,
                 () -> {
@@ -3180,31 +3179,35 @@ public final class MainActivity extends Activity {
                     renderSettings();
                 },
                 reminderSettingsPanel(),
-                autoSyncSettingsPanel()
+                autoSyncSettingsPanel(),
+                updateSettingsPanel()
         ));
         content.addView(settingsCategory(
-                "App & data",
-                "Updates, bundled data licenses, and stroke attribution",
+                "Reference data",
+                "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.",
                 R.drawable.ic_sparkle_24,
                 settingsAppExpanded,
                 () -> {
                     settingsAppExpanded = !settingsAppExpanded;
                     renderSettings();
                 },
-                updateSettingsPanel(),
-                dataLicenseSettingsPanel(),
-                strokeDataSettingsPanel()
+                dataLicenseSettingsPanel()
         ));
     }
 
-    private View settingsHero() {
+    private View settingsHero(
+            Records.Settings current,
+            LocalStore.ReminderSettings reminder,
+            LocalStore.AutoSyncSettings autoSync,
+            LocalStore.AutoUpdateStatus autoUpdate
+    ) {
         LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(dp(22), dp(22), dp(22), dp(22));
-        hero.setBackground(panel(Color.rgb(255, 239, 247), STUDY_BORDER, dp(26)));
-        hero.setElevation(dp(5));
+        hero.setPadding(dp(20), dp(20), dp(20), dp(18));
+        hero.setBackground(panel(Color.rgb(255, 248, 252), STUDY_BORDER, dp(30)));
+        hero.setElevation(dp(6));
 
-        TextView pill = text("Kani care desk", 13, STUDY_PINK_DARK, true);
+        TextView pill = text("Settings cockpit", 13, STUDY_PINK_DARK, true);
         pill.setGravity(Gravity.CENTER);
         pill.setIncludeFontPadding(false);
         pill.setPadding(dp(12), dp(7), dp(12), dp(7));
@@ -3214,12 +3217,79 @@ public final class MainActivity extends Activity {
         TextView title = text(NAV_SETTINGS, 34, STUDY_PLUM, true);
         title.setPadding(0, dp(12), 0, dp(4));
         hero.addView(title);
-        hero.addView(text("Tune Anki, study focus, reminders, and updates without leaving the soft pink control room.", 16, STUDY_MUTED, false));
+        hero.addView(text("Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.", 16, STUDY_MUTED, false));
+
+        LinearLayout topRow = settingsStatusRow(
+                settingsStatusPill("Note type", current.modelName, STUDY_PLUM),
+                settingsStatusPill("Import ranks", current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL)
+        );
+        LinearLayout bottomRow = settingsStatusRow(
+                settingsStatusPill("Reminder", settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED),
+                settingsStatusPill("Daily sync", settingsAutoSyncSummary(autoSync), autoSync.enabled ? TEAL : MUTED)
+        );
+        hero.addView(topRow);
+        hero.addView(bottomRow);
+        hero.addView(settingsStatusPill("Updates", settingsUpdateSummary(autoUpdate), autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(8), 0, dp(10));
         hero.setLayoutParams(lp);
         return hero;
+    }
+
+    private LinearLayout settingsStatusRow(View first, View second) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(0, dp(12), 0, 0);
+        LinearLayout.LayoutParams firstLp = new LinearLayout.LayoutParams(0, -2, 1);
+        firstLp.setMargins(0, 0, dp(6), 0);
+        row.addView(first, firstLp);
+        LinearLayout.LayoutParams secondLp = new LinearLayout.LayoutParams(0, -2, 1);
+        secondLp.setMargins(dp(6), 0, 0, 0);
+        row.addView(second, secondLp);
+        return row;
+    }
+
+    private LinearLayout settingsStatusPill(String label, String value, int valueColor) {
+        LinearLayout pill = new LinearLayout(this);
+        pill.setOrientation(LinearLayout.VERTICAL);
+        pill.setPadding(dp(13), dp(10), dp(13), dp(10));
+        pill.setBackground(panel(Color.WHITE, Color.rgb(249, 207, 226), dp(20)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(12), 0, 0);
+        pill.setLayoutParams(lp);
+
+        TextView labelView = text(label, 12, STUDY_MUTED, true);
+        labelView.setIncludeFontPadding(false);
+        pill.addView(labelView);
+
+        TextView valueView = text(value, 17, valueColor, true);
+        valueView.setSingleLine(false);
+        valueView.setPadding(0, dp(3), 0, 0);
+        pill.addView(valueView);
+        return pill;
+    }
+
+    private String settingsReminderSummary(LocalStore.ReminderSettings reminder) {
+        boolean blocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(this);
+        if (blocked) {
+            return "Blocked";
+        }
+        return reminder.enabled ? reminder.displayTime() : "Off";
+    }
+
+    private String settingsAutoSyncSummary(LocalStore.AutoSyncSettings autoSync) {
+        if (!autoSync.configured) {
+            return "After first sync";
+        }
+        return autoSync.enabled ? autoSync.displayTime() : "Off";
+    }
+
+    private String settingsUpdateSummary(LocalStore.AutoUpdateStatus autoUpdate) {
+        if (autoUpdate.hasPendingUpdate()) {
+            return "Verified APK ready";
+        }
+        return autoUpdate.enabled ? "Automatic checks on" : "Manual checks";
     }
 
     private LinearLayout settingsCategory(
@@ -3239,8 +3309,8 @@ public final class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(16), dp(14), dp(16), dp(14));
-        header.setBackground(panel(expanded ? Color.WHITE : Color.rgb(255, 242, 248), STUDY_BORDER, dp(22)));
+        header.setPadding(dp(16), dp(16), dp(14), dp(16));
+        header.setBackground(panel(expanded ? Color.WHITE : Color.rgb(255, 246, 251), STUDY_BORDER, dp(26)));
         header.setClickable(true);
         header.setFocusable(true);
         header.setContentDescription((expanded ? "Collapse " : "Expand ") + title);
@@ -3250,7 +3320,9 @@ public final class MainActivity extends Activity {
         ImageView icon = new ImageView(this);
         icon.setImageResource(iconRes);
         icon.setColorFilter(STUDY_PINK_DARK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(28), dp(28));
+        icon.setBackground(panel(Color.rgb(255, 237, 246), Color.TRANSPARENT, dp(16)));
+        icon.setPadding(dp(6), dp(6), dp(6), dp(6));
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(40), dp(40));
         iconLp.setMargins(0, 0, dp(12), 0);
         header.addView(icon, iconLp);
 
@@ -3263,6 +3335,15 @@ public final class MainActivity extends Activity {
         detail.setPadding(0, dp(4), 0, 0);
         copy.addView(detail);
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView count = text(panels.length + (panels.length == 1 ? " card" : " cards"), 12, STUDY_PINK_DARK, true);
+        count.setGravity(Gravity.CENTER);
+        count.setIncludeFontPadding(false);
+        count.setPadding(dp(9), dp(6), dp(9), dp(6));
+        count.setBackground(panel(Color.rgb(255, 242, 248), STUDY_BORDER, dp(16)));
+        LinearLayout.LayoutParams countLp = new LinearLayout.LayoutParams(-2, -2);
+        countLp.setMargins(dp(10), 0, dp(8), 0);
+        header.addView(count, countLp);
 
         ImageView arrow = new ImageView(this);
         arrow.setImageResource(R.drawable.ic_arrow_forward_24);
@@ -3282,8 +3363,8 @@ public final class MainActivity extends Activity {
     private LinearLayout settingsPanelBox() {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(16), dp(16), dp(16), dp(16));
-        box.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(22)));
+        box.setPadding(dp(18), dp(17), dp(18), dp(18));
+        box.setBackground(panel(Color.rgb(255, 253, 254), STUDY_BORDER, dp(24)));
         box.setElevation(dp(2));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(8), 0, dp(6));
@@ -3350,24 +3431,10 @@ public final class MainActivity extends Activity {
         return box;
     }
 
-    private LinearLayout fieldMappingPanel() {
-        LinearLayout mapping = settingsPanelBox();
-        mapping.addView(text("Fields used for clues", 22, INK, true));
-        mapping.addView(text("The selected note type should include these Kiku-compatible fields:\nExpression -> kanji source\nExpressionReading -> reading\nMainDefinition -> meaning\nSentence -> context\nFrequency/FreqSort -> collection metadata", 15, MUTED, false));
-        return mapping;
-    }
-
-    private LinearLayout strokeDataSettingsPanel() {
-        LinearLayout attribution = settingsPanelBox();
-        attribution.addView(text("Stroke data", 22, INK, true));
-        attribution.addView(text(AttributionTexts.kanjiVg(this), 14, MUTED, false));
-        return attribution;
-    }
-
     private LinearLayout dataLicenseSettingsPanel() {
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Data licenses", 23, INK, true));
-        box.addView(text("KANJIDIC2, Jiten rank data, KanjiVG, and font attribution.", 15, MUTED, false));
+        box.addView(text("Offline data & licenses", 23, INK, true));
+        box.addView(text("One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.", 15, MUTED, false));
         Button open = secondaryButton("Open data licenses");
         open.setOnClickListener(v -> renderDataSources());
         box.addView(open);
@@ -3402,9 +3469,9 @@ public final class MainActivity extends Activity {
     private LinearLayout noteTypeSettingsPanel(Records.Settings current) {
         Records.Settings defaults = Records.Settings.kikuDefaults();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Note type", 23, INK, true));
+        box.addView(text("Note type & clue fields", 23, INK, true));
         box.addView(text("Using " + current.modelName, 17, TEAL, true));
-        box.addView(text("Default: Kiku. Choose any AnkiDroid note type that uses the configured clue fields.", 15, MUTED, false));
+        box.addView(text("Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.", 15, MUTED, false));
 
         EditText noteType = noteTypeInput(current.modelName);
         box.addView(noteType, new LinearLayout.LayoutParams(-1, dp(58)));
@@ -3414,6 +3481,8 @@ public final class MainActivity extends Activity {
         EditText sentenceField = fieldInput(current.sentenceField);
         EditText frequencyField = fieldInput(current.frequencyField);
         EditText frequencySortField = fieldInput(current.frequencySortField);
+        box.addView(text("Required fields", 15, STUDY_PLUM, true));
+        box.addView(text("Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.", 14, MUTED, false));
         addFieldMappingInput(box, "Expression field", expressionField);
         addFieldMappingInput(box, "Reading field", readingField);
         addFieldMappingInput(box, "Meaning field", meaningField);
