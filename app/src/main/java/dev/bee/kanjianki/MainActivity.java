@@ -29,6 +29,7 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -3222,7 +3223,7 @@ public final class MainActivity extends Activity {
 
         content.addView(settingsCategory(
                 "Anki source",
-                "What Kani reads from AnkiDroid, and which suspended cards become practice.",
+                "What Kani reads from AnkiDroid, and which cards become practice.",
                 R.drawable.ic_book_24,
                 settingsAnkiExpanded,
                 () -> {
@@ -3230,6 +3231,7 @@ public final class MainActivity extends Activity {
                     renderSettings();
                 },
                 noteTypeSettingsPanel(current),
+                importFilterSettingsPanel(current),
                 frequencyRangeSettingsPanel(current)
         ));
         content.addView(settingsCategory(
@@ -3298,15 +3300,20 @@ public final class MainActivity extends Activity {
 
         LinearLayout topRow = settingsStatusRow(
                 settingsStatusPill("Note type", current.modelName, STUDY_PLUM),
-                settingsStatusPill("Import ranks", current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL)
+                settingsStatusPill("Import filters", settingsImportSummary(current), TEAL)
         );
         LinearLayout bottomRow = settingsStatusRow(
-                settingsStatusPill("Reminder", settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED),
-                settingsStatusPill("Daily sync", settingsAutoSyncSummary(autoSync), autoSync.enabled ? TEAL : MUTED)
+                settingsStatusPill("Import ranks", current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL),
+                settingsStatusPill("Reminder", settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED)
+        );
+        LinearLayout automationRow = settingsStatusRow(
+                settingsStatusPill("Daily sync", settingsAutoSyncSummary(autoSync), autoSync.enabled ? TEAL : MUTED),
+                settingsStatusPill("Updates", settingsUpdateSummary(autoUpdate), autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK)
         );
         hero.addView(topRow);
         hero.addView(bottomRow);
-        hero.addView(settingsStatusPill("Updates", settingsUpdateSummary(autoUpdate), autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK));
+        hero.addView(automationRow);
+        hero.addView(settingsStatusPill("Matching cards", matchingCardsSummary(current), STUDY_PLUM));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(8), 0, dp(10));
@@ -3367,6 +3374,31 @@ public final class MainActivity extends Activity {
             return "Verified APK ready";
         }
         return autoUpdate.enabled ? "Automatic checks on" : "Manual checks";
+    }
+
+    private String settingsImportSummary(Records.Settings settings) {
+        List<String> sources = new ArrayList<>();
+        if (settings.importActiveCards) {
+            sources.add("active");
+        }
+        if (settings.importSuspendedCards) {
+            sources.add("suspended");
+        }
+        if (settings.importTaggedCardsEnabled()) {
+            sources.add("tagged");
+        }
+        if (settings.importWeakCards) {
+            sources.add("weak");
+        }
+        if (sources.isEmpty()) {
+            return "No sources";
+        }
+        return String.join(" + ", sources) + "; " + matchingCardsSummary(settings);
+    }
+
+    private String matchingCardsSummary(Records.Settings settings) {
+        int count = settings.importMinMatchingCardsPerKanji;
+        return count + (count == 1 ? " matching card per kanji" : " matching cards per kanji");
     }
 
     private LinearLayout settingsCategory(
@@ -3447,6 +3479,97 @@ public final class MainActivity extends Activity {
         lp.setMargins(0, dp(8), 0, dp(6));
         box.setLayoutParams(lp);
         return box;
+    }
+
+    private LinearLayout importFilterSettingsPanel(Records.Settings current) {
+        LinearLayout box = settingsPanelBox();
+        box.addView(text("Import filters", 23, INK, true));
+        box.addView(text(settingsImportSummary(current), 17, TEAL, true));
+        box.addView(text("Choose which AnkiDroid cards can seed Kani practice. Matching uses any enabled source, then requires the configured source-card count per kanji.", 15, MUTED, false));
+
+        CheckBox activeCards = importFilterCheckBox("Active cards", current.importActiveCards);
+        CheckBox suspendedCards = importFilterCheckBox("Suspended cards", current.importSuspendedCards);
+        CheckBox taggedCards = importFilterCheckBox("Tagged cards", current.importTaggedCardsEnabled());
+        CheckBox weakCards = importFilterCheckBox("Weak cards", current.importWeakCards);
+        box.addView(activeCards);
+        box.addView(suspendedCards);
+        box.addView(taggedCards);
+        box.addView(weakCards);
+
+        EditText tags = fieldInput(current.importTagsText());
+        tags.setHint("tag1, tag2");
+        addFieldMappingInput(box, "Anki note tags", tags);
+
+        LinearLayout thresholds = new LinearLayout(this);
+        thresholds.setOrientation(LinearLayout.HORIZONTAL);
+        EditText difficultyInput = decimalInput(current.importWeakFsrsDifficultyThreshold);
+        LinearLayout difficultyColumn = inputColumn("FSRS difficulty", difficultyInput, 0);
+        EditText lapses = thresholdInput(current.importWeakLapsesThreshold);
+        LinearLayout lapsesColumn = inputColumn("Lapses", lapses, dp(10));
+        thresholds.addView(difficultyColumn, new LinearLayout.LayoutParams(0, -2, 1));
+        thresholds.addView(lapsesColumn, new LinearLayout.LayoutParams(0, -2, 1));
+        box.addView(thresholds);
+
+        EditText minMatching = thresholdInput(current.importMinMatchingCardsPerKanji);
+        addFieldMappingInput(box, "Minimum matching cards per kanji", minMatching);
+
+        Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
+        save.setOnClickListener(v -> {
+            List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
+            boolean taggedEnabled = taggedCards.isChecked() && !parsedTags.isEmpty();
+            if (!activeCards.isChecked() && !suspendedCards.isChecked() && !taggedEnabled && !weakCards.isChecked()) {
+                Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            double difficulty;
+            int lapseThreshold;
+            int minCards;
+            try {
+                difficulty = parseDecimalInput(difficultyInput);
+                lapseThreshold = parseThresholdInput(lapses);
+                minCards = parseThresholdInput(minMatching);
+            } catch (NumberFormatException error) {
+                Toast.makeText(this, "Use numeric import thresholds.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (difficulty < 1.0 || difficulty > 10.0 || lapseThreshold < 1 || lapseThreshold > 100 || minCards < 1 || minCards > 1000) {
+                Toast.makeText(this, "Use difficulty 1-10, lapses 1-100, and cards 1-1000.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, activeCards.isChecked() ? 1 : 0);
+            store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, suspendedCards.isChecked() ? 1 : 0);
+            store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, taggedCards.isChecked() ? 1 : 0);
+            store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, String.join(" ", parsedTags));
+            store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, weakCards.isChecked() ? 1 : 0);
+            store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, difficulty);
+            store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, lapseThreshold);
+            store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, minCards);
+            Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
+    }
+
+    private CheckBox importFilterCheckBox(String label, boolean checked) {
+        CheckBox box = new CheckBox(this);
+        box.setText(label);
+        box.setTextColor(INK);
+        box.setTextSize(17);
+        box.setTypeface(Typeface.DEFAULT_BOLD);
+        box.setChecked(checked);
+        box.setButtonTintList(ColorStateList.valueOf(STUDY_PINK_DARK));
+        box.setPadding(0, dp(4), 0, dp(4));
+        return box;
+    }
+
+    private LinearLayout inputColumn(String label, EditText input, int leftPadding) {
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setPadding(leftPadding, 0, 0, 0);
+        column.addView(text(label, 15, INK, true));
+        column.addView(input, new LinearLayout.LayoutParams(-1, dp(58)));
+        return column;
     }
 
     private LinearLayout frequencyRangeSettingsPanel(Records.Settings current) {
@@ -3652,6 +3775,16 @@ public final class MainActivity extends Activity {
         return input;
     }
 
+    private EditText decimalInput(double value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setText(String.format(Locale.ROOT, "%.1f", value));
+        input.setTextSize(20);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        return input;
+    }
+
     private void bindRankSliders(
             int[] selected,
             TextView status,
@@ -3705,6 +3838,10 @@ public final class MainActivity extends Activity {
 
     private int parseRankInput(EditText input) {
         return Integer.parseInt(input.getText().toString().trim());
+    }
+
+    private double parseDecimalInput(EditText input) {
+        return Double.parseDouble(input.getText().toString().trim());
     }
 
     private int rankSliderProgress(int rank) {

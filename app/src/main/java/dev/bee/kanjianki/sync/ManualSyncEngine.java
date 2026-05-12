@@ -9,9 +9,9 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
+import dev.bee.kanjianki.core.KanjiImportSelector;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
-import dev.bee.kanjianki.core.SuspendedKanjiImporter;
 import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
 
@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,23 +64,25 @@ public final class ManualSyncEngine {
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
             JitenKanjiRanks ranks = loadRanks();
-            List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
+            List<Records.SuspendedImport> selectedImports = new KanjiImportSelector(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
                     .importFrom(snapshot, settings);
-            List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(store.suspendedImports(), imports);
-            List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(snapshot, analysisImports, ranks, settings);
+            List<Records.SuspendedImport> currentSuspendedImports = suspendedImportsOnly(selectedImports);
+            List<Records.SuspendedImport> storedSuspendedImports = settings.importSuspendedCards ? store.suspendedImports() : Collections.emptyList();
+            List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(storedSuspendedImports, selectedImports);
+            List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(snapshot, analysisImports, ranks, settings);
             SimilarKanjiIndex similarKanjiIndex = loadSimilarKanjiIndex();
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
             long finished = System.currentTimeMillis();
             long syncId = store.saveSuccessfulSync(
                     snapshot,
-                    imports,
+                    currentSuspendedImports,
                     rows,
                     settings,
                     new LocalStore.SyncTiming(started, finished),
                     null,
                     similarKanjiIndex
             );
-            AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot, progress);
+            AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress);
             store.updateSyncRemovalMessage(syncId, removal.message);
 
             BridgeScheduler scheduler = new BridgeScheduler();
@@ -99,7 +102,7 @@ public final class ManualSyncEngine {
             // the similar_kanji rung is available for them.
             seeded = store.annotateSimilarKanjiAvailability(seeded);
             store.replaceStudyItems(seeded, syncId, finished, settings);
-            return new SyncResult(true, false, rows.size(), imports.size(), removal.message, plan.status);
+            return new SyncResult(true, false, rows.size(), currentSuspendedImports.size(), removal.message, plan.status);
         } catch (AnkiDroidGateway.SyncFailure error) {
             long finished = System.currentTimeMillis();
             store.saveFailedSync(
@@ -169,6 +172,28 @@ public final class ManualSyncEngine {
         List<Records.SuspendedImport> out = new ArrayList<>();
         for (MutableImport item : byKanji.values()) {
             out.add(item.build());
+        }
+        return out;
+    }
+
+    private List<Records.SuspendedImport> suspendedImportsOnly(List<Records.SuspendedImport> imports) {
+        List<Records.SuspendedImport> out = new ArrayList<>();
+        for (Records.SuspendedImport imported : imports) {
+            List<Records.SuspendedSource> suspendedSources = new ArrayList<>();
+            for (Records.SuspendedSource source : imported.sources) {
+                if (source.suspended) {
+                    suspendedSources.add(source);
+                }
+            }
+            if (!suspendedSources.isEmpty()) {
+                out.add(new Records.SuspendedImport(
+                        imported.kanji,
+                        imported.jitenRank,
+                        imported.rankKnown,
+                        imported.cutoffUsed,
+                        suspendedSources
+                ));
+            }
         }
         return out;
     }

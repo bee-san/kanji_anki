@@ -2,10 +2,12 @@ package dev.bee.kanjianki.core;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class Records {
@@ -14,9 +16,17 @@ public final class Records {
     public static final int DEFAULT_REAL_DUE_REVIEWS_TO_MOVE = 3;
     public static final int DEFAULT_SUSPENDED_RANK_MIN = 100;
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
+    public static final boolean DEFAULT_IMPORT_ACTIVE_CARDS = true;
+    public static final boolean DEFAULT_IMPORT_SUSPENDED_CARDS = true;
+    public static final boolean DEFAULT_IMPORT_TAGGED_CARDS = false;
+    public static final boolean DEFAULT_IMPORT_WEAK_CARDS = false;
+    public static final double DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY = 7.0;
+    public static final int DEFAULT_IMPORT_WEAK_LAPSES = 2;
+    public static final int DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI = 1;
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
     private static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");
+    private static final Pattern IMPORT_TAG_SEPARATOR = Pattern.compile("[,\\s]+");
 
     /**
      * Ladder rungs that a study item can be on, from lowest to highest.
@@ -167,6 +177,45 @@ public final class Records {
         return (Double) value;
     }
 
+    private static double doubleArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return (Double) value;
+    }
+
+    private static List<String> stringListArg(Object[] args, int index, String context) {
+        Object value = arg(args, index, context);
+        if (value == null) {
+            return Collections.emptyList();
+        }
+        if (value instanceof List<?> raw) {
+            List<String> out = new ArrayList<>();
+            for (Object item : raw) {
+                if (item != null) {
+                    out.add(item.toString());
+                }
+            }
+            return out;
+        }
+        return parseImportTags(value.toString());
+    }
+
+    public static List<String> parseImportTags(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<String> parsed = new LinkedHashSet<>();
+        for (String part : IMPORT_TAG_SEPARATOR.split(value.trim())) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                parsed.add(trimmed);
+            }
+        }
+        return new ArrayList<>(parsed);
+    }
+
     public static final class Settings {
         public final String modelName;
         public final String templateName;
@@ -186,6 +235,14 @@ public final class Records {
         public final int writingTriggerMissDays;
         public final int recognitionPromotionPasses;
         public final int realDueReviewsToMove;
+        public final boolean importActiveCards;
+        public final boolean importSuspendedCards;
+        public final boolean importTaggedCards;
+        public final List<String> importTags;
+        public final boolean importWeakCards;
+        public final double importWeakFsrsDifficultyThreshold;
+        public final int importWeakLapsesThreshold;
+        public final int importMinMatchingCardsPerKanji;
 
         public Settings(
                 String modelName,
@@ -222,6 +279,48 @@ public final class Records {
             this.writingTriggerMissDays = Math.max(1, args.writingTriggerMissDays);
             this.recognitionPromotionPasses = Math.max(1, args.recognitionPromotionPasses);
             this.realDueReviewsToMove = Math.max(1, args.realDueReviewsToMove);
+            this.importActiveCards = args.importActiveCards;
+            this.importSuspendedCards = args.importSuspendedCards;
+            this.importTags = Collections.unmodifiableList(normalizeImportTags(args.importTags));
+            this.importTaggedCards = args.importTaggedCards && !this.importTags.isEmpty();
+            this.importWeakCards = args.importWeakCards;
+            this.importWeakFsrsDifficultyThreshold = finitePositive(args.importWeakFsrsDifficultyThreshold)
+                    ? Math.max(1.0, Math.min(10.0, args.importWeakFsrsDifficultyThreshold))
+                    : DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY;
+            this.importWeakLapsesThreshold = Math.max(1, Math.min(100, args.importWeakLapsesThreshold));
+            this.importMinMatchingCardsPerKanji = Math.max(1, Math.min(1000, args.importMinMatchingCardsPerKanji));
+        }
+
+        public boolean importTaggedCardsEnabled() {
+            return importTaggedCards && !importTags.isEmpty();
+        }
+
+        public boolean hasImportSourceEnabled() {
+            return importActiveCards || importSuspendedCards || importTaggedCardsEnabled() || importWeakCards;
+        }
+
+        public String importTagsText() {
+            return String.join(" ", importTags);
+        }
+
+        private static boolean finitePositive(double value) {
+            return !Double.isNaN(value) && !Double.isInfinite(value) && value > 0.0;
+        }
+
+        private static List<String> normalizeImportTags(List<String> rawTags) {
+            if (rawTags == null || rawTags.isEmpty()) {
+                return Collections.emptyList();
+            }
+            Set<String> parsed = new LinkedHashSet<>();
+            for (String tag : rawTags) {
+                if (tag != null) {
+                    String trimmed = tag.trim();
+                    if (!trimmed.isEmpty()) {
+                        parsed.add(trimmed);
+                    }
+                }
+            }
+            return new ArrayList<>(parsed);
         }
 
         private static final class SettingsArgs {
@@ -236,9 +335,17 @@ public final class Records {
             int writingTriggerMissDays = DEFAULT_WRITING_TRIGGER_MISS_DAYS;
             int recognitionPromotionPasses = DEFAULT_RECOGNITION_PROMOTION_PASSES;
             int realDueReviewsToMove = DEFAULT_REAL_DUE_REVIEWS_TO_MOVE;
+            boolean importActiveCards = DEFAULT_IMPORT_ACTIVE_CARDS;
+            boolean importSuspendedCards = DEFAULT_IMPORT_SUSPENDED_CARDS;
+            boolean importTaggedCards = DEFAULT_IMPORT_TAGGED_CARDS;
+            List<String> importTags = Collections.emptyList();
+            boolean importWeakCards = DEFAULT_IMPORT_WEAK_CARDS;
+            double importWeakFsrsDifficultyThreshold = DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY;
+            int importWeakLapsesThreshold = DEFAULT_IMPORT_WEAK_LAPSES;
+            int importMinMatchingCardsPerKanji = DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI;
 
             static SettingsArgs from(Object[] rest) {
-                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11);
+                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19);
                 SettingsArgs args = new SettingsArgs();
                 args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS);
                 args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS);
@@ -260,7 +367,7 @@ public final class Records {
                     if (rest.length >= 10) {
                         args.recognitionPromotionPasses = intArg(rest, 9, CONTEXT_SETTINGS);
                     }
-                    if (rest.length == 11) {
+                    if (rest.length >= 11) {
                         args.realDueReviewsToMove = intArg(rest, 10, CONTEXT_SETTINGS);
                     } else if (rest.length >= 10) {
                         // If only the two legacy promotion knobs are provided, use their
@@ -271,6 +378,16 @@ public final class Records {
                                 args.recognitionPromotionPasses
                         );
                     }
+                }
+                if (rest.length >= 19) {
+                    args.importActiveCards = booleanArg(rest, 11, CONTEXT_SETTINGS);
+                    args.importSuspendedCards = booleanArg(rest, 12, CONTEXT_SETTINGS);
+                    args.importTaggedCards = booleanArg(rest, 13, CONTEXT_SETTINGS);
+                    args.importTags = stringListArg(rest, 14, CONTEXT_SETTINGS);
+                    args.importWeakCards = booleanArg(rest, 15, CONTEXT_SETTINGS);
+                    args.importWeakFsrsDifficultyThreshold = doubleArg(rest, 16, CONTEXT_SETTINGS);
+                    args.importWeakLapsesThreshold = intArg(rest, 17, CONTEXT_SETTINGS);
+                    args.importMinMatchingCardsPerKanji = intArg(rest, 18, CONTEXT_SETTINGS);
                 }
                 return args;
             }
@@ -294,7 +411,15 @@ public final class Records {
                     3,
                     DEFAULT_WRITING_TRIGGER_MISS_DAYS,
                     DEFAULT_RECOGNITION_PROMOTION_PASSES,
-                    DEFAULT_REAL_DUE_REVIEWS_TO_MOVE
+                    DEFAULT_REAL_DUE_REVIEWS_TO_MOVE,
+                    DEFAULT_IMPORT_ACTIVE_CARDS,
+                    DEFAULT_IMPORT_SUSPENDED_CARDS,
+                    DEFAULT_IMPORT_TAGGED_CARDS,
+                    Collections.emptyList(),
+                    DEFAULT_IMPORT_WEAK_CARDS,
+                    DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY,
+                    DEFAULT_IMPORT_WEAK_LAPSES,
+                    DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
             );
         }
 
@@ -468,8 +593,58 @@ public final class Records {
         public final String reading;
         public final String meaning;
         public final String sentence;
+        public final String sourceType;
+        public final boolean suspended;
+        public final boolean forcePractice;
+        public final boolean mature;
+        public final int lapses;
+        public final int intervalDays;
+        public final int reps;
+        public final Double fsrsStability;
+        public final Double fsrsDifficulty;
+        public final Double fsrsRetrievability;
 
         public SuspendedSource(String kanji, long cardId, long noteId, String expression, String reading, String meaning, String sentence) {
+            this(
+                    kanji,
+                    cardId,
+                    noteId,
+                    expression,
+                    reading,
+                    meaning,
+                    sentence,
+                    "suspended",
+                    true,
+                    true,
+                    false,
+                    0,
+                    0,
+                    0,
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        public SuspendedSource(
+                String kanji,
+                long cardId,
+                long noteId,
+                String expression,
+                String reading,
+                String meaning,
+                String sentence,
+                String sourceType,
+                boolean suspended,
+                boolean forcePractice,
+                boolean mature,
+                int lapses,
+                int intervalDays,
+                int reps,
+                Double fsrsStability,
+                Double fsrsDifficulty,
+                Double fsrsRetrievability
+        ) {
             this.kanji = kanji;
             this.cardId = cardId;
             this.noteId = noteId;
@@ -477,6 +652,16 @@ public final class Records {
             this.reading = reading;
             this.meaning = meaning;
             this.sentence = sentence;
+            this.sourceType = sourceType == null || sourceType.trim().isEmpty() ? (suspended ? "suspended" : "active") : sourceType.trim();
+            this.suspended = suspended;
+            this.forcePractice = forcePractice;
+            this.mature = mature;
+            this.lapses = Math.max(0, lapses);
+            this.intervalDays = Math.max(0, intervalDays);
+            this.reps = Math.max(0, reps);
+            this.fsrsStability = fsrsStability;
+            this.fsrsDifficulty = fsrsDifficulty;
+            this.fsrsRetrievability = fsrsRetrievability;
         }
     }
 

@@ -14,6 +14,14 @@ public final class SyncSettings {
     public static final String WRITING_TRIGGER_MISS_DAYS_SETTING_KEY = "writing_trigger_miss_days";
     public static final String RECOGNITION_PROMOTION_PASSES_SETTING_KEY = "recognition_promotion_passes";
     public static final String REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY = "real_due_reviews_to_move";
+    public static final String IMPORT_ACTIVE_CARDS_SETTING_KEY = "import_active_cards";
+    public static final String IMPORT_SUSPENDED_CARDS_SETTING_KEY = "import_suspended_cards";
+    public static final String IMPORT_TAGGED_CARDS_SETTING_KEY = "import_tagged_cards";
+    public static final String IMPORT_TAGS_SETTING_KEY = "import_tags";
+    public static final String IMPORT_WEAK_CARDS_SETTING_KEY = "import_weak_cards";
+    public static final String IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY = "import_weak_fsrs_difficulty_threshold";
+    public static final String IMPORT_WEAK_LAPSES_SETTING_KEY = "import_weak_lapses_threshold";
+    public static final String IMPORT_MIN_MATCHING_CARDS_SETTING_KEY = "import_min_matching_cards_per_kanji";
 
     private SyncSettings() {
     }
@@ -47,6 +55,22 @@ public final class SyncSettings {
         int realDueReviewsToMove = store == null
                 ? defaults.realDueReviewsToMove
                 : store.getIntSetting(REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, defaults.realDueReviewsToMove);
+        boolean importActiveCards = boolSetting(store, IMPORT_ACTIVE_CARDS_SETTING_KEY, defaults.importActiveCards);
+        boolean importSuspendedCards = boolSetting(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY, defaults.importSuspendedCards);
+        boolean importTaggedCards = boolSetting(store, IMPORT_TAGGED_CARDS_SETTING_KEY, defaults.importTaggedCards);
+        String importTags = store == null
+                ? defaults.importTagsText()
+                : store.getStringSetting(IMPORT_TAGS_SETTING_KEY, defaults.importTagsText());
+        boolean importWeakCards = boolSetting(store, IMPORT_WEAK_CARDS_SETTING_KEY, defaults.importWeakCards);
+        double importWeakFsrsDifficulty = store == null
+                ? defaults.importWeakFsrsDifficultyThreshold
+                : store.getDoubleSetting(IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, defaults.importWeakFsrsDifficultyThreshold);
+        int importWeakLapses = store == null
+                ? defaults.importWeakLapsesThreshold
+                : store.getIntSetting(IMPORT_WEAK_LAPSES_SETTING_KEY, defaults.importWeakLapsesThreshold);
+        int importMinMatchingCards = store == null
+                ? defaults.importMinMatchingCardsPerKanji
+                : store.getIntSetting(IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, defaults.importMinMatchingCardsPerKanji);
         return new Records.Settings(
                 modelName,
                 defaults.templateName,
@@ -64,8 +88,23 @@ public final class SyncSettings {
                 defaults.newPerDay,
                 writingTriggerMissDays,
                 recognitionPromotionPasses,
-                realDueReviewsToMove
+                realDueReviewsToMove,
+                importActiveCards,
+                importSuspendedCards,
+                importTaggedCards,
+                Records.parseImportTags(importTags),
+                importWeakCards,
+                importWeakFsrsDifficulty,
+                importWeakLapses,
+                importMinMatchingCards
         );
+    }
+
+    private static boolean boolSetting(LocalStore store, String key, boolean fallback) {
+        if (store == null) {
+            return fallback;
+        }
+        return store.getIntSetting(key, fallback ? 1 : 0) == 1;
     }
 
     private static String fieldSetting(LocalStore store, String key, String fallback, boolean required) {

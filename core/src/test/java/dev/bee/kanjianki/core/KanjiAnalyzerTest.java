@@ -179,6 +179,51 @@ public class KanjiAnalyzerTest {
         assertTrue(rows.isEmpty());
     }
 
+    @Test
+    public void selectedTaggedActiveSourceCanForceCleanPracticeRow() throws Exception {
+        Records.Settings settings = settingsWithMatureSupport(1);
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("深,1600\n"));
+        List<Records.SuspendedImport> imports = Arrays.asList(new Records.SuspendedImport(
+                "深",
+                1600,
+                true,
+                3000,
+                Arrays.asList(new Records.SuspendedSource(
+                        "深",
+                        10,
+                        1,
+                        "深い",
+                        "ふかい",
+                        "deep",
+                        "深い。",
+                        "active",
+                        false,
+                        true,
+                        true,
+                        0,
+                        45,
+                        12,
+                        60.0,
+                        3.0,
+                        0.95
+                ))
+        ));
+
+        List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(
+                new Records.CollectionSnapshot(
+                        Arrays.asList(note(1, "深い", "ふかい", "deep", "深い。")),
+                        Arrays.asList(card(10, 1, 45, 12, 0, 60.0, 3.0, 0.95))
+                ),
+                imports,
+                ranks,
+                settings
+        );
+
+        assertEquals(1, rows.size());
+        assertEquals("深", rows.get(0).kanji);
+        assertEquals(1, rows.get(0).activeExampleCount);
+    }
+
     private Records.Note note(long id, String expression, String reading, String meaning, String sentence) {
         java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
         Records.Settings settings = Records.Settings.kikuDefaults();

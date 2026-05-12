@@ -43,6 +43,7 @@ import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.SyncProgress;
+import dev.bee.kanjianki.sync.SyncSettings;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -236,7 +237,8 @@ public final class MainActivityInstrumentedTest {
                 sliders.get(1).setProgress(3499);
             });
             clickText(scenario, "Save frequency range");
-            clickText(scenario, "Study tuning");
+            clickText(scenario, "Save import filters");
+            clickText(scenario, "Study behavior");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Daily workload");
                 assertHasText(activity, "Auto Pareto: waiting for problem kanji");
@@ -257,7 +259,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save workload");
             clickText(scenario, "95%");
             clickText(scenario, "Save retention");
-            clickText(scenario, "Reminders & sync");
+            clickText(scenario, "Automation");
             scenario.onActivity(activity -> assertHasTexts(activity, "Daily reminder", "Daily Anki sync"));
             clickText(scenario, "Morning 08:00");
             clickText(scenario, "Enable reminder");
@@ -1915,10 +1917,10 @@ public final class MainActivityInstrumentedTest {
     private static void assertCollapsedSettingsScreen(MainActivity activity) {
         assertHasTexts(
                 activity,
-                "Anki setup",
-                "Study tuning",
-                "Reminders & sync",
-                "App & data",
+                "Anki source",
+                "Study behavior",
+                "Automation",
+                "Reference data",
                 "Note type",
                 "Using Kiku",
                 "Expression field",
@@ -1927,6 +1929,12 @@ public final class MainActivityInstrumentedTest {
                 "Frequency sort field",
                 "Choose from AnkiDroid",
                 "Save note type",
+                "Import filters",
+                "Active cards",
+                "Suspended cards",
+                "Tagged cards",
+                "Weak cards",
+                "Minimum matching cards per kanji",
                 "Frequency range",
                 "Default: 100-3000",
                 "Min rank",
@@ -1943,6 +1951,9 @@ public final class MainActivityInstrumentedTest {
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
             assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
             assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
+            assertEquals(1, store.getIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 0));
+            assertEquals(1, store.getIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 0));
+            assertEquals(1, store.getIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 0));
             LocalStore.ReminderSettings reminder = store.reminderSettings();
             assertTrue(reminder.enabled);
             assertEquals(8, reminder.hour);

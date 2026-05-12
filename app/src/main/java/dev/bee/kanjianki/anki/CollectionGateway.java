@@ -15,4 +15,12 @@ public interface CollectionGateway {
     default AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
         return removeArchivedSuspendedCards(snapshot);
     }
+
+    default AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(
+            Records.CollectionSnapshot snapshot,
+            java.util.List<Records.SuspendedImport> selectedSuspendedImports,
+            SyncProgress.Listener progress
+    ) {
+        return removeArchivedSuspendedCards(snapshot, progress);
+    }
 }

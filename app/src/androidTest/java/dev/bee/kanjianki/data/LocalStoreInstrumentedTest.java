@@ -483,6 +483,11 @@ public final class LocalStoreInstrumentedTest {
         assertEquals("Kiku", legacyFrequency.modelName);
         assertEquals(100, legacyFrequency.suspendedRankMin);
         assertEquals(4000, legacyFrequency.suspendedRankMax);
+        assertTrue(legacyFrequency.importActiveCards);
+        assertTrue(legacyFrequency.importSuspendedCards);
+        assertFalse(legacyFrequency.importTaggedCardsEnabled());
+        assertFalse(legacyFrequency.importWeakCards);
+        assertEquals(1, legacyFrequency.importMinMatchingCardsPerKanji);
         store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, "Custom Japanese");
         store.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, "Front");
         store.putStringSetting(SyncSettings.READING_FIELD_SETTING_KEY, "");
@@ -511,6 +516,23 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings ladderSettings = SyncSettings.fromStore(store);
         assertEquals(4, ladderSettings.writingTriggerMissDays);
         assertEquals(5, ladderSettings.recognitionPromotionPasses);
+        store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 0);
+        store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1);
+        store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, 1);
+        store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, "focus, weak focus");
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, 1);
+        store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, 99.0);
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, -5);
+        store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 0);
+        Records.Settings importSettings = SyncSettings.fromStore(store);
+        assertFalse(importSettings.importActiveCards);
+        assertTrue(importSettings.importSuspendedCards);
+        assertTrue(importSettings.importTaggedCardsEnabled());
+        assertEquals(Arrays.asList("focus", "weak"), importSettings.importTags);
+        assertTrue(importSettings.importWeakCards);
+        assertEquals(10.0, importSettings.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(1, importSettings.importWeakLapsesThreshold);
+        assertEquals(1, importSettings.importMinMatchingCardsPerKanji);
     }
 
     private void assertReminderAndAdaptiveLoadSettingsPersist() {

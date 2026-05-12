@@ -18,14 +18,34 @@ public final class KanjiAnalyzer {
             JitenKanjiRanks ranks,
             Records.Settings settings
     ) {
+        return rebuild(snapshot, suspendedImports, ranks, settings, false);
+    }
+
+    public List<Records.DashboardRow> rebuildSelectedSources(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            JitenKanjiRanks ranks,
+            Records.Settings settings
+    ) {
+        return rebuild(snapshot, imports, ranks, settings, true);
+    }
+
+    private List<Records.DashboardRow> rebuild(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            JitenKanjiRanks ranks,
+            Records.Settings settings,
+            boolean selectedOnly
+    ) {
         Map<Long, Records.Note> notesById = snapshot.notesById();
         Map<String, MutableRow> rows = new LinkedHashMap<>();
-        Set<Long> suspendedCardIds = new LinkedHashSet<>();
+        Set<Long> cardIdsWithExamples = new LinkedHashSet<>();
+        ImportSourceIndex importIndex = new ImportSourceIndex(imports, selectedOnly);
 
-        addCardExamples(snapshot, notesById, rows, suspendedCardIds, settings);
-        addImportedSuspensions(suspendedImports, rows, suspendedCardIds);
+        addCardExamples(snapshot, notesById, rows, cardIdsWithExamples, settings, importIndex);
+        addImportedSources(imports, rows, cardIdsWithExamples);
 
-        List<Records.DashboardRow> out = dashboardRows(rows, ranks, settings);
+        List<Records.DashboardRow> out = dashboardRows(rows, ranks, settings, importIndex);
         out.sort(Comparator
                 .comparingInt((Records.DashboardRow row) -> row.weaknessScore).reversed()
                 .thenComparing((Records.DashboardRow row) -> row.suspendedExampleCount, Comparator.reverseOrder())
@@ -38,13 +58,17 @@ public final class KanjiAnalyzer {
             Records.CollectionSnapshot snapshot,
             Map<Long, Records.Note> notesById,
             Map<String, MutableRow> rows,
-            Set<Long> suspendedCardIds,
-            Records.Settings settings
+            Set<Long> cardIdsWithExamples,
+            Records.Settings settings,
+            ImportSourceIndex importIndex
     ) {
         for (Records.Card card : snapshot.cards) {
+            if (!importIndex.shouldReadCard(card.cardId)) {
+                continue;
+            }
             Records.Note note = notesById.get(card.noteId);
             if (note != null) {
-                addCardExample(card, note, rows, suspendedCardIds, settings);
+                addCardExample(card, note, rows, cardIdsWithExamples, settings, importIndex);
             }
         }
     }
@@ -53,12 +77,11 @@ public final class KanjiAnalyzer {
             Records.Card card,
             Records.Note note,
             Map<String, MutableRow> rows,
-            Set<Long> suspendedCardIds,
-            Records.Settings settings
+            Set<Long> cardIdsWithExamples,
+            Records.Settings settings,
+            ImportSourceIndex importIndex
     ) {
-        if (card.suspended) {
-            suspendedCardIds.add(card.cardId);
-        }
+        cardIdsWithExamples.add(card.cardId);
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
         List<String> kanjiList = TextUtil.extractKanji(expression);
         if (kanjiList.isEmpty()) {
@@ -66,7 +89,12 @@ public final class KanjiAnalyzer {
         }
         Records.Example example = exampleFromCard(card, note, expression, settings);
         for (String kanji : kanjiList) {
-            rows.computeIfAbsent(kanji, MutableRow::new).examples.add(example);
+            if (!importIndex.shouldReadKanji(kanji)) {
+                continue;
+            }
+            MutableRow row = rows.computeIfAbsent(kanji, MutableRow::new);
+            row.examples.add(example);
+            row.forcePractice = row.forcePractice || importIndex.forcePractice(kanji, card.cardId);
         }
     }
 
@@ -94,44 +122,51 @@ public final class KanjiAnalyzer {
         );
     }
 
-    private static void addImportedSuspensions(
-            List<Records.SuspendedImport> suspendedImports,
+    private static void addImportedSources(
+            List<Records.SuspendedImport> imports,
             Map<String, MutableRow> rows,
-            Set<Long> suspendedCardIds
+            Set<Long> cardIdsWithExamples
     ) {
-        for (Records.SuspendedImport imported : suspendedImports) {
+        for (Records.SuspendedImport imported : imports) {
             MutableRow row = rows.computeIfAbsent(imported.kanji, MutableRow::new);
             for (Records.SuspendedSource source : imported.sources) {
-                if (!suspendedCardIds.contains(source.cardId)) {
-                    row.examples.add(exampleFromSuspendedSource(source));
+                row.forcePractice = row.forcePractice || source.forcePractice;
+                if (!cardIdsWithExamples.contains(source.cardId)) {
+                    row.examples.add(exampleFromImportedSource(source));
                 }
             }
         }
     }
 
-    private static Records.Example exampleFromSuspendedSource(Records.SuspendedSource source) {
+    private static Records.Example exampleFromImportedSource(Records.SuspendedSource source) {
         return new Records.Example(
-                SOURCE_SUSPENDED,
+                source.sourceType,
                 source.cardId,
                 source.noteId,
                 source.expression,
                 source.reading,
                 source.meaning,
                 source.sentence,
-                false,
-                0
+                source.mature,
+                source.lapses,
+                source.intervalDays,
+                source.reps,
+                source.fsrsStability,
+                source.fsrsDifficulty,
+                source.fsrsRetrievability
         );
     }
 
     private static List<Records.DashboardRow> dashboardRows(
             Map<String, MutableRow> rows,
             JitenKanjiRanks ranks,
-            Records.Settings settings
+            Records.Settings settings,
+            ImportSourceIndex importIndex
     ) {
         List<Records.DashboardRow> out = new ArrayList<>();
         for (MutableRow row : rows.values()) {
             Records.DashboardRow built = row.build(ranks, settings);
-            if (built.weaknessScore > 0 || built.suspendedExampleCount > 0) {
+            if (built.weaknessScore > 0 || built.suspendedExampleCount > 0 || row.forcePractice || importIndex.forcePractice(row.kanji)) {
                 out.add(built);
             }
         }
@@ -141,6 +176,7 @@ public final class KanjiAnalyzer {
     private static final class MutableRow {
         private final String kanji;
         private final List<Records.Example> examples = new ArrayList<>();
+        private boolean forcePractice;
 
         private MutableRow(String kanji) {
             this.kanji = kanji;
@@ -278,6 +314,47 @@ public final class KanjiAnalyzer {
         private Reason(String code, String text) {
             this.code = code;
             this.text = text;
+        }
+    }
+
+    private static final class ImportSourceIndex {
+        private final boolean selectedOnly;
+        private final Set<String> importedKanji = new LinkedHashSet<>();
+        private final Set<String> forcePracticeKanji = new LinkedHashSet<>();
+        private final Set<Long> selectedCardIds = new LinkedHashSet<>();
+        private final Map<String, Map<Long, Records.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
+
+        private ImportSourceIndex(List<Records.SuspendedImport> imports, boolean selectedOnly) {
+            this.selectedOnly = selectedOnly;
+            for (Records.SuspendedImport imported : imports) {
+                importedKanji.add(imported.kanji);
+                Map<Long, Records.SuspendedSource> sources = sourcesByKanji.computeIfAbsent(imported.kanji, ignored -> new LinkedHashMap<>());
+                for (Records.SuspendedSource source : imported.sources) {
+                    selectedCardIds.add(source.cardId);
+                    sources.put(source.cardId, source);
+                    if (source.forcePractice) {
+                        forcePracticeKanji.add(imported.kanji);
+                    }
+                }
+            }
+        }
+
+        private boolean shouldReadCard(long cardId) {
+            return !selectedOnly || selectedCardIds.contains(cardId);
+        }
+
+        private boolean shouldReadKanji(String kanji) {
+            return !selectedOnly || importedKanji.contains(kanji);
+        }
+
+        private boolean forcePractice(String kanji) {
+            return forcePracticeKanji.contains(kanji);
+        }
+
+        private boolean forcePractice(String kanji, long cardId) {
+            Map<Long, Records.SuspendedSource> sources = sourcesByKanji.get(kanji);
+            Records.SuspendedSource source = sources == null ? null : sources.get(cardId);
+            return source != null && source.forcePractice;
         }
     }
 }

@@ -10,12 +10,14 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
+import dev.bee.kanjianki.sync.SyncProgress;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -131,6 +133,21 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
         assertEquals(0, providerInt("explicitIdProjectionQueries"));
+    }
+
+    @Test
+    public void providerCleanupLeavesExcludedSuspendedCardsUntagged() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
+                snapshot,
+                Collections.emptyList(),
+                SyncProgress.NONE
+        );
+
+        assertEquals(0, summary.sourceCards);
+        assertEquals("", FakeAnkiDroidProvider.suspendedTags);
     }
 
     @Test

@@ -176,13 +176,22 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     @Override
     public RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+        return removeArchivedSuspendedCards(snapshot, null, progress);
+    }
+
+    @Override
+    public RemovalSummary removeArchivedSuspendedCards(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> selectedSuspendedImports,
+            SyncProgress.Listener progress
+    ) {
         SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
         reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
         ProviderTarget target = resolveProviderTarget();
         if (target == null || snapshot.cards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No provider removal attempted.");
         }
-        SuspendedCardIndex suspendedIndex = SuspendedCardIndex.from(snapshot.cards);
+        SuspendedCardIndex suspendedIndex = SuspendedCardIndex.from(snapshot.cards, selectedSuspendedCardIds(selectedSuspendedImports));
         List<Records.Card> suspendedCards = suspendedIndex.suspendedCards;
         if (suspendedCards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No suspended cards needed provider cleanup.");
@@ -202,6 +211,21 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
         String message = removalMessage(tagged, failed);
         return new RemovalSummary(suspendedCards.size(), 0, tagged, message);
+    }
+
+    private Set<Long> selectedSuspendedCardIds(List<Records.SuspendedImport> imports) {
+        if (imports == null) {
+            return null;
+        }
+        Set<Long> ids = new LinkedHashSet<>();
+        for (Records.SuspendedImport imported : imports) {
+            for (Records.SuspendedSource source : imported.sources) {
+                if (source.suspended) {
+                    ids.add(source.cardId);
+                }
+            }
+        }
+        return ids;
     }
 
     private String removalMessage(int tagged, int failed) {
@@ -651,36 +675,44 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private static final class SuspendedCardIndex {
         private final Map<Long, Integer> cardsByNote;
         private final Map<Long, Integer> suspendedByNote;
+        private final Map<Long, Integer> selectedSuspendedByNote;
         private final List<Records.Card> suspendedCards;
 
         private SuspendedCardIndex(
                 Map<Long, Integer> cardsByNote,
                 Map<Long, Integer> suspendedByNote,
+                Map<Long, Integer> selectedSuspendedByNote,
                 List<Records.Card> suspendedCards
         ) {
             this.cardsByNote = cardsByNote;
             this.suspendedByNote = suspendedByNote;
+            this.selectedSuspendedByNote = selectedSuspendedByNote;
             this.suspendedCards = suspendedCards;
         }
 
-        private static SuspendedCardIndex from(List<Records.Card> cards) {
+        private static SuspendedCardIndex from(List<Records.Card> cards, Set<Long> selectedSuspendedCardIds) {
             Map<Long, Integer> cardsByNote = new LinkedHashMap<>();
             Map<Long, Integer> suspendedByNote = new LinkedHashMap<>();
+            Map<Long, Integer> selectedSuspendedByNote = new LinkedHashMap<>();
             List<Records.Card> suspendedCards = new ArrayList<>();
             for (Records.Card card : cards) {
                 cardsByNote.put(card.noteId, cardsByNote.getOrDefault(card.noteId, 0) + 1);
                 if (card.suspended) {
-                    suspendedCards.add(card);
                     suspendedByNote.put(card.noteId, suspendedByNote.getOrDefault(card.noteId, 0) + 1);
+                    if (selectedSuspendedCardIds == null || selectedSuspendedCardIds.contains(card.cardId)) {
+                        suspendedCards.add(card);
+                        selectedSuspendedByNote.put(card.noteId, selectedSuspendedByNote.getOrDefault(card.noteId, 0) + 1);
+                    }
                 }
             }
-            return new SuspendedCardIndex(cardsByNote, suspendedByNote, suspendedCards);
+            return new SuspendedCardIndex(cardsByNote, suspendedByNote, selectedSuspendedByNote, suspendedCards);
         }
 
         private Set<Long> notesFullySuspended() {
             Set<Long> notes = new LinkedHashSet<>();
             for (Records.Card card : suspendedCards) {
-                if (cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))) {
+                if (cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))
+                        && suspendedByNote.get(card.noteId).equals(selectedSuspendedByNote.get(card.noteId))) {
                     notes.add(card.noteId);
                 }
             }
@@ -690,7 +722,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
         private int partiallySuspendedCardCount() {
             int failed = 0;
             for (Records.Card card : suspendedCards) {
-                if (!cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))) {
+                if (!cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))
+                        || !suspendedByNote.get(card.noteId).equals(selectedSuspendedByNote.get(card.noteId))) {
                     failed++;
                 }
             }

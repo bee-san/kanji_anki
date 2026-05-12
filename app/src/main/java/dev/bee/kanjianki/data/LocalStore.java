@@ -411,6 +411,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         try {
             Map<String, RowSnapshot> previousRows = rowSnapshots(db);
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
+            Set<Long> selectedSuspendedCardIds = selectedSuspendedCardIds(imports);
             int deletedNotes = countDeletedExisting(db, TABLE_SOURCE_NOTES, COLUMN_NOTE_ID, activeIndex.noteIds);
             int deletedCards = countDeletedExisting(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID, activeIndex.cardIds);
             long syncId = insertSyncRun(db, new SyncRunInsert(
@@ -418,6 +419,7 @@ public final class LocalStore extends SQLiteOpenHelper {
                     timing.finishedAt,
                     STATUS_SUCCESS,
                     activeIndex,
+                    selectedSuspendedCardIds.size(),
                     imports.size(),
                     null,
                     null,
@@ -429,7 +431,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing);
             clearSyncMirrorTables(db);
             saveSourceNotes(db, snapshot.notes, activeIndex, settings, syncId);
-            saveSourceCardsAndArchive(db, snapshot.cards, notesById, settings, timing.finishedAt, syncId);
+            saveSourceCardsAndArchive(db, snapshot.cards, notesById, selectedSuspendedCardIds, settings, timing.finishedAt, syncId);
             saveSuspendedImports(db, imports, timing.finishedAt, syncId);
 
             saveRows(db, rows, timing.finishedAt);
@@ -482,6 +484,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             SQLiteDatabase db,
             List<Records.Card> cards,
             Map<Long, Records.Note> notesById,
+            Set<Long> selectedSuspendedCardIds,
             Records.Settings settings,
             long finishedAt,
             long syncId
@@ -492,7 +495,9 @@ public final class LocalStore extends SQLiteOpenHelper {
                 continue;
             }
             if (card.suspended) {
-                saveSuspendedArchiveCard(db, card, note, settings, finishedAt, syncId);
+                if (selectedSuspendedCardIds.contains(card.cardId)) {
+                    saveSuspendedArchiveCard(db, card, note, settings, finishedAt, syncId);
+                }
             } else {
                 saveSourceCard(db, card, syncId);
             }
@@ -2894,7 +2899,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         values.put(COLUMN_STATUS, syncRun.status());
         values.put(COLUMN_ACTIVE_NOTES_COUNT, syncRun.activeIndex().noteIds.size());
         values.put(COLUMN_ACTIVE_CARDS_COUNT, syncRun.activeIndex().activeCardCount);
-        values.put(COLUMN_SUSPENDED_CARDS_ARCHIVED_COUNT, syncRun.activeIndex().suspendedCardCount);
+        values.put(COLUMN_SUSPENDED_CARDS_ARCHIVED_COUNT, syncRun.archivedSuspendedCardCount());
         values.put(COLUMN_SUSPENDED_KANJI_IMPORTED_COUNT, syncRun.importCount());
         values.put("deleted_notes_count", syncRun.deletedNotes());
         values.put("deleted_cards_count", syncRun.deletedCards());
@@ -3485,6 +3490,18 @@ public final class LocalStore extends SQLiteOpenHelper {
         }
     }
 
+    private Set<Long> selectedSuspendedCardIds(List<Records.SuspendedImport> imports) {
+        Set<Long> ids = new HashSet<>();
+        for (Records.SuspendedImport imported : imports) {
+            for (Records.SuspendedSource source : imported.sources) {
+                if (source.suspended) {
+                    ids.add(source.cardId);
+                }
+            }
+        }
+        return ids;
+    }
+
     private ActiveCardIndex activeCardIndex(List<Records.Card> cards) {
         Set<Long> noteIds = new HashSet<>();
         Set<Long> cardIds = new HashSet<>();
@@ -3555,6 +3572,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             long finishedAt,
             String status,
             ActiveCardIndex activeIndex,
+            int archivedSuspendedCardCount,
             int importCount,
             String errorCode,
             String errorMessage,

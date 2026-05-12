@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class LearningStepSettingsTest {
@@ -115,5 +116,56 @@ public final class LearningStepSettingsTest {
         assertEquals(3000, settings.suspendedRankCutoff);
         assertEquals(1, settings.writingTriggerMissDays);
         assertEquals(1, settings.recognitionPromotionPasses);
+    }
+
+    @Test
+    public void importFilterSettingsDefaultAndNormalizeInvalidValues() {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+
+        assertTrue(defaults.importActiveCards);
+        assertTrue(defaults.importSuspendedCards);
+        assertFalse(defaults.importTaggedCards);
+        assertTrue(defaults.importTags.isEmpty());
+        assertFalse(defaults.importWeakCards);
+        assertEquals(7.0, defaults.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(2, defaults.importWeakLapsesThreshold);
+        assertEquals(1, defaults.importMinMatchingCardsPerKanji);
+
+        Records.Settings settings = new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays,
+                defaults.recognitionPromotionPasses,
+                defaults.realDueReviewsToMove,
+                false,
+                false,
+                true,
+                Records.parseImportTags("focus, focus weak"),
+                true,
+                Double.NaN,
+                0,
+                0
+        );
+
+        assertFalse(settings.importActiveCards);
+        assertFalse(settings.importSuspendedCards);
+        assertTrue(settings.importTaggedCardsEnabled());
+        assertEquals(Arrays.asList("focus", "weak"), settings.importTags);
+        assertTrue(settings.importWeakCards);
+        assertEquals(Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, settings.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(1, settings.importWeakLapsesThreshold);
+        assertEquals(1, settings.importMinMatchingCardsPerKanji);
     }
 }
