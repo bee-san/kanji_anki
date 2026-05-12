@@ -3535,7 +3535,7 @@ public final class MainActivity extends Activity {
 
         LinearLayout fonts = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
         fonts.addView(text("Fonts", 23, INK, true));
-        fonts.addView(text(AttributionTexts.rawResourceText(this, R.raw.ofl), 14, MUTED, false));
+        fonts.addView(text(AttributionTexts.rawResourceText(this, R.raw.font_attribution), 14, MUTED, false));
         content.addView(fonts);
 
         Button back = secondaryButton("Back to settings");

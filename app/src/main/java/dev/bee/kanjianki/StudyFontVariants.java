@@ -10,17 +10,13 @@ final class StudyFontVariants {
     }
 
     static Typeface random(Context context) {
-        switch (ThreadLocalRandom.current().nextInt(5)) {
+        switch (ThreadLocalRandom.current().nextInt(3)) {
             case 0:
-                return Typeface.SERIF;
+                return fontResource(context, R.font.cinecaption_regular, Typeface.DEFAULT);
             case 1:
-                return Typeface.DEFAULT;
-            case 2:
-                return Typeface.MONOSPACE;
-            case 3:
-                return fontResource(context, R.font.klee_one_regular, Typeface.DEFAULT);
+                return fontResource(context, R.font.dotgothic16_regular, Typeface.MONOSPACE);
             default:
-                return fontResource(context, R.font.kaisei_tokumin_regular, Typeface.SERIF);
+                return fontResource(context, R.font.reggae_one_regular, Typeface.SERIF);
         }
     }
 
