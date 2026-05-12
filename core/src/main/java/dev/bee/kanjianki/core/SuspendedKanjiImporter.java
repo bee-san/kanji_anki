@@ -44,13 +44,13 @@ public final class SuspendedKanjiImporter {
             results.add(new Records.SuspendedImport(
                     entry.getKey(),
                     rank,
-                    rank != null,
+                    true,
                     maxRank,
                     entry.getValue()
             ));
         }
         results.sort(Comparator
-                .comparing((Records.SuspendedImport item) -> item.jitenRank == null ? Integer.MAX_VALUE : item.jitenRank)
+                .comparingInt((Records.SuspendedImport item) -> item.jitenRank)
                 .thenComparing(item -> item.kanji));
         return results;
     }

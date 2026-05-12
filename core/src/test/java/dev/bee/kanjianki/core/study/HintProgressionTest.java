@@ -146,6 +146,41 @@ public class HintProgressionTest {
         assertEquals(0, broader.revealedStrokeCount());
     }
 
+    @Test
+    public void nullStateRevealedStrokeAndPassBranchesKeepStableProgression() {
+        HintProgression progression = new HintProgression();
+        StrokeGuide guide = guide();
+        WritingAnalysis close = new WritingAnalysis(
+                WritingAnalysis.Status.CLOSE,
+                "hard",
+                true,
+                "messy",
+                null,
+                null,
+                HintLevel.TRACE,
+                0
+        );
+        WritingAnalysis pass = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                null,
+                null,
+                HintLevel.BLIND,
+                0
+        );
+
+        assertEquals(3, progression.revealNext(null, guide).revealedStrokeCount());
+        assertEquals(HintLevel.TRACE, progression.afterReview(null, false, 0).level());
+        assertEquals(
+                HintLevel.BLIND,
+                progression.afterReview(new HintState(HintLevel.BLIND, 1, 2), true, 0).level()
+        );
+        assertEquals(HintLevel.TRACE, progression.afterWriting(null, close).level());
+        assertEquals(HintLevel.BLIND, progression.afterWriting(HintState.fromWritingLevel(2), pass).level());
+    }
+
     private StrokeGuide guide() {
         return new StrokeGuide(
                 "拉",

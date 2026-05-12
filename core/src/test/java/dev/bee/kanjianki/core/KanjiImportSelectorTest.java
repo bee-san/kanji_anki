@@ -93,6 +93,20 @@ public final class KanjiImportSelectorTest {
     }
 
     @Test
+    public void weakCardsIgnoreMissingDifficultyAndLowLapses() throws Exception {
+        Records.Settings settings = settings(false, false, false, "", true, 7.0, 2, 1);
+        JitenKanjiRanks ranks = ranks("浅,1500\n深,1600\n");
+        Records.CollectionSnapshot snapshot = snapshot(
+                Arrays.asList(note(1, "浅い", "あさい"), note(2, "深い", "ふかい")),
+                Arrays.asList(card(10, 1, false, 1, null), card(20, 2, false, 0, 3.0))
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertTrue(imports.isEmpty());
+    }
+
+    @Test
     public void rankRangeFiltersImportedKanji() throws Exception {
         Records.Settings settings = settings(true, true, false, "", false, 7.0, 2, 1);
         JitenKanjiRanks ranks = ranks("日,1\n示,100\n裂,3000\n遅,3001\n");
@@ -104,6 +118,20 @@ public final class KanjiImportSelectorTest {
         List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
 
         assertEquals(Arrays.asList("示", "裂"), kanjiList(imports));
+    }
+
+    @Test
+    public void equalRanksSortByKanji() throws Exception {
+        Records.Settings settings = settings(true, false, false, "", false, 7.0, 2, 1);
+        JitenKanjiRanks ranks = ranks("謎,1500\n裂,1500\n");
+        Records.CollectionSnapshot snapshot = snapshot(
+                Arrays.asList(note(1, "謎裂", "なぞ")),
+                Collections.singletonList(card(10, 1, false))
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Arrays.asList("裂", "謎"), kanjiList(imports));
     }
 
     @Test
@@ -119,6 +147,38 @@ public final class KanjiImportSelectorTest {
 
         assertEquals(Collections.singletonList("裂"), kanjiList(imports));
         assertEquals(2, imports.get(0).sources.size());
+    }
+
+    @Test
+    public void constructorsNormalizeBoundsAndOneArgUsesDefaultMinimum() throws Exception {
+        Records.Settings settings = settings(true, false, false, "", false, 7.0, 2, 1);
+        JitenKanjiRanks ranks = ranks("示,100\n裂,1500\n遅,3001\n");
+        Records.CollectionSnapshot snapshot = snapshot(
+                Arrays.asList(note(1, "示裂遅", "しめす")),
+                Collections.singletonList(card(10, 1, false))
+        );
+
+        List<Records.SuspendedImport> swapped = new KanjiImportSelector(ranks, 3000, 100).importFrom(snapshot, settings);
+        List<Records.SuspendedImport> oneArg = new KanjiImportSelector(ranks, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Arrays.asList("示", "裂"), kanjiList(swapped));
+        assertEquals(Arrays.asList("示", "裂"), kanjiList(oneArg));
+    }
+
+    @Test
+    public void nullDisabledMissingAndUnmatchedInputsReturnNoImports() throws Exception {
+        JitenKanjiRanks ranks = ranks("裂,1500\n外,1600\n");
+        Records.Settings disabled = settings(false, false, false, "", false, 7.0, 2, 1);
+        Records.Settings taggedOnly = settings(false, false, true, "target", false, 7.0, 2, 1);
+        KanjiImportSelector selector = new KanjiImportSelector(ranks, 100, 3000);
+
+        assertTrue(selector.importFrom(null, Records.Settings.kikuDefaults()).isEmpty());
+        assertTrue(selector.importFrom(snapshot(Arrays.asList(), Arrays.asList()), null).isEmpty());
+        assertTrue(selector.importFrom(snapshot(Arrays.asList(note(1, "裂", "れつ")), Collections.singletonList(card(10, 1, false))), disabled).isEmpty());
+        assertTrue(selector.importFrom(snapshot(Arrays.asList(note(1, "裂", "れつ")), Collections.singletonList(card(10, 99, false))), Records.Settings.kikuDefaults()).isEmpty());
+        assertTrue(selector.importFrom(snapshot(Arrays.asList(note(1, "裂", "れつ")), Collections.singletonList(card(10, 1, false))), taggedOnly).isEmpty());
+        assertTrue(selector.importFrom(snapshot(Arrays.asList(note(1, "裂", "れつ", "other")), Collections.singletonList(card(10, 1, false))), taggedOnly).isEmpty());
+        assertTrue(selector.importFrom(snapshot(Arrays.asList(note(1, "未", "み")), Collections.singletonList(card(10, 1, false))), settings(true, false, false, "", false, 7.0, 2, 1)).isEmpty());
     }
 
     private JitenKanjiRanks ranks(String csv) throws Exception {

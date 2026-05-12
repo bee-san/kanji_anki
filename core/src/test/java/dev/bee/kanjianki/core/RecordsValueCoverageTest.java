@@ -9,8 +9,11 @@ import dev.bee.kanjianki.core.study.WritingAnalysis;
 
 import org.junit.Test;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -37,6 +40,36 @@ public class RecordsValueCoverageTest {
                 -5L,
                 -6L
         );
+        Records.SimilarKanjiWritingRepair completed = new Records.SimilarKanjiWritingRepair(
+                2L,
+                "裂",
+                "列",
+                "sig",
+                "列",
+                "tear",
+                "done",
+                3L,
+                "active",
+                1,
+                4L,
+                5L,
+                6L
+        );
+        Records.SimilarKanjiWritingRepair nullStatus = new Records.SimilarKanjiWritingRepair(
+                3L,
+                "裂",
+                "列",
+                "sig",
+                "列",
+                "tear",
+                null,
+                3L,
+                "active",
+                1,
+                4L,
+                5L,
+                6L
+        );
 
         assertEquals(0L, repair.id);
         assertEquals("", repair.targetKanji);
@@ -44,6 +77,9 @@ public class RecordsValueCoverageTest {
         assertEquals(0L, repair.dueAtMillis);
         assertEquals(0, repair.attempts);
         assertEquals("token", repair.withToken("token", 12L).activeToken);
+        assertEquals("done", completed.status);
+        assertEquals("active", completed.activeToken);
+        assertEquals("pending", nullStatus.status);
 
         Records.KanjiTimelineEvent event = new Records.KanjiTimelineEvent(
                 1L,
@@ -81,9 +117,12 @@ public class RecordsValueCoverageTest {
     @Test
     public void taskMemoryLearningRepeatAndReviewStatsCoverFallbacks() {
         Records.TaskMemory fallback = new Records.TaskMemory("fallback", 1L, 2.0, 3.0, 4, 5, 1, "good", 6);
+        Records.TaskMemory emptyState = new Records.TaskMemory("", 1L, 2.0, 3.0, 4, 5, 1, "good", 6);
         assertSame(fallback, Records.TaskMemory.decode(null, fallback));
+        assertSame(Records.TaskMemory.initial().state, Records.TaskMemory.decode("", null).state);
         assertSame(fallback, Records.TaskMemory.decode("too\tshort", fallback));
         assertSame(fallback, Records.TaskMemory.decode("new\tbad\t0.4\t5.0\t0\t0\t0\t\t0", fallback));
+        assertEquals("new", emptyState.state);
 
         Records.TaskMemory decoded = Records.TaskMemory.decode(
                 new Records.TaskMemory(null, -1L, 0.4, 5.0, -2, -3, -4, null, -5).encode(),
@@ -97,6 +136,11 @@ public class RecordsValueCoverageTest {
         Records.TaskMemory promoted = fallback.withDueAtMillis(10L);
         assertEquals(10L, promoted.dueAtMillis);
         assertEquals(fallback.consecutivePasses, promoted.consecutivePasses);
+        Records.TaskMemory legacyNinePart = Records.TaskMemory.decode("review\t9\t1.2\t4.3\t5\t1\t2\thard\t7", null);
+        Records.TaskMemory legacyTenPart = Records.TaskMemory.decode("review\t9\t1.2\t4.3\t5\t1\t2\thard\t7\t3", null);
+        assertEquals(0, legacyNinePart.consecutivePasses);
+        assertEquals(3, legacyTenPart.consecutivePasses);
+        assertEquals("review", new Records.TaskMemory("review", 1L, 2.0, 3.0, 4, 5, 1, "good", 6).state);
 
         Records.LearningRepeat repeat = new Records.LearningRepeat(null, null, null, "bad", -1, -2L, null, -3L, -4L);
         assertEquals("", repeat.kanji);
@@ -104,9 +148,286 @@ public class RecordsValueCoverageTest {
         assertEquals(0, repeat.stepIndex);
         assertEquals("tok", repeat.withToken("tok", 10L).activeToken);
         assertEquals(3, repeat.withStep(3, 20L, 30L).stepIndex);
+        assertEquals(Records.LEARNING_REPEAT_REVIEW, new Records.LearningRepeat("裂", "sig", "task", Records.LEARNING_REPEAT_REVIEW, 1, 2L, "active", 3L, 4L).repeatType);
 
         assertEquals(1.0, new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0).retentionProxy(), 0.001);
         assertEquals(0.25, new Records.ReviewStats(4, 1, 1, 1, 1, 4, 1).writingFailureRate(), 0.001);
+    }
+
+    @Test
+    public void settingsAndCardRecordsCoverLegacyShapesAndImportDefaults() {
+        Records.Settings eightArg = settingsWithRest(3000, 24, 3, 4);
+        Records.Settings oldNineArg = settingsWithRest(100, 3000, 24, 3, 4);
+        Records.Settings tenArg = settingsWithRest(100, 3000, 24, 3, 4, 6);
+        Records.Settings elevenArg = settingsWithRest(100, 3000, 24, 3, 4, 6, 7);
+        Records.Settings full = new Records.Settings(
+                "Kiku",
+                "Mining",
+                "Expression",
+                "ExpressionReading",
+                "MainDefinition",
+                "Sentence",
+                "Frequency",
+                "FreqSort",
+                21,
+                2,
+                5000,
+                100,
+                24,
+                3,
+                4,
+                6,
+                7,
+                false,
+                false,
+                true,
+                Arrays.asList(" mine ", null, "", "archive", "mine"),
+                true,
+                Double.NaN,
+                0,
+                0
+        );
+
+        assertEquals(4, eightArg.writingTriggerMissDays);
+        assertEquals(3, oldNineArg.recognitionPromotionPasses);
+        assertEquals(6, tenArg.recognitionPromotionPasses);
+        assertEquals(7, elevenArg.realDueReviewsToMove);
+        assertEquals(100, full.suspendedRankMin);
+        assertEquals(5000, full.suspendedRankMax);
+        assertTrue(full.importTaggedCardsEnabled());
+        assertTrue(full.hasImportSourceEnabled());
+        assertEquals("mine archive", full.importTagsText());
+        assertEquals(Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, full.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(Arrays.asList("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort"), full.requiredFields());
+        assertEquals(Arrays.asList("mine", "archive"), Records.parseImportTags(" mine, archive mine "));
+        assertTrue(Records.parseImportTags(" ").isEmpty());
+        assertTrue(Records.parseImportTags(null).isEmpty());
+
+        Records.Settings disabled = new Records.Settings(
+                "Kiku",
+                "Mining",
+                "Expression",
+                "",
+                "Expression",
+                "",
+                "",
+                "",
+                21,
+                2,
+                100,
+                3000,
+                24,
+                3,
+                4,
+                6,
+                7,
+                false,
+                false,
+                true,
+                Collections.emptyList(),
+                false,
+                Double.POSITIVE_INFINITY,
+                2,
+                1
+        );
+        assertFalse(disabled.importTaggedCardsEnabled());
+        assertFalse(disabled.hasImportSourceEnabled());
+        assertEquals(Collections.singletonList("Expression"), disabled.requiredFields());
+
+        Records.Settings stringTags = new Records.Settings(
+                "Kiku", "Mining", null, " ", "Meaning", "Meaning", "", "", 21, 2, 100, 3000, 24, 3, 4, 6, 7,
+                false, false, true, "mine archive", false, 1.2, 2, 1
+        );
+        Records.Settings nullTags = new Records.Settings(
+                "Kiku", "Mining", "Expression", "", "Meaning", "", "", "", 21, 2, 100, 3000, 24, 3, 4, 6, 7,
+                false, false, true, null, false, 0.1, 2, 1
+        );
+        Records.Settings negativeWeakThreshold = new Records.Settings(
+                "Kiku", "Mining", "Expression", "", "Meaning", "", "", "", 21, 2, 100, 3000, 24, 3, 4, 6, 7,
+                false, false, false, "", true, -1.0, 2, 1
+        );
+        assertEquals(Arrays.asList("mine", "archive"), stringTags.importTags);
+        assertTrue(nullTags.importTags.isEmpty());
+        assertEquals(Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, negativeWeakThreshold.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(Collections.singletonList("Meaning"), stringTags.requiredFields());
+        assertEquals(Arrays.asList("mine", "archive"), Records.parseImportTags("mine,, archive"));
+
+        Records.Settings blankTags = new Records.Settings(
+                "Kiku", "Mining", "Expression", "", "Meaning", "", "", "", 21, 2, 100, 3000, 24, 3, 4, 6, 7,
+                false, false, true, Arrays.asList(" ", null, ""), false, 1.2, 2, 1
+        );
+        assertTrue(blankTags.importTags.isEmpty());
+
+        Records.Card card = new Records.Card(1L, 2L, 0, null, "Deck", 1, 2, 3, 4, 5, 6, true, 1.2, 3.4, 5.6);
+        Records.Card activeMature = new Records.Card(2L, 3L, 0, "Deck", 1, 2, 3, 20, 5, 0, false);
+        assertEquals("", card.deckId);
+        assertEquals("Deck", card.deckName);
+        assertTrue(card.suspended);
+        assertFalse(card.active());
+        assertFalse(card.mature(1));
+        assertTrue(activeMature.active());
+        assertTrue(activeMature.mature(10));
+        assertEquals(Double.valueOf(3.4), card.fsrsDifficulty);
+    }
+
+    @Test
+    public void collectionRowsAndSimilarChoiceRecordsCoverFallbacks() {
+        Records.Note note = new Records.Note(1L, 2L, "model", Collections.singletonMap("Front", "value"), Collections.singletonList("tag"));
+        Records.Card card = new Records.Card(1L, 2L, 0, "Deck", 1, 2, 3, 4, 5, 6, false);
+        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card));
+        assertEquals(note, snapshot.notesById().get(1L));
+        assertEquals("", note.field("Missing"));
+        assertEquals("value", note.expression(new Records.Settings("m", "t", "Front", "", "", "", "", "", 21, 2, 100, 3000, 24, 3, 3)));
+
+        Records.Example example = new Records.Example("active", 1L, 2L, "expr", "read", "meaning", "sentence", true, 2, 30, 4, 1.0, 2.0, 3.0);
+        Records.DashboardRow dashboard = new Records.DashboardRow("裂", 10, "tear", "レツ", "search", 9, "weak", "reason", 1, 2, 3, Collections.singletonList(example));
+        assertEquals(example, dashboard.examples.get(0));
+
+        Records.KanjiInventoryItem inventory = new Records.KanjiInventoryItem(null, null, null, null, -1, -2, true, -3L);
+        assertEquals("", inventory.kanji);
+        assertEquals(0, inventory.sourceCount);
+        assertEquals(0L, inventory.lastSeenAtMillis);
+
+        Records.SimilarKanjiPair pair = new Records.SimilarKanjiPair(null, null, null, -1L, -2L);
+        assertEquals("", pair.kanjiA);
+        assertEquals(0L, pair.firstSeenAtMillis);
+
+        Records.SimilarKanjiChoiceCard emptyChoice = new Records.SimilarKanjiChoiceCard(null, null, null, null);
+        Records.SimilarKanjiChoiceCard reviewedChoice = new Records.SimilarKanjiChoiceCard("裂", "tear", Arrays.asList("裂", "列"), "sig", -1L, 2L, 3L, -4, 5);
+        assertFalse(emptyChoice.passed());
+        assertTrue(reviewedChoice.passed());
+        assertEquals(0L, reviewedChoice.dueAtMillis);
+        assertEquals(0, reviewedChoice.correctCount);
+
+        Records.SimilarKanjiChoiceResult result = new Records.SimilarKanjiChoiceResult(reviewedChoice, null, false, null);
+        assertEquals("", result.selectedKanji);
+        assertTrue(result.repairKanji.isEmpty());
+
+        Records.SuspendedSource activeFallback = new Records.SuspendedSource(
+                "裂", 1L, 2L, "expr", "read", "meaning", "sentence", " ", false, false, true, -1, -2, -3, null, null, null
+        );
+        Records.SuspendedSource suspendedFallback = new Records.SuspendedSource(
+                "裂", 1L, 2L, "expr", "read", "meaning", "sentence", null, true, false, true, 1, 2, 3, null, null, null
+        );
+        Records.SuspendedSource explicit = new Records.SuspendedSource(
+                "裂", 1L, 2L, "expr", "read", "meaning", "sentence", " custom ", true, false, true, 1, 2, 3, 1.0, 2.0, 3.0
+        );
+        assertEquals("active", activeFallback.sourceType);
+        assertEquals("suspended", suspendedFallback.sourceType);
+        assertEquals("custom", explicit.sourceType);
+    }
+
+    @Test
+    public void studyItemLegacyConstructorsAndTaskMemoryRoutingStayCompatible() {
+        Records.TaskMemory typed = new Records.TaskMemory("review", 10L, 1.0, 2.0, 3, 0, 1, "good", 2, 4, 5L);
+        Records.TaskMemory kanji = new Records.TaskMemory("review", 20L, 1.0, 2.0, 3, 0, 1, "hard", 2, 0, 0L);
+        Records.TaskMemory font = new Records.TaskMemory("review", 30L, 1.0, 2.0, 3, 0, 1, "easy", 2, 0, 0L);
+        Records.TaskMemory word = new Records.TaskMemory("review", 40L, 1.0, 2.0, 3, 0, 1, "again", 2, 0, 0L);
+        Records.TaskMemory writing = new Records.TaskMemory("review", 50L, 1.0, 2.0, 3, 0, 1, "good", 2, 0, 0L);
+
+        Records.StudyItem compact = new Records.StudyItem("裂", "new", 1L, 0.4, 5.0, 0, 0, 0, 0, "tok", 2L);
+        Records.StudyItem thirteenArg = new Records.StudyItem("裂", "review", 9L, 1.0, 2.0, 3, 1, 2, 3, 1, 2, 3L, false, "task", 4L, 5, "sig", "tok", 6L);
+        Records.StudyItem legacyMemories = new Records.StudyItem("裂", "review", 9L, 1.0, 2.0, 3, 1, 2, 3, 1, 2, 3L, false, "task", 4L, 5, "sig", "tok", 6L, kanji, font, word, writing);
+        Records.StudyItem full = new Records.StudyItem("裂", "review", 9L, 1.0, 2.0, 3, 1, 2, 3, -9, -2, -3L, false, null, -4L, -5, null, "tok", 6L, null, null, null, null, null, null, null, -1, -2, -3L, true, null);
+
+        assertEquals("tok", compact.activeToken);
+        assertEquals("sig", thirteenArg.answerSignature);
+        assertEquals(Records.LadderRung.FONT_MEANING, legacyMemories.rung);
+        assertEquals(kanji, legacyMemories.kanjiMeaningMemory);
+        assertEquals(Records.LadderRung.TYPE_MEANING, full.rung);
+        assertEquals(Records.SchedulerPhase.REVIEW, full.phase);
+        assertEquals("", full.suppressedByTaskType);
+        assertEquals(0, full.realAgainStreak);
+        assertTrue(full.hasSimilarKanji);
+        assertEquals(Records.TaskMemory.initial().state, full.similarKanjiMemory.state);
+
+        assertEquals(writing, legacyMemories.memoryForTaskType(BridgeScheduler.TASK_WRITE_KANJI));
+        assertEquals(typed, legacyMemories.withTaskMemory(BridgeScheduler.TASK_TYPE_MEANING, typed).typingMeaningMemory);
+        assertEquals(font, legacyMemories.withTaskMemory(BridgeScheduler.TASK_FONT_MEANING, font).fontMeaningMemory);
+        assertEquals(word, legacyMemories.withTaskMemory(BridgeScheduler.TASK_WORD_READING, word).wordReadingMemory);
+        assertEquals(kanji, legacyMemories.withTaskMemory(null, kanji).kanjiMeaningMemory);
+        assertEquals(kanji, legacyMemories.memoryForRung(null));
+        assertEquals(writing, legacyMemories.memoryForRung(Records.LadderRung.WRITE_KANJI));
+        assertEquals(typed, legacyMemories.withTaskMemory(BridgeScheduler.TASK_TYPE_MEANING, typed).memoryForRung(Records.LadderRung.TYPE_MEANING));
+        assertEquals(kanji, legacyMemories.memoryForRung(Records.LadderRung.KANJI_MEANING));
+        assertEquals(font, legacyMemories.memoryForRung(Records.LadderRung.FONT_MEANING));
+        assertEquals(word, legacyMemories.memoryForRung(Records.LadderRung.WORD_READING));
+        assertEquals(Records.TaskMemory.initial().state, legacyMemories.memoryForRung(Records.LadderRung.SIMILAR_KANJI).state);
+        assertEquals(typed, legacyMemories.withSimilarKanjiMemory(typed).similarKanjiMemory);
+        Records.StudyItem fourMemories = compact.withTaskMemories(kanji, font, word, writing);
+        Records.StudyItem fiveMemories = compact.withTaskMemories(typed, kanji, font, word, writing);
+        assertEquals(kanji, fourMemories.kanjiMeaningMemory);
+        assertEquals(typed, fiveMemories.typingMeaningMemory);
+        assertEquals(Records.LadderRung.WRITE_KANJI, compact.copyBuilder().writingRemediationPending(true).build().rung);
+        assertEquals(Records.LadderRung.WORD_READING, compact.copyBuilder().recognitionStage(2).build().rung);
+        assertEquals(Records.SchedulerPhase.NEW_LEARNING, compact.copyBuilder().state(Records.LEARNING_REPEAT_REVIEW).build().phase);
+        assertEquals(Records.SchedulerPhase.REVIEW, new Records.StudyItem("裂", Records.LEARNING_REPEAT_REVIEW, 1L, 0.4, 5.0, 0, 0, 0, 0, "tok", 2L).phase);
+        assertEquals(Records.SchedulerPhase.REVIEW, new Records.StudyItem("裂", "retired", 1L, 0.4, 5.0, 0, 0, 0, 0, "tok", 2L).phase);
+        assertEquals(Records.SchedulerPhase.RELEARNING, new Records.StudyItem("裂", "learning", 1L, 0.4, 5.0, 1, 0, 0, 0, "tok", 2L).phase);
+        assertEquals(Records.SchedulerPhase.RELEARNING, compact.copyBuilder().writingRemediationPending(true).phase(null).build().phase);
+        assertEquals("typing", compact.withSuppression("typing", 11L, 12).suppressedByTaskType);
+        assertEquals(Records.LadderRung.FONT_MEANING, compact.withRung(Records.LadderRung.FONT_MEANING).rung);
+        assertEquals(Records.SchedulerPhase.RELEARNING, compact.withPhase(Records.SchedulerPhase.RELEARNING).phase);
+        assertEquals(Records.LadderRung.WORD_READING, compact.withLadderProgress(Records.LadderRung.WORD_READING, Records.SchedulerPhase.REVIEW, 2, 3, 4, 5L).rung);
+    }
+
+    @Test
+    public void reviewRequestPlansAndReleaseRecordsCoverBranches() {
+        Records.ReviewRequest legacyClean = new Records.ReviewRequest("裂", "tok", "good", true, true, false, 0);
+        Records.ReviewRequest legacyEasy = new Records.ReviewRequest("裂", "tok", "easy", true, true, false, 0);
+        Records.ReviewRequest legacyMessy = new Records.ReviewRequest("裂", "tok", "hard", true, true, false, 0);
+        Records.ReviewRequest legacyFailedEasy = new Records.ReviewRequest("裂", "tok", "easy", true, false, false, 0);
+        Records.ReviewRequest full = new Records.ReviewRequest("裂", "tok", "again", false, false, true, false, 2, null, null, null);
+        assertTrue(legacyClean.writingClean);
+        assertTrue(legacyEasy.writingClean);
+        assertFalse(legacyMessy.writingClean);
+        assertFalse(legacyFailedEasy.writingClean);
+        assertEquals("", full.taskType);
+        assertEquals("", full.answerSignature);
+        assertEquals("", full.prompt);
+
+        assertTrue(Records.LearningStepSettings.tryParseSteps(",,,").isEmpty());
+        assertEquals(Arrays.asList(1, 10), Records.LearningStepSettings.tryParseSteps("1m,,10m"));
+        assertEquals("1h, 30m", Records.LearningStepSettings.formatSteps(Arrays.asList(60, 30)));
+        assertEquals("90m", Records.LearningStepSettings.formatSteps(Collections.singletonList(90)));
+        assertEquals("1m, 10m", Records.LearningStepSettings.formatSteps(null));
+
+        Records.AdaptiveLoadPlan incomplete = new Records.AdaptiveLoadPlan(100, 2, 1, Collections.singletonList("裂"), 1, false, "pending");
+        Records.AdaptiveLoadPlan complete = new Records.AdaptiveLoadPlan(100, 2, 0, Collections.singletonList("裂"), 1, false, "done");
+        Records.AdaptiveLoadPlan all = new Records.AdaptiveLoadPlan(100, 2, 0, Collections.singletonList("裂"), 1, true, "all");
+        Records.AdaptiveLoadPlan noTarget = new Records.AdaptiveLoadPlan(0, 0, 0, Collections.singletonList("裂"), 1, false, "none");
+        assertFalse(incomplete.focusComplete());
+        assertTrue(complete.focusComplete());
+        assertFalse(all.focusComplete());
+        assertFalse(noTarget.focusComplete());
+
+        Records.ReleaseInfo release = new Records.ReleaseInfo(
+                "v1",
+                "url",
+                Arrays.asList(new Records.ReleaseAsset("notes.txt", "notes"), new Records.ReleaseAsset("kani.apk", "apk"), new Records.ReleaseAsset("kani.apk.sha256", "sha"))
+        );
+        assertEquals("apk", release.apkAsset().downloadUrl);
+        assertEquals("sha", release.checksumAssetFor("kani.apk").downloadUrl);
+        assertNull(release.checksumAssetFor("other.apk"));
+    }
+
+    @Test
+    public void invalidVarargsKeepExplicitCompatibilityErrors() throws Exception {
+        try {
+            new Records.Settings("Kiku", "Mining", "Expression", "Reading", "Meaning", "Sentence", "Frequency");
+            throw new AssertionError("Expected invalid Settings varargs to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("Settings received"));
+        }
+
+        Method arg = Records.class.getDeclaredMethod("arg", Object[].class, int.class, String.class);
+        arg.setAccessible(true);
+        try {
+            arg.invoke(null, new Object[]{new Object[]{"only"}}, 2, "test");
+            throw new AssertionError("Expected private arg guard to fail");
+        } catch (InvocationTargetException expected) {
+            assertTrue(expected.getCause().getMessage().contains("test expected more arguments"));
+        }
     }
 
     @Test
@@ -236,5 +557,20 @@ public class RecordsValueCoverageTest {
 
     private static Records.StudyItem item(String kanji) {
         return new Records.StudyItem(kanji, "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L);
+    }
+
+    private static Records.Settings settingsWithRest(Object... rest) {
+        List<Object> values = new java.util.ArrayList<>();
+        Collections.addAll(values, "Frequency", "FreqSort", 21, 2);
+        Collections.addAll(values, rest);
+        return new Records.Settings(
+                "Kiku",
+                "Mining",
+                "Expression",
+                "ExpressionReading",
+                "MainDefinition",
+                "Sentence",
+                values.toArray()
+        );
     }
 }

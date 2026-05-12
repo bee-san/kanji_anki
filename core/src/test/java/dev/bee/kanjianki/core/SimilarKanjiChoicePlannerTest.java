@@ -76,12 +76,36 @@ public final class SimilarKanjiChoicePlannerTest {
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
 
         Records.SimilarKanjiChoiceResult nullCard = planner.evaluateSelection(null, " 拉 ");
+        Records.SimilarKanjiChoiceResult nullSelection = planner.evaluateSelection(
+                new Records.SimilarKanjiChoiceCard("拉", "pull", Arrays.asList("拉", "提"), "拉\t提"),
+                null
+        );
 
         assertFalse(nullCard.correct);
         assertEquals(" 拉 ", nullCard.selectedKanji);
         assertTrue(nullCard.repairKanji.isEmpty());
+        assertEquals("", nullSelection.selectedKanji);
+        assertEquals(Collections.singletonList("拉"), nullSelection.repairKanji);
         assertEquals("拉\t謎", SimilarKanjiChoicePlanner.choiceSignature(Arrays.asList(" 謎 ", null, "", "拉", "謎")));
         assertEquals("", SimilarKanjiChoicePlanner.choiceSignature(null));
+    }
+
+    @Test
+    public void sparsePairsAndMissingNeighborsAreSkipped() {
+        SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
+        List<Records.KanjiInventoryItem> inventory = Arrays.asList(
+                item("拉", "pull"),
+                item("提", "carry"),
+                item("謎", "riddle")
+        );
+
+        assertTrue(planner.buildCandidates(inventory, null).isEmpty());
+        assertTrue(planner.buildCandidates(inventory, Arrays.asList(
+                pair("拉", ""),
+                pair("", "提"),
+                pair("拉", "外"),
+                pair("外", "提")
+        )).isEmpty());
     }
 
     private static Records.KanjiInventoryItem item(String kanji, String meaning) {

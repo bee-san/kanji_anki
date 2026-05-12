@@ -14,6 +14,7 @@ public class SyncValidatorTest {
 
         assertTrue(SyncValidator.validateModelFields("Kiku", settings.requiredFields(), settings).isEmpty());
         assertEquals(1, SyncValidator.validateModelFields("Other", settings.requiredFields(), settings).size());
+        assertEquals(1, SyncValidator.validateModelFields(null, settings.requiredFields(), settings).size());
         assertTrue(SyncValidator.validateModelFields("Kiku", Arrays.asList("Expression"), settings).size() > 1);
         assertTrue(SyncValidator.validateModelFields("Kiku", Arrays.asList("Expression"), settings).get(0).contains("Configured note type Kiku"));
     }
@@ -46,6 +47,11 @@ public class SyncValidatorTest {
     public void classifiesProviderFailures() {
         assertEquals("permanent_permission", SyncValidator.classifyProviderFailure(new SecurityException("denied")));
         assertEquals("permanent_configuration", SyncValidator.classifyProviderFailure(new RuntimeException("missing field Expression")));
+        assertEquals("permanent_configuration", SyncValidator.classifyProviderFailure(new RuntimeException("wrong model")));
+        assertEquals("permanent_configuration", SyncValidator.classifyProviderFailure(new RuntimeException("missing note type")));
+        assertEquals("permanent_permission", SyncValidator.classifyProviderFailure(new RuntimeException("provider permission denied")));
+        assertEquals("retryable_provider", SyncValidator.classifyProviderFailure(null));
+        assertEquals("retryable_provider", SyncValidator.classifyProviderFailure(new RuntimeException()));
         assertEquals("retryable_provider", SyncValidator.classifyProviderFailure(new RuntimeException("cursor timed out")));
     }
 }

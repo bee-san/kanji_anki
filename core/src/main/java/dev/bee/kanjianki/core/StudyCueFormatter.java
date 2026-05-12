@@ -164,8 +164,8 @@ public final class StudyCueFormatter {
     }
 
     private static String compact(String value, int maxChars) {
-        if (value == null || value.length() <= maxChars) {
-            return value == null ? "" : value;
+        if (value.length() <= maxChars) {
+            return value;
         }
         int cut = value.lastIndexOf(' ', maxChars - 3);
         if (cut < 32) {
@@ -175,9 +175,6 @@ public final class StudyCueFormatter {
     }
 
     private static String capitalize(String value) {
-        if (value == null || value.isEmpty()) {
-            return "";
-        }
         char first = value.charAt(0);
         if (!Character.isLowerCase(first)) {
             return value;

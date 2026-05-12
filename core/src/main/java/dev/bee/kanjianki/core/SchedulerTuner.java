@@ -30,7 +30,7 @@ public final class SchedulerTuner {
         } else if (error > 0) {
             spacingFactor = error > 0.10 ? 0.84 : 0.92;
         } else {
-            spacingFactor = error < -0.10 ? 1.12 : 1.06;
+            spacingFactor = retention >= current.targetRetention + 0.10 ? 1.12 : 1.06;
         }
 
         double writingPenalty = stats.writingFailureRate() > 0.25 ? 0.94 : 1.0;

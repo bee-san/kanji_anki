@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -127,13 +128,9 @@ public final class BridgeScheduler {
             rowByKanji.put(row.kanji, row);
         }
         Records.StudyItem best = null;
-        boolean hasDueReview = false;
         for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, allowedKanji)) {
             if (item.dueAtMillis > nowMillis) {
                 continue;
-            }
-            if (!isUntouchedNewCard(item)) {
-                hasDueReview = true;
             }
             if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
                 best = item;
@@ -142,30 +139,7 @@ public final class BridgeScheduler {
         if (best == null) {
             return null;
         }
-        // If there are due reviews, skip brand-new cards entirely so that
-        // new kanji only appear after all reviews are finished.
-        if (hasDueReview && isUntouchedNewCard(best)) {
-            // All non-new items were already exhausted by the priority sort,
-            // so pick the first non-new due item instead.
-            Records.StudyItem nonNew = null;
-            for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, allowedKanji)) {
-                if (item.dueAtMillis > nowMillis || isUntouchedNewCard(item)) {
-                    continue;
-                }
-                if (nonNew == null || compareDueItems(item, nonNew, rowByKanji) < 0) {
-                    nonNew = item;
-                }
-            }
-            if (nonNew != null) {
-                best = nonNew;
-            }
-        }
         Records.DashboardRow row = rowByKanji.get(best.kanji);
-        if (row == null) {
-            // Should be unreachable — activeQueueItems filters to kanji with
-            // matching rows — but guard against NPE defensively.
-            return null;
-        }
         String token = best.activeToken == null || best.activeToken.isEmpty()
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
@@ -173,10 +147,6 @@ public final class BridgeScheduler {
         boolean writingRequired = best.rung == Records.LadderRung.WRITE_KANJI;
         String prompt = row.reasonText;
         return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
-    }
-
-    private static boolean isUntouchedNewCard(Records.StudyItem item) {
-        return item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews == 0;
     }
 
     private List<Records.DashboardRow> rowsForFocus(List<Records.DashboardRow> rows, List<String> focusKanji) {
@@ -348,7 +318,7 @@ public final class BridgeScheduler {
 
     private Records.StudyItem alignAnswerSignature(Records.StudyItem item, Records.DashboardRow row, long nowMillis) {
         String signature = answerSignature(row);
-        if (signature.isEmpty() || item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
+        if (item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
             return item.withAnswerSignature(signature);
         }
         boolean retired = STATE_RETIRED.equals(item.state);
@@ -410,26 +380,17 @@ public final class BridgeScheduler {
     }
 
     private static int duePriority(Records.StudyItem item) {
-        if (item.rung == Records.LadderRung.WRITE_KANJI) {
-            return 0;
-        }
-        if (item.phase == Records.SchedulerPhase.RELEARNING) {
+        if (item.rung == Records.LadderRung.WRITE_KANJI || item.phase == Records.SchedulerPhase.RELEARNING) {
             return 0;
         }
         if (item.phase == Records.SchedulerPhase.NEW_LEARNING) {
-            // Brand-new cards (no reviews yet) sort after due reviews per
-            // Anki semantics; cards mid-learning stay urgent.
             return item.totalReviews > 0 ? 0 : 2;
         }
-        if (item.phase == Records.SchedulerPhase.REVIEW) {
-            return 1;
-        }
-        return 2;
+        return 1;
     }
 
     private static int rowWeakness(Records.StudyItem item, Map<String, Records.DashboardRow> rowByKanji) {
-        Records.DashboardRow row = rowByKanji.get(item.kanji);
-        return row == null ? 0 : row.weaknessScore;
+        return rowByKanji.get(item.kanji).weaknessScore;
     }
 
     public Records.ReviewResult applyReview(
@@ -519,12 +480,6 @@ public final class BridgeScheduler {
         List<Integer> steps = isNewLearning
                 ? context.learningSettings.newStepsMinutes
                 : context.learningSettings.reviewStepsMinutes;
-        if (steps == null || steps.isEmpty()) {
-            // Safety: normalizeSteps should prevent this, but if steps are
-            // somehow empty, graduate immediately rather than crashing.
-            graduateToReview(context, state);
-            return;
-        }
         switch (context.rating) {
             case RATING_AGAIN:
                 state.stepIndex = 0;
@@ -615,21 +570,11 @@ public final class BridgeScheduler {
         state.stability = Math.max(0.2, state.stability * context.parameters.againMultiplier);
 
         List<Integer> relearning = context.learningSettings.reviewStepsMinutes;
-        if (relearning != null && !relearning.isEmpty()) {
-            state.phase = Records.SchedulerPhase.RELEARNING;
-            state.stepIndex = 0;
-            state.due = context.nowMillis + stepDelayMillis(relearning.get(0));
-            state.schedulerState = STATE_LEARNING;
-            state.scheduledIntervalDays = 0;
-        } else {
-            // Anki manual: if relearning steps are blank, skip relearning and
-            // use a 1-day default post-lapse interval.
-            state.phase = Records.SchedulerPhase.REVIEW;
-            state.stepIndex = 0;
-            state.due = context.nowMillis + DAY;
-            state.schedulerState = STATE_REVIEW;
-            state.scheduledIntervalDays = 1;
-        }
+        state.phase = Records.SchedulerPhase.RELEARNING;
+        state.stepIndex = 0;
+        state.due = context.nowMillis + stepDelayMillis(relearning.get(0));
+        state.schedulerState = STATE_LEARNING;
+        state.scheduledIntervalDays = 0;
 
         if (countsAsRealDue(context, state)) {
             state.realPassStreak = 0;
@@ -811,10 +756,7 @@ public final class BridgeScheduler {
         }
         List<Records.StudyItem> out = new ArrayList<>();
         for (List<Records.StudyItem> family : byFamily.values()) {
-            Records.StudyItem active = activeFamilyItem(family, nowMillis);
-            if (active != null) {
-                out.add(active);
-            }
+            out.add(activeFamilyItem(family, nowMillis));
         }
         return out;
     }
@@ -918,7 +860,7 @@ public final class BridgeScheduler {
     }
 
     private static String familyKey(String kanji, String answerSignature) {
-        return kanji + "\u0000" + (answerSignature == null ? "" : answerSignature);
+        return kanji + "\u0000" + Objects.requireNonNullElse(answerSignature, "");
     }
 
     private static int intervalDays(long intervalMillis) {
@@ -926,9 +868,6 @@ public final class BridgeScheduler {
     }
 
     private static String answerSignature(Records.DashboardRow row) {
-        if (row == null) {
-            return "";
-        }
         Records.Example example = null;
         for (Records.Example candidate : row.examples) {
             if ("suspended".equals(candidate.sourceType)) {
@@ -952,10 +891,7 @@ public final class BridgeScheduler {
     }
 
     private static String normalizeSignature(String value) {
-        if (value == null) {
-            return "";
-        }
-        return MULTI_WHITESPACE.matcher(value.trim()).replaceAll(" ");
+        return MULTI_WHITESPACE.matcher(Objects.requireNonNullElse(value, "").trim()).replaceAll(" ");
     }
 
     private static final class SeedQueueLimits {

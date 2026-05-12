@@ -19,8 +19,10 @@ public final class SimilarKanjiIndexTest {
         assertEquals(0, index.pairCount());
         assertFalse(index.areSimilar(null, "拉"));
         assertFalse(index.areSimilar("拉", null));
+        assertFalse(index.areSimilar("拉", "提"));
         assertTrue(index.similarTo(null).isEmpty());
         assertTrue(index.similarTo("拉").isEmpty());
+        assertTrue(index.similarTo("あ").isEmpty());
         assertTrue(index.pairsWithin(null).isEmpty());
         assertTrue(index.pairsWithin(Collections.emptyList()).isEmpty());
     }
@@ -50,17 +52,21 @@ public final class SimilarKanjiIndexTest {
     public void parseTsvSkipsMalformedRows() throws Exception {
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader(
                 """
+
+                # generated
                 not enough cells
                 abc\t麺\tfixture
                 拉\tkana\tfixture
                 拉\t拉\tfixture
                 拉\t麺\t
+                提\t謎
                 """
         ));
 
-        assertEquals(1, index.pairCount());
+        assertEquals(2, index.pairCount());
         assertTrue(index.areSimilar("拉", "麺"));
         assertEquals(SimilarKanjiIndex.SOURCE_KIKU_VISUALLY_SIMILAR, index.pairsWithin(Arrays.asList("拉", "麺")).get(0).source);
+        assertEquals(SimilarKanjiIndex.SOURCE_KIKU_VISUALLY_SIMILAR, index.pairsWithin(Arrays.asList("提", "謎")).get(0).source);
     }
 
     @Test
@@ -88,6 +94,7 @@ public final class SimilarKanjiIndexTest {
         SimilarKanjiIndex.Pair same = SimilarKanjiIndex.Pair.canonical("拉", "麺", "fixture");
         SimilarKanjiIndex.Pair differentSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", "other");
         SimilarKanjiIndex.Pair differentKanji = SimilarKanjiIndex.Pair.canonical("拉", "謎", "fixture");
+        SimilarKanjiIndex.Pair differentFirstKanji = SimilarKanjiIndex.Pair.canonical("亜", "麺", "fixture");
 
         assertEquals(pair, pair);
         assertEquals(pair, same);
@@ -97,15 +104,19 @@ public final class SimilarKanjiIndexTest {
         assertFalse(equalsDifferentSource);
         boolean equalsDifferentKanji = pair.equals(differentKanji);
         assertFalse(equalsDifferentKanji);
+        boolean equalsDifferentFirstKanji = pair.equals(differentFirstKanji);
+        assertFalse(equalsDifferentFirstKanji);
         boolean equalsDifferentType = pair.equals("not a pair");
         assertFalse(equalsDifferentType);
     }
 
     @Test
     public void pairCanonicalDefaultsBlankSourceAndSortsBySource() {
+        SimilarKanjiIndex.Pair nullSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", null);
         SimilarKanjiIndex.Pair defaultSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", " ");
         SimilarKanjiIndex.Pair explicitSource = SimilarKanjiIndex.Pair.canonical("拉", "麺", "zz");
 
+        assertEquals(defaultSource, nullSource);
         assertEquals(SimilarKanjiIndex.SOURCE_KIKU_VISUALLY_SIMILAR, defaultSource.source);
         assertTrue(defaultSource.compareTo(explicitSource) < 0);
         assertTrue(SimilarKanjiIndex.Pair.canonical("拉", "麺", "a").compareTo(defaultSource) < 0);

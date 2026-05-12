@@ -45,7 +45,7 @@ public final class KanjiAnalyzer {
         addCardExamples(snapshot, notesById, rows, cardIdsWithExamples, settings, importIndex);
         addImportedSources(imports, rows, cardIdsWithExamples);
 
-        List<Records.DashboardRow> out = dashboardRows(rows, ranks, settings, importIndex);
+        List<Records.DashboardRow> out = dashboardRows(rows, ranks, settings);
         out.sort(Comparator
                 .comparingInt((Records.DashboardRow row) -> row.weaknessScore).reversed()
                 .thenComparing((Records.DashboardRow row) -> row.suspendedExampleCount, Comparator.reverseOrder())
@@ -160,13 +160,12 @@ public final class KanjiAnalyzer {
     private static List<Records.DashboardRow> dashboardRows(
             Map<String, MutableRow> rows,
             JitenKanjiRanks ranks,
-            Records.Settings settings,
-            ImportSourceIndex importIndex
+            Records.Settings settings
     ) {
         List<Records.DashboardRow> out = new ArrayList<>();
         for (MutableRow row : rows.values()) {
             Records.DashboardRow built = row.build(ranks, settings);
-            if (built.weaknessScore > 0 || built.suspendedExampleCount > 0 || row.forcePractice || importIndex.forcePractice(row.kanji)) {
+            if (built.weaknessScore > 0 || row.forcePractice) {
                 out.add(built);
             }
         }
@@ -224,7 +223,7 @@ public final class KanjiAnalyzer {
             } else if (supportDeficit > 0) {
                 return new Reason("weak_support", "Only " + summary.mature + " known example" + (summary.mature == 1 ? "" : "s") + " support this kanji.");
             } else if (summary.intervalPressure > 0) {
-                return new Reason("anki_scheduler_weakness", "Anki has " + summary.reps + " active review" + (summary.reps == 1 ? "" : "s") + " but little mature support for this kanji.");
+                return new Reason("anki_scheduler_weakness", "Anki has " + summary.reps + " active reviews but little mature support for this kanji.");
             } else if (summary.lapses > 0) {
                 return new Reason("anki_lapses", "Your active Anki cards containing this kanji have " + summary.lapses + " lapse" + (summary.lapses == 1 ? "" : "s") + ".");
             } else {
@@ -345,10 +344,6 @@ public final class KanjiAnalyzer {
 
         private boolean shouldReadKanji(String kanji) {
             return !selectedOnly || importedKanji.contains(kanji);
-        }
-
-        private boolean forcePractice(String kanji) {
-            return forcePracticeKanji.contains(kanji);
         }
 
         private boolean forcePractice(String kanji, long cardId) {

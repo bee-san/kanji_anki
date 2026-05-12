@@ -16,7 +16,7 @@ public class StrokeGuideTest {
         Map<String, StrokeGuide> guides = StrokeGuideParser.parse(new StringReader(
                 """
                 # generated from KanjiVG
-                拉\t0.1,0.2;0.3,0.4|0.5,0.6;0.7,0.8
+                拉\t0.1,0.2;0.3,0.4||0.5,0.6;0.7,0.8
                 """
         ));
 

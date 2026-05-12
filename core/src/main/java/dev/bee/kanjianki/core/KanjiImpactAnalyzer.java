@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public final class KanjiImpactAnalyzer {
     public static final String BUCKET_HELPED = "helped";
@@ -73,7 +74,7 @@ public final class KanjiImpactAnalyzer {
     }
 
     private String bucketFor(KanjiHistory history, MetricSnapshot baseline, MetricSnapshot current) {
-        if (history.current == null || history.current.totalCards() < 2 || history.commonCards <= 0 || baseline == null || current == null) {
+        if (history.current == null || history.current.totalCards() < 2 || history.commonCards <= 0 || baseline == null) {
             return BUCKET_NEEDS_MORE_CARDS;
         }
         double retentionDelta = current.retentionScore() - baseline.retentionScore();
@@ -119,7 +120,7 @@ public final class KanjiImpactAnalyzer {
             this.helpedCount = Math.max(0, helpedCount);
             this.notHelpingCount = Math.max(0, notHelpingCount);
             this.needsMoreCardsCount = Math.max(0, needsMoreCardsCount);
-            this.rows = Collections.unmodifiableList(new ArrayList<>(rows == null ? Collections.emptyList() : rows));
+            this.rows = Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNullElse(rows, Collections.emptyList())));
         }
 
         public boolean empty() {
@@ -150,8 +151,8 @@ public final class KanjiImpactAnalyzer {
                 RowMetrics metrics,
                 String advice
         ) {
-            this.kanji = kanji == null ? "" : kanji;
-            this.bucket = bucket == null ? BUCKET_NEEDS_MORE_CARDS : bucket;
+            this.kanji = kanji;
+            this.bucket = bucket;
             this.baselineDifficulty = metrics.baselineDifficulty;
             this.currentDifficulty = metrics.currentDifficulty;
             this.baselineRetention = clamp(metrics.baselineRetention, 0.0, 1.0);
@@ -164,7 +165,7 @@ public final class KanjiImpactAnalyzer {
             this.newCardCount = Math.max(0, metrics.newCardCount);
             this.currentCardCount = Math.max(0, metrics.currentCardCount);
             this.reviewCount = Math.max(0, metrics.reviewCount);
-            this.advice = advice == null ? "" : advice;
+            this.advice = advice;
         }
 
         public String summary() {
@@ -200,7 +201,7 @@ public final class KanjiImpactAnalyzer {
                 MetricSnapshot sameCardCurrent,
                 int... counts
         ) {
-            this.kanji = kanji == null ? "" : kanji;
+            this.kanji = Objects.requireNonNullElse(kanji, "");
             this.baseline = baseline;
             this.current = current;
             this.sameCardBaseline = sameCardBaseline;
@@ -299,22 +300,23 @@ public final class KanjiImpactAnalyzer {
                 double currentDifficulty,
                 double baselineRetention,
                 double currentRetention,
-                int... counts
+                int baselineMatureCards,
+                int currentMatureCards,
+                int sameCardCount,
+                int newCardCount,
+                int currentCardCount,
+                int reviewCount
         ) {
             this.baselineDifficulty = baselineDifficulty;
             this.currentDifficulty = currentDifficulty;
             this.baselineRetention = baselineRetention;
             this.currentRetention = currentRetention;
-            this.baselineMatureCards = countAt(counts, 0);
-            this.currentMatureCards = countAt(counts, 1);
-            this.sameCardCount = countAt(counts, 2);
-            this.newCardCount = countAt(counts, 3);
-            this.currentCardCount = countAt(counts, 4);
-            this.reviewCount = countAt(counts, 5);
-        }
-
-        private static int countAt(int[] counts, int index) {
-            return counts == null || counts.length <= index ? 0 : counts[index];
+            this.baselineMatureCards = baselineMatureCards;
+            this.currentMatureCards = currentMatureCards;
+            this.sameCardCount = sameCardCount;
+            this.newCardCount = newCardCount;
+            this.currentCardCount = currentCardCount;
+            this.reviewCount = reviewCount;
         }
     }
 

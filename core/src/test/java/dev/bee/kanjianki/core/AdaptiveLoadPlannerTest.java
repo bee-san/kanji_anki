@@ -22,7 +22,7 @@ public class AdaptiveLoadPlannerTest {
                 0,
                 Collections.emptySet(),
                 20,
-                1000L
+                new Object[]{1000L}
         );
 
         assertEquals(20, plan.workloadPercent);
@@ -132,6 +132,41 @@ public class AdaptiveLoadPlannerTest {
         );
 
         assertEquals(noStreak.target + 1, streak.target);
+    }
+
+    @Test
+    public void steadyStreakBoostRequiresLowHardAndWritingRates() {
+        Records.AdaptiveLoadPlan boosted = planner().plan(
+                rows(20),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                4,
+                Collections.emptySet(),
+                50,
+                1000L
+        );
+        Records.AdaptiveLoadPlan hardBlocked = planner().plan(
+                rows(20),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 2, 2, 0, 4, 0),
+                4,
+                Collections.emptySet(),
+                50,
+                1000L
+        );
+        Records.AdaptiveLoadPlan writingBlocked = planner().plan(
+                rows(20),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 1),
+                4,
+                Collections.emptySet(),
+                50,
+                1000L
+        );
+
+        assertEquals(8, boosted.target);
+        assertEquals(6, hardBlocked.target);
+        assertEquals(7, writingBlocked.target);
     }
 
     @Test
@@ -627,6 +662,26 @@ public class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    public void manualAllKanjiModeWithMaxAboveRowsStaysUncapped() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                rows(4),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                100,
+                AdaptiveLoadPlanner.MODE_MANUAL,
+                20,
+                1000L,
+                Records.Settings.kikuDefaults()
+        );
+
+        assertTrue(plan.allKanjiMode);
+        assertEquals(4, plan.target);
+        assertTrue(plan.status.contains("All current problem kanji"));
+    }
+
+    @Test
     public void fsrsRiskCoversInvalidPercentAndMatureStabilityBranches() {
         Records.DashboardRow percentRisk = row("百", 10, 75.0, 6.0, 2.0, 10, 5);
         Records.DashboardRow invalidRisk = row("無", 50, 101.0, null, null, 3, 1);
@@ -643,6 +698,241 @@ public class AdaptiveLoadPlannerTest {
         );
 
         assertEquals("百", plan.focusKanji.get(0));
+    }
+
+    @Test
+    public void legacyOptionShapesCoverLooseAndManualCompatibilityPaths() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.AdaptiveLoadPlan nullOptions = planner().plan(
+                rows(2),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                (Object[]) null
+        );
+        Records.AdaptiveLoadPlan oldTwoOptionManual = planner().plan(
+                rows(2),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                1000L,
+                settings
+        );
+        Records.AdaptiveLoadPlan looseOptions = planner().plan(
+                rows(2),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                new Object[]{1000L}
+        );
+        Records.AdaptiveLoadPlan settingsOnlyLooseOption = planner().plan(
+                rows(2),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                new Object[]{settings}
+        );
+        Records.AdaptiveLoadPlan ignoredLooseOption = planner().plan(
+                rows(2),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                new Object[]{"ignored"}
+        );
+        Records.AdaptiveLoadPlan legacyManualWithNonLongNow = planner().plan(
+                rows(2),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                new Object[]{"not-now", settings}
+        );
+
+        assertFalse(nullOptions.autoMode);
+        assertFalse(oldTwoOptionManual.autoMode);
+        assertFalse(looseOptions.autoMode);
+        assertFalse(settingsOnlyLooseOption.autoMode);
+        assertFalse(ignoredLooseOption.autoMode);
+        assertFalse(legacyManualWithNonLongNow.autoMode);
+    }
+
+    @Test
+    public void nullPlanRequestFallsBackToEmptyDefaultPlan() {
+        Records.AdaptiveLoadPlan plan = planner().plan((AdaptiveLoadPlanner.PlanRequest) null);
+
+        assertFalse(plan.autoMode);
+        assertEquals(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT, plan.workloadPercent);
+        assertEquals(0, plan.target);
+        assertTrue(plan.status.contains("No current problem"));
+    }
+
+    @Test
+    public void targetAdjustmentCoversModerateMissesHardRateAndFutureLearning() {
+        Records.StudyItem futureLearning = item("字0", "learning", 5000L, 0, 0);
+        Records.StudyItem dueUnreviewedReview = item("字1", "review", 0L, 0, 0);
+        HashSet<String> studied = new HashSet<>();
+        studied.add("字0");
+
+        Records.AdaptiveLoadPlan moderateMisses = planner().plan(
+                rows(10),
+                Collections.singletonList(futureLearning),
+                new Records.ReviewStats(4, 1, 0, 3, 0, 4, 0),
+                0,
+                studied,
+                20,
+                1000L
+        );
+        Records.AdaptiveLoadPlan hardHeavy = planner().plan(
+                rows(10),
+                Collections.emptyList(),
+                new Records.ReviewStats(4, 0, 2, 2, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                1000L
+        );
+        Records.AdaptiveLoadPlan unreviewedReview = planner().plan(
+                rows(10),
+                Collections.singletonList(dueUnreviewedReview),
+                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                1000L
+        );
+
+        assertTrue(moderateMisses.target <= 3);
+        assertTrue(hardHeavy.target <= 3);
+        assertTrue(moderateMisses.remaining < moderateMisses.target);
+        assertFalse(unreviewedReview.focusKanji.isEmpty());
+    }
+
+    @Test
+    public void autoNoHistoryWithoutDropUsesSmallStartStatus() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("穏", 0, null, null, null, 45, 12),
+                        row("静", 0, null, null, null, 45, 12)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                settingsWithMatureSupport(0)
+        );
+
+        assertTrue(plan.status.contains("Auto Pareto starts small"));
+    }
+
+    @Test
+    public void fsrsRiskCoversNegativeRetrievabilityAndIntervalFallback() {
+        Records.DashboardRow intervalFallback = row("間", 10, null, null, null, 3, 9);
+        Records.DashboardRow negativeRetrievability = row("負", 50, -0.1, null, null, 30, 9);
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(negativeRetrievability, intervalFallback),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                0,
+                1000L
+        );
+
+        assertEquals("間", plan.focusKanji.get(0));
+    }
+
+    @Test
+    public void fsrsRiskDoesNotProtectImmatureHighStabilityExamples() {
+        Records.DashboardRow immatureHighStability = row("未", 10, 0.95, null, 50.0, 3, 9);
+        Records.DashboardRow protectedMature = row("熟", 10, 0.95, null, 50.0, 50, 9);
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(protectedMature, immatureHighStability),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                0,
+                1000L
+        );
+
+        assertEquals("未", plan.focusKanji.get(0));
+    }
+
+    @Test
+    public void autoParetoRequiresAbsoluteDropAsWellAsRelativeDrop() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("十", 10, null, null, null, 3, 1),
+                        row("七", 7, null, null, null, 3, 1),
+                        row("一", 1, null, null, null, 3, 1)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                settingsWithMatureSupport(0)
+        );
+
+        assertTrue(plan.target >= 2);
+    }
+
+    @Test
+    public void fsrsRiskProtectsOnlyVeryStableMatureExamples() {
+        Records.DashboardRow matureWithoutProtection = row("並", 10, 0.95, 10.0, 30.0, 50, 9);
+        Records.DashboardRow protectedMature = row("熟", 10, 0.95, 10.0, 90.0, 90, 9);
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(protectedMature, matureWithoutProtection),
+                Collections.emptyList(),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                Collections.emptySet(),
+                0,
+                1000L,
+                settingsWithMatureSupport(0)
+        );
+
+        assertEquals("並", plan.focusKanji.get(0));
+    }
+
+    @Test
+    public void autoParetoScanContinuesAcrossZeroPriorityTail() {
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                Arrays.asList(
+                        row("十", 10, null, null, null, 3, 1),
+                        row("零", 0, null, null, null, 45, 12),
+                        row("空", 0, null, null, null, 45, 12)
+                ),
+                Collections.emptyList(),
+                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                1,
+                Collections.emptySet(),
+                20,
+                AdaptiveLoadPlanner.MODE_AUTO,
+                1000L,
+                settingsWithMatureSupport(0)
+        );
+
+        assertTrue(plan.target >= 1);
     }
 
     private AdaptiveLoadPlanner planner() {

@@ -456,7 +456,7 @@ public final class AdaptiveLoadPlanner {
             double current = ranked.get(i).priorityScore;
             double next = ranked.get(i + 1).priorityScore;
             double drop = current - next;
-            if (current > 0.0 && next <= current * 0.70 && drop >= absoluteDrop) {
+            if (next <= current * 0.70 && drop >= absoluteDrop) {
                 return new AutoTarget(Math.max(1, Math.min(AUTO_PARETO_CAP, recoveryDue + i + 1)), true);
             }
         }

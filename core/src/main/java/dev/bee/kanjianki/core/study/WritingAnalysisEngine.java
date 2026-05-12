@@ -95,9 +95,6 @@ public final class WritingAnalysisEngine {
     }
 
     private static String normalizedCandidate(String text) {
-        if (text == null) {
-            return "";
-        }
         return text.trim()
                 .replace("\uFE0E", "")
                 .replace("\uFE0F", "");

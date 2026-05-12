@@ -24,6 +24,20 @@ public class WritingAnalysisEngineTest {
     }
 
     @Test
+    public void cleanSecondChoiceTargetPassesWithGoodRating() {
+        WritingAnalysis analysis = WritingAnalysisEngine.analyze(
+                "拉",
+                sample(),
+                guide(),
+                Arrays.asList(new RecognitionCandidate("提", 0.99f), new RecognitionCandidate("拉", 0.96f))
+        );
+
+        assertTrue(analysis.writingPassed);
+        assertEquals(WritingAnalysis.Status.PASS, analysis.status);
+        assertEquals("good", analysis.rating);
+    }
+
+    @Test
     public void candidateThatOnlyContainsTargetDoesNotPass() {
         WritingAnalysis analysis = WritingAnalysisEngine.analyze(
                 "拉",
@@ -134,13 +148,19 @@ public class WritingAnalysisEngineTest {
                 Arrays.asList(new RecognitionCandidate(" 拉\uFE0F ", 0.99f))
         );
         WritingAnalysis noCandidates = WritingAnalysisEngine.analyze("拉", sample(), guide(), null);
+        WritingAnalysis emptyCandidates = WritingAnalysisEngine.analyze("拉", sample(), guide(), Collections.emptyList());
         WritingAnalysis noSample = WritingAnalysisEngine.analyze("拉", null, guide(), Collections.emptyList());
+        WritingAnalysis emptySample = WritingAnalysisEngine.analyze("拉", WritingSample.empty(), guide(), Collections.emptyList());
+        WritingAnalysis nullTarget = WritingAnalysisEngine.analyze(null, sample(), guide(), Arrays.asList(new RecognitionCandidate("拉", 0.99f)));
 
         assertFalse(blank.writingPassed);
         assertEquals(WritingAnalysis.Status.WRONG, blank.status);
         assertTrue(variationSelector.writingPassed);
         assertEquals(WritingAnalysis.Status.WRONG, noCandidates.status);
+        assertEquals(WritingAnalysis.Status.WRONG, emptyCandidates.status);
         assertEquals(WritingAnalysis.Status.NO_INK, noSample.status);
+        assertEquals(WritingAnalysis.Status.NO_INK, emptySample.status);
+        assertEquals(WritingAnalysis.Status.WRONG, nullTarget.status);
     }
 
     @Test

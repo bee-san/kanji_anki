@@ -93,7 +93,7 @@ public final class SimilarKanjiIndex {
             return Collections.emptyList();
         }
         Set<String> matches = similarByKanji.get(normalized);
-        if (matches == null || matches.isEmpty()) {
+        if (matches == null) {
             return Collections.emptyList();
         }
         return new ArrayList<>(matches);

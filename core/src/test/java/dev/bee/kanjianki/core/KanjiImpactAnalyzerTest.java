@@ -125,6 +125,7 @@ public final class KanjiImpactAnalyzerTest {
         KanjiImpactAnalyzer analyzer = new KanjiImpactAnalyzer();
 
         KanjiImpactAnalyzer.Report nullReport = analyzer.analyze(null);
+        KanjiImpactAnalyzer.Report emptyReport = analyzer.analyze(Collections.emptyList());
         KanjiImpactAnalyzer.Report report = analyzer.analyze(Arrays.asList(
                 null,
                 history("", metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
@@ -132,9 +133,81 @@ public final class KanjiImpactAnalyzerTest {
         ));
 
         assertTrue(nullReport.empty());
+        assertTrue(emptyReport.empty());
         assertEquals(1, report.notHelpingCount);
         assertEquals(1, report.rows.size());
         assertEquals("拉", report.rows.get(0).kanji);
+    }
+
+    @Test
+    public void reportConstructorNormalizesNegativeCountsAndNullRows() {
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer.Report(-1, -2, -3, null);
+
+        assertTrue(report.empty());
+        assertTrue(report.rows.isEmpty());
+    }
+
+    @Test
+    public void missingCurrentMetricsProduceNeedsMoreCardsRowWithZeroScores() {
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer().analyze(Collections.singletonList(
+                history("欠", metric(2, 0, 1, 20.0, 10, 1, 6.0, 0.80), null, null, null, 1, 0, 2)
+        ));
+
+        KanjiImpactAnalyzer.Row row = report.rows.get(0);
+        assertEquals(KanjiImpactAnalyzer.BUCKET_NEEDS_MORE_CARDS, row.bucket);
+        assertEquals(6.0, row.baselineDifficulty, 0.001);
+        assertEquals(0.0, row.currentDifficulty, 0.001);
+        assertEquals(0.80, row.baselineRetention, 0.001);
+        assertEquals(0.0, row.currentRetention, 0.001);
+        assertEquals(0, row.currentCardCount);
+    }
+
+    @Test
+    public void rowsSortByBucketRetentionDeltaThenKanji() {
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer().analyze(Arrays.asList(
+                history("歩", metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60), metric(2, 0, 0, 20.0, 10, 2, 5.9, 0.62), null, null, 2, 0, 4),
+                history("亜", metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60), metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60), null, null, 2, 0, 4),
+                history("腕", metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60), metric(2, 0, 0, 20.0, 10, 0, 4.0, 0.90), null, null, 2, 0, 4)
+        ));
+
+        assertEquals("腕", report.rows.get(0).kanji);
+        assertEquals("歩", report.rows.get(1).kanji);
+        assertEquals("亜", report.rows.get(2).kanji);
+    }
+
+    @Test
+    public void constructorsClampCountsAndHandleMissingVarargs() {
+        KanjiImpactAnalyzer.KanjiHistory history = new KanjiImpactAnalyzer.KanjiHistory(null, null, null, null, null, (int[]) null);
+        KanjiImpactAnalyzer.MetricSnapshot snapshot = new KanjiImpactAnalyzer.MetricSnapshot(-1, -2, -3, -4.0, -5, -6, (Double[]) null);
+        KanjiImpactAnalyzer.KanjiHistory partialCounts = new KanjiImpactAnalyzer.KanjiHistory("片", null, null, null, null, 1);
+        KanjiImpactAnalyzer.MetricSnapshot partialFsrs = new KanjiImpactAnalyzer.MetricSnapshot(1, 0, 0, 0.0, 0, 0, 2.0);
+
+        assertEquals("", history.kanji);
+        assertEquals(0, history.commonCards);
+        assertEquals(1, partialCounts.commonCards);
+        assertEquals(0, partialCounts.newCards);
+        assertEquals(0, snapshot.totalCards());
+        assertEquals(5.0, snapshot.difficultyScore(), 0.001);
+        assertEquals(Double.valueOf(2.0), partialFsrs.fsrsStability);
+        assertEquals(null, partialFsrs.fsrsDifficulty);
+    }
+
+    @Test
+    public void bucketGuardsAndHelpSignalsCoverBoundaryCases() {
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer().analyze(Arrays.asList(
+                history("少", metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
+                history("共", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 0, 0, 1),
+                history("基", null, metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
+                history("熟", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 1, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
+                history("易", metric(2, 0, 0, 1.0, 1, 0, 6.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.6, 0.80), null, null, 1, 0, 1),
+                history("覚", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.90), null, null, 1, 0, 1)
+        ));
+
+        assertEquals(3, report.helpedCount);
+        assertEquals(3, report.needsMoreCardsCount);
+        assertEquals(false, new KanjiImpactAnalyzer.Report(1, 0, 0, Collections.emptyList()).empty());
+        assertEquals(false, new KanjiImpactAnalyzer.Report(0, 1, 0, Collections.emptyList()).empty());
+        assertEquals(false, new KanjiImpactAnalyzer.Report(0, 0, 1, Collections.emptyList()).empty());
     }
 
     private static KanjiImpactAnalyzer.KanjiHistory history(

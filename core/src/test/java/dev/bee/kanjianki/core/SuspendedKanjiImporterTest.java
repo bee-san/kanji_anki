@@ -48,7 +48,7 @@ public class SuspendedKanjiImporterTest {
     @Test
     public void deduplicatesKanjiButKeepsMultipleSourceCards() throws Exception {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,2900\n"));
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("裂,2900\n傷,2900\n"));
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(note(1, "裂ける", "さける"), note(2, "裂傷", "れっしょう")),
                 Arrays.asList(card(10, 1, true), card(20, 2, true))
@@ -56,7 +56,9 @@ public class SuspendedKanjiImporterTest {
 
         List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(ranks, settings.suspendedRankMin, settings.suspendedRankMax).importFrom(snapshot, settings);
 
-        assertEquals(2, imports.get(0).sources.size());
+        assertEquals("傷", imports.get(0).kanji);
+        assertEquals("裂", imports.get(1).kanji);
+        assertEquals(2, imports.get(1).sources.size());
     }
 
     @Test

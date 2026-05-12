@@ -59,7 +59,7 @@ public class SchedulerTunerTest {
     public void lengthensIntervalsWhenRetentionIsComfortablyAboveTarget() {
         SchedulerTuner tuner = new SchedulerTuner();
         Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
-        Records.ReviewStats easyMonth = new Records.ReviewStats(50, 1, 4, 30, 15, 10, 0);
+        Records.ReviewStats easyMonth = new Records.ReviewStats(50, 0, 5, 30, 15, 10, 0);
 
         Records.SchedulerParameters adjusted = tuner.maybeTune(defaults, easyMonth, SchedulerTuner.MONTH_MILLIS);
 
@@ -78,5 +78,29 @@ public class SchedulerTunerTest {
         assertEquals(defaults.goodMultiplier, adjusted.goodMultiplier, 0.001);
         assertEquals(defaults.easyMultiplier, adjusted.easyMultiplier, 0.001);
         assertTrue(adjusted.againMultiplier > defaults.againMultiplier);
+    }
+
+    @Test
+    public void moderateRetentionErrorsUseGentlerSpacingChanges() {
+        SchedulerTuner tuner = new SchedulerTuner();
+        Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
+        Records.SchedulerParameters previouslyAdjusted = defaults.withAdjustment(
+                defaults.againMultiplier,
+                defaults.hardMultiplier,
+                defaults.goodMultiplier,
+                defaults.easyMultiplier,
+                1L,
+                10
+        );
+        Records.ReviewStats slightlyWeak = new Records.ReviewStats(100, 17, 10, 50, 23, 10, 0);
+        Records.ReviewStats slightlyEasy = new Records.ReviewStats(100, 5, 10, 70, 15, 10, 0);
+
+        Records.SchedulerParameters weakAdjustment = tuner.maybeTune(defaults, slightlyWeak, SchedulerTuner.MONTH_MILLIS);
+        Records.SchedulerParameters easyAdjustment = tuner.maybeTune(defaults, slightlyEasy, SchedulerTuner.MONTH_MILLIS);
+        Records.SchedulerParameters laterAdjustment = tuner.maybeTune(previouslyAdjusted, slightlyWeak, SchedulerTuner.MONTH_MILLIS + 2);
+
+        assertEquals(defaults.goodMultiplier * 0.92, weakAdjustment.goodMultiplier, 0.001);
+        assertEquals(defaults.goodMultiplier * 1.06, easyAdjustment.goodMultiplier, 0.001);
+        assertEquals(100, laterAdjustment.lastAdjustmentReviewCount);
     }
 }

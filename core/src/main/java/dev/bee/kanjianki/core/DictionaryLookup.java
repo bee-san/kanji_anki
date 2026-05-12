@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public abstract class DictionaryLookup {
@@ -60,7 +61,7 @@ public abstract class DictionaryLookup {
     }
 
     protected static String normalize(String value) {
-        return value == null ? "" : MULTI_WHITESPACE.matcher(value.trim()).replaceAll(" ");
+        return MULTI_WHITESPACE.matcher(Objects.requireNonNullElse(value, "").trim()).replaceAll(" ");
     }
 
     private static String firstNonEmpty(String... values) {
@@ -124,7 +125,7 @@ public abstract class DictionaryLookup {
         }
 
         private static List<String> immutableList(List<String> values) {
-            return Collections.unmodifiableList(new ArrayList<>(values == null ? Collections.<String>emptyList() : values));
+            return Collections.unmodifiableList(new ArrayList<>(Objects.requireNonNullElse(values, Collections.emptyList())));
         }
 
         private String firstReading() {

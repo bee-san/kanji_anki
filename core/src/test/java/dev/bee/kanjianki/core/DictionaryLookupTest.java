@@ -105,6 +105,64 @@ public class DictionaryLookupTest {
         assertFalse(TypingAnswerMatcher.matches(lookup, "悲", "joy", "fallback"));
     }
 
+    @Test
+    public void typingAnswerHandlesNullLookupEmptyAnswersAndDuplicateMeanings() {
+        assertFalse(TypingAnswerMatcher.matches(null, "悲", " ", "sorrow"));
+        assertTrue(TypingAnswerMatcher.matches(null, "悲", "sorrow", "sorrow; sorrow / grief"));
+        assertEquals(Arrays.asList("Sorrow", "grief"), TypingAnswerMatcher.acceptedMeanings(null, "悲", "sorrow, grief"));
+    }
+
+    @Test
+    public void typingAnswerIgnoresNullPlaceholderAndEmptyMeaningVariants() {
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(kanji("謎", Arrays.asList(null, "Collection clue", " , / "), Collections.emptyList(), Collections.emptyList(), 0, null))
+        );
+
+        assertTrue(TypingAnswerMatcher.acceptedMeanings(lookup, "謎", "Collection clue").isEmpty());
+        assertFalse(TypingAnswerMatcher.matches(lookup, "謎", null, "mystery"));
+    }
+
+    @Test
+    public void studyCueFallsBackThroughRowAndDictionaryReadings() {
+        DictionaryLookup withKun = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(kanji("悲", Arrays.asList("sorrow"), Arrays.asList("ヒ"), Arrays.asList("かな.しい"), 1014, 500))
+        );
+        DictionaryLookup withOn = DictionaryLookup.fromKanjiEntries(
+                Collections.singletonList(kanji("拉", Arrays.asList("pull"), Arrays.asList("ラ"), Collections.emptyList(), 1800, null))
+        );
+        DictionaryLookup withNanori = DictionaryLookup.fromKanjiEntries(Collections.singletonList(
+                new DictionaryLookup.KanjiEntry(new DictionaryLookup.KanjiEntryFields(
+                        "名",
+                        Arrays.asList("name"),
+                        Collections.emptyList(),
+                        Collections.emptyList(),
+                        Collections.singletonList("な"),
+                        6,
+                        1,
+                        30,
+                        100,
+                        null
+                ))
+        ));
+
+        assertEquals("row reading", withKun.studyCue("悲", "", "row   reading", "", "").reading);
+        assertEquals("かな.しい", withKun.studyCue("悲", "", "", "", "").reading);
+        assertEquals("ラ", withOn.studyCue("拉", "", "", "", "").reading);
+        assertEquals("な", withNanori.studyCue("名", "", "", "", "").reading);
+        assertEquals("", DictionaryLookup.fromKanjiEntries(null).studyCue("謎", "", "", null, null).fromExpression);
+    }
+
+    @Test
+    public void nullKanjiEntryFieldsUseEmptyEntryDefaults() {
+        DictionaryLookup.KanjiEntry empty = new DictionaryLookup.KanjiEntry(null);
+        DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(Collections.singletonList(empty));
+
+        assertEquals("", empty.literal);
+        assertTrue(empty.meanings.isEmpty());
+        assertEquals("", lookup.studyCue("", "fallback", "", "", "").reading);
+        assertEquals("", lookup.studyCue("", "fallback", "", "", "").meaning);
+    }
+
     private static DictionaryLookup.KanjiEntry kanji(
             String literal,
             List<String> meanings,

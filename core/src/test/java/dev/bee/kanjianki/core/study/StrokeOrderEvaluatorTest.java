@@ -123,7 +123,7 @@ public class StrokeOrderEvaluatorTest {
         StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(null, sample(stroke(0f, 0f, 1f, 1f)));
 
         assertTrue(result.missingGuide);
-        assertFalse(result.acceptable);
+        assertFalse(result.clean);
         assertTrue(result.diagnosis.isEmpty());
     }
 
@@ -131,12 +131,203 @@ public class StrokeOrderEvaluatorTest {
     public void emptyGuideAndEmptySampleReturnExplicitFailures() {
         StrokeOrderEvaluator.StrokeOrderResult missingGuide = StrokeOrderEvaluator.evaluate(new StrokeGuide("拉", Collections.emptyList()), sample(stroke(0f, 0f, 1f, 1f)));
         StrokeOrderEvaluator.StrokeOrderResult noInk = StrokeOrderEvaluator.evaluate(guide(), WritingSample.empty());
+        StrokeOrderEvaluator.StrokeOrderResult nullSample = StrokeOrderEvaluator.evaluate(guide(), null);
 
         assertTrue(missingGuide.missingGuide);
         assertFalse(missingGuide.acceptable);
         assertFalse(noInk.missingGuide);
         assertFalse(noInk.acceptable);
         assertEquals("No ink was drawn.", noInk.message);
+        assertEquals("No ink was drawn.", nullSample.message);
+    }
+
+    @Test
+    public void emptyStrokeAndNullPointsProduceRoughFailureWithDefaultBounds() {
+        StrokeGuide guide = new StrokeGuide(
+                "拉",
+                Arrays.asList(new InkStroke(Collections.emptyList()))
+        );
+        WritingSample sample = sample(new InkStroke(Arrays.asList(
+                null,
+                new InkPoint(100f, 100f, 1)
+        )));
+
+        StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(guide, sample);
+
+        assertFalse(result.clean);
+        assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1));
+    }
+
+    @Test
+    public void emptySampleStrokeBeforeInkProducesRoughFailure() {
+        StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(
+                guide(),
+                sample(
+                        new InkStroke(Collections.emptyList()),
+                        stroke(10f, 10f, 90f, 10f)
+                )
+        );
+
+        assertFalse(result.acceptable);
+        assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1));
+    }
+
+    @Test
+    public void nullStrokeEndpointsProduceRoughFailure() {
+        StrokeGuide nullGuideEnd = new StrokeGuide(
+                "拉",
+                Collections.singletonList(new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.1f, 0), null)))
+        );
+        WritingSample normalSample = sample(stroke(10f, 10f, 90f, 10f));
+        WritingSample nullSampleEnd = sample(new InkStroke(Arrays.asList(new InkPoint(10f, 10f, 0), null)));
+
+        StrokeOrderEvaluator.StrokeOrderResult guideEndMissing = StrokeOrderEvaluator.evaluate(nullGuideEnd, normalSample);
+        StrokeOrderEvaluator.StrokeOrderResult sampleEndMissing = StrokeOrderEvaluator.evaluate(
+                new StrokeGuide("拉", Collections.singletonList(new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.1f, 0), new InkPoint(0.9f, 0.1f, 1))))),
+                nullSampleEnd
+        );
+
+        assertFalse(guideEndMissing.clean);
+        assertFalse(sampleEndMissing.clean);
+        assertTrue(guideEndMissing.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1));
+        assertTrue(sampleEndMissing.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1));
+    }
+
+    @Test
+    public void shortStrokeDoesNotReportWrongDirectionWhenDirectMatchIsStronger() {
+        StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(
+                singleStrokeGuide(0.1f, 0.1f, 0.2f, 0.1f),
+                sample(stroke(10f, 10f, 20f, 10f))
+        );
+
+        assertTrue(result.clean);
+        assertFalse(result.diagnosis.hasLabel(StrokeDiagnosis.Label.WRONG_DIRECTION, 1));
+        assertTrue(result.diagnosis.isEmpty());
+    }
+
+    @Test
+    public void directionlessRecognizableStrokeDoesNotReportRoughShape() {
+        StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(
+                singleStrokeGuide(0.1f, 0.1f, 0.9f, 0.1f),
+                sample(new InkStroke(Arrays.asList(
+                        new InkPoint(100f, 0f, 0),
+                        new InkPoint(0f, 0f, 1),
+                        new InkPoint(50f, 0f, 2)
+                )))
+        );
+
+        assertFalse(result.clean);
+        assertFalse(result.diagnosis.hasLabel(StrokeDiagnosis.Label.WRONG_DIRECTION, 1));
+        assertFalse(result.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1));
+    }
+
+    @Test
+    public void roughShapeWithCorrectCountIsNotAcceptable() {
+        StrokeOrderEvaluator.StrokeOrderResult result = StrokeOrderEvaluator.evaluate(guide(), sample(
+                stroke(90f, 90f, 90f, 90f),
+                stroke(90f, 90f, 90f, 90f),
+                stroke(90f, 90f, 90f, 90f),
+                stroke(90f, 90f, 90f, 90f)
+        ));
+
+        assertFalse(result.acceptable);
+        assertFalse(result.clean);
+        assertTrue(result.diagnosis.hasLabel(StrokeDiagnosis.Label.ROUGH_SHAPE, 1));
+    }
+
+    @Test
+    public void withDiagnosisNormalizesNullDiagnosis() {
+        StrokeOrderEvaluator.StrokeOrderResult clean = StrokeOrderEvaluator.evaluate(guide(), sample(
+                stroke(10f, 10f, 90f, 10f),
+                stroke(10f, 30f, 90f, 30f)
+        ));
+
+        assertTrue(clean.withDiagnosis(null).diagnosis.isEmpty());
+    }
+
+    @Test
+    public void strokeOrderEvaluationNormalizesBoundsAndIncompleteStates() {
+        StrokeOrderEvaluation normalized = new StrokeOrderEvaluation(
+                -1,
+                -1,
+                -1,
+                null,
+                Collections.singletonList("extra"),
+                Collections.singletonList("duplicate"),
+                Collections.singletonList("late"),
+                2.0
+        );
+        StrokeOrderEvaluation exact = new StrokeOrderEvaluation(
+                1,
+                1,
+                1,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                1.0
+        );
+        StrokeOrderEvaluation wrongOrder = new StrokeOrderEvaluation(
+                1,
+                1,
+                1,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.singletonList("1"),
+                0.9
+        );
+        StrokeOrderEvaluation wrongCount = new StrokeOrderEvaluation(
+                2,
+                1,
+                1,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                0.7
+        );
+        StrokeOrderEvaluation missing = new StrokeOrderEvaluation(
+                1,
+                1,
+                1,
+                Collections.singletonList("1"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                0.7
+        );
+        StrokeOrderEvaluation extra = new StrokeOrderEvaluation(
+                1,
+                1,
+                1,
+                Collections.emptyList(),
+                Collections.singletonList("2"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                0.7
+        );
+        StrokeOrderEvaluation duplicate = new StrokeOrderEvaluation(
+                1,
+                1,
+                1,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.singletonList("1"),
+                Collections.emptyList(),
+                0.7
+        );
+
+        assertEquals(0, normalized.expectedCount());
+        assertEquals(1.0, normalized.score(), 0.001);
+        assertFalse(normalized.complete());
+        assertTrue(exact.complete());
+        assertTrue(exact.exactOrder());
+        assertFalse(wrongOrder.exactOrder());
+        assertFalse(wrongCount.complete());
+        assertFalse(missing.complete());
+        assertFalse(extra.complete());
+        assertFalse(duplicate.complete());
     }
 
     private StrokeGuide guide() {
@@ -157,6 +348,13 @@ public class StrokeOrderEvaluatorTest {
                         new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.3f, 0), new InkPoint(0.9f, 0.3f, 1))),
                         new InkStroke(Arrays.asList(new InkPoint(0.1f, 0.5f, 0), new InkPoint(0.9f, 0.5f, 1)))
                 )
+        );
+    }
+
+    private StrokeGuide singleStrokeGuide(float x1, float y1, float x2, float y2) {
+        return new StrokeGuide(
+                "拉",
+                Collections.singletonList(new InkStroke(Arrays.asList(new InkPoint(x1, y1, 0), new InkPoint(x2, y2, 1))))
         );
     }
 

@@ -100,7 +100,7 @@ public final class GitHubReleaseParser {
 
     private static List<String> objectValues(String arrayJson) {
         List<String> out = new ArrayList<>();
-        if (arrayJson == null || arrayJson.isEmpty()) {
+        if (arrayJson.isEmpty()) {
             return out;
         }
         int depth = 0;
@@ -118,7 +118,7 @@ public final class GitHubReleaseParser {
                 index++;
             } else if (c == '}') {
                 depth--;
-                if (depth == 0 && objectStart >= 0) {
+                if (depth == 0) {
                     out.add(arrayJson.substring(objectStart, index + 1));
                     objectStart = -1;
                 }

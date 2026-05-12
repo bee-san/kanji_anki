@@ -13,16 +13,13 @@ public final class StrokeOrderEvaluator {
         }
         int expected = guide.strokeCount();
         int actual = sample.strokeCount();
-        if (expected == 0) {
-            return StrokeOrderResult.missing();
-        }
         int countDelta = Math.abs(expected - actual);
         float countScore = Math.max(0f, 1f - (countDelta / (float) Math.max(1, expected)));
         int compared = Math.min(expected, actual);
         Bounds guideBounds = Bounds.forGuide(guide);
         Bounds sampleBounds = Bounds.forSample(sample);
         StrokeComparisonSummary summary = compareStrokes(guide, sample, sampleBounds, guideBounds, compared);
-        float shapeScore = compared == 0 ? 0f : summary.shapeScore / compared;
+        float shapeScore = summary.shapeScore / compared;
         float weakestStrokeScore = summary.weakestStrokeScore;
         if (actual < expected) {
             addMissingStrokes(summary.matchedGuideStrokes, summary.diagnosis);
@@ -42,7 +39,7 @@ public final class StrokeOrderEvaluator {
             int compared
     ) {
         float shapeScore = 0f;
-        float weakestStrokeScore = compared == 0 ? 0f : 1f;
+        float weakestStrokeScore = 1f;
         StrokeDiagnosis.Builder diagnosis = StrokeDiagnosis.builder();
         boolean[] matchedGuideStrokes = new boolean[guide.strokeCount()];
         for (int i = 0; i < compared; i++) {

@@ -162,10 +162,125 @@ public class WritingRatingMapperTest {
         StudyRating applied = mapper.applyRequestedRating(StudyRating.EASY, false, null, false);
 
         assertEquals(StudyRating.EASY, applied);
+        assertEquals("easy", StudyRating.EASY.code());
         assertEquals(StudyRating.AGAIN, StudyRating.fromCode("unexpected"));
         assertEquals(StudyRating.GOOD, StudyRating.fromCode("good"));
         assertEquals(StudyRating.GOOD, StudyRating.EASY.cappedAt(StudyRating.GOOD));
         assertEquals(StudyRating.HARD, StudyRating.HARD.cappedAt(StudyRating.GOOD));
+    }
+
+    @Test
+    public void hintVisibilityNormalizesNullLevelAndNegativeStrokeCount() {
+        HintVisibility visibility = new HintVisibility(null, false, false, false, false, false, -4);
+
+        assertEquals(HintLevel.TRACE, visibility.level());
+        assertEquals(0, visibility.visibleStrokeCount());
+    }
+
+    @Test
+    public void writingAnalysisDefaultsConfidenceAndHintOptions() {
+        WritingAnalysis passedWithoutScore = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                null,
+                Collections.singletonList(new RecognitionCandidate("拉", null)),
+                null,
+                null,
+                -3
+        );
+        WritingAnalysis close = new WritingAnalysis(
+                WritingAnalysis.Status.CLOSE,
+                "hard",
+                true,
+                "close",
+                Collections.emptyList(),
+                null
+        );
+        WritingAnalysis failedWithoutScore = new WritingAnalysis(
+                WritingAnalysis.Status.WRONG,
+                "again",
+                false,
+                "wrong",
+                Collections.singletonList(new RecognitionCandidate("拉", null)),
+                null,
+                HintLevel.BLIND,
+                "ignored"
+        );
+        WritingAnalysis nullHintOptions = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                Collections.emptyList(),
+                null,
+                (Object[]) null
+        );
+        WritingAnalysis emptyHintOptions = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                Collections.emptyList(),
+                null,
+                new Object[0]
+        );
+
+        assertEquals("", passedWithoutScore.message);
+        assertEquals(HintLevel.BLIND, passedWithoutScore.hintLevel());
+        assertEquals(0, passedWithoutScore.hintsUsed());
+        assertEquals(0.744, passedWithoutScore.confidenceScore(), 0.001);
+        assertEquals(0.0, failedWithoutScore.confidenceScore(), 0.001);
+        assertEquals(0, failedWithoutScore.hintsUsed());
+        assertEquals(HintLevel.BLIND, nullHintOptions.hintLevel());
+        assertEquals(0, nullHintOptions.hintsUsed());
+        assertEquals(HintLevel.BLIND, emptyHintOptions.hintLevel());
+        assertEquals(0, emptyHintOptions.hintsUsed());
+        assertFalse(close.failed());
+    }
+
+    @Test
+    public void nonBlindOrHintedHighConfidenceWritingDoesNotEarnEasy() {
+        WritingRatingMapper mapper = new WritingRatingMapper();
+        WritingAnalysis minimal = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                cleanStrokeOrder(),
+                HintLevel.MINIMAL,
+                0
+        );
+        WritingAnalysis hintedBlind = new WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "clean",
+                Arrays.asList(new RecognitionCandidate("拉", 0.99f)),
+                cleanStrokeOrder(),
+                HintLevel.BLIND,
+                1
+        );
+
+        assertEquals(StudyRating.GOOD, mapper.suggestedRating(minimal));
+        assertEquals(StudyRating.GOOD, mapper.suggestedRating(hintedBlind));
+        assertEquals(StudyRating.AGAIN, mapper.suggestedRating(new WritingAnalysis(
+                WritingAnalysis.Status.WRONG,
+                "again",
+                false,
+                "wrong",
+                Collections.emptyList(),
+                null
+        )));
+        assertEquals(StudyRating.AGAIN, mapper.maxAllowedRating(new WritingAnalysis(
+                WritingAnalysis.Status.WRONG,
+                "again",
+                false,
+                "wrong",
+                Collections.emptyList(),
+                null
+        )));
     }
 
     private StrokeOrderEvaluator.StrokeOrderResult cleanStrokeOrder() {

@@ -143,23 +143,21 @@ public final class Records {
     }
 
     private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
+        return Objects.requireNonNullElse(value, "");
+    }
+
+    private static <T> List<T> nullToEmptyList(List<T> value) {
+        return Objects.requireNonNullElse(value, Collections.emptyList());
     }
 
     private static int intArg(Object[] args, int index, String context) {
         Object value = arg(args, index, context);
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return (Integer) value;
+        return ((Number) value).intValue();
     }
 
     private static long longArg(Object[] args, int index, String context) {
         Object value = arg(args, index, context);
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return (Long) value;
+        return ((Number) value).longValue();
     }
 
     private static boolean booleanArg(Object[] args, int index, String context) {
@@ -171,18 +169,12 @@ public final class Records {
         if (value == null) {
             return null;
         }
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return (Double) value;
+        return ((Number) value).doubleValue();
     }
 
     private static double doubleArg(Object[] args, int index, String context) {
         Object value = arg(args, index, context);
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return (Double) value;
+        return ((Number) value).doubleValue();
     }
 
     private static List<String> stringListArg(Object[] args, int index, String context) {
@@ -208,10 +200,7 @@ public final class Records {
         }
         Set<String> parsed = new LinkedHashSet<>();
         for (String part : IMPORT_TAG_SEPARATOR.split(value.trim())) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                parsed.add(trimmed);
-            }
+            parsed.add(part.trim());
         }
         return new ArrayList<>(parsed);
     }
@@ -292,7 +281,7 @@ public final class Records {
         }
 
         public boolean importTaggedCardsEnabled() {
-            return importTaggedCards && !importTags.isEmpty();
+            return importTaggedCards;
         }
 
         public boolean hasImportSourceEnabled() {
@@ -308,16 +297,14 @@ public final class Records {
         }
 
         private static List<String> normalizeImportTags(List<String> rawTags) {
-            if (rawTags == null || rawTags.isEmpty()) {
+            if (rawTags.isEmpty()) {
                 return Collections.emptyList();
             }
             Set<String> parsed = new LinkedHashSet<>();
             for (String tag : rawTags) {
-                if (tag != null) {
-                    String trimmed = tag.trim();
-                    if (!trimmed.isEmpty()) {
-                        parsed.add(trimmed);
-                    }
+                String trimmed = tag.trim();
+                if (!trimmed.isEmpty()) {
+                    parsed.add(trimmed);
                 }
             }
             return new ArrayList<>(parsed);
@@ -462,7 +449,7 @@ public final class Records {
 
         public String field(String name) {
             String value = fields.get(name);
-            return value == null ? "" : value;
+            return nullToEmpty(value);
         }
 
         public String expression(Settings settings) {
@@ -504,7 +491,7 @@ public final class Records {
             this.cardId = cardId;
             this.noteId = noteId;
             this.ord = ord;
-            this.deckId = args.deckId == null ? "" : args.deckId;
+            this.deckId = nullToEmpty(args.deckId);
             this.deckName = args.deckName;
             this.queue = args.queue;
             this.type = args.type;
@@ -804,10 +791,10 @@ public final class Records {
 
         public KanjiInventoryItem(String kanji, String primaryMeaning, String readings, String browserSearch, Object... rest) {
             requireArgCount(CONTEXT_KANJI_INVENTORY_ITEM, rest, 4);
-            this.kanji = kanji == null ? "" : kanji;
-            this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
-            this.readings = readings == null ? "" : readings;
-            this.browserSearch = browserSearch == null ? "" : browserSearch;
+            this.kanji = nullToEmpty(kanji);
+            this.primaryMeaning = nullToEmpty(primaryMeaning);
+            this.readings = nullToEmpty(readings);
+            this.browserSearch = nullToEmpty(browserSearch);
             this.sourceCount = Math.max(0, intArg(rest, 0, CONTEXT_KANJI_INVENTORY_ITEM));
             this.exampleCount = Math.max(0, intArg(rest, 1, CONTEXT_KANJI_INVENTORY_ITEM));
             this.suspended = booleanArg(rest, 2, CONTEXT_KANJI_INVENTORY_ITEM);
@@ -823,9 +810,9 @@ public final class Records {
         public final long lastSeenAtMillis;
 
         public SimilarKanjiPair(String kanjiA, String kanjiB, String source, long firstSeenAtMillis, long lastSeenAtMillis) {
-            this.kanjiA = kanjiA == null ? "" : kanjiA;
-            this.kanjiB = kanjiB == null ? "" : kanjiB;
-            this.source = source == null ? "" : source;
+            this.kanjiA = nullToEmpty(kanjiA);
+            this.kanjiB = nullToEmpty(kanjiB);
+            this.source = nullToEmpty(source);
             this.firstSeenAtMillis = Math.max(0L, firstSeenAtMillis);
             this.lastSeenAtMillis = Math.max(0L, lastSeenAtMillis);
         }
@@ -850,10 +837,10 @@ public final class Records {
                 Object... rest
         ) {
             requireArgCount(CONTEXT_SIMILAR_KANJI_CHOICE_CARD, rest, 0, 5);
-            this.targetKanji = targetKanji == null ? "" : targetKanji;
-            this.primaryMeaning = primaryMeaning == null ? "" : primaryMeaning;
-            this.choices = Collections.unmodifiableList(new ArrayList<>(choices == null ? Collections.emptyList() : choices));
-            this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
+            this.targetKanji = nullToEmpty(targetKanji);
+            this.primaryMeaning = nullToEmpty(primaryMeaning);
+            this.choices = Collections.unmodifiableList(new ArrayList<>(nullToEmptyList(choices)));
+            this.choiceSignature = nullToEmpty(choiceSignature);
             this.dueAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 0, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
             this.passedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 1, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
             this.lastReviewedAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 2, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
@@ -879,9 +866,9 @@ public final class Records {
                 List<String> repairKanji
         ) {
             this.card = card;
-            this.selectedKanji = selectedKanji == null ? "" : selectedKanji;
+            this.selectedKanji = nullToEmpty(selectedKanji);
             this.correct = correct;
-            this.repairKanji = Collections.unmodifiableList(new ArrayList<>(repairKanji == null ? Collections.emptyList() : repairKanji));
+            this.repairKanji = Collections.unmodifiableList(new ArrayList<>(nullToEmptyList(repairKanji)));
         }
     }
 
@@ -911,16 +898,16 @@ public final class Records {
         ) {
             requireArgCount(CONTEXT_SIMILAR_KANJI_WRITING_REPAIR, rest, 7);
             this.id = Math.max(0L, id);
-            this.targetKanji = targetKanji == null ? "" : targetKanji;
-            this.repairKanji = repairKanji == null ? "" : repairKanji;
-            this.choiceSignature = choiceSignature == null ? "" : choiceSignature;
-            this.wrongSelection = wrongSelection == null ? "" : wrongSelection;
-            this.promptMeaning = promptMeaning == null ? "" : promptMeaning;
+            this.targetKanji = nullToEmpty(targetKanji);
+            this.repairKanji = nullToEmpty(repairKanji);
+            this.choiceSignature = nullToEmpty(choiceSignature);
+            this.wrongSelection = nullToEmpty(wrongSelection);
+            this.promptMeaning = nullToEmpty(promptMeaning);
             String requestedStatus = stringArg(rest, 0, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR);
             this.status = requestedStatus == null || requestedStatus.isEmpty() ? "pending" : requestedStatus;
             this.dueAtMillis = Math.max(0L, longArg(rest, 1, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
             String requestedActiveToken = stringArg(rest, 2, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR);
-            this.activeToken = requestedActiveToken == null ? "" : requestedActiveToken;
+            this.activeToken = nullToEmpty(requestedActiveToken);
             this.attempts = Math.max(0, intArg(rest, 3, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
             this.createdAtMillis = Math.max(0L, longArg(rest, 4, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
             this.updatedAtMillis = Math.max(0L, longArg(rest, 5, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
@@ -983,9 +970,9 @@ public final class Records {
             String requestedSourceExpression = stringArg(rest, 0, CONTEXT_KANJI_TIMELINE_EVENT);
             String requestedSourceReading = stringArg(rest, 1, CONTEXT_KANJI_TIMELINE_EVENT);
             String requestedRating = stringArg(rest, 2, CONTEXT_KANJI_TIMELINE_EVENT);
-            this.sourceExpression = requestedSourceExpression == null ? "" : requestedSourceExpression;
-            this.sourceReading = requestedSourceReading == null ? "" : requestedSourceReading;
-            this.rating = requestedRating == null ? "" : requestedRating;
+            this.sourceExpression = nullToEmpty(requestedSourceExpression);
+            this.sourceReading = nullToEmpty(requestedSourceReading);
+            this.rating = nullToEmpty(requestedRating);
             this.writingRequired = booleanArg(rest, 3, CONTEXT_KANJI_TIMELINE_EVENT);
             this.writingPassed = booleanArg(rest, 4, CONTEXT_KANJI_TIMELINE_EVENT);
             this.manualOverride = booleanArg(rest, 5, CONTEXT_KANJI_TIMELINE_EVENT);
@@ -1045,7 +1032,7 @@ public final class Records {
             this.lapses = Math.max(0, lapses);
             this.learningStep = Math.max(0, intArg(rest, 0, CONTEXT_TASK_MEMORY));
             String requestedLastRating = stringArg(rest, 1, CONTEXT_TASK_MEMORY);
-            this.lastRating = requestedLastRating == null ? "" : requestedLastRating;
+            this.lastRating = nullToEmpty(requestedLastRating);
             this.matureIntervalDays = Math.max(0, intArg(rest, 2, CONTEXT_TASK_MEMORY));
             this.consecutivePasses = rest.length == 3 ? 0 : Math.max(0, intArg(rest, 3, CONTEXT_TASK_MEMORY));
             this.lastPassedDueAtMillis = rest.length == 3 ? 0L : Math.max(0L, longArg(rest, 4, CONTEXT_TASK_MEMORY));
@@ -1193,17 +1180,17 @@ public final class Records {
             this.consecutiveFailedRecognitionDays = Math.max(0, args.consecutiveFailedRecognitionDays);
             this.lastFailedRecognitionDayMillis = Math.max(0L, args.lastFailedRecognitionDayMillis);
             this.writingRemediationPending = args.writingRemediationPending;
-            this.suppressedByTaskType = args.suppressedByTaskType == null ? "" : args.suppressedByTaskType;
+            this.suppressedByTaskType = nullToEmpty(args.suppressedByTaskType);
             this.suppressedAtMillis = Math.max(0L, args.suppressedAtMillis);
             this.matureIntervalDays = Math.max(0, args.matureIntervalDays);
-            this.answerSignature = args.answerSignature == null ? "" : args.answerSignature;
+            this.answerSignature = nullToEmpty(args.answerSignature);
             this.activeToken = args.activeToken;
             this.createdAtMillis = args.createdAtMillis;
-            this.typingMeaningMemory = args.typingMeaningMemory == null ? TaskMemory.initial() : args.typingMeaningMemory;
-            this.kanjiMeaningMemory = args.kanjiMeaningMemory == null ? TaskMemory.initial() : args.kanjiMeaningMemory;
-            this.fontMeaningMemory = args.fontMeaningMemory == null ? TaskMemory.initial() : args.fontMeaningMemory;
-            this.wordReadingMemory = args.wordReadingMemory == null ? TaskMemory.initial() : args.wordReadingMemory;
-            this.writingRemediationMemory = args.writingRemediationMemory == null ? TaskMemory.initial() : args.writingRemediationMemory;
+            this.typingMeaningMemory = Objects.requireNonNullElseGet(args.typingMeaningMemory, TaskMemory::initial);
+            this.kanjiMeaningMemory = Objects.requireNonNullElseGet(args.kanjiMeaningMemory, TaskMemory::initial);
+            this.fontMeaningMemory = Objects.requireNonNullElseGet(args.fontMeaningMemory, TaskMemory::initial);
+            this.wordReadingMemory = Objects.requireNonNullElseGet(args.wordReadingMemory, TaskMemory::initial);
+            this.writingRemediationMemory = Objects.requireNonNullElseGet(args.writingRemediationMemory, TaskMemory::initial);
             this.rung = args.rung == null
                     ? derivedRung(this.writingRemediationPending, this.recognitionStage)
                     : args.rung;
@@ -1216,7 +1203,7 @@ public final class Records {
                     : args.realAgainStreak);
             this.lastRealReviewDueAtMillis = Math.max(0L, args.lastRealReviewDueAtMillis);
             this.hasSimilarKanji = args.hasSimilarKanji;
-            this.similarKanjiMemory = args.similarKanjiMemory == null ? TaskMemory.initial() : args.similarKanjiMemory;
+            this.similarKanjiMemory = Objects.requireNonNullElseGet(args.similarKanjiMemory, TaskMemory::initial);
         }
 
         private static LadderRung derivedRung(boolean writingRemediationPending, int recognitionStage) {
@@ -1719,9 +1706,6 @@ public final class Records {
             String[] parts = STEP_SEPARATOR.split(value.trim());
             List<Integer> parsed = new ArrayList<>();
             for (String part : parts) {
-                if (part.isEmpty()) {
-                    continue;
-                }
                 Integer minutes = parseStepMinutes(part);
                 if (minutes == null || minutes <= 0) {
                     return Collections.emptyList();
@@ -1798,7 +1782,7 @@ public final class Records {
             if (!out.isEmpty()) {
                 return out;
             }
-            return fallback == null || fallback.isEmpty() ? defaultNewSteps() : new ArrayList<>(fallback);
+            return new ArrayList<>(fallback);
         }
     }
 
@@ -1815,14 +1799,14 @@ public final class Records {
 
         public LearningRepeat(String kanji, String answerSignature, String taskType, String repeatType, Object... rest) {
             requireArgCount(CONTEXT_LEARNING_REPEAT, rest, 5);
-            this.kanji = kanji == null ? "" : kanji;
-            this.answerSignature = answerSignature == null ? "" : answerSignature;
-            this.taskType = taskType == null ? "" : taskType;
+            this.kanji = nullToEmpty(kanji);
+            this.answerSignature = nullToEmpty(answerSignature);
+            this.taskType = nullToEmpty(taskType);
             this.repeatType = LEARNING_REPEAT_REVIEW.equals(repeatType) ? LEARNING_REPEAT_REVIEW : LEARNING_REPEAT_NEW;
             this.stepIndex = Math.max(0, intArg(rest, 0, CONTEXT_LEARNING_REPEAT));
             this.dueAtMillis = Math.max(0L, longArg(rest, 1, CONTEXT_LEARNING_REPEAT));
             String requestedActiveToken = stringArg(rest, 2, CONTEXT_LEARNING_REPEAT);
-            this.activeToken = requestedActiveToken == null ? "" : requestedActiveToken;
+            this.activeToken = nullToEmpty(requestedActiveToken);
             this.createdAtMillis = Math.max(0L, longArg(rest, 3, CONTEXT_LEARNING_REPEAT));
             this.updatedAtMillis = Math.max(0L, longArg(rest, 4, CONTEXT_LEARNING_REPEAT));
         }

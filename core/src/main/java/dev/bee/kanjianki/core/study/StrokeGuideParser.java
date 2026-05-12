@@ -30,7 +30,7 @@ public final class StrokeGuideParser {
                 continue;
             }
             String[] columns = TAB_SEPARATOR.split(trimmed, 2);
-            if (columns.length != 2 || columns[0].isEmpty()) {
+            if (columns.length != 2) {
                 throw new IOException("Invalid stroke guide line " + lineNumber + ": expected kanji<TAB>stroke data.");
             }
             guides.put(columns[0], new StrokeGuide(columns[0], parseStrokes(columns[1], lineNumber)));

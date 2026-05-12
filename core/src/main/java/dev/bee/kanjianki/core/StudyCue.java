@@ -16,7 +16,7 @@ public final class StudyCue {
     }
 
     private static String normalize(String value) {
-        return value == null ? "" : value.trim();
+        return Objects.requireNonNullElse(value, "").trim();
     }
 
     @Override

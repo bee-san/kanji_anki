@@ -2,6 +2,9 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.lang.reflect.Method;
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -152,5 +155,65 @@ public class GitHubReleaseParserTest {
         assertEquals("v0.4.2", info.tagName);
         assertEquals("first.apk", info.apkAsset().name);
         assertEquals("https://example/second", info.checksumAssetFor("second.apk").downloadUrl);
+    }
+
+    @Test
+    public void parserHandlesMissingValuesUnclosedArraysAndUnknownEscapes() {
+        Records.ReleaseInfo missingValues = GitHubReleaseParser.parseLatest(
+                "{\"tag_name\":   ,\"assets\":   }"
+        );
+        Records.ReleaseInfo missingAtEnd = GitHubReleaseParser.parseLatest(
+                "{\"tag_name\":   "
+        );
+        Records.ReleaseInfo missingArrayAtEnd = GitHubReleaseParser.parseLatest(
+                "{\"assets\":   "
+        );
+        Records.ReleaseInfo unclosedArray = GitHubReleaseParser.parseLatest(
+                "{\"assets\":[{\"name\":\"dangling.apk\",\"browser_download_url\":\"https://example/dangling\"}"
+        );
+        Records.ReleaseInfo nestedArray = GitHubReleaseParser.parseLatest(
+                "{\"assets\":[[],{\"name\":\"nested.apk\",\"browser_download_url\":\"https://example/nested\"}]}"
+        );
+        Records.ReleaseInfo emptyAssets = GitHubReleaseParser.parseLatest(
+                "{\"assets\":[]}"
+        );
+        Records.ReleaseInfo skippedAssets = GitHubReleaseParser.parseLatest(
+                "{"
+                        + "\"tag_name\":\"v0.4.3\","
+                        + "\"html_url\":\"unknown\\qescape\","
+                        + "\"assets\":[{\"name\":\"missing-url\"},{\"browser_download_url\":\"missing-name\"}]"
+                        + "}"
+        );
+        Records.ReleaseInfo noColonBeforeEnd = GitHubReleaseParser.parseLatest("{\"tag_name\"   ");
+        Records.ReleaseInfo trailingBackslashAndShortUnicode = GitHubReleaseParser.parseLatest(
+                "{\"html_url\":\"trail\\\\ short\\"
+                        + "u\"}"
+        );
+        Records.ReleaseInfo terminalBackslash = GitHubReleaseParser.parseLatest("{\"html_url\":\"trail" + "\\");
+        Records.ReleaseInfo strayObjectClose = GitHubReleaseParser.parseLatest("{\"assets\":[}]}");
+
+        assertEquals("", missingValues.tagName);
+        assertEquals("", missingAtEnd.tagName);
+        assertTrue(missingArrayAtEnd.assets.isEmpty());
+        assertTrue(unclosedArray.assets.isEmpty());
+        assertEquals("nested.apk", nestedArray.apkAsset().name);
+        assertTrue(emptyAssets.assets.isEmpty());
+        assertEquals("unknownqescape", skippedAssets.htmlUrl);
+        assertTrue(skippedAssets.assets.isEmpty());
+        assertEquals("", noColonBeforeEnd.tagName);
+        assertTrue(trailingBackslashAndShortUnicode.htmlUrl.contains("trail\\"));
+        assertTrue(trailingBackslashAndShortUnicode.htmlUrl.contains("short\\u"));
+        assertEquals("trail\\", terminalBackslash.htmlUrl);
+        assertTrue(strayObjectClose.assets.isEmpty());
+    }
+
+    @Test
+    public void objectValueScannerIgnoresStrayClosingBrace() throws Exception {
+        Method objectValues = GitHubReleaseParser.class.getDeclaredMethod("objectValues", String.class);
+        objectValues.setAccessible(true);
+
+        Object values = objectValues.invoke(null, "}");
+
+        assertTrue(values instanceof List<?> list && list.isEmpty());
     }
 }

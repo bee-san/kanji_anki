@@ -60,13 +60,13 @@ public final class KanjiImportSelector {
             results.add(new Records.SuspendedImport(
                     entry.getKey(),
                     rank,
-                    rank != null,
+                    true,
                     maxRank,
                     new ArrayList<>(entry.getValue().values())
             ));
         }
         results.sort(Comparator
-                .comparing((Records.SuspendedImport item) -> item.jitenRank == null ? Integer.MAX_VALUE : item.jitenRank)
+                .comparingInt((Records.SuspendedImport item) -> item.jitenRank)
                 .thenComparing(item -> item.kanji));
         return results;
     }
@@ -80,7 +80,7 @@ public final class KanjiImportSelector {
     }
 
     private boolean hasMatchingTag(Records.Note note, List<String> importTags) {
-        if (note.tags.isEmpty() || importTags.isEmpty()) {
+        if (note.tags.isEmpty()) {
             return false;
         }
         Set<String> noteTags = new LinkedHashSet<>(note.tags);

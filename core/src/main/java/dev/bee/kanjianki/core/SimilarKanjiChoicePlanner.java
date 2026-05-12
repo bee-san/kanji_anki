@@ -73,15 +73,12 @@ public final class SimilarKanjiChoicePlanner {
     ) {
         String meaning = target.primaryMeaning.trim();
         Set<String> neighbors = directNeighbors.get(target.kanji);
-        if (meaning.isEmpty() || neighbors == null || neighbors.isEmpty()) {
+        if (meaning.isEmpty() || neighbors == null) {
             return null;
         }
         TreeSet<String> choices = new TreeSet<>();
         choices.add(target.kanji);
         choices.addAll(neighbors);
-        if (choices.size() < 2) {
-            return null;
-        }
         List<String> choiceList = new ArrayList<>(choices);
         return new Records.SimilarKanjiChoiceCard(
                 target.kanji,
@@ -105,7 +102,7 @@ public final class SimilarKanjiChoicePlanner {
         }
         LinkedHashSet<String> repairs = new LinkedHashSet<>();
         repairs.add(card.targetKanji);
-        if (card.choices.contains(selected) && !selected.equals(card.targetKanji)) {
+        if (card.choices.contains(selected)) {
             repairs.add(selected);
         }
         return new Records.SimilarKanjiChoiceResult(card, selected, false, new ArrayList<>(repairs));
