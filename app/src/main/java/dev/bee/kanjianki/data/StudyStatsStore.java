@@ -347,7 +347,7 @@ public final class StudyStatsStore {
         int threshold = Math.max(1, realDueReviewsToMove);
         LadderHealthAccumulator accumulator = new LadderHealthAccumulator();
         for (LadderItemEvidence item : items) {
-            accumulator.record(item, threshold);
+            accumulator.addItem(item, threshold);
         }
         return accumulator.metric(threshold);
     }
@@ -612,7 +612,7 @@ public final class StudyStatsStore {
         private int demotionRisk;
         private int demotionReady;
 
-        private void record(LadderItemEvidence item, int threshold) {
+        private void addItem(LadderItemEvidence item, int threshold) {
             if (item == null || STATE_RETIRED.equals(item.state)) {
                 return;
             }
