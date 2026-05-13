@@ -420,6 +420,57 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void seedExtraNewCardsAddsRequestedCardsBeyondDailyNewCap() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem active = item("裂").copyBuilder()
+                .createdAtMillis(1000L)
+                .build();
+
+        BridgeScheduler.ExtraNewCardsResult result = scheduler.seedExtraNewCards(
+                Arrays.asList(row("裂", 50), row("謎", 40), row("示", 30), row("浸", 20)),
+                Collections.singletonList(active),
+                settingsWithQueue(4, 1),
+                2000L,
+                0L,
+                2
+        );
+
+        assertEquals(2, result.admittedCount);
+        assertEquals(3, result.availableCount);
+        assertEquals(Arrays.asList("謎", "示"), result.admittedKanji);
+        assertEquals("new", findItem(result.items, "謎").state);
+        assertEquals("new", findItem(result.items, "示").state);
+        assertEquals("new", findItem(result.items, "裂").state);
+        assertFalse(result.admittedKanji.contains("裂"));
+    }
+
+    @Test
+    public void seedExtraNewCardsClampsToRemainingActiveRoomAndReopensRetiredItems() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem active = item("謎");
+        Records.StudyItem retired = item("裂").copyBuilder()
+                .state("retired")
+                .totalReviews(3)
+                .build();
+
+        BridgeScheduler.ExtraNewCardsResult result = scheduler.seedExtraNewCards(
+                Arrays.asList(row("裂", 50), row("謎", 40), row("示", 30)),
+                Arrays.asList(active, retired),
+                settingsWithQueue(2, 1),
+                2000L,
+                0L,
+                5
+        );
+
+        assertEquals(1, result.availableCount);
+        assertEquals(1, result.admittedCount);
+        assertEquals(Collections.singletonList("裂"), result.admittedKanji);
+        assertEquals("new", findItem(result.items, "裂").state);
+        assertNull(findItem(result.items, "裂").activeToken);
+        assertEquals("new", findItem(result.items, "謎").state);
+    }
+
+    @Test
     public void adaptivePlanLimitsNewAdmissionsToFocusSet() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.AdaptiveLoadPlan plan = new Records.AdaptiveLoadPlan(

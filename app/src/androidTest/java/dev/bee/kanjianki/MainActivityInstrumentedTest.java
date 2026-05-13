@@ -631,12 +631,64 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "Today's focus done");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Study now: 3 / 3");
+                assertHasText(activity, "Study more new cards");
                 assertHasText(activity, "Continue all kanji");
                 assertNoText(activity, REVEAL);
             });
 
             try (LocalStore store = new LocalStore(context)) {
                 assertEquals(3, store.reviewStatsSince(0L).total);
+            }
+        }
+    }
+
+    @Test
+    public void testStudyMoreNewCardsStartsOneTimeExtraSetWithoutChangingWorkload() {
+        seedDashboardRowsOnly(Arrays.asList(
+                dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS),
+                dashboardRow("謎", "mystery radical gap", "なぞ", MISSED_IN_MATURE_CARDS),
+                dashboardRow("示", "show radical gap", "しめす", MISSED_IN_MATURE_CARDS),
+                dashboardRow("浸", "soak radical gap", "ひたす", MISSED_IN_MATURE_CARDS),
+                dashboardRow("確", "certain radical gap", "たし", MISSED_IN_MATURE_CARDS),
+                dashboardRow("曜", "weekday radical gap", "よう", MISSED_IN_MATURE_CARDS),
+                dashboardRow("麺", "noodle radical gap", "めん", MISSED_IN_MATURE_CARDS),
+                dashboardRow("提", "present radical gap", "てい", MISSED_IN_MATURE_CARDS)
+        ));
+        try (LocalStore setupStore = new LocalStore(context)) {
+            setupStore.saveAdaptiveLoadMaxItems(3);
+        }
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, STUDY_NOW);
+            for (int i = 0; i < 3; i++) {
+                waitForText(scenario, REVEAL);
+                clickText(scenario, REVEAL);
+                waitForText(scenario, "Pass");
+                clickText(scenario, "Pass");
+            }
+            waitForText(scenario, "Study more new cards");
+
+            clickText(scenario, "Study more new cards");
+            enterDialogEditText("2");
+            clickText(scenario, "Study");
+            waitForText(scenario, REVEAL);
+            scenario.onActivity(activity -> assertHasText(activity, "0 / 2"));
+            for (int i = 0; i < 2; i++) {
+                waitForText(scenario, REVEAL);
+                clickText(scenario, REVEAL);
+                waitForText(scenario, "Pass");
+                clickText(scenario, "Pass");
+            }
+            waitForText(scenario, "Today's focus done");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Study now: 2 / 2");
+                assertHasText(activity, "Study more new cards");
+                assertNoText(activity, REVEAL);
+            });
+
+            try (LocalStore store = new LocalStore(context)) {
+                assertEquals(5, store.reviewStatsSince(0L).total);
+                assertEquals(3, store.adaptiveLoadMaxItems());
             }
         }
     }
@@ -1897,6 +1949,14 @@ public final class MainActivityInstrumentedTest {
             input.setSelection(text.length());
         });
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+    }
+
+    private static void enterDialogEditText(String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.clazz(EditText.class.getName())), 3000L);
+        assertNotNull(input);
+        input.setText(text);
+        device.waitForIdle(2000L);
     }
 
     private static UiObject2 findDeviceText(UiDevice device, String text) {

@@ -167,6 +167,7 @@ public final class MainActivity extends Activity {
     private boolean writingModelDownloaded;
     private boolean writingModelStatusKnown;
     private boolean continueAllKanjiSession;
+    private final List<String> studyMoreNewCardKanji = new ArrayList<>();
     private int hintsUsed;
     private int currentPracticeLevel;
     private int sessionProgressCompleted;
@@ -371,6 +372,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderHome() {
+        clearStudyModeOverrides();
         base("home");
         long now = System.currentTimeMillis();
         LocalStore.SyncStatus sync = store.latestSync();
@@ -1697,15 +1699,17 @@ public final class MainActivity extends Activity {
         summary.addView(text("Today's focus: 0 items left / " + plan.target, 20, STUDY_PLUM, true));
         summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         card.addView(summary);
-        Button keepGoing = pinkPrimaryButton("Continue all kanji");
+        boolean canStudyMore = addStudyMoreNewCardsButton(card);
+        Button keepGoing = canStudyMore ? studySecondaryButton("Continue all kanji") : pinkPrimaryButton("Continue all kanji");
         keepGoing.setOnClickListener(v -> {
+            studyMoreNewCardKanji.clear();
             continueAllKanjiSession = true;
             renderStudy();
         });
         card.addView(keepGoing);
         Button back = studySecondaryButton(LABEL_BACK_HOME);
         back.setOnClickListener(v -> {
-            continueAllKanjiSession = false;
+            clearStudyModeOverrides();
             renderHome();
         });
         card.addView(back);
@@ -1724,28 +1728,125 @@ public final class MainActivity extends Activity {
             summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         }
         card.addView(summary);
-        Button keepGoing = pinkPrimaryButton("Continue all kanji");
+        boolean canStudyMore = addStudyMoreNewCardsButton(card);
+        Button keepGoing = canStudyMore ? studySecondaryButton("Continue all kanji") : pinkPrimaryButton("Continue all kanji");
         keepGoing.setOnClickListener(v -> {
+            studyMoreNewCardKanji.clear();
             continueAllKanjiSession = true;
             renderStudy();
         });
         card.addView(keepGoing);
         Button back = studySecondaryButton(LABEL_BACK_HOME);
         back.setOnClickListener(v -> {
-            continueAllKanjiSession = false;
+            clearStudyModeOverrides();
             renderHome();
         });
         card.addView(back);
         content.addView(card);
     }
 
-    private void startFocusedStudy() {
+    private boolean addStudyMoreNewCardsButton(LinearLayout card) {
+        int available = availableStudyMoreNewCards();
+        if (available <= 0) {
+            return false;
+        }
+        Button studyMore = pinkPrimaryButton("Study more new cards");
+        studyMore.setOnClickListener(v -> showStudyMoreNewCardsDialog(available));
+        card.addView(studyMore);
+        return true;
+    }
+
+    private int availableStudyMoreNewCards() {
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        if (rows.isEmpty()) {
+            return 0;
+        }
+        long now = System.currentTimeMillis();
+        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
+                rows,
+                store.studyItems(),
+                settings(),
+                now,
+                startOfDay(now),
+                Integer.MAX_VALUE
+        );
+        return result.availableCount;
+    }
+
+    private void showStudyMoreNewCardsDialog(int availableAtOpen) {
+        int defaultCount = Math.max(1, Math.min(5, availableAtOpen));
+        EditText countInput = thresholdInput(defaultCount);
+        countInput.setHint("New cards");
+        countInput.setContentDescription("New cards");
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Study more new cards")
+                .setMessage("How many extra new cards do you want to study now?")
+                .setView(countInput)
+                .setPositiveButton("Study", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(opened -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            int requested;
+            try {
+                requested = parseThresholdInput(countInput);
+            } catch (NumberFormatException error) {
+                Toast.makeText(this, "Use a whole number of new cards.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (requested <= 0) {
+                Toast.makeText(this, "Use at least 1 new card.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (startStudyMoreNewCards(requested)) {
+                dialog.dismiss();
+            }
+        }));
+        dialog.show();
+        countInput.requestFocus();
+    }
+
+    private boolean startStudyMoreNewCards(int requestedCount) {
+        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        if (rows.isEmpty()) {
+            Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
+                rows,
+                store.studyItems(),
+                settings(),
+                now,
+                startOfDay(now),
+                requestedCount
+        );
+        if (!result.admittedAny()) {
+            Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        List<Records.StudyItem> seeded = store.annotateSimilarKanjiAvailability(result.items);
+        store.replaceStudyItems(seeded);
+        studyMoreNewCardKanji.clear();
+        studyMoreNewCardKanji.addAll(result.admittedKanji);
         continueAllKanjiSession = false;
+        resetStudyRunProgress();
+        sessionProgressMax = result.admittedCount;
+        if (result.admittedCount < requestedCount) {
+            Toast.makeText(this, "Only " + countText(result.admittedCount, "new card was", "new cards were") + " available.", Toast.LENGTH_SHORT).show();
+        }
+        renderStudy();
+        return true;
+    }
+
+    private void startFocusedStudy() {
+        clearStudyModeOverrides();
         resetStudyRunProgress();
         renderStudy();
     }
 
     private void renderStudyForKanji(String kanji) {
+        clearStudyModeOverrides();
         resetStudyRunProgress();
         base(NAV_STUDY);
         List<Records.DashboardRow> rows = store.activeDashboardRows();
@@ -2098,6 +2199,11 @@ public final class MainActivity extends Activity {
         sessionProgressMax = 0;
         sessionCompletedTaskKeys.clear();
         sessionSeenTaskKeys.clear();
+    }
+
+    private void clearStudyModeOverrides() {
+        continueAllKanjiSession = false;
+        studyMoreNewCardKanji.clear();
     }
 
     private void markStudyRunPassed(String kanji) {
@@ -4451,10 +4557,39 @@ public final class MainActivity extends Activity {
     }
 
     private Records.AdaptiveLoadPlan studyPlanForMode(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        if (!studyMoreNewCardKanji.isEmpty()) {
+            return studyMoreNewCardsPlan(rows, items, now);
+        }
         if (continueAllKanjiSession) {
             return allCurrentProblemKanjiPlan(rows, items, now);
         }
         return adaptivePlan(rows, items, now);
+    }
+
+    private Records.AdaptiveLoadPlan studyMoreNewCardsPlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+        List<String> focus = new ArrayList<>();
+        for (String kanji : studyMoreNewCardKanji) {
+            if (findRow(rows, kanji) != null) {
+                focus.add(kanji);
+            }
+        }
+        int remaining = 0;
+        for (String kanji : focus) {
+            Records.StudyItem item = findStudyItem(items, kanji);
+            if (itemDueForFocus(item, now)) {
+                remaining++;
+            }
+        }
+        return new Records.AdaptiveLoadPlan(
+                false,
+                100,
+                focus.size(),
+                remaining,
+                focus,
+                0,
+                false,
+                "Custom study: " + countText(focus.size(), "extra new card", "extra new cards") + "."
+        );
     }
 
     private Records.AdaptiveLoadPlan allCurrentProblemKanjiPlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {

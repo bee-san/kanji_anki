@@ -100,6 +100,79 @@ public final class BridgeScheduler {
         ));
     }
 
+    public ExtraNewCardsResult seedExtraNewCards(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> existing,
+            Records.Settings settings,
+            long nowMillis,
+            long startOfDayMillis,
+            int requestedCount
+    ) {
+        int requested = Math.max(0, requestedCount);
+        SeedQueueRequest request = new SeedQueueRequest(
+                rows,
+                rows,
+                existing,
+                settings,
+                nowMillis,
+                startOfDayMillis,
+                new SeedQueueLimits(Integer.MAX_VALUE, true)
+        );
+        SeedRowIndex rowIndex = indexSeedRows(request.allRows);
+        SeedQueueState state = reconcileExistingItems(request, rowIndex);
+        List<String> admittedKanji = new ArrayList<>();
+        int activeSlots = Math.max(0, request.settings.activeQueueCap - state.activeCount);
+        int available = 0;
+        for (Records.DashboardRow row : request.admissionRows) {
+            if (available >= activeSlots) {
+                break;
+            }
+            String rowKey = rowFamilyKey(row);
+            Records.StudyItem current = state.byFamily.get(rowKey);
+            boolean eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current);
+            if (!eligible) {
+                continue;
+            }
+            available++;
+            if (admittedKanji.size() >= requested) {
+                continue;
+            }
+            admitExtraSeedRow(request, state, row, rowKey, current);
+            admittedKanji.add(row.kanji);
+        }
+        state.items.sort(Comparator
+                .comparing((Records.StudyItem item) -> item.state.equals(STATE_RETIRED))
+                .thenComparingLong(item -> item.dueAtMillis)
+                .thenComparing(item -> item.kanji));
+        return new ExtraNewCardsResult(state.items, admittedKanji, available);
+    }
+
+    private boolean canReopenRetiredExtraSeedItem(
+            Records.Settings settings,
+            Records.DashboardRow row,
+            Records.StudyItem current
+    ) {
+        return STATE_RETIRED.equals(current.state)
+                && row.matureSupportCount < settings.matureSupportThreshold;
+    }
+
+    private void admitExtraSeedRow(
+            SeedQueueRequest request,
+            SeedQueueState state,
+            Records.DashboardRow row,
+            String rowKey,
+            Records.StudyItem current
+    ) {
+        Records.StudyItem admitted = newStudyItem(row.kanji, request.nowMillis, answerSignature(row));
+        if (current != null) {
+            state.items.remove(current);
+        }
+        state.items.add(admitted);
+        state.byFamily.put(rowKey, admitted);
+        state.activeCount++;
+        state.newToday++;
+    }
+
     private List<Records.StudyItem> seedQueueInternal(SeedQueueRequest request) {
         SeedRowIndex rowIndex = indexSeedRows(request.allRows);
         SeedQueueState state = reconcileExistingItems(request, rowIndex);
@@ -793,6 +866,28 @@ public final class BridgeScheduler {
      */
     public Set<String> tokenSet(List<String> tokens) {
         return new HashSet<>(tokens);
+    }
+
+    public static final class ExtraNewCardsResult {
+        public final List<Records.StudyItem> items;
+        public final List<String> admittedKanji;
+        public final int availableCount;
+        public final int admittedCount;
+
+        private ExtraNewCardsResult(
+                List<Records.StudyItem> items,
+                List<String> admittedKanji,
+                int availableCount
+        ) {
+            this.items = Collections.unmodifiableList(new ArrayList<>(items));
+            this.admittedKanji = Collections.unmodifiableList(new ArrayList<>(admittedKanji));
+            this.availableCount = availableCount;
+            this.admittedCount = admittedKanji.size();
+        }
+
+        public boolean admittedAny() {
+            return admittedCount > 0;
+        }
     }
 
     private static double round(double value) {
