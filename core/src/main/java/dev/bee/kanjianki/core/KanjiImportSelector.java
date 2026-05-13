@@ -41,7 +41,7 @@ public final class KanjiImportSelector {
             if (note != null) {
                 SourceMatch match = sourceMatch(card, note, settings);
                 if (match.matches()) {
-                    addSources(sourcesByKanji, card, note, settings, match.forcePractice());
+                    addSources(sourcesByKanji, card, note, settings, match);
                 }
             }
         }
@@ -71,7 +71,8 @@ public final class KanjiImportSelector {
         boolean suspendedMatch = settings.importSuspendedCards && card.suspended;
         boolean taggedMatch = settings.importTaggedCardsEnabled() && hasMatchingTag(note, settings.importTags);
         boolean weakMatch = settings.importWeakCards && weakCard(card, settings);
-        return new SourceMatch(activeMatch, suspendedMatch, taggedMatch, weakMatch);
+        boolean browserQueryMatch = settings.browserQueryImportEnabled() && card.browserQueryMatched;
+        return new SourceMatch(activeMatch, suspendedMatch, taggedMatch, weakMatch, browserQueryMatch);
     }
 
     private boolean hasMatchingTag(Records.Note note, List<String> importTags) {
@@ -97,14 +98,14 @@ public final class KanjiImportSelector {
             Records.Card card,
             Records.Note note,
             Records.Settings settings,
-            boolean forcePractice
+            SourceMatch match
     ) {
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
         for (String kanji : TextUtil.extractKanji(expression)) {
             Integer rank = ranks.rankOf(kanji);
             if (rank != null && rank >= minRank && rank <= maxRank) {
                 sourcesByKanji.computeIfAbsent(kanji, ignored -> new LinkedHashMap<>())
-                        .put(card.cardId, sourceFromCard(kanji, card, note, expression, settings, forcePractice));
+                        .put(card.cardId, sourceFromCard(kanji, card, note, expression, settings, match));
             }
         }
     }
@@ -115,8 +116,9 @@ public final class KanjiImportSelector {
             Records.Note note,
             String expression,
             Records.Settings settings,
-            boolean forcePractice
+            SourceMatch match
     ) {
+        String sourceType = resolveSourceType(card, match);
         return new Records.SuspendedSource(
                 kanji,
                 card.cardId,
@@ -125,9 +127,9 @@ public final class KanjiImportSelector {
                 TextUtil.normalizeJapanese(note.reading(settings)),
                 TextUtil.firstMeaningLine(note.meaning(settings)),
                 Records.SuspendedSourceDetails.builder(TextUtil.normalizeJapanese(note.sentence(settings)))
-                        .sourceType(card.suspended ? Records.SOURCE_SUSPENDED : Records.SOURCE_ACTIVE)
+                        .sourceType(sourceType)
                         .suspended(card.suspended)
-                        .forcePractice(forcePractice)
+                        .forcePractice(match.forcePractice())
                         .mature(card.mature(settings.matureDays))
                         .reviewStats(card.lapses, card.intervalDays, card.reps)
                         .fsrs(card.fsrsStability, card.fsrsDifficulty, card.fsrsRetrievability)
@@ -135,13 +137,23 @@ public final class KanjiImportSelector {
         );
     }
 
-    private record SourceMatch(boolean active, boolean suspended, boolean tagged, boolean weak) {
+    private static String resolveSourceType(Records.Card card, SourceMatch match) {
+        if (card.suspended) {
+            return Records.SOURCE_SUSPENDED;
+        }
+        if (match.browserQuery()) {
+            return Records.SOURCE_BROWSER_QUERY;
+        }
+        return Records.SOURCE_ACTIVE;
+    }
+
+    private record SourceMatch(boolean active, boolean suspended, boolean tagged, boolean weak, boolean browserQuery) {
         private boolean matches() {
-            return active || suspended || tagged || weak;
+            return active || suspended || tagged || weak || browserQuery;
         }
 
         private boolean forcePractice() {
-            return suspended || tagged || weak;
+            return suspended || tagged || weak || browserQuery;
         }
     }
 }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class KanjiImportSelectorTest {
@@ -195,6 +196,104 @@ public final class KanjiImportSelectorTest {
         assertTrue(selector.importFrom(snapshot(Arrays.asList(note(1, "未", "み")), Collections.singletonList(card(10, 1, false))), settings(true, false, false, "", false, 7.0, 2, 1)).isEmpty());
     }
 
+    @Test
+    public void browserQueryEnabledImportsActiveCardMarkedAsMatched() throws Exception {
+        Records.Settings settings = settingsWithBrowserQuery(false, false, true, "tag:kani");
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
+        Records.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける")),
+                Collections.singletonList(queryMatchedActive)
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("裂"), kanjiList(imports));
+        assertEquals(Records.SOURCE_BROWSER_QUERY, imports.get(0).sources.get(0).sourceType);
+        assertTrue(imports.get(0).sources.get(0).forcePractice);
+        assertFalse(imports.get(0).sources.get(0).suspended);
+    }
+
+    @Test
+    public void browserQueryDisabledIgnoresMarkedCard() throws Exception {
+        Records.Settings settings = settingsWithBrowserQuery(false, false, false, "tag:kani");
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
+        Records.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける")),
+                Collections.singletonList(queryMatchedActive)
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertTrue(imports.isEmpty());
+    }
+
+    @Test
+    public void browserQueryEnabledWithBlankQueryIgnoresMarkedCard() throws Exception {
+        Records.Settings settings = settingsWithBrowserQuery(false, false, true, "  ");
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
+        Records.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける")),
+                Collections.singletonList(queryMatchedActive)
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertTrue(imports.isEmpty());
+    }
+
+    @Test
+    public void browserQueryMatchedSuspendedCardRetainsSuspendedSourceType() throws Exception {
+        Records.Settings settings = settingsWithBrowserQuery(false, true, true, "tag:kani");
+        JitenKanjiRanks ranks = ranks("謎,1600\n");
+        Records.Card queryMatchedSuspended = card(20, 2, true).withBrowserQueryMatched(true);
+        Records.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(2, "謎", "なぞ")),
+                Collections.singletonList(queryMatchedSuspended)
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("謎"), kanjiList(imports));
+        assertEquals(Records.SOURCE_SUSPENDED, imports.get(0).sources.get(0).sourceType);
+        assertTrue(imports.get(0).sources.get(0).suspended);
+        assertTrue(imports.get(0).sources.get(0).forcePractice);
+    }
+
+    @Test
+    public void browserQueryMatchedCardsStillFilteredByRankRange() throws Exception {
+        Records.Settings settings = settingsWithBrowserQuery(false, false, true, "tag:kani");
+        JitenKanjiRanks ranks = ranks("裂,5000\n");
+        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
+        Records.CollectionSnapshot snapshot = snapshot(
+                Collections.singletonList(note(1, "裂ける", "さける")),
+                Collections.singletonList(queryMatchedActive)
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertTrue(imports.isEmpty());
+    }
+
+    @Test
+    public void browserQueryMatchedCardsCountTowardMinimumThreshold() throws Exception {
+        Records.Settings settings = settingsWithBrowserQuery(false, false, true, "tag:kani", 2);
+        JitenKanjiRanks ranks = ranks("裂,1500\n");
+        Records.Card queryMatched1 = card(10, 1, false).withBrowserQueryMatched(true);
+        Records.Card queryMatched2 = card(20, 2, false).withBrowserQueryMatched(true);
+        Records.CollectionSnapshot snapshot = snapshot(
+                Arrays.asList(note(1, "裂ける", "さける"), note(2, "裂傷", "れっしょう")),
+                Arrays.asList(queryMatched1, queryMatched2)
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("裂"), kanjiList(imports));
+        assertEquals(2, imports.get(0).sources.size());
+    }
+
     private JitenKanjiRanks ranks(String csv) throws Exception {
         return JitenKanjiRanks.parseCsv(new StringReader(csv));
     }
@@ -275,6 +374,54 @@ public final class KanjiImportSelectorTest {
                 weakDifficulty,
                 weakLapses,
                 minMatching
+        );
+    }
+
+    private Records.Settings settingsWithBrowserQuery(
+            boolean active,
+            boolean suspended,
+            boolean browserQueryCards,
+            String browserQuery
+    ) {
+        return settingsWithBrowserQuery(active, suspended, browserQueryCards, browserQuery, 1);
+    }
+
+    private Records.Settings settingsWithBrowserQuery(
+            boolean active,
+            boolean suspended,
+            boolean browserQueryCards,
+            String browserQuery,
+            int minMatching
+    ) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays,
+                defaults.recognitionPromotionPasses,
+                defaults.realDueReviewsToMove,
+                active,
+                suspended,
+                false,
+                Collections.emptyList(),
+                false,
+                7.0,
+                2,
+                minMatching,
+                browserQueryCards,
+                browserQuery
         );
     }
 

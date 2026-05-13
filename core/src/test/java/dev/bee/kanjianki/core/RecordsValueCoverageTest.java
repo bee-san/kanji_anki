@@ -252,6 +252,43 @@ public class RecordsValueCoverageTest {
     }
 
     @Test
+    public void settingsBrowserQueryDefaultsAndHelpers() {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        assertFalse(defaults.importBrowserQueryCards);
+        assertEquals("", defaults.importBrowserQuery);
+        assertFalse(defaults.browserQueryImportEnabled());
+        assertEquals("", defaults.normalizedBrowserQuery());
+
+        Records.Settings enabledNonBlank = new Records.Settings(
+                "Kiku", "Mining", "Expression", "", "Meaning", "",
+                "", "", 21, 2, 100, 3000, 24, 3, 3, 3, 3,
+                false, false, false, Collections.emptyList(), false, 7.0, 2, 1,
+                true, " tag:kani "
+        );
+        assertTrue(enabledNonBlank.browserQueryImportEnabled());
+        assertEquals("tag:kani", enabledNonBlank.normalizedBrowserQuery());
+        assertTrue(enabledNonBlank.hasImportSourceEnabled());
+
+        Records.Settings enabledBlank = new Records.Settings(
+                "Kiku", "Mining", "Expression", "", "Meaning", "",
+                "", "", 21, 2, 100, 3000, 24, 3, 3, 3, 3,
+                false, false, false, Collections.emptyList(), false, 7.0, 2, 1,
+                true, "   "
+        );
+        assertFalse(enabledBlank.browserQueryImportEnabled());
+        assertFalse(enabledBlank.hasImportSourceEnabled());
+
+        Records.Settings disabledNonBlank = new Records.Settings(
+                "Kiku", "Mining", "Expression", "", "Meaning", "",
+                "", "", 21, 2, 100, 3000, 24, 3, 3, 3, 3,
+                false, false, false, Collections.emptyList(), false, 7.0, 2, 1,
+                false, "tag:kani"
+        );
+        assertFalse(disabledNonBlank.browserQueryImportEnabled());
+        assertFalse(disabledNonBlank.hasImportSourceEnabled());
+    }
+
+    @Test
     public void cardRecordsCoverFallbacks() {
         Records.Card card = new Records.Card(1L, 2L, 0, null, "Deck", 1, 2, 3, 4, 5, 6, true, 1.2, 3.4, 5.6);
         Records.Card activeMature = new Records.Card(2L, 3L, 0, "Deck", 1, 2, 3, 20, 5, 0, false);
@@ -263,6 +300,15 @@ public class RecordsValueCoverageTest {
         assertTrue(activeMature.active());
         assertTrue(activeMature.mature(10));
         assertEquals(Double.valueOf(3.4), card.fsrsDifficulty);
+        assertFalse(card.browserQueryMatched);
+
+        Records.Card marked = card.withBrowserQueryMatched(true);
+        assertTrue(marked.browserQueryMatched);
+        assertEquals(card.cardId, marked.cardId);
+        assertEquals(card.noteId, marked.noteId);
+        assertEquals(card.suspended, marked.suspended);
+        assertEquals(card.deckName, marked.deckName);
+        assertSame(card, card.withBrowserQueryMatched(false));
     }
 
     @Test

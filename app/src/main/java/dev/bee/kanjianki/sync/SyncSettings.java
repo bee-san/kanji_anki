@@ -22,6 +22,8 @@ public final class SyncSettings {
     public static final String IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY = "import_weak_fsrs_difficulty_threshold";
     public static final String IMPORT_WEAK_LAPSES_SETTING_KEY = "import_weak_lapses_threshold";
     public static final String IMPORT_MIN_MATCHING_CARDS_SETTING_KEY = "import_min_matching_cards_per_kanji";
+    public static final String IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY = "import_browser_query_cards";
+    public static final String IMPORT_BROWSER_QUERY_SETTING_KEY = "import_browser_query";
     private static final int ABSENT_INT_SETTING = Integer.MIN_VALUE;
     private static final double ABSENT_DOUBLE_SETTING = Double.NaN;
     private static final int OLD_DEFAULT_IMPORT_ACTIVE_CARDS = 1;
@@ -75,6 +77,10 @@ public final class SyncSettings {
         int importMinMatchingCards = store == null
                 ? defaults.importMinMatchingCardsPerKanji
                 : store.getIntSetting(IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, defaults.importMinMatchingCardsPerKanji);
+        boolean importBrowserQueryCards = boolSetting(store, IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, defaults.importBrowserQueryCards);
+        String importBrowserQuery = store == null
+                ? defaults.importBrowserQuery
+                : nullToEmpty(store.getStringSetting(IMPORT_BROWSER_QUERY_SETTING_KEY, defaults.importBrowserQuery));
         return new Records.Settings(
                 modelName,
                 defaults.templateName,
@@ -100,7 +106,9 @@ public final class SyncSettings {
                 importWeakCards,
                 importWeakFsrsDifficulty,
                 importWeakLapses,
-                importMinMatchingCards
+                importMinMatchingCards,
+                importBrowserQueryCards,
+                importBrowserQuery
         );
     }
 
@@ -193,5 +201,9 @@ public final class SyncSettings {
             return fallback;
         }
         return value.trim();
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 }

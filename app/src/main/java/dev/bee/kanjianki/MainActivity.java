@@ -3493,6 +3493,9 @@ public final class MainActivity extends Activity {
         if (settings.importWeakCards) {
             sources.add("weak");
         }
+        if (settings.browserQueryImportEnabled()) {
+            sources.add("query");
+        }
         if (sources.isEmpty()) {
             return "No sources";
         }
@@ -3594,10 +3597,16 @@ public final class MainActivity extends Activity {
         CheckBox suspendedCards = importFilterCheckBox("Suspended cards", current.importSuspendedCards);
         CheckBox taggedCards = importFilterCheckBox("Tagged cards", current.importTaggedCardsEnabled());
         CheckBox weakCards = importFilterCheckBox("Weak cards", current.importWeakCards);
+        CheckBox browserQueryCards = importFilterCheckBox("Browser query", current.importBrowserQueryCards);
         box.addView(activeCards);
         box.addView(suspendedCards);
         box.addView(taggedCards);
         box.addView(weakCards);
+        box.addView(browserQueryCards);
+
+        EditText browserQueryInput = fieldInput(current.importBrowserQuery);
+        browserQueryInput.setHint("deck:Japanese tag:kani");
+        addFieldMappingInput(box, "Anki browser query", browserQueryInput);
 
         EditText tags = fieldInput(current.importTagsText());
         tags.setHint("tag1, tag2");
@@ -3619,7 +3628,12 @@ public final class MainActivity extends Activity {
         Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
-            if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, parsedTags)) {
+            String queryText = browserQueryInput.getText().toString().trim();
+            if (browserQueryCards.isChecked() && queryText.isEmpty()) {
+                Toast.makeText(this, "Enter an Anki browser query or turn off Browser query.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
                 Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -3635,6 +3649,8 @@ public final class MainActivity extends Activity {
             store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, parsedThresholds.difficulty);
             store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, parsedThresholds.lapseThreshold);
             store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
+            store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, browserQueryCards.isChecked() ? 1 : 0);
+            store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, queryText);
             Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
             renderSettings();
         });
@@ -3666,12 +3682,17 @@ public final class MainActivity extends Activity {
             CheckBox suspendedCards,
             CheckBox taggedCards,
             CheckBox weakCards,
-            List<String> parsedTags
+            CheckBox browserQueryCards,
+            List<String> parsedTags,
+            String queryText
     ) {
         if (activeCards.isChecked() || suspendedCards.isChecked() || weakCards.isChecked()) {
             return true;
         }
-        return taggedCards.isChecked() && !parsedTags.isEmpty();
+        if (taggedCards.isChecked() && !parsedTags.isEmpty()) {
+            return true;
+        }
+        return browserQueryCards.isChecked() && !queryText.isEmpty();
     }
 
     private boolean validImportThresholds(double difficulty, int lapseThreshold, int minCards) {

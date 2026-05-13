@@ -150,9 +150,27 @@ public final class AnkiDroidGateway implements CollectionGateway {
             ModelMapping mapping = findConfiguredModel(target, settings);
             reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
+            Set<Long> browserQueryNoteIds = queryBrowserQueryNoteIds(target, mapping, settings);
+            for (Long noteId : browserQueryNoteIds) {
+                if (!notes.containsKey(noteId)) {
+                    try {
+                        Map<Long, Records.Note> extraNotes = queryNotesBySearch(
+                                target, mapping, settings,
+                                configuredBrowserQuerySearch(settings)
+                        );
+                        for (Map.Entry<Long, Records.Note> entry : extraNotes.entrySet()) {
+                            notes.putIfAbsent(entry.getKey(), entry.getValue());
+                        }
+                    } catch (Exception ignored) {
+                        Log.d(TAG, "Browser query note re-read failed; using tracked IDs only.", ignored);
+                    }
+                    break;
+                }
+            }
             List<Records.Card> cards = queryCardsByNote(target, settings, notes.keySet(), reporter);
             validateTemplateCards(cards, settings);
             cards = cardsWithNotes(cards, notes.keySet());
+            cards = markBrowserQueryMatchedCards(cards, browserQueryNoteIds);
             return new Records.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
         } catch (SyncFailure error) {
             throw error;
@@ -540,6 +558,57 @@ public final class AnkiDroidGateway implements CollectionGateway {
             }
         }
         return ids;
+    }
+
+    private Set<Long> queryBrowserQueryNoteIds(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
+        if (!settings.browserQueryImportEnabled()) {
+            return Collections.emptySet();
+        }
+        Set<Long> ids = new LinkedHashSet<>();
+        String search = configuredBrowserQuerySearch(settings);
+        Cursor cursor;
+        try {
+            cursor = resolver.query(
+                    uriFor(target.authority, URI_SEGMENT_NOTES),
+                    null,
+                    search,
+                    null,
+                    null
+            );
+        } catch (Exception error) {
+            throw SyncFailure.permanent("AnkiDroid could not run the browser query. Check the query in Import filters.", error);
+        }
+        if (cursor == null) {
+            return ids;
+        }
+        try (Cursor queryCursor = cursor) {
+            while (queryCursor.moveToNext()) {
+                long modelId = longValue(queryCursor, COLUMN_MODEL_ID, mapping.modelId);
+                if (modelId == mapping.modelId) {
+                    ids.add(longValue(queryCursor, COLUMN_ID, 0));
+                }
+            }
+        }
+        return ids;
+    }
+
+    private static String configuredBrowserQuerySearch(Records.Settings settings) {
+        return "note:\"" + settings.modelName + "\" (" + settings.normalizedBrowserQuery() + ")";
+    }
+
+    private static List<Records.Card> markBrowserQueryMatchedCards(List<Records.Card> cards, Set<Long> browserQueryNoteIds) {
+        if (browserQueryNoteIds.isEmpty()) {
+            return cards;
+        }
+        List<Records.Card> result = new ArrayList<>(cards.size());
+        for (Records.Card card : cards) {
+            if (browserQueryNoteIds.contains(card.noteId)) {
+                result.add(card.withBrowserQueryMatched(true));
+            } else {
+                result.add(card);
+            }
+        }
+        return result;
     }
 
     private static List<String> splitFields(String value) {

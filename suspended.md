@@ -199,10 +199,15 @@ Recommended search shape:
 note:"<settings.modelName>" (<user query>)
 ```
 
-If AnkiDroid search syntax does not support parentheses in the provider query,
-use the safest equivalent that preserves both constraints. The implementation
-must be tested against the fake provider and, for release, against real
-AnkiDroid.
+AnkiDroid's content provider (`notes` URI) passes the `selection` parameter
+directly to `Collection.findNotes()`, which delegates to the Anki Rust search
+backend (`backend.searchNotes`). This backend supports the full Anki browser
+query grammar including parentheses for grouping. The query composition
+`note:"<modelName>" (<user query>)` is safe and uses the same search engine
+that powers desktop Anki's browser.
+
+The implementation must be tested against the fake provider and, for release,
+against real AnkiDroid.
 
 The raw user query should not be silently modified beyond trimming. Escaping the
 note-type name remains the app's responsibility.
@@ -735,8 +740,10 @@ If UI validation causes problems:
 
 ## Open Questions
 
-- Does AnkiDroid's provider reliably accept parentheses in note search
-  selection strings?
+- ~~Does AnkiDroid's provider reliably accept parentheses in note search
+  selection strings?~~ **Resolved: Yes.** The `notes` URI handler calls
+  `col.findNotes(selection)` which delegates to Anki's Rust search backend.
+  Parentheses are part of the standard search grammar.
 - Should query-matched suspended cards be archived when the Suspended cards
   checkbox is off? This plan recommends yes, but the implementation should make
   that behavior explicit in tests and copy.

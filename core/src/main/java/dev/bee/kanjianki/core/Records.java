@@ -24,10 +24,13 @@ public final class Records {
     public static final double DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY = 7.0;
     public static final int DEFAULT_IMPORT_WEAK_LAPSES = 2;
     public static final int DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI = 1;
+    public static final boolean DEFAULT_IMPORT_BROWSER_QUERY_CARDS = false;
+    public static final String DEFAULT_IMPORT_BROWSER_QUERY = "";
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
     public static final String SOURCE_ACTIVE = "active";
     public static final String SOURCE_SUSPENDED = "suspended";
+    public static final String SOURCE_BROWSER_QUERY = "browser_query";
     private static final Logger LOGGER = Logger.getLogger(Records.class.getName());
     private static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");
     private static final Pattern IMPORT_TAG_SEPARATOR = Pattern.compile("[,\\s]+");
@@ -214,6 +217,8 @@ public final class Records {
         public final double importWeakFsrsDifficultyThreshold;
         public final int importWeakLapsesThreshold;
         public final int importMinMatchingCardsPerKanji;
+        public final boolean importBrowserQueryCards;
+        public final String importBrowserQuery;
 
         public Settings(
                 String modelName,
@@ -260,6 +265,8 @@ public final class Records {
                     : DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY;
             this.importWeakLapsesThreshold = Math.max(1, Math.min(100, args.importWeakLapsesThreshold));
             this.importMinMatchingCardsPerKanji = Math.max(1, Math.min(1000, args.importMinMatchingCardsPerKanji));
+            this.importBrowserQueryCards = args.importBrowserQueryCards;
+            this.importBrowserQuery = nullToEmpty(args.importBrowserQuery);
         }
 
         public boolean importTaggedCardsEnabled() {
@@ -267,7 +274,15 @@ public final class Records {
         }
 
         public boolean hasImportSourceEnabled() {
-            return importActiveCards || importSuspendedCards || importTaggedCardsEnabled() || importWeakCards;
+            return importActiveCards || importSuspendedCards || importTaggedCardsEnabled() || importWeakCards || browserQueryImportEnabled();
+        }
+
+        public boolean browserQueryImportEnabled() {
+            return importBrowserQueryCards && !normalizedBrowserQuery().isEmpty();
+        }
+
+        public String normalizedBrowserQuery() {
+            return importBrowserQuery.trim();
         }
 
         public String importTagsText() {
@@ -312,9 +327,11 @@ public final class Records {
             double importWeakFsrsDifficultyThreshold = DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY;
             int importWeakLapsesThreshold = DEFAULT_IMPORT_WEAK_LAPSES;
             int importMinMatchingCardsPerKanji = DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI;
+            boolean importBrowserQueryCards = DEFAULT_IMPORT_BROWSER_QUERY_CARDS;
+            String importBrowserQuery = DEFAULT_IMPORT_BROWSER_QUERY;
 
             static SettingsArgs from(Object[] rest) {
-                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19);
+                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21);
                 SettingsArgs args = new SettingsArgs();
                 args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS);
                 args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS);
@@ -357,6 +374,10 @@ public final class Records {
                     args.importWeakFsrsDifficultyThreshold = doubleArg(rest, 16, CONTEXT_SETTINGS);
                     args.importWeakLapsesThreshold = intArg(rest, 17, CONTEXT_SETTINGS);
                     args.importMinMatchingCardsPerKanji = intArg(rest, 18, CONTEXT_SETTINGS);
+                }
+                if (rest.length >= 21) {
+                    args.importBrowserQueryCards = booleanArg(rest, 19, CONTEXT_SETTINGS);
+                    args.importBrowserQuery = stringArg(rest, 20, CONTEXT_SETTINGS);
                 }
                 return args;
             }
@@ -410,7 +431,9 @@ public final class Records {
                     DEFAULT_IMPORT_WEAK_CARDS,
                     DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY,
                     DEFAULT_IMPORT_WEAK_LAPSES,
-                    DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
+                    DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
+                    DEFAULT_IMPORT_BROWSER_QUERY_CARDS,
+                    DEFAULT_IMPORT_BROWSER_QUERY
             );
         }
 
@@ -489,9 +512,13 @@ public final class Records {
         public final Double fsrsStability;
         public final Double fsrsDifficulty;
         public final Double fsrsRetrievability;
+        public final boolean browserQueryMatched;
 
         public Card(long cardId, long noteId, int ord, String deckId, Object... rest) {
-            CardArgs args = CardArgs.from(deckId, rest);
+            this(cardId, noteId, ord, deckId, false, CardArgs.from(deckId, rest));
+        }
+
+        private Card(long cardId, long noteId, int ord, String deckId, boolean browserQueryMatched, CardArgs args) {
             this.cardId = cardId;
             this.noteId = noteId;
             this.ord = ord;
@@ -507,6 +534,27 @@ public final class Records {
             this.fsrsStability = args.fsrsStability;
             this.fsrsDifficulty = args.fsrsDifficulty;
             this.fsrsRetrievability = args.fsrsRetrievability;
+            this.browserQueryMatched = browserQueryMatched;
+        }
+
+        public Card withBrowserQueryMatched(boolean matched) {
+            if (matched == this.browserQueryMatched) {
+                return this;
+            }
+            CardArgs args = new CardArgs();
+            args.deckId = this.deckId;
+            args.deckName = this.deckName;
+            args.queue = this.queue;
+            args.type = this.type;
+            args.due = this.due;
+            args.intervalDays = this.intervalDays;
+            args.reps = this.reps;
+            args.lapses = this.lapses;
+            args.suspended = this.suspended;
+            args.fsrsStability = this.fsrsStability;
+            args.fsrsDifficulty = this.fsrsDifficulty;
+            args.fsrsRetrievability = this.fsrsRetrievability;
+            return new Card(cardId, noteId, ord, deckId, matched, args);
         }
 
         private static final class CardArgs {

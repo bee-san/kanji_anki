@@ -26,6 +26,9 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     public static boolean unparseableFsrsData;
     public static boolean rejectSchedulerProjection;
     public static boolean deferSchedulerProjectionFailure;
+    public static boolean browserQueryMatchesActive;
+    public static boolean browserQueryMatchesSuspended;
+    public static boolean failBrowserQuery;
 
     public static void reset() {
         topLevelCardsQueries = 0;
@@ -41,6 +44,9 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         unparseableFsrsData = false;
         rejectSchedulerProjection = false;
         deferSchedulerProjectionFailure = false;
+        browserQueryMatchesActive = false;
+        browserQueryMatchesSuspended = false;
+        failBrowserQuery = false;
     }
 
     @Override
@@ -105,6 +111,21 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         if ("deferSchedulerProjectionFailure".equals(method)) {
             rejectSchedulerProjection = true;
             deferSchedulerProjectionFailure = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("browserQueryMatchesActive".equals(method)) {
+            browserQueryMatchesActive = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("browserQueryMatchesSuspended".equals(method)) {
+            browserQueryMatchesSuspended = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("failBrowserQuery".equals(method)) {
+            failBrowserQuery = true;
             result.putBoolean("ok", true);
             return result;
         }
@@ -237,8 +258,12 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     private Cursor notes(String selection) {
         MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "mid", "flds", "tags"});
         boolean suspendedOnly = selection != null && selection.contains("is:suspended");
+        boolean browserQuery = selection != null && selection.contains("(") && !suspendedOnly;
         if (suspendedOnly && failSuspendedSearch) {
             throw new IllegalArgumentException("queue _id is unknown");
+        }
+        if (browserQuery && failBrowserQuery) {
+            throw new IllegalArgumentException("Invalid search: malformed browser query");
         }
         boolean custom = selection != null && selection.contains("Custom Japanese");
         if (custom) {
@@ -246,6 +271,15 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
                 cursor.addRow(new Object[]{101L, 200L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100"), activeTags});
             }
             cursor.addRow(new Object[]{102L, 200L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500"), suspendedTags});
+            return cursor;
+        }
+        if (browserQuery) {
+            if (browserQueryMatchesActive) {
+                cursor.addRow(new Object[]{1L, 100L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
+            }
+            if (browserQueryMatchesSuspended) {
+                cursor.addRow(new Object[]{2L, 100L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500", repeat("suspended-glossary", 200)), suspendedTags});
+            }
             return cursor;
         }
         if (!suspendedOnly) {
