@@ -85,7 +85,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void successfulSyncUsesAdaptiveWorkloadForNewAdmissions() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        Records.Settings settings = importSettings(true, false, false, "", false, 1);
         store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
         store.saveAdaptiveLoadWorkPercent(0);
 

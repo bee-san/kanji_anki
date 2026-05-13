@@ -795,7 +795,7 @@ public final class MainActivity extends Activity {
         Records.Settings current = settings();
         new AlertDialog.Builder(this)
                 .setTitle("Sync AnkiDroid?")
-                .setMessage("Kani will read your " + current.modelName + " cards, copy problem kanji into writing practice, and mark imported suspended cards as archived after they are stored safely.")
+                .setMessage("Kani imports suspended " + current.modelName + " cards by default, keeps them safe locally, and only uses active cards when that import filter is enabled.")
                 .setPositiveButton("Sync cards", (dialog, which) -> runSync())
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -3588,7 +3588,7 @@ public final class MainActivity extends Activity {
         LinearLayout box = settingsPanelBox();
         box.addView(text("Import filters", 23, INK, true));
         box.addView(text(settingsImportSummary(current), 17, TEAL, true));
-        box.addView(text("Choose which AnkiDroid cards can seed Kani practice. Matching uses any enabled source, then requires the configured source-card count per kanji.", 15, MUTED, false));
+        box.addView(text("Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.", 15, MUTED, false));
 
         CheckBox activeCards = importFilterCheckBox("Active cards", current.importActiveCards);
         CheckBox suspendedCards = importFilterCheckBox("Suspended cards", current.importSuspendedCards);

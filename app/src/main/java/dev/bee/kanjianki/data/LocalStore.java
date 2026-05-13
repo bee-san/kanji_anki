@@ -3952,7 +3952,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!STATUS_SUCCESS.equals(status)) {
                 return "Sync blocked: " + errorMessage;
             }
-            return String.format(Locale.ROOT, "%d active cards checked, %d suspended cards archived, %d rare kanji added", activeCards, suspendedCards, importedKanji);
+            return String.format(Locale.ROOT, "%d suspended cards archived, %d rare kanji added; active cards optional", suspendedCards, importedKanji);
         }
     }
 

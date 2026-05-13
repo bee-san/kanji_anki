@@ -14,6 +14,7 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewParent;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -218,7 +219,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Home");
             clickText(scenario, "Settings");
             scenario.onActivity(MainActivityInstrumentedTest::assertCollapsedSettingsScreen);
-            clickText(scenario, "App & data");
+            clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             clickText(scenario, "Open updater");
             waitForText(scenario, "GitHub updater");
@@ -276,7 +277,7 @@ public final class MainActivityInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            clickText(scenario, "App & data");
+            clickText(scenario, "Automation");
             waitForText(scenario, "App updates");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "On: checks about once a day");
@@ -2016,7 +2017,24 @@ public final class MainActivityInstrumentedTest {
                 "Min rank",
                 "Max rank"
         );
+        assertImportFilterDefaultState(activity);
         assertNoTexts(activity, "Daily workload", "Daily reminder", "App updates");
+    }
+
+    private static void assertImportFilterDefaultState(MainActivity activity) {
+        View root = activity.findViewById(android.R.id.content);
+        CheckBox activeCards = findCheckBox(root, "Active cards");
+        CheckBox suspendedCards = findCheckBox(root, "Suspended cards");
+        CheckBox taggedCards = findCheckBox(root, "Tagged cards");
+        CheckBox weakCards = findCheckBox(root, "Weak cards");
+        assertNotNull(activeCards);
+        assertNotNull(suspendedCards);
+        assertNotNull(taggedCards);
+        assertNotNull(weakCards);
+        assertFalse(activeCards.isChecked());
+        assertTrue(suspendedCards.isChecked());
+        assertFalse(taggedCards.isChecked());
+        assertFalse(weakCards.isChecked());
     }
 
     private void assertNavigationSettingsPersisted() {
@@ -2027,7 +2045,7 @@ public final class MainActivityInstrumentedTest {
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
             assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
             assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
-            assertEquals(1, store.getIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 0));
+            assertEquals(0, store.getIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1));
             assertEquals(1, store.getIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 0));
             assertEquals(1, store.getIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 0));
             LocalStore.ReminderSettings reminder = store.reminderSettings();
@@ -2267,6 +2285,16 @@ public final class MainActivityInstrumentedTest {
         List<T> results = new ArrayList<>();
         collectTypes(root, type, results);
         return results;
+    }
+
+    private static CheckBox findCheckBox(View root, String text) {
+        for (CheckBox box : findTypes(root, CheckBox.class)) {
+            CharSequence value = box.getText();
+            if (value != null && text.contentEquals(value)) {
+                return box;
+            }
+        }
+        return null;
     }
 
     private static <T extends View> void collectTypes(View root, Class<T> type, List<T> results) {

@@ -178,8 +178,11 @@ public class RecordsValueCoverageTest {
 
     @Test
     public void settingsImportDefaultsNormalizeAndParseTags() {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
         Records.Settings full = fullSettingsWithNoisyImportValues();
 
+        assertFalse(defaults.importActiveCards);
+        assertTrue(defaults.importSuspendedCards);
         assertTrue(full.importTaggedCardsEnabled());
         assertTrue(full.hasImportSourceEnabled());
         assertEquals("mine archive", full.importTagsText());

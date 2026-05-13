@@ -17,7 +17,7 @@ public final class Records {
     public static final int DEFAULT_REAL_DUE_REVIEWS_TO_MOVE = 3;
     public static final int DEFAULT_SUSPENDED_RANK_MIN = 100;
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
-    public static final boolean DEFAULT_IMPORT_ACTIVE_CARDS = true;
+    public static final boolean DEFAULT_IMPORT_ACTIVE_CARDS = false;
     public static final boolean DEFAULT_IMPORT_SUSPENDED_CARDS = true;
     public static final boolean DEFAULT_IMPORT_TAGGED_CARDS = false;
     public static final boolean DEFAULT_IMPORT_WEAK_CARDS = false;

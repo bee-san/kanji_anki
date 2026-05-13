@@ -99,8 +99,8 @@ We should always be able to explain which suspended cards pulled it in.
 
 The sync should conceptually run in this order:
 
-1. read active cards and suspended cards from AnkiDroid,
-2. derive suspended-kanji import candidates,
+1. read suspended cards from AnkiDroid, plus active cards only when their import filter is enabled,
+2. derive suspended-kanji import candidates from the enabled sources,
 3. filter them through the Jiten rank cutoff,
 4. store suspended cards in the local archive,
 5. store imported suspended kanji in the local database,

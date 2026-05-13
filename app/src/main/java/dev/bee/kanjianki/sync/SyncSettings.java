@@ -22,12 +22,16 @@ public final class SyncSettings {
     public static final String IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY = "import_weak_fsrs_difficulty_threshold";
     public static final String IMPORT_WEAK_LAPSES_SETTING_KEY = "import_weak_lapses_threshold";
     public static final String IMPORT_MIN_MATCHING_CARDS_SETTING_KEY = "import_min_matching_cards_per_kanji";
+    private static final int ABSENT_INT_SETTING = Integer.MIN_VALUE;
+    private static final double ABSENT_DOUBLE_SETTING = Double.NaN;
+    private static final int OLD_DEFAULT_IMPORT_ACTIVE_CARDS = 1;
 
     private SyncSettings() {
     }
 
     public static Records.Settings fromStore(LocalStore store) {
         Records.Settings defaults = Records.Settings.kikuDefaults();
+        repairOldDefaultImportSettings(store);
         String modelName = store == null
                 ? defaults.modelName
                 : nonBlank(store.getStringSetting(NOTE_TYPE_SETTING_KEY, defaults.modelName), defaults.modelName);
@@ -98,6 +102,71 @@ public final class SyncSettings {
                 importWeakLapses,
                 importMinMatchingCards
         );
+    }
+
+    private static void repairOldDefaultImportSettings(LocalStore store) {
+        if (store == null || !hasAnyImportSetting(store) || !matchesOldDefaultImportSettings(store)) {
+            return;
+        }
+        store.putIntSetting(IMPORT_ACTIVE_CARDS_SETTING_KEY, 0);
+        store.putIntSetting(IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1);
+    }
+
+    private static boolean hasAnyImportSetting(LocalStore store) {
+        return intSettingPresent(store, IMPORT_ACTIVE_CARDS_SETTING_KEY)
+                || intSettingPresent(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY)
+                || intSettingPresent(store, IMPORT_TAGGED_CARDS_SETTING_KEY)
+                || store.getStringSetting(IMPORT_TAGS_SETTING_KEY, null) != null
+                || intSettingPresent(store, IMPORT_WEAK_CARDS_SETTING_KEY)
+                || doubleSettingPresent(store, IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY)
+                || intSettingPresent(store, IMPORT_WEAK_LAPSES_SETTING_KEY)
+                || intSettingPresent(store, IMPORT_MIN_MATCHING_CARDS_SETTING_KEY);
+    }
+
+    private static boolean matchesOldDefaultImportSettings(LocalStore store) {
+        return intSettingMatchesOrAbsent(store, IMPORT_ACTIVE_CARDS_SETTING_KEY, OLD_DEFAULT_IMPORT_ACTIVE_CARDS)
+                && intSettingMatchesOrAbsent(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1)
+                && intSettingMatchesOrAbsent(store, IMPORT_TAGGED_CARDS_SETTING_KEY, 0)
+                && importTagsEmptyOrAbsent(store)
+                && intSettingMatchesOrAbsent(store, IMPORT_WEAK_CARDS_SETTING_KEY, 0)
+                && doubleSettingMatchesOrAbsent(
+                        store,
+                        IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY,
+                        Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY
+                )
+                && intSettingMatchesOrAbsent(
+                        store,
+                        IMPORT_WEAK_LAPSES_SETTING_KEY,
+                        Records.DEFAULT_IMPORT_WEAK_LAPSES
+                )
+                && intSettingMatchesOrAbsent(
+                        store,
+                        IMPORT_MIN_MATCHING_CARDS_SETTING_KEY,
+                        Records.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
+                );
+    }
+
+    private static boolean intSettingPresent(LocalStore store, String key) {
+        return store.getIntSetting(key, ABSENT_INT_SETTING) != ABSENT_INT_SETTING;
+    }
+
+    private static boolean doubleSettingPresent(LocalStore store, String key) {
+        return !Double.isNaN(store.getDoubleSetting(key, ABSENT_DOUBLE_SETTING));
+    }
+
+    private static boolean intSettingMatchesOrAbsent(LocalStore store, String key, int expected) {
+        int value = store.getIntSetting(key, ABSENT_INT_SETTING);
+        return value == ABSENT_INT_SETTING || value == expected;
+    }
+
+    private static boolean importTagsEmptyOrAbsent(LocalStore store) {
+        String value = store.getStringSetting(IMPORT_TAGS_SETTING_KEY, null);
+        return value == null || Records.parseImportTags(value).isEmpty();
+    }
+
+    private static boolean doubleSettingMatchesOrAbsent(LocalStore store, String key, double expected) {
+        double value = store.getDoubleSetting(key, ABSENT_DOUBLE_SETTING);
+        return Double.isNaN(value) || Math.abs(value - expected) < 0.0001;
     }
 
     private static boolean boolSetting(LocalStore store, String key, boolean fallback) {

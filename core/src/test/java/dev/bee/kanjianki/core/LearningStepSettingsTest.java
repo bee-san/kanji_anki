@@ -122,7 +122,7 @@ public final class LearningStepSettingsTest {
     public void importFilterSettingsDefaultAndNormalizeInvalidValues() {
         Records.Settings defaults = Records.Settings.kikuDefaults();
 
-        assertTrue(defaults.importActiveCards);
+        assertFalse(defaults.importActiveCards);
         assertTrue(defaults.importSuspendedCards);
         assertFalse(defaults.importTaggedCards);
         assertTrue(defaults.importTags.isEmpty());

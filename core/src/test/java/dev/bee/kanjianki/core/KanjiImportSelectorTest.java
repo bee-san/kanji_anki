@@ -10,12 +10,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class KanjiImportSelectorTest {
     @Test
-    public void defaultsSelectActiveAndSuspendedCardsInsideRankRange() throws Exception {
+    public void defaultsIgnoreActiveCardsInsideRankRange() throws Exception {
         Records.Settings settings = Records.Settings.kikuDefaults();
         JitenKanjiRanks ranks = ranks("裂,1500\n謎,1600\n");
         Records.CollectionSnapshot snapshot = snapshot(
@@ -26,9 +25,24 @@ public final class KanjiImportSelectorTest {
         List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
                 .importFrom(snapshot, settings);
 
-        assertEquals(Arrays.asList("裂", "謎"), kanjiList(imports));
-        assertFalse(imports.get(0).sources.get(0).forcePractice);
-        assertTrue(imports.get(1).sources.get(0).forcePractice);
+        assertEquals(Collections.singletonList("謎"), kanjiList(imports));
+        assertTrue(imports.get(0).sources.get(0).forcePractice);
+    }
+
+    @Test
+    public void defaultsImportSuspendedCardsInsideRankRange() throws Exception {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        JitenKanjiRanks ranks = ranks("謎,1600\n遅,3001\n");
+        Records.CollectionSnapshot snapshot = snapshot(
+                Arrays.asList(note(1, "謎", "なぞ"), note(2, "遅い", "おそい")),
+                Arrays.asList(card(10, 1, true), card(20, 2, true))
+        );
+
+        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
+                .importFrom(snapshot, settings);
+
+        assertEquals(Collections.singletonList("謎"), kanjiList(imports));
+        assertEquals(Integer.valueOf(1600), imports.get(0).jitenRank);
     }
 
     @Test
