@@ -345,30 +345,11 @@ public final class StudyStatsStore {
 
     private static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int realDueReviewsToMove) {
         int threshold = Math.max(1, realDueReviewsToMove);
-        Map<Records.LadderRung, Integer> distribution = emptyRungDistribution();
-        int total = 0;
-        int promotionReady = 0;
-        int demotionRisk = 0;
-        int demotionReady = 0;
+        LadderHealthAccumulator accumulator = new LadderHealthAccumulator();
         for (LadderItemEvidence item : items) {
-            if (item != null && !STATE_RETIRED.equals(item.state)) {
-                Records.LadderRung rung = item.rung == null ? Records.LadderRung.KANJI_MEANING : item.rung;
-                distribution.put(rung, distribution.get(rung) + 1);
-                total++;
-                if (item.phase == Records.SchedulerPhase.REVIEW) {
-                    if (item.realPassStreak >= threshold) {
-                        promotionReady++;
-                    }
-                    if (item.realAgainStreak > 0) {
-                        demotionRisk++;
-                        if (item.realAgainStreak >= threshold) {
-                            demotionReady++;
-                        }
-                    }
-                }
-            }
+            accumulator.record(item, threshold);
         }
-        return new LadderHealthMetric(distribution, total, threshold, promotionReady, demotionRisk, demotionReady);
+        return accumulator.metric(threshold);
     }
 
     private static Map<Records.LadderRung, Integer> emptyRungDistribution() {
@@ -621,6 +602,41 @@ public final class StudyStatsStore {
 
         public static LadderHealthMetric empty() {
             return new LadderHealthMetric(emptyRungDistribution(), 0, Records.Settings.kikuDefaults().realDueReviewsToMove, 0, 0, 0);
+        }
+    }
+
+    private static final class LadderHealthAccumulator {
+        private final Map<Records.LadderRung, Integer> distribution = emptyRungDistribution();
+        private int total;
+        private int promotionReady;
+        private int demotionRisk;
+        private int demotionReady;
+
+        private void record(LadderItemEvidence item, int threshold) {
+            if (item == null || STATE_RETIRED.equals(item.state)) {
+                return;
+            }
+            distribution.put(item.rung, distribution.get(item.rung) + 1);
+            total++;
+            if (item.phase == Records.SchedulerPhase.REVIEW) {
+                recordReviewStreaks(item, threshold);
+            }
+        }
+
+        private void recordReviewStreaks(LadderItemEvidence item, int threshold) {
+            if (item.realPassStreak >= threshold) {
+                promotionReady++;
+            }
+            if (item.realAgainStreak > 0) {
+                demotionRisk++;
+            }
+            if (item.realAgainStreak >= threshold) {
+                demotionReady++;
+            }
+        }
+
+        private LadderHealthMetric metric(int threshold) {
+            return new LadderHealthMetric(distribution, total, threshold, promotionReady, demotionRisk, demotionReady);
         }
     }
 

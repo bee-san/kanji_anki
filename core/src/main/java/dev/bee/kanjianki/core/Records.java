@@ -110,7 +110,6 @@ public final class Records {
     }
     private static final String CONTEXT_SETTINGS = "Settings";
     private static final String CONTEXT_CARD = "Card";
-    private static final String CONTEXT_SUSPENDED_SOURCE = "SuspendedSource";
     private static final String CONTEXT_EXAMPLE = "Example";
     private static final String CONTEXT_DASHBOARD_ROW = "DashboardRow";
     private static final String CONTEXT_KANJI_INVENTORY_ITEM = "KanjiInventoryItem";

@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class GitHubUpdaterTest {
@@ -138,8 +139,8 @@ public final class GitHubUpdaterTest {
     public void packageInstallerStatusReceiverIsMutable() {
         int flags = GitHubUpdater.installStatusPendingIntentFlags();
 
-        assertTrue((flags & PendingIntent.FLAG_UPDATE_CURRENT) != 0);
-        assertTrue((flags & PendingIntent.FLAG_MUTABLE) != 0);
+        assertNotEquals(0, flags & PendingIntent.FLAG_UPDATE_CURRENT);
+        assertNotEquals(0, flags & PendingIntent.FLAG_MUTABLE);
         assertEquals(0, flags & PendingIntent.FLAG_IMMUTABLE);
     }
 }
