@@ -121,12 +121,8 @@ public final class BridgeScheduler {
         SeedRowIndex rowIndex = indexSeedRows(request.allRows);
         SeedQueueState state = reconcileExistingItems(request, rowIndex);
         List<String> admittedKanji = new ArrayList<>();
-        int activeSlots = Math.max(0, request.settings.activeQueueCap - state.activeCount);
         int available = 0;
         for (Records.DashboardRow row : request.admissionRows) {
-            if (available >= activeSlots) {
-                break;
-            }
             String rowKey = rowFamilyKey(row);
             Records.StudyItem current = state.byFamily.get(rowKey);
             boolean eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current);

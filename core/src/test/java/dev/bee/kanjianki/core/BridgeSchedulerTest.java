@@ -445,7 +445,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public void seedExtraNewCardsClampsToRemainingActiveRoomAndReopensRetiredItems() {
+    public void seedExtraNewCardsClampsToRemainingCandidatesAndReopensRetiredItems() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem active = item("謎");
         Records.StudyItem retired = item("裂").copyBuilder()
@@ -462,11 +462,12 @@ public class BridgeSchedulerTest {
                 5
         );
 
-        assertEquals(1, result.availableCount);
-        assertEquals(1, result.admittedCount);
-        assertEquals(Collections.singletonList("裂"), result.admittedKanji);
+        assertEquals(2, result.availableCount);
+        assertEquals(2, result.admittedCount);
+        assertEquals(Arrays.asList("裂", "示"), result.admittedKanji);
         assertEquals("new", findItem(result.items, "裂").state);
         assertNull(findItem(result.items, "裂").activeToken);
+        assertEquals("new", findItem(result.items, "示").state);
         assertEquals("new", findItem(result.items, "謎").state);
     }
 
