@@ -128,8 +128,10 @@ public final class GitHubUpdaterTest {
     public void startsInstallConfirmationForManualAndCachedSourcesOnly() {
         assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.MANUAL));
         assertTrue(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.CACHED));
-        assertFalse(UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.AUTOMATIC));
-        assertFalse(UpdatePolicy.shouldLaunchInstallConfirmation(null));
+        boolean launchesForAutomatic = UpdatePolicy.shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource.AUTOMATIC);
+        boolean launchesForMissingSource = UpdatePolicy.shouldLaunchInstallConfirmation(null);
+        assertFalse(launchesForAutomatic);
+        assertFalse(launchesForMissingSource);
     }
 
     @Test

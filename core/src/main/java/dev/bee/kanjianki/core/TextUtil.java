@@ -36,45 +36,57 @@ public final class TextUtil {
     private static String stripHtmlTags(String value) {
         StringBuilder out = new StringBuilder(value.length());
         int index = 0;
-        while (index < value.length()) {
-            int tagStart = value.indexOf('<', index);
-            if (tagStart < 0) {
+        boolean done = false;
+        while (!done && index < value.length()) {
+            TagBounds tag = nextTag(value, index);
+            if (tag.missingStart()) {
                 out.append(value, index, value.length());
-                break;
-            }
-            out.append(value, index, tagStart);
-
-            int tagEnd = value.indexOf('>', tagStart + 1);
-            if (tagEnd < 0) {
-                out.append(value, tagStart, value.length());
-                break;
-            }
-            if (tagEnd == tagStart + 1) {
-                out.append(value, tagStart, tagEnd + 1);
-                index = tagEnd + 1;
-                continue;
-            }
-
-            String tagName = openingTagName(value, tagStart + 1, tagEnd);
-            if ("rt".equals(tagName)) {
-                int closeEnd = closingTagEnd(value, tagEnd + 1, "rt");
-                if (closeEnd >= 0) {
-                    index = closeEnd;
-                    continue;
-                }
-            } else if ("style".equals(tagName) || "script".equals(tagName)) {
-                int closeEnd = closingTagEnd(value, tagEnd + 1, tagName);
-                if (closeEnd >= 0) {
-                    out.append(' ');
-                    index = closeEnd;
-                    continue;
+                done = true;
+            } else {
+                out.append(value, index, tag.start);
+                if (tag.missingEnd()) {
+                    out.append(value, tag.start, value.length());
+                    done = true;
+                } else {
+                    index = appendTagReplacement(value, out, tag);
                 }
             }
-
-            out.append(' ');
-            index = tagEnd + 1;
         }
         return out.toString();
+    }
+
+    private static TagBounds nextTag(String value, int index) {
+        int tagStart = value.indexOf('<', index);
+        int tagEnd = tagStart < 0 ? -1 : value.indexOf('>', tagStart + 1);
+        return new TagBounds(tagStart, tagEnd);
+    }
+
+    private static int appendTagReplacement(String value, StringBuilder out, TagBounds tag) {
+        if (tag.empty()) {
+            out.append(value, tag.start, tag.afterEnd());
+            return tag.afterEnd();
+        }
+        String tagName = openingTagName(value, tag.start + 1, tag.end);
+        int skippedContentEnd = skippableContentEnd(value, tag.afterEnd(), tagName);
+        if (skippedContentEnd >= 0) {
+            appendSkipReplacement(out, tagName);
+            return skippedContentEnd;
+        }
+        out.append(' ');
+        return tag.afterEnd();
+    }
+
+    private static int skippableContentEnd(String value, int fromIndex, String tagName) {
+        if ("rt".equals(tagName) || "style".equals(tagName) || "script".equals(tagName)) {
+            return closingTagEnd(value, fromIndex, tagName);
+        }
+        return -1;
+    }
+
+    private static void appendSkipReplacement(StringBuilder out, String tagName) {
+        if (!"rt".equals(tagName)) {
+            out.append(' ');
+        }
     }
 
     private static String openingTagName(String value, int index, int tagEnd) {
@@ -176,33 +188,29 @@ public final class TextUtil {
         StringBuilder out = new StringBuilder(value.length() + 2);
         out.append('"');
         for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            switch (c) {
-                case '"':
-                    out.append("\\\"");
-                    break;
-                case '\\':
-                    out.append("\\\\");
-                    break;
-                case '\n':
-                    out.append("\\n");
-                    break;
-                case '\r':
-                    out.append("\\r");
-                    break;
-                case '\t':
-                    out.append("\\t");
-                    break;
-                default:
-                    if (c < 0x20) {
-                        out.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
-                    } else {
-                        out.append(c);
-                    }
-            }
+            appendJsonQuotedChar(out, value.charAt(i));
         }
         out.append('"');
         return out.toString();
+    }
+
+    private static void appendJsonQuotedChar(StringBuilder out, char c) {
+        switch (c) {
+            case '"' -> out.append("\\\"");
+            case '\\' -> out.append("\\\\");
+            case '\n' -> out.append("\\n");
+            case '\r' -> out.append("\\r");
+            case '\t' -> out.append("\\t");
+            default -> appendJsonDefaultChar(out, c);
+        }
+    }
+
+    private static void appendJsonDefaultChar(StringBuilder out, char c) {
+        if (c < 0x20) {
+            out.append(String.format(Locale.ROOT, "\\u%04x", (int) c));
+        } else {
+            out.append(c);
+        }
     }
 
     private static String htmlEntities(String value) {
@@ -213,5 +221,23 @@ public final class TextUtil {
                 .replace("&#39;", "'")
                 .replace("&lt;", "<")
                 .replace("&gt;", ">");
+    }
+
+    private record TagBounds(int start, int end) {
+        private boolean missingStart() {
+            return start < 0;
+        }
+
+        private boolean missingEnd() {
+            return end < 0;
+        }
+
+        private boolean empty() {
+            return end == start + 1;
+        }
+
+        private int afterEnd() {
+            return end + 1;
+        }
     }
 }

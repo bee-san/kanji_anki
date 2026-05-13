@@ -3506,17 +3506,14 @@ public final class LocalStore extends SQLiteOpenHelper {
         Set<Long> noteIds = new HashSet<>();
         Set<Long> cardIds = new HashSet<>();
         int activeCardCount = 0;
-        int suspendedCardCount = 0;
         for (Records.Card card : cards) {
-            if (card.suspended) {
-                suspendedCardCount++;
-            } else {
+            if (!card.suspended) {
                 activeCardCount++;
                 noteIds.add(card.noteId);
                 cardIds.add(card.cardId);
             }
         }
-        return new ActiveCardIndex(noteIds, cardIds, activeCardCount, suspendedCardCount);
+        return new ActiveCardIndex(noteIds, cardIds, activeCardCount);
     }
 
     private int countDeletedExisting(SQLiteDatabase db, String table, String idColumn, Set<Long> currentIds) {
@@ -3557,13 +3554,11 @@ public final class LocalStore extends SQLiteOpenHelper {
         private final Set<Long> noteIds;
         private final Set<Long> cardIds;
         private final int activeCardCount;
-        private final int suspendedCardCount;
 
-        private ActiveCardIndex(Set<Long> noteIds, Set<Long> cardIds, int activeCardCount, int suspendedCardCount) {
+        private ActiveCardIndex(Set<Long> noteIds, Set<Long> cardIds, int activeCardCount) {
             this.noteIds = noteIds;
             this.cardIds = cardIds;
             this.activeCardCount = activeCardCount;
-            this.suspendedCardCount = suspendedCardCount;
         }
     }
 

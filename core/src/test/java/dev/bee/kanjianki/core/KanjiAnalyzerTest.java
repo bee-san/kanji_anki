@@ -238,17 +238,14 @@ public class KanjiAnalyzerTest {
                         "深い",
                         "ふかい",
                         "deep",
-                        "深い。",
-                        "active",
-                        false,
-                        true,
-                        true,
-                        0,
-                        45,
-                        12,
-                        60.0,
-                        3.0,
-                        0.95
+                        Records.SuspendedSourceDetails.builder("深い。")
+                                .sourceType(Records.SOURCE_ACTIVE)
+                                .suspended(false)
+                                .forcePractice(true)
+                                .mature(true)
+                                .reviewStats(0, 45, 12)
+                                .fsrs(60.0, 3.0, 0.95)
+                                .build()
                 ))
         ));
 
@@ -273,8 +270,10 @@ public class KanjiAnalyzerTest {
         Records.Settings settings = settingsWithMatureSupport(1);
         JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("深,1600\n"));
         List<Records.SuspendedSource> sources = Arrays.asList(
-                new Records.SuspendedSource("深", 10, 1, "深い", "ふかい", "deep", "深い。", "active", false, true, true, 0, 45, 12, 60.0, 3.0, 0.95),
-                new Records.SuspendedSource("深", 20, 2, "深み", "ふかみ", "depth", "深み。", "active", false, true, true, 0, 45, 12, 60.0, 3.0, 0.95)
+                new Records.SuspendedSource("深", 10, 1, "深い", "ふかい", "deep",
+                        activePracticeDetails("深い。")),
+                new Records.SuspendedSource("深", 20, 2, "深み", "ふかみ", "depth",
+                        activePracticeDetails("深み。"))
         );
 
         List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(
@@ -313,17 +312,7 @@ public class KanjiAnalyzerTest {
                         "深外",
                         "ふかい",
                         "deep",
-                        "深外。",
-                        "active",
-                        false,
-                        true,
-                        true,
-                        0,
-                        45,
-                        12,
-                        60.0,
-                        3.0,
-                        0.95
+                        activePracticeDetails("深外。")
                 ))
         ));
 
@@ -358,17 +347,14 @@ public class KanjiAnalyzerTest {
                 "深い",
                 "ふかい",
                 "deep",
-                "深い。",
-                "active",
-                false,
-                false,
-                true,
-                0,
-                45,
-                12,
-                60.0,
-                3.0,
-                0.95
+                Records.SuspendedSourceDetails.builder("深い。")
+                        .sourceType(Records.SOURCE_ACTIVE)
+                        .suspended(false)
+                        .forcePractice(false)
+                        .mature(true)
+                        .reviewStats(0, 45, 12)
+                        .fsrs(60.0, 3.0, 0.95)
+                        .build()
         );
 
         List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(
@@ -389,10 +375,13 @@ public class KanjiAnalyzerTest {
         Records.Settings settings = Records.Settings.kikuDefaults();
         JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("集,1500\n"));
         List<Records.SuspendedSource> sources = new java.util.ArrayList<>();
-        sources.add(new Records.SuspendedSource("集", 1L, 1L, "集合", "", "", "集合。", "suspended", true, false, false, 0, 0, 0, null, null, null));
-        sources.add(new Records.SuspendedSource("集", 1L, 1L, "集まる", "あつまる", "gather", "集まる。", "suspended", true, true, false, 1, 0, 0, null, null, null));
+        sources.add(new Records.SuspendedSource("集", 1L, 1L, "集合", "", "",
+                suspendedDetails("集合。", false, 0)));
+        sources.add(new Records.SuspendedSource("集", 1L, 1L, "集まる", "あつまる", "gather",
+                suspendedDetails("集まる。", true, 1)));
         for (int i = 2; i <= 10; i++) {
-            sources.add(new Records.SuspendedSource("集", i, i, "集" + i, "よみ" + i, "meaning" + i, "文" + i, "suspended", true, false, false, 0, 0, 0, null, null, null));
+            sources.add(new Records.SuspendedSource("集", i, i, "集" + i, "よみ" + i, "meaning" + i,
+                    suspendedDetails("文" + i, false, 0)));
         }
 
         List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuild(
@@ -495,6 +484,26 @@ public class KanjiAnalyzerTest {
 
     private Records.SuspendedSource source(String kanji, long cardId, long noteId) {
         return new Records.SuspendedSource(kanji, cardId, noteId, kanji, "reading", "meaning", kanji + " sentence");
+    }
+
+    private Records.SuspendedSourceDetails activePracticeDetails(String sentence) {
+        return Records.SuspendedSourceDetails.builder(sentence)
+                .sourceType(Records.SOURCE_ACTIVE)
+                .suspended(false)
+                .forcePractice(true)
+                .mature(true)
+                .reviewStats(0, 45, 12)
+                .fsrs(60.0, 3.0, 0.95)
+                .build();
+    }
+
+    private Records.SuspendedSourceDetails suspendedDetails(String sentence, boolean forcePractice, int lapses) {
+        return Records.SuspendedSourceDetails.builder(sentence)
+                .sourceType(Records.SOURCE_SUSPENDED)
+                .suspended(true)
+                .forcePractice(forcePractice)
+                .reviewStats(lapses, 0, 0)
+                .build();
     }
 
     private Records.Settings settingsWithMatureSupport(int matureSupportThreshold) {

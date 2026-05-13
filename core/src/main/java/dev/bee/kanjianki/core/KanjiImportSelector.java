@@ -9,9 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class KanjiImportSelector {
-    private static final String SOURCE_ACTIVE = "active";
-    private static final String SOURCE_SUSPENDED = "suspended";
-
     private final JitenKanjiRanks ranks;
     private final int minRank;
     private final int maxRank;
@@ -41,14 +38,12 @@ public final class KanjiImportSelector {
         Map<String, Map<Long, Records.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
         for (Records.Card card : snapshot.cards) {
             Records.Note note = notesById.get(card.noteId);
-            if (note == null) {
-                continue;
+            if (note != null) {
+                SourceMatch match = sourceMatch(card, note, settings);
+                if (match.matches()) {
+                    addSources(sourcesByKanji, card, note, settings, match.forcePractice());
+                }
             }
-            SourceMatch match = sourceMatch(card, note, settings);
-            if (!match.matches()) {
-                continue;
-            }
-            addSources(sourcesByKanji, card, note, settings, match.forcePractice());
         }
 
         List<Records.SuspendedImport> results = new ArrayList<>();
@@ -129,17 +124,14 @@ public final class KanjiImportSelector {
                 expression,
                 TextUtil.normalizeJapanese(note.reading(settings)),
                 TextUtil.firstMeaningLine(note.meaning(settings)),
-                TextUtil.normalizeJapanese(note.sentence(settings)),
-                card.suspended ? SOURCE_SUSPENDED : SOURCE_ACTIVE,
-                card.suspended,
-                forcePractice,
-                card.mature(settings.matureDays),
-                card.lapses,
-                card.intervalDays,
-                card.reps,
-                card.fsrsStability,
-                card.fsrsDifficulty,
-                card.fsrsRetrievability
+                Records.SuspendedSourceDetails.builder(TextUtil.normalizeJapanese(note.sentence(settings)))
+                        .sourceType(card.suspended ? Records.SOURCE_SUSPENDED : Records.SOURCE_ACTIVE)
+                        .suspended(card.suspended)
+                        .forcePractice(forcePractice)
+                        .mature(card.mature(settings.matureDays))
+                        .reviewStats(card.lapses, card.intervalDays, card.reps)
+                        .fsrs(card.fsrsStability, card.fsrsDifficulty, card.fsrsRetrievability)
+                        .build()
         );
     }
 

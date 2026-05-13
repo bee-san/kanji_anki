@@ -814,19 +814,12 @@ public final class BridgeScheduler {
     }
 
     private static int rungToLegacyStage(Records.LadderRung rung) {
-        switch (rung) {
-            case TYPE_MEANING:
-                return MIN_RECOGNITION_STAGE;
-            case FONT_MEANING:
-                return 1;
-            case WORD_READING:
-                return MAX_RECOGNITION_STAGE;
-            case WRITE_KANJI:
-            case SIMILAR_KANJI:
-            case KANJI_MEANING:
-            default:
-                return 0;
-        }
+        return switch (rung) {
+            case TYPE_MEANING -> MIN_RECOGNITION_STAGE;
+            case FONT_MEANING -> 1;
+            case WORD_READING -> MAX_RECOGNITION_STAGE;
+            default -> 0;
+        };
     }
 
     private static Records.StudyItem activeFamilyItem(List<Records.StudyItem> family, long nowMillis) {

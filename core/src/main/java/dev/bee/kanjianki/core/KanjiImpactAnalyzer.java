@@ -58,16 +58,8 @@ public final class KanjiImpactAnalyzer {
                 history.kanji,
                 bucket,
                 new RowMetrics(
-                        baselineDifficulty,
-                        currentDifficulty,
-                        baselineRetention,
-                        currentRetention,
-                        baselineMature,
-                        currentMature,
-                        Math.max(0, history.commonCards),
-                        Math.max(0, history.newCards),
-                        history.current == null ? 0 : history.current.totalCards(),
-                        history.reviewCount
+                        new ScoreMetrics(baselineDifficulty, currentDifficulty, baselineRetention, currentRetention),
+                        new CardMetrics(baselineMature, currentMature, history)
                 ),
                 adviceFor(bucket)
         );
@@ -295,28 +287,49 @@ public final class KanjiImpactAnalyzer {
         private final int currentCardCount;
         private final int reviewCount;
 
-        private RowMetrics(
-                double baselineDifficulty,
-                double currentDifficulty,
-                double baselineRetention,
-                double currentRetention,
-                int baselineMatureCards,
-                int currentMatureCards,
-                int sameCardCount,
-                int newCardCount,
-                int currentCardCount,
-                int reviewCount
-        ) {
+        private RowMetrics(ScoreMetrics scores, CardMetrics cards) {
+            this.baselineDifficulty = scores.baselineDifficulty;
+            this.currentDifficulty = scores.currentDifficulty;
+            this.baselineRetention = scores.baselineRetention;
+            this.currentRetention = scores.currentRetention;
+            this.baselineMatureCards = cards.baselineMatureCards;
+            this.currentMatureCards = cards.currentMatureCards;
+            this.sameCardCount = cards.sameCardCount;
+            this.newCardCount = cards.newCardCount;
+            this.currentCardCount = cards.currentCardCount;
+            this.reviewCount = cards.reviewCount;
+        }
+    }
+
+    private static final class ScoreMetrics {
+        private final double baselineDifficulty;
+        private final double currentDifficulty;
+        private final double baselineRetention;
+        private final double currentRetention;
+
+        private ScoreMetrics(double baselineDifficulty, double currentDifficulty, double baselineRetention, double currentRetention) {
             this.baselineDifficulty = baselineDifficulty;
             this.currentDifficulty = currentDifficulty;
             this.baselineRetention = baselineRetention;
             this.currentRetention = currentRetention;
+        }
+    }
+
+    private static final class CardMetrics {
+        private final int baselineMatureCards;
+        private final int currentMatureCards;
+        private final int sameCardCount;
+        private final int newCardCount;
+        private final int currentCardCount;
+        private final int reviewCount;
+
+        private CardMetrics(int baselineMatureCards, int currentMatureCards, KanjiHistory history) {
             this.baselineMatureCards = baselineMatureCards;
             this.currentMatureCards = currentMatureCards;
-            this.sameCardCount = sameCardCount;
-            this.newCardCount = newCardCount;
-            this.currentCardCount = currentCardCount;
-            this.reviewCount = reviewCount;
+            this.sameCardCount = Math.max(0, history.commonCards);
+            this.newCardCount = Math.max(0, history.newCards);
+            this.currentCardCount = history.current == null ? 0 : history.current.totalCards();
+            this.reviewCount = history.reviewCount;
         }
     }
 

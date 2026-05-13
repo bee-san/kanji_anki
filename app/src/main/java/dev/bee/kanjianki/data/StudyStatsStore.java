@@ -351,22 +351,20 @@ public final class StudyStatsStore {
         int demotionRisk = 0;
         int demotionReady = 0;
         for (LadderItemEvidence item : items) {
-            if (item == null || STATE_RETIRED.equals(item.state)) {
-                continue;
-            }
-            Records.LadderRung rung = item.rung == null ? Records.LadderRung.KANJI_MEANING : item.rung;
-            distribution.put(rung, distribution.get(rung) + 1);
-            total++;
-            if (item.phase != Records.SchedulerPhase.REVIEW) {
-                continue;
-            }
-            if (item.realPassStreak >= threshold) {
-                promotionReady++;
-            }
-            if (item.realAgainStreak > 0) {
-                demotionRisk++;
-                if (item.realAgainStreak >= threshold) {
-                    demotionReady++;
+            if (item != null && !STATE_RETIRED.equals(item.state)) {
+                Records.LadderRung rung = item.rung == null ? Records.LadderRung.KANJI_MEANING : item.rung;
+                distribution.put(rung, distribution.get(rung) + 1);
+                total++;
+                if (item.phase == Records.SchedulerPhase.REVIEW) {
+                    if (item.realPassStreak >= threshold) {
+                        promotionReady++;
+                    }
+                    if (item.realAgainStreak > 0) {
+                        demotionRisk++;
+                        if (item.realAgainStreak >= threshold) {
+                            demotionReady++;
+                        }
+                    }
                 }
             }
         }

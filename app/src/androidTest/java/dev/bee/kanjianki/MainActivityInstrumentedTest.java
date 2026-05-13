@@ -359,34 +359,50 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Kani is working for you");
-                assertHasText(activity, "Answered study time");
-                assertHasText(activity, "Today: 0 sec");
-                assertHasText(activity, "Last 7 days: 0 sec");
-                assertHasText(activity, "Answered tasks: 0");
-                assertHasText(activity, "Avg / task: 0 sec");
-                assertHasText(activity, "Weakness Burn-Down");
-                assertHasText(activity, "4 weak kanji improved");
-                assertHasText(activity, "Average weakness: 0.75 -> 0.48 after Kani practice.");
-                assertHasText(activity, "痛  0.82 -> 0.46");
-                assertHasText(activity, "薬  0.76 -> 0.51");
-                assertHasText(activity, "疲  0.69 -> 0.44");
-                assertNoText(activity, "平  0.74 -> 0.50");
-                assertHasText(activity, "Anki Support Conversion");
-                assertHasText(activity, "5 mature cards gained");
-                assertHasText(activity, "2 kanji gained first mature support.");
-                assertHasText(activity, "痛  1 -> 3 mature cards");
-                assertHasText(activity, "薬  0 -> 2 mature cards");
-                assertHasText(activity, "疲  0 -> 1 mature cards");
-                assertHasText(activity, "Ladder Health");
-                assertHasText(activity, "0 active kanji on the ladder");
-                assertNoText(activity, "Anki impact");
-                assertNoText(activity, "Kani writing");
-                assertNoText(activity, "Now practicing");
-                assertNoText(activity, "What this means");
-                assertNoText(activity, "You are turning Anki pain points");
+                assertStatsTimePanel(activity);
+                assertWeaknessBurnDownPanel(activity);
+                assertSupportConversionPanel(activity);
+                assertStatsScreenOmitsLegacyCopy(activity);
             });
         }
+    }
+
+    private static void assertStatsTimePanel(MainActivity activity) {
+        assertHasText(activity, "Kani is working for you");
+        assertHasText(activity, "Answered study time");
+        assertHasText(activity, "Today: 0 sec");
+        assertHasText(activity, "Last 7 days: 0 sec");
+        assertHasText(activity, "Answered tasks: 0");
+        assertHasText(activity, "Avg / task: 0 sec");
+    }
+
+    private static void assertWeaknessBurnDownPanel(MainActivity activity) {
+        assertHasText(activity, "Weakness Burn-Down");
+        assertHasText(activity, "4 weak kanji improved");
+        assertHasText(activity, "Average weakness: 0.75 -> 0.48 after Kani practice.");
+        assertHasText(activity, "痛  0.82 -> 0.46");
+        assertHasText(activity, "薬  0.76 -> 0.51");
+        assertHasText(activity, "疲  0.69 -> 0.44");
+        assertNoText(activity, "平  0.74 -> 0.50");
+    }
+
+    private static void assertSupportConversionPanel(MainActivity activity) {
+        assertHasText(activity, "Anki Support Conversion");
+        assertHasText(activity, "5 mature cards gained");
+        assertHasText(activity, "2 kanji gained first mature support.");
+        assertHasText(activity, "痛  1 -> 3 mature cards");
+        assertHasText(activity, "薬  0 -> 2 mature cards");
+        assertHasText(activity, "疲  0 -> 1 mature cards");
+        assertHasText(activity, "Ladder Health");
+        assertHasText(activity, "0 active kanji on the ladder");
+    }
+
+    private static void assertStatsScreenOmitsLegacyCopy(MainActivity activity) {
+        assertNoText(activity, "Anki impact");
+        assertNoText(activity, "Kani writing");
+        assertNoText(activity, "Now practicing");
+        assertNoText(activity, "What this means");
+        assertNoText(activity, "You are turning Anki pain points");
     }
 
     @Test

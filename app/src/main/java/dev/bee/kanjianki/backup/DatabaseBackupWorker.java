@@ -2,6 +2,7 @@ package dev.bee.kanjianki.backup;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.work.Worker;
@@ -18,6 +19,7 @@ import java.util.Date;
 import java.util.Locale;
 
 public final class DatabaseBackupWorker extends Worker {
+    private static final String TAG = "DatabaseBackupWorker";
     private static final String DB_NAME = "kanji_anki_simple.db";
     private static final String BACKUP_DIR = "backups";
     private static final int MAX_BACKUPS = 31;
@@ -66,7 +68,11 @@ public final class DatabaseBackupWorker extends Worker {
             // Best-effort; copy will still work even without checkpoint
         } finally {
             if (db != null) {
-                try { db.close(); } catch (Exception ignored) { }
+                try {
+                    db.close();
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to close database after backup checkpoint.", e);
+                }
             }
         }
     }

@@ -34,11 +34,8 @@ public final class ReminderScheduler {
     }
 
     public static void schedule(Context context) {
-        LocalStore store = new LocalStore(context);
-        try {
+        try (LocalStore store = new LocalStore(context)) {
             schedule(context, store.reminderSettings());
-        } finally {
-            store.close();
         }
     }
 
@@ -154,8 +151,7 @@ public final class ReminderScheduler {
     }
 
     private static ReminderCopy reminderCopy(Context context) {
-        LocalStore store = new LocalStore(context);
-        try {
+        try (LocalStore store = new LocalStore(context)) {
             List<Records.DashboardRow> rows = store.activeDashboardRows();
             if (rows.isEmpty()) {
                 return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
@@ -188,8 +184,6 @@ public final class ReminderScheduler {
                 );
             }
             return new ReminderCopy("Check Kani", "Your queue can rest today. Open Kani if you want an extra problem kanji rep.");
-        } finally {
-            store.close();
         }
     }
 

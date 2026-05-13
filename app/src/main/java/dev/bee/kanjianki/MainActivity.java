@@ -116,9 +116,12 @@ public final class MainActivity extends Activity {
     private static final String NAV_SETTINGS_ROUTE = "settings";
     private static final String LABEL_BACK_HOME = "Back home";
     private static final String LABEL_MEANING = "Meaning";
+    private static final String LABEL_PASS = "Pass";
     private static final String LABEL_PRACTICE = "Practice";
+    private static final String LABEL_SIMILAR_KANJI = "Similar kanji";
     private static final String LABEL_STUDY_NOW = "Study now";
     private static final String RATING_AGAIN = "again";
+    private static final String RATING_GOOD = "good";
     private static final String STATE_LEARNING = "learning";
     private static final String STATE_RETIRED = "retired";
     private static final String SOURCE_ACTIVE = "active";
@@ -926,8 +929,18 @@ public final class MainActivity extends Activity {
         boolean working = stats != null
                 && (stats.weakKanjiImproved.improvedCount > 0 || stats.matureSupportGained.matureSupportGained > 0);
         boolean hasLadder = stats != null && stats.ladderHealth.totalActiveItems > 0;
-        int stroke = working ? TEAL : hasLadder ? GOLD : Color.rgb(178, 178, 186);
-        int background = working ? Color.rgb(238, 252, 250) : hasLadder ? Color.rgb(255, 250, 226) : Color.rgb(246, 246, 248);
+        int stroke;
+        int background;
+        if (working) {
+            stroke = TEAL;
+            background = Color.rgb(238, 252, 250);
+        } else if (hasLadder) {
+            stroke = GOLD;
+            background = Color.rgb(255, 250, 226);
+        } else {
+            stroke = Color.rgb(178, 178, 186);
+            background = Color.rgb(246, 246, 248);
+        }
         LinearLayout box = panelBox(background, stroke);
         box.addView(text(working ? "Kani is working for you" : "Kani is not currently working for you", 24, working ? TEAL : MUTED, true));
         box.addView(text(statsVerdictBody(stats, working, hasLadder), 15, working ? INK : MUTED, false));
@@ -1020,7 +1033,7 @@ public final class MainActivity extends Activity {
         return switch (rung) {
             case WRITE_KANJI -> "Write kanji";
             case TYPE_MEANING -> "Type meaning";
-            case SIMILAR_KANJI -> "Similar kanji";
+            case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
             case KANJI_MEANING -> "Kanji meaning";
             case FONT_MEANING -> "Font meaning";
             case WORD_READING -> "Word reading";
@@ -1156,10 +1169,6 @@ public final class MainActivity extends Activity {
         return Color.rgb(246, 202, 225);
     }
 
-    private String dueText(long dueAt, long now) {
-        return UiDateText.dueText(dueAt, now);
-    }
-
     private View queueRowView(QueueEntry entry, long now) {
         Records.DashboardRow row = entry.row;
         Records.StudyItem item = entry.item;
@@ -1185,7 +1194,7 @@ public final class MainActivity extends Activity {
         if (item.phase == Records.SchedulerPhase.RELEARNING) {
             chips.addView(chip("relearning", CORAL));
         } else if (item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-            chips.addView(chip("learning", TEAL));
+            chips.addView(chip(STATE_LEARNING, TEAL));
         }
         box.addView(chips);
         return box;
@@ -1622,7 +1631,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (rows.isEmpty()) {
-            renderEmptyStudyQueue(now);
+            renderEmptyStudyQueue();
             return;
         }
         List<Records.StudyItem> beforeSeed = store.studyItems();
@@ -1637,7 +1646,7 @@ public final class MainActivity extends Activity {
         }
         activeSession = nextActiveSession(rows, seeded, seededPlan, now);
         if (activeSession == null) {
-            renderNoStudySession(rows, seededPlan, now);
+            renderNoStudySession(seededPlan);
             return;
         }
         store.saveStudyItem(activeSession.item);
@@ -1647,7 +1656,7 @@ public final class MainActivity extends Activity {
         renderSession(activeSession);
     }
 
-    private void renderEmptyStudyQueue(long now) {
+    private void renderEmptyStudyQueue() {
         prepareStudyContent(activeStudyPlan, false);
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
@@ -1662,7 +1671,7 @@ public final class MainActivity extends Activity {
         return new BridgeScheduler().nextSession(seeded, rows, now, focus);
     }
 
-    private void renderNoStudySession(List<Records.DashboardRow> rows, Records.AdaptiveLoadPlan seededPlan, long now) {
+    private void renderNoStudySession(Records.AdaptiveLoadPlan seededPlan) {
         if (!continueAllKanjiSession && seededPlan.focusComplete()) {
             renderFocusDone(seededPlan);
             return;
@@ -1792,10 +1801,6 @@ public final class MainActivity extends Activity {
         return item.rung.wireName();
     }
 
-    private String taskTypeForStudyItem(Records.StudyItem item) {
-        return item.rung.wireName();
-    }
-
     private void renderSession(Records.StudySession session) {
         if (session.writingRequired) {
             renderWritingSession(session);
@@ -1833,7 +1838,7 @@ public final class MainActivity extends Activity {
         LinearLayout cardShell = softStudyCard();
         cardShell.addView(modePill("Recognise"));
         cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
-        cardShell.addView(text("Similar kanji", 16, STUDY_PINK_DARK, true));
+        cardShell.addView(text(LABEL_SIMILAR_KANJI, 16, STUDY_PINK_DARK, true));
         cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
         LinearLayout box = softInsetPanel();
         String meaning = session.row != null ? session.row.primaryMeaning : "";
@@ -1877,7 +1882,7 @@ public final class MainActivity extends Activity {
             button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
             button.setOnClickListener(v -> {
                 boolean correct = glyph.equals(correctKanji);
-                submitReview(correct ? "good" : "again", false);
+                submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
             lp.setMargins(dp(4), dp(8), dp(4), 0);
@@ -2307,8 +2312,8 @@ public final class MainActivity extends Activity {
             failParams.setMargins(0, 0, dp(6), 0);
             actions.addView(fail, failParams);
 
-            Button pass = pinkPrimaryButton("Pass");
-            pass.setOnClickListener(v -> submitReview("good", false));
+            Button pass = pinkPrimaryButton(LABEL_PASS);
+            pass.setOnClickListener(v -> submitReview(RATING_GOOD, false));
             LinearLayout.LayoutParams passParams = new LinearLayout.LayoutParams(0, dp(62), 1);
             passParams.setMargins(dp(6), 0, 0, 0);
             actions.addView(pass, passParams);
@@ -2327,7 +2332,7 @@ public final class MainActivity extends Activity {
                 typingAnswerInput == null ? "" : typingAnswerInput.getText().toString(),
                 collectionMeaningForSession(activeSession))) {
             Toast.makeText(this, "Typing answer accepted.", Toast.LENGTH_SHORT).show();
-            submitReview("good", false);
+            submitReview(RATING_GOOD, false);
             return;
         }
         flashcardAnswerRevealed = true;
@@ -2423,7 +2428,7 @@ public final class MainActivity extends Activity {
             if (!flashcardAnswerRevealed) {
                 return false;
             }
-            submitReview(dx > 0 ? "good" : RATING_AGAIN, false);
+            submitReview(dx > 0 ? RATING_GOOD : RATING_AGAIN, false);
             return true;
         }
         return false;
@@ -2477,11 +2482,11 @@ public final class MainActivity extends Activity {
         downloadModelButton.setOnClickListener(v -> downloadWritingModel());
         primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
-        nextAfterPassButton = pinkPrimaryButton("Pass");
+        nextAfterPassButton = pinkPrimaryButton(LABEL_PASS);
         // Write_kanji rung exposes only Pass / Fail per the ladder contract.
         // A successful writing recognition is always treated as Good; Hard /
         // Easy grading from the recognizer is not surfaced on this rung.
-        nextAfterPassButton.setOnClickListener(v -> submitReview("good", false));
+        nextAfterPassButton.setOnClickListener(v -> submitReview(RATING_GOOD, false));
         primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
         studyActionBar.addView(primaryActions);
 
@@ -2492,7 +2497,7 @@ public final class MainActivity extends Activity {
         fallbackActions.addView(replayButton, new LinearLayout.LayoutParams(0, dp(56), 1));
 
         manualOverrideButton = studySecondaryButton("Mark right anyway");
-        manualOverrideButton.setOnClickListener(v -> submitReview("good", true));
+        manualOverrideButton.setOnClickListener(v -> submitReview(RATING_GOOD, true));
         fallbackActions.addView(manualOverrideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
 
         practiceWithGuideButton = studySecondaryButton("Try again with full guide");
@@ -2647,14 +2652,6 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private boolean sameLocalDay(long leftMillis, long rightMillis) {
-        return UiDateText.sameLocalDay(leftMillis, rightMillis);
-    }
-
-    private long nextLocalDayStart(long now) {
-        return UiDateText.nextLocalDayStart(now);
-    }
-
     private HintState initialHintState(Records.StudySession session) {
         int stored = Math.max(0, Math.min(3, session.item.writingLevel));
         if (TASK_TARGETED_WRITING.equals(session.taskType)
@@ -2755,7 +2752,7 @@ public final class MainActivity extends Activity {
         if (nextAfterPassButton != null) {
             nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
             if (submittable) {
-                nextAfterPassButton.setText(nextReviewButtonText(activeAnalysis));
+                nextAfterPassButton.setText(LABEL_PASS);
             }
         }
     }
@@ -3379,10 +3376,10 @@ public final class MainActivity extends Activity {
     private String settingsImportSummary(Records.Settings settings) {
         List<String> sources = new ArrayList<>();
         if (settings.importActiveCards) {
-            sources.add("active");
+            sources.add(SOURCE_ACTIVE);
         }
         if (settings.importSuspendedCards) {
-            sources.add("suspended");
+            sources.add(SOURCE_SUSPENDED);
         }
         if (settings.importTaggedCardsEnabled()) {
             sources.add("tagged");
@@ -3516,24 +3513,12 @@ public final class MainActivity extends Activity {
         Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
-            boolean taggedEnabled = taggedCards.isChecked() && !parsedTags.isEmpty();
-            if (!activeCards.isChecked() && !suspendedCards.isChecked() && !taggedEnabled && !weakCards.isChecked()) {
+            if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, parsedTags)) {
                 Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            double difficulty;
-            int lapseThreshold;
-            int minCards;
-            try {
-                difficulty = parseDecimalInput(difficultyInput);
-                lapseThreshold = parseThresholdInput(lapses);
-                minCards = parseThresholdInput(minMatching);
-            } catch (NumberFormatException error) {
-                Toast.makeText(this, "Use numeric import thresholds.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (difficulty < 1.0 || difficulty > 10.0 || lapseThreshold < 1 || lapseThreshold > 100 || minCards < 1 || minCards > 1000) {
-                Toast.makeText(this, "Use difficulty 1-10, lapses 1-100, and cards 1-1000.", Toast.LENGTH_SHORT).show();
+            ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
+            if (parsedThresholds == null) {
                 return;
             }
             store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, activeCards.isChecked() ? 1 : 0);
@@ -3541,14 +3526,53 @@ public final class MainActivity extends Activity {
             store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, taggedCards.isChecked() ? 1 : 0);
             store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, String.join(" ", parsedTags));
             store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, weakCards.isChecked() ? 1 : 0);
-            store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, difficulty);
-            store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, lapseThreshold);
-            store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, minCards);
+            store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, parsedThresholds.difficulty);
+            store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, parsedThresholds.lapseThreshold);
+            store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
             Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
             renderSettings();
         });
         box.addView(save);
         return box;
+    }
+
+    private ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
+        double difficulty;
+        int lapseThreshold;
+        int minCards;
+        try {
+            difficulty = parseDecimalInput(difficultyInput);
+            lapseThreshold = parseThresholdInput(lapses);
+            minCards = parseThresholdInput(minMatching);
+        } catch (NumberFormatException error) {
+            Toast.makeText(this, "Use numeric import thresholds.", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+        if (!validImportThresholds(difficulty, lapseThreshold, minCards)) {
+            Toast.makeText(this, "Use difficulty 1-10, lapses 1-100, and cards 1-1000.", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+        return new ImportThresholds(difficulty, lapseThreshold, minCards);
+    }
+
+    private boolean hasSelectedImportSource(
+            CheckBox activeCards,
+            CheckBox suspendedCards,
+            CheckBox taggedCards,
+            CheckBox weakCards,
+            List<String> parsedTags
+    ) {
+        if (activeCards.isChecked() || suspendedCards.isChecked() || weakCards.isChecked()) {
+            return true;
+        }
+        return taggedCards.isChecked() && !parsedTags.isEmpty();
+    }
+
+    private boolean validImportThresholds(double difficulty, int lapseThreshold, int minCards) {
+        boolean difficultyValid = difficulty >= 1.0 && difficulty <= 10.0;
+        boolean lapsesValid = lapseThreshold >= 1 && lapseThreshold <= 100;
+        boolean minCardsValid = minCards >= 1 && minCards <= 1000;
+        return difficultyValid && lapsesValid && minCardsValid;
     }
 
     private CheckBox importFilterCheckBox(String label, boolean checked) {
@@ -4760,7 +4784,7 @@ public final class MainActivity extends Activity {
             case TASK_FONT_MEANING -> "Font -> meaning";
             case TASK_WORD_READING -> "Word -> reading";
             case BridgeScheduler.TASK_WRITE_KANJI -> "Write kanji";
-            case BridgeScheduler.TASK_SIMILAR_KANJI -> "Similar kanji";
+            case BridgeScheduler.TASK_SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
             case "meaning_flashcard" -> "Quick recall";
             case "font_recognition" -> "Font check";
             case "repair_writing" -> "Write to repair";
@@ -4807,13 +4831,6 @@ public final class MainActivity extends Activity {
             default:
                 return "Write from memory, then check. Use Hint if you are stuck.";
         }
-    }
-
-    private String nextReviewButtonText(WritingAnalysis analysis) {
-        // The write_kanji rung is Pass-only per the ladder contract; the
-        // button label does not surface Hard / Easy / miss variants even
-        // when the recognizer rating is available.
-        return "Pass";
     }
 
     private String attemptProgressText(WritingAnalysis analysis) {
@@ -4865,11 +4882,23 @@ public final class MainActivity extends Activity {
     }
 
     private long startOfDay(long now) {
-        return now - (now % 86_400_000L);
+        return now - (now % DAY_MILLIS);
     }
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class ImportThresholds {
+        private final double difficulty;
+        private final int lapseThreshold;
+        private final int minCards;
+
+        private ImportThresholds(double difficulty, int lapseThreshold, int minCards) {
+            this.difficulty = difficulty;
+            this.lapseThreshold = lapseThreshold;
+            this.minCards = minCards;
+        }
     }
 
     private static final class ActiveStudyTask {

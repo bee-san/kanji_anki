@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 public final class Records {
@@ -25,6 +26,9 @@ public final class Records {
     public static final int DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI = 1;
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
+    public static final String SOURCE_ACTIVE = "active";
+    public static final String SOURCE_SUSPENDED = "suspended";
+    private static final Logger LOGGER = Logger.getLogger(Records.class.getName());
     private static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");
     private static final Pattern IMPORT_TAG_SEPARATOR = Pattern.compile("[,\\s]+");
 
@@ -65,7 +69,7 @@ public final class Records {
                     return rung;
                 }
             }
-            System.err.println("LadderRung.fromWireName: unknown wire name '" + name + "', defaulting to KANJI_MEANING");
+            LOGGER.warning(() -> "LadderRung.fromWireName: unknown wire name '" + name + "', defaulting to KANJI_MEANING");
             return KANJI_MEANING;
         }
     }
@@ -78,7 +82,7 @@ public final class Records {
      */
     public enum SchedulerPhase {
         NEW_LEARNING("new_learning"),
-        REVIEW("review"),
+        REVIEW(LEARNING_REPEAT_REVIEW),
         RELEARNING("relearning");
 
         private final String wireName;
@@ -100,12 +104,13 @@ public final class Records {
                     return phase;
                 }
             }
-            System.err.println("SchedulerPhase.fromWireName: unknown wire name '" + name + "', defaulting to NEW_LEARNING");
+            LOGGER.warning(() -> "SchedulerPhase.fromWireName: unknown wire name '" + name + "', defaulting to NEW_LEARNING");
             return NEW_LEARNING;
         }
     }
     private static final String CONTEXT_SETTINGS = "Settings";
     private static final String CONTEXT_CARD = "Card";
+    private static final String CONTEXT_SUSPENDED_SOURCE = "SuspendedSource";
     private static final String CONTEXT_EXAMPLE = "Example";
     private static final String CONTEXT_DASHBOARD_ROW = "DashboardRow";
     private static final String CONTEXT_KANJI_INVENTORY_ITEM = "KanjiInventoryItem";
@@ -170,28 +175,6 @@ public final class Records {
             return null;
         }
         return ((Number) value).doubleValue();
-    }
-
-    private static double doubleArg(Object[] args, int index, String context) {
-        Object value = arg(args, index, context);
-        return ((Number) value).doubleValue();
-    }
-
-    private static List<String> stringListArg(Object[] args, int index, String context) {
-        Object value = arg(args, index, context);
-        if (value == null) {
-            return Collections.emptyList();
-        }
-        if (value instanceof List<?> raw) {
-            List<String> out = new ArrayList<>();
-            for (Object item : raw) {
-                if (item != null) {
-                    out.add(item.toString());
-                }
-            }
-            return out;
-        }
-        return parseImportTags(value.toString());
     }
 
     public static List<String> parseImportTags(String value) {
@@ -377,6 +360,28 @@ public final class Records {
                     args.importMinMatchingCardsPerKanji = intArg(rest, 18, CONTEXT_SETTINGS);
                 }
                 return args;
+            }
+
+            private static double doubleArg(Object[] args, int index, String context) {
+                Object value = arg(args, index, context);
+                return ((Number) value).doubleValue();
+            }
+
+            private static List<String> stringListArg(Object[] args, int index, String context) {
+                Object value = arg(args, index, context);
+                if (value == null) {
+                    return Collections.emptyList();
+                }
+                if (value instanceof List<?> raw) {
+                    List<String> out = new ArrayList<>();
+                    for (Object item : raw) {
+                        if (item != null) {
+                            out.add(item.toString());
+                        }
+                    }
+                    return out;
+                }
+                return parseImportTags(value.toString());
             }
         }
 
@@ -599,17 +604,7 @@ public final class Records {
                     expression,
                     reading,
                     meaning,
-                    sentence,
-                    "suspended",
-                    true,
-                    true,
-                    false,
-                    0,
-                    0,
-                    0,
-                    null,
-                    null,
-                    null
+                    SuspendedSourceDetails.builder(sentence).build()
             );
         }
 
@@ -620,35 +615,126 @@ public final class Records {
                 String expression,
                 String reading,
                 String meaning,
-                String sentence,
-                String sourceType,
-                boolean suspended,
-                boolean forcePractice,
-                boolean mature,
-                int lapses,
-                int intervalDays,
-                int reps,
-                Double fsrsStability,
-                Double fsrsDifficulty,
-                Double fsrsRetrievability
+                SuspendedSourceDetails details
         ) {
+            SuspendedSourceDetails sourceDetails = details == null
+                    ? SuspendedSourceDetails.builder("").build()
+                    : details;
             this.kanji = kanji;
             this.cardId = cardId;
             this.noteId = noteId;
             this.expression = expression;
             this.reading = reading;
             this.meaning = meaning;
-            this.sentence = sentence;
-            this.sourceType = sourceType == null || sourceType.trim().isEmpty() ? (suspended ? "suspended" : "active") : sourceType.trim();
-            this.suspended = suspended;
-            this.forcePractice = forcePractice;
-            this.mature = mature;
-            this.lapses = Math.max(0, lapses);
-            this.intervalDays = Math.max(0, intervalDays);
-            this.reps = Math.max(0, reps);
-            this.fsrsStability = fsrsStability;
-            this.fsrsDifficulty = fsrsDifficulty;
-            this.fsrsRetrievability = fsrsRetrievability;
+            this.sentence = sourceDetails.sentence;
+            this.sourceType = normalizeSourceType(sourceDetails.sourceType, sourceDetails.suspended);
+            this.suspended = sourceDetails.suspended;
+            this.forcePractice = sourceDetails.forcePractice;
+            this.mature = sourceDetails.mature;
+            this.lapses = Math.max(0, sourceDetails.lapses);
+            this.intervalDays = Math.max(0, sourceDetails.intervalDays);
+            this.reps = Math.max(0, sourceDetails.reps);
+            this.fsrsStability = sourceDetails.fsrsStability;
+            this.fsrsDifficulty = sourceDetails.fsrsDifficulty;
+            this.fsrsRetrievability = sourceDetails.fsrsRetrievability;
+        }
+
+        private static String normalizeSourceType(String sourceType, boolean suspended) {
+            if (sourceType != null && !sourceType.trim().isEmpty()) {
+                return sourceType.trim();
+            }
+            if (suspended) {
+                return SOURCE_SUSPENDED;
+            }
+            return SOURCE_ACTIVE;
+        }
+    }
+
+    public static final class SuspendedSourceDetails {
+        private final String sentence;
+        private final String sourceType;
+        private final boolean suspended;
+        private final boolean forcePractice;
+        private final boolean mature;
+        private final int lapses;
+        private final int intervalDays;
+        private final int reps;
+        private final Double fsrsStability;
+        private final Double fsrsDifficulty;
+        private final Double fsrsRetrievability;
+
+        private SuspendedSourceDetails(Builder builder) {
+            this.sentence = builder.sentence;
+            this.sourceType = builder.sourceType;
+            this.suspended = builder.suspended;
+            this.forcePractice = builder.forcePractice;
+            this.mature = builder.mature;
+            this.lapses = builder.lapses;
+            this.intervalDays = builder.intervalDays;
+            this.reps = builder.reps;
+            this.fsrsStability = builder.fsrsStability;
+            this.fsrsDifficulty = builder.fsrsDifficulty;
+            this.fsrsRetrievability = builder.fsrsRetrievability;
+        }
+
+        public static Builder builder(String sentence) {
+            return new Builder(sentence);
+        }
+
+        public static final class Builder {
+            private final String sentence;
+            private String sourceType = SOURCE_SUSPENDED;
+            private boolean suspended = true;
+            private boolean forcePractice = true;
+            private boolean mature;
+            private int lapses;
+            private int intervalDays;
+            private int reps;
+            private Double fsrsStability;
+            private Double fsrsDifficulty;
+            private Double fsrsRetrievability;
+
+            private Builder(String sentence) {
+                this.sentence = sentence;
+            }
+
+            public Builder sourceType(String sourceType) {
+                this.sourceType = sourceType;
+                return this;
+            }
+
+            public Builder suspended(boolean suspended) {
+                this.suspended = suspended;
+                return this;
+            }
+
+            public Builder forcePractice(boolean forcePractice) {
+                this.forcePractice = forcePractice;
+                return this;
+            }
+
+            public Builder mature(boolean mature) {
+                this.mature = mature;
+                return this;
+            }
+
+            public Builder reviewStats(int lapses, int intervalDays, int reps) {
+                this.lapses = lapses;
+                this.intervalDays = intervalDays;
+                this.reps = reps;
+                return this;
+            }
+
+            public Builder fsrs(Double stability, Double difficulty, Double retrievability) {
+                this.fsrsStability = stability;
+                this.fsrsDifficulty = difficulty;
+                this.fsrsRetrievability = retrievability;
+                return this;
+            }
+
+            public SuspendedSourceDetails build() {
+                return new SuspendedSourceDetails(this);
+            }
         }
     }
 
@@ -1436,22 +1522,14 @@ public final class Records {
             if (taskType == null) {
                 return kanjiMeaningMemory;
             }
-            switch (taskType) {
-                case BridgeScheduler.TASK_WRITING_REMEDIATION:
-                case BridgeScheduler.TASK_WRITE_KANJI:
-                    return writingRemediationMemory;
-                case BridgeScheduler.TASK_TYPING_MEANING:
-                case BridgeScheduler.TASK_TYPE_MEANING:
-                    return typingMeaningMemory;
-                case BridgeScheduler.TASK_SIMILAR_KANJI:
-                    return similarKanjiMemory;
-                case BridgeScheduler.TASK_WORD_READING:
-                    return wordReadingMemory;
-                case BridgeScheduler.TASK_FONT_MEANING:
-                    return fontMeaningMemory;
-                default:
-                    return kanjiMeaningMemory;
-            }
+            return switch (taskType) {
+                case BridgeScheduler.TASK_WRITING_REMEDIATION, BridgeScheduler.TASK_WRITE_KANJI -> writingRemediationMemory;
+                case BridgeScheduler.TASK_TYPING_MEANING, BridgeScheduler.TASK_TYPE_MEANING -> typingMeaningMemory;
+                case BridgeScheduler.TASK_SIMILAR_KANJI -> similarKanjiMemory;
+                case BridgeScheduler.TASK_WORD_READING -> wordReadingMemory;
+                case BridgeScheduler.TASK_FONT_MEANING -> fontMeaningMemory;
+                default -> kanjiMeaningMemory;
+            };
         }
 
         public TaskMemory memoryForRung(LadderRung rung) {
@@ -1479,22 +1557,16 @@ public final class Records {
             if (taskType == null) {
                 return copyBuilder().kanjiMeaningMemory(memory).build();
             }
-            switch (taskType) {
-                case BridgeScheduler.TASK_WRITING_REMEDIATION:
-                case BridgeScheduler.TASK_WRITE_KANJI:
-                    return copyBuilder().writingRemediationMemory(memory).build();
-                case BridgeScheduler.TASK_TYPING_MEANING:
-                case BridgeScheduler.TASK_TYPE_MEANING:
-                    return copyBuilder().typingMeaningMemory(memory).build();
-                case BridgeScheduler.TASK_SIMILAR_KANJI:
-                    return copyBuilder().similarKanjiMemory(memory).build();
-                case BridgeScheduler.TASK_WORD_READING:
-                    return copyBuilder().wordReadingMemory(memory).build();
-                case BridgeScheduler.TASK_FONT_MEANING:
-                    return copyBuilder().fontMeaningMemory(memory).build();
-                default:
-                    return copyBuilder().kanjiMeaningMemory(memory).build();
-            }
+            return switch (taskType) {
+                case BridgeScheduler.TASK_WRITING_REMEDIATION, BridgeScheduler.TASK_WRITE_KANJI ->
+                        copyBuilder().writingRemediationMemory(memory).build();
+                case BridgeScheduler.TASK_TYPING_MEANING, BridgeScheduler.TASK_TYPE_MEANING ->
+                        copyBuilder().typingMeaningMemory(memory).build();
+                case BridgeScheduler.TASK_SIMILAR_KANJI -> copyBuilder().similarKanjiMemory(memory).build();
+                case BridgeScheduler.TASK_WORD_READING -> copyBuilder().wordReadingMemory(memory).build();
+                case BridgeScheduler.TASK_FONT_MEANING -> copyBuilder().fontMeaningMemory(memory).build();
+                default -> copyBuilder().kanjiMeaningMemory(memory).build();
+            };
         }
 
         public StudyItem withTaskMemories(TaskMemory kanjiMemory, TaskMemory fontMemory, TaskMemory wordMemory, TaskMemory writingMemory) {
