@@ -515,10 +515,10 @@ public final class Records {
         public final boolean browserQueryMatched;
 
         public Card(long cardId, long noteId, int ord, String deckId, Object... rest) {
-            this(cardId, noteId, ord, deckId, false, CardArgs.from(deckId, rest));
+            this(cardId, noteId, ord, false, CardArgs.from(deckId, rest));
         }
 
-        private Card(long cardId, long noteId, int ord, String deckId, boolean browserQueryMatched, CardArgs args) {
+        private Card(long cardId, long noteId, int ord, boolean browserQueryMatched, CardArgs args) {
             this.cardId = cardId;
             this.noteId = noteId;
             this.ord = ord;
@@ -554,7 +554,7 @@ public final class Records {
             args.fsrsStability = this.fsrsStability;
             args.fsrsDifficulty = this.fsrsDifficulty;
             args.fsrsRetrievability = this.fsrsRetrievability;
-            return new Card(cardId, noteId, ord, deckId, matched, args);
+            return new Card(cardId, noteId, ord, matched, args);
         }
 
         private static final class CardArgs {

@@ -126,15 +126,13 @@ public final class BridgeScheduler {
             String rowKey = rowFamilyKey(row);
             Records.StudyItem current = state.byFamily.get(rowKey);
             boolean eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current);
-            if (!eligible) {
-                continue;
+            if (eligible) {
+                available++;
+                if (admittedKanji.size() < requested) {
+                    admitExtraSeedRow(request, state, row, rowKey, current);
+                    admittedKanji.add(row.kanji);
+                }
             }
-            available++;
-            if (admittedKanji.size() >= requested) {
-                continue;
-            }
-            admitExtraSeedRow(request, state, row, rowKey, current);
-            admittedKanji.add(row.kanji);
         }
         state.items.sort(Comparator
                 .comparing((Records.StudyItem item) -> item.state.equals(STATE_RETIRED))
@@ -615,7 +613,7 @@ public final class BridgeScheduler {
         state.stepIndex = 0;
         int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
         Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
-        state.stability = engine.initialStability(fsrsRating == Fsrs5Engine.ratingToInt("again") ? 3 : fsrsRating);
+        state.stability = engine.initialStability(fsrsRating == Fsrs5Engine.ratingToInt(RATING_AGAIN) ? 3 : fsrsRating);
         state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
         long interval = engine.nextIntervalMillis(state.stability);
         state.scheduledIntervalDays = intervalDays(interval);
@@ -630,14 +628,14 @@ public final class BridgeScheduler {
                 applyReviewAgain(context, state);
                 break;
             case RATING_HARD:
-                applyReviewPass(context, state, context.parameters.hardMultiplier, 0.2);
+                applyReviewPass(context, state);
                 break;
             case RATING_EASY:
-                applyReviewPass(context, state, context.parameters.easyMultiplier, -0.35);
+                applyReviewPass(context, state);
                 break;
             case RATING_GOOD:
             default:
-                applyReviewPass(context, state, context.parameters.goodMultiplier, -0.1);
+                applyReviewPass(context, state);
                 break;
         }
     }
@@ -670,7 +668,7 @@ public final class BridgeScheduler {
         }
     }
 
-    private void applyReviewPass(ReviewContext context, ReviewState state, double multiplier, double difficultyDelta) {
+    private void applyReviewPass(ReviewContext context, ReviewState state) {
         Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
         int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
         state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
@@ -905,7 +903,7 @@ public final class BridgeScheduler {
 
     private static final int MATURE_DAYS_THRESHOLD = 21;
 
-    public List<Records.StudyItem> applySuppression(List<Records.StudyItem> items, Records.Settings settings) {
+    public List<Records.StudyItem> applySuppression(List<Records.StudyItem> items) {
         Map<String, List<Records.StudyItem>> byKanji = new HashMap<>();
         for (Records.StudyItem item : items) {
             byKanji.computeIfAbsent(item.kanji, k -> new ArrayList<>()).add(item);
@@ -943,13 +941,10 @@ public final class BridgeScheduler {
     private String findDominatingMatureSibling(Records.StudyItem item, List<Records.StudyItem> siblings) {
         Records.LadderRung itemRung = item.rung;
         for (Records.StudyItem sibling : siblings) {
-            if (sibling == item || STATE_RETIRED.equals(sibling.state)) {
-                continue;
-            }
-            if (!dominates(sibling.rung, itemRung)) {
-                continue;
-            }
-            if (isMature(sibling)) {
+            boolean skip = sibling == item
+                    || STATE_RETIRED.equals(sibling.state)
+                    || !dominates(sibling.rung, itemRung);
+            if (!skip && isMature(sibling)) {
                 return sibling.rung.wireName();
             }
         }

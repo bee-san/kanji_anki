@@ -300,7 +300,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         // counters directly. Old rows are dropped and users rebuild progress.
         db.execSQL("DROP INDEX IF EXISTS idx_study_due");
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_STUDY_ITEMS);
-        db.execSQL(STUDY_ITEMS_TABLE_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "));
+        db.execSQL(STUDY_ITEMS_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED));
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON " + TABLE_STUDY_ITEMS + "(state, due_at)");
         // learning_repeats, similar_kanji_choice_state, and
         // similar_kanji_repair_queue are emptied here so the ladder scheduler

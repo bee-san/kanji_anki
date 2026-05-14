@@ -33,6 +33,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private static final String CONTENT_SCHEME = "content";
     private static final String ARCHIVED_TAG = "kani_archived";
     private static final String LEGACY_ARCHIVED_TAG = "kanji_anki_archived";
+    private static final String NOTE_MODEL_QUERY_PREFIX = "note:\"";
     private static final String READ_WRITE_DATABASE_PERMISSION = "com.ichi2.anki.permission.READ_WRITE_DATABASE";
     private static final String DEBUG_READ_WRITE_DATABASE_PERMISSION = "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE";
     private static final String COLUMN_ID = "_id";
@@ -151,22 +152,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
             Set<Long> browserQueryNoteIds = queryBrowserQueryNoteIds(target, mapping, settings);
-            for (Long noteId : browserQueryNoteIds) {
-                if (!notes.containsKey(noteId)) {
-                    try {
-                        Map<Long, Records.Note> extraNotes = queryNotesBySearch(
-                                target, mapping, settings,
-                                configuredBrowserQuerySearch(settings)
-                        );
-                        for (Map.Entry<Long, Records.Note> entry : extraNotes.entrySet()) {
-                            notes.putIfAbsent(entry.getKey(), entry.getValue());
-                        }
-                    } catch (Exception ignored) {
-                        Log.d(TAG, "Browser query note re-read failed; using tracked IDs only.", ignored);
-                    }
-                    break;
-                }
-            }
+            mergeMissingBrowserQueryNotes(target, mapping, settings, notes, browserQueryNoteIds);
             List<Records.Card> cards = queryCardsByNote(target, settings, notes.keySet(), reporter);
             validateTemplateCards(cards, settings);
             cards = cardsWithNotes(cards, notes.keySet());
@@ -184,6 +170,40 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 throw SyncFailure.permanent(error.getMessage() == null ? "Permanent AnkiDroid sync error." : error.getMessage(), error);
             }
             throw SyncFailure.retryable("AnkiDroid provider read failed: " + error.getMessage(), error);
+        }
+    }
+
+    private void mergeMissingBrowserQueryNotes(
+            ProviderTarget target,
+            ModelMapping mapping,
+            Records.Settings settings,
+            Map<Long, Records.Note> notes,
+            Set<Long> browserQueryNoteIds
+    ) throws SyncFailure {
+        for (Long noteId : browserQueryNoteIds) {
+            if (!notes.containsKey(noteId)) {
+                rereadBrowserQueryNotes(target, mapping, settings, notes);
+                return;
+            }
+        }
+    }
+
+    private void rereadBrowserQueryNotes(
+            ProviderTarget target,
+            ModelMapping mapping,
+            Records.Settings settings,
+            Map<Long, Records.Note> notes
+    ) throws SyncFailure {
+        try {
+            Map<Long, Records.Note> extraNotes = queryNotesBySearch(
+                    target, mapping, settings,
+                    configuredBrowserQuerySearch(settings)
+            );
+            for (Map.Entry<Long, Records.Note> entry : extraNotes.entrySet()) {
+                notes.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+        } catch (Exception ignored) {
+            Log.d(TAG, "Browser query note re-read failed; using tracked IDs only.", ignored);
         }
     }
 
@@ -340,7 +360,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
         Exception searchFailure = null;
         try {
-            return queryNotesBySearch(target, mapping, settings, "note:\"" + settings.modelName + "\"");
+            return queryNotesBySearch(target, mapping, settings, NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\"");
         } catch (Exception error) {
             searchFailure = error;
         }
@@ -541,7 +561,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             cursor = resolver.query(
                     uriFor(target.authority, URI_SEGMENT_NOTES),
                     null,
-                    "note:\"" + settings.modelName + "\" is:suspended",
+                    NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\" is:suspended",
                     null,
                     null
             );
@@ -593,7 +613,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private static String configuredBrowserQuerySearch(Records.Settings settings) {
-        return "note:\"" + settings.modelName + "\" (" + settings.normalizedBrowserQuery() + ")";
+        return NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\" (" + settings.normalizedBrowserQuery() + ")";
     }
 
     private static List<Records.Card> markBrowserQueryMatchedCards(List<Records.Card> cards, Set<Long> browserQueryNoteIds) {

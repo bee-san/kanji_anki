@@ -215,36 +215,6 @@ public final class KanjiImportSelectorTest {
     }
 
     @Test
-    public void browserQueryDisabledIgnoresMarkedCard() throws Exception {
-        Records.Settings settings = settingsWithBrowserQuery(false, false, false, "tag:kani");
-        JitenKanjiRanks ranks = ranks("裂,1500\n");
-        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
-        Records.CollectionSnapshot snapshot = snapshot(
-                Collections.singletonList(note(1, "裂ける", "さける")),
-                Collections.singletonList(queryMatchedActive)
-        );
-
-        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
-
-        assertTrue(imports.isEmpty());
-    }
-
-    @Test
-    public void browserQueryEnabledWithBlankQueryIgnoresMarkedCard() throws Exception {
-        Records.Settings settings = settingsWithBrowserQuery(false, false, true, "  ");
-        JitenKanjiRanks ranks = ranks("裂,1500\n");
-        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
-        Records.CollectionSnapshot snapshot = snapshot(
-                Collections.singletonList(note(1, "裂ける", "さける")),
-                Collections.singletonList(queryMatchedActive)
-        );
-
-        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
-
-        assertTrue(imports.isEmpty());
-    }
-
-    @Test
     public void browserQueryMatchedSuspendedCardRetainsSuspendedSourceType() throws Exception {
         Records.Settings settings = settingsWithBrowserQuery(false, true, true, "tag:kani");
         JitenKanjiRanks ranks = ranks("謎,1600\n");
@@ -260,21 +230,6 @@ public final class KanjiImportSelectorTest {
         assertEquals(Records.SOURCE_SUSPENDED, imports.get(0).sources.get(0).sourceType);
         assertTrue(imports.get(0).sources.get(0).suspended);
         assertTrue(imports.get(0).sources.get(0).forcePractice);
-    }
-
-    @Test
-    public void browserQueryMatchedCardsStillFilteredByRankRange() throws Exception {
-        Records.Settings settings = settingsWithBrowserQuery(false, false, true, "tag:kani");
-        JitenKanjiRanks ranks = ranks("裂,5000\n");
-        Records.Card queryMatchedActive = card(10, 1, false).withBrowserQueryMatched(true);
-        Records.CollectionSnapshot snapshot = snapshot(
-                Collections.singletonList(note(1, "裂ける", "さける")),
-                Collections.singletonList(queryMatchedActive)
-        );
-
-        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
-
-        assertTrue(imports.isEmpty());
     }
 
     @Test

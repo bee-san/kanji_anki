@@ -8,6 +8,7 @@ import android.content.res.ColorStateList;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -120,6 +121,9 @@ public final class MainActivity extends Activity {
     private static final String LABEL_PRACTICE = "Practice";
     private static final String LABEL_SIMILAR_KANJI = "Similar kanji";
     private static final String LABEL_STUDY_NOW = "Study now";
+    private static final String LABEL_STUDY = "Study";
+    private static final String LABEL_NEW_CARDS = "New cards";
+    private static final String LABEL_CONTINUE_ALL_KANJI = "Continue all kanji";
     private static final String RATING_AGAIN = "again";
     private static final String RATING_GOOD = "good";
     private static final String STATE_LEARNING = "learning";
@@ -1704,7 +1708,7 @@ public final class MainActivity extends Activity {
         summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         card.addView(summary);
         boolean canStudyMore = addStudyMoreNewCardsButton(card);
-        Button keepGoing = canStudyMore ? studySecondaryButton("Continue all kanji") : pinkPrimaryButton("Continue all kanji");
+        Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
         keepGoing.setOnClickListener(v -> {
             studyMoreNewCardKanji.clear();
             continueAllKanjiSession = true;
@@ -1733,7 +1737,7 @@ public final class MainActivity extends Activity {
         }
         card.addView(summary);
         boolean canStudyMore = addStudyMoreNewCardsButton(card);
-        Button keepGoing = canStudyMore ? studySecondaryButton("Continue all kanji") : pinkPrimaryButton("Continue all kanji");
+        Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
         keepGoing.setOnClickListener(v -> {
             studyMoreNewCardKanji.clear();
             continueAllKanjiSession = true;
@@ -1780,17 +1784,17 @@ public final class MainActivity extends Activity {
     private void showStudyMoreNewCardsDialog(int availableAtOpen) {
         int defaultCount = Math.max(1, Math.min(5, availableAtOpen));
         EditText countInput = thresholdInput(defaultCount);
-        countInput.setHint("New cards");
-        countInput.setContentDescription("New cards");
+        countInput.setHint(LABEL_NEW_CARDS);
+        countInput.setContentDescription(LABEL_NEW_CARDS);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Study more new cards")
                 .setMessage("How many extra new cards do you want to study now?")
                 .setView(countInput)
-                .setPositiveButton("Study", null)
+                .setPositiveButton(LABEL_STUDY, null)
                 .setNegativeButton("Cancel", null)
                 .create();
-        dialog.setOnShowListener(opened -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        dialog.setOnShowListener(opened -> dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
             int requested;
             try {
                 requested = parseThresholdInput(countInput);
@@ -3631,36 +3635,53 @@ public final class MainActivity extends Activity {
         addFieldMappingInput(box, "Minimum matching cards per kanji", minMatching);
 
         Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
-            String queryText = browserQueryInput.getText().toString().trim();
-            if (browserQueryCards.isChecked() && queryText.isEmpty()) {
-                Toast.makeText(this, "Enter an Anki browser query or turn off Browser query.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
-                Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
-            if (parsedThresholds == null) {
-                return;
-            }
-            store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, activeCards.isChecked() ? 1 : 0);
-            store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, suspendedCards.isChecked() ? 1 : 0);
-            store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, taggedCards.isChecked() ? 1 : 0);
-            store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, String.join(" ", parsedTags));
-            store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, weakCards.isChecked() ? 1 : 0);
-            store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, parsedThresholds.difficulty);
-            store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, parsedThresholds.lapseThreshold);
-            store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
-            store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, browserQueryCards.isChecked() ? 1 : 0);
-            store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, queryText);
-            Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
-            renderSettings();
-        });
+        save.setOnClickListener(v -> saveImportFilters(
+                activeCards, suspendedCards, taggedCards, weakCards,
+                browserQueryCards, browserQueryInput, tags,
+                difficultyInput, lapses, minMatching
+        ));
         box.addView(save);
         return box;
+    }
+
+    private void saveImportFilters(
+            CheckBox activeCards,
+            CheckBox suspendedCards,
+            CheckBox taggedCards,
+            CheckBox weakCards,
+            CheckBox browserQueryCards,
+            EditText browserQueryInput,
+            EditText tags,
+            EditText difficultyInput,
+            EditText lapses,
+            EditText minMatching
+    ) {
+        List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
+        String queryText = browserQueryInput.getText().toString().trim();
+        if (browserQueryCards.isChecked() && queryText.isEmpty()) {
+            Toast.makeText(this, "Enter an Anki browser query or turn off Browser query.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
+            Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
+        if (parsedThresholds == null) {
+            return;
+        }
+        store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, activeCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, suspendedCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, taggedCards.isChecked() ? 1 : 0);
+        store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, String.join(" ", parsedTags));
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, weakCards.isChecked() ? 1 : 0);
+        store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, parsedThresholds.difficulty);
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, parsedThresholds.lapseThreshold);
+        store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
+        store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, browserQueryCards.isChecked() ? 1 : 0);
+        store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, queryText);
+        Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+        renderSettings();
     }
 
     private ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
@@ -4142,7 +4163,7 @@ public final class MainActivity extends Activity {
 
         EditText newSteps = stepInput(current.newStepsText());
         EditText reviewSteps = stepInput(current.reviewStepsText());
-        box.addView(text("New cards", 15, INK, true));
+        box.addView(text(LABEL_NEW_CARDS, 15, INK, true));
         box.addView(newSteps, new LinearLayout.LayoutParams(-1, dp(58)));
         box.addView(text("Review misses", 15, INK, true));
         box.addView(reviewSteps, new LinearLayout.LayoutParams(-1, dp(58)));
@@ -4972,7 +4993,7 @@ public final class MainActivity extends Activity {
 
     private String labelForTask(String task) {
         if (task == null) {
-            return "Study";
+            return LABEL_STUDY;
         }
         return switch (task) {
             case "targeted_flashcard" -> "Focused recall";
@@ -4990,7 +5011,7 @@ public final class MainActivity extends Activity {
             case "guided_writing" -> "Guided review";
             case "blind_writing", "sampled_handwriting" -> "Memory check";
             case "confusable_recognition" -> "Learn the shape";
-            default -> "Study";
+            default -> LABEL_STUDY;
         };
     }
 
