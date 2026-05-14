@@ -644,7 +644,7 @@ public final class BridgeScheduler {
         state.lapses++;
         state.taskLapses++;
         Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
-        state.difficulty = engine.updateDifficulty(state.difficulty, Fsrs5Engine.ratingToInt("again"));
+        state.difficulty = engine.updateDifficulty(state.difficulty, Fsrs5Engine.ratingToInt(RATING_AGAIN));
         double elapsedDays = Fsrs5Engine.elapsedDays(context.item.dueAtMillis, context.nowMillis);
         double retrievability = engine.retrievability(elapsedDays, state.stability);
         state.stability = engine.stabilityAfterForgetting(state.stability, state.difficulty, retrievability);

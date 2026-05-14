@@ -3635,50 +3635,75 @@ public final class MainActivity extends Activity {
         addFieldMappingInput(box, "Minimum matching cards per kanji", minMatching);
 
         Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
-        save.setOnClickListener(v -> saveImportFilters(
-                activeCards, suspendedCards, taggedCards, weakCards,
-                browserQueryCards, browserQueryInput, tags,
-                difficultyInput, lapses, minMatching
-        ));
+        save.setOnClickListener(v -> saveImportFilters(new ImportFilterInputs(
+                activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards,
+                browserQueryInput, tags, difficultyInput, lapses, minMatching
+        )));
         box.addView(save);
         return box;
     }
 
-    private void saveImportFilters(
-            CheckBox activeCards,
-            CheckBox suspendedCards,
-            CheckBox taggedCards,
-            CheckBox weakCards,
-            CheckBox browserQueryCards,
-            EditText browserQueryInput,
-            EditText tags,
-            EditText difficultyInput,
-            EditText lapses,
-            EditText minMatching
-    ) {
-        List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
-        String queryText = browserQueryInput.getText().toString().trim();
-        if (browserQueryCards.isChecked() && queryText.isEmpty()) {
+    private static final class ImportFilterInputs {
+        final CheckBox activeCards;
+        final CheckBox suspendedCards;
+        final CheckBox taggedCards;
+        final CheckBox weakCards;
+        final CheckBox browserQueryCards;
+        final EditText browserQueryInput;
+        final EditText tags;
+        final EditText difficultyInput;
+        final EditText lapses;
+        final EditText minMatching;
+
+        ImportFilterInputs(
+                CheckBox activeCards,
+                CheckBox suspendedCards,
+                CheckBox taggedCards,
+                CheckBox weakCards,
+                CheckBox browserQueryCards,
+                EditText browserQueryInput,
+                EditText tags,
+                EditText difficultyInput,
+                EditText lapses,
+                EditText minMatching
+        ) {
+            this.activeCards = activeCards;
+            this.suspendedCards = suspendedCards;
+            this.taggedCards = taggedCards;
+            this.weakCards = weakCards;
+            this.browserQueryCards = browserQueryCards;
+            this.browserQueryInput = browserQueryInput;
+            this.tags = tags;
+            this.difficultyInput = difficultyInput;
+            this.lapses = lapses;
+            this.minMatching = minMatching;
+        }
+    }
+
+    private void saveImportFilters(ImportFilterInputs inputs) {
+        List<String> parsedTags = Records.parseImportTags(inputs.tags.getText().toString());
+        String queryText = inputs.browserQueryInput.getText().toString().trim();
+        if (inputs.browserQueryCards.isChecked() && queryText.isEmpty()) {
             Toast.makeText(this, "Enter an Anki browser query or turn off Browser query.", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
+        if (!hasSelectedImportSource(inputs.activeCards, inputs.suspendedCards, inputs.taggedCards, inputs.weakCards, inputs.browserQueryCards, parsedTags, queryText)) {
             Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
             return;
         }
-        ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
+        ImportThresholds parsedThresholds = readImportThresholds(inputs.difficultyInput, inputs.lapses, inputs.minMatching);
         if (parsedThresholds == null) {
             return;
         }
-        store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, activeCards.isChecked() ? 1 : 0);
-        store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, suspendedCards.isChecked() ? 1 : 0);
-        store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, taggedCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, inputs.activeCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, inputs.suspendedCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, inputs.taggedCards.isChecked() ? 1 : 0);
         store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, String.join(" ", parsedTags));
-        store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, weakCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, inputs.weakCards.isChecked() ? 1 : 0);
         store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, parsedThresholds.difficulty);
         store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, parsedThresholds.lapseThreshold);
         store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
-        store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, browserQueryCards.isChecked() ? 1 : 0);
+        store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, inputs.browserQueryCards.isChecked() ? 1 : 0);
         store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, queryText);
         Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
         renderSettings();
