@@ -5038,7 +5038,13 @@ public final class MainActivity extends Activity {
     }
 
     private long startOfDay(long now) {
-        return now - (now % DAY_MILLIS);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(now);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
     }
 
     private int dp(int value) {

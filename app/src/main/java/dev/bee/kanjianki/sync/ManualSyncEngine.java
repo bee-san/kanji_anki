@@ -162,7 +162,13 @@ public final class ManualSyncEngine {
     }
 
     private long startOfDay(long now) {
-        return now - (now % 86_400_000L);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(now);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
     }
 
     private List<Records.SuspendedImport> mergeSuspendedImports(List<Records.SuspendedImport> stored, List<Records.SuspendedImport> current) {

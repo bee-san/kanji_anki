@@ -601,13 +601,12 @@ public final class BridgeScheduler {
     }
 
     private void graduateToReview(ReviewContext context, ReviewState state) {
-        // Preserve the Anki behaviour of granting an initial interval when
-        // the card graduates. Use the current stability for Good / Easy paths,
-        // floored to at least one day.
         state.stepIndex = 0;
-        state.stability = Math.max(1.0, state.stability * context.parameters.goodMultiplier);
-        state.difficulty = Math.max(1.0, state.difficulty - 0.1);
-        long interval = reviewInterval(state.stability, context.parameters);
+        int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
+        Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
+        state.stability = engine.initialStability(fsrsRating == Fsrs5Engine.ratingToInt("again") ? 3 : fsrsRating);
+        state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
+        long interval = engine.nextIntervalMillis(state.stability);
         state.scheduledIntervalDays = intervalDays(interval);
         state.due = context.nowMillis + interval;
         state.phase = Records.SchedulerPhase.REVIEW;
@@ -635,8 +634,11 @@ public final class BridgeScheduler {
     private void applyReviewAgain(ReviewContext context, ReviewState state) {
         state.lapses++;
         state.taskLapses++;
-        state.difficulty = Math.min(10.0, state.difficulty + 0.7);
-        state.stability = Math.max(0.2, state.stability * context.parameters.againMultiplier);
+        Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
+        state.difficulty = engine.updateDifficulty(state.difficulty, Fsrs5Engine.ratingToInt("again"));
+        double elapsedDays = Fsrs5Engine.elapsedDays(context.item.dueAtMillis, context.nowMillis);
+        double retrievability = engine.retrievability(elapsedDays, state.stability);
+        state.stability = engine.stabilityAfterForgetting(state.stability, state.difficulty, retrievability);
 
         List<Integer> relearning = context.learningSettings.reviewStepsMinutes;
         state.phase = Records.SchedulerPhase.RELEARNING;
@@ -658,9 +660,13 @@ public final class BridgeScheduler {
     }
 
     private void applyReviewPass(ReviewContext context, ReviewState state, double multiplier, double difficultyDelta) {
-        state.stability = Math.max(1.0, state.stability * multiplier);
-        state.difficulty = Math.max(1.0, Math.min(10.0, state.difficulty + difficultyDelta));
-        long interval = reviewInterval(state.stability, context.parameters);
+        Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
+        int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
+        state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
+        double elapsedDays = Fsrs5Engine.elapsedDays(context.item.dueAtMillis, context.nowMillis);
+        double retrievability = engine.retrievability(elapsedDays, state.stability);
+        state.stability = engine.stabilityAfterRecall(state.stability, state.difficulty, retrievability, fsrsRating);
+        long interval = engine.nextIntervalMillis(state.stability);
         state.scheduledIntervalDays = intervalDays(interval);
         state.due = context.nowMillis + interval;
         state.phase = Records.SchedulerPhase.REVIEW;
@@ -837,6 +843,7 @@ public final class BridgeScheduler {
             Set<String> allowedKanji
     ) {
         return !STATE_RETIRED.equals(item.state)
+                && (item.suppressedByTaskType == null || item.suppressedByTaskType.isEmpty())
                 && (allowedKanji == null || allowedKanji.contains(item.kanji))
                 && hasCurrentQueueRow(item, currentRows, currentFamilies);
     }
@@ -864,6 +871,75 @@ public final class BridgeScheduler {
         return new HashSet<>(tokens);
     }
 
+    private static final int MATURE_DAYS_THRESHOLD = 21;
+
+    public List<Records.StudyItem> applySuppression(List<Records.StudyItem> items, Records.Settings settings) {
+        Map<String, List<Records.StudyItem>> byKanji = new HashMap<>();
+        for (Records.StudyItem item : items) {
+            byKanji.computeIfAbsent(item.kanji, k -> new ArrayList<>()).add(item);
+        }
+        List<Records.StudyItem> result = new ArrayList<>(items.size());
+        for (Records.StudyItem item : items) {
+            List<Records.StudyItem> siblings = byKanji.get(item.kanji);
+            Records.StudyItem updated = evaluateSuppression(item, siblings);
+            result.add(updated);
+        }
+        return result;
+    }
+
+    private Records.StudyItem evaluateSuppression(Records.StudyItem item, List<Records.StudyItem> siblings) {
+        if (STATE_RETIRED.equals(item.state)) {
+            return item;
+        }
+        String dominator = findDominatingMatureSibling(item, siblings);
+        boolean currentlySuppressed = item.suppressedByTaskType != null && !item.suppressedByTaskType.isEmpty();
+        if (dominator != null && !currentlySuppressed) {
+            return item.copyBuilder()
+                    .suppressedByTaskType(dominator)
+                    .suppressedAtMillis(System.currentTimeMillis())
+                    .build();
+        }
+        if (dominator == null && currentlySuppressed) {
+            return item.copyBuilder()
+                    .suppressedByTaskType(null)
+                    .suppressedAtMillis(0L)
+                    .build();
+        }
+        return item;
+    }
+
+    private String findDominatingMatureSibling(Records.StudyItem item, List<Records.StudyItem> siblings) {
+        Records.LadderRung itemRung = item.rung;
+        for (Records.StudyItem sibling : siblings) {
+            if (sibling == item || STATE_RETIRED.equals(sibling.state)) {
+                continue;
+            }
+            if (!dominates(sibling.rung, itemRung)) {
+                continue;
+            }
+            if (isMature(sibling)) {
+                return sibling.rung.wireName();
+            }
+        }
+        return null;
+    }
+
+    private static boolean dominates(Records.LadderRung higher, Records.LadderRung lower) {
+        if (higher == Records.LadderRung.WORD_READING) {
+            return lower == Records.LadderRung.FONT_MEANING || lower == Records.LadderRung.KANJI_MEANING;
+        }
+        if (higher == Records.LadderRung.FONT_MEANING) {
+            return lower == Records.LadderRung.KANJI_MEANING;
+        }
+        return false;
+    }
+
+    private static boolean isMature(Records.StudyItem item) {
+        return item.matureIntervalDays >= MATURE_DAYS_THRESHOLD
+                && item.totalReviews > 0
+                && item.phase == Records.SchedulerPhase.REVIEW;
+    }
+
     public static final class ExtraNewCardsResult {
         public final List<Records.StudyItem> items;
         public final List<String> admittedKanji;
@@ -888,12 +964,6 @@ public final class BridgeScheduler {
 
     private static double round(double value) {
         return Math.round(value * 100.0) / 100.0;
-    }
-
-    private static long reviewInterval(double stability, Records.SchedulerParameters parameters) {
-        double retentionFactor = Math.log(parameters.targetRetention) / Math.log(0.90);
-        double days = Math.max(1.0, stability * retentionFactor);
-        return Math.round(days * DAY);
     }
 
     private static long stepDelayMillis(int minutes) {

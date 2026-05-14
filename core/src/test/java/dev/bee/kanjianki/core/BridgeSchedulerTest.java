@@ -628,22 +628,24 @@ public class BridgeSchedulerTest {
     @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
+        Records.TaskMemory matureMemory = new Records.TaskMemory("review", 0L, 10.0, 5.0, 5, 0, 0, "good", 10);
         Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
-                .stability(3.0)
+                .stability(10.0)
                 .difficulty(5.0)
-                .totalReviews(3)
-                .learningStep(2)
+                .totalReviews(5)
+                .learningStep(0)
+                .kanjiMeaningMemory(matureMemory)
                 .build()
                 .withToken("token-1");
         Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "good", false, false, false, 0);
-        Records.SchedulerParameters shorter = new Records.SchedulerParameters(0.90, 0.45, 1.2, 1.4, 2.2, 0, 0);
-        Records.SchedulerParameters longer = new Records.SchedulerParameters(0.90, 0.45, 1.2, 2.8, 4.2, 0, 0);
+        Records.SchedulerParameters highRetention = new Records.SchedulerParameters(0.95, 0.45, 1.2, 1.4, 2.2, 0, 0);
+        Records.SchedulerParameters lowRetention = new Records.SchedulerParameters(0.80, 0.45, 1.2, 2.8, 4.2, 0, 0);
 
-        Records.ReviewResult shortResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, shorter);
-        Records.ReviewResult longResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, longer);
+        Records.ReviewResult highResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, highRetention);
+        Records.ReviewResult lowResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, lowRetention);
 
-        assertTrue(longResult.item.dueAtMillis > shortResult.item.dueAtMillis);
+        assertTrue(lowResult.item.dueAtMillis > highResult.item.dueAtMillis);
     }
 
     @Test
