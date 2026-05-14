@@ -3326,6 +3326,7 @@ public final class MainActivity extends Activity {
     }
 
     private void renderSettings() {
+        int scrollY = contentScroll != null ? contentScroll.getScrollY() : 0;
         base(NAV_SETTINGS_ROUTE);
         Records.Settings current = settings();
         content.addView(fullWidthHomeButton());
@@ -3384,6 +3385,7 @@ public final class MainActivity extends Activity {
                 },
                 dataLicenseSettingsPanel()
         ));
+        contentScroll.post(() -> contentScroll.scrollTo(0, scrollY));
     }
 
     private View settingsHero(
