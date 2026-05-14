@@ -294,14 +294,15 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private void rebuildStudyItemsForLadderScheduler(SQLiteDatabase db) {
-        StudySchedulerMigration.rebuildLadderStudyItems(
-                db,
+        for (String sql : StudySchedulerMigration.rebuildLadderStudyItemsSql(
                 TABLE_STUDY_ITEMS,
                 STUDY_ITEMS_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED),
                 TABLE_LEARNING_REPEATS,
                 TABLE_SIMILAR_KANJI_CHOICE_STATE,
                 TABLE_SIMILAR_KANJI_REPAIR_QUEUE
-        );
+        )) {
+            db.execSQL(sql);
+        }
     }
 
     private void createStudyTaskLogTable(SQLiteDatabase db) {

@@ -12,10 +12,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -26,6 +28,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -318,6 +321,7 @@ public final class MainActivity extends Activity {
         return super.dispatchTouchEvent(event);
     }
 
+    @SuppressWarnings("deprecation")
     private void base(String selected) {
         if (!NAV_STUDY.equals(selected)) {
             abandonActiveStudyTask();
@@ -345,18 +349,30 @@ public final class MainActivity extends Activity {
         studyActionBar.setBackgroundColor(STUDY_BG_SOFT);
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
-        dev.bee.kanjianki.ui.ScreenScaffold.applySystemBarPadding(
-                root,
-                content,
-                dp(18),
-                dp(18),
-                dp(18),
-                dp(18)
-        );
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            int top;
+            int bottom;
+            if (Build.VERSION.SDK_INT >= 30) {
+                Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
+                top = bars.top;
+                bottom = bars.bottom;
+            } else {
+                top = insets.getSystemWindowInsetTop();
+                bottom = insets.getSystemWindowInsetBottom();
+            }
+            content.setPadding(dp(18), dp(18) + top, dp(18), dp(18) + bottom);
+            return insets;
+        });
+        root.requestApplyInsets();
     }
 
+    @SuppressWarnings({"deprecation", "java:S1874"})
     private void styleSystemBars() {
-        dev.bee.kanjianki.ui.ScreenScaffold.styleLightBars(getWindow(), BG);
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        );
     }
 
     private void renderHome() {
