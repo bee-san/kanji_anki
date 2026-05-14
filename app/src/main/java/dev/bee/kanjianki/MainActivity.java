@@ -1102,6 +1102,10 @@ public final class MainActivity extends Activity {
         return studyQueue(rows, now, persist, null);
     }
 
+    private long studyAheadMillis() {
+        return store.studyAheadMinutes() * 60_000L;
+    }
+
     private List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist, Records.AdaptiveLoadPlan plan) {
         List<Records.StudyItem> currentItems = store.studyItems();
         if (!persist) {
@@ -1132,7 +1136,7 @@ public final class MainActivity extends Activity {
         }
         List<QueueEntry> entries = new ArrayList<>();
         BridgeScheduler scheduler = new BridgeScheduler();
-        for (Records.StudyItem item : scheduler.activeQueueItems(items, rows, now, null)) {
+        for (Records.StudyItem item : scheduler.activeQueueItems(items, rows, now, studyAheadMillis(), null)) {
             Records.DashboardRow row = rowByKanji.get(item.kanji);
             if (row != null) {
                 entries.add(new QueueEntry(row, item));
@@ -1670,7 +1674,7 @@ public final class MainActivity extends Activity {
 
     private Records.StudySession nextActiveSession(List<Records.DashboardRow> rows, List<Records.StudyItem> seeded, Records.AdaptiveLoadPlan plan, long now) {
         Set<String> focus = continueAllKanjiSession || plan.allKanjiMode ? null : new HashSet<>(plan.focusKanji);
-        return new BridgeScheduler().nextSession(seeded, rows, now, focus);
+        return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus);
     }
 
     private void renderNoStudySession(Records.AdaptiveLoadPlan seededPlan) {
@@ -3349,6 +3353,7 @@ public final class MainActivity extends Activity {
                 workloadSettingsPanel(),
                 retentionSettingsPanel(),
                 learningStepsSettingsPanel(),
+                studyAheadSettingsPanel(),
                 ladderThresholdSettingsPanel()
         ));
         content.addView(settingsCategory(
@@ -4184,6 +4189,42 @@ public final class MainActivity extends Activity {
         input.setSingleLine(true);
         input.setSelectAllOnFocus(true);
         return input;
+    }
+
+    private LinearLayout studyAheadSettingsPanel() {
+        int currentMinutes = store.studyAheadMinutes();
+        LinearLayout box = settingsPanelBox();
+        box.addView(text("Study ahead", 23, INK, true));
+        box.addView(text("Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).", 15, MUTED, false));
+
+        EditText minutesInput = new EditText(this);
+        minutesInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        minutesInput.setText(String.format(Locale.ROOT, "%d", currentMinutes));
+        minutesInput.setTextSize(20);
+        minutesInput.setSingleLine(true);
+        minutesInput.setSelectAllOnFocus(true);
+        box.addView(text("Minutes (0-1440)", 15, INK, true));
+        box.addView(minutesInput, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        Button save = primaryButton("Save study ahead", STUDY_PINK_DARK);
+        save.setOnClickListener(v -> {
+            int parsed;
+            try {
+                parsed = Integer.parseInt(minutesInput.getText().toString().trim());
+            } catch (NumberFormatException ex) {
+                Toast.makeText(this, "Use a whole number of minutes (0-1440).", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (parsed < 0 || parsed > 1440) {
+                Toast.makeText(this, "Use 0 to disable, or up to 1440 minutes (24h).", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            store.saveStudyAheadMinutes(parsed);
+            Toast.makeText(this, "Study ahead saved.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
     }
 
     private LinearLayout ladderThresholdSettingsPanel() {

@@ -192,13 +192,24 @@ public final class BridgeScheduler {
             long nowMillis,
             Set<String> allowedKanji
     ) {
+        return nextSession(items, rows, nowMillis, 0L, allowedKanji);
+    }
+
+    public Records.StudySession nextSession(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            long studyAheadMillis,
+            Set<String> allowedKanji
+    ) {
+        long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
         for (Records.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
         }
         Records.StudyItem best = null;
-        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, allowedKanji)) {
-            if (item.dueAtMillis > nowMillis) {
+        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji)) {
+            if (item.dueAtMillis > horizon) {
                 continue;
             }
             if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
@@ -792,9 +803,14 @@ public final class BridgeScheduler {
     }
 
     public int dueCount(List<Records.StudyItem> items, long nowMillis) {
+        return dueCount(items, nowMillis, 0L);
+    }
+
+    public int dueCount(List<Records.StudyItem> items, long nowMillis, long studyAheadMillis) {
+        long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         int count = 0;
         for (Records.StudyItem item : items) {
-            if (!STATE_RETIRED.equals(item.state) && item.dueAtMillis <= nowMillis) {
+            if (!STATE_RETIRED.equals(item.state) && item.dueAtMillis <= horizon) {
                 count++;
             }
         }
@@ -802,9 +818,14 @@ public final class BridgeScheduler {
     }
 
     public int dueCount(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis) {
+        return dueCount(items, rows, nowMillis, 0L);
+    }
+
+    public int dueCount(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis, long studyAheadMillis) {
+        long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         int count = 0;
-        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, null)) {
-            if (item.dueAtMillis <= nowMillis) {
+        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, null)) {
+            if (item.dueAtMillis <= horizon) {
                 count++;
             }
         }
@@ -817,6 +838,17 @@ public final class BridgeScheduler {
             long nowMillis,
             Set<String> allowedKanji
     ) {
+        return activeQueueItems(items, rows, nowMillis, 0L, allowedKanji);
+    }
+
+    public List<Records.StudyItem> activeQueueItems(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            long studyAheadMillis,
+            Set<String> allowedKanji
+    ) {
+        long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         Set<String> currentRows = new HashSet<>();
         Set<String> currentFamilies = new HashSet<>();
         for (Records.DashboardRow row : rows) {
@@ -831,7 +863,7 @@ public final class BridgeScheduler {
         }
         List<Records.StudyItem> out = new ArrayList<>();
         for (List<Records.StudyItem> family : byFamily.values()) {
-            out.add(activeFamilyItem(family, nowMillis));
+            out.add(activeFamilyItem(family, horizon));
         }
         return out;
     }
@@ -968,6 +1000,13 @@ public final class BridgeScheduler {
 
     private static long stepDelayMillis(int minutes) {
         return Math.max(1L, Math.max(1, minutes)) * MINUTE;
+    }
+
+    private static long clampStudyAheadMillis(long studyAheadMillis) {
+        if (studyAheadMillis <= 0L) {
+            return 0L;
+        }
+        return Math.min(studyAheadMillis, DAY);
     }
 
     private static String rungTaskType(Records.LadderRung rung) {

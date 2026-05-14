@@ -1182,6 +1182,126 @@ public class BridgeSchedulerTest {
         ));
     }
 
+    @Test
+    public void studyAheadZeroMinutesMatchesBaselineActiveQueue() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem dueNow = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 1000L);
+        Records.StudyItem inFiveMin = reviewItem("謎", Records.LadderRung.KANJI_MEANING, 1000L + 5L * 60_000L);
+        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20));
+
+        List<Records.StudyItem> baseline = scheduler.activeQueueItems(Arrays.asList(dueNow, inFiveMin), rows, 1000L, null);
+        List<Records.StudyItem> zeroAhead = scheduler.activeQueueItems(Arrays.asList(dueNow, inFiveMin), rows, 1000L, 0L, null);
+
+        assertEquals(baseline.size(), zeroAhead.size());
+        assertNotNull(scheduler.nextSession(Arrays.asList(dueNow, inFiveMin), rows, 1000L, 0L, null));
+    }
+
+    @Test
+    public void studyAheadFifteenMinutesPullsItemDueWithinHorizon() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long now = 1_000_000L;
+        long dueIn10Min = now + 10L * 60_000L;
+        Records.StudyItem ahead = reviewItem("謎", Records.LadderRung.KANJI_MEANING, dueIn10Min);
+        List<Records.DashboardRow> rows = Collections.singletonList(row("謎", 20));
+
+        Records.StudySession none = scheduler.nextSession(Collections.singletonList(ahead), rows, now);
+        assertNull(none);
+
+        Records.StudySession session = scheduler.nextSession(
+                Collections.singletonList(ahead), rows, now, 15L * 60_000L, null
+        );
+        assertNotNull(session);
+        assertEquals("謎", session.item.kanji);
+    }
+
+    @Test
+    public void studyAheadFifteenMinutesExcludesItemBeyondHorizon() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long now = 1_000_000L;
+        long dueIn30Min = now + 30L * 60_000L;
+        Records.StudyItem beyond = reviewItem("謎", Records.LadderRung.KANJI_MEANING, dueIn30Min);
+        List<Records.DashboardRow> rows = Collections.singletonList(row("謎", 20));
+
+        Records.StudySession session = scheduler.nextSession(
+                Collections.singletonList(beyond), rows, now, 15L * 60_000L, null
+        );
+        assertNull(session);
+    }
+
+    @Test
+    public void studyAheadDueCountIncludesHorizonEligibleItems() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long now = 1_000_000L;
+        Records.StudyItem dueNow = reviewItem("裂", Records.LadderRung.KANJI_MEANING, now);
+        Records.StudyItem dueIn5 = reviewItem("謎", Records.LadderRung.KANJI_MEANING, now + 5L * 60_000L);
+        Records.StudyItem dueIn30 = reviewItem("提", Records.LadderRung.KANJI_MEANING, now + 30L * 60_000L);
+        List<Records.StudyItem> items = Arrays.asList(dueNow, dueIn5, dueIn30);
+        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20), row("提", 10));
+
+        assertEquals(1, scheduler.dueCount(items, rows, now));
+        assertEquals(2, scheduler.dueCount(items, rows, now, 15L * 60_000L));
+        assertEquals(3, scheduler.dueCount(items, rows, now, 60L * 60_000L));
+    }
+
+    @Test
+    public void studyAheadClampsNegativeToZeroAndAboveDayToDay() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long now = 1_000_000L;
+        long dueIn1Hour = now + 60L * 60_000L;
+        long dueIn25Hours = now + 25L * 60L * 60_000L;
+        Records.StudyItem nearItem = reviewItem("謎", Records.LadderRung.KANJI_MEANING, dueIn1Hour);
+        Records.StudyItem farItem = reviewItem("提", Records.LadderRung.KANJI_MEANING, dueIn25Hours);
+        List<Records.DashboardRow> rows = Arrays.asList(row("謎", 20), row("提", 10));
+
+        Records.StudySession negative = scheduler.nextSession(
+                Collections.singletonList(nearItem), rows, now, -5L * 60_000L, null
+        );
+        assertNull(negative);
+
+        Records.StudySession farBeyondDay = scheduler.nextSession(
+                Collections.singletonList(farItem), rows, now, 48L * 60L * 60_000L, null
+        );
+        assertNull(farBeyondDay);
+
+        Records.StudySession withinDay = scheduler.nextSession(
+                Collections.singletonList(nearItem), rows, now, 48L * 60L * 60_000L, null
+        );
+        assertNotNull(withinDay);
+        assertEquals("謎", withinDay.item.kanji);
+    }
+
+    @Test
+    public void studyAheadPrefersTrulyDueOverHorizonEligibleAtSameRung() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long now = 1_000_000L;
+        Records.StudyItem dueNow = reviewItem("裂", Records.LadderRung.KANJI_MEANING, now).withToken("now");
+        Records.StudyItem dueIn5 = reviewItem("謎", Records.LadderRung.KANJI_MEANING, now + 5L * 60_000L).withToken("ahead");
+        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20));
+
+        Records.StudySession session = scheduler.nextSession(
+                Arrays.asList(dueIn5, dueNow), rows, now, 15L * 60_000L, null
+        );
+        assertNotNull(session);
+        assertEquals("裂", session.item.kanji);
+    }
+
+    @Test
+    public void studyAheadDoesNotShiftLearningStepDelaysOnAgain() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long now = 1_000_000L;
+        long dueIn5Min = now + 5L * 60_000L;
+        Records.StudyItem reviewItem = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueIn5Min)
+                .copyBuilder()
+                .activeToken("token-ahead")
+                .build();
+        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-ahead", "again", false, false, false, 0);
+
+        Records.ReviewResult result = scheduler.applyReview(reviewItem, request, new HashSet<>(), now);
+
+        long expectedNextDue = now + Records.LearningStepSettings.defaults().reviewStepsMinutes.get(0) * 60_000L;
+        assertEquals(expectedNextDue, result.item.dueAtMillis);
+    }
+
     // --- Test factories ---
 
     private Records.StudyItem item(String kanji) {

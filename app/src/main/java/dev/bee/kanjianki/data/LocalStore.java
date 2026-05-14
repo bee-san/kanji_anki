@@ -180,6 +180,9 @@ public final class LocalStore extends SQLiteOpenHelper {
     private static final int DEFAULT_REMINDER_MINUTE = 0;
     private static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
     private static final int DEFAULT_AUTO_SYNC_MINUTE = DEFAULT_REMINDER_MINUTE;
+    private static final String SETTING_STUDY_AHEAD_MINUTES = "study_ahead_minutes";
+    private static final int DEFAULT_STUDY_AHEAD_MINUTES = 0;
+    private static final int MAX_STUDY_AHEAD_MINUTES = 1440;
     private static final String KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled";
     private static final String KEY_AUTO_UPDATE_LAST_CHECK_AT = "auto_update_last_check_at";
     private static final String KEY_AUTO_UPDATE_LAST_RESULT = "auto_update_last_result";
@@ -1362,6 +1365,21 @@ public final class LocalStore extends SQLiteOpenHelper {
 
     public void saveAdaptiveLoadWorkPercent(int percent) {
         putIntSetting(AdaptiveLoadPlanner.SETTING_KEY, AdaptiveLoadPlanner.snapWorkloadPercent(percent));
+    }
+
+    public int studyAheadMinutes() {
+        return clampStudyAheadMinutes(getIntSetting(SETTING_STUDY_AHEAD_MINUTES, DEFAULT_STUDY_AHEAD_MINUTES));
+    }
+
+    public void saveStudyAheadMinutes(int minutes) {
+        putIntSetting(SETTING_STUDY_AHEAD_MINUTES, clampStudyAheadMinutes(minutes));
+    }
+
+    private static int clampStudyAheadMinutes(int minutes) {
+        if (minutes <= 0) {
+            return 0;
+        }
+        return Math.min(minutes, MAX_STUDY_AHEAD_MINUTES);
     }
 
     public int adaptiveLoadMaxItems() {

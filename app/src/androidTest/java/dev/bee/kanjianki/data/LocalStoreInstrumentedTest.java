@@ -566,6 +566,16 @@ public final class LocalStoreInstrumentedTest {
         store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
         assertEquals(AdaptiveLoadPlanner.MODE_AUTO, store.adaptiveLoadMode());
 
+        assertEquals(0, store.studyAheadMinutes());
+        store.saveStudyAheadMinutes(15);
+        assertEquals(15, store.studyAheadMinutes());
+        store.saveStudyAheadMinutes(-5);
+        assertEquals(0, store.studyAheadMinutes());
+        store.saveStudyAheadMinutes(99999);
+        assertEquals(1440, store.studyAheadMinutes());
+        store.saveStudyAheadMinutes(0);
+        assertEquals(0, store.studyAheadMinutes());
+
         store.saveReminderSettings(new LocalStore.ReminderSettings(true, 8, 30));
         LocalStore.ReminderSettings reminder = store.reminderSettings();
         assertTrue(reminder.enabled);
