@@ -285,6 +285,33 @@ public class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    public void learningCardWithFutureDueStillCountsAsRemaining() {
+        // Simulates failing a card during study-ahead: the card enters
+        // relearning with dueAtMillis in the future (e.g. +1 minute).
+        // It should still count as "remaining" so the session does not
+        // end prematurely with focusComplete().
+        long now = 100_000L;
+        HashSet<String> studied = new HashSet<>();
+        studied.add("字0");
+
+        // Card in learning state with due time in the future (relearning step)
+        Records.StudyItem learningFutureDue = item("字0", "learning", now + 60_000L, 1, 1);
+
+        Records.AdaptiveLoadPlan plan = planner().plan(
+                rows(1),
+                Collections.singletonList(learningFutureDue),
+                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                studied,
+                0,
+                now
+        );
+
+        assertEquals(1, plan.remaining);
+        assertFalse(plan.focusComplete());
+    }
+
+    @Test
     public void autoWorkloadUsesFirstMajorParetoDropOff() {
         Records.AdaptiveLoadPlan plan = planner().plan(
                 Arrays.asList(
@@ -814,7 +841,9 @@ public class AdaptiveLoadPlannerTest {
 
         assertTrue(moderateMisses.target <= 3);
         assertTrue(hardHeavy.target <= 3);
-        assertTrue(moderateMisses.remaining < moderateMisses.target);
+        // The future-learning card is still actively in a learning cycle,
+        // so it counts as remaining (session should not end prematurely).
+        assertTrue(moderateMisses.remaining <= moderateMisses.target);
         assertFalse(unreviewedReview.focusKanji.isEmpty());
     }
 

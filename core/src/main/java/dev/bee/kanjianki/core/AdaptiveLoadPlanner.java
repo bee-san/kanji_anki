@@ -538,8 +538,12 @@ public final class AdaptiveLoadPlanner {
         if (item == null || "retired".equals(item.state)) {
             return false;
         }
+        // A card in learning/relearning state is still actively being worked on
+        // even if its next step hasn't arrived yet. Without this, a failed card
+        // whose relearning step is a minute in the future causes remainingCount
+        // to hit zero and the session ends prematurely (focusComplete fires).
         if ("learning".equals(item.state)) {
-            return item.dueAtMillis <= nowMillis;
+            return true;
         }
         return item.totalReviews > 0 && item.dueAtMillis <= nowMillis;
     }
