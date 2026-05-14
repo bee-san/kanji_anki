@@ -163,7 +163,7 @@ public final class ReminderScheduler {
                     items,
                     store.reviewStatsSince(now - 7 * 86_400_000L),
                     store.studyStreak(now).currentDays,
-                    store.studiedKanjiSince(now - (now % 86_400_000L)),
+                    store.studiedKanjiSince(startOfLocalDay(now)),
                     store.adaptiveLoadWorkPercent(),
                     store.adaptiveLoadMode(),
                     store.adaptiveLoadMaxItems(),
@@ -199,5 +199,15 @@ public final class ReminderScheduler {
             this.title = title;
             this.message = message;
         }
+    }
+
+    private static long startOfLocalDay(long nowMillis) {
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(nowMillis);
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        return cal.getTimeInMillis();
     }
 }

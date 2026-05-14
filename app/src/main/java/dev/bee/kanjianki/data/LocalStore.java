@@ -297,7 +297,7 @@ public final class LocalStore extends SQLiteOpenHelper {
         // counters directly. Old rows are dropped and users rebuild progress.
         db.execSQL("DROP INDEX IF EXISTS idx_study_due");
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_STUDY_ITEMS);
-        db.execSQL(STUDY_ITEMS_TABLE_SQL);
+        db.execSQL(STUDY_ITEMS_TABLE_SQL.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "));
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON " + TABLE_STUDY_ITEMS + "(state, due_at)");
         // learning_repeats, similar_kanji_choice_state, and
         // similar_kanji_repair_queue are emptied here so the ladder scheduler
@@ -1171,7 +1171,14 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     public void saveStudyItem(Records.StudyItem item) {
-        upsertStudyItem(getWritableDatabase(), item);
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            upsertStudyItem(db, item);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
     }
 
     public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt) {
@@ -2697,9 +2704,24 @@ public final class LocalStore extends SQLiteOpenHelper {
     private Records.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query(TABLE_STUDY_ITEMS, null, WHERE_KANJI, new String[]{kanji}, null, null, "state='retired' ASC, due_at ASC", "1");
         try {
-            return cursor.moveToFirst() ? readStudyItem(cursor) : null;
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            Records.StudyItem item = readStudyItem(cursor);
+            boolean hasSimilar = kanjiHasSimilarNeighbor(db, kanji);
+            return hasSimilar != item.hasSimilarKanji ? item.withHasSimilarKanji(hasSimilar) : item;
         } finally {
             cursor.close();
+        }
+    }
+
+    private boolean kanjiHasSimilarNeighbor(SQLiteDatabase db, String kanji) {
+        try (Cursor cursor = db.rawQuery(
+                "SELECT 1 FROM " + TABLE_SIMILAR_KANJI_PAIRS
+                        + " WHERE kanji_a = ? OR kanji_b = ? LIMIT 1",
+                new String[]{kanji, kanji}
+        )) {
+            return cursor.moveToFirst();
         }
     }
 
