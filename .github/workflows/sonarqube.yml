@@ -55,6 +55,7 @@ jobs:
           :core:jacocoTestReport
           :core:jacocoTestCoverageVerification
           :app:testDebugUnitTest
+          :app:jacocoDebugUnitTestReport
           :app:compileDebugAndroidTestJavaWithJavac
           :app:lintDebug
           sonar

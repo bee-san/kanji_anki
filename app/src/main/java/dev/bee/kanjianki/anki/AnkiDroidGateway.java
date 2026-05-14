@@ -202,8 +202,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
             for (Map.Entry<Long, Records.Note> entry : extraNotes.entrySet()) {
                 notes.putIfAbsent(entry.getKey(), entry.getValue());
             }
-        } catch (Exception ignored) {
-            Log.d(TAG, "Browser query note re-read failed; using tracked IDs only.", ignored);
+        } catch (Exception error) {
+            Log.w(TAG, "Browser query note re-read failed; using tracked IDs only.", error);
         }
     }
 

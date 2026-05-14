@@ -1,8 +1,10 @@
 plugins {
     id("com.android.application")
+    jacoco
 }
 
 import org.gradle.api.GradleException
+import org.gradle.testing.jacoco.tasks.JacocoReport
 import java.util.Properties
 
 fun quoted(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
@@ -67,6 +69,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testCoverage {
+        jacocoVersion = "0.8.14"
+    }
+
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
@@ -93,6 +99,39 @@ android {
         warningsAsErrors = true
         disable += setOf("GradleDependency", "OldTargetApi")
     }
+}
+
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        xml.required = true
+        html.required = true
+    }
+
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes").get().asFile) {
+            exclude(
+                "**/R.class",
+                "**/R$*.class",
+                "**/BuildConfig.*",
+                "**/Manifest*.*",
+            )
+        }
+    )
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory.get().asFile) {
+            include(
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+                "jacoco/testDebugUnitTest.exec",
+            )
+        }
+    )
 }
 
 dependencies {

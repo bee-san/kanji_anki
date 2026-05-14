@@ -294,23 +294,14 @@ public final class LocalStore extends SQLiteOpenHelper {
     }
 
     private void rebuildStudyItemsForLadderScheduler(SQLiteDatabase db) {
-        // Fresh start per the ladder scheduler migration plan. The previous
-        // study_items shape was tied to recognitionStage / writingRemediation
-        // semantics; the new shape stores rung, phase, and ladder streak
-        // counters directly. Old rows are dropped and users rebuild progress.
-        db.execSQL("DROP INDEX IF EXISTS idx_study_due");
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_STUDY_ITEMS);
-        db.execSQL(STUDY_ITEMS_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED));
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_due ON " + TABLE_STUDY_ITEMS + "(state, due_at)");
-        // learning_repeats, similar_kanji_choice_state, and
-        // similar_kanji_repair_queue are emptied here so the ladder scheduler
-        // is the only source of truth for what the learner sees next. The
-        // tables themselves are retained for compile compatibility with
-        // existing LocalStore helpers; they are removed from the scheduler
-        // path in later commits.
-        db.execSQL(SQL_DELETE_FROM + TABLE_LEARNING_REPEATS);
-        db.execSQL(SQL_DELETE_FROM + TABLE_SIMILAR_KANJI_CHOICE_STATE);
-        db.execSQL(SQL_DELETE_FROM + TABLE_SIMILAR_KANJI_REPAIR_QUEUE);
+        StudySchedulerMigration.rebuildLadderStudyItems(
+                db,
+                TABLE_STUDY_ITEMS,
+                STUDY_ITEMS_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED),
+                TABLE_LEARNING_REPEATS,
+                TABLE_SIMILAR_KANJI_CHOICE_STATE,
+                TABLE_SIMILAR_KANJI_REPAIR_QUEUE
+        );
     }
 
     private void createStudyTaskLogTable(SQLiteDatabase db) {
@@ -1296,11 +1287,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            try {
-                return Integer.parseInt(string(cursor, COLUMN_VALUE));
-            } catch (NumberFormatException ignored) {
-                return fallback;
-            }
+            return SettingValueParser.parseInt(string(cursor, COLUMN_VALUE), fallback);
         }
     }
 
@@ -1309,11 +1296,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            try {
-                return Long.parseLong(string(cursor, COLUMN_VALUE));
-            } catch (NumberFormatException ignored) {
-                return fallback;
-            }
+            return SettingValueParser.parseLong(string(cursor, COLUMN_VALUE), fallback);
         }
     }
 
@@ -1332,11 +1315,7 @@ public final class LocalStore extends SQLiteOpenHelper {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            try {
-                return Double.parseDouble(string(cursor, COLUMN_VALUE));
-            } catch (NumberFormatException ignored) {
-                return fallback;
-            }
+            return SettingValueParser.parseDouble(string(cursor, COLUMN_VALUE), fallback);
         }
     }
 

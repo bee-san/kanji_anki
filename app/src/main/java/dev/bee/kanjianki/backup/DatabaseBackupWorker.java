@@ -50,7 +50,10 @@ public final class DatabaseBackupWorker extends Worker {
         try {
             copyFile(dbFile, dest);
         } catch (IOException e) {
-            dest.delete();
+            if (!dest.delete()) {
+                Log.w(TAG, "Failed to delete incomplete backup: " + dest.getName());
+            }
+            Log.w(TAG, "Database backup failed.", e);
             return Result.failure();
         }
 
@@ -64,8 +67,8 @@ public final class DatabaseBackupWorker extends Worker {
             db = SQLiteDatabase.openDatabase(
                     dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
             db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).close();
-        } catch (Exception ignored) {
-            // Best-effort; copy will still work even without checkpoint
+        } catch (Exception error) {
+            Log.w(TAG, "Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error);
         } finally {
             if (db != null) {
                 try {
@@ -100,7 +103,9 @@ public final class DatabaseBackupWorker extends Worker {
         Arrays.sort(files);
         int toDelete = files.length - MAX_BACKUPS;
         for (int i = 0; i < toDelete; i++) {
-            files[i].delete();
+            if (!files[i].delete()) {
+                Log.w(TAG, "Failed to prune old backup: " + files[i].getName());
+            }
         }
     }
 }

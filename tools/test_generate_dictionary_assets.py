@@ -166,7 +166,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
     def test_bundled_database_contains_all_kanjidic2_literals(self) -> None:
         db_path = Path("app/src/main/assets/dictionaries/kanji_dictionary.db")
         if not db_path.exists():
-            self.skipTest("Bundled SQLite dictionary has not been generated yet.")
+            self.fail("Bundled SQLite dictionary is missing. Run tools/generate_dictionary_assets.py before release validation.")
 
         with sqlite3.connect(db_path) as db:
             count = db.execute("SELECT COUNT(*) FROM kanji").fetchone()[0]

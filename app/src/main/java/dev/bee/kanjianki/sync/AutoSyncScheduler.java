@@ -4,12 +4,14 @@ import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.Context;
+import android.util.Log;
 
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.util.Calendar;
 
 public final class AutoSyncScheduler {
+    private static final String TAG = "AutoSyncScheduler";
     private static final int JOB_ID = 3801;
     private static final long MIN_DELAY_MILLIS = 10_000L;
     private static final long DEADLINE_WINDOW_MILLIS = 6L * 60L * 60L * 1000L;
@@ -88,7 +90,8 @@ public final class AutoSyncScheduler {
         try {
             int result = scheduler.schedule(job);
             store.markAutoSyncScheduled(result == JobScheduler.RESULT_SUCCESS ? triggerAt : 0L);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Failed to schedule automatic sync job.", error);
             store.markAutoSyncScheduled(0L);
         }
     }
