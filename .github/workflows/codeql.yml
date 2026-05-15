@@ -100,7 +100,7 @@ jobs:
           if [ -z "$TASKS" ]; then
             TASKS=":core:compileJava :app:compileDebugJavaWithJavac"
           fi
-          gradle $TASKS --no-daemon
+          gradle $TASKS --parallel -Dorg.gradle.parallel=true
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4

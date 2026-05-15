@@ -110,7 +110,15 @@ jobs:
           KANI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
           KANI_SIGNING_KEY_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_KEY_PASSWORD }}
         run: |
-          gradle :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug :app:assembleRelease --no-daemon
+          gradle --parallel -Dorg.gradle.parallel=true \
+            :core:test \
+            :core:jacocoTestReport \
+            :core:jacocoTestCoverageVerification \
+            :app:testDebugUnitTest \
+            :app:jacocoDebugUnitTestReport \
+            :app:compileDebugAndroidTestJavaWithJavac \
+            :app:lintDebug \
+            :app:assembleRelease
           python3 -m unittest tools/test_generate_dictionary_assets.py
 
       - name: Prepare release assets
