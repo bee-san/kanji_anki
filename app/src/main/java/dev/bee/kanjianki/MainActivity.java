@@ -33,6 +33,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -89,16 +90,18 @@ import java.util.concurrent.Executors;
 public final class MainActivity extends Activity {
     public static final String EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE";
     private static final int REQUEST_POST_NOTIFICATIONS = 704;
-    private static final int BG = Color.rgb(255, 247, 251);
-    private static final int INK = Color.rgb(45, 22, 53);
-    private static final int MUTED = Color.rgb(108, 86, 116);
-    private static final int CORAL = Color.rgb(255, 76, 118);
-    private static final int TEAL = Color.rgb(0, 174, 181);
-    private static final int GOLD = Color.rgb(255, 214, 64);
-    private static final int BLUE = Color.rgb(110, 92, 230);
-    private static final int BLUSH = Color.rgb(255, 239, 246);
-    private static final int PINK_STROKE = Color.rgb(255, 174, 204);
-    private static final int LILAC = Color.rgb(118, 72, 255);
+    private static final int BG = Color.rgb(0xFB, 0xF6, 0xFF);
+    private static final int INK = Color.rgb(0x24, 0x11, 0x2F);
+    private static final int MUTED = Color.rgb(0x6F, 0x62, 0x78);
+    private static final int CORAL = Color.rgb(0xFF, 0x3F, 0x73);
+    private static final int TEAL = Color.rgb(0x0F, 0xA7, 0xA7);
+    private static final int GOLD = Color.rgb(0xFF, 0xA8, 0x4A);
+    private static final int BLUE = Color.rgb(0x7A, 0x55, 0xD6);
+    private static final int BLUSH = Color.rgb(0xFF, 0xF0, 0xF6);
+    private static final int LILAC = Color.rgb(0x7A, 0x55, 0xD6);
+    private static final int LAVENDER_SOFT = Color.rgb(0xF1, 0xEA, 0xFF);
+    private static final int TEAL_SOFT = Color.rgb(0xE8, 0xFA, 0xF8);
+    private static final int CHIP_BORDER = Color.rgb(0xE9, 0xDD, 0xF3);
     private static final int STUDY_BG = Color.rgb(255, 245, 250);
     private static final int STUDY_CARD = Color.rgb(255, 255, 255);
     private static final int STUDY_PANEL = Color.rgb(255, 236, 245);
@@ -425,20 +428,34 @@ public final class MainActivity extends Activity {
 
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = text("Kani", 48, INK, true);
+
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView title = text("Kani", 46, INK, true);
         title.setLetterSpacing(0);
-        copy.addView(title);
-        copy.addView(text("Your AnkiDroid companion app to cure kanji blindness", 16, MUTED, true));
+        titleRow.addView(title, new LinearLayout.LayoutParams(-2, -2));
+        ImageView sparkle = decorativeSparkle(CORAL, 20);
+        LinearLayout.LayoutParams sparkleLp = new LinearLayout.LayoutParams(dp(20), dp(20));
+        sparkleLp.setMargins(dp(8), dp(2), 0, 0);
+        titleRow.addView(sparkle, sparkleLp);
+        copy.addView(titleRow);
+        copy.addView(text("Your AnkiDroid companion for focused kanji repair", 15, MUTED, false));
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
+        FrameLayout mascotBadge = new FrameLayout(this);
+        mascotBadge.setBackground(panel(Color.WHITE, Color.WHITE, dp(22)));
+        mascotBadge.setElevation(dp(3));
+        mascotBadge.setPadding(dp(8), dp(8), dp(8), dp(8));
         ImageView mascot = new ImageView(this);
         mascot.setImageResource(R.mipmap.ic_launcher_foreground);
         mascot.setAdjustViewBounds(true);
         mascot.setBackgroundColor(Color.TRANSPARENT);
         mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(110), dp(110));
-        mascotLp.setMargins(dp(10), 0, 0, 0);
-        header.addView(mascot, mascotLp);
+        mascotBadge.addView(mascot, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(dp(96), dp(96));
+        badgeLp.setMargins(dp(10), 0, 0, 0);
+        header.addView(mascotBadge, badgeLp);
         return header;
     }
 
@@ -601,18 +618,58 @@ public final class MainActivity extends Activity {
         LinearLayout firstRow = new LinearLayout(this);
         firstRow.setOrientation(LinearLayout.HORIZONTAL);
         firstRow.setBaselineAligned(false);
-        firstRow.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
-        firstRow.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
-        firstRow.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
+        firstRow.addView(shortcutCard("Browse Kanji", R.drawable.ic_book_24, BLUE, this::renderBrowseKanji));
+        firstRow.addView(shortcutCard("Recent mistakes", R.drawable.ic_trending_24, CORAL, this::renderRecentMistakes));
         column.addView(firstRow);
 
         LinearLayout secondRow = new LinearLayout(this);
         secondRow.setOrientation(LinearLayout.HORIZONTAL);
         secondRow.setBaselineAligned(false);
-        secondRow.addView(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
+        secondRow.addView(shortcutCard("Stats", R.drawable.ic_stats_24, TEAL, this::renderStats));
+        secondRow.addView(shortcutCard(NAV_SETTINGS, R.drawable.ic_settings_24, MUTED, this::renderSettings));
         column.addView(secondRow);
 
         return column;
+    }
+
+    private View shortcutCard(String label, int iconRes, int accent, Runnable action) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(12), dp(12));
+        card.setBackground(panel(Color.WHITE, Color.WHITE, dp(20)));
+        card.setElevation(dp(3));
+        card.setClickable(true);
+        card.setOnClickListener(v -> action.run());
+
+        FrameLayout iconCircle = new FrameLayout(this);
+        iconCircle.setBackground(panel(softened(accent), softened(accent), dp(20)));
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(iconRes);
+        icon.setColorFilter(accent);
+        FrameLayout.LayoutParams iconLp = new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER);
+        iconCircle.addView(icon, iconLp);
+        LinearLayout.LayoutParams circleLp = new LinearLayout.LayoutParams(dp(38), dp(38));
+        card.addView(iconCircle, circleLp);
+
+        TextView labelText = text(label, 14, INK, true);
+        labelText.setIncludeFontPadding(false);
+        labelText.setSingleLine(false);
+        labelText.setMaxLines(2);
+        LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(0, -2, 1);
+        labelLp.setMargins(dp(10), 0, dp(4), 0);
+        card.addView(labelText, labelLp);
+
+        ImageView chevron = new ImageView(this);
+        chevron.setImageResource(R.drawable.ic_arrow_forward_24);
+        chevron.setColorFilter(MUTED);
+        LinearLayout.LayoutParams chevronLp = new LinearLayout.LayoutParams(dp(18), dp(18));
+        card.addView(chevron, chevronLp);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(64), 1);
+        lp.setMargins(dp(4), dp(6), dp(4), dp(6));
+        card.setLayoutParams(lp);
+        return card;
     }
 
     private void renderBrowseKanji() {
@@ -657,30 +714,6 @@ public final class MainActivity extends Activity {
             row.addView(link, new LinearLayout.LayoutParams(-2, -2));
         }
         return row;
-    }
-
-    private View pillButton(String label, int iconRes, Runnable action) {
-        LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.HORIZONTAL);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(8), 0, dp(8), 0);
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(iconRes);
-        icon.setColorFilter(INK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
-        iconLp.setMargins(0, 0, dp(7), 0);
-        button.addView(icon, iconLp);
-        TextView text = text(label, 13, INK, true);
-        text.setGravity(Gravity.CENTER);
-        text.setSingleLine(false);
-        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
-        button.setClickable(true);
-        button.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(56), 1);
-        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
-        button.setLayoutParams(lp);
-        return button;
     }
 
     private View fullWidthHomeButton() {
@@ -735,7 +768,10 @@ public final class MainActivity extends Activity {
 
     private void renderRecentMistakes() {
         base("home");
-        content.addView(homeSectionHeader("Recent mistakes", "Home", this::renderHome));
+        content.addView(fullWidthHomeButton());
+        content.addView(text("Recent mistakes", 34, INK, true));
+        content.addView(text("Review your most recently missed kanji items.", 15, MUTED, false));
+        addSpace(10);
         List<StudyStatsStore.RecentMistake> mistakes = store.recentMistakes(12);
         if (mistakes.isEmpty()) {
             emptyState("No recent mistakes yet", "Missed and hard reviews will show here after you study.");
@@ -748,24 +784,49 @@ public final class MainActivity extends Activity {
     }
 
     private View recentMistakeRow(StudyStatsStore.RecentMistake mistake, Records.DashboardRow row) {
-        LinearLayout box = panelBox(Color.WHITE, PINK_STROKE);
+        LinearLayout box = panelBox(Color.WHITE, Color.WHITE);
         box.setOnClickListener(v -> renderDetail(mistake.kanji));
+
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView kanji = kanjiTile(mistake.kanji, dp(70), 42);
-        top.addView(kanji);
+        top.addView(kanjiTile(mistake.kanji, dp(72), 40));
+
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(row == null ? "Recent review miss" : rowMeaning(row), 19, INK, true));
-        copy.addView(text("Rated " + mistake.rating + " on " + timelineDate(mistake.reviewedAtMillis), 14, MUTED, false));
+        copy.addView(text(row == null ? "Recent review miss" : rowMeaning(row), 18, INK, true));
         if (row != null) {
-            copy.addView(text(sourceEvidenceText(row), 14, INK, true));
+            String secondary = sourceEvidenceText(row);
+            if (secondary != null && !secondary.isEmpty()) {
+                copy.addView(text(secondary, 13, MUTED, false));
+            }
         }
         LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
-        copyLp.setMargins(dp(12), 0, dp(6), 0);
+        copyLp.setMargins(dp(14), 0, dp(6), 0);
         top.addView(copy, copyLp);
-        top.addView(text(">", 34, CORAL, true));
+
+        ImageView chevron = new ImageView(this);
+        chevron.setImageResource(R.drawable.ic_arrow_forward_24);
+        chevron.setColorFilter(CORAL);
+        LinearLayout.LayoutParams chevronLp = new LinearLayout.LayoutParams(dp(20), dp(20));
+        top.addView(chevron, chevronLp);
         box.addView(top);
+
+        View divider = new View(this);
+        divider.setBackgroundColor(Color.rgb(0xF0, 0xE6, 0xF2));
+        LinearLayout.LayoutParams dividerLp = new LinearLayout.LayoutParams(-1, dp(1));
+        dividerLp.setMargins(0, dp(12), 0, dp(10));
+        box.addView(divider, dividerLp);
+
+        LinearLayout footer = new LinearLayout(this);
+        footer.setOrientation(LinearLayout.HORIZONTAL);
+        footer.setGravity(Gravity.CENTER_VERTICAL);
+        footer.addView(text("Rated " + mistake.rating + " on " + timelineDate(mistake.reviewedAtMillis), 13, MUTED, false), new LinearLayout.LayoutParams(0, -2, 1));
+        TextView pill = text("Missed", 11, Color.WHITE, true);
+        pill.setBackground(panel(CORAL, CORAL, dp(12)));
+        pill.setPadding(dp(10), dp(4), dp(10), dp(4));
+        pill.setIncludeFontPadding(false);
+        footer.addView(pill);
+        box.addView(footer);
         return box;
     }
 
@@ -909,9 +970,9 @@ public final class MainActivity extends Activity {
         StudyStatsStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
         content.addView(fullWidthHomeButton());
         content.addView(text("Stats", 34, INK, true));
+        addSpace(6);
         content.addView(statsVerdictPanel(stats));
-        content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
-        addSpace(10);
+        addSpace(8);
 
         content.addView(outcomePanel(
                 "Weakness Burn-Down",
@@ -929,28 +990,77 @@ public final class MainActivity extends Activity {
         ));
         content.addView(ladderHealthPanel(stats.ladderHealth));
         content.addView(studyTimePanel(studyTime));
+        content.addView(statsEncouragementStrip());
     }
 
     private LinearLayout statsVerdictPanel(StudyStatsStore.KaniOutcomeStats stats) {
         boolean working = stats != null
                 && (stats.weakKanjiImproved.improvedCount > 0 || stats.matureSupportGained.matureSupportGained > 0);
         boolean hasLadder = stats != null && stats.ladderHealth.totalActiveItems > 0;
-        int stroke;
-        int background;
+        int background = working ? TEAL_SOFT : LAVENDER_SOFT;
+        int accent = working ? TEAL : MUTED;
+        LinearLayout box = panelBox(background, background);
+
+        LinearLayout headRow = new LinearLayout(this);
+        headRow.setOrientation(LinearLayout.HORIZONTAL);
+        headRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        FrameLayout iconCircle = new FrameLayout(this);
+        iconCircle.setBackground(panel(Color.WHITE, Color.WHITE, dp(20)));
+        ImageView mascot = new ImageView(this);
+        mascot.setImageResource(R.mipmap.ic_launcher_foreground);
+        mascot.setAdjustViewBounds(true);
+        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        FrameLayout.LayoutParams mascotLp = new FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER);
+        iconCircle.addView(mascot, mascotLp);
+        headRow.addView(iconCircle, new LinearLayout.LayoutParams(dp(48), dp(48)));
+
+        TextView title = text(working ? "Kani is working for you" : "Kani is not currently working for you", 22, accent, true);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1);
+        titleLp.setMargins(dp(12), 0, dp(8), 0);
+        headRow.addView(title, titleLp);
+
         if (working) {
-            stroke = TEAL;
-            background = Color.rgb(238, 252, 250);
-        } else if (hasLadder) {
-            stroke = GOLD;
-            background = Color.rgb(255, 250, 226);
-        } else {
-            stroke = Color.rgb(178, 178, 186);
-            background = Color.rgb(246, 246, 248);
+            ImageView check = new ImageView(this);
+            check.setImageResource(R.drawable.ic_target_24);
+            check.setColorFilter(TEAL);
+            headRow.addView(check, new LinearLayout.LayoutParams(dp(22), dp(22)));
         }
-        LinearLayout box = panelBox(background, stroke);
-        box.addView(text(working ? "Kani is working for you" : "Kani is not currently working for you", 24, working ? TEAL : MUTED, true));
-        box.addView(text(statsVerdictBody(stats, working, hasLadder), 15, working ? INK : MUTED, false));
+        box.addView(headRow);
+
+        TextView body = text(statsVerdictBody(stats, working, hasLadder), 14, working ? INK : MUTED, false);
+        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(-1, -2);
+        bodyLp.setMargins(0, dp(10), 0, dp(4));
+        body.setLayoutParams(bodyLp);
+        box.addView(body);
+
+        TextView footnote = text("Kani doesn't replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 12, MUTED, false);
+        LinearLayout.LayoutParams footnoteLp = new LinearLayout.LayoutParams(-1, -2);
+        footnoteLp.setMargins(0, dp(8), 0, 0);
+        footnote.setLayoutParams(footnoteLp);
+        box.addView(footnote);
         return box;
+    }
+
+    private View statsEncouragementStrip() {
+        LinearLayout strip = new LinearLayout(this);
+        strip.setOrientation(LinearLayout.HORIZONTAL);
+        strip.setGravity(Gravity.CENTER_VERTICAL);
+        strip.setPadding(dp(16), dp(14), dp(16), dp(14));
+        strip.setBackground(panel(BLUSH, BLUSH, dp(20)));
+        ImageView leftSparkle = decorativeSparkle(CORAL, 16);
+        strip.addView(leftSparkle, new LinearLayout.LayoutParams(dp(16), dp(16)));
+        TextView body = text("Keep it up! Consistent practice powers lasting kanji mastery.", 13, INK, true);
+        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(0, -2, 1);
+        bodyLp.setMargins(dp(10), 0, dp(10), 0);
+        body.setGravity(Gravity.CENTER);
+        strip.addView(body, bodyLp);
+        ImageView rightSparkle = decorativeSparkle(CORAL, 16);
+        strip.addView(rightSparkle, new LinearLayout.LayoutParams(dp(16), dp(16)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, dp(10), 0, dp(8));
+        strip.setLayoutParams(lp);
+        return strip;
     }
 
     private String statsVerdictBody(StudyStatsStore.KaniOutcomeStats stats, boolean working, boolean hasLadder) {
@@ -995,8 +1105,14 @@ public final class MainActivity extends Activity {
 
     private LinearLayout outcomePanel(String title, String value, String body, List<String> examples, int stroke) {
         LinearLayout box = statPanel(title, value, body, stroke);
-        for (String example : examples) {
-            box.addView(text(example, 17, INK, true));
+        for (int i = 0; i < examples.size(); i++) {
+            TextView example = text(examples.get(i), 15, INK, true);
+            example.setBackground(panel(softened(stroke), softened(stroke), dp(14)));
+            example.setPadding(dp(12), dp(8), dp(12), dp(8));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.setMargins(0, dp(6), 0, 0);
+            example.setLayoutParams(lp);
+            box.addView(example);
         }
         return box;
     }
@@ -1008,10 +1124,48 @@ public final class MainActivity extends Activity {
                 ladderHealthBody(metric),
                 GOLD
         );
-        for (String row : ladderDistributionRows(metric)) {
-            box.addView(text(row, 16, INK, false));
+        List<String> activeKanji = activeKanjiList();
+        if (!activeKanji.isEmpty()) {
+            HorizontalScrollView scroll = new HorizontalScrollView(this);
+            scroll.setHorizontalScrollBarEnabled(false);
+            LinearLayout chipRow = new LinearLayout(this);
+            chipRow.setOrientation(LinearLayout.HORIZONTAL);
+            for (String kanji : activeKanji) {
+                chipRow.addView(ladderChip(kanji));
+            }
+            scroll.addView(chipRow);
+            LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(-1, -2);
+            scrollLp.setMargins(0, dp(8), 0, 0);
+            scroll.setLayoutParams(scrollLp);
+            box.addView(scroll);
         }
         return box;
+    }
+
+    private List<String> activeKanjiList() {
+        List<String> result = new ArrayList<>();
+        for (Records.DashboardRow row : store.activeDashboardRows()) {
+            if (row.kanji != null && !row.kanji.isEmpty()) {
+                result.add(row.kanji);
+            }
+            if (result.size() >= 16) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    private TextView ladderChip(String kanji) {
+        TextView chip = text(kanji, 18, INK, true);
+        chip.setGravity(Gravity.CENTER);
+        chip.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
+        chip.setBackground(panel(softened(GOLD), softened(GOLD), dp(14)));
+        chip.setPadding(dp(12), dp(6), dp(12), dp(6));
+        chip.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+        lp.setMargins(0, 0, dp(6), 0);
+        chip.setLayoutParams(lp);
+        return chip;
     }
 
     private String ladderHealthBody(StudyStatsStore.LadderHealthMetric metric) {
@@ -1025,25 +1179,6 @@ public final class MainActivity extends Activity {
             body += " · " + countText(metric.demotionReadyCount, "at the demotion threshold", "at the demotion threshold");
         }
         return body + ". Threshold: " + metric.realDueReviewsToMove + " real due reviews.";
-    }
-
-    private List<String> ladderDistributionRows(StudyStatsStore.LadderHealthMetric metric) {
-        List<String> rows = new ArrayList<>();
-        for (Records.LadderRung rung : Records.LadderRung.values()) {
-            rows.add(ladderRungLabel(rung) + ": " + metric.countFor(rung));
-        }
-        return rows;
-    }
-
-    private String ladderRungLabel(Records.LadderRung rung) {
-        return switch (rung) {
-            case WRITE_KANJI -> "Write kanji";
-            case TYPE_MEANING -> "Type meaning";
-            case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
-            case KANJI_MEANING -> "Kanji meaning";
-            case FONT_MEANING -> "Font meaning";
-            case WORD_READING -> "Word reading";
-        };
     }
 
     private String weaknessImprovementBody(StudyStatsStore.WeakKanjiImprovedMetric metric) {
@@ -1095,10 +1230,30 @@ public final class MainActivity extends Activity {
     }
 
     private LinearLayout statPanel(String title, String value, String body, int stroke) {
-        LinearLayout box = panelBox(Color.WHITE, stroke);
-        box.addView(text(title, 18, MUTED, true));
-        box.addView(text(value, 25, INK, true));
-        box.addView(text(body, 15, MUTED, false));
+        LinearLayout box = panelBox(Color.WHITE, Color.WHITE);
+
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        View dot = new View(this);
+        dot.setBackground(panel(stroke, stroke, dp(6)));
+        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(dp(8), dp(8));
+        dotLp.setMargins(0, 0, dp(8), 0);
+        titleRow.addView(dot, dotLp);
+        titleRow.addView(text(title, 14, stroke, true));
+        box.addView(titleRow);
+
+        TextView headline = text(value, 26, INK, true);
+        LinearLayout.LayoutParams headlineLp = new LinearLayout.LayoutParams(-1, -2);
+        headlineLp.setMargins(0, dp(6), 0, 0);
+        headline.setLayoutParams(headlineLp);
+        box.addView(headline);
+
+        TextView bodyText = text(body, 14, MUTED, false);
+        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(-1, -2);
+        bodyLp.setMargins(0, dp(4), 0, 0);
+        bodyText.setLayoutParams(bodyLp);
+        box.addView(bodyText);
         return box;
     }
 
@@ -1182,32 +1337,71 @@ public final class MainActivity extends Activity {
     private View queueRowView(QueueEntry entry, long now) {
         Records.DashboardRow row = entry.row;
         Records.StudyItem item = entry.item;
-        LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
-        box.setPadding(dp(12), dp(12), dp(12), dp(12));
+        LinearLayout box = panelBox(Color.WHITE, Color.WHITE);
+        box.setPadding(dp(14), dp(14), dp(14), dp(14));
         box.setOnClickListener(v -> renderDetail(row.kanji));
+
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.addView(kanjiTile(row.kanji, dp(90), 52));
+
+        FrameLayout tileWrap = new FrameLayout(this);
+        TextView tile = kanjiTile(row.kanji, dp(80), 46);
+        FrameLayout.LayoutParams tileLp = new FrameLayout.LayoutParams(dp(80), dp(80));
+        tileWrap.addView(tile, tileLp);
+        boolean missed = item.phase == Records.SchedulerPhase.RELEARNING
+                || (item.dueAtMillis <= now && item.totalReviews > 0);
+        if (missed) {
+            TextView badge = text("Missed", 10, Color.WHITE, true);
+            badge.setBackground(panel(CORAL, CORAL, dp(10)));
+            badge.setPadding(dp(8), dp(3), dp(8), dp(3));
+            badge.setIncludeFontPadding(false);
+            FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+            badgeLp.setMargins(0, dp(-4), dp(-6), 0);
+            tileWrap.addView(badge, badgeLp);
+        }
+        top.addView(tileWrap, new LinearLayout.LayoutParams(dp(80), dp(80)));
+
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(rowMeaning(row), 19, INK, true));
-        copy.addView(text(sourceEvidenceText(row), 14, INK, true));
-        copy.addView(text(compact(queueCardBody(row), 72), 14, MUTED, false));
+        copy.addView(text(queueSecondaryLine(row), 14, MUTED, false));
         LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
         copyLp.setMargins(dp(14), 0, dp(6), 0);
         top.addView(copy, copyLp);
-        top.addView(text(">", 34, CORAL, true));
+
+        ImageView chevron = new ImageView(this);
+        chevron.setImageResource(R.drawable.ic_arrow_forward_24);
+        chevron.setColorFilter(CORAL);
+        LinearLayout.LayoutParams chevronLp = new LinearLayout.LayoutParams(dp(22), dp(22));
+        top.addView(chevron, chevronLp);
         box.addView(top);
+
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.addView(chip(recognitionStageLabel(item), BLUE));
-        if (item.phase == Records.SchedulerPhase.RELEARNING) {
-            chips.addView(chip("relearning", CORAL));
-        } else if (item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-            chips.addView(chip(STATE_LEARNING, TEAL));
+        LinearLayout.LayoutParams chipsLp = new LinearLayout.LayoutParams(-1, -2);
+        chipsLp.setMargins(0, dp(8), 0, 0);
+        chips.setLayoutParams(chipsLp);
+        if (row.weaknessScore >= 50) {
+            chips.addView(chip("Weak", CORAL));
         }
-        box.addView(chips);
+        if (item.dueAtMillis <= now + DAY_MILLIS) {
+            chips.addView(chip("Due soon", BLUE));
+        }
+        if (item.totalReviews > 0) {
+            chips.addView(chip("Seen " + item.totalReviews + "x", TEAL));
+        }
+        if (chips.getChildCount() > 0) {
+            box.addView(chips);
+        }
         return box;
+    }
+
+    private String queueSecondaryLine(Records.DashboardRow row) {
+        String source = sourceEvidenceText(row);
+        if (source != null && !source.isEmpty() && !source.equals("From your AnkiDroid sync")) {
+            return source;
+        }
+        return compact(queueCardBody(row), 72);
     }
 
     private String queueCardBody(Records.DashboardRow row) {
@@ -1225,7 +1419,7 @@ public final class MainActivity extends Activity {
         TextView kanji = text(value, textSp, INK, true);
         kanji.setGravity(Gravity.CENTER);
         kanji.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
-        kanji.setBackground(panel(BLUSH, BLUSH, dp(10)));
+        kanji.setBackground(panel(BLUSH, BLUSH, dp(18)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(sizePx, sizePx);
         kanji.setLayoutParams(lp);
         return kanji;
@@ -1279,19 +1473,10 @@ public final class MainActivity extends Activity {
         base("home");
         content.addView(fullWidthHomeButton());
         content.addView(text("Browse Kanji", 34, INK, true));
-        content.addView(text("Local kanji from synced Kani data and study history.", 16, MUTED, false));
-        addSpace(10);
+        content.addView(text("Search local kanji from your synced Kani data and study history.", 15, MUTED, false));
+        addSpace(14);
 
-        EditText search = new EditText(this);
-        search.setSingleLine(true);
-        search.setText(query == null ? "" : query);
-        search.setHint("Search kanji, meaning, reading, or examples");
-        search.setTextSize(18);
-        content.addView(search, new LinearLayout.LayoutParams(-1, dp(58)));
-
-        Button submit = primaryButton("Search", TEAL);
-        submit.setOnClickListener(v -> renderBrowseKanji(search.getText().toString()));
-        content.addView(submit);
+        content.addView(browseSearchBar(query));
 
         List<Records.KanjiInventoryItem> items = store.searchKanjiInventory(query);
         content.addView(sectionTitle(items.isEmpty() ? "No matches" : countText(items.size(), "kanji", "kanji")));
@@ -1304,27 +1489,93 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private View browseSearchBar(String query) {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(14), dp(6), dp(6), dp(6));
+        bar.setBackground(panel(Color.WHITE, Color.WHITE, dp(28)));
+        bar.setElevation(dp(3));
+
+        ImageView searchIcon = new ImageView(this);
+        searchIcon.setImageResource(R.drawable.ic_eye_24);
+        searchIcon.setColorFilter(MUTED);
+        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(20), dp(20));
+        iconLp.setMargins(0, 0, dp(10), 0);
+        bar.addView(searchIcon, iconLp);
+
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setText(query == null ? "" : query);
+        search.setHint("Search kanji, meaning, reading, or examples");
+        search.setHintTextColor(MUTED);
+        search.setTextColor(INK);
+        search.setTextSize(16);
+        search.setBackground(null);
+        search.setIncludeFontPadding(false);
+        search.setPadding(0, dp(8), dp(6), dp(8));
+        bar.addView(search, new LinearLayout.LayoutParams(0, -2, 1));
+
+        FrameLayout submit = new FrameLayout(this);
+        submit.setBackground(panel(CORAL, CORAL, dp(22)));
+        submit.setElevation(dp(2));
+        submit.setClickable(true);
+        submit.setContentDescription("Search");
+        submit.setOnClickListener(v -> renderBrowseKanji(search.getText().toString()));
+        ImageView arrow = new ImageView(this);
+        arrow.setImageResource(R.drawable.ic_arrow_forward_24);
+        arrow.setColorFilter(Color.WHITE);
+        FrameLayout.LayoutParams arrowLp = new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER);
+        submit.addView(arrow, arrowLp);
+        LinearLayout.LayoutParams submitLp = new LinearLayout.LayoutParams(dp(44), dp(44));
+        bar.addView(submit, submitLp);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(56));
+        lp.setMargins(0, 0, 0, dp(6));
+        bar.setLayoutParams(lp);
+        return bar;
+    }
+
     private View browseKanjiRow(Records.KanjiInventoryItem item) {
-        LinearLayout box = panelBox(Color.WHITE, item.suspended ? CORAL : TEAL);
+        LinearLayout box = panelBox(Color.WHITE, Color.WHITE);
         box.setOnClickListener(v -> renderDetail(item.kanji, true));
+
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView glyph = text(item.kanji, 44, INK, true);
-        glyph.setGravity(Gravity.CENTER);
-        top.addView(glyph, new LinearLayout.LayoutParams(dp(74), dp(74)));
+        top.addView(kanjiTile(item.kanji, dp(74), 40));
+
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(item.primaryMeaning.isEmpty() ? "Meaning not stored yet" : item.primaryMeaning, 19, INK, true));
+        copy.addView(text(item.primaryMeaning.isEmpty() ? "Meaning not stored yet" : item.primaryMeaning, 18, INK, true));
         if (!item.readings.isEmpty()) {
-            copy.addView(text(item.readings, 14, TEAL, true));
+            copy.addView(text(compact(item.readings, 60), 13, TEAL, true));
         }
-        copy.addView(text(countText(item.sourceCount, "local source", "local sources") + " · " + countText(item.exampleCount, "example", "examples"), 14, MUTED, false));
-        top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
+        copyLp.setMargins(dp(14), 0, dp(6), 0);
+        top.addView(copy, copyLp);
+
+        ImageView chevron = new ImageView(this);
+        chevron.setImageResource(R.drawable.ic_arrow_forward_24);
+        chevron.setColorFilter(CORAL);
+        LinearLayout.LayoutParams chevronLp = new LinearLayout.LayoutParams(dp(20), dp(20));
+        top.addView(chevron, chevronLp);
         box.addView(top);
+
+        LinearLayout chips = new LinearLayout(this);
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams chipsLp = new LinearLayout.LayoutParams(-1, -2);
+        chipsLp.setMargins(0, dp(8), 0, 0);
+        chips.setLayoutParams(chipsLp);
+        if (item.sourceCount > 0) {
+            chips.addView(chip(countText(item.sourceCount, "local source", "local sources"), TEAL));
+        }
+        if (item.exampleCount > 0) {
+            chips.addView(chip(countText(item.exampleCount, "example", "examples"), BLUE));
+        }
         if (item.suspended) {
-            LinearLayout chips = new LinearLayout(this);
-            chips.setOrientation(LinearLayout.HORIZONTAL);
             chips.addView(chip("SUSPENDED", CORAL));
+        }
+        if (chips.getChildCount() > 0) {
             box.addView(chips);
         }
         return box;
@@ -4822,8 +5073,9 @@ public final class MainActivity extends Activity {
     private LinearLayout band(int color) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(20), dp(20), dp(20));
-        box.setBackground(panel(color, color, dp(8)));
+        box.setPadding(dp(22), dp(22), dp(22), dp(22));
+        box.setBackground(panel(color, color, dp(20)));
+        box.setElevation(dp(3));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(8), 0, dp(8));
         box.setLayoutParams(lp);
@@ -4833,8 +5085,13 @@ public final class MainActivity extends Activity {
     private LinearLayout panelBox(int fill, int stroke) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(14), dp(14), dp(14), dp(14));
-        box.setBackground(panel(fill, stroke, dp(8)));
+        box.setPadding(dp(16), dp(16), dp(16), dp(16));
+        boolean softFill = fill == Color.WHITE || fill == BG || fill == BLUSH || fill == LAVENDER_SOFT || fill == TEAL_SOFT;
+        int effectiveStroke = softFill ? fill : stroke;
+        box.setBackground(panel(fill, effectiveStroke, dp(20)));
+        if (softFill) {
+            box.setElevation(dp(3));
+        }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(7), 0, dp(7));
         box.setLayoutParams(lp);
@@ -4854,17 +5111,17 @@ public final class MainActivity extends Activity {
 
     private TextView sectionTitle(String value) {
         TextView title = text(value, 22, INK, true);
-        title.setPadding(0, dp(12), 0, dp(6));
+        title.setPadding(0, dp(14), 0, dp(8));
         return title;
     }
 
     private TextView chip(String value, int color) {
-        TextView chip = text(value, 13, color, true);
+        TextView chip = text(value, 12, color, true);
         chip.setGravity(Gravity.CENTER);
-        chip.setPadding(dp(10), dp(5), dp(10), dp(5));
-        chip.setBackground(panel(softened(color), color, dp(7)));
+        chip.setPadding(dp(11), dp(6), dp(11), dp(6));
+        chip.setBackground(panel(softened(color), softened(color), dp(20)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-        lp.setMargins(0, dp(7), dp(7), dp(2));
+        lp.setMargins(0, dp(6), dp(6), dp(2));
         chip.setLayoutParams(lp);
         return chip;
     }
@@ -4873,12 +5130,13 @@ public final class MainActivity extends Activity {
         Button button = new Button(this);
         button.setText(label);
         button.setAllCaps(false);
-        button.setTextSize(19);
+        button.setTextSize(18);
         button.setTextColor(Color.WHITE);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setBackground(panel(color, color, dp(12)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(62));
-        lp.setMargins(0, dp(8), 0, dp(8));
+        button.setBackground(panel(color, color, dp(22)));
+        button.setElevation(dp(4));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(60));
+        lp.setMargins(0, dp(10), 0, dp(10));
         button.setLayoutParams(lp);
         return button;
     }
@@ -4888,41 +5146,44 @@ public final class MainActivity extends Activity {
         button.setText(label);
         button.setAllCaps(false);
         button.setTextColor(INK);
-        button.setBackground(panel(Color.WHITE, Color.rgb(238, 189, 218), dp(12)));
+        button.setBackground(panel(Color.WHITE, CHIP_BORDER, dp(20)));
+        button.setElevation(dp(2));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(54));
-        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
+        lp.setMargins(dp(3), dp(8), dp(3), dp(8));
         button.setLayoutParams(lp);
         return button;
     }
 
     private int softened(int color) {
         if (color == CORAL) {
-            return Color.rgb(255, 235, 243);
+            return Color.rgb(0xFF, 0xE5, 0xEE);
         }
         if (color == TEAL) {
-            return Color.rgb(230, 250, 251);
+            return TEAL_SOFT;
         }
         if (color == GOLD || color == Color.rgb(247, 159, 0)) {
-            return Color.rgb(255, 247, 220);
+            return Color.rgb(0xFF, 0xEF, 0xDD);
         }
         if (color == BLUE || color == LILAC) {
-            return Color.rgb(242, 238, 255);
+            return LAVENDER_SOFT;
         }
-        return Color.rgb(248, 238, 245);
+        return Color.rgb(0xF6, 0xEE, 0xF8);
     }
 
     private GradientDrawable panel(int fill, int stroke, int radius) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(fill);
-        drawable.setStroke(dp(1), stroke);
+        if (stroke != fill) {
+            drawable.setStroke(dp(1), stroke);
+        }
         drawable.setCornerRadius(radius);
         return drawable;
     }
 
     private void emptyState(String title, String body) {
-        LinearLayout empty = band(GOLD);
-        empty.addView(text(title, 24, INK, true));
-        empty.addView(text(body, 16, INK, false));
+        LinearLayout empty = panelBox(LAVENDER_SOFT, LAVENDER_SOFT);
+        empty.addView(text(title, 22, INK, true));
+        empty.addView(text(body, 15, MUTED, false));
         content.addView(empty);
     }
 
