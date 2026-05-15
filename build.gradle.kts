@@ -10,25 +10,29 @@ val sonarProjectVersion = providers.gradleProperty("KANI_VERSION_NAME")
     .orElse(providers.environmentVariable("KANJI_ANKI_VERSION_NAME"))
     .orElse("0.4.33")
 
-val sonarJavaBinaries = listOf(
-    "core/build/classes/java/main",
-    "app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
-).map(::rootPath)
+val maybeSonarMainBinaries = listOf(
+    rootPath("core/build/classes/java/main"),
+    rootPath("core/build/classes/kotlin/main"),
+    rootPath("app/build/classes/kotlin/debug"),
+    rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
+    rootPath("app/build/intermediates/kotlin-classes/debug"),
+).filter { file(it).exists() }
 
-val sonarJavaTestBinaries = buildList {
-    add(rootPath("core/build/classes/java/test"))
-    add(rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"))
-    if (file("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes").exists()) {
-        add(rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"))
-    }
-}
+val maybeSonarTestBinaries = listOf(
+    rootPath("core/build/classes/java/test"),
+    rootPath("core/build/classes/kotlin/test"),
+    rootPath("app/build/classes/kotlin/debugUnitTest"),
+    rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
+    rootPath("app/build/intermediates/kotlin-classes/debugUnitTest"),
+    rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
+    rootPath("app/build/intermediates/kotlin-classes/debugAndroidTest"),
+).filter { file(it).exists() }
 
-val sonarJaCoCoReportPaths = buildList {
-    add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
-    add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
-    if (file("app/build/reports/coverage/androidTest/debug/connected/report.xml").exists()) {
-        add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
-    }
+val maybeSonarCoveragePaths = listOf(
+    rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
+    rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
+    rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
+).filter { file(it).exists() }
 }
 
 sonar {
@@ -36,8 +40,8 @@ sonar {
         property("sonar.projectKey", "bee-san_kanji_anki")
         property("sonar.organization", "bee-san")
         property("sonar.projectVersion", sonarProjectVersion.get())
-        property("sonar.java.binaries", sonarJavaBinaries.joinToString(","))
-        property("sonar.java.test.binaries", sonarJavaTestBinaries.joinToString(","))
-        property("sonar.coverage.jacoco.xmlReportPaths", sonarJaCoCoReportPaths.joinToString(","))
+        property("sonar.java.binaries", maybeSonarMainBinaries.joinToString(","))
+        property("sonar.java.test.binaries", maybeSonarTestBinaries.joinToString(","))
+        property("sonar.coverage.jacoco.xmlReportPaths", maybeSonarCoveragePaths.joinToString(","))
     }
 }
