@@ -38,7 +38,6 @@ val maybeSonarMainBinaries = listOf(
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     rootPath("app/build/intermediates/kotlin-classes/debug"),
     rootPath("app/build/intermediates/javac/debug/classes"),
-    rootPath("app/build/intermediates/compile_library_classes/debug/classes"),
 ).filter { file(it).exists() }
 
 val maybeSonarTestBinaries = listOf(
@@ -55,7 +54,7 @@ val maybeSonarCoveragePaths = listOf(
     rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
     rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
     rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
-).filter { file(it).exists() }
+)
 
 sonar {
     properties {
