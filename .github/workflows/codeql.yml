@@ -93,17 +93,14 @@ jobs:
         run: |
           set -euo pipefail
           TASKS=""
-          if [ "${{ steps.changed-areas.outputs.core }}" = "true" ]; then
+          if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS="$TASKS :core:compileJava"
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ]; then
             TASKS="$TASKS :app:compileDebugJavaWithJavac :app:compileDebugKotlin"
           fi
-          if [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ] && [ "${{ steps.changed-areas.outputs.core }}" != "true" ] && [ "${{ steps.changed-areas.outputs.app }}" != "true" ]; then
-            TASKS=":core:compileJava"
-          fi
           if [ -z "$TASKS" ]; then
-            TASKS=":core:compileJava :app:compileDebugJavaWithJavac :app:compileDebugKotlin"
+            TASKS=":core:compileJava"
           fi
           gradle $TASKS --parallel -Dorg.gradle.parallel=true
 
