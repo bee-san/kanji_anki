@@ -38,24 +38,27 @@ val maybeSonarMainBinaries = listOf(
     rootPath("core/build/classes/kotlin/main"),
     rootPath("app/build/classes/kotlin/debug"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
-    rootPath("app/build/intermediates/kotlin-classes/debug"),
-).filter { file(it).exists() }
+    rootPath("app/build/intermediates/javac/debug/classes"),
+    rootPath("app/build/intermediates/kotlin-classes/debug")
+)
 
 val maybeSonarTestBinaries = listOf(
     rootPath("core/build/classes/java/test"),
     rootPath("core/build/classes/kotlin/test"),
     rootPath("app/build/classes/kotlin/debugUnitTest"),
     rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
+    rootPath("app/build/intermediates/javac/debugUnitTest/classes"),
     rootPath("app/build/intermediates/kotlin-classes/debugUnitTest"),
     rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
-    rootPath("app/build/intermediates/kotlin-classes/debugAndroidTest"),
-).filter { file(it).exists() }
+    rootPath("app/build/intermediates/javac/debugAndroidTest/classes"),
+    rootPath("app/build/intermediates/kotlin-classes/debugAndroidTest")
+)
 
 val maybeSonarCoveragePaths = listOf(
     rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
     rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
     rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
-).filter { file(it).exists() }
+)
 
 sonar {
     properties {
