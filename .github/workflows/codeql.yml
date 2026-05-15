@@ -1,11 +1,32 @@
 name: CodeQL
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
+      - '.github/workflows/codeql.yml'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
+      - '.github/workflows/codeql.yml'
   schedule:
     - cron: "36 4 * * 1"
 
@@ -13,6 +34,8 @@ jobs:
   analyze:
     name: Analyze Java
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 15
     permissions:
       actions: read
       contents: read
@@ -21,6 +44,23 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Detect changed project areas
+        id: changed-areas
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          filters: |
+            app:
+              - 'app/**'
+            core:
+              - 'core/**'
+            gradle:
+              - 'build.gradle*'
+              - 'settings.gradle*'
+              - 'gradle/**'
+              - 'gradle.properties'
+              - 'gradle/libs.versions.toml'
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -34,9 +74,11 @@ jobs:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
+        if: steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.gradle == 'true'
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
+        if: steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
@@ -48,7 +90,19 @@ jobs:
           build-mode: manual
 
       - name: Build Java sources
-        run: gradle clean :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+        run: |
+          set -euo pipefail
+          TASKS="clean"
+          if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS="$TASKS :core:compileJava"
+          fi
+          if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS="$TASKS :app:compileDebugJavaWithJavac"
+          fi
+          if [ "$TASKS" = "clean" ]; then
+            TASKS="clean :core:compileJava :app:compileDebugJavaWithJavac"
+          fi
+          gradle $TASKS --no-daemon
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
