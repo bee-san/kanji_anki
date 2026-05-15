@@ -50,6 +50,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect changed project areas
+        id: changed-areas
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          filters: |
+            app:
+              - 'app/**'
+            core:
+              - 'core/**'
+            gradle:
+              - 'build.gradle*'
+              - 'settings.gradle*'
+              - 'gradle/**'
+              - 'gradle.properties'
+              - 'gradle/libs.versions.toml'
+
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
@@ -113,15 +130,19 @@ jobs:
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.full_coverage != 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: >
-          gradle
-          :core:test
-          :core:jacocoTestReport
-          :app:testDebugUnitTest
-          :app:jacocoDebugUnitTestReport
-          sonar
-          --parallel
-          -Dorg.gradle.parallel=true
+        run: |
+          set -euo pipefail
+          TASKS=""
+          if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS="$TASKS :core:test :core:jacocoTestReport"
+          fi
+          if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS="$TASKS :app:testDebugUnitTest :app:jacocoDebugUnitTestReport"
+          fi
+          if [ -z "$TASKS" ]; then
+            TASKS=":core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport"
+          fi
+          gradle $TASKS sonar --parallel -Dorg.gradle.parallel=true
 
       - name: Build and analyze (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
