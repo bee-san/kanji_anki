@@ -32,7 +32,7 @@ public final class BridgeScheduler {
     private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
 
     private static final long MINUTE = 60_000L;
-    private static final long DAY = 86_400_000L;
+    static final long DAY = 86_400_000L;
     private static final int MIN_RECOGNITION_STAGE = -1;
     private static final int MAX_RECOGNITION_STAGE = 2;
     private static final String STATE_NEW = "new";
@@ -43,6 +43,17 @@ public final class BridgeScheduler {
     static final String RATING_HARD = "hard";
     static final String RATING_GOOD = "good";
     static final String RATING_EASY = "easy";
+    private static final String FSRS_ENGINE_LATEST_21P = "latest21p";
+
+    private final KaniFsrsAdapter fsrsAdapter;
+
+    public BridgeScheduler() {
+        this(defaultFsrsAdapter());
+    }
+
+    BridgeScheduler(KaniFsrsAdapter fsrsAdapter) {
+        this.fsrsAdapter = Objects.requireNonNull(fsrsAdapter);
+    }
 
     public static final String TASK_WRITE_KANJI = "write_kanji";
     public static final String TASK_TYPE_MEANING = "type_meaning";
@@ -55,6 +66,13 @@ public final class BridgeScheduler {
     // read these task-type strings (review_log, task memory lookup).
     public static final String TASK_TYPING_MEANING = "typing_meaning";
     public static final String TASK_WRITING_REMEDIATION = "writing_remediation";
+
+    private static KaniFsrsAdapter defaultFsrsAdapter() {
+        if (FSRS_ENGINE_LATEST_21P.equals(System.getProperty("kani.fsrs.engine"))) {
+            return new LatestFsrsAdapter();
+        }
+        return new Fsrs5Adapter();
+    }
 
     public List<Records.StudyItem> seedQueue(
             List<Records.DashboardRow> rows,
@@ -611,12 +629,15 @@ public final class BridgeScheduler {
 
     private void graduateToReview(ReviewContext context, ReviewState state) {
         state.stepIndex = 0;
-        int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
-        Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
-        state.stability = engine.initialStability(fsrsRating);
-        state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
-        long interval = engine.nextIntervalMillis(state.stability);
-        state.scheduledIntervalDays = intervalDays(interval);
+        KaniFsrsReviewResult result = fsrsAdapter.initialReview(
+                context.rating,
+                state.difficulty,
+                context.parameters.targetRetention
+        );
+        state.stability = result.stability;
+        state.difficulty = result.difficulty;
+        state.scheduledIntervalDays = result.intervalDays();
+        long interval = result.intervalMillis;
         state.due = context.nowMillis + interval;
         state.phase = Records.SchedulerPhase.REVIEW;
         state.schedulerState = STATE_REVIEW;
@@ -643,11 +664,16 @@ public final class BridgeScheduler {
     private void applyReviewAgain(ReviewContext context, ReviewState state) {
         state.lapses++;
         state.taskLapses++;
-        Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
-        state.difficulty = engine.updateDifficulty(state.difficulty, Fsrs5Engine.ratingToInt(RATING_AGAIN));
-        double elapsedDays = Fsrs5Engine.elapsedDays(context.item.dueAtMillis, context.nowMillis);
-        double retrievability = engine.retrievability(elapsedDays, state.stability);
-        state.stability = engine.stabilityAfterForgetting(state.stability, state.difficulty, retrievability);
+        KaniFsrsReviewResult result = fsrsAdapter.review(
+                state.stability,
+                state.difficulty,
+                RATING_AGAIN,
+                context.item.dueAtMillis,
+                context.nowMillis,
+                context.parameters.targetRetention
+        );
+        state.stability = result.stability;
+        state.difficulty = result.difficulty;
 
         List<Integer> relearning = context.learningSettings.reviewStepsMinutes;
         state.phase = Records.SchedulerPhase.RELEARNING;
@@ -669,14 +695,18 @@ public final class BridgeScheduler {
     }
 
     private void applyReviewPass(ReviewContext context, ReviewState state) {
-        Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
-        int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
-        state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
-        double elapsedDays = Fsrs5Engine.elapsedDays(context.item.dueAtMillis, context.nowMillis);
-        double retrievability = engine.retrievability(elapsedDays, state.stability);
-        state.stability = engine.stabilityAfterRecall(state.stability, state.difficulty, retrievability, fsrsRating);
-        long interval = engine.nextIntervalMillis(state.stability);
-        state.scheduledIntervalDays = intervalDays(interval);
+        KaniFsrsReviewResult result = fsrsAdapter.review(
+                state.stability,
+                state.difficulty,
+                context.rating,
+                context.item.dueAtMillis,
+                context.nowMillis,
+                context.parameters.targetRetention
+        );
+        state.stability = result.stability;
+        state.difficulty = result.difficulty;
+        state.scheduledIntervalDays = result.intervalDays();
+        long interval = result.intervalMillis;
         state.due = context.nowMillis + interval;
         state.phase = Records.SchedulerPhase.REVIEW;
         state.schedulerState = STATE_REVIEW;

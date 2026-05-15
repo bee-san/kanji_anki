@@ -43,5 +43,6 @@ tasks.check {
 }
 
 dependencies {
+    implementation("dev.bee:fsrs-java:0.1.0-SNAPSHOT")
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }
