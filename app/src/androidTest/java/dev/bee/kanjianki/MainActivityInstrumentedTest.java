@@ -89,7 +89,10 @@ public final class MainActivityInstrumentedTest {
     private static final String IMPORTED_FROM_SUSPENDED_CARDS = "Imported from suspended cards";
     private static final String MISSED_IN_MATURE_CARDS = "Missed in mature cards";
     private static final String CLEAN_MATCH = "Clean match";
-    private static final String NEXT_CARD = "Next card";
+    private static final String PASS_AFTER_WRITING = "Pass";
+    private static final String RECOGNITION_QUESTION = "What does this kanji mean?";
+    private static final String RECOGNISE = "Recognise";
+    private static final String SIMILAR_KANJI = "Similar kanji";
 
     @Rule
     public final TestName testName = new TestName();
@@ -498,7 +501,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Today's focus done");
                 assertHasText(activity, "Continue all kanji");
             });
-            clickText(scenario, "Home");
+            clickText(scenario, "Back home");
             clickText(scenario, "拉");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Recovery timeline");
@@ -592,8 +595,8 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Name this kanji");
-                assertHasText(activity, "Kanji -> meaning");
-                assertHasText(activity, "What does it mean?");
+                assertHasText(activity, RECOGNISE);
+                assertHasText(activity, RECOGNITION_QUESTION);
                 assertHasText(activity, REVEAL);
             });
 
@@ -715,8 +718,8 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Name this kanji");
-                assertHasText(activity, "Kanji -> meaning");
-                assertHasText(activity, "What does it mean?");
+                assertHasText(activity, RECOGNISE);
+                assertHasText(activity, RECOGNITION_QUESTION);
             });
         }
     }
@@ -779,7 +782,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, CLEAN_MATCH);
                 assertHasText(activity, "Target: 拉");
-                assertHasText(activity, NEXT_CARD);
+                assertHasText(activity, PASS_AFTER_WRITING);
                 assertHasText(activity, "Reference");
                 assertEquals(1, countText(activity.findViewById(android.R.id.content), CLEAN_MATCH));
             });
@@ -800,6 +803,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Recognized, but the stroke path was messy");
                 assertHasText(activity, "Try cleaner");
                 assertHasText(activity, "Save hard");
+                assertHasText(activity, PASS_AFTER_WRITING);
                 assertHasText(activity, "Replay");
             });
         }
@@ -831,14 +835,14 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, CLEAN_MATCH);
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Replay");
-                assertHasText(activity, NEXT_CARD);
+                assertHasText(activity, PASS_AFTER_WRITING);
                 drawFreeformStroke(activity);
             });
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Updated ink");
                 assertNoText(activity, CLEAN_MATCH);
                 assertNoText(activity, "Replay");
-                assertNoText(activity, NEXT_CARD);
+                assertNoText(activity, PASS_AFTER_WRITING);
                 DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
                 assertFalse(pad.hasReplaySnapshot());
@@ -894,7 +898,7 @@ public final class MainActivityInstrumentedTest {
             int hiddenCardHeight = recognitionCardHeight(scenario);
             assertTrue("Hidden card should be measured", hiddenCardHeight > 0);
             scenario.onActivity(activity -> {
-                assertHasTexts(activity, "Name this kanji", "Kanji -> meaning", "Answer hidden until reveal");
+                assertHasTexts(activity, "Name this kanji", RECOGNISE, "Answer hidden until reveal");
                 assertNoTexts(activity, "拉麺");
                 View root = activity.findViewById(android.R.id.content);
                 View reveal = findExactText(root, REVEAL);
@@ -986,19 +990,19 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, CHECK);
             waitForText(scenario, CLEAN_MATCH);
-            clickText(scenario, NEXT_CARD);
+            clickText(scenario, PASS_AFTER_WRITING);
 
             MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("提"));
             waitForText(scenario, "Propose, take along");
             scenario.onActivity(activity -> drawGuideKanji(activity, "提"));
             clickText(scenario, CHECK);
             waitForText(scenario, CLEAN_MATCH);
-            clickText(scenario, NEXT_CARD);
+            clickText(scenario, PASS_AFTER_WRITING);
 
             waitForText(scenario, "Which kanji means Latin, kidnap?");
             clickText(scenario, "拉");
             scenario.onActivity(activity -> {
-                assertHasTexts(activity, "3 / 4", "Name this kanji", "Kanji -> meaning");
+                assertHasTexts(activity, "3 / 4", "Name this kanji", RECOGNISE);
             });
 
             assertSimilarRepairsQueuedWithoutReviews();
@@ -1016,7 +1020,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Review this now");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "0 / 2");
-                assertHasText(activity, "Similar choice");
+                assertHasText(activity, SIMILAR_KANJI);
                 assertHasText(activity, "Which kanji means Latin, kidnap?");
                 assertHasText(activity, "拉");
                 assertHasText(activity, "提");
@@ -1033,7 +1037,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity(activity -> {
                 assertHasText(activity, "1 / 2");
-                assertHasText(activity, "Similar choice");
+                assertHasText(activity, SIMILAR_KANJI);
                 assertHasText(activity, "Which kanji means Propose, take along?");
                 assertHasText(activity, "提");
                 assertHasText(activity, "謎");
@@ -1205,10 +1209,10 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, CLEAN_MATCH);
                 assertHasText(activity, "Target: 拉");
-                assertHasText(activity, NEXT_CARD);
+                assertHasText(activity, PASS_AFTER_WRITING);
                 assertEquals(1, countText(activity.findViewById(android.R.id.content), CLEAN_MATCH));
             });
-            clickText(scenario, NEXT_CARD);
+            clickText(scenario, PASS_AFTER_WRITING);
 
             try (LocalStore store = new LocalStore(context)) {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -1221,9 +1225,9 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, items.size());
                 Records.StudyItem item = items.get(0);
                 assertEquals("拉", item.kanji);
-                assertEquals("review", item.state);
-                assertEquals(2, item.totalReviews);
-                assertEquals(1, item.learningStep);
+                assertEquals("learning", item.state);
+                assertEquals(4, item.totalReviews);
+                assertEquals(0, item.learningStep);
                 assertEquals(1, item.writingLevel);
                 assertTrue(item.activeToken == null || item.activeToken.isEmpty());
             }
@@ -1240,7 +1244,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> drawGuideKanji(activity, "拉"));
             clickText(scenario, CHECK);
             waitForText(scenario, CLEAN_MATCH);
-            clickText(scenario, NEXT_CARD);
+            clickText(scenario, PASS_AFTER_WRITING);
 
             try (LocalStore store = new LocalStore(context)) {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -1265,8 +1269,9 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Try cleaner");
                 assertHasText(activity, "Save hard");
+                assertHasText(activity, PASS_AFTER_WRITING);
             });
-            clickText(scenario, "Save hard");
+            clickText(scenario, PASS_AFTER_WRITING);
 
             try (LocalStore store = new LocalStore(context)) {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -1324,7 +1329,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Fresh guided try");
                 assertNoText(activity, "I could not read that as the target kanji yet");
-                assertNoText(activity, NEXT_CARD);
+                assertNoText(activity, PASS_AFTER_WRITING);
                 assertNoText(activity, "Replay");
                 DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
                 assertNotNull(pad);
@@ -2070,7 +2075,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void assertHiddenRecognitionCard(MainActivity activity) {
-        assertHasTexts(activity, "Name this kanji", "Kanji -> meaning", "Answer hidden until reveal", "What does it mean?", REVEAL);
+        assertHasTexts(activity, "Name this kanji", RECOGNISE, "Answer hidden until reveal", RECOGNITION_QUESTION, REVEAL);
         assertNoTexts(activity, "Example: 拉麺  らーめん", "From: 拉麺");
     }
 
@@ -2109,7 +2114,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void assertSimilarChoiceCard(MainActivity activity, String progress, String prompt, String firstChoice, String secondChoice) {
-        assertHasTexts(activity, progress, "Similar choice", prompt, firstChoice, secondChoice);
+        assertHasTexts(activity, progress, SIMILAR_KANJI, prompt, firstChoice, secondChoice);
         assertNoTexts(activity, "Kanji -> meaning");
     }
 
