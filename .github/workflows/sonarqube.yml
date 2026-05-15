@@ -40,6 +40,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Build and analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
 
@@ -118,9 +119,9 @@ jobs:
           :core:jacocoTestReport
           :app:testDebugUnitTest
           :app:jacocoDebugUnitTestReport
-          :app:lintDebug
           sonar
           --parallel
+          -Dorg.gradle.parallel=true
 
       - name: Build and analyze (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
@@ -132,8 +133,9 @@ jobs:
           :core:jacocoTestReport
           :app:testDebugUnitTest
           :app:jacocoDebugUnitTestReport
+          :app:lintDebug
           :app:compileDebugAndroidTestJavaWithJavac
           :app:createDebugCoverageReport
-          :app:lintDebug
           sonar
           --parallel
+          -Dorg.gradle.parallel=true

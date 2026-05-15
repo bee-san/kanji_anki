@@ -1,4 +1,7 @@
 name: CodeQL
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
@@ -31,6 +34,8 @@ jobs:
   analyze:
     name: Analyze Java
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 15
     permissions:
       actions: read
       contents: read
@@ -66,7 +71,7 @@ jobs:
           build-mode: manual
 
       - name: Build Java sources
-        run: gradle clean :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+        run: gradle clean :core:compileJava :app:compileDebugJavaWithJavac --no-daemon
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
