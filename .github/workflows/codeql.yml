@@ -92,15 +92,15 @@ jobs:
       - name: Build Java sources
         run: |
           set -euo pipefail
-          TASKS="clean"
+          TASKS=""
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS="$TASKS :core:compileJava"
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS="$TASKS :app:compileDebugJavaWithJavac"
           fi
-          if [ "$TASKS" = "clean" ]; then
-            TASKS="clean :core:compileJava :app:compileDebugJavaWithJavac"
+          if [ -z "$TASKS" ]; then
+            TASKS=":core:compileJava :app:compileDebugJavaWithJavac"
           fi
           gradle $TASKS --no-daemon
 
