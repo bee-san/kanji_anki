@@ -52,20 +52,50 @@ jobs:
 
       - name: Detect changed project areas
         id: changed-areas
-        uses: dorny/paths-filter@v3
-        with:
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || github.sha }}
-          filters: |
-            app:
-              - 'app/**'
-            core:
-              - 'core/**'
-            gradle:
-              - 'build.gradle*'
-              - 'settings.gradle*'
-              - 'gradle/**'
-              - 'gradle.properties'
-              - 'gradle/libs.versions.toml'
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            BASE_SHA="${{ github.event.before }}"
+          else
+            BASE_SHA="${{ github.sha }}"
+          fi
+
+          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA="${{ github.sha }}"
+          fi
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="${{ github.sha }}"
+          fi
+
+          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "${{ github.sha }}")"
+          APP_CHANGED=false
+          CORE_CHANGED=false
+          GRADLE_CHANGED=false
+
+          if [ -z "$CHANGED_FILES" ]; then
+            GRADLE_CHANGED=false
+          else
+            while IFS= read -r FILE; do
+              case "$FILE" in
+                app/*)
+                  APP_CHANGED=true
+                  ;;
+                core/*)
+                  CORE_CHANGED=true
+                  ;;
+                build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|.github/workflows/sonarqube.yml)
+                  GRADLE_CHANGED=true
+                  ;;
+              esac
+            done <<< "$CHANGED_FILES"
+          fi
+
+          echo "app=$APP_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "core=$CORE_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java
         uses: actions/setup-java@v5
