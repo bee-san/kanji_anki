@@ -105,16 +105,6 @@ jobs:
         with:
           gradle-version: "9.4.1"
 
-      - name: Set up Android SDK
-        if: steps.changed-areas.outputs.app == 'true'
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
-
-      - name: Install Android SDK packages
-        if: steps.changed-areas.outputs.app == 'true'
-        run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
