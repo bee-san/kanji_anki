@@ -23,9 +23,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -81,6 +85,22 @@ public final class ManualSyncEngineInstrumentedTest {
         }
         assertTrue(activeStudyItem);
         assertTrue("The fake suspended problem card should create at least one suspended-evidence row.", hasSuspendedEvidence(rows));
+    }
+
+    @Test
+    public void nullProgressListenerUsesNoopProgressAndStillSyncs() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(
+                context,
+                store,
+                new FakeGateway(snapshot(settings), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
+                settings,
+                null
+        ).run();
+
+        assertTrue(result.success);
+        assertEquals("success", store.latestSync().status);
     }
 
     @Test
@@ -144,6 +164,79 @@ public final class ManualSyncEngineInstrumentedTest {
     }
 
     @Test
+    public void retryableSyncFailurePersistsRetryableError() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(
+                context,
+                store,
+                new RetryableGateway(),
+                settings
+        ).run();
+
+        assertFalse(result.success);
+        assertEquals("AnkiDroid returned no configured note cursor.", result.message);
+        LocalStore.SyncStatus status = store.latestSync();
+        assertEquals("retryable_error", status.status);
+        assertEquals("AnkiDroid returned no configured note cursor.", status.errorMessage);
+    }
+
+    @Test
+    public void unexpectedRuntimeExceptionPersistsRetryableError() {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(
+                context,
+                store,
+                new RuntimeFailingGateway(),
+                settings
+        ).run();
+
+        assertFalse(result.success);
+        assertEquals("sync crashed", result.message);
+        LocalStore.SyncStatus status = store.latestSync();
+        assertEquals("retryable_error", status.status);
+        assertEquals("sync crashed", status.errorMessage);
+    }
+
+    @Test
+    public void concurrentManualSyncSkipsWithoutRecordingSync() throws Exception {
+        Records.Settings settings = Records.Settings.kikuDefaults();
+        BlockingGateway blockingGateway = new BlockingGateway(
+                snapshot(settings),
+                new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")
+        );
+        AtomicReference<ManualSyncEngine.SyncResult> firstResult = new AtomicReference<>();
+        AtomicReference<Throwable> threadFailure = new AtomicReference<>();
+        Thread firstSync = new Thread(() -> {
+            try {
+                firstResult.set(new ManualSyncEngine(context, store, blockingGateway, settings).run());
+            } catch (Throwable error) {
+                threadFailure.set(error);
+            }
+        });
+
+        firstSync.start();
+        assertTrue(blockingGateway.awaitStarted());
+
+        ManualSyncEngine.SyncResult skipped = new ManualSyncEngine(
+                context,
+                store,
+                new FakeGateway(snapshot(settings), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
+                settings
+        ).run();
+
+        assertTrue(skipped.skipped);
+        assertFalse(skipped.success);
+        assertEquals("Sync already running.", skipped.message);
+        assertNull(store.latestSync());
+
+        blockingGateway.release();
+        firstSync.join(10_000L);
+        assertFalse(firstSync.isAlive());
+        assertNull(threadFailure.get());
+        assertTrue(firstResult.get().success);
+    }
+
+    @Test
     public void manualSyncReceivesOrderedProgressEvents() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         List<String> events = new ArrayList<>();
@@ -163,6 +256,7 @@ public final class ManualSyncEngineInstrumentedTest {
                 "SCANNING_CARDS:0/2",
                 "SCANNING_CARDS:1/2",
                 "SCANNING_CARDS:2/2",
+                "PROCESSING_IMPORTED_CARDS:0/-1",
                 "BUILDING_PRACTICE_QUEUE:0/-1",
                 "ARCHIVING_IMPORTED_CARDS:0/-1"
         ), events);
@@ -287,6 +381,69 @@ public final class ManualSyncEngineInstrumentedTest {
         @Override
         public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
+        }
+    }
+
+    private static final class RetryableGateway implements CollectionGateway {
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+            throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
+        }
+    }
+
+    private static final class RuntimeFailingGateway implements CollectionGateway {
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+            throw new IllegalStateException("sync crashed");
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
+        }
+    }
+
+    private static final class BlockingGateway implements CollectionGateway {
+        private final Records.CollectionSnapshot snapshot;
+        private final AnkiDroidGateway.RemovalSummary removal;
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        private BlockingGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+            this.snapshot = snapshot;
+            this.removal = removal;
+        }
+
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+            started.countDown();
+            try {
+                if (!release.await(10L, TimeUnit.SECONDS)) {
+                    throw AnkiDroidGateway.SyncFailure.retryable("Timed out waiting for test release.");
+                }
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw AnkiDroidGateway.SyncFailure.retryable("Interrupted while waiting for test release.", error);
+            }
+            return snapshot;
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return removal;
+        }
+
+        private boolean awaitStarted() throws InterruptedException {
+            return started.await(10L, TimeUnit.SECONDS);
+        }
+
+        private void release() {
+            release.countDown();
         }
     }
 

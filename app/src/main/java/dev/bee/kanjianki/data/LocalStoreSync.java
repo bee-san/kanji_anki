@@ -1,0 +1,256 @@
+package dev.bee.kanjianki.data;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
+import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.TextUtil;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+
+abstract class LocalStoreSync extends LocalStoreInventory {
+    LocalStoreSync(Context context) {
+        super(context);
+    }
+
+    public long saveSuccessfulSync(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            long startedAt,
+            long finishedAt,
+            String removalMessage
+    ) {
+        return saveSuccessfulSync(snapshot, imports, rows, settings, new SyncTiming(startedAt, finishedAt), removalMessage, null);
+    }
+
+    public long saveSuccessfulSync(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            SyncTiming timing,
+            String removalMessage,
+            SimilarKanjiIndex similarIndex
+    ) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Map<String, RowSnapshot> previousRows = rowSnapshots(db);
+            ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
+            Set<Long> selectedSuspendedCardIds = selectedSuspendedCardIds(imports);
+            int deletedNotes = countDeletedExisting(db, TABLE_SOURCE_NOTES, COLUMN_NOTE_ID, activeIndex.noteIds);
+            int deletedCards = countDeletedExisting(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID, activeIndex.cardIds);
+            long syncId = insertSyncRun(db, new SyncRunInsert(
+                    timing.startedAt,
+                    timing.finishedAt,
+                    STATUS_SUCCESS,
+                    activeIndex,
+                    selectedSuspendedCardIds.size(),
+                    imports.size(),
+                    null,
+                    null,
+                    removalMessage == null ? "" : removalMessage,
+                    deletedNotes,
+                    deletedCards
+            ));
+            Map<Long, Records.Note> notesById = snapshot.notesById();
+            appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing);
+            clearSyncMirrorTables(db);
+            saveSourceNotes(db, snapshot.notes, activeIndex, settings, syncId);
+            saveSourceCardsAndArchive(db, snapshot.cards, notesById, selectedSuspendedCardIds, settings, timing.finishedAt, syncId);
+            saveSuspendedImports(db, imports, timing.finishedAt, syncId);
+
+            saveRows(db, rows, timing.finishedAt);
+            rebuildKanjiInventory(db, snapshot, imports, rows, timing.finishedAt, settings);
+            if (similarIndex != null) {
+                rebuildSimilarKanjiPairs(db, similarIndex, timing.finishedAt);
+            }
+            rebuildSimilarKanjiChoiceStates(db, timing.finishedAt);
+            appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, timing.finishedAt, settings);
+            db.setTransactionSuccessful();
+            return syncId;
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    void clearSyncMirrorTables(SQLiteDatabase db) {
+        db.delete(TABLE_SOURCE_CARDS, null, null);
+        db.delete(TABLE_SOURCE_NOTES, null, null);
+        db.delete(TABLE_DASHBOARD_ROWS, null, null);
+        db.delete(TABLE_KANJI_EXAMPLES, null, null);
+    }
+
+    void saveSourceNotes(
+            SQLiteDatabase db,
+            List<Records.Note> notes,
+            ActiveCardIndex activeIndex,
+            Records.Settings settings,
+            long syncId
+    ) {
+        for (Records.Note note : notes) {
+            if (!activeIndex.noteIds.contains(note.noteId)) {
+                continue;
+            }
+            ContentValues values = new ContentValues();
+            values.put(COLUMN_NOTE_ID, note.noteId);
+            values.put(COLUMN_MODEL_NAME, note.modelName);
+            values.put(COLUMN_EXPRESSION, TextUtil.normalizeJapanese(note.expression(settings)));
+            values.put(COLUMN_READING, TextUtil.normalizeJapanese(note.reading(settings)));
+            values.put(COLUMN_MEANING, TextUtil.firstMeaningLine(note.meaning(settings)));
+            values.put(COLUMN_SENTENCE, TextUtil.normalizeJapanese(note.sentence(settings)));
+            values.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
+            values.put(COLUMN_TAGS, String.join(" ", note.tags));
+            values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
+            db.insertWithOnConflict(TABLE_SOURCE_NOTES, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    void saveSourceCardsAndArchive(
+            SQLiteDatabase db,
+            List<Records.Card> cards,
+            Map<Long, Records.Note> notesById,
+            Set<Long> selectedSuspendedCardIds,
+            Records.Settings settings,
+            long finishedAt,
+            long syncId
+    ) {
+        for (Records.Card card : cards) {
+            Records.Note note = notesById.get(card.noteId);
+            if (note == null) {
+                continue;
+            }
+            if (card.suspended) {
+                if (selectedSuspendedCardIds.contains(card.cardId)) {
+                    saveSuspendedArchiveCard(db, card, note, settings, finishedAt, syncId);
+                }
+            } else {
+                saveSourceCard(db, card, syncId);
+            }
+        }
+    }
+
+    void saveSuspendedArchiveCard(
+            SQLiteDatabase db,
+            Records.Card card,
+            Records.Note note,
+            Records.Settings settings,
+            long finishedAt,
+            long syncId
+    ) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_CARD_ID, card.cardId);
+        values.put(COLUMN_NOTE_ID, card.noteId);
+        values.put(COLUMN_DECK_NAME, card.deckName);
+        values.put(COLUMN_MODEL_NAME, note.modelName);
+        values.put(COLUMN_EXPRESSION, TextUtil.normalizeJapanese(note.expression(settings)));
+        values.put(COLUMN_READING, TextUtil.normalizeJapanese(note.reading(settings)));
+        values.put(COLUMN_MEANING, TextUtil.firstMeaningLine(note.meaning(settings)));
+        values.put(COLUMN_SENTENCE, TextUtil.normalizeJapanese(note.sentence(settings)));
+        values.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
+        values.put("archived_at", finishedAt);
+        values.put("archived_sync_id", syncId);
+        db.insertWithOnConflict(TABLE_SUSPENDED_ARCHIVE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    void saveSourceCard(SQLiteDatabase db, Records.Card card, long syncId) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_CARD_ID, card.cardId);
+        values.put(COLUMN_NOTE_ID, card.noteId);
+        values.put(COLUMN_DECK_NAME, card.deckName);
+        values.put("ord", card.ord);
+        values.put(COLUMN_QUEUE, card.queue);
+        values.put("type", card.type);
+        values.put("due", card.due);
+        values.put(COLUMN_INTERVAL_DAYS, card.intervalDays);
+        values.put(COLUMN_REPS, card.reps);
+        values.put(COLUMN_LAPSES, card.lapses);
+        putNullableDouble(values, COLUMN_FSRS_STABILITY, card.fsrsStability);
+        putNullableDouble(values, COLUMN_FSRS_DIFFICULTY, card.fsrsDifficulty);
+        putNullableDouble(values, COLUMN_FSRS_RETRIEVABILITY, card.fsrsRetrievability);
+        values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
+        db.insertWithOnConflict(TABLE_SOURCE_CARDS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    void saveSuspendedImports(
+            SQLiteDatabase db,
+            List<Records.SuspendedImport> imports,
+            long finishedAt,
+            long syncId
+    ) {
+        for (Records.SuspendedImport imported : imports) {
+            saveSuspendedImport(db, imported, finishedAt, syncId);
+        }
+    }
+
+    void saveSuspendedImport(
+            SQLiteDatabase db,
+            Records.SuspendedImport imported,
+            long finishedAt,
+            long syncId
+    ) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_KANJI, imported.kanji);
+        if (imported.jitenRank != null) {
+            values.put(COLUMN_JITEN_RANK, imported.jitenRank);
+        }
+        values.put(COLUMN_RANK_KNOWN, imported.rankKnown ? 1 : 0);
+        values.put(COLUMN_CUTOFF_USED, imported.cutoffUsed);
+        values.put(COLUMN_FIRST_IMPORTED_AT, firstImportedAt(db, imported.kanji, finishedAt));
+        values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
+        db.insertWithOnConflict(TABLE_SUSPENDED_IMPORTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        for (Records.SuspendedSource source : imported.sources) {
+            ContentValues sourceValues = new ContentValues();
+            sourceValues.put(COLUMN_KANJI, imported.kanji);
+            sourceValues.put(COLUMN_CARD_ID, source.cardId);
+            sourceValues.put(COLUMN_NOTE_ID, source.noteId);
+            sourceValues.put(COLUMN_EXPRESSION, source.expression);
+            sourceValues.put(COLUMN_READING, source.reading);
+            sourceValues.put(COLUMN_MEANING, source.meaning);
+            sourceValues.put(COLUMN_SENTENCE, source.sentence);
+            sourceValues.put(COLUMN_SYNC_ID, syncId);
+            db.insertWithOnConflict(TABLE_SUSPENDED_SOURCES, null, sourceValues, SQLiteDatabase.CONFLICT_REPLACE);
+        }
+    }
+
+    public void saveFailedSync(long startedAt, long finishedAt, String status, String errorCode, String errorMessage) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_STARTED_AT, startedAt);
+        values.put(COLUMN_FINISHED_AT, finishedAt);
+        values.put(COLUMN_STATUS, status);
+        values.put(COLUMN_ACTIVE_NOTES_COUNT, 0);
+        values.put(COLUMN_ACTIVE_CARDS_COUNT, 0);
+        values.put(COLUMN_SUSPENDED_CARDS_ARCHIVED_COUNT, 0);
+        values.put(COLUMN_SUSPENDED_KANJI_IMPORTED_COUNT, 0);
+        values.put("deleted_notes_count", 0);
+        values.put("deleted_cards_count", 0);
+        values.put("error_code", errorCode);
+        values.put(COLUMN_ERROR_MESSAGE, errorMessage);
+        values.put(COLUMN_REMOVAL_MESSAGE, "");
+        db.insert(TABLE_SYNC_RUNS, null, values);
+    }
+
+    public void updateSyncRemovalMessage(long syncId, String message) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_REMOVAL_MESSAGE, message == null ? "" : message);
+        getWritableDatabase().update(TABLE_SYNC_RUNS, values, "id=?", new String[]{Long.toString(syncId)});
+    }
+}

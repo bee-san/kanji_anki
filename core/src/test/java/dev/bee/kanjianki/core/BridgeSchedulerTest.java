@@ -13,6 +13,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -436,6 +437,7 @@ public class BridgeSchedulerTest {
         );
 
         assertEquals(2, result.admittedCount);
+        assertTrue(result.admittedAny());
         assertEquals(3, result.availableCount);
         assertEquals(Arrays.asList("謎", "示"), result.admittedKanji);
         assertEquals("new", findItem(result.items, "謎").state);
@@ -469,6 +471,105 @@ public class BridgeSchedulerTest {
         assertNull(findItem(result.items, "裂").activeToken);
         assertEquals("new", findItem(result.items, "示").state);
         assertEquals("new", findItem(result.items, "謎").state);
+    }
+
+    @Test
+    public void seedExtraNewCardsReportsNoAdmissionWhenRequestIsZero() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+
+        BridgeScheduler.ExtraNewCardsResult result = scheduler.seedExtraNewCards(
+                Arrays.asList(row("裂", 50), row("謎", 40)),
+                Collections.emptyList(),
+                settingsWithQueue(4, 1),
+                2000L,
+                0L,
+                0
+        );
+
+        assertEquals(0, result.admittedCount);
+        assertFalse(result.admittedAny());
+        assertEquals(2, result.availableCount);
+        assertTrue(result.admittedKanji.isEmpty());
+    }
+
+    @Test
+    public void matureHigherRungSuppressesLowerRecognitionSiblings() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem word = matureReview("裂", Records.LadderRung.WORD_READING);
+        Records.StudyItem font = reviewItem("裂", Records.LadderRung.FONT_MEANING, 0L);
+        Records.StudyItem kanji = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
+
+        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(kanji, word, font));
+
+        Records.StudyItem updatedKanji = findItemAtRung(result, Records.LadderRung.KANJI_MEANING);
+        Records.StudyItem updatedFont = findItemAtRung(result, Records.LadderRung.FONT_MEANING);
+        assertEquals(Records.LadderRung.WORD_READING.wireName(), updatedKanji.suppressedByTaskType);
+        assertEquals(Records.LadderRung.WORD_READING.wireName(), updatedFont.suppressedByTaskType);
+        assertTrue(updatedKanji.suppressedAtMillis > 0L);
+        assertTrue(updatedFont.suppressedAtMillis > 0L);
+        assertTrue(findItemAtRung(result, Records.LadderRung.WORD_READING).suppressedByTaskType.isEmpty());
+    }
+
+    @Test
+    public void fontMeaningOnlySuppressesKanjiMeaningSibling() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem font = matureReview("裂", Records.LadderRung.FONT_MEANING);
+        Records.StudyItem kanji = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
+        Records.StudyItem typeMeaning = reviewItem("裂", Records.LadderRung.TYPE_MEANING, 0L);
+
+        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(font, kanji, typeMeaning));
+
+        assertEquals(Records.LadderRung.FONT_MEANING.wireName(), findItemAtRung(result, Records.LadderRung.KANJI_MEANING).suppressedByTaskType);
+        assertTrue(findItemAtRung(result, Records.LadderRung.TYPE_MEANING).suppressedByTaskType.isEmpty());
+    }
+
+    @Test
+    public void suppressionClearsWhenDominatingSiblingIsNoLongerMature() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem staleSuppressed = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder()
+                .suppressedByTaskType(Records.LadderRung.FONT_MEANING.wireName())
+                .suppressedAtMillis(123L)
+                .build();
+        Records.StudyItem youngFont = reviewItem("裂", Records.LadderRung.FONT_MEANING, 0L)
+                .copyBuilder()
+                .matureIntervalDays(20)
+                .totalReviews(10)
+                .build();
+
+        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(staleSuppressed, youngFont));
+
+        Records.StudyItem updated = findItemAtRung(result, Records.LadderRung.KANJI_MEANING);
+        assertTrue(updated.suppressedByTaskType.isEmpty());
+        assertEquals(0L, updated.suppressedAtMillis);
+    }
+
+    @Test
+    public void suppressionIgnoresRetiredAndLearningSiblingsAndKeepsCurrentSuppressionWhenStillValid() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyItem retired = matureReview("裂", Records.LadderRung.WORD_READING)
+                .copyBuilder()
+                .state("retired")
+                .build();
+        Records.StudyItem learning = matureReview("裂", Records.LadderRung.FONT_MEANING)
+                .copyBuilder()
+                .state("new")
+                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .build();
+        Records.StudyItem suppressed = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+                .copyBuilder()
+                .suppressedByTaskType(Records.LadderRung.FONT_MEANING.wireName())
+                .suppressedAtMillis(456L)
+                .build();
+        Records.StudyItem matureFont = matureReview("裂", Records.LadderRung.FONT_MEANING);
+
+        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(retired, learning, suppressed, matureFont));
+
+        assertSame(retired, findItemAtRung(result, Records.LadderRung.WORD_READING));
+        Records.StudyItem updated = findItemAtRung(result, Records.LadderRung.KANJI_MEANING);
+        assertSame(suppressed, updated);
+        assertEquals(Records.LadderRung.FONT_MEANING.wireName(), updated.suppressedByTaskType);
+        assertEquals(456L, updated.suppressedAtMillis);
     }
 
     @Test
@@ -1325,6 +1426,23 @@ public class BridgeSchedulerTest {
                 .rung(rung)
                 .phase(Records.SchedulerPhase.REVIEW)
                 .build();
+    }
+
+    private Records.StudyItem matureReview(String kanji, Records.LadderRung rung) {
+        return reviewItem(kanji, rung, 0L).copyBuilder()
+                .matureIntervalDays(21)
+                .totalReviews(12)
+                .phase(Records.SchedulerPhase.REVIEW)
+                .build();
+    }
+
+    private Records.StudyItem findItemAtRung(List<Records.StudyItem> items, Records.LadderRung rung) {
+        for (Records.StudyItem item : items) {
+            if (item.rung == rung) {
+                return item;
+            }
+        }
+        throw new AssertionError("Missing study item at rung " + rung);
     }
 
     private Records.StudyItem findItem(List<Records.StudyItem> items, String kanji) {

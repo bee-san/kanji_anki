@@ -27,7 +27,15 @@ final class AttributionTexts {
 
     static String dictionarySources(Context context) {
         try {
-            JSONObject manifest = new JSONObject(DictionaryStore.activeManifestText(context));
+            return dictionarySourcesFromManifestText(DictionaryStore.activeManifestText(context));
+        } catch (Exception error) {
+            return DICTIONARY_FALLBACK;
+        }
+    }
+
+    static String dictionarySourcesFromManifestText(String manifestText) {
+        try {
+            JSONObject manifest = new JSONObject(manifestText);
             JSONArray sources = manifest.optJSONArray("sources");
             if (sources == null || sources.length() == 0) {
                 return "Dictionary manifest is empty.";
@@ -62,7 +70,7 @@ final class AttributionTexts {
         }
     }
 
-    private static void appendSource(List<String> lines, JSONObject source) {
+    static void appendSource(List<String> lines, JSONObject source) {
         lines.add("");
         lines.add(source.optString("name", source.optString("id")));
         addSourceLine(lines, "License", source.optString("license"));
@@ -77,7 +85,7 @@ final class AttributionTexts {
         addSourceLine(lines, "SHA-256", source.optString("source_sha256"));
     }
 
-    private static void appendNotes(List<String> lines, JSONArray notes) {
+    static void appendNotes(List<String> lines, JSONArray notes) {
         if (notes == null || notes.length() == 0) {
             return;
         }
@@ -88,14 +96,14 @@ final class AttributionTexts {
     }
 
     private static void addSourceLine(List<String> lines, String label, String value) {
-        if (value != null && !value.trim().isEmpty()) {
+        if (!value.trim().isEmpty()) {
             lines.add(label + ": " + value.trim());
         }
     }
 
     private static String firstNonEmpty(String... values) {
         for (String value : values) {
-            if (value != null && !value.trim().isEmpty()) {
+            if (!value.trim().isEmpty()) {
                 return value.trim();
             }
         }

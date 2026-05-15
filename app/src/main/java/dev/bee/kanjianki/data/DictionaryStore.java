@@ -173,7 +173,8 @@ public final class DictionaryStore extends DictionaryLookup {
         try (SQLiteDatabase db = openReadOnly()) {
             Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM kanji", null);
             try {
-                return cursor.moveToFirst() ? cursor.getInt(0) : 0;
+                cursor.moveToFirst();
+                return cursor.getInt(0);
             } finally {
                 cursor.close();
             }
@@ -211,9 +212,24 @@ public final class DictionaryStore extends DictionaryLookup {
         if (!directory.exists() && !directory.mkdirs()) {
             throw new IOException("Could not create dictionary directory.");
         }
-        String bundledHash = readExpectedHash(context.getAssets().open(DictionaryAssets.DATABASE_SHA256_ASSET));
-        String bundledManifest = readAssetText(context, DictionaryAssets.SOURCES_ASSET);
-        String bundledChecksum = readAssetText(context, DictionaryAssets.DATABASE_SHA256_ASSET);
+        ensureBundledDictionaryInstalled(context.getAssets()::open, directory, database);
+    }
+
+    interface AssetOpener {
+        InputStream open(String asset) throws IOException;
+    }
+
+    interface FileMover {
+        void move(java.nio.file.Path source, java.nio.file.Path target, StandardCopyOption... options) throws IOException;
+    }
+
+    static void ensureBundledDictionaryInstalled(AssetOpener assets, File directory, File database) throws IOException {
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new IOException("Could not create dictionary directory.");
+        }
+        String bundledHash = readExpectedHash(assets.open(DictionaryAssets.DATABASE_SHA256_ASSET));
+        String bundledManifest = readAssetText(assets, DictionaryAssets.SOURCES_ASSET);
+        String bundledChecksum = readAssetText(assets, DictionaryAssets.DATABASE_SHA256_ASSET);
         File marker = new File(directory, BUNDLE_MARKER);
         File manifest = new File(directory, PRIVATE_MANIFEST);
         File checksum = new File(directory, PRIVATE_CHECKSUM);
@@ -226,7 +242,7 @@ public final class DictionaryStore extends DictionaryLookup {
         File temp = new File(directory, PRIVATE_DB + BUNDLED_SUFFIX);
         File tempManifest = new File(directory, PRIVATE_MANIFEST + BUNDLED_SUFFIX);
         File tempChecksum = new File(directory, PRIVATE_CHECKSUM + BUNDLED_SUFFIX);
-        try (InputStream source = context.getAssets().open(DictionaryAssets.DATABASE_ASSET)) {
+        try (InputStream source = assets.open(DictionaryAssets.DATABASE_ASSET)) {
             copy(source, temp);
         }
         ValidationResult validation = validateDictionary(
@@ -244,6 +260,12 @@ public final class DictionaryStore extends DictionaryLookup {
         atomicReplace(tempManifest, manifest);
         atomicReplace(tempChecksum, checksum);
         writeMarker(marker, bundledHash);
+    }
+
+    private static String readAssetText(AssetOpener assets, String asset) throws IOException {
+        try (InputStream input = assets.open(asset)) {
+            return readText(input);
+        }
     }
 
     private static ValidationResult validateDictionary(File database, String expectedHash, String manifest) {
@@ -428,10 +450,14 @@ public final class DictionaryStore extends DictionaryLookup {
     }
 
     private static void atomicReplace(File source, File target) throws IOException {
+        atomicReplace(source, target, (sourcePath, targetPath, options) -> Files.move(sourcePath, targetPath, options));
+    }
+
+    static void atomicReplace(File source, File target, FileMover mover) throws IOException {
         try {
-            Files.move(source.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            mover.move(source.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (AtomicMoveNotSupportedException error) {
-            Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            mover.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
@@ -449,12 +475,6 @@ public final class DictionaryStore extends DictionaryLookup {
         String value = text == null ? "" : text.trim();
         String[] parts = CHECKSUM_PART_SEPARATOR.split(value);
         return parts.length == 0 ? "" : parts[0].toLowerCase(Locale.ROOT);
-    }
-
-    private static String readAssetText(Context context, String asset) throws IOException {
-        try (InputStream input = context.getAssets().open(asset)) {
-            return readText(input);
-        }
     }
 
     private static String readText(File file) throws IOException {

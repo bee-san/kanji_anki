@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.update;
 
 import android.content.Context;
+import android.content.ContentValues;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
 
@@ -18,6 +19,7 @@ import java.io.FileOutputStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 @RunWith(AndroidJUnit4.class)
 public final class ApkContentProviderInstrumentedTest {
@@ -34,6 +36,7 @@ public final class ApkContentProviderInstrumentedTest {
     @After
     public void tearDown() {
         deleteRecursively(updatesDir);
+        new File(context.getCacheDir(), "outside.apk").delete();
     }
 
     @Test
@@ -49,13 +52,51 @@ public final class ApkContentProviderInstrumentedTest {
         }
     }
 
+    @Test
+    public void providerReportsApkMimeTypeAndNoMutableOperations() {
+        Uri uri = ApkContentProvider.uriFor(context, "kani-test.apk");
+
+        assertEquals("application/vnd.android.package-archive", context.getContentResolver().getType(uri));
+        assertNull(context.getContentResolver().query(uri, null, null, null, null));
+        assertNull(context.getContentResolver().insert(uri, new ContentValues()));
+        assertEquals(0, context.getContentResolver().delete(uri, null, null));
+        assertEquals(0, context.getContentResolver().update(uri, new ContentValues(), null, null));
+    }
+
     @Test(expected = FileNotFoundException.class)
     public void rejectsWriteMode() throws Exception {
         context.getContentResolver().openFileDescriptor(ApkContentProvider.uriFor(context, "kani-test.apk"), "w");
     }
 
     @Test(expected = FileNotFoundException.class)
+    public void rejectsMissingCachedApk() throws Exception {
+        context.getContentResolver().openFileDescriptor(ApkContentProvider.uriFor(context, "missing.apk"), "r");
+    }
+
+    @Test(expected = FileNotFoundException.class)
+    public void rejectsOpenWhenProviderHasNoAttachedContext() throws Exception {
+        new ApkContentProvider().openFile(Uri.parse("content://dev.bee.kanjianki.apk/kani.apk"), "r");
+    }
+
+    @Test(expected = FileNotFoundException.class)
+    public void rejectsUriWithoutFileName() throws Exception {
+        context.getContentResolver().openFileDescriptor(Uri.parse("content://" + context.getPackageName() + ".apk"), "r");
+    }
+
+    @Test(expected = FileNotFoundException.class)
+    public void rejectsDirectoryInsideUpdatesCache() throws Exception {
+        File directory = new File(updatesDir, "nested");
+        directory.mkdirs();
+
+        context.getContentResolver().openFileDescriptor(ApkContentProvider.uriFor(context, directory.getName()), "r");
+    }
+
+    @Test(expected = FileNotFoundException.class)
     public void rejectsPathTraversalOutsideUpdatesDirectory() throws Exception {
+        File outside = new File(context.getCacheDir(), "outside.apk");
+        try (FileOutputStream output = new FileOutputStream(outside)) {
+            output.write(new byte[]{4, 5, 6});
+        }
         Uri traversal = new Uri.Builder()
                 .scheme("content")
                 .authority(context.getPackageName() + ".apk")

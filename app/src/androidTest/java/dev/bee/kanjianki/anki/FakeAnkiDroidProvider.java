@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.OperationCanceledException;
 
 public final class FakeAnkiDroidProvider extends ContentProvider {
     public static final String AUTHORITY = "dev.bee.kanjianki.test.ankidroid";
@@ -18,6 +19,8 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     public static int explicitIdProjectionQueries;
     public static int schedulerProjectionRejects;
     public static int fsrsProjectionRejects;
+    public static int browserQueryQueries;
+    public static int cardProjectionRejects;
     public static String activeTags = "";
     public static String suspendedTags = "";
     public static boolean failSuspendedSearch;
@@ -29,6 +32,25 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
     public static boolean browserQueryMatchesActive;
     public static boolean browserQueryMatchesSuspended;
     public static boolean failBrowserQuery;
+    public static boolean failConfiguredSearch;
+    public static boolean secondTemplateCard;
+    public static boolean browserQueryMatchesMissingNote;
+    public static boolean permanentProviderFailure;
+    public static boolean retryableProviderFailure;
+    public static boolean rejectAllCardProjections;
+    public static boolean nullCardCursor;
+    public static boolean partiallySuspendedNote;
+    public static boolean operationCanceledProviderFailure;
+    public static boolean securityProviderFailure;
+    public static boolean nullModelsCursor;
+    public static boolean nullConfiguredSearchCursor;
+    public static boolean nullSqlNotesCursor;
+    public static boolean nullSuspendedSearchCursor;
+    public static boolean nullBrowserQueryCursor;
+    public static boolean browserQueryWrongModel;
+    public static boolean nullNoteCursor;
+    public static boolean configuredSearchIncludesWrongModel;
+    public static boolean failBrowserQueryReread;
 
     public static void reset() {
         topLevelCardsQueries = 0;
@@ -36,6 +58,8 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         explicitIdProjectionQueries = 0;
         schedulerProjectionRejects = 0;
         fsrsProjectionRejects = 0;
+        browserQueryQueries = 0;
+        cardProjectionRejects = 0;
         activeTags = "";
         suspendedTags = "";
         failSuspendedSearch = false;
@@ -47,6 +71,25 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         browserQueryMatchesActive = false;
         browserQueryMatchesSuspended = false;
         failBrowserQuery = false;
+        failConfiguredSearch = false;
+        secondTemplateCard = false;
+        browserQueryMatchesMissingNote = false;
+        permanentProviderFailure = false;
+        retryableProviderFailure = false;
+        rejectAllCardProjections = false;
+        nullCardCursor = false;
+        partiallySuspendedNote = false;
+        operationCanceledProviderFailure = false;
+        securityProviderFailure = false;
+        nullModelsCursor = false;
+        nullConfiguredSearchCursor = false;
+        nullSqlNotesCursor = false;
+        nullSuspendedSearchCursor = false;
+        nullBrowserQueryCursor = false;
+        browserQueryWrongModel = false;
+        nullNoteCursor = false;
+        configuredSearchIncludesWrongModel = false;
+        failBrowserQueryReread = false;
     }
 
     @Override
@@ -81,6 +124,18 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         }
         if ("fsrsProjectionRejects".equals(method)) {
             result.putInt("value", fsrsProjectionRejects);
+            return result;
+        }
+        if ("browserQueryQueries".equals(method)) {
+            result.putInt("value", browserQueryQueries);
+            return result;
+        }
+        if ("cardProjectionRejects".equals(method)) {
+            result.putInt("value", cardProjectionRejects);
+            return result;
+        }
+        if ("suspendedTags".equals(method)) {
+            result.putString("value", suspendedTags);
             return result;
         }
         if ("failSuspendedSearch".equals(method)) {
@@ -124,8 +179,108 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             result.putBoolean("ok", true);
             return result;
         }
+        if ("browserQueryMatchesMissingNote".equals(method)) {
+            browserQueryMatchesMissingNote = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
         if ("failBrowserQuery".equals(method)) {
             failBrowserQuery = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("failConfiguredSearch".equals(method)) {
+            failConfiguredSearch = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("secondTemplateCard".equals(method)) {
+            secondTemplateCard = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("permanentProviderFailure".equals(method)) {
+            permanentProviderFailure = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("retryableProviderFailure".equals(method)) {
+            retryableProviderFailure = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("rejectAllCardProjections".equals(method)) {
+            rejectAllCardProjections = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullCardCursor".equals(method)) {
+            nullCardCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("partiallySuspendedNote".equals(method)) {
+            partiallySuspendedNote = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("operationCanceledProviderFailure".equals(method)) {
+            operationCanceledProviderFailure = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("securityProviderFailure".equals(method)) {
+            securityProviderFailure = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullModelsCursor".equals(method)) {
+            nullModelsCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullConfiguredSearchCursor".equals(method)) {
+            nullConfiguredSearchCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullSqlNotesCursor".equals(method)) {
+            nullSqlNotesCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullSuspendedSearchCursor".equals(method)) {
+            nullSuspendedSearchCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullBrowserQueryCursor".equals(method)) {
+            nullBrowserQueryCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("browserQueryWrongModel".equals(method)) {
+            browserQueryWrongModel = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("nullNoteCursor".equals(method)) {
+            nullNoteCursor = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("configuredSearchIncludesWrongModel".equals(method)) {
+            configuredSearchIncludesWrongModel = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("failBrowserQueryReread".equals(method)) {
+            failBrowserQueryReread = true;
+            result.putBoolean("ok", true);
+            return result;
+        }
+        if ("pretagSuspendedArchived".equals(method)) {
+            suspendedTags = "leech kani_archived";
             result.putBoolean("ok", true);
             return result;
         }
@@ -137,15 +292,49 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         String path = uri.getPath() == null ? "" : uri.getPath();
         rejectExplicitIdProjection(projection);
         if ("/models".equals(path)) {
+            if (operationCanceledProviderFailure) {
+                throw new OperationCanceledException("fake provider timed out");
+            }
+            if (securityProviderFailure) {
+                throw new SecurityException("fake provider denied access");
+            }
+            if (permanentProviderFailure) {
+                throw new IllegalStateException("model metadata cursor failed");
+            }
+            if (retryableProviderFailure) {
+                throw new IllegalStateException("database locked");
+            }
+            if (nullModelsCursor) {
+                return null;
+            }
             MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "name", "field_names"});
             cursor.addRow(new Object[]{100L, "Kiku", fields("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort", "Glossary")});
             cursor.addRow(new Object[]{200L, "Custom Japanese", fields("Front", "Reading", "Back", "Example", "Frequency", "FrequencySort")});
             return cursor;
         }
+        if ("/notes".equals(path) && nullConfiguredSearchCursor && isConfiguredModelSearch(selection)) {
+            return null;
+        }
+        if ("/notes_v2".equals(path) && nullSqlNotesCursor) {
+            return null;
+        }
+        if ("/notes".equals(path) && failConfiguredSearch && isConfiguredModelSearch(selection)) {
+            throw new IllegalArgumentException("model search failed");
+        }
         if ("/notes".equals(path) || "/notes_v2".equals(path)) {
             return notes(selection);
         }
+        if (NOTES_ID_PATH.matcher(path).matches()) {
+            return noteById(Long.parseLong(uri.getLastPathSegment()), projection);
+        }
         if (NOTES_CARDS_PATH.matcher(path).matches()) {
+            if (nullCardCursor) {
+                return null;
+            }
+            if (rejectAllCardProjections) {
+                cardProjectionRejects++;
+                throw new IllegalArgumentException("card projection exhausted for " + firstProjectionColumn(projection));
+            }
             rejectFsrsProjection(projection);
             Cursor rejected = rejectedSchedulerProjectionCursor(uri, projection);
             if (rejected != null) {
@@ -161,7 +350,7 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
                         columns,
                         noteId == 101L ? 110L : 10L,
                         noteId,
-                        0,
+                        secondTemplateCard && noteId == 1L ? 1 : 0,
                         "Kiku",
                         "Mining",
                         2,
@@ -193,6 +382,45 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
                         null,
                         null
                 );
+                if (partiallySuspendedNote) {
+                    addCardRow(
+                            cursor,
+                            columns,
+                            21L,
+                            noteId,
+                            0,
+                            "Kiku",
+                            "Mining",
+                            2,
+                            2,
+                            4,
+                            5,
+                            6,
+                            0,
+                            null,
+                            null,
+                            null
+                    );
+                }
+            } else if (noteId == 3L) {
+                addCardRow(
+                        cursor,
+                        columns,
+                        30L,
+                        noteId,
+                        0,
+                        "Kiku",
+                        "Mining",
+                        2,
+                        2,
+                        4,
+                        5,
+                        6,
+                        0,
+                        null,
+                        null,
+                        null
+                );
             }
             return cursor;
         }
@@ -201,6 +429,13 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             throw new UnsupportedOperationException("uri " + uri + " is not supported; raw card queries expose unsupported scheduler columns");
         }
         return null;
+    }
+
+    private static String firstProjectionColumn(String[] projection) {
+        if (projection == null || projection.length == 0) {
+            return "<none>";
+        }
+        return projection[0];
     }
 
     private void rejectExplicitIdProjection(String[] projection) {
@@ -259,6 +494,9 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
         MatrixCursor cursor = new MatrixCursor(new String[]{"_id", "mid", "flds", "tags"});
         boolean suspendedOnly = selection != null && selection.contains("is:suspended");
         boolean browserQuery = selection != null && selection.contains("(") && !suspendedOnly;
+        if (suspendedOnly && nullSuspendedSearchCursor) {
+            return null;
+        }
         if (suspendedOnly && failSuspendedSearch) {
             throw new IllegalArgumentException("queue _id is unknown");
         }
@@ -274,19 +512,69 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             return cursor;
         }
         if (browserQuery) {
+            browserQueryQueries++;
+            if (failBrowserQueryReread && browserQueryQueries > 1) {
+                throw new IllegalArgumentException("second browser query failed");
+            }
+            if (nullBrowserQueryCursor) {
+                return null;
+            }
+            if (browserQueryWrongModel) {
+                cursor.addRow(new Object[]{1L, 999L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
+            }
             if (browserQueryMatchesActive) {
                 cursor.addRow(new Object[]{1L, 100L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
             }
             if (browserQueryMatchesSuspended) {
                 cursor.addRow(new Object[]{2L, 100L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500", repeat("suspended-glossary", 200)), suspendedTags});
             }
+            if (browserQueryMatchesMissingNote) {
+                cursor.addRow(new Object[]{3L, 100L, fields("認", "みとめる", "recognize", "認めた。", "200", "200", repeat("missing-glossary", 200)), ""});
+            }
             return cursor;
         }
         if (!suspendedOnly) {
+            if (configuredSearchIncludesWrongModel) {
+                cursor.addRow(new Object[]{999L, 999L, fields("無視", "むし", "ignored", "無視した。", "10", "10", "ignored"), activeTags});
+            }
             cursor.addRow(new Object[]{1L, 100L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags});
         }
         cursor.addRow(new Object[]{2L, 100L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500", repeat("suspended-glossary", 200)), suspendedTags});
         return cursor;
+    }
+
+    private Cursor noteById(long noteId, String[] projection) {
+        if (nullNoteCursor) {
+            return null;
+        }
+        String[] columns = projection == null ? new String[]{"_id", "mid", "flds", "tags"} : projection;
+        MatrixCursor cursor = new MatrixCursor(columns);
+        if (noteId == 1L) {
+            addNoteRow(cursor, columns, 1L, fields("確認", "かくにん", "confirmation", "確認した。", "100", "100", repeat("active-glossary", 200)), activeTags);
+        } else if (noteId == 2L) {
+            addNoteRow(cursor, columns, 2L, fields("笥箱", "しはこ", "rare box", "笥箱を見た。", "3500", "3500", repeat("suspended-glossary", 200)), suspendedTags);
+        } else if (noteId == 3L) {
+            addNoteRow(cursor, columns, 3L, fields("認", "みとめる", "recognize", "認めた。", "200", "200", repeat("missing-glossary", 200)), "");
+        }
+        return cursor;
+    }
+
+    private void addNoteRow(MatrixCursor cursor, String[] columns, long noteId, String fields, String tags) {
+        Object[] row = new Object[columns.length];
+        for (int i = 0; i < columns.length; i++) {
+            if ("_id".equals(columns[i])) {
+                row[i] = noteId;
+            } else if ("mid".equals(columns[i])) {
+                row[i] = 100L;
+            } else if ("flds".equals(columns[i])) {
+                row[i] = fields;
+            } else if ("tags".equals(columns[i])) {
+                row[i] = tags;
+            } else {
+                row[i] = null;
+            }
+        }
+        cursor.addRow(row);
     }
 
     private void addCardRow(
@@ -397,6 +685,13 @@ public final class FakeAnkiDroidProvider extends ContentProvider {
             out.append(value);
         }
         return out.toString();
+    }
+
+    private static boolean isConfiguredModelSearch(String selection) {
+        return selection != null
+                && selection.contains("note:\"")
+                && !selection.contains("is:suspended")
+                && !selection.contains("(");
     }
 
     private static final class ThrowingCursor extends MatrixCursor {

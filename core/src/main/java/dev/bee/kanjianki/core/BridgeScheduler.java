@@ -613,7 +613,7 @@ public final class BridgeScheduler {
         state.stepIndex = 0;
         int fsrsRating = Fsrs5Engine.ratingToInt(context.rating);
         Fsrs5Engine engine = new Fsrs5Engine(null, context.parameters.targetRetention);
-        state.stability = engine.initialStability(fsrsRating == Fsrs5Engine.ratingToInt(RATING_AGAIN) ? 3 : fsrsRating);
+        state.stability = engine.initialStability(fsrsRating);
         state.difficulty = engine.updateDifficulty(state.difficulty, fsrsRating);
         long interval = engine.nextIntervalMillis(state.stability);
         state.scheduledIntervalDays = intervalDays(interval);
@@ -873,7 +873,7 @@ public final class BridgeScheduler {
             Set<String> allowedKanji
     ) {
         return !STATE_RETIRED.equals(item.state)
-                && (item.suppressedByTaskType == null || item.suppressedByTaskType.isEmpty())
+                && item.suppressedByTaskType.isEmpty()
                 && (allowedKanji == null || allowedKanji.contains(item.kanji))
                 && hasCurrentQueueRow(item, currentRows, currentFamilies);
     }
@@ -922,7 +922,7 @@ public final class BridgeScheduler {
             return item;
         }
         String dominator = findDominatingMatureSibling(item, siblings);
-        boolean currentlySuppressed = item.suppressedByTaskType != null && !item.suppressedByTaskType.isEmpty();
+        boolean currentlySuppressed = !item.suppressedByTaskType.isEmpty();
         if (dominator != null && !currentlySuppressed) {
             return item.copyBuilder()
                     .suppressedByTaskType(dominator)

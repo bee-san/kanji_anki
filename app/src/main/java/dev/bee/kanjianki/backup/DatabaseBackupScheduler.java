@@ -31,6 +31,19 @@ public final class DatabaseBackupScheduler {
     }
 
     public static void cancel(Context context) {
-        WorkManager.getInstance(context.getApplicationContext()).cancelUniqueWork(UNIQUE_WORK_NAME);
+        cancel(context, appContext -> workName ->
+                WorkManager.getInstance(appContext).cancelUniqueWork(workName));
+    }
+
+    static void cancel(Context context, WorkCancellerFactory factory) {
+        factory.create(context.getApplicationContext()).cancelUniqueWork(UNIQUE_WORK_NAME);
+    }
+
+    interface WorkCancellerFactory {
+        WorkCanceller create(Context appContext);
+    }
+
+    interface WorkCanceller {
+        void cancelUniqueWork(String workName);
     }
 }

@@ -9,8 +9,10 @@ import dev.bee.kanjianki.core.study.WritingAnalysis;
 
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -22,12 +24,28 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-public class RecordsValueCoverageTest {
+public class RecordsValueModelsTest {
     private static final String TEST_ACTIVE = "active";
     private static final String TEST_EXPRESSION = "expr";
     private static final String TEST_READING = "read";
     private static final String TEST_MEANING = "meaning";
     private static final String TEST_SENTENCE = "sentence";
+
+    @Test
+    public void splitModelConstructorsStayHiddenWhileExposingRecordApi() throws Exception {
+        Constructor<Records> recordsConstructor = Records.class.getDeclaredConstructor();
+        assertTrue(Modifier.isPrivate(recordsConstructor.getModifiers()));
+        assertEquals(0, Records.class.getConstructors().length);
+
+        recordsConstructor.setAccessible(true);
+        Records reflectedRecords = recordsConstructor.newInstance();
+        assertTrue(reflectedRecords instanceof RecordsSchedulerModels);
+
+        SplitProbe probe = new SplitProbe();
+        assertTrue(probe instanceof RecordsBase);
+        assertTrue(probe.defaultSuspendedCards());
+        assertEquals("Kiku", probe.defaultModelName());
+    }
 
     @Test
     public void timelineAndRepairRecordsNormalizeInputs() {
@@ -501,6 +519,8 @@ public class RecordsValueCoverageTest {
             assertTrue(expected.getMessage().contains("Settings received"));
         }
 
+        assertEquals("only", Records.arg(new Object[]{"only"}, 0, "test"));
+
         Method arg = Records.class.getDeclaredMethod("arg", Object[].class, int.class, String.class);
         arg.setAccessible(true);
         try {
@@ -687,6 +707,16 @@ public class RecordsValueCoverageTest {
 
     private static StudyItemFixture studyItemFixture() {
         return new StudyItemFixture();
+    }
+
+    private static final class SplitProbe extends RecordsSchedulerModels {
+        boolean defaultSuspendedCards() {
+            return DEFAULT_IMPORT_SUSPENDED_CARDS;
+        }
+
+        String defaultModelName() {
+            return Settings.kikuDefaults().modelName;
+        }
     }
 
     private static final class StudyItemFixture {

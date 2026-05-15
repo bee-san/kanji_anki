@@ -43,7 +43,7 @@ final class StudyTopBarView extends LinearLayout {
         LinearLayout center = new LinearLayout(context);
         center.setOrientation(VERTICAL);
         center.setGravity(Gravity.CENTER);
-        TextView progress = text(context, completed + " / " + target, 18, STUDY_HERO_PLUM, true);
+        TextView progress = text(context, completed + " / " + target, 18, STUDY_HERO_PLUM);
         progress.setGravity(Gravity.CENTER);
         progress.setIncludeFontPadding(false);
         center.addView(progress, new LinearLayout.LayoutParams(-1, -2));
@@ -82,16 +82,14 @@ final class StudyTopBarView extends LinearLayout {
         return button;
     }
 
-    private TextView text(Context context, String value, int sp, int color, boolean bold) {
+    private TextView text(Context context, String value, int sp, int color) {
         TextView view = new TextView(context);
         view.setText(value);
         view.setTextSize(sp);
         view.setTextColor(color);
         view.setIncludeFontPadding(false);
         view.setPadding(0, dp(4), 0, dp(4));
-        if (bold) {
-            view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        }
+        view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return view;
     }
 

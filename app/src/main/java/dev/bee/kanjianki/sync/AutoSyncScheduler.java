@@ -26,18 +26,37 @@ public final class AutoSyncScheduler {
     }
 
     public static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings) {
+        schedule(context, store, settings, new AndroidSchedulerBackend(context));
+    }
+
+    static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend) {
+        long now = System.currentTimeMillis();
+        scheduleWithState(
+                settings,
+                now,
+                store.hasSuccessfulSyncSince(localDayStart(now)),
+                store::markAutoSyncScheduled,
+                backend);
+    }
+
+    static void scheduleWithState(
+            LocalStore.AutoSyncSettings settings,
+            long now,
+            boolean alreadySyncedToday,
+            ScheduleRecorder recorder,
+            SchedulerBackend backend) {
         if (settings == null || !settings.enabled) {
-            cancelJob(context);
-            store.markAutoSyncScheduled(0L);
+            backend.cancel();
+            recorder.markAutoSyncScheduled(0L);
             return;
         }
-        long now = System.currentTimeMillis();
-        long triggerAt = nextTriggerMillis(settings, now, store.hasSuccessfulSyncSince(localDayStart(now)));
-        scheduleAt(context, store, triggerAt);
+        long triggerAt = nextTriggerMillis(settings, now, alreadySyncedToday);
+        scheduleAt(recorder, backend, triggerAt, now);
     }
 
     public static void cancel(Context context) {
-        cancelJob(context);
+        SchedulerBackend backend = new AndroidSchedulerBackend(context);
+        backend.cancel();
         try (LocalStore store = new LocalStore(context)) {
             store.markAutoSyncScheduled(0L);
         }
@@ -72,34 +91,65 @@ public final class AutoSyncScheduler {
         return calendar.getTimeInMillis();
     }
 
-    private static void scheduleAt(Context context, LocalStore store, long triggerAt) {
-        JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
-        if (scheduler == null) {
-            store.markAutoSyncScheduled(0L);
-            return;
-        }
-        long delay = Math.max(MIN_DELAY_MILLIS, triggerAt - System.currentTimeMillis());
-        JobInfo job = new JobInfo.Builder(
-                JOB_ID,
-                new ComponentName(context.getApplicationContext(), AutoSyncJobService.class)
-        )
-                .setMinimumLatency(delay)
-                .setOverrideDeadline(delay + DEADLINE_WINDOW_MILLIS)
-                .setPersisted(true)
-                .build();
+    static void scheduleAt(ScheduleRecorder recorder, SchedulerBackend backend, long triggerAt, long now) {
+        long delay = Math.max(MIN_DELAY_MILLIS, triggerAt - now);
         try {
-            int result = scheduler.schedule(job);
-            store.markAutoSyncScheduled(result == JobScheduler.RESULT_SUCCESS ? triggerAt : 0L);
+            boolean scheduled = backend.schedule(delay, delay + DEADLINE_WINDOW_MILLIS);
+            recorder.markAutoSyncScheduled(scheduled ? triggerAt : 0L);
         } catch (RuntimeException error) {
-            Log.w(TAG, "Failed to schedule automatic sync job.", error);
-            store.markAutoSyncScheduled(0L);
+            warn("Failed to schedule automatic sync job.", error);
+            recorder.markAutoSyncScheduled(0L);
         }
     }
 
-    private static void cancelJob(Context context) {
-        JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
-        if (scheduler != null) {
-            scheduler.cancel(JOB_ID);
+    interface ScheduleRecorder {
+        void markAutoSyncScheduled(long nextRunAt);
+    }
+
+    interface SchedulerBackend {
+        boolean schedule(long minimumLatencyMillis, long overrideDeadlineMillis);
+
+        void cancel();
+    }
+
+    private static final class AndroidSchedulerBackend implements SchedulerBackend {
+        private final Context context;
+
+        AndroidSchedulerBackend(Context context) {
+            this.context = context.getApplicationContext();
+        }
+
+        @Override
+        public boolean schedule(long minimumLatencyMillis, long overrideDeadlineMillis) {
+            JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (scheduler == null) {
+                return false;
+            }
+            JobInfo job = new JobInfo.Builder(
+                    JOB_ID,
+                    new ComponentName(context, AutoSyncJobService.class)
+            )
+                    .setMinimumLatency(minimumLatencyMillis)
+                    .setOverrideDeadline(overrideDeadlineMillis)
+                    .setPersisted(true)
+                    .build();
+            return scheduler.schedule(job) == JobScheduler.RESULT_SUCCESS;
+        }
+
+        @Override
+        public void cancel() {
+            JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (scheduler != null) {
+                scheduler.cancel(JOB_ID);
+            }
+        }
+    }
+
+    private static void warn(String message, Throwable error) {
+        try {
+            Log.w(TAG, message, error);
+        } catch (RuntimeException ignored) {
+            // Android Log is unavailable in local JVM tests.
         }
     }
 }
