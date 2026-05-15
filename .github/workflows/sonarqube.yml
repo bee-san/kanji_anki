@@ -164,17 +164,18 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           set -euo pipefail
-          TASKS=""
+          TASKS=()
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS="$TASKS :core:test :core:jacocoTestReport"
+            TASKS+=( :core:test :core:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS="$TASKS :app:testDebugUnitTest :app:jacocoDebugUnitTestReport"
+            TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          if [ -z "$TASKS" ]; then
-            TASKS=":core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport"
+          if [ ${#TASKS[@]} -eq 0 ]; then
+            TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          gradle $TASKS sonar --parallel -Dorg.gradle.parallel=true
+          gradle "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
+          gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
 
       - name: Build and analyze (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
@@ -189,6 +190,7 @@ jobs:
           :app:lintDebug
           :app:compileDebugAndroidTestJavaWithJavac
           :app:createDebugCoverageReport
-          sonar
           --parallel
           -Dorg.gradle.parallel=true
+          -PsonarFullCoverage=true
+          sonar
