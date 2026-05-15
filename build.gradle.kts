@@ -33,7 +33,6 @@ val maybeSonarCoveragePaths = listOf(
     rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
     rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
 ).filter { file(it).exists() }
-}
 
 sonar {
     properties {
