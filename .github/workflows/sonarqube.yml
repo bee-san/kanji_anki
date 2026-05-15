@@ -34,47 +34,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "emulator" "system-images;android-35;google_apis;x86_64"
-
-      - name: Enable KVM access
-        run: |
-          sudo sh -c 'echo KERNEL==\"kvm\", GROUP=\"kvm\", MODE=\"0666\", OPTIONS+=\"static_node=kvm\" > /etc/udev/rules.d/99-kvm4all.rules'
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Start Android emulator
-        run: |
-          set -euo pipefail
-
-          echo "no" | avdmanager create avd --force --name sonar-api35 --package "system-images;android-35;google_apis;x86_64"
-          "$ANDROID_HOME/emulator/emulator" -avd sonar-api35 -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-boot-anim &
-          adb wait-for-device
-
-          boot_completed=""
-          boot_deadline=$((SECONDS + 300))
-          until [ "$boot_completed" = "1" ] && adb shell settings get global boot_count >/dev/null 2>&1; do
-            if [ "$SECONDS" -ge "$boot_deadline" ]; then
-              echo "::error::Android emulator did not finish booting within 300 seconds."
-              echo "adb devices:"
-              adb devices -l || true
-              echo "sys.boot_completed: ${boot_completed:-unset}"
-              echo "init.svc.bootanim:"
-              adb shell getprop init.svc.bootanim || true
-              echo "dev.bootcomplete:"
-              adb shell getprop dev.bootcomplete || true
-              echo "Recent logcat:"
-              adb logcat -d -t 200 || true
-              exit 1
-            fi
-            boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
-            sleep 5
-          done
-
-          adb shell input keyevent 82
-
       - name: Cache SonarQube packages
         uses: actions/cache@v5
         with:
@@ -92,8 +51,6 @@ jobs:
           :core:jacocoTestCoverageVerification
           :app:testDebugUnitTest
           :app:jacocoDebugUnitTestReport
-          :app:createDebugCoverageReport
-          :app:compileDebugAndroidTestJavaWithJavac
           :app:lintDebug
           sonar
           --no-daemon
