@@ -587,7 +587,7 @@ public final class BridgeScheduler {
                 applyLearningHard(context, state, steps, isNewLearning);
                 break;
             case RATING_EASY:
-                graduateToReview(context, state);
+                graduateToReview(context, state, isNewLearning);
                 break;
             case RATING_GOOD:
             default:
@@ -618,7 +618,7 @@ public final class BridgeScheduler {
     private void applyLearningGood(ReviewContext context, ReviewState state, List<Integer> steps, boolean isNewLearning) {
         int nextIdx = state.stepIndex + 1;
         if (nextIdx >= steps.size()) {
-            graduateToReview(context, state);
+            graduateToReview(context, state, isNewLearning);
             return;
         }
         state.stepIndex = nextIdx;
@@ -627,12 +627,13 @@ public final class BridgeScheduler {
         state.schedulerState = STATE_LEARNING;
     }
 
-    private void graduateToReview(ReviewContext context, ReviewState state) {
+    private void graduateToReview(ReviewContext context, ReviewState state, boolean isNewLearning) {
         state.stepIndex = 0;
         KaniFsrsReviewResult result = fsrsAdapter.initialReview(
                 context.rating,
                 state.difficulty,
-                context.parameters.targetRetention
+                context.parameters.targetRetention,
+                isNewLearning
         );
         state.stability = result.stability;
         state.difficulty = result.difficulty;

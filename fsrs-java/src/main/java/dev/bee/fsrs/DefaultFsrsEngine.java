@@ -30,10 +30,27 @@ final class DefaultFsrsEngine implements FsrsEngine {
 
         double retrievability = retrievability(previousState, elapsedDays);
         double nextDifficulty = nextDifficulty(previousState.difficulty(), rating);
-        double nextStability = rating == FsrsRating.AGAIN
-                ? nextForgetStability(nextDifficulty, previousState.stability(), retrievability)
-                : nextRecallStability(nextDifficulty, previousState.stability(), retrievability, rating);
+        double nextStability;
+        if (rating == FsrsRating.AGAIN) {
+            nextStability = nextForgetStability(nextDifficulty, previousState.stability(), retrievability);
+        } else if (elapsedDays == 0) {
+            nextStability = shortTermStability(previousState.stability(), rating);
+        } else {
+            nextStability = nextRecallStability(nextDifficulty, previousState.stability(), retrievability, rating);
+        }
         return new FsrsMemoryState(nextStability, nextDifficulty);
+    }
+
+    @Override
+    public double nextDifficulty(double currentDifficulty, FsrsRating rating) {
+        validateDifficulty(currentDifficulty);
+        Fsrs.requireNonNull(rating, "rating");
+        double deltaDifficulty = -(parameters.get(6) * (rating.value() - 3.0));
+        double linearDamping = (10.0 - currentDifficulty) * deltaDifficulty / 9.0;
+        double easyInitialDifficulty = initialDifficulty(FsrsRating.EASY, false);
+        double next = parameters.get(7) * easyInitialDifficulty
+                + (1.0 - parameters.get(7)) * (currentDifficulty + linearDamping);
+        return Fsrs.clamp(next, Fsrs.MIN_DIFFICULTY, Fsrs.MAX_DIFFICULTY);
     }
 
     @Override
@@ -79,15 +96,6 @@ final class DefaultFsrsEngine implements FsrsEngine {
     private double initialDifficulty(FsrsRating rating, boolean clamp) {
         double difficulty = parameters.get(4) - Math.exp(parameters.get(5) * (rating.value() - 1.0)) + 1.0;
         return clamp ? Fsrs.clamp(difficulty, Fsrs.MIN_DIFFICULTY, Fsrs.MAX_DIFFICULTY) : difficulty;
-    }
-
-    private double nextDifficulty(double currentDifficulty, FsrsRating rating) {
-        double deltaDifficulty = -(parameters.get(6) * (rating.value() - 3.0));
-        double linearDamping = (10.0 - currentDifficulty) * deltaDifficulty / 9.0;
-        double easyInitialDifficulty = initialDifficulty(FsrsRating.EASY, false);
-        double next = parameters.get(7) * easyInitialDifficulty
-                + (1.0 - parameters.get(7)) * (currentDifficulty + linearDamping);
-        return Fsrs.clamp(next, Fsrs.MIN_DIFFICULTY, Fsrs.MAX_DIFFICULTY);
     }
 
     private double nextRecallStability(

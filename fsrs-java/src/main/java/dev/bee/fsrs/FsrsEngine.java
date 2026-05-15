@@ -16,6 +16,8 @@ public interface FsrsEngine {
 
     double retrievability(FsrsMemoryState state, int elapsedDays);
 
+    double nextDifficulty(double currentDifficulty, FsrsRating rating);
+
     FsrsMemoryState nextState(FsrsMemoryState previousState, FsrsRating rating, int elapsedDays);
 
     double shortTermStability(double stability, FsrsRating rating);

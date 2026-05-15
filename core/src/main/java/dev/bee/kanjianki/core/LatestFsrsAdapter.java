@@ -21,8 +21,20 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
     }
 
     @Override
-    public KaniFsrsReviewResult initialReview(String rating, double currentDifficulty, double targetRetention) {
-        FsrsMemoryState state = engine.initialState(toRating(rating));
+    public KaniFsrsReviewResult initialReview(
+            String rating,
+            double currentDifficulty,
+            double targetRetention,
+            boolean isNewLearning
+    ) {
+        FsrsRating fsrsRating = toRating(rating);
+        FsrsMemoryState state = engine.initialState(fsrsRating);
+        if (!isNewLearning) {
+            state = new FsrsMemoryState(
+                    state.stability(),
+                    engine.nextDifficulty(clampDifficulty(currentDifficulty), fsrsRating)
+            );
+        }
         int intervalDays = engine.nextIntervalDays(state.stability(), retention(targetRetention), MAXIMUM_INTERVAL_DAYS);
         return result(state, intervalDays);
     }

@@ -136,11 +136,15 @@ public final class FsrsEngineReferenceTest {
         assertState(engine.nextState(previous, FsrsRating.HARD, 7), 10.728832429032, 7.329841969297);
         assertState(engine.nextState(previous, FsrsRating.GOOD, 7), 18.005364860252, 5.989228369297);
         assertState(engine.nextState(previous, FsrsRating.EASY, 7), 35.874574083399, 4.648614769297);
+        assertState(engine.nextState(previous, FsrsRating.HARD, 0), 2.747009588922, 7.329841969297);
+        assertState(engine.nextState(previous, FsrsRating.GOOD, 0), 5.0, 5.989228369297);
+        assertState(engine.nextState(previous, FsrsRating.EASY, 0), 8.129609559916, 4.648614769297);
 
         assertEquals(1, engine.nextIntervalDays(0.001, 0.9, 36500));
         assertEquals(365, engine.nextIntervalDays(50000.0, 0.9, 365));
         assertEquals(2.747009588922, engine.shortTermStability(5.0, FsrsRating.HARD), TOLERANCE);
         assertEquals(5.0, engine.shortTermStability(5.0, FsrsRating.GOOD), TOLERANCE);
+        assertEquals(5.989228369297, engine.nextDifficulty(6.0, FsrsRating.GOOD), TOLERANCE);
 
         FsrsReviewOutput output = engine.review(new FsrsReviewInput(previous, FsrsRating.GOOD, 7, 0.9, 36500));
         assertState(output.nextState(), 18.005364860252, 5.989228369297);
@@ -161,6 +165,8 @@ public final class FsrsEngineReferenceTest {
         expectIllegalArgument(() -> engine.nextState(null, FsrsRating.GOOD, 1));
         expectIllegalArgument(() -> engine.nextState(state, null, 1));
         expectIllegalArgument(() -> engine.nextState(state, FsrsRating.GOOD, -1));
+        expectIllegalArgument(() -> engine.nextDifficulty(0.0, FsrsRating.GOOD));
+        expectIllegalArgument(() -> engine.nextDifficulty(5.0, null));
         expectIllegalArgument(() -> engine.shortTermStability(0.0, FsrsRating.GOOD));
         expectIllegalArgument(() -> engine.shortTermStability(5.0, null));
         expectIllegalArgument(() -> engine.nextIntervalDays(0.0, 0.9, 36500));

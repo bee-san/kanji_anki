@@ -11,7 +11,7 @@ public final class KaniFsrsAdapterTest {
         Fsrs5Adapter adapter = new Fsrs5Adapter();
         Fsrs5Engine engine = new Fsrs5Engine(null, 0.9);
 
-        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9);
+        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9, true);
         int good = Fsrs5Engine.ratingToInt(BridgeScheduler.RATING_GOOD);
         double expectedInitialStability = engine.initialStability(good);
         double expectedInitialDifficulty = engine.updateDifficulty(6.0, good);
@@ -46,10 +46,16 @@ public final class KaniFsrsAdapterTest {
     public void latestAdapterUsesTwentyOneParameterEngineAndClampsMigratedState() {
         LatestFsrsAdapter adapter = new LatestFsrsAdapter();
 
-        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9);
+        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9, true);
         assertEquals(2.3065, initial.stability, 0.000001);
         assertEquals(2.118103970459, initial.difficulty, 0.000001);
         assertEquals(2, initial.intervalDays());
+
+        KaniFsrsReviewResult relearningGraduation =
+                adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9, false);
+        assertEquals(2.3065, relearningGraduation.stability, 0.000001);
+        assertEquals(5.989228369297, relearningGraduation.difficulty, 0.000001);
+        assertEquals(2, relearningGraduation.intervalDays());
 
         KaniFsrsReviewResult review = adapter.review(
                 0.0,

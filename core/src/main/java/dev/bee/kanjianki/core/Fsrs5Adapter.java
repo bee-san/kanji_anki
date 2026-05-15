@@ -2,7 +2,12 @@ package dev.bee.kanjianki.core;
 
 final class Fsrs5Adapter implements KaniFsrsAdapter {
     @Override
-    public KaniFsrsReviewResult initialReview(String rating, double currentDifficulty, double targetRetention) {
+    public KaniFsrsReviewResult initialReview(
+            String rating,
+            double currentDifficulty,
+            double targetRetention,
+            boolean isNewLearning
+    ) {
         int fsrsRating = Fsrs5Engine.ratingToInt(rating);
         Fsrs5Engine engine = new Fsrs5Engine(null, targetRetention);
         double stability = engine.initialStability(fsrsRating);
