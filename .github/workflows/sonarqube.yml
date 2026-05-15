@@ -4,12 +4,18 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
+    inputs:
+      full_coverage:
+        description: "Run connected coverage (emulator + androidTest coverage)"
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
-  workflow_dispatch:
 
 jobs:
   build:
@@ -50,8 +56,8 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Build and analyze
-        if: github.event_name != 'workflow_dispatch'
+      - name: Build and analyze (PR-safe fast path)
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.full_coverage != 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
@@ -61,12 +67,13 @@ jobs:
           :app:testDebugUnitTest
           :app:jacocoDebugUnitTestReport
           :app:lintDebug
+          --parallel
           sonar
           --no-daemon
           --info
 
-      - name: Start Android emulator
-        if: github.event_name == 'workflow_dispatch'
+      - name: Start Android emulator (manual full coverage mode only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
@@ -91,8 +98,8 @@ jobs:
           fi
           adb shell input keyevent 82
 
-      - name: Build and analyze (manual full coverage)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Build and analyze (manual full-coverage mode)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
@@ -104,6 +111,7 @@ jobs:
           :app:compileDebugAndroidTestJavaWithJavac
           :app:createDebugCoverageReport
           :app:lintDebug
+          --parallel
           sonar
           --no-daemon
           --info
