@@ -36,26 +36,8 @@ sonar {
         property("sonar.projectKey", "bee-san_kanji_anki")
         property("sonar.organization", "bee-san")
         property("sonar.projectVersion", sonarProjectVersion.get())
-        property(
-            "sonar.java.binaries",
-            listOf(
-                rootPath("core/build/classes/java/main"),
-                rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
-            ).joinToString(",")
-        )
-        property(
-            "sonar.java.test.binaries",
-            listOf(
-                rootPath("core/build/classes/java/test"),
-                rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
-            ).joinToString(",")
-        )
-        property(
-            "sonar.coverage.jacoco.xmlReportPaths",
-            listOf(
-                rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
-                rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
-            ).joinToString(",")
-        )
+        property("sonar.java.binaries", sonarJavaBinaries.joinToString(","))
+        property("sonar.java.test.binaries", sonarJavaTestBinaries.joinToString(","))
+        property("sonar.coverage.jacoco.xmlReportPaths", sonarJaCoCoReportPaths.joinToString(","))
     }
 }

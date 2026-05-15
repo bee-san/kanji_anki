@@ -80,6 +80,45 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.gradle == 'true'
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
+      - name: Install Android SDK packages
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install emulator packages (manual full-coverage mode only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+        run: |
+          sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
+
+      - name: Enable KVM access (manual full-coverage mode only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Start Android emulator (manual full-coverage mode)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+        run: |
+          echo "no" | avdmanager create avd --force --name sonar-api30 --package "system-images;android-30;google_apis;x86_64"
+          "$ANDROID_HOME/emulator/emulator" -avd sonar-api30 -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-boot-anim &
+          adb wait-for-device
+          boot_completed=""
+          for attempt in $(seq 1 90); do
+            boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+            if [ "$boot_completed" = "1" ]; then
+              break
+            fi
+            sleep 4
+          done
+          if [ "$boot_completed" != "1" ]; then
+            echo "Emulator failed to report sys.boot_completed in time."
+            adb shell ps | head
+            exit 1
+          fi
+          adb shell input keyevent 82
+
       - name: Cache SonarQube packages
         uses: actions/cache@v5
         with:
