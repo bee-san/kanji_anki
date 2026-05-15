@@ -27,7 +27,6 @@ sonar {
             listOf(
                 rootPath("core/build/classes/java/test"),
                 rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
-                rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
             ).joinToString(",")
         )
         property(
@@ -35,7 +34,6 @@ sonar {
             listOf(
                 rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
                 rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
-                rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
             ).joinToString(",")
         )
     }
