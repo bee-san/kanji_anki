@@ -133,9 +133,25 @@ jobs:
       - name: Start Android emulator (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         run: |
+          set -euo pipefail
           echo "no" | avdmanager create avd --force --name sonar-api30 --package "system-images;android-30;google_apis;x86_64"
-          "$ANDROID_HOME/emulator/emulator" -avd sonar-api30 -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-boot-anim &
-          adb wait-for-device
+          "$ANDROID_HOME/emulator/emulator" \
+            -avd sonar-api30 \
+            -no-window \
+            -no-audio \
+            -no-snapshot \
+            -gpu swiftshader_indirect \
+            -no-boot-anim \
+            -no-skin \
+            -no-anim \
+            > /tmp/emulator.log 2>&1 &
+          EMULATOR_PID=$!
+          if ! timeout 90s adb wait-for-device; then
+            echo "adb wait-for-device timed out."
+            kill "$EMULATOR_PID" || true
+            cat /tmp/emulator.log
+            exit 1
+          fi
           boot_completed=""
           for attempt in $(seq 1 90); do
             boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
@@ -146,7 +162,8 @@ jobs:
           done
           if [ "$boot_completed" != "1" ]; then
             echo "Emulator failed to report sys.boot_completed in time."
-            adb shell ps | head
+            kill "$EMULATOR_PID" || true
+            cat /tmp/emulator.log
             exit 1
           fi
           adb shell input keyevent 82
