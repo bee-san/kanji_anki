@@ -47,6 +47,7 @@ val maybeSonarCoveragePaths = listOf(
     // Triggering path filter updates across CI without changing behavior.
     rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
     // Additional CI trigger touchpoint for workflow-only updates.
+    // and to force deterministic workflow refreshes after analyzer config changes.
     rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
     rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
 )
