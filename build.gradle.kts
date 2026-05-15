@@ -44,6 +44,7 @@ val maybeSonarTestBinaries = listOf(
 )
 
 val maybeSonarCoveragePaths = listOf(
+    // Triggering path filter updates across CI without changing behavior.
     rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"),
     rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"),
     rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"),
