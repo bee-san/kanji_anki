@@ -35,7 +35,6 @@ val sonarCoveragePaths = listOf(
 
 val maybeSonarMainBinaries = listOf(
     rootPath("core/build/classes"),
-    rootPath("app/build/classes"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     rootPath("app/build/intermediates/javac/debug/classes"),
     rootPath("app/build/intermediates/kotlin-classes/debug")
@@ -43,7 +42,6 @@ val maybeSonarMainBinaries = listOf(
 
 val maybeSonarTestBinaries = listOf(
     rootPath("core/build/classes"),
-    rootPath("app/build/classes"),
     rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
     rootPath("app/build/intermediates/javac/debugUnitTest/classes"),
     rootPath("app/build/intermediates/kotlin-classes/debugUnitTest"),
