@@ -1,6 +1,5 @@
 package dev.bee.kanjianki.reminders;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -23,9 +22,11 @@ import dev.bee.kanjianki.data.LocalStore;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class ReminderScheduler {
     public static final String ACTION_DAILY_REMINDER = "dev.bee.kanjianki.action.DAILY_REMINDER";
+    private static final String POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS";
     private static final String CHANNEL_ID = "kani_study_reminders";
     private static final int REQUEST_CODE = 2701;
     private static final int NOTIFICATION_ID = 2702;
@@ -40,67 +41,60 @@ public final class ReminderScheduler {
     }
 
     public static void schedule(Context context, LocalStore.ReminderSettings settings) {
+        schedule(settings, androidReminderServices(context), System.currentTimeMillis());
+    }
+
+    static void schedule(LocalStore.ReminderSettings settings, ReminderServices services, long nowMillis) {
         if (settings == null || !settings.enabled) {
-            cancel(context);
+            services.cancelAlarm();
             return;
         }
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager == null) {
-            return;
-        }
-        alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                nextTriggerMillis(settings),
-                alarmIntent(context, PendingIntent.FLAG_UPDATE_CURRENT)
-        );
+        services.scheduleAlarm(nextTriggerMillis(settings, nowMillis));
     }
 
     public static void cancel(Context context) {
-        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        PendingIntent pendingIntent = alarmIntent(context, PendingIntent.FLAG_NO_CREATE);
-        if (alarmManager != null && pendingIntent != null) {
-            alarmManager.cancel(pendingIntent);
-        }
+        androidReminderServices(context).cancelAlarm();
     }
 
     public static boolean notificationsAllowed(Context context) {
-        if (!hasRuntimeNotificationPermission(context)) {
+        return notificationsAllowed(androidReminderServices(context));
+    }
+
+    static boolean notificationsAllowed(ReminderServices services) {
+        if (!services.hasRuntimeNotificationPermission()) {
             return false;
         }
-        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (manager == null || !manager.areNotificationsEnabled()) {
+        if (!services.areNotificationsEnabled()) {
             return false;
         }
-        NotificationChannel channel = manager.getNotificationChannel(CHANNEL_ID);
-        return channel == null || channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        Integer channelImportance = services.reminderChannelImportance();
+        return channelImportance == null || channelImportance != NotificationManager.IMPORTANCE_NONE;
     }
 
     public static boolean hasRuntimeNotificationPermission(Context context) {
-        return Build.VERSION.SDK_INT < 33
-                || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        return hasRuntimeNotificationPermission(context, Build.VERSION.SDK_INT);
+    }
+
+    static boolean hasRuntimeNotificationPermission(Context context, int sdkInt) {
+        return sdkInt < 33
+                || context.checkSelfPermission(POST_NOTIFICATIONS_PERMISSION) == PackageManager.PERMISSION_GRANTED;
     }
 
     public static void ensureNotificationChannel(Context context) {
-        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (manager == null) {
-            return;
-        }
-        NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "Study reminders",
-                NotificationManager.IMPORTANCE_DEFAULT
-        );
-        channel.setDescription("Daily reminders to study problem kanji in Kani.");
-        channel.setShowBadge(true);
-        manager.createNotificationChannel(channel);
+        androidReminderServices(context).ensureNotificationChannel();
     }
 
     @SuppressLint("MissingPermission")
     public static void showReminderNotification(Context context) {
-        if (!notificationsAllowed(context)) {
+        showReminderNotification(context, androidReminderServices(context));
+    }
+
+    @SuppressLint("MissingPermission")
+    static void showReminderNotification(Context context, ReminderServices services) {
+        if (!notificationsAllowed(services)) {
             return;
         }
-        ensureNotificationChannel(context);
+        services.ensureNotificationChannel();
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager == null) {
             return;
@@ -126,6 +120,10 @@ public final class ReminderScheduler {
         manager.notify(NOTIFICATION_ID, notification);
     }
 
+    static ReminderServices androidReminderServices(Context context) {
+        return new AndroidReminderServices(context);
+    }
+
     private static PendingIntent alarmIntent(Context context, int lookupFlag) {
         Intent intent = new Intent(context, ReminderReceiver.class).setAction(ACTION_DAILY_REMINDER);
         return PendingIntent.getBroadcast(
@@ -136,14 +134,116 @@ public final class ReminderScheduler {
         );
     }
 
-    private static long nextTriggerMillis(LocalStore.ReminderSettings settings) {
+    interface ReminderServices {
+        void scheduleAlarm(long triggerAtMillis);
+
+        void cancelAlarm();
+
+        boolean hasRuntimeNotificationPermission();
+
+        boolean areNotificationsEnabled();
+
+        Integer reminderChannelImportance();
+
+        void ensureNotificationChannel();
+    }
+
+    private static final class AndroidReminderServices implements ReminderServices {
+        private final Context context;
+
+        AndroidReminderServices(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public void scheduleAlarm(long triggerAtMillis) {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager == null) {
+                return;
+            }
+            alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    alarmIntent(context, PendingIntent.FLAG_UPDATE_CURRENT)
+            );
+        }
+
+        @Override
+        public void cancelAlarm() {
+            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            PendingIntent pendingIntent = alarmIntent(context, PendingIntent.FLAG_NO_CREATE);
+            if (alarmManager != null && pendingIntent != null) {
+                alarmManager.cancel(pendingIntent);
+            }
+        }
+
+        @Override
+        public boolean hasRuntimeNotificationPermission() {
+            return ReminderScheduler.hasRuntimeNotificationPermission(context);
+        }
+
+        @Override
+        public boolean areNotificationsEnabled() {
+            return ReminderScheduler.areNotificationsEnabled(notificationStatus());
+        }
+
+        @Override
+        public Integer reminderChannelImportance() {
+            NotificationManager manager = notificationManager();
+            if (manager == null) {
+                return NotificationManager.IMPORTANCE_NONE;
+            }
+            NotificationChannel channel = manager.getNotificationChannel(CHANNEL_ID);
+            return channel == null ? null : channel.getImportance();
+        }
+
+        @Override
+        public void ensureNotificationChannel() {
+            NotificationManager manager = notificationManager();
+            if (manager == null) {
+                return;
+            }
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Study reminders",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setDescription("Daily reminders to study problem kanji in Kani.");
+            channel.setShowBadge(true);
+            manager.createNotificationChannel(channel);
+        }
+
+        private NotificationManager notificationManager() {
+            return (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        }
+
+        private NotificationStatus notificationStatus() {
+            NotificationManager manager = notificationManager();
+            return manager == null ? null : manager::areNotificationsEnabled;
+        }
+    }
+
+    interface NotificationStatus {
+        boolean areNotificationsEnabled();
+    }
+
+    static boolean areNotificationsEnabled(NotificationStatus status) {
+        return status != null && status.areNotificationsEnabled();
+    }
+
+    static long nextTriggerMillis(LocalStore.ReminderSettings settings) {
+        return nextTriggerMillis(settings, System.currentTimeMillis());
+    }
+
+    static long nextTriggerMillis(LocalStore.ReminderSettings settings, long nowMillis) {
         Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(nowMillis);
         calendar.set(Calendar.HOUR_OF_DAY, settings.hour);
         calendar.set(Calendar.MINUTE, settings.minute);
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         long trigger = calendar.getTimeInMillis();
-        if (trigger <= System.currentTimeMillis()) {
+        if (trigger <= nowMillis) {
             calendar.add(Calendar.DAY_OF_YEAR, 1);
             trigger = calendar.getTimeInMillis();
         }
@@ -153,45 +253,70 @@ public final class ReminderScheduler {
     private static ReminderCopy reminderCopy(Context context) {
         try (LocalStore store = new LocalStore(context)) {
             List<Records.DashboardRow> rows = store.activeDashboardRows();
-            if (rows.isEmpty()) {
-                return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
-            }
             long now = System.currentTimeMillis();
-            List<Records.StudyItem> items = store.studyItems();
-            Records.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
+            return reminderCopy(
                     rows,
-                    items,
+                    store.studyItems(),
                     store.reviewStatsSince(now - 7 * 86_400_000L),
                     store.studyStreak(now).currentDays,
                     store.studiedKanjiSince(startOfLocalDay(now)),
                     store.adaptiveLoadWorkPercent(),
                     store.adaptiveLoadMode(),
                     store.adaptiveLoadMaxItems(),
-                    now,
-                    Records.Settings.kikuDefaults()
+                    now
             );
-            if (plan.remaining > 0) {
-                return new ReminderCopy(
-                        "Kani focus is ready",
-                        String.format(Locale.ROOT, "%d focus kanji %s left today. Draw one now.", plan.remaining, plan.remaining == 1 ? "is" : "are")
-                );
-            }
-            int due = currentDueCount(rows, items, now);
-            if (due > 0) {
-                return new ReminderCopy(
-                        "Kani recovery is due",
-                        String.format(Locale.ROOT, "%d problem kanji %s ready. Draw one now.", due, due == 1 ? "is" : "are")
-                );
-            }
-            return new ReminderCopy("Check Kani", "Your queue can rest today. Open Kani if you want an extra problem kanji rep.");
         }
+    }
+
+    static ReminderCopy reminderCopy(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> items,
+            Records.ReviewStats recentStats,
+            int currentStreakDays,
+            Set<String> studiedToday,
+            int workloadPercent,
+            String workloadMode,
+            int maxItems,
+            long now) {
+        if (rows.isEmpty()) {
+            return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
+        }
+        Records.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
+                rows,
+                items,
+                recentStats,
+                currentStreakDays,
+                studiedToday,
+                workloadPercent,
+                workloadMode,
+                maxItems,
+                now,
+                Records.Settings.kikuDefaults()
+        );
+        return reminderCopyFor(plan.remaining, currentDueCount(rows, items, now));
+    }
+
+    static ReminderCopy reminderCopyFor(int focusRemaining, int due) {
+        if (focusRemaining > 0) {
+            return new ReminderCopy(
+                    "Kani focus is ready",
+                    String.format(Locale.ROOT, "%d focus kanji %s left today. Draw one now.", focusRemaining, focusRemaining == 1 ? "is" : "are")
+            );
+        }
+        if (due > 0) {
+            return new ReminderCopy(
+                    "Kani recovery is due",
+                    String.format(Locale.ROOT, "%d problem kanji %s ready. Draw one now.", due, due == 1 ? "is" : "are")
+            );
+        }
+        return new ReminderCopy("Check Kani", "Your queue can rest today. Open Kani if you want an extra problem kanji rep.");
     }
 
     private static int currentDueCount(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
         return new BridgeScheduler().dueCount(items, rows, now);
     }
 
-    private static final class ReminderCopy {
+    static final class ReminderCopy {
         final String title;
         final String message;
 

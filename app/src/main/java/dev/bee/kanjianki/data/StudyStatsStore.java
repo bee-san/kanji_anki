@@ -186,7 +186,8 @@ public final class StudyStatsStore {
                 new String[]{Long.toString(startMillis), Long.toString(endMillis)}
         );
         try {
-            return cursor.moveToFirst() ? cursor.getLong(0) : 0L;
+            cursor.moveToFirst();
+            return cursor.getLong(0);
         } finally {
             cursor.close();
         }
@@ -198,9 +199,7 @@ public final class StudyStatsStore {
                 new String[]{Long.toString(startMillis), Long.toString(endMillis)}
         );
         try {
-            if (!cursor.moveToFirst()) {
-                return new StudyTaskAggregate(0L, 0);
-            }
+            cursor.moveToFirst();
             return new StudyTaskAggregate(cursor.getLong(0), cursor.getInt(1));
         } finally {
             cursor.close();

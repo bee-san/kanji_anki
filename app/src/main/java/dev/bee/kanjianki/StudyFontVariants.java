@@ -10,7 +10,11 @@ final class StudyFontVariants {
     }
 
     static Typeface random(Context context) {
-        switch (ThreadLocalRandom.current().nextInt(3)) {
+        return forVariant(context, ThreadLocalRandom.current().nextInt(3));
+    }
+
+    static Typeface forVariant(Context context, int variant) {
+        switch (variant) {
             case 0:
                 return fontResource(context, R.font.cinecaption_regular, Typeface.DEFAULT);
             case 1:

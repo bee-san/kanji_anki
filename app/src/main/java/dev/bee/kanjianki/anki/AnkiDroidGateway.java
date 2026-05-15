@@ -10,6 +10,9 @@ import android.os.Build;
 import android.os.OperationCanceledException;
 import android.util.Log;
 
+import androidx.annotation.ChecksSdkIntAtLeast;
+import androidx.annotation.RequiresApi;
+
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SyncValidator;
 import dev.bee.kanjianki.sync.SyncProgress;
@@ -167,7 +170,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         } catch (Throwable error) {
             String kind = SyncValidator.classifyProviderFailure(error);
             if (kind.startsWith("permanent")) {
-                throw SyncFailure.permanent(error.getMessage() == null ? "Permanent AnkiDroid sync error." : error.getMessage(), error);
+                throw SyncFailure.permanent(error.getMessage(), error);
             }
             throw SyncFailure.retryable("AnkiDroid provider read failed: " + error.getMessage(), error);
         }
@@ -304,16 +307,38 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     private ProviderTarget resolveProviderTarget() {
+        PackageManager packageManager = context.getPackageManager();
         for (ProviderTarget target : providerTargets) {
-            if (Build.VERSION.SDK_INT >= 33) {
-                if (context.getPackageManager().resolveContentProvider(target.authority, PackageManager.ComponentInfoFlags.of(0)) != null) {
-                    return target;
-                }
-            } else if (context.getPackageManager().resolveContentProvider(target.authority, 0) != null) {
+            if (providerInstalled(packageManager, target.authority)) {
                 return target;
             }
         }
         return null;
+    }
+
+    static boolean providerInstalled(PackageManager packageManager, String authority) {
+        return providerInstalled(packageManager, authority, Build.VERSION.SDK_INT);
+    }
+
+    static boolean providerInstalled(PackageManager packageManager, String authority, int sdkInt) {
+        if (isAtLeastTiramisu(sdkInt)) {
+            return providerInstalledOnTiramisuAndAbove(packageManager, authority);
+        }
+        return providerInstalledBeforeTiramisu(packageManager, authority);
+    }
+
+    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.TIRAMISU, parameter = 0)
+    private static boolean isAtLeastTiramisu(int sdkInt) {
+        return sdkInt >= Build.VERSION_CODES.TIRAMISU;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private static boolean providerInstalledOnTiramisuAndAbove(PackageManager packageManager, String authority) {
+        return packageManager.resolveContentProvider(authority, PackageManager.ComponentInfoFlags.of(0)) != null;
+    }
+
+    static boolean providerInstalledBeforeTiramisu(PackageManager packageManager, String authority) {
+        return packageManager.resolveContentProvider(authority, 0) != null;
     }
 
     private boolean hasPermission(String permission) {
@@ -474,11 +499,15 @@ public final class AnkiDroidGateway implements CollectionGateway {
             projectionIndex = result.projectionIndex;
             cards.addAll(result.cards);
             scanned++;
-            if (shouldReportCardProgress(scanned, total)) {
-                progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
-            }
+            reportCardProgressIfNeeded(progress, scanned, total);
         }
         return cards;
+    }
+
+    private void reportCardProgressIfNeeded(SyncProgress.Listener progress, int scanned, int total) {
+        if (shouldReportCardProgress(scanned, total)) {
+            progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
+        }
     }
 
     private ProjectionReadResult readCardsForNote(
@@ -721,7 +750,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 stability = value;
             } else if (COLUMN_DIFFICULTY.equals(key) || "d".equals(key)) {
                 difficulty = value;
-            } else if (COLUMN_RETRIEVABILITY.equals(key) || "r".equals(key)) {
+            } else {
                 retrievability = value;
             }
         }
@@ -733,7 +762,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             return null;
         }
         double parsed = Double.parseDouble(value);
-        return Double.isNaN(parsed) || Double.isInfinite(parsed) ? null : parsed;
+        return Double.isInfinite(parsed) ? null : parsed;
     }
 
     private static final class FsrsMemoryState {

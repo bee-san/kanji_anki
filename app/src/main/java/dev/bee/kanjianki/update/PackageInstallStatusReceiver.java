@@ -50,29 +50,45 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
                 .putExtra(EXTRA_SOURCE, source == null ? GitHubUpdater.UpdateSource.AUTOMATIC.name() : source.name());
     }
 
-    @SuppressWarnings("deprecation")
     private static void handlePendingUserAction(Context context, Intent intent, GitHubUpdater.UpdateSource source, String version, String message) {
-        Intent confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+        handlePendingUserAction(intent, source, version, message, androidPendingUserActionHandler(context));
+    }
+
+    static void handlePendingUserAction(
+            Intent intent,
+            GitHubUpdater.UpdateSource source,
+            String version,
+            String message,
+            PendingUserActionHandler handler
+    ) {
+        Intent confirmation = intent == null ? null : intent.getParcelableExtra(Intent.EXTRA_INTENT);
         if (confirmation != null && UpdatePolicy.shouldLaunchInstallConfirmation(source)) {
             confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(confirmation);
+            handler.startActivity(confirmation);
             return;
         }
-        UpdateNotifier.showPendingUpdate(context, version, message);
+        handler.showPendingUpdate(version, message);
     }
 
     private static void deleteCachedApk(Context context, String apkName) {
+        deleteCachedApk(context, apkName, File::delete);
+    }
+
+    static boolean deleteCachedApk(Context context, String apkName, CacheFileDeletion deletion) {
         if (apkName == null || apkName.trim().isEmpty()) {
-            return;
+            return false;
         }
         File updatesDir = new File(context.getCacheDir(), "updates");
         File cached = new File(updatesDir, new File(apkName).getName());
-        if (cached.isFile() && !cached.delete()) {
+        boolean cachedFile = cached.isFile();
+        if (cachedFile && !deletion.delete(cached)) {
             Log.w(TAG, "Could not delete update cache file: " + cached.getName());
+            return false;
         }
+        return cachedFile;
     }
 
-    private static GitHubUpdater.UpdateSource sourceFrom(String raw) {
+    static GitHubUpdater.UpdateSource sourceFrom(String raw) {
         if (raw == null) {
             return GitHubUpdater.UpdateSource.AUTOMATIC;
         }
@@ -80,6 +96,38 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
             return GitHubUpdater.UpdateSource.valueOf(raw);
         } catch (IllegalArgumentException ignored) {
             return GitHubUpdater.UpdateSource.AUTOMATIC;
+        }
+    }
+
+    interface PendingUserActionHandler {
+        void startActivity(Intent intent);
+
+        boolean showPendingUpdate(String version, String message);
+    }
+
+    interface CacheFileDeletion {
+        boolean delete(File file);
+    }
+
+    static PendingUserActionHandler androidPendingUserActionHandler(Context context) {
+        return new AndroidPendingUserActionHandler(context);
+    }
+
+    private static final class AndroidPendingUserActionHandler implements PendingUserActionHandler {
+        private final Context context;
+
+        private AndroidPendingUserActionHandler(Context context) {
+            this.context = context.getApplicationContext();
+        }
+
+        @Override
+        public void startActivity(Intent intent) {
+            context.startActivity(intent);
+        }
+
+        @Override
+        public boolean showPendingUpdate(String version, String message) {
+            return UpdateNotifier.showPendingUpdate(context, version, message);
         }
     }
 }

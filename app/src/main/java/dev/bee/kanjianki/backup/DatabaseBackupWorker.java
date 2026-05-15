@@ -31,29 +31,49 @@ public final class DatabaseBackupWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        Context context = getApplicationContext();
-        File dbFile = context.getDatabasePath(DB_NAME);
+        return doWork(new AndroidBackupEnvironment(getApplicationContext()), System.currentTimeMillis());
+    }
+
+    static Result doWork(BackupEnvironment environment, long nowMillis) {
+        return backupDatabase(
+                environment.databasePath(DB_NAME),
+                environment.filesDir(),
+                nowMillis,
+                DatabaseBackupWorker::checkpoint,
+                DatabaseBackupWorker::copyFile);
+    }
+
+    static Result backupDatabase(
+            File dbFile,
+            File filesDir,
+            long nowMillis,
+            Checkpointer checkpointer,
+            FileCopier copier) {
         if (!dbFile.exists()) {
             return Result.failure();
         }
 
-        File backupDir = new File(context.getFilesDir(), BACKUP_DIR);
+        File backupDir = new File(filesDir, BACKUP_DIR);
         if (!backupDir.exists() && !backupDir.mkdirs()) {
             return Result.failure();
         }
 
-        checkpoint(dbFile);
+        try {
+            checkpointer.checkpoint(dbFile);
+        } catch (RuntimeException error) {
+            warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error);
+        }
 
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date(nowMillis));
         File dest = new File(backupDir, "kanji_anki_simple_" + timestamp + ".db");
 
         try {
-            copyFile(dbFile, dest);
+            copier.copy(dbFile, dest);
         } catch (IOException e) {
             if (!dest.delete()) {
-                Log.w(TAG, "Failed to delete incomplete backup: " + dest.getName());
+                warn("Failed to delete incomplete backup: " + dest.getName());
             }
-            Log.w(TAG, "Database backup failed.", e);
+            warn("Database backup failed.", e);
             return Result.failure();
         }
 
@@ -61,26 +81,104 @@ public final class DatabaseBackupWorker extends Worker {
         return Result.success();
     }
 
-    private void checkpoint(File dbFile) {
-        SQLiteDatabase db = null;
-        try {
-            db = SQLiteDatabase.openDatabase(
-                    dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
-            db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).close();
-        } catch (Exception error) {
-            Log.w(TAG, "Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error);
-        } finally {
-            if (db != null) {
-                try {
-                    db.close();
-                } catch (Exception e) {
-                    Log.w(TAG, "Failed to close database after backup checkpoint.", e);
-                }
-            }
+    interface Checkpointer {
+        void checkpoint(File dbFile);
+    }
+
+    interface FileCopier {
+        void copy(File src, File dst) throws IOException;
+    }
+
+    interface BackupEnvironment {
+        File databasePath(String name);
+
+        File filesDir();
+    }
+
+    static BackupEnvironment androidEnvironment(Context context) {
+        return new AndroidBackupEnvironment(context);
+    }
+
+    private static final class AndroidBackupEnvironment implements BackupEnvironment {
+        private final Context context;
+
+        AndroidBackupEnvironment(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public File databasePath(String name) {
+            return context.getDatabasePath(name);
+        }
+
+        @Override
+        public File filesDir() {
+            return context.getFilesDir();
         }
     }
 
-    private static void copyFile(File src, File dst) throws IOException {
+    static void checkpoint(File dbFile) {
+        checkpoint(dbFile, DatabaseBackupWorker::openCheckpointDatabase);
+    }
+
+    static void checkpoint(File dbFile, CheckpointDatabaseOpener opener) {
+        CheckpointDatabase db = null;
+        try {
+            db = opener.open(dbFile);
+            db.checkpoint();
+        } catch (Exception error) {
+            warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error);
+        } finally {
+            closeCheckpointDatabase(db);
+        }
+    }
+
+    private static CheckpointDatabase openCheckpointDatabase(File dbFile) {
+        SQLiteDatabase db = SQLiteDatabase.openDatabase(
+                dbFile.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE);
+        return new SQLiteCheckpointDatabase(db);
+    }
+
+    private static void closeCheckpointDatabase(CheckpointDatabase db) {
+        if (db == null) {
+            return;
+        }
+        try {
+            db.close();
+        } catch (Exception e) {
+            warn("Failed to close database after backup checkpoint.", e);
+        }
+    }
+
+    interface CheckpointDatabaseOpener {
+        CheckpointDatabase open(File dbFile) throws Exception;
+    }
+
+    interface CheckpointDatabase {
+        void checkpoint() throws Exception;
+
+        void close() throws Exception;
+    }
+
+    private static final class SQLiteCheckpointDatabase implements CheckpointDatabase {
+        private final SQLiteDatabase db;
+
+        SQLiteCheckpointDatabase(SQLiteDatabase db) {
+            this.db = db;
+        }
+
+        @Override
+        public void checkpoint() {
+            db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).close();
+        }
+
+        @Override
+        public void close() {
+            db.close();
+        }
+    }
+
+    static void copyFile(File src, File dst) throws IOException {
         try (FileInputStream inStream = new FileInputStream(src);
              FileOutputStream outStream = new FileOutputStream(dst);
              FileChannel inChannel = inStream.getChannel();
@@ -94,7 +192,7 @@ public final class DatabaseBackupWorker extends Worker {
         }
     }
 
-    private static void pruneOldBackups(File backupDir) {
+    static void pruneOldBackups(File backupDir) {
         File[] files = backupDir.listFiles((dir, name) ->
                 name.startsWith("kanji_anki_simple_") && name.endsWith(".db"));
         if (files == null || files.length <= MAX_BACKUPS) {
@@ -104,8 +202,24 @@ public final class DatabaseBackupWorker extends Worker {
         int toDelete = files.length - MAX_BACKUPS;
         for (int i = 0; i < toDelete; i++) {
             if (!files[i].delete()) {
-                Log.w(TAG, "Failed to prune old backup: " + files[i].getName());
+                warn("Failed to prune old backup: " + files[i].getName());
             }
+        }
+    }
+
+    private static void warn(String message) {
+        try {
+            Log.w(TAG, message);
+        } catch (RuntimeException ignored) {
+            // Android Log is unavailable in local JVM tests.
+        }
+    }
+
+    private static void warn(String message, Throwable error) {
+        try {
+            Log.w(TAG, message, error);
+        } catch (RuntimeException ignored) {
+            // Android Log is unavailable in local JVM tests.
         }
     }
 }
