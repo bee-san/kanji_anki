@@ -12,8 +12,6 @@ import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
-
 import dev.bee.kanjianki.BuildConfig;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
 import dev.bee.kanjianki.core.Records;
@@ -463,19 +461,14 @@ public final class GitHubUpdater {
     static PackageInstaller.SessionParams sessionParams(String packageName, int sdkInt) {
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(packageName);
-        if (shouldAllowInstallerWithoutExtraUserAction(sdkInt, Build.VERSION.SDK_INT)) {
-            allowInstallerWithoutExtraUserAction(params);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && shouldAllowInstallerWithoutExtraUserAction(sdkInt, Build.VERSION.SDK_INT)) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
         }
         return params;
     }
 
     static boolean shouldAllowInstallerWithoutExtraUserAction(int requestedSdk, int runtimeSdk) {
         return requestedSdk >= Build.VERSION_CODES.S && runtimeSdk >= Build.VERSION_CODES.S;
-    }
-
-    @RequiresApi(Build.VERSION_CODES.S)
-    private static void allowInstallerWithoutExtraUserAction(PackageInstaller.SessionParams params) {
-        params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
     }
 
     interface InstallerBackend {
