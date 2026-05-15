@@ -43,7 +43,7 @@ final class SyncProgressPanel extends LinearLayout {
         if (progress.totalKnown()) {
             lastScannedCards = progress.scannedCards;
             lastTotalCards = progress.totalCards;
-            if (progress.stage == SyncProgress.Stage.SCANNING_CARDS && scanStartedAt <= 0L) {
+            if (scanStartedAt <= 0L) {
                 scanStartedAt = SystemClock.elapsedRealtime();
             }
         }
@@ -74,7 +74,7 @@ final class SyncProgressPanel extends LinearLayout {
         if (stage != SyncProgress.Stage.SCANNING_CARDS) {
             return syncStageBody(stage);
         }
-        if (lastScannedCards <= 0 || scanStartedAt <= 0L) {
+        if (lastScannedCards <= 0) {
             return "Scanning cards.";
         }
         long elapsedMillis = Math.max(1L, SystemClock.elapsedRealtime() - scanStartedAt);
@@ -84,7 +84,7 @@ final class SyncProgressPanel extends LinearLayout {
         if (remaining == 0) {
             return rateText + " - finishing up";
         }
-        if (lastScannedCards >= 3 && elapsedMillis >= 1000L && perSecond > 0.01) {
+        if (lastScannedCards >= 3 && elapsedMillis >= 1000L) {
             long etaMillis = Math.round((remaining / perSecond) * 1000.0);
             return rateText + " - about " + shortDuration(etaMillis) + " left";
         }

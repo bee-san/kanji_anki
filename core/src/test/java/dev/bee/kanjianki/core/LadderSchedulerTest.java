@@ -473,7 +473,7 @@ public class LadderSchedulerTest {
         assertEquals(Records.SchedulerPhase.NEW_LEARNING, Records.SchedulerPhase.fromWireName("unknown"));
     }
 
-    // ---- Edge-case coverage for countsAsRealDue and null guards ----
+    // ---- Edge cases for countsAsRealDue and null guards ----
 
     @Test
     public void reviewOnNotYetDueCardDoesNotCountForStreak() {

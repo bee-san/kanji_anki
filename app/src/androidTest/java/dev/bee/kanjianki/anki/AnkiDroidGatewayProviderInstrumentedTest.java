@@ -2,6 +2,7 @@ package dev.bee.kanjianki.anki;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -14,9 +15,12 @@ import dev.bee.kanjianki.sync.SyncProgress;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -24,11 +28,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(AndroidJUnit4.class)
 public final class AnkiDroidGatewayProviderInstrumentedTest {
     private Context context;
     private LocalStore store;
+
+    @BeforeClass
+    public static void waitForPackageInstallToSettle() throws Exception {
+        Thread.sleep(1_000L);
+    }
 
     @Before
     public void setUp() {
@@ -79,6 +89,129 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals("Custom Japanese", noteTypes.get(1).name);
         assertTrue(noteTypes.get(1).fields.contains("Front"));
         assertFalse(noteTypes.get(1).fields.contains("Expression"));
+    }
+
+    @Test
+    public void permissionDeniedProviderStatusAndReadsFailBeforeProviderQueries() throws Exception {
+        AnkiDroidGateway gateway = permissionedGateway("dev.bee.kanjianki.fake.READ_ANKI");
+
+        AnkiDroidGateway.ProviderStatus status = gateway.status();
+
+        assertTrue(status.installed);
+        assertFalse(status.permissionGranted);
+        assertFalse(status.canSync);
+        assertEquals(FakeAnkiDroidProvider.AUTHORITY, status.authority);
+        assertEquals("dev.bee.kanjianki.fake.READ_ANKI", status.permission);
+        assertTrue(status.message.contains("Allow AnkiDroid access"));
+        assertPermissionFailure(() -> gateway.noteTypes());
+        assertPermissionFailure(() -> gateway.readCollection(Records.Settings.kikuDefaults()));
+        assertEquals(0, providerInt("perNoteCardsQueries"));
+    }
+
+    @Test
+    public void emptyPermissionProviderTargetReadsAsGranted() throws Exception {
+        AnkiDroidGateway gateway = permissionedGateway("");
+
+        AnkiDroidGateway.ProviderStatus status = gateway.status();
+        List<AnkiDroidGateway.NoteType> noteTypes = gateway.noteTypes();
+
+        assertTrue(status.permissionGranted);
+        assertTrue(status.canSync);
+        assertEquals(2, noteTypes.size());
+    }
+
+    @Test
+    public void declaredPermissionProviderTargetReadsAsGranted() throws Exception {
+        AnkiDroidGateway gateway = permissionedGateway("android.permission.INTERNET");
+
+        AnkiDroidGateway.ProviderStatus status = gateway.status();
+
+        assertTrue(status.permissionGranted);
+        assertTrue(status.canSync);
+    }
+
+    @Test
+    public void providerInstalledHelperUsesModernAndLegacyPackageManagerPaths() {
+        assertTrue(AnkiDroidGateway.providerInstalled(context.getPackageManager(), FakeAnkiDroidProvider.AUTHORITY));
+        assertTrue(AnkiDroidGateway.providerInstalled(
+                context.getPackageManager(),
+                FakeAnkiDroidProvider.AUTHORITY,
+                Build.VERSION_CODES.S_V2
+        ));
+        assertTrue(AnkiDroidGateway.providerInstalled(
+                context.getPackageManager(),
+                FakeAnkiDroidProvider.AUTHORITY,
+                Build.VERSION_CODES.TIRAMISU
+        ));
+        assertTrue(AnkiDroidGateway.providerInstalledBeforeTiramisu(context.getPackageManager(), FakeAnkiDroidProvider.AUTHORITY));
+        assertFalse(AnkiDroidGateway.providerInstalledBeforeTiramisu(
+                context.getPackageManager(),
+                "dev.bee.kanjianki.missing.provider"
+        ));
+    }
+
+    @Test
+    public void nullProgressAndProviderTimeoutMapToRetryableFailure() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "operationCanceledProviderFailure", null, null);
+
+        try {
+            gateway.readCollection(Records.Settings.kikuDefaults(), null);
+            fail("Expected timeout failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertFalse(error.permanentFailure);
+            assertTrue(error.getMessage().contains("Timed out while reading AnkiDroid"));
+        }
+    }
+
+    @Test
+    public void providerSecurityExceptionMapsToPermanentAccessFailure() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "securityProviderFailure", null, null);
+
+        try {
+            gateway.readCollection(Records.Settings.kikuDefaults());
+            fail("Expected security failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertTrue(error.getMessage().contains("denied database access"));
+        }
+    }
+
+    @Test
+    public void nullModelCursorIsRetryableAndMissingConfiguredModelIsPermanent() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "nullModelsCursor", null, null);
+
+        try {
+            gateway.noteTypes();
+            fail("Expected null model cursor failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertFalse(error.permanentFailure);
+            assertTrue(error.getMessage().contains("no note model cursor"));
+        }
+
+        resetProvider();
+        try {
+            gateway.readCollection(settingsWithModel("Missing Model"));
+            fail("Expected missing model failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertTrue(error.getMessage().contains("Missing Model note type was not found"));
+        }
+    }
+
+    @Test
+    public void invalidConfiguredFieldMappingIsPermanent() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        try {
+            gateway.readCollection(settingsWithExpressionField("MissingExpression"));
+            fail("Expected field validation failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertTrue(error.getMessage().contains("missing required field MissingExpression"));
+        }
     }
 
     @Test
@@ -151,6 +284,24 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    public void providerCleanupNoopsForMissingProviderAndEmptySnapshotOverloads() {
+        Records.CollectionSnapshot empty = new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList());
+        AnkiDroidGateway missingProvider = AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_fake_anki");
+
+        AnkiDroidGateway.RemovalSummary missingSummary = missingProvider.removeArchivedSuspendedCards(
+                snapshotWithCards(card(9990L, 999L, true))
+        );
+        AnkiDroidGateway.RemovalSummary emptySummary = AnkiDroidGateway
+                .testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+                .removeArchivedSuspendedCards(empty, (SyncProgress.Listener) null);
+
+        assertEquals(0, missingSummary.sourceCards);
+        assertEquals("No provider removal attempted.", missingSummary.message);
+        assertEquals(0, emptySummary.sourceCards);
+        assertEquals("No provider removal attempted.", emptySummary.message);
+    }
+
+    @Test
     public void manualSyncFallsBackWhenPerNoteSchedulerProjectionIsUnsupported() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
@@ -201,6 +352,349 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    public void providerReadFallsBackToNotesV2WhenConfiguredModelSearchFails() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "failConfiguredSearch", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(2, snapshot.notes.size());
+        assertEquals(2, snapshot.cards.size());
+        assertEquals("確認", snapshot.notes.get(0).expression(Records.Settings.kikuDefaults()));
+        assertEquals(2, providerInt("perNoteCardsQueries"));
+    }
+
+    @Test
+    public void providerReadFallsBackToNotesV2WhenConfiguredModelSearchReturnsNull() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "nullConfiguredSearchCursor", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(2, snapshot.notes.size());
+        assertEquals(2, snapshot.cards.size());
+    }
+
+    @Test
+    public void configuredModelSearchRowsForOtherModelsAreIgnored() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "configuredSearchIncludesWrongModel", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(2, snapshot.notes.size());
+        assertEquals(2, snapshot.cards.size());
+        assertEquals(1L, snapshot.notes.get(0).noteId);
+    }
+
+    @Test
+    public void notesV2NullAfterSearchFailureIsRetryableWithOriginalFailureSuppressed() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "failConfiguredSearch", null, null);
+        context.getContentResolver().call(providerUri(), "nullSqlNotesCursor", null, null);
+
+        try {
+            gateway.readCollection(Records.Settings.kikuDefaults());
+            fail("Expected notes_v2 null failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertFalse(error.permanentFailure);
+            assertTrue(error.getMessage().contains("no configured note cursor"));
+            assertEquals(1, error.getSuppressed().length);
+            assertTrue(error.getSuppressed()[0].getMessage().contains("model search failed"));
+        }
+    }
+
+    @Test
+    public void archivedProviderNotesAreSkippedDuringCollectionRead() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "pretagSuspendedArchived", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(1, snapshot.notes.size());
+        assertEquals(1, snapshot.cards.size());
+        assertEquals(1L, snapshot.notes.get(0).noteId);
+    }
+
+    @Test
+    public void nullSuspendedSearchFallsBackToCardQueueState() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "nullSuspendedSearchCursor", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        assertEquals(2, snapshot.cards.size());
+        assertTrue(snapshot.cards.get(1).suspended);
+    }
+
+    @Test
+    public void browserQueryMarksMatchingActiveCardForImport() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.Settings settings = browserQueryOnlySettings();
+        context.getContentResolver().call(providerUri(), "browserQueryMatchesActive", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.message, result.success);
+        assertTrue("Browser-query active cards should not be archived as suspended imports.", store.suspendedImports().isEmpty());
+        List<Records.DashboardRow> rows = store.dashboardRows();
+        assertFalse(rows.isEmpty());
+        assertEquals("認", rows.get(0).kanji);
+        assertEquals(1, rows.get(0).activeExampleCount);
+        assertEquals(0, rows.get(0).suspendedExampleCount);
+        assertFalse(store.studyItems().isEmpty());
+    }
+
+    @Test
+    public void nullBrowserQueryCursorLeavesCardsUnmarkedWithoutFailingRead() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "nullBrowserQueryCursor", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+
+        assertEquals(2, snapshot.cards.size());
+        assertFalse(snapshot.cards.get(0).browserQueryMatched);
+        assertFalse(snapshot.cards.get(1).browserQueryMatched);
+    }
+
+    @Test
+    public void browserQueryRowsForOtherModelsAreIgnored() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "browserQueryWrongModel", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+
+        assertEquals(2, snapshot.cards.size());
+        assertFalse(snapshot.cards.get(0).browserQueryMatched);
+    }
+
+    @Test
+    public void browserQueryRereadsMissingMatchedNoteBeforeManualImport() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.Settings settings = browserQueryOnlySettings();
+        context.getContentResolver().call(providerUri(), "browserQueryMatchesMissingNote", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertTrue(result.message, result.success);
+        assertEquals("success", store.latestSync().status);
+        assertEquals(2, providerInt("browserQueryQueries"));
+        assertEquals(3, providerInt("perNoteCardsQueries"));
+        assertTrue(store.suspendedImports().isEmpty());
+        Records.DashboardRow row = rowFor(store.dashboardRows(), "認");
+        assertEquals(1, row.activeExampleCount);
+        assertEquals(0, row.suspendedExampleCount);
+        assertFalse(store.studyItems().isEmpty());
+    }
+
+    @Test
+    public void browserQueryRereadFailureDoesNotFailTheCollectionRead() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "browserQueryMatchesMissingNote", null, null);
+        context.getContentResolver().call(providerUri(), "failBrowserQueryReread", null, null);
+
+        Records.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+
+        assertEquals(2, snapshot.notes.size());
+        assertEquals(2, snapshot.cards.size());
+        assertEquals(2, providerInt("browserQueryQueries"));
+    }
+
+    @Test
+    public void browserQueryPermanentErrorIsRecordedAsConfigFailure() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.Settings settings = browserQueryOnlySettings();
+        context.getContentResolver().call(providerUri(), "failBrowserQuery", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
+
+        assertFalse(result.success);
+        assertTrue(result.message.contains("could not run the browser query"));
+        assertEquals("config_error", store.latestSync().status);
+        assertEquals(0, store.suspendedImports().size());
+    }
+
+    @Test
+    public void providerPermanentExceptionIsRecordedAsConfigFailure() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "permanentProviderFailure", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+
+        assertFalse(result.success);
+        assertTrue(result.message.contains("model metadata cursor failed"));
+        assertEquals("config_error", store.latestSync().status);
+        assertTrue(store.latestSync().errorMessage.contains("model metadata cursor failed"));
+    }
+
+    @Test
+    public void providerRetryableExceptionIsRecordedAsRetryableFailure() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "retryableProviderFailure", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+
+        assertFalse(result.success);
+        assertTrue(result.message.contains("AnkiDroid provider read failed: database locked"));
+        assertEquals("retryable_error", store.latestSync().status);
+        assertTrue(store.latestSync().errorMessage.contains("database locked"));
+    }
+
+    @Test
+    public void projectionExhaustionIsRecordedAsTerminalRetryableFailure() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "rejectAllCardProjections", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+
+        assertFalse(result.success);
+        assertTrue(result.message.contains("AnkiDroid card projection failed"));
+        assertEquals("retryable_error", store.latestSync().status);
+        assertEquals(3, providerInt("cardProjectionRejects"));
+    }
+
+    @Test
+    public void nullCardCursorAfterProjectionFallbacksIsRecordedAsTerminalRetryableFailure() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "nullCardCursor", null, null);
+
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+
+        assertFalse(result.success);
+        assertTrue(result.message.contains("AnkiDroid returned no per-note card cursor"));
+        assertEquals("retryable_error", store.latestSync().status);
+    }
+
+    @Test
+    public void firstTemplateOnlyProviderRuleRejectsLaterTemplateCards() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "secondTemplateCard", null, null);
+
+        try {
+            gateway.readCollection(Records.Settings.kikuDefaults());
+            fail("Expected second-template card rejection");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertTrue(error.getMessage().contains("supports only the first card template"));
+            assertTrue(error.getMessage().contains("ord 1"));
+        }
+    }
+
+    @Test
+    public void providerCleanupPreservesAlreadyArchivedSuspendedNoteTag() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        context.getContentResolver().call(providerUri(), "pretagSuspendedArchived", null, null);
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
+                snapshot,
+                Collections.singletonList(suspendedImportFor(2000L, 2L, true)),
+                SyncProgress.NONE
+        );
+
+        assertEquals(1, summary.sourceCards);
+        assertEquals(1, summary.taggedNotes);
+        assertEquals("leech kani_archived", providerString("suspendedTags"));
+    }
+
+    @Test
+    public void providerCleanupUsesAllSuspendedCardsWhenNoSelectionIsSupplied() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(snapshot, (SyncProgress.Listener) null);
+
+        assertEquals(1, summary.sourceCards);
+        assertEquals(1, summary.taggedNotes);
+        assertEquals("kani_archived", providerString("suspendedTags"));
+    }
+
+    @Test
+    public void providerCleanupCanTagWhenExistingNoteTagsCursorIsNull() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        context.getContentResolver().call(providerUri(), "nullNoteCursor", null, null);
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
+                snapshot,
+                Collections.singletonList(suspendedImportFor(2000L, 2L, true)),
+                SyncProgress.NONE
+        );
+
+        assertEquals(1, summary.sourceCards);
+        assertEquals(1, summary.taggedNotes);
+        assertEquals("kani_archived", providerString("suspendedTags"));
+    }
+
+    @Test
+    public void providerCleanupKeepsPartiallySuspendedNotesInLocalArchive() throws Exception {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        context.getContentResolver().call(providerUri(), "failSuspendedSearch", null, null);
+        context.getContentResolver().call(providerUri(), "partiallySuspendedNote", null, null);
+        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
+                snapshot,
+                Collections.singletonList(suspendedImportFor(2000L, 2L, true)),
+                SyncProgress.NONE
+        );
+
+        assertEquals(1, summary.sourceCards);
+        assertEquals(0, summary.taggedNotes);
+        assertTrue(summary.message.contains("kept in the local archive"));
+        assertEquals("", providerString("suspendedTags"));
+    }
+
+    @Test
+    public void providerCleanupReportsPartialTagWhenSelectedSuspendedCardsAreMixed() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+        Records.CollectionSnapshot snapshot = snapshotWithCards(
+                card(10L, 1L, true),
+                card(11L, 1L, true),
+                card(20L, 2L, true)
+        );
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
+                snapshot,
+                Arrays.asList(
+                        suspendedImportFor("箱", 20L, 2L, true),
+                        new Records.SuspendedImport(
+                                "確",
+                                100,
+                                true,
+                                3000,
+                                Arrays.asList(
+                                        suspendedSource("確", 10L, 1L, true),
+                                        suspendedSource("確", 11L, 1L, false)
+                                )
+                        )
+                ),
+                null
+        );
+
+        assertEquals(2, summary.sourceCards);
+        assertEquals(1, summary.taggedNotes);
+        assertTrue(summary.message.contains("partly tagged"));
+        assertEquals("kani_archived", providerString("suspendedTags"));
+    }
+
+    @Test
+    public void providerCleanupKeepsLocalArchiveWhenSelectedNoteCannotBeUpdated() {
+        AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
+
+        AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
+                snapshotWithCards(card(9990L, 999L, true)),
+                Collections.singletonList(suspendedImportFor("謎", 9990L, 999L, true)),
+                SyncProgress.NONE
+        );
+
+        assertEquals(1, summary.sourceCards);
+        assertEquals(0, summary.taggedNotes);
+        assertTrue(summary.message.contains("kept in the local archive"));
+        assertEquals("", providerString("suspendedTags"));
+    }
+
+    @Test
     public void unparseableFsrsDataDoesNotBlockProviderRead() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "unparseableFsrsData", null, null);
@@ -234,8 +728,78 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         return result == null ? -1 : result.getInt("value", -1);
     }
 
+    private String providerString(String method) {
+        Bundle result = context.getContentResolver().call(providerUri(), method, null, null);
+        return result == null ? null : result.getString("value");
+    }
+
+    private AnkiDroidGateway permissionedGateway(String permission) throws Exception {
+        Class<?> targetClass = Class.forName(AnkiDroidGateway.class.getName() + "$ProviderTarget");
+        Constructor<?> targetConstructor = targetClass.getDeclaredConstructor(String.class, String.class);
+        targetConstructor.setAccessible(true);
+        Object target = targetConstructor.newInstance(FakeAnkiDroidProvider.AUTHORITY, permission);
+        Constructor<AnkiDroidGateway> gatewayConstructor = AnkiDroidGateway.class.getDeclaredConstructor(Context.class, List.class);
+        gatewayConstructor.setAccessible(true);
+        return gatewayConstructor.newInstance(context, Collections.singletonList(target));
+    }
+
+    private void assertPermissionFailure(ThrowingGatewayCall call) throws Exception {
+        try {
+            call.run();
+            fail("Expected permission failure");
+        } catch (AnkiDroidGateway.SyncFailure error) {
+            assertTrue(error.permanentFailure);
+            assertTrue(error.getMessage().contains("permission is missing"));
+        }
+    }
+
+    private Records.DashboardRow rowFor(List<Records.DashboardRow> rows, String kanji) {
+        for (Records.DashboardRow row : rows) {
+            if (kanji.equals(row.kanji)) {
+                return row;
+            }
+        }
+        fail("Expected dashboard row for " + kanji);
+        return null;
+    }
+
     private Uri providerUri() {
         return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
+    }
+
+    private Records.SuspendedImport suspendedImportFor(long cardId, long noteId, boolean suspended) {
+        return suspendedImportFor("箱", cardId, noteId, suspended);
+    }
+
+    private Records.SuspendedImport suspendedImportFor(String kanji, long cardId, long noteId, boolean suspended) {
+        return new Records.SuspendedImport(kanji, 2500, true, 3000, Collections.singletonList(
+                suspendedSource(kanji, cardId, noteId, suspended)
+        ));
+    }
+
+    private Records.SuspendedSource suspendedSource(String kanji, long cardId, long noteId, boolean suspended) {
+        Records.SuspendedSourceDetails.Builder details = Records.SuspendedSourceDetails
+                .builder(kanji + "を見た。")
+                .suspended(suspended)
+                .forcePractice(suspended)
+                .sourceType(suspended ? Records.SOURCE_SUSPENDED : Records.SOURCE_ACTIVE);
+        return new Records.SuspendedSource(
+                kanji,
+                cardId,
+                noteId,
+                kanji + "箱",
+                "かな",
+                "meaning",
+                details.build()
+        );
+    }
+
+    private Records.CollectionSnapshot snapshotWithCards(Records.Card... cards) {
+        return new Records.CollectionSnapshot(Collections.emptyList(), Arrays.asList(cards));
+    }
+
+    private Records.Card card(long cardId, long noteId, boolean suspended) {
+        return new Records.Card(cardId, noteId, 0, "Mining", suspended ? -1 : 2, 2, 0, 0, 0, 0, suspended);
     }
 
     private Records.Settings customMappedSettings() {
@@ -257,5 +821,84 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
                 defaults.newPerDay,
                 defaults.writingTriggerMissDays
         );
+    }
+
+    private Records.Settings settingsWithModel(String modelName) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays
+        );
+    }
+
+    private Records.Settings settingsWithExpressionField(String expressionField) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays
+        );
+    }
+
+    private Records.Settings browserQueryOnlySettings() {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays,
+                defaults.recognitionPromotionPasses,
+                defaults.realDueReviewsToMove,
+                false,
+                false,
+                false,
+                Collections.emptyList(),
+                false,
+                defaults.importWeakFsrsDifficultyThreshold,
+                defaults.importWeakLapsesThreshold,
+                defaults.importMinMatchingCardsPerKanji,
+                true,
+                "tag:kani"
+        );
+    }
+
+    private interface ThrowingGatewayCall {
+        void run() throws Exception;
     }
 }

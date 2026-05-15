@@ -26,10 +26,7 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
     private static final Executor DIRECT_EXECUTOR = Runnable::run;
     private static final DigitalInkRecognitionModelIdentifier MODEL_IDENTIFIER = DigitalInkRecognitionModelIdentifier.JA;
 
-    private final DigitalInkRecognitionModel model;
-    private final RemoteModelManager modelManager;
-    private final DigitalInkRecognizer recognizer;
-    private final DownloadConditions downloadConditions;
+    private final RecognitionBackend backend;
 
     public MlKitJapaneseWritingRecognizer() {
         this(null, DEFAULT_MAX_RESULT_COUNT, new DownloadConditions.Builder().build());
@@ -43,21 +40,20 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
         if (maxResultCount <= 0) {
             throw new IllegalArgumentException("maxResultCount must be positive.");
         }
-        this.model = DigitalInkRecognitionModel.builder(MODEL_IDENTIFIER).build();
-        this.modelManager = RemoteModelManager.getInstance();
-        this.downloadConditions = Objects.requireNonNull(downloadConditions, "downloadConditions");
+        this.backend = GoogleRecognitionBackend.create(
+                recognitionExecutor,
+                maxResultCount,
+                Objects.requireNonNull(downloadConditions, "downloadConditions")
+        );
+    }
 
-        DigitalInkRecognizerOptions.Builder options = DigitalInkRecognizerOptions.builder(model)
-                .setMaxResultCount(maxResultCount);
-        if (recognitionExecutor != null) {
-            options.setExecutor(recognitionExecutor);
-        }
-        this.recognizer = DigitalInkRecognition.getClient(options.build());
+    MlKitJapaneseWritingRecognizer(RecognitionBackend backend) {
+        this.backend = Objects.requireNonNull(backend, "backend");
     }
 
     @Override
     public CompletableFuture<ModelStatus> modelStatus() {
-        return toFuture(modelManager.isModelDownloaded(model))
+        return TaskBridge.toFuture(backend.isModelDownloaded())
                 .thenApply(downloaded -> status(downloaded, downloaded
                         ? "Handwriting checker is ready."
                         : "Handwriting checker needs download."));
@@ -69,7 +65,7 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
             if (status.downloaded) {
                 return CompletableFuture.completedFuture(status);
             }
-            return toFuture(modelManager.download(model, downloadConditions))
+            return TaskBridge.toFuture(backend.downloadModel())
                     .thenApply(ignored -> status(true, "Handwriting checker downloaded."));
         });
     }
@@ -84,20 +80,19 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
             if (!status.downloaded) {
                 return failedFuture(new IllegalStateException("Handwriting checker is not downloaded."));
             }
-            Task<com.google.mlkit.vision.digitalink.common.RecognitionResult> task;
             RecognitionContext context = recognitionContext(prepared);
             if (context == null) {
-                task = recognizer.recognize(ink(prepared));
-            } else {
-                task = recognizer.recognize(ink(prepared), context);
+                return TaskBridge.toFuture(backend.recognize(ink(prepared)))
+                        .thenApply(MlKitJapaneseWritingRecognizer::result);
             }
-            return toFuture(task).thenApply(MlKitJapaneseWritingRecognizer::result);
+            return TaskBridge.toFuture(backend.recognize(ink(prepared), context))
+                    .thenApply(MlKitJapaneseWritingRecognizer::result);
         });
     }
 
     @Override
     public void close() {
-        recognizer.close();
+        backend.close();
     }
 
     private static ModelStatus status(boolean downloaded, String message) {
@@ -132,7 +127,7 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
         return builder.build();
     }
 
-    private static RecognitionResult result(com.google.mlkit.vision.digitalink.common.RecognitionResult result) {
+    static RecognitionResult result(com.google.mlkit.vision.digitalink.common.RecognitionResult result) {
         List<Candidate> candidates = new ArrayList<>();
         for (RecognitionCandidate candidate : result.getCandidates()) {
             candidates.add(new Candidate(candidate.getText(), candidate.getScore()));
@@ -140,18 +135,142 @@ public final class MlKitJapaneseWritingRecognizer implements WritingRecognizer {
         return new RecognitionResult(candidates);
     }
 
-    private static <T> CompletableFuture<T> toFuture(Task<T> task) {
-        CompletableFuture<T> future = new CompletableFuture<>();
-        task.addOnSuccessListener(DIRECT_EXECUTOR, future::complete);
-        task.addOnFailureListener(DIRECT_EXECUTOR, future::completeExceptionally);
-        task.addOnCanceledListener(DIRECT_EXECUTOR, () ->
-                future.completeExceptionally(new CancellationException("Handwriting checker task was canceled.")));
-        return future;
-    }
-
     private static <T> CompletableFuture<T> failedFuture(Throwable error) {
         CompletableFuture<T> future = new CompletableFuture<>();
         future.completeExceptionally(error);
         return future;
     }
+
+    interface RecognitionBackend extends AutoCloseable {
+        MlKitTask<Boolean> isModelDownloaded();
+
+        MlKitTask<Void> downloadModel();
+
+        MlKitTask<com.google.mlkit.vision.digitalink.common.RecognitionResult> recognize(Ink ink);
+
+        MlKitTask<com.google.mlkit.vision.digitalink.common.RecognitionResult> recognize(Ink ink, RecognitionContext context);
+
+        @Override
+        void close();
+    }
+
+    interface MlKitTask<T> {
+        void addOnSuccessListener(Executor executor, SuccessListener<? super T> listener);
+
+        void addOnFailureListener(Executor executor, FailureListener listener);
+
+        void addOnCanceledListener(Executor executor, Runnable listener);
+    }
+
+    interface SuccessListener<T> {
+        void onSuccess(T result);
+    }
+
+    interface FailureListener {
+        void onFailure(Exception error);
+    }
+
+    static final class TaskBridge {
+        private TaskBridge() {
+        }
+
+        static <T> CompletableFuture<T> toFuture(MlKitTask<T> task) {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            task.addOnSuccessListener(DIRECT_EXECUTOR, future::complete);
+            task.addOnFailureListener(DIRECT_EXECUTOR, future::completeExceptionally);
+            task.addOnCanceledListener(DIRECT_EXECUTOR, () ->
+                    future.completeExceptionally(new CancellationException("Handwriting checker task was canceled.")));
+            return future;
+        }
+    }
+
+    static final class GoogleRecognitionBackend implements RecognitionBackend {
+        private final DigitalInkRecognitionModel model;
+        private final RemoteModelManager modelManager;
+        private final DigitalInkRecognizer recognizer;
+        private final DownloadConditions downloadConditions;
+
+        private GoogleRecognitionBackend(
+                DigitalInkRecognitionModel model,
+                RemoteModelManager modelManager,
+                DigitalInkRecognizer recognizer,
+                DownloadConditions downloadConditions
+        ) {
+            this.model = model;
+            this.modelManager = modelManager;
+            this.recognizer = recognizer;
+            this.downloadConditions = downloadConditions;
+        }
+
+        static GoogleRecognitionBackend create(
+                Executor recognitionExecutor,
+                int maxResultCount,
+                DownloadConditions downloadConditions
+        ) {
+            DigitalInkRecognitionModel model = DigitalInkRecognitionModel.builder(MODEL_IDENTIFIER).build();
+            DigitalInkRecognizerOptions.Builder options = DigitalInkRecognizerOptions.builder(model)
+                    .setMaxResultCount(maxResultCount);
+            if (recognitionExecutor != null) {
+                options.setExecutor(recognitionExecutor);
+            }
+            return new GoogleRecognitionBackend(
+                    model,
+                    RemoteModelManager.getInstance(),
+                    DigitalInkRecognition.getClient(options.build()),
+                    downloadConditions
+            );
+        }
+
+        @Override
+        public MlKitTask<Boolean> isModelDownloaded() {
+            return new GoogleTask<>(modelManager.isModelDownloaded(model));
+        }
+
+        @Override
+        public MlKitTask<Void> downloadModel() {
+            return new GoogleTask<>(modelManager.download(model, downloadConditions));
+        }
+
+        @Override
+        public MlKitTask<com.google.mlkit.vision.digitalink.common.RecognitionResult> recognize(Ink ink) {
+            return new GoogleTask<>(recognizer.recognize(ink));
+        }
+
+        @Override
+        public MlKitTask<com.google.mlkit.vision.digitalink.common.RecognitionResult> recognize(
+                Ink ink,
+                RecognitionContext context
+        ) {
+            return new GoogleTask<>(recognizer.recognize(ink, context));
+        }
+
+        @Override
+        public void close() {
+            recognizer.close();
+        }
+    }
+
+    static final class GoogleTask<T> implements MlKitTask<T> {
+        private final Task<T> task;
+
+        GoogleTask(Task<T> task) {
+            this.task = Objects.requireNonNull(task, "task");
+        }
+
+        @Override
+        public void addOnSuccessListener(Executor executor, SuccessListener<? super T> listener) {
+            task.addOnSuccessListener(executor, listener::onSuccess);
+        }
+
+        @Override
+        public void addOnFailureListener(Executor executor, FailureListener listener) {
+            task.addOnFailureListener(executor, listener::onFailure);
+        }
+
+        @Override
+        public void addOnCanceledListener(Executor executor, Runnable listener) {
+            task.addOnCanceledListener(executor, listener::run);
+        }
+    }
+
 }

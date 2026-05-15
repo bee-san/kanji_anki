@@ -116,7 +116,7 @@ public final class LadderSchedulerEndToEndTest {
         // 3 passes in a row should promote from KANJI_MEANING -> FONT_MEANING
         for (int i = 0; i < 3; i++) {
             String token = "pass" + i;
-            current = current.withToken(token);
+            current = dueWithToken(current, token, now + i * 1000L - 1L);
             Records.ReviewResult result = scheduler.applyReview(
                     current, passRequest("裂", token), consumed, now + i * 1000L);
             current = result.item;
@@ -187,7 +187,7 @@ public final class LadderSchedulerEndToEndTest {
         // 3 passes should promote TYPE_MEANING -> KANJI_MEANING (skipping SIMILAR_KANJI)
         for (int i = 0; i < 3; i++) {
             String token = "p" + i;
-            current = current.withToken(token);
+            current = dueWithToken(current, token, now + i * 1000L - 1L);
             Records.ReviewResult result = scheduler.applyReview(
                     current, passRequest("裂", token), consumed, now + i * 1000L);
             current = result.item;
@@ -218,7 +218,7 @@ public final class LadderSchedulerEndToEndTest {
         // 3 passes should promote TYPE_MEANING -> SIMILAR_KANJI (not skipping)
         for (int i = 0; i < 3; i++) {
             String token = "p" + i;
-            current = current.withToken(token);
+            current = dueWithToken(current, token, now + i * 1000L - 1L);
             Records.ReviewResult result = scheduler.applyReview(
                     current, passRequest("裂", token), consumed, now + i * 1000L);
             current = result.item;
@@ -313,7 +313,7 @@ public final class LadderSchedulerEndToEndTest {
         // 5 consecutive passes at the ceiling
         for (int i = 0; i < 5; i++) {
             String token = "ceiling" + i;
-            current = current.withToken(token);
+            current = dueWithToken(current, token, now + i * 1000L - 1L);
             Records.ReviewResult result = scheduler.applyReview(
                     current, passRequest("裂", token), consumed, now + i * 1000L);
             current = result.item;
@@ -345,7 +345,7 @@ public final class LadderSchedulerEndToEndTest {
         // 2 passes with threshold=2 should promote
         for (int i = 0; i < 2; i++) {
             String token = "custom" + i;
-            current = current.withToken(token);
+            current = dueWithToken(current, token, now + i * 1000L - 1L);
             Records.ReviewResult result = scheduler.applyReview(
                     current, passRequest("裂", token), consumed, now + i * 1000L,
                     Records.SchedulerParameters.defaults(), settings);
@@ -393,9 +393,10 @@ public final class LadderSchedulerEndToEndTest {
         for (int i = 0; i < 3; i++) {
             current = store.studyItems().get(0);
             String token = "promo1_" + (tokenCounter++);
-            current = current.withToken(token);
+            long reviewAt = now + tokenCounter * 1000L;
+            current = dueWithToken(current, token, reviewAt - 1L);
             Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + tokenCounter * 1000L);
+                    current, passRequest("裂", token), consumed, reviewAt);
             current = result.item;
             store.saveStudyItem(current);
         }
@@ -407,9 +408,10 @@ public final class LadderSchedulerEndToEndTest {
         for (int i = 0; i < 3; i++) {
             current = store.studyItems().get(0);
             String token = "promo2_" + (tokenCounter++);
-            current = current.withToken(token);
+            long reviewAt = now + tokenCounter * 1000L;
+            current = dueWithToken(current, token, reviewAt - 1L);
             Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + tokenCounter * 1000L);
+                    current, passRequest("裂", token), consumed, reviewAt);
             current = result.item;
             store.saveStudyItem(current);
         }
@@ -421,9 +423,10 @@ public final class LadderSchedulerEndToEndTest {
         for (int i = 0; i < 3; i++) {
             current = store.studyItems().get(0);
             String token = "ceil_" + (tokenCounter++);
-            current = current.withToken(token);
+            long reviewAt = now + tokenCounter * 1000L;
+            current = dueWithToken(current, token, reviewAt - 1L);
             Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + tokenCounter * 1000L);
+                    current, passRequest("裂", token), consumed, reviewAt);
             current = result.item;
             store.saveStudyItem(current);
         }
@@ -460,7 +463,7 @@ public final class LadderSchedulerEndToEndTest {
     @Test
     public void hasSimilarKanjiAnnotatedFromSimilarPairsOnRead() throws Exception {
         seedSyncWithSimilarPairs("裂", "烈");
-        Records.StudyItem item = new Records.StudyItem("裂", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, 0, null, System.currentTimeMillis());
+        Records.StudyItem item = new Records.StudyItem("裂", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, System.currentTimeMillis());
         store.replaceStudyItems(Collections.singletonList(item));
 
         // On read, hasSimilarKanji should be true because similar_kanji_pairs has (裂, 烈)
@@ -546,7 +549,7 @@ public final class LadderSchedulerEndToEndTest {
         // Accumulate 2 passes (streak = 2)
         for (int i = 0; i < 2; i++) {
             String token = "streak" + i;
-            current = current.withToken(token);
+            current = dueWithToken(current, token, now + i * 1000L - 1L);
             Records.ReviewResult result = scheduler.applyReview(
                     current, passRequest("裂", token), consumed, now + i * 1000L);
             current = result.item;
@@ -558,7 +561,7 @@ public final class LadderSchedulerEndToEndTest {
         assertEquals(Records.LadderRung.KANJI_MEANING, beforePromotion.rung);
 
         // Third pass triggers promotion and resets streak
-        current = store.studyItems().get(0).withToken("streak2");
+        current = dueWithToken(store.studyItems().get(0), "streak2", now + 2999L);
         Records.ReviewResult promoResult = scheduler.applyReview(
                 current, passRequest("裂", "streak2"), consumed, now + 3000L);
         store.saveStudyItem(promoResult.item);
@@ -632,7 +635,7 @@ public final class LadderSchedulerEndToEndTest {
         );
         long now = System.currentTimeMillis();
         store.replaceStudyItems(Collections.singletonList(
-                new Records.StudyItem(kanji, "new", now, 0.4, 5.0, 0, 0, 0, 0, 0, null, now)
+                new Records.StudyItem(kanji, "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now)
         ));
     }
 
@@ -727,11 +730,19 @@ public final class LadderSchedulerEndToEndTest {
         return new Records.ReviewRequest(kanji, token, "again", false, false, false, 0);
     }
 
+    private static Records.StudyItem dueWithToken(Records.StudyItem item, String token, long dueAtMillis) {
+        return item.copyBuilder()
+                .activeToken(token)
+                .dueAtMillis(dueAtMillis)
+                .build();
+    }
+
     private void persistSetting(String key, String value) {
         android.database.sqlite.SQLiteDatabase db = store.getWritableDatabase();
         android.content.ContentValues cv = new android.content.ContentValues();
         cv.put("key", key);
         cv.put("value", value);
+        cv.put("updated_at", System.currentTimeMillis());
         db.insertWithOnConflict("settings", null, cv, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE);
     }
 }

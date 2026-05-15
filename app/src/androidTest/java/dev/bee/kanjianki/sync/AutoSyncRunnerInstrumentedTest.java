@@ -7,7 +7,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
+import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
@@ -16,10 +18,18 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Calendar;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -54,8 +64,12 @@ public final class AutoSyncRunnerInstrumentedTest {
         ).run(now);
 
         assertFalse(result.ran);
+        assertEquals("Daily Anki sync is off.", result.message);
         assertEquals(0, providerInt("perNoteCardsQueries"));
-        assertEquals(0L, store.autoSyncSettings().lastAttemptAt);
+        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+        assertEquals(0L, auto.lastAttemptAt);
+        assertEquals(0L, auto.lastSuccessAt);
+        assertFalse(store.hasSuccessfulSyncSince(0L));
     }
 
     @Test
@@ -71,11 +85,14 @@ public final class AutoSyncRunnerInstrumentedTest {
 
         assertTrue(result.ran);
         assertTrue(result.success);
-        assertNotNull(store.latestSync());
-        assertEquals("success", store.latestSync().status);
+        LocalStore.SyncStatus sync = store.latestSync();
+        assertNotNull(sync);
+        assertEquals("success", sync.status);
+        assertTrue(sync.finishedAt > 0L);
         LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
         assertEquals(now, auto.lastAttemptAt);
         assertEquals(now, auto.lastSuccessAt);
+        assertTrue(store.hasSuccessfulSyncSince(localDayStart(now)));
         assertTrue(providerInt("perNoteCardsQueries") > 0);
     }
 
@@ -98,8 +115,12 @@ public final class AutoSyncRunnerInstrumentedTest {
         ).run(now);
 
         assertFalse(result.ran);
+        assertEquals("AnkiDroid already synced today.", result.message);
         assertEquals(0, providerInt("perNoteCardsQueries"));
-        assertEquals(0L, store.autoSyncSettings().lastAttemptAt);
+        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+        assertEquals(0L, auto.lastAttemptAt);
+        assertEquals(0L, auto.lastSuccessAt);
+        assertEquals("success", store.latestSync().status);
     }
 
     @Test
@@ -115,11 +136,75 @@ public final class AutoSyncRunnerInstrumentedTest {
 
         assertTrue(result.ran);
         assertFalse(result.success);
-        assertEquals(now, store.autoSyncSettings().lastAttemptAt);
+        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+        assertEquals(now, auto.lastAttemptAt);
+        assertEquals(0L, auto.lastSuccessAt);
         LocalStore.SyncStatus sync = store.latestSync();
         assertNotNull(sync);
         assertEquals("config_error", sync.status);
+        assertEquals(now, sync.finishedAt);
         assertTrue(sync.errorMessage.contains("AnkiDroid"));
+    }
+
+    @Test
+    public void autoSyncManualEngineFailureRecordsFailedAttempt() {
+        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
+
+        AutoSyncRunner.Result result = new AutoSyncRunner(
+                context,
+                store,
+                new RetryableGateway()
+        ).run(now);
+
+        assertTrue(result.ran);
+        assertFalse(result.success);
+        assertEquals("AnkiDroid returned no configured note cursor.", result.message);
+        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+        assertEquals(now, auto.lastAttemptAt);
+        assertEquals(0L, auto.lastSuccessAt);
+        LocalStore.SyncStatus sync = store.latestSync();
+        assertNotNull(sync);
+        assertEquals("retryable_error", sync.status);
+        assertEquals("AnkiDroid returned no configured note cursor.", sync.errorMessage);
+    }
+
+    @Test
+    public void autoSyncManualEngineSkippedDoesNotRecordAttempt() throws Exception {
+        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
+        BlockingGateway blockingGateway = new BlockingGateway(snapshot(), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done"));
+        AtomicReference<ManualSyncEngine.SyncResult> firstResult = new AtomicReference<>();
+        AtomicReference<Throwable> threadFailure = new AtomicReference<>();
+        Thread firstSync = new Thread(() -> {
+            try {
+                firstResult.set(new ManualSyncEngine(context, store, blockingGateway, SyncSettings.fromStore(store)).run());
+            } catch (Throwable error) {
+                threadFailure.set(error);
+            }
+        });
+
+        firstSync.start();
+        assertTrue(blockingGateway.awaitStarted());
+
+        AutoSyncRunner.Result result = new AutoSyncRunner(
+                context,
+                store,
+                new RetryableGateway()
+        ).run(now);
+
+        assertFalse(result.ran);
+        assertFalse(result.success);
+        assertEquals("Sync already running.", result.message);
+        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
+        assertEquals(0L, auto.lastAttemptAt);
+        assertEquals(0L, auto.lastSuccessAt);
+
+        blockingGateway.release();
+        firstSync.join(10_000L);
+        assertFalse(firstSync.isAlive());
+        assertNull(threadFailure.get());
+        assertTrue(firstResult.get().success);
     }
 
     @Test
@@ -160,5 +245,69 @@ public final class AutoSyncRunnerInstrumentedTest {
 
     private Uri providerUri() {
         return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
+    }
+
+    private Records.CollectionSnapshot snapshot() {
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("Expression", "確認");
+        fields.put("ExpressionReading", "かくにん");
+        fields.put("MainDefinition", "confirmation");
+        fields.put("Sentence", "確認した。");
+        fields.put("Frequency", "1000");
+        fields.put("FreqSort", "1000");
+        Records.Note note = new Records.Note(1L, "Kiku", fields, Collections.emptyList());
+        Records.Card card = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 12, 0, false);
+        return new Records.CollectionSnapshot(Arrays.asList(note), Arrays.asList(card));
+    }
+
+    private static final class RetryableGateway implements CollectionGateway {
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+            throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
+        }
+    }
+
+    private static final class BlockingGateway implements CollectionGateway {
+        private final Records.CollectionSnapshot snapshot;
+        private final AnkiDroidGateway.RemovalSummary removal;
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        private BlockingGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+            this.snapshot = snapshot;
+            this.removal = removal;
+        }
+
+        @Override
+        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+            started.countDown();
+            try {
+                if (!release.await(10L, TimeUnit.SECONDS)) {
+                    throw AnkiDroidGateway.SyncFailure.retryable("Timed out waiting for test release.");
+                }
+            } catch (InterruptedException error) {
+                Thread.currentThread().interrupt();
+                throw AnkiDroidGateway.SyncFailure.retryable("Interrupted while waiting for test release.", error);
+            }
+            return snapshot;
+        }
+
+        @Override
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+            return removal;
+        }
+
+        private boolean awaitStarted() throws InterruptedException {
+            return started.await(10L, TimeUnit.SECONDS);
+        }
+
+        private void release() {
+            release.countDown();
+        }
     }
 }

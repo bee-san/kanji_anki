@@ -182,7 +182,8 @@ final class KanjiImpactReportStore {
     private long minLongQuery(SQLiteDatabase db, String sql, String[] args) {
         Cursor cursor = db.rawQuery(sql, args);
         try {
-            if (!cursor.moveToFirst() || cursor.isNull(0)) {
+            cursor.moveToFirst();
+            if (cursor.isNull(0)) {
                 return 0L;
             }
             return cursor.getLong(0);

@@ -21,15 +21,27 @@ public final class AutoUpdateScheduler {
     public static void schedule(Context context) {
         Context appContext = context.getApplicationContext();
         try (LocalStore store = new LocalStore(appContext)) {
-            if (!store.autoUpdateStatus().enabled) {
-                cancel(appContext);
-                return;
-            }
+            schedule(store.autoUpdateStatus().enabled, new WorkManagerSchedulerBackend(appContext));
         }
+    }
+
+    static void schedule(boolean enabled, SchedulerBackend backend) {
+        if (!enabled) {
+            backend.cancelUniqueWork(UNIQUE_WORK_NAME);
+            return;
+        }
+        backend.enqueueUniquePeriodicWork(
+                UNIQUE_WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                dailyUpdateRequest()
+        );
+    }
+
+    private static PeriodicWorkRequest dailyUpdateRequest() {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build();
-        PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
+        return new PeriodicWorkRequest.Builder(
                 AutoUpdateWorker.class,
                 1,
                 TimeUnit.DAYS,
@@ -38,14 +50,33 @@ public final class AutoUpdateScheduler {
         )
                 .setConstraints(constraints)
                 .build();
-        WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
-                UNIQUE_WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
-                request
-        );
     }
 
     public static void cancel(Context context) {
-        WorkManager.getInstance(context.getApplicationContext()).cancelUniqueWork(UNIQUE_WORK_NAME);
+        new WorkManagerSchedulerBackend(context.getApplicationContext()).cancelUniqueWork(UNIQUE_WORK_NAME);
+    }
+
+    interface SchedulerBackend {
+        void enqueueUniquePeriodicWork(String uniqueWorkName, ExistingPeriodicWorkPolicy policy, PeriodicWorkRequest request);
+
+        void cancelUniqueWork(String uniqueWorkName);
+    }
+
+    private static final class WorkManagerSchedulerBackend implements SchedulerBackend {
+        private final Context context;
+
+        private WorkManagerSchedulerBackend(Context context) {
+            this.context = context.getApplicationContext();
+        }
+
+        @Override
+        public void enqueueUniquePeriodicWork(String uniqueWorkName, ExistingPeriodicWorkPolicy policy, PeriodicWorkRequest request) {
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(uniqueWorkName, policy, request);
+        }
+
+        @Override
+        public void cancelUniqueWork(String uniqueWorkName) {
+            WorkManager.getInstance(context).cancelUniqueWork(uniqueWorkName);
+        }
     }
 }

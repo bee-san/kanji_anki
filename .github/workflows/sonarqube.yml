@@ -54,7 +54,7 @@ jobs:
         id: changed-areas
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || github.sha }}
           filters: |
             app:
               - 'app/**'
@@ -96,11 +96,11 @@ jobs:
       - name: Enable KVM access (manual full-coverage mode only)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         run: |
-          sudo sh -c 'echo KERNEL==\"kvm\", GROUP=\"kvm\", MODE=\"0666\", OPTIONS+=\"static_node=kvm\" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Start Android emulator (manual full-coverage mode only)
+      - name: Start Android emulator (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         run: |
           echo "no" | avdmanager create avd --force --name sonar-api30 --package "system-images;android-30;google_apis;x86_64"

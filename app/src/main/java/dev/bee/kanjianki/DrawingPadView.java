@@ -23,6 +23,7 @@ import dev.bee.kanjianki.study.CapturedWriting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 final class DrawingPadView extends View {
     private static final int DRAWING_INK = Color.rgb(45, 22, 53);
@@ -95,7 +96,7 @@ final class DrawingPadView extends View {
     }
 
     void setTarget(String target) {
-        this.target = target == null ? "" : target;
+        this.target = Objects.toString(target, "");
     }
 
     void setInkEditListener(Runnable listener) {
@@ -119,11 +120,15 @@ final class DrawingPadView extends View {
     }
 
     void startReplay() {
+        startReplayAt(SystemClock.uptimeMillis());
+    }
+
+    void startReplayAt(long startedAtMillis) {
         if (replayStrokes.isEmpty()) {
             return;
         }
         replayOverlayVisible = true;
-        replayStartedAtMillis = SystemClock.uptimeMillis();
+        replayStartedAtMillis = startedAtMillis;
         postInvalidateOnAnimation();
     }
 
@@ -166,7 +171,7 @@ final class DrawingPadView extends View {
         for (List<CapturedStroke.Point> points : committedStrokes) {
             List<InkPoint> inkPoints = new ArrayList<>();
             for (CapturedStroke.Point point : points) {
-                inkPoints.add(new InkPoint(point.x, point.y, point.timestampMillis == null ? 0L : point.timestampMillis));
+                inkPoints.add(new InkPoint(point.x, point.y, Objects.requireNonNullElse(point.timestampMillis, 0L)));
             }
             strokes.add(new InkStroke(inkPoints));
         }
@@ -283,20 +288,13 @@ final class DrawingPadView extends View {
     }
 
     private int activePointerIndex(MotionEvent event) {
-        if (activePointerId < 0) {
-            return event.getPointerCount() == 0 ? -1 : 0;
-        }
         return event.findPointerIndex(activePointerId);
     }
 
     private void finishStroke(MotionEvent event, int pointerIndex) {
-        if (pointerIndex >= 0 && pointerIndex < event.getPointerCount()) {
-            appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
-        }
-        if (!currentPoints.isEmpty()) {
-            paths.add(current);
-            committedStrokes.add(new ArrayList<>(currentPoints));
-        }
+        appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
+        paths.add(current);
+        committedStrokes.add(new ArrayList<>(currentPoints));
         currentPoints.clear();
         current = null;
         activePointerId = -1;
@@ -309,7 +307,7 @@ final class DrawingPadView extends View {
             return;
         }
         currentPoints.add(new CapturedStroke.Point(x, y, timestamp));
-        if (drawLine && current != null) {
+        if (drawLine) {
             current.lineTo(x, y);
         }
     }
@@ -360,9 +358,6 @@ final class DrawingPadView extends View {
     }
 
     private float replayProgress() {
-        if (!replayOverlayVisible || replayStartedAtMillis <= 0L) {
-            return 1f;
-        }
         long elapsed = Math.max(0L, SystemClock.uptimeMillis() - replayStartedAtMillis);
         if (elapsed >= REPLAY_DURATION_MILLIS) {
             return 1f;
@@ -371,9 +366,6 @@ final class DrawingPadView extends View {
     }
 
     private void drawReplayStrokes(Canvas canvas, float progress) {
-        if (replayStrokes.isEmpty()) {
-            return;
-        }
         float position = Math.max(0f, Math.min(1f, progress)) * replayStrokes.size();
         int fullStrokeCount = Math.min(replayStrokes.size(), (int) Math.floor(position));
         for (int i = 0; i < replayStrokes.size(); i++) {
@@ -390,9 +382,6 @@ final class DrawingPadView extends View {
     }
 
     private void drawReplayStroke(Canvas canvas, List<CapturedStroke.Point> points, float progress) {
-        if (points.isEmpty()) {
-            return;
-        }
         CapturedStroke.Point first = points.get(0);
         if (points.size() == 1 || progress <= 0.001f) {
             canvas.drawCircle(first.x, first.y, replayPaint.getStrokeWidth() / 2f, replayPaint);
