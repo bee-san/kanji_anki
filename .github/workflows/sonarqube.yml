@@ -22,7 +22,6 @@ on:
       - 'gradle/**'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-      - '.github/workflows/sonarqube.yml'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -33,7 +32,6 @@ on:
       - 'gradle/**'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-      - '.github/workflows/sonarqube.yml'
 
 jobs:
   build:

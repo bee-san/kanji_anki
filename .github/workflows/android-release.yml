@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - "v*"
-  release:
-    types:
-      - published
   workflow_dispatch:
     inputs:
       release_tag:
@@ -15,7 +12,7 @@ on:
         type: string
 
 concurrency:
-  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
+  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -38,8 +35,6 @@ jobs:
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             release_tag="${RELEASE_TAG_INPUT}"
-          elif [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-            release_tag="${{ github.event.release.tag_name }}"
           else
             release_tag="${GITHUB_REF_NAME}"
           fi
@@ -65,47 +60,13 @@ jobs:
             echo "checksum_name=${checksum_name}"
           } >> "${GITHUB_OUTPUT}"
 
-  validate:
-    name: Validate release
+  build:
+    name: Validate and build release
     runs-on: ubuntu-latest
     needs: metadata
     permissions:
       contents: read
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
-        with:
-          gradle-version: "9.4.1"
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
-
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Test, coverage, lint, and asset validation
-        run: |
-          gradle :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug --no-daemon
-          python3 -m unittest tools/test_generate_dictionary_assets.py
-
-  assemble-apk:
-    name: Assemble signed APK
-    runs-on: ubuntu-latest
-    needs: metadata
-    permissions:
-      contents: read
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -140,7 +101,7 @@ jobs:
           printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
           echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
 
-      - name: Assemble signed release APK
+      - name: Test, coverage, lint, and release build
         env:
           KANI_VERSION_NAME: ${{ needs.metadata.outputs.version_name }}
           KANI_VERSION_CODE: ${{ needs.metadata.outputs.version_code }}
@@ -148,7 +109,9 @@ jobs:
           KANI_SIGNING_STORE_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_STORE_PASSWORD }}
           KANI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
           KANI_SIGNING_KEY_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --no-daemon
+        run: |
+          gradle :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug :app:assembleRelease --no-daemon
+          python3 -m unittest tools/test_generate_dictionary_assets.py
 
       - name: Prepare release assets
         id: assets
@@ -186,8 +149,7 @@ jobs:
       contents: write
     needs:
       - metadata
-      - validate
-      - assemble-apk
+      - build
 
     steps:
       - name: Download release assets
