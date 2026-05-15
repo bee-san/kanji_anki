@@ -1,4 +1,7 @@
 name: SonarQube
+concurrency:
+  group: sonarqube-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   push:
@@ -34,6 +37,23 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install emulator packages (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
+
+      - name: Enable KVM access (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          sudo sh -c 'echo KERNEL==\"kvm\", GROUP=\"kvm\", MODE=\"0666\", OPTIONS+=\"static_node=kvm\" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Cache SonarQube packages
         uses: actions/cache@v5
         with:
@@ -41,16 +61,54 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Build and analyze
+      - name: Start Android emulator
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "no" | avdmanager create avd --force --name sonar-api30 --package "system-images;android-30;google_apis;x86_64"
+          "$ANDROID_HOME/emulator/emulator" -avd sonar-api30 -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-boot-anim &
+          adb wait-for-device
+          boot_completed=""
+          for attempt in $(seq 1 90); do
+            boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+            if [ "$boot_completed" = "1" ]; then
+              break
+            fi
+            sleep 4
+          done
+          if [ "$boot_completed" != "1" ]; then
+            echo "Emulator failed to report sys.boot_completed in time."
+            adb shell ps | head
+            exit 1
+          fi
+          adb shell input keyevent 82
+
+      - name: Build and analyze (PR-safe fast path)
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: >
           gradle
           :core:test
           :core:jacocoTestReport
-          :core:jacocoTestCoverageVerification
           :app:testDebugUnitTest
           :app:jacocoDebugUnitTestReport
+          :app:lintDebug
+          sonar
+          --no-daemon
+          --info
+
+      - name: Build and analyze (main branch full coverage)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          gradle
+          :core:test
+          :core:jacocoTestReport
+          :app:testDebugUnitTest
+          :app:jacocoDebugUnitTestReport
+          :app:compileDebugAndroidTestJavaWithJavac
+          :app:createDebugCoverageReport
           :app:lintDebug
           sonar
           --no-daemon
