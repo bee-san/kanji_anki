@@ -15,9 +15,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Kani"
-
-val fsrsJavaPath = providers.gradleProperty("fsrsJavaPath").orNull ?: "../fsrs_java"
-includeBuild(fsrsJavaPath)
-
+include(":fsrs-java")
 include(":core")
 include(":app")

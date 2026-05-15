@@ -17,6 +17,7 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
+      - 'fsrs-java/**'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
@@ -28,6 +29,7 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
+      - 'fsrs-java/**'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
@@ -73,6 +75,7 @@ jobs:
           CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "${{ github.sha }}")"
           APP_CHANGED=false
           CORE_CHANGED=false
+          FSRS_CHANGED=false
           GRADLE_CHANGED=false
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -86,6 +89,9 @@ jobs:
                 core/*)
                   CORE_CHANGED=true
                   ;;
+                fsrs-java/*)
+                  FSRS_CHANGED=true
+                  ;;
                 build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|.github/workflows/sonarqube.yml)
                   GRADLE_CHANGED=true
                   ;;
@@ -95,6 +101,7 @@ jobs:
 
           echo "app=$APP_CHANGED" >> "$GITHUB_OUTPUT"
           echo "core=$CORE_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "fsrs=$FSRS_CHANGED" >> "$GITHUB_OUTPUT"
           echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java
@@ -182,6 +189,9 @@ jobs:
         run: |
           set -euo pipefail
           TASKS=()
+          if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS+=( :fsrs-java:test :fsrs-java:jacocoTestReport )
+          fi
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :core:test :core:jacocoTestReport )
           fi
@@ -202,6 +212,8 @@ jobs:
           gradle
           :core:test
           :core:jacocoTestReport
+          :fsrs-java:test
+          :fsrs-java:jacocoTestReport
           :app:testDebugUnitTest
           :app:jacocoDebugUnitTestReport
           :app:lintDebug
