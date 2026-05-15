@@ -97,10 +97,10 @@ jobs:
             TASKS="$TASKS :core:compileJava"
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS="$TASKS :app:compileDebugJavaWithJavac"
+            TASKS="$TASKS :app:compileDebugJavaWithJavac :app:compileDebugKotlin"
           fi
           if [ -z "$TASKS" ]; then
-            TASKS=":core:compileJava :app:compileDebugJavaWithJavac"
+            TASKS=":core:compileJava :app:compileDebugJavaWithJavac :app:compileDebugKotlin"
           fi
           gradle $TASKS --parallel -Dorg.gradle.parallel=true
 
