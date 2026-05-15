@@ -34,20 +34,20 @@ val sonarCoveragePaths = listOf(
 )
 
 val maybeSonarMainBinaries = listOf(
-    rootPath("core/build/classes/java/main"),
-    rootPath("core/build/classes/kotlin/main"),
-    rootPath("app/build/classes/kotlin/debug"),
+    rootPath("core/build/classes"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     rootPath("app/build/intermediates/kotlin-classes/debug"),
+    rootPath("app/build/intermediates/javac/debug/classes"),
+    rootPath("app/build/intermediates/compile_library_classes/debug/classes"),
 ).filter { file(it).exists() }
 
 val maybeSonarTestBinaries = listOf(
-    rootPath("core/build/classes/java/test"),
-    rootPath("core/build/classes/kotlin/test"),
-    rootPath("app/build/classes/kotlin/debugUnitTest"),
+    rootPath("core/build/classes"),
     rootPath("app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
-    rootPath("app/build/intermediates/kotlin-classes/debugUnitTest"),
+    rootPath("app/build/intermediates/javac/debugUnitTest/classes"),
     rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
+    rootPath("app/build/intermediates/javac/debugAndroidTest/classes"),
+    rootPath("app/build/intermediates/kotlin-classes/debugUnitTest"),
     rootPath("app/build/intermediates/kotlin-classes/debugAndroidTest"),
 ).filter { file(it).exists() }
 
