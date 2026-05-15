@@ -14,11 +14,30 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
+      - '.github/workflows/sonarqube.yml'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
+      - '.github/workflows/sonarqube.yml'
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Build and analyze
     runs-on: ubuntu-latest
     permissions:
@@ -49,37 +68,21 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Cache SonarQube packages
-        uses: actions/cache@v5
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Build and analyze (PR-safe fast path)
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.full_coverage != 'true'
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: >
-          gradle
-          :core:test
-          :core:jacocoTestReport
-          :app:testDebugUnitTest
-          :app:jacocoDebugUnitTestReport
-          :app:lintDebug
-          --parallel
-          sonar
-          --no-daemon
-          --info
-
-      - name: Start Android emulator (manual full coverage mode only)
+      - name: Install emulator packages (manual full-coverage mode only)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         run: |
-          yes | sdkmanager --licenses >/dev/null
           sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
+
+      - name: Enable KVM access (manual full-coverage mode only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+        run: |
           sudo sh -c 'echo KERNEL==\"kvm\", GROUP=\"kvm\", MODE=\"0666\", OPTIONS+=\"static_node=kvm\" > /etc/udev/rules.d/99-kvm4all.rules'
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      - name: Start Android emulator (manual full-coverage mode only)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+        run: |
           echo "no" | avdmanager create avd --force --name sonar-api30 --package "system-images;android-30;google_apis;x86_64"
           "$ANDROID_HOME/emulator/emulator" -avd sonar-api30 -no-window -no-audio -no-snapshot -gpu swiftshader_indirect -no-boot-anim &
           adb wait-for-device
@@ -98,6 +101,27 @@ jobs:
           fi
           adb shell input keyevent 82
 
+      - name: Cache SonarQube packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Build and analyze (PR-safe fast path)
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.full_coverage != 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          gradle
+          :core:test
+          :core:jacocoTestReport
+          :app:testDebugUnitTest
+          :app:jacocoDebugUnitTestReport
+          :app:lintDebug
+          sonar
+          --parallel
+
       - name: Build and analyze (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
         env:
@@ -111,7 +135,5 @@ jobs:
           :app:compileDebugAndroidTestJavaWithJavac
           :app:createDebugCoverageReport
           :app:lintDebug
-          --parallel
           sonar
-          --no-daemon
-          --info
+          --parallel
