@@ -25,6 +25,7 @@ public final class StudyStatsStore {
     private static final String COLUMN_PHASE = "phase";
     private static final String COLUMN_REAL_PASS_STREAK = "real_pass_streak";
     private static final String COLUMN_REAL_AGAIN_STREAK = "real_again_streak";
+    private static final String COLUMN_MATURE_INTERVAL_DAYS = "mature_interval_days";
     private static final String RATING_AGAIN = "again";
     private static final String STATE_RETIRED = "retired";
     private final LocalStore store;
@@ -125,12 +126,25 @@ public final class StudyStatsStore {
 
     public KaniOutcomeStats kaniOutcomeStats() {
         SQLiteDatabase db = db();
-        int threshold = Math.max(1, realDueReviewsToMove());
-        return calculateKaniOutcomeStats(outcomeEvidence(db), ladderHealth(db, threshold));
+        int promotionDays = Math.max(1, ladderPromotionIntervalDays());
+        int failStreak = Math.max(1, ladderDemotionFailStreak());
+        return calculateKaniOutcomeStats(outcomeEvidence(db), ladderHealth(db, promotionDays, failStreak));
     }
 
     static KaniOutcomeStats calculateKaniOutcomeStats(List<OutcomeEvidence> outcomeEvidence, List<LadderItemEvidence> ladderItems, int realDueReviewsToMove) {
-        return calculateKaniOutcomeStats(outcomeEvidence, ladderHealth(safeList(ladderItems), realDueReviewsToMove));
+        return calculateKaniOutcomeStats(
+                outcomeEvidence,
+                ladderHealth(safeList(ladderItems), Records.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, realDueReviewsToMove)
+        );
+    }
+
+    static KaniOutcomeStats calculateKaniOutcomeStats(
+            List<OutcomeEvidence> outcomeEvidence,
+            List<LadderItemEvidence> ladderItems,
+            int ladderPromotionIntervalDays,
+            int ladderDemotionFailStreak
+    ) {
+        return calculateKaniOutcomeStats(outcomeEvidence, ladderHealth(safeList(ladderItems), ladderPromotionIntervalDays, ladderDemotionFailStreak));
     }
 
     private static KaniOutcomeStats calculateKaniOutcomeStats(List<OutcomeEvidence> outcomeEvidence, LadderHealthMetric ladderHealth) {
@@ -256,15 +270,15 @@ public final class StudyStatsStore {
         return out;
     }
 
-    private LadderHealthMetric ladderHealth(SQLiteDatabase db, int threshold) {
+    private LadderHealthMetric ladderHealth(SQLiteDatabase db, int promotionDays, int failStreak) {
         Cursor cursor = db.rawQuery(
                 "SELECT rung, "
                         + "COUNT(*) AS total_count, "
-                        + "SUM(CASE WHEN phase='review' AND real_pass_streak>=? THEN 1 ELSE 0 END) AS promotion_ready, "
+                        + "SUM(CASE WHEN phase='review' AND mature_interval_days>? THEN 1 ELSE 0 END) AS promotion_ready, "
                         + "SUM(CASE WHEN phase='review' AND real_again_streak>0 THEN 1 ELSE 0 END) AS demotion_risk, "
                         + "SUM(CASE WHEN phase='review' AND real_again_streak>=? THEN 1 ELSE 0 END) AS demotion_ready "
                         + "FROM " + TABLE_STUDY_ITEMS + " WHERE state<>? GROUP BY rung",
-                new String[]{Integer.toString(threshold), Integer.toString(threshold), STATE_RETIRED}
+                new String[]{Integer.toString(Math.max(1, promotionDays)), Integer.toString(Math.max(1, failStreak)), STATE_RETIRED}
         );
         Map<Records.LadderRung, Integer> distribution = emptyRungDistribution();
         int total = 0;
@@ -284,13 +298,13 @@ public final class StudyStatsStore {
         } finally {
             cursor.close();
         }
-        return new LadderHealthMetric(distribution, total, threshold, promotionReady, demotionRisk, demotionReady);
+        return new LadderHealthMetric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady);
     }
 
     private List<LadderItemEvidence> ladderItemEvidence(SQLiteDatabase db) {
         Cursor cursor = db.query(
                 TABLE_STUDY_ITEMS,
-                new String[]{COLUMN_STATE, COLUMN_RUNG, COLUMN_PHASE, COLUMN_REAL_PASS_STREAK, COLUMN_REAL_AGAIN_STREAK},
+                new String[]{COLUMN_STATE, COLUMN_RUNG, COLUMN_PHASE, COLUMN_REAL_PASS_STREAK, COLUMN_REAL_AGAIN_STREAK, COLUMN_MATURE_INTERVAL_DAYS},
                 null,
                 null,
                 null,
@@ -305,7 +319,8 @@ public final class StudyStatsStore {
                         Records.LadderRung.fromWireName(string(cursor, COLUMN_RUNG)),
                         Records.SchedulerPhase.fromWireName(string(cursor, COLUMN_PHASE)),
                         integer(cursor, COLUMN_REAL_PASS_STREAK),
-                        integer(cursor, COLUMN_REAL_AGAIN_STREAK)
+                        integer(cursor, COLUMN_REAL_AGAIN_STREAK),
+                        integer(cursor, COLUMN_MATURE_INTERVAL_DAYS)
                 ));
             }
         } finally {
@@ -321,13 +336,28 @@ public final class StudyStatsStore {
         );
     }
 
-    private static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int realDueReviewsToMove) {
-        int threshold = Math.max(1, realDueReviewsToMove);
+    private int ladderPromotionIntervalDays() {
+        return store.getIntSetting(
+                SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
+                Records.Settings.kikuDefaults().ladderPromotionIntervalDays
+        );
+    }
+
+    private int ladderDemotionFailStreak() {
+        return store.getIntSetting(
+                SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
+                realDueReviewsToMove()
+        );
+    }
+
+    private static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int ladderPromotionIntervalDays, int ladderDemotionFailStreak) {
+        int promotionDays = Math.max(1, ladderPromotionIntervalDays);
+        int failStreak = Math.max(1, ladderDemotionFailStreak);
         LadderHealthAccumulator accumulator = new LadderHealthAccumulator();
         for (LadderItemEvidence item : items) {
-            accumulator.addItem(item, threshold);
+            accumulator.addItem(item, promotionDays, failStreak);
         }
-        return accumulator.metric(threshold);
+        return accumulator.metric(promotionDays, failStreak);
     }
 
     private static Map<Records.LadderRung, Integer> emptyRungDistribution() {
@@ -531,6 +561,8 @@ public final class StudyStatsStore {
         public final Map<Records.LadderRung, Integer> rungCounts;
         public final int totalActiveItems;
         public final int realDueReviewsToMove;
+        public final int ladderPromotionIntervalDays;
+        public final int ladderDemotionFailStreak;
         public final int promotionReadyCount;
         public final int demotionRiskCount;
         public final int demotionReadyCount;
@@ -539,6 +571,26 @@ public final class StudyStatsStore {
                 Map<Records.LadderRung, Integer> rungCounts,
                 int totalActiveItems,
                 int realDueReviewsToMove,
+                int promotionReadyCount,
+                int demotionRiskCount,
+                int demotionReadyCount
+        ) {
+            this(
+                    rungCounts,
+                    totalActiveItems,
+                    Records.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                    realDueReviewsToMove,
+                    promotionReadyCount,
+                    demotionRiskCount,
+                    demotionReadyCount
+            );
+        }
+
+        public LadderHealthMetric(
+                Map<Records.LadderRung, Integer> rungCounts,
+                int totalActiveItems,
+                int ladderPromotionIntervalDays,
+                int ladderDemotionFailStreak,
                 int promotionReadyCount,
                 int demotionRiskCount,
                 int demotionReadyCount
@@ -553,7 +605,9 @@ public final class StudyStatsStore {
             }
             this.rungCounts = Collections.unmodifiableMap(normalized);
             this.totalActiveItems = Math.max(0, totalActiveItems);
-            this.realDueReviewsToMove = Math.max(1, realDueReviewsToMove);
+            this.ladderPromotionIntervalDays = Math.max(1, ladderPromotionIntervalDays);
+            this.ladderDemotionFailStreak = Math.max(1, ladderDemotionFailStreak);
+            this.realDueReviewsToMove = this.ladderDemotionFailStreak;
             this.promotionReadyCount = Math.max(0, promotionReadyCount);
             this.demotionRiskCount = Math.max(0, demotionRiskCount);
             this.demotionReadyCount = Math.max(0, demotionReadyCount);
@@ -565,7 +619,16 @@ public final class StudyStatsStore {
         }
 
         public static LadderHealthMetric empty() {
-            return new LadderHealthMetric(emptyRungDistribution(), 0, Records.Settings.kikuDefaults().realDueReviewsToMove, 0, 0, 0);
+            Records.Settings defaults = Records.Settings.kikuDefaults();
+            return new LadderHealthMetric(
+                    emptyRungDistribution(),
+                    0,
+                    defaults.ladderPromotionIntervalDays,
+                    defaults.ladderDemotionFailStreak,
+                    0,
+                    0,
+                    0
+            );
         }
     }
 
@@ -576,31 +639,31 @@ public final class StudyStatsStore {
         private int demotionRisk;
         private int demotionReady;
 
-        private void addItem(LadderItemEvidence item, int threshold) {
+        private void addItem(LadderItemEvidence item, int promotionDays, int failStreak) {
             if (item == null || STATE_RETIRED.equals(item.state)) {
                 return;
             }
             distribution.put(item.rung, distribution.get(item.rung) + 1);
             total++;
             if (item.phase == Records.SchedulerPhase.REVIEW) {
-                recordReviewStreaks(item, threshold);
+                recordReviewEvidence(item, promotionDays, failStreak);
             }
         }
 
-        private void recordReviewStreaks(LadderItemEvidence item, int threshold) {
-            if (item.realPassStreak >= threshold) {
+        private void recordReviewEvidence(LadderItemEvidence item, int promotionDays, int failStreak) {
+            if (item.matureIntervalDays > promotionDays) {
                 promotionReady++;
             }
             if (item.realAgainStreak > 0) {
                 demotionRisk++;
             }
-            if (item.realAgainStreak >= threshold) {
+            if (item.realAgainStreak >= failStreak) {
                 demotionReady++;
             }
         }
 
-        private LadderHealthMetric metric(int threshold) {
-            return new LadderHealthMetric(distribution, total, threshold, promotionReady, demotionRisk, demotionReady);
+        private LadderHealthMetric metric(int promotionDays, int failStreak) {
+            return new LadderHealthMetric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady);
         }
     }
 
@@ -637,14 +700,26 @@ public final class StudyStatsStore {
             Records.LadderRung rung,
             Records.SchedulerPhase phase,
             int realPassStreak,
-            int realAgainStreak
+            int realAgainStreak,
+            int matureIntervalDays
     ) {
+        LadderItemEvidence(
+                String state,
+                Records.LadderRung rung,
+                Records.SchedulerPhase phase,
+                int realPassStreak,
+                int realAgainStreak
+        ) {
+            this(state, rung, phase, realPassStreak, realAgainStreak, 0);
+        }
+
         LadderItemEvidence {
             state = state == null ? "" : state;
             rung = rung == null ? Records.LadderRung.KANJI_MEANING : rung;
             phase = phase == null ? Records.SchedulerPhase.NEW_LEARNING : phase;
             realPassStreak = Math.max(0, realPassStreak);
             realAgainStreak = Math.max(0, realAgainStreak);
+            matureIntervalDays = Math.max(0, matureIntervalDays);
         }
     }
 

@@ -883,9 +883,13 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, SyncSettings.fromStore(store).writingTriggerMissDays);
         store.putIntSetting("writing_trigger_miss_days", 4);
         store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, 5);
+        store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 30);
+        store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 6);
         Records.Settings ladderSettings = SyncSettings.fromStore(store);
         assertEquals(4, ladderSettings.writingTriggerMissDays);
         assertEquals(5, ladderSettings.recognitionPromotionPasses);
+        assertEquals(30, ladderSettings.ladderPromotionIntervalDays);
+        assertEquals(6, ladderSettings.ladderDemotionFailStreak);
         store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1);
         store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1);
         store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, 0);
@@ -1148,7 +1152,8 @@ public final class LocalStoreInstrumentedTest {
         saveSingleRowSync(rowWithStats("提", 60, 1), Collections.emptyList(), 3000L);
         store.saveReview(review("提", "outcome-missing-after"), "again", 3500L);
         Records.StudyItem promotionReady = new Records.StudyItem("拉", "review", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
-                .withLadderProgress(Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 0, 3, 0, 1000L);
+                .withLadderProgress(Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 0, 3, 0, 1000L)
+                .copyBuilder().matureIntervalDays(22).build();
         Records.StudyItem demotionReady = new Records.StudyItem("提", "review", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)
                 .withLadderProgress(Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 0, 3, 1000L);
         Records.StudyItem retired = new Records.StudyItem("謎", "retired", 0L, 2.0, 4.0, 3, 0, 0, 0, null, 1000L)

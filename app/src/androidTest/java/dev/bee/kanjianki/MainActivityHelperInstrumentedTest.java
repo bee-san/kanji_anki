@@ -704,17 +704,17 @@ public final class MainActivityHelperInstrumentedTest {
                 thresholdInputs.get(0).setText("oops");
                 thresholdInputs.get(1).setText("3");
                 performButtonClick(ladder, "Save ladder thresholds");
-                thresholdInputs.get(0).setText("11");
+                thresholdInputs.get(0).setText("21");
                 thresholdInputs.get(1).setText("3");
                 performButtonClick(ladder, "Save ladder thresholds");
                 thresholdInputs.get(0).setText("3");
                 thresholdInputs.get(1).setText("0");
                 performButtonClick(ladder, "Save ladder thresholds");
-                performButtonClick(ladder, "Use 3 and 3");
+                performButtonClick(ladder, "Use 21 and 3");
                 performButtonClick(ladder, "Save ladder thresholds");
                 Records.Settings updated = activity.settings();
-                assertEquals(Records.DEFAULT_RECOGNITION_PROMOTION_PASSES, updated.recognitionPromotionPasses);
-                assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, updated.writingTriggerMissDays);
+                assertEquals(Records.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, updated.ladderPromotionIntervalDays);
+                assertEquals(Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, updated.ladderDemotionFailStreak);
 
                 LinearLayout ladderOrder = activity.studyLadderSettingsPanel();
                 assertNotNull(findButton(ladderOrder, "Restore default ladder"));
@@ -1714,7 +1714,7 @@ public final class MainActivityHelperInstrumentedTest {
                 );
                 assertTrue(activity.statsVerdictBody(null, false, false).contains("No Kani evidence"));
                 assertTrue(activity.statsVerdictBody(ladderStats, false, true).contains("Kani is tracking"));
-                assertTrue(activity.ladderHealthBody(ladderOnly).contains("Threshold: 3"));
+                assertTrue(activity.ladderHealthBody(ladderOnly).contains("more than 21 days"));
                 assertTrue(containsText(activity.statsVerdictPanel(ladderStats), "Kani is not currently working for you"));
                 StudyStatsStore.LadderHealthMetric busyLadder = new StudyStatsStore.LadderHealthMetric(
                         Collections.singletonMap(Records.LadderRung.KANJI_MEANING, 4),

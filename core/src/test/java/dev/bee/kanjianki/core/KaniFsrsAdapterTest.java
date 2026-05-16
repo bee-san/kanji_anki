@@ -34,9 +34,11 @@ public final class KaniFsrsAdapterTest {
     }
 
     @Test
-    public void resultRoundsIntervalsToAtLeastOneDay() {
+    public void resultCeilsIntervalsToAtLeastOneDay() {
         KaniFsrsReviewResult result = new KaniFsrsReviewResult(1.0, 2.0, 1L);
 
         assertEquals(1, result.intervalDays());
+        assertEquals(21, new KaniFsrsReviewResult(1.0, 2.0, 21L * BridgeScheduler.DAY).intervalDays());
+        assertEquals(22, new KaniFsrsReviewResult(1.0, 2.0, 21L * BridgeScheduler.DAY + 1L).intervalDays());
     }
 }

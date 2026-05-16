@@ -14,6 +14,8 @@ public final class SyncSettings {
     public static final String WRITING_TRIGGER_MISS_DAYS_SETTING_KEY = "writing_trigger_miss_days";
     public static final String RECOGNITION_PROMOTION_PASSES_SETTING_KEY = "recognition_promotion_passes";
     public static final String REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY = "real_due_reviews_to_move";
+    public static final String LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY = "ladder_promotion_interval_days";
+    public static final String LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY = "ladder_demotion_fail_streak";
     public static final String IMPORT_ACTIVE_CARDS_SETTING_KEY = "import_active_cards";
     public static final String IMPORT_SUSPENDED_CARDS_SETTING_KEY = "import_suspended_cards";
     public static final String IMPORT_TAGGED_CARDS_SETTING_KEY = "import_tagged_cards";
@@ -62,6 +64,15 @@ public final class SyncSettings {
         int realDueReviewsToMove = store == null
                 ? defaults.realDueReviewsToMove
                 : store.getIntSetting(REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, defaults.realDueReviewsToMove);
+        int ladderPromotionIntervalDays = store == null
+                ? defaults.ladderPromotionIntervalDays
+                : store.getIntSetting(LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, defaults.ladderPromotionIntervalDays);
+        int ladderDemotionFailStreak = store == null
+                ? defaults.ladderDemotionFailStreak
+                : store.getIntSetting(
+                        LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
+                        store.getIntSetting(REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, defaults.ladderDemotionFailStreak)
+                );
         boolean importActiveCards = boolSetting(store, IMPORT_ACTIVE_CARDS_SETTING_KEY, defaults.importActiveCards);
         boolean importSuspendedCards = boolSetting(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY, defaults.importSuspendedCards);
         boolean importTaggedCards = boolSetting(store, IMPORT_TAGGED_CARDS_SETTING_KEY, defaults.importTaggedCards);
@@ -113,7 +124,9 @@ public final class SyncSettings {
                 importMinMatchingCards,
                 importBrowserQueryCards,
                 importBrowserQuery,
-                Records.Settings.normalizeNewCardSortMode(newCardSortMode)
+                Records.Settings.normalizeNewCardSortMode(newCardSortMode),
+                ladderPromotionIntervalDays,
+                ladderDemotionFailStreak
         );
     }
 

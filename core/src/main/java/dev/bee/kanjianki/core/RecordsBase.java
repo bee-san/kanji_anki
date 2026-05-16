@@ -15,6 +15,8 @@ public abstract class RecordsBase {
     public static final int DEFAULT_WRITING_TRIGGER_MISS_DAYS = 3;
     public static final int DEFAULT_RECOGNITION_PROMOTION_PASSES = 3;
     public static final int DEFAULT_REAL_DUE_REVIEWS_TO_MOVE = 3;
+    public static final int DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS = 21;
+    public static final int DEFAULT_LADDER_DEMOTION_FAIL_STREAK = 3;
     public static final int DEFAULT_SUSPENDED_RANK_MIN = 100;
     public static final int DEFAULT_SUSPENDED_RANK_MAX = 3000;
     public static final boolean DEFAULT_IMPORT_ACTIVE_CARDS = false;

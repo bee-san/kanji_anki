@@ -175,7 +175,7 @@ final class ReviewTransitionEngine {
             state.realPassStreak = 0;
             state.realAgainStreak++;
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis;
-            if (state.realAgainStreak >= context.settings.realDueReviewsToMove) {
+            if (state.realAgainStreak >= context.settings.ladderDemotionFailStreak) {
                 state.rung = StudyLadderRules.demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder);
                 state.realAgainStreak = 0;
                 state.realPassStreak = 0;
@@ -203,12 +203,16 @@ final class ReviewTransitionEngine {
             state.realAgainStreak = 0;
             state.realPassStreak++;
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis;
-            if (state.realPassStreak >= context.settings.realDueReviewsToMove) {
+            if (promotesByFsrsInterval(result, context.settings.ladderPromotionIntervalDays)) {
                 state.rung = StudyLadderRules.promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder);
                 state.realPassStreak = 0;
                 state.realAgainStreak = 0;
             }
         }
+    }
+
+    private boolean promotesByFsrsInterval(KaniFsrsReviewResult result, int promotionDays) {
+        return result.intervalMillis > Math.max(1, promotionDays) * StudyLadderRules.DAY;
     }
 
     private boolean countsAsRealDue(ReviewContext context, ReviewState state) {

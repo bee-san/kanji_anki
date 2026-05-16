@@ -69,23 +69,25 @@ public final class StudyStatsStoreOutcomeMetricsTest {
     }
 
     @Test
-    public void ladderHealthUsesConfiguredThresholdAndOnlyReviewPhaseReadiness() {
+    public void ladderHealthUsesConfiguredFsrsAndFailThresholdsOnlyInReviewPhase() {
         StudyStatsStore.KaniOutcomeStats stats = StudyStatsStore.calculateKaniOutcomeStats(
                 Collections.emptyList(),
                 Arrays.asList(
-                        item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 2),
-                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 2, 0),
+                        item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 2, 0),
+                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 2, 0, 22),
                         item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.REVIEW, 0, 1),
-                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 1, 0),
-                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.NEW_LEARNING, 8, 8),
-                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.RELEARNING, 8, 8),
-                        item("retired", Records.LadderRung.WORD_READING, Records.SchedulerPhase.REVIEW, 9, 9)
+                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 1, 0, 21),
+                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.NEW_LEARNING, 8, 8, 40),
+                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.RELEARNING, 8, 8, 40),
+                        item("retired", Records.LadderRung.WORD_READING, Records.SchedulerPhase.REVIEW, 9, 9, 40)
                 ),
+                21,
                 2
         );
 
         assertEquals(6, stats.ladderHealth.totalActiveItems);
-        assertEquals(2, stats.ladderHealth.realDueReviewsToMove);
+        assertEquals(21, stats.ladderHealth.ladderPromotionIntervalDays);
+        assertEquals(2, stats.ladderHealth.ladderDemotionFailStreak);
         assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.WRITE_KANJI));
         assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.TYPE_MEANING));
         assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.SIMILAR_KANJI));
@@ -98,18 +100,20 @@ public final class StudyStatsStoreOutcomeMetricsTest {
     }
 
     @Test
-    public void ladderHealthFallsBackToOneDueReviewWhenSettingIsInvalid() {
+    public void ladderHealthFallsBackToOneWhenThresholdSettingsAreInvalid() {
         StudyStatsStore.KaniOutcomeStats stats = StudyStatsStore.calculateKaniOutcomeStats(
                 null,
                 Arrays.asList(
                         null,
                         item(null, null, null, -4, -8),
-                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 1, 1)
+                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 1, 1, 2)
                 ),
+                0,
                 0
         );
 
-        assertEquals(1, stats.ladderHealth.realDueReviewsToMove);
+        assertEquals(1, stats.ladderHealth.ladderPromotionIntervalDays);
+        assertEquals(1, stats.ladderHealth.ladderDemotionFailStreak);
         assertEquals(2, stats.ladderHealth.totalActiveItems);
         assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.KANJI_MEANING));
         assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.TYPE_MEANING));
@@ -213,5 +217,16 @@ public final class StudyStatsStoreOutcomeMetricsTest {
             int realAgainStreak
     ) {
         return new StudyStatsStore.LadderItemEvidence(state, rung, phase, realPassStreak, realAgainStreak);
+    }
+
+    private static StudyStatsStore.LadderItemEvidence item(
+            String state,
+            Records.LadderRung rung,
+            Records.SchedulerPhase phase,
+            int realPassStreak,
+            int realAgainStreak,
+            int matureIntervalDays
+    ) {
+        return new StudyStatsStore.LadderItemEvidence(state, rung, phase, realPassStreak, realAgainStreak, matureIntervalDays);
     }
 }

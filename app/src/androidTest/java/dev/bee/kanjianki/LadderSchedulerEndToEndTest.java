@@ -104,7 +104,7 @@ public final class LadderSchedulerEndToEndTest {
     // ---- Due-review passes promote rung ----
 
     @Test
-    public void threeConsecutiveDueReviewPassesPromoteRung() {
+    public void dueReviewPassWithMatureFsrsIntervalPromotesRung() {
         long dueAt = System.currentTimeMillis() - 1000L;
         Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.KANJI_MEANING, dueAt);
         store.replaceStudyItems(Collections.singletonList(item));
@@ -112,16 +112,14 @@ public final class LadderSchedulerEndToEndTest {
         Set<String> consumed = new HashSet<>();
         long now = System.currentTimeMillis();
         Records.StudyItem current = store.studyItems().get(0);
+        Records.Settings settings = settingsWithLadderThresholds(1, Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK);
 
-        // 3 passes in a row should promote from KANJI_MEANING -> FONT_MEANING
-        for (int i = 0; i < 3; i++) {
-            String token = "pass" + i;
-            current = dueWithToken(current, token, now + i * 1000L - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + i * 1000L);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        current = dueWithToken(current, "pass", now - 1L);
+        Records.ReviewResult result = scheduler.applyReview(
+                current, passRequest("裂", "pass"), consumed, now,
+                Records.SchedulerParameters.defaults(), settings);
+        current = result.item;
+        store.saveStudyItem(current);
 
         // Verify promotion persisted
         List<Records.StudyItem> reloaded = store.studyItems();
@@ -184,15 +182,13 @@ public final class LadderSchedulerEndToEndTest {
         Records.StudyItem current = store.studyItems().get(0);
         assertFalse(current.hasSimilarKanji);
 
-        // 3 passes should promote TYPE_MEANING -> KANJI_MEANING (skipping SIMILAR_KANJI)
-        for (int i = 0; i < 3; i++) {
-            String token = "p" + i;
-            current = dueWithToken(current, token, now + i * 1000L - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + i * 1000L);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        Records.Settings settings = settingsWithLadderThresholds(1, Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK);
+        current = dueWithToken(current, "p", now - 1L);
+        Records.ReviewResult result = scheduler.applyReview(
+                current, passRequest("裂", "p"), consumed, now,
+                Records.SchedulerParameters.defaults(), settings);
+        current = result.item;
+        store.saveStudyItem(current);
 
         List<Records.StudyItem> reloaded = store.studyItems();
         Records.StudyItem promoted = reloaded.get(0);
@@ -215,15 +211,13 @@ public final class LadderSchedulerEndToEndTest {
         Records.StudyItem current = store.studyItems().get(0);
         assertTrue(current.hasSimilarKanji);
 
-        // 3 passes should promote TYPE_MEANING -> SIMILAR_KANJI (not skipping)
-        for (int i = 0; i < 3; i++) {
-            String token = "p" + i;
-            current = dueWithToken(current, token, now + i * 1000L - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + i * 1000L);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        Records.Settings settings = settingsWithLadderThresholds(1, Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK);
+        current = dueWithToken(current, "p", now - 1L);
+        Records.ReviewResult result = scheduler.applyReview(
+                current, passRequest("裂", "p"), consumed, now,
+                Records.SchedulerParameters.defaults(), settings);
+        current = result.item;
+        store.saveStudyItem(current);
 
         List<Records.StudyItem> reloaded = store.studyItems();
         Records.StudyItem promoted = reloaded.get(0);
@@ -325,33 +319,29 @@ public final class LadderSchedulerEndToEndTest {
         assertEquals(Records.LadderRung.WORD_READING, capped.rung);
     }
 
-    // ---- Custom realDueReviewsToMove setting ----
+    // ---- Custom ladder settings ----
 
     @Test
-    public void customRealDueReviewsToMoveHonorsSettingFromSyncSettings() {
+    public void customLadderPromotionIntervalHonorsSettingFromSyncSettings() {
         long dueAt = System.currentTimeMillis() - 1000L;
         Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.KANJI_MEANING, dueAt);
         store.replaceStudyItems(Collections.singletonList(item));
 
-        // Store custom threshold of 2 (instead of default 3)
-        persistSetting("real_due_reviews_to_move", "2");
+        persistSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, "1");
         Records.Settings settings = SyncSettings.fromStore(store);
-        assertEquals(2, settings.realDueReviewsToMove);
+        assertEquals(1, settings.ladderPromotionIntervalDays);
 
         Set<String> consumed = new HashSet<>();
         long now = System.currentTimeMillis();
         Records.StudyItem current = store.studyItems().get(0);
 
-        // 2 passes with threshold=2 should promote
-        for (int i = 0; i < 2; i++) {
-            String token = "custom" + i;
-            current = dueWithToken(current, token, now + i * 1000L - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + i * 1000L,
-                    Records.SchedulerParameters.defaults(), settings);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        String token = "custom";
+        current = dueWithToken(current, token, now - 1L);
+        Records.ReviewResult result = scheduler.applyReview(
+                current, passRequest("裂", token), consumed, now,
+                Records.SchedulerParameters.defaults(), settings);
+        current = result.item;
+        store.saveStudyItem(current);
 
         List<Records.StudyItem> reloaded = store.studyItems();
         Records.StudyItem promoted = reloaded.get(0);
@@ -386,50 +376,48 @@ public final class LadderSchedulerEndToEndTest {
         assertEquals(Records.SchedulerPhase.REVIEW, current.phase);
         assertEquals(Records.LadderRung.KANJI_MEANING, current.rung);
         store.saveStudyItem(current);
+        Records.Settings promotionSettings = settingsWithLadderThresholds(1, Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK);
 
-        // Phase 2: 3 due-review passes -> promote to FONT_MEANING
+        // Phase 2: mature FSRS due-review pass -> promote to FONT_MEANING
         current = current.copyBuilder().dueAtMillis(now).build();
         store.saveStudyItem(current);
-        for (int i = 0; i < 3; i++) {
-            current = store.studyItems().get(0);
-            String token = "promo1_" + (tokenCounter++);
-            long reviewAt = now + tokenCounter * 1000L;
-            current = dueWithToken(current, token, reviewAt - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, reviewAt);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        current = store.studyItems().get(0);
+        String promo1Token = "promo1_" + (tokenCounter++);
+        long promo1At = now + tokenCounter * 1000L;
+        current = dueWithToken(current, promo1Token, promo1At - 1L);
+        Records.ReviewResult promo1 = scheduler.applyReview(
+                current, passRequest("裂", promo1Token), consumed, promo1At,
+                Records.SchedulerParameters.defaults(), promotionSettings);
+        current = promo1.item;
+        store.saveStudyItem(current);
         assertEquals(Records.LadderRung.FONT_MEANING, store.studyItems().get(0).rung);
 
-        // Phase 3: 3 more due-review passes -> promote to WORD_READING
+        // Phase 3: another mature FSRS pass -> promote to WORD_READING
         current = store.studyItems().get(0).copyBuilder().dueAtMillis(now).build();
         store.saveStudyItem(current);
-        for (int i = 0; i < 3; i++) {
-            current = store.studyItems().get(0);
-            String token = "promo2_" + (tokenCounter++);
-            long reviewAt = now + tokenCounter * 1000L;
-            current = dueWithToken(current, token, reviewAt - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, reviewAt);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        current = store.studyItems().get(0);
+        String promo2Token = "promo2_" + (tokenCounter++);
+        long promo2At = now + tokenCounter * 1000L;
+        current = dueWithToken(current, promo2Token, promo2At - 1L);
+        Records.ReviewResult promo2 = scheduler.applyReview(
+                current, passRequest("裂", promo2Token), consumed, promo2At,
+                Records.SchedulerParameters.defaults(), promotionSettings);
+        current = promo2.item;
+        store.saveStudyItem(current);
         assertEquals(Records.LadderRung.WORD_READING, store.studyItems().get(0).rung);
 
-        // Phase 4: At ceiling, 3 more passes still stay at WORD_READING
+        // Phase 4: At ceiling, another mature pass still stays at WORD_READING
         current = store.studyItems().get(0).copyBuilder().dueAtMillis(now).build();
         store.saveStudyItem(current);
-        for (int i = 0; i < 3; i++) {
-            current = store.studyItems().get(0);
-            String token = "ceil_" + (tokenCounter++);
-            long reviewAt = now + tokenCounter * 1000L;
-            current = dueWithToken(current, token, reviewAt - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, reviewAt);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
+        current = store.studyItems().get(0);
+        String ceilToken = "ceil_" + (tokenCounter++);
+        long ceilAt = now + tokenCounter * 1000L;
+        current = dueWithToken(current, ceilToken, ceilAt - 1L);
+        Records.ReviewResult ceiling = scheduler.applyReview(
+                current, passRequest("裂", ceilToken), consumed, ceilAt,
+                Records.SchedulerParameters.defaults(), promotionSettings);
+        current = ceiling.item;
+        store.saveStudyItem(current);
         assertEquals(Records.LadderRung.WORD_READING, store.studyItems().get(0).rung);
     }
 
@@ -539,31 +527,21 @@ public final class LadderSchedulerEndToEndTest {
     @Test
     public void passStreakResetsAfterPromotion() {
         long dueAt = System.currentTimeMillis() - 1000L;
-        Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.KANJI_MEANING, dueAt);
+        Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder().realPassStreak(2).build();
         store.replaceStudyItems(Collections.singletonList(item));
 
         Set<String> consumed = new HashSet<>();
         long now = System.currentTimeMillis();
-        Records.StudyItem current = store.studyItems().get(0);
-
-        // Accumulate 2 passes (streak = 2)
-        for (int i = 0; i < 2; i++) {
-            String token = "streak" + i;
-            current = dueWithToken(current, token, now + i * 1000L - 1L);
-            Records.ReviewResult result = scheduler.applyReview(
-                    current, passRequest("裂", token), consumed, now + i * 1000L);
-            current = result.item;
-            store.saveStudyItem(current);
-        }
-
         Records.StudyItem beforePromotion = store.studyItems().get(0);
         assertEquals(2, beforePromotion.realPassStreak);
         assertEquals(Records.LadderRung.KANJI_MEANING, beforePromotion.rung);
 
-        // Third pass triggers promotion and resets streak
-        current = dueWithToken(store.studyItems().get(0), "streak2", now + 2999L);
+        Records.StudyItem current = dueWithToken(store.studyItems().get(0), "streak", now - 1L);
+        Records.Settings settings = settingsWithLadderThresholds(1, Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK);
         Records.ReviewResult promoResult = scheduler.applyReview(
-                current, passRequest("裂", "streak2"), consumed, now + 3000L);
+                current, passRequest("裂", "streak"), consumed, now,
+                Records.SchedulerParameters.defaults(), settings);
         store.saveStudyItem(promoResult.item);
 
         Records.StudyItem afterPromotion = store.studyItems().get(0);
@@ -728,6 +706,42 @@ public final class LadderSchedulerEndToEndTest {
 
     private static Records.ReviewRequest failRequest(String kanji, String token) {
         return new Records.ReviewRequest(kanji, token, "again", false, false, false, 0);
+    }
+
+    private static Records.Settings settingsWithLadderThresholds(int promotionDays, int failStreak) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays,
+                defaults.recognitionPromotionPasses,
+                defaults.realDueReviewsToMove,
+                defaults.importActiveCards,
+                defaults.importSuspendedCards,
+                defaults.importTaggedCards,
+                defaults.importTags,
+                defaults.importWeakCards,
+                defaults.importWeakFsrsDifficultyThreshold,
+                defaults.importWeakLapsesThreshold,
+                defaults.importMinMatchingCardsPerKanji,
+                defaults.importBrowserQueryCards,
+                defaults.importBrowserQuery,
+                defaults.newCardSortMode,
+                promotionDays,
+                failStreak
+        );
     }
 
     private static Records.StudyItem dueWithToken(Records.StudyItem item, String token, long dueAtMillis) {
