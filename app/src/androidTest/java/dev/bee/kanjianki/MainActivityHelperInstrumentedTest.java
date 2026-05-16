@@ -816,6 +816,28 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
+    public void updateUiContinuationStopsAfterNavigationAway() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                activity.base(MainActivityBase.NAV_SETTINGS_ROUTE);
+                int firstRun = activity.beginUpdateUiRun();
+                assertTrue(activity.updateUiRunStillActive(firstRun));
+
+                activity.renderSettings();
+                assertFalse(activity.updateUiRunStillActive(firstRun));
+
+                int staleRun = activity.beginUpdateUiRun();
+                int activeRun = activity.beginUpdateUiRun();
+                assertFalse(activity.updateUiRunStillActive(staleRun));
+                assertTrue(activity.updateUiRunStillActive(activeRun));
+
+                activity.renderHome();
+                assertFalse(activity.updateUiRunStillActive(activeRun));
+            });
+        }
+    }
+
+    @Test
     public void reminderSavingCoversPermissionRequestsAndBlockedNotifications() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {

@@ -1608,8 +1608,18 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
     }
 
+    int beginUpdateUiRun() {
+        activeUpdateUiRunToken = ++updateUiRunCounter;
+        return activeUpdateUiRunToken;
+    }
+
+    boolean updateUiRunStillActive(int token) {
+        return token != 0 && activeUpdateUiRunToken == token;
+    }
+
     void runUpdate(boolean cachedPending) {
         base(NAV_SETTINGS_ROUTE);
+        int updateUiRun = beginUpdateUiRun();
         content.addView(fullWidthHomeButton());
         content.addView(backToSettingsButton());
         content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
@@ -1621,6 +1631,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     ? updater.installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
                     : updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL);
             main.post(() -> {
+                if (!updateUiRunStillActive(updateUiRun)) {
+                    return;
+                }
                 Toast.makeText(this, result.message, Toast.LENGTH_LONG).show();
                 if (result.intent != null) {
                     startActivity(result.intent);

@@ -140,6 +140,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     boolean settingsStudyExpanded;
     boolean settingsSyncExpanded;
     boolean settingsAppExpanded;
+    int updateUiRunCounter;
+    int activeUpdateUiRunToken;
     static AnkiDroidGateway ankiDroidGatewayForTests;
     static CollectionGateway collectionGatewayForTests;
     static WritingRecognizer writingRecognizerForTests;
@@ -307,6 +309,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     void base(String selected) {
+        activeUpdateUiRunToken = 0;
         if (!NAV_STUDY.equals(selected)) {
             abandonActiveStudyTask();
         }
