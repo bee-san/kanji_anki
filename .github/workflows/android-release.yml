@@ -19,15 +19,22 @@ jobs:
   metadata:
     name: Release metadata
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: read
     outputs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
       version_name: ${{ steps.meta.outputs.version_name }}
       version_code: ${{ steps.meta.outputs.version_code }}
       apk_name: ${{ steps.meta.outputs.apk_name }}
       checksum_name: ${{ steps.meta.outputs.checksum_name }}
+      ankidroid_fixture_required: ${{ steps.meta.outputs.ankidroid_fixture_required }}
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Compute release metadata
         id: meta
         env:
@@ -51,6 +58,63 @@ jobs:
           version_code=$((major * 1000000 + minor * 1000 + patch))
           apk_name="kani-android-${version_name}.apk"
           checksum_name="${apk_name}.sha256"
+          previous_tag="$(python3 - "${release_tag}" <<'PY'
+          import re
+          import subprocess
+          import sys
+
+          current = sys.argv[1]
+          match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", current)
+          if not match:
+              raise SystemExit(0)
+          current_version = tuple(int(part) for part in match.groups())
+
+          tags = subprocess.check_output(
+              ["git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*"],
+              text=True,
+          ).splitlines()
+          previous = []
+          for tag in tags:
+              tag_match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+              if not tag_match:
+                  continue
+              version = tuple(int(part) for part in tag_match.groups())
+              if version < current_version:
+                  previous.append((version, tag))
+          if previous:
+              print(max(previous)[1])
+          PY
+          )"
+          if [[ -n "${previous_tag}" ]]; then
+            changed_files="$(git diff --name-only "${previous_tag}" "${GITHUB_SHA}")"
+          else
+            changed_files="$(git ls-tree -r --name-only "${GITHUB_SHA}")"
+          fi
+
+          ankidroid_fixture_required=false
+          if [[ -z "${previous_tag}" ]]; then
+            ankidroid_fixture_required=true
+          else
+            while IFS= read -r changed_file; do
+              case "${changed_file}" in
+                app/src/main/AndroidManifest.xml|\
+                app/src/main/java/dev/bee/kanjianki/NoteTypeFieldMappings.java|\
+                app/src/main/java/dev/bee/kanjianki/anki/*|\
+                app/src/main/java/dev/bee/kanjianki/sync/*|\
+                app/src/main/java/dev/bee/kanjianki/data/LocalStore*|\
+                app/src/androidTest/AndroidManifest.xml|\
+                app/src/androidTest/java/dev/bee/kanjianki/MainActivityInstrumentedTest.java|\
+                app/src/androidTest/java/dev/bee/kanjianki/anki/*|\
+                ci/fixtures/ankidroid/*|\
+                ci/scripts/create_ankidroid_kiku_fixture.py|\
+                ci/scripts/run_ankidroid_fixture.sh|\
+                .github/workflows/android-instrumented.yml)
+                  ankidroid_fixture_required=true
+                  break
+                  ;;
+              esac
+            done <<< "${changed_files}"
+          fi
 
           {
             echo "release_tag=${release_tag}"
@@ -58,6 +122,7 @@ jobs:
             echo "version_code=${version_code}"
             echo "apk_name=${apk_name}"
             echo "checksum_name=${checksum_name}"
+            echo "ankidroid_fixture_required=${ankidroid_fixture_required}"
           } >> "${GITHUB_OUTPUT}"
 
   validate:
@@ -205,11 +270,20 @@ jobs:
   ankidroid-fixture:
     name: Verify AnkiDroid provider fixture
     needs: metadata
+    if: needs.metadata.outputs.ankidroid_fixture_required == 'true'
     uses: ./.github/workflows/android-instrumented.yml
 
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
+    if: >-
+      ${{
+        always() &&
+        needs.metadata.result == 'success' &&
+        needs.validate.result == 'success' &&
+        needs.quality-status.result == 'success' &&
+        (needs.ankidroid-fixture.result == 'success' || needs.ankidroid-fixture.result == 'skipped')
+      }}
     permissions:
       contents: write
     needs:

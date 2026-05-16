@@ -36,11 +36,13 @@ CodeQL also has a scheduled weekly run. If you change either workflow, push it
 and watch the first GitHub Actions run to completion; local Gradle success
 alone is not enough to validate the service integration.
 
-The deterministic AnkiDroid fixture workflow runs nightly, through
-workflow-dispatch, and as part of the release workflow. It generates a small
-sanitized Kiku collection in CI, installs pinned AnkiDroid in an emulator,
-grants the real provider permission, and runs the live-provider sync subset with
-`kanjiLiveAnkiDroid=true` and a small `kanjiLiveMinimumNotes` value.
+The deterministic AnkiDroid fixture workflow runs nightly and through
+workflow-dispatch. The release workflow runs it only when the release diff
+touches provider, sync, local-store, live instrumentation, or fixture paths. It
+generates a small sanitized Kiku collection in CI, installs pinned AnkiDroid in
+an emulator, grants the real provider permission, and runs the live-provider
+sync subset with `kanjiLiveAnkiDroid=true` and a small
+`kanjiLiveMinimumNotes` value.
 
 The local real-collection live gate remains stricter. Do not cut a release for
 provider/sync changes unless the local copied user-collection AnkiDroid run
