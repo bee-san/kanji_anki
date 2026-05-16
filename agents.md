@@ -7,23 +7,42 @@ run when the change touches sync/provider behavior.
 
 ## Gradle Command Note
 
-This repo currently does not include a checked-in `gradlew` wrapper. Run Gradle
-tasks from the repo root with the system `gradle` command, for example
-`gradle :core:test`.
+This repo includes a checked-in Gradle wrapper. Run Gradle tasks from the repo
+root with `./gradlew`, for example `./gradlew :core:test`.
 
 For Android tasks on this machine, prefer the prepared SDK under `/tmp` when no
 `local.properties` file is present:
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
-  gradle :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac
+  ./gradlew :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac
 ```
 
 ## CI And Static Analysis Notes
 
-SonarCloud and CodeQL both run on pushes to `main`. If you change either
-workflow, push it and watch the first GitHub Actions run to completion; local
-Gradle success alone is not enough to validate the service integration.
+The normal PR confidence gate is `./gradlew ciFast`. It runs deterministic JVM
+tests, coverage reports/checks, app unit tests, Android instrumentation
+compilation, lint, and Python asset tests. Do not use SonarCloud or CodeQL as a
+substitute for the normal Android CI workflow.
+
+`./gradlew ciQuality` produces the deterministic bytecode and coverage inputs
+used by SonarQube. `./gradlew ciRelease` runs the release confidence gate and
+assembles the signed release APK when signing environment variables are set.
+
+SonarCloud and CodeQL both run on pushes to `main` and on internal pull
+requests. If you change either workflow, push it and watch the first GitHub
+Actions run to completion; local Gradle success alone is not enough to validate
+the service integration.
+
+The deterministic AnkiDroid fixture workflow runs on `main`, nightly,
+workflow-dispatch, and release. It generates a small sanitized Kiku collection
+in CI, installs pinned AnkiDroid in an emulator, grants the real provider
+permission, and runs the live-provider sync subset with
+`kanjiLiveAnkiDroid=true` and a small `kanjiLiveMinimumNotes` value.
+
+The local real-collection live gate remains stricter. Do not cut a release for
+provider/sync changes unless the local copied user-collection AnkiDroid run
+passes with the default 7,000-note threshold.
 
 Useful commands:
 
@@ -37,7 +56,7 @@ project. Keep the CodeQL build step after `github/codeql-action/init` as a
 forced clean compile:
 
 ```sh
-gradle clean :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+./gradlew clean :fsrs-java:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
 ```
 
 Do not simplify that to a normal compile. Gradle can mark the compile tasks
@@ -261,7 +280,7 @@ desktop collection directly.
 Build and install the debug app plus instrumentation APK.
 
 ```sh
-gradle :app:assembleDebug :app:assembleDebugAndroidTest
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE
@@ -306,11 +325,7 @@ retry only after confirming the app did not crash. The test poller should treat
 Before pushing a release tag, run:
 
 ```sh
-gradle :core:test \
-  :app:testDebugUnitTest \
-  :app:compileDebugAndroidTestJavaWithJavac \
-  :app:lintDebug \
-  :app:assembleRelease \
+./gradlew ciRelease \
   -PKANI_SIGNING_STORE_FILE=/tmp/kanji_anki_temp_release.jks \
   -PKANI_SIGNING_STORE_PASSWORD=temporary123 \
   -PKANI_SIGNING_KEY_ALIAS=kanji_temp \

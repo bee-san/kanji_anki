@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.security.SecureRandom;
 
 public final class KanjiGameEngine {
     private static final int MAX_CHOICES = 4;
@@ -70,7 +71,7 @@ public final class KanjiGameEngine {
     ) {
         List<GameMode> out = new ArrayList<>();
         for (GameMode mode : GameMode.values()) {
-            if (nextQuestion(mode, rows, inventory, pairs, new Random(0L)) != null) {
+            if (nextQuestion(mode, rows, inventory, pairs, new SecureRandom()) != null) {
                 out.add(mode);
             }
         }
@@ -85,7 +86,7 @@ public final class KanjiGameEngine {
             Random random
     ) {
         GameMode safeMode = mode == null ? GameMode.MEANING_POP : mode;
-        Random safeRandom = random == null ? new Random() : random;
+        Random safeRandom = random == null ? new SecureRandom() : random;
         List<GameCandidate> candidates = candidates(rows, inventory);
         return switch (safeMode) {
             case MEANING_POP -> meaningQuestion(candidates, safeRandom);

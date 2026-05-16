@@ -1,0 +1,146 @@
+name: Android Instrumented
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'core/**'
+      - 'fsrs-java/**'
+      - 'ci/fixtures/ankidroid/**'
+      - 'ci/scripts/create_ankidroid_kiku_fixture.py'
+      - '.github/workflows/android-instrumented.yml'
+      - 'build.gradle*'
+      - 'settings.gradle*'
+      - 'gradle/**'
+      - 'gradlew*'
+      - 'gradle.properties'
+      - 'gradle/libs.versions.toml'
+  schedule:
+    - cron: '17 5 * * *'
+
+concurrency:
+  group: android-instrumented-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ankidroid-fixture:
+    name: AnkiDroid provider fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Download pinned AnkiDroid APK
+        id: ankidroid
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/ankidroid"
+          if ! gh release download v2.24.0 --repo ankidroid/Anki-Android --pattern '*x86_64*.apk' --dir "${RUNNER_TEMP}/ankidroid"; then
+            gh release download v2.24.0 --repo ankidroid/Anki-Android --pattern '*.apk' --dir "${RUNNER_TEMP}/ankidroid"
+          fi
+          apk_path="$(find "${RUNNER_TEMP}/ankidroid" -name '*x86_64*.apk' | sort | head -n 1)"
+          if [ -z "${apk_path}" ]; then
+            apk_path="$(find "${RUNNER_TEMP}/ankidroid" -name '*universal*.apk' | sort | head -n 1)"
+          fi
+          if [ -z "${apk_path}" ]; then
+            apk_path="$(find "${RUNNER_TEMP}/ankidroid" -name '*.apk' | sort | head -n 1)"
+          fi
+          if [ -z "${apk_path}" ]; then
+            echo '::error::No AnkiDroid APK was downloaded.'
+            exit 1
+          fi
+          echo "apk_path=${apk_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate sanitized Kiku collection fixture
+        id: fixture
+        run: |
+          set -euo pipefail
+          collection_path="${RUNNER_TEMP}/kiku-provider-fixture.anki2"
+          python3 ci/scripts/create_ankidroid_kiku_fixture.py "${collection_path}"
+          echo "collection_path=${collection_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run live-provider fixture instrumentation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: aosp_atd
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            trap 'adb logcat -d > "${RUNNER_TEMP}/ankidroid-fixture-logcat.txt" 2>/dev/null || true' EXIT
+
+            ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --parallel -Dorg.gradle.parallel=true
+
+            adb wait-for-device
+            adb install -r '${{ steps.ankidroid.outputs.apk_path }}'
+            adb shell monkey -p com.ichi2.anki 1
+            sleep 5
+
+            adb root || true
+            adb wait-for-device
+            adb shell mkdir -p /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media
+            adb push '${{ steps.fixture.outputs.collection_path }}' /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.anki2
+            owner="$(adb shell stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null | tr -d '\r' || true)"
+            if [ -n "${owner}" ]; then
+              adb shell "chown -R ${owner}:ext_data_rw /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid || true"
+            fi
+            adb shell 'chmod -R u+rwX,g+rwX /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid || true'
+
+            prefs=/data/user/0/com.ichi2.anki/shared_prefs/com.ichi2.anki_preferences.xml
+            adb shell "if [ -f ${prefs} ]; then sed -i 's#/storage/emulated/0/AnkiDroid#/storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid#g' ${prefs}; fi"
+            adb shell am force-stop com.ichi2.anki
+            adb shell monkey -p com.ichi2.anki 1
+            sleep 5
+
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
+            adb shell content query --uri content://com.ichi2.anki.flashcards/models
+
+            adb logcat -c
+            adb shell am instrument -w \
+              -e kanjiLiveAnkiDroid true \
+              -e kanjiLiveMinimumNotes 2 \
+              -e class dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid,dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest \
+              dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner
+
+      - name: Upload instrumentation diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ankidroid-fixture-diagnostics
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/ankidroid-fixture-logcat.txt
+            app/build/reports/**
+            app/build/outputs/androidTest-results/**

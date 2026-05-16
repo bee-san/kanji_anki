@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public final class RealAnkiDroidLiveProviderInstrumentedTest {
     private static final String LIVE_ARG = "kanjiLiveAnkiDroid";
+    private static final String LIVE_MINIMUM_NOTES_ARG = "kanjiLiveMinimumNotes";
     private static final int MIN_USER_KIKU_NOTES = 7000;
 
     private Context context;
@@ -52,12 +53,25 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
         assertEquals("com.ichi2.anki.flashcards", status.authority);
 
         Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
+        int minimumNotes = liveMinimumNotes();
         assertTrue("Expected the copied user Kiku collection, got " + snapshot.notes.size() + " notes.",
-                snapshot.notes.size() >= MIN_USER_KIKU_NOTES);
+                snapshot.notes.size() >= minimumNotes);
         assertTrue("Expected the copied user Kiku collection, got " + snapshot.cards.size() + " cards.",
-                snapshot.cards.size() >= MIN_USER_KIKU_NOTES);
+                snapshot.cards.size() >= minimumNotes);
         assertAllCardsHaveNotes(snapshot);
         assertHasRealSchedulerState(snapshot);
+    }
+
+    private static int liveMinimumNotes() {
+        String raw = InstrumentationRegistry.getArguments().getString(LIVE_MINIMUM_NOTES_ARG);
+        if (raw == null || raw.trim().isEmpty()) {
+            return MIN_USER_KIKU_NOTES;
+        }
+        try {
+            return Math.max(1, Integer.parseInt(raw.trim()));
+        } catch (NumberFormatException ignored) {
+            return MIN_USER_KIKU_NOTES;
+        }
     }
 
     private void assertAllCardsHaveNotes(Records.CollectionSnapshot snapshot) {

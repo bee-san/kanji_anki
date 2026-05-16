@@ -1,7 +1,4 @@
 name: SonarQube
-concurrency:
-  group: sonarqube-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 on:
   workflow_dispatch:
@@ -18,33 +15,42 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'tools/**'
+      - '.github/workflows/sonarqube.yml'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
+      - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-      - '.github/workflows/sonarqube.yml'
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'tools/**'
+      - '.github/workflows/sonarqube.yml'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
+      - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-      - '.github/workflows/sonarqube.yml'
+
+concurrency:
+  group: sonarqube-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    name: Build and analyze
+  analyze:
+    name: Build coverage and analyze
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 40
     permissions:
       contents: read
+      pull-requests: read
 
     steps:
       - name: Check out repository
@@ -92,7 +98,7 @@ jobs:
                 fsrs-java/*)
                   FSRS_CHANGED=true
                   ;;
-                build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|.github/workflows/sonarqube.yml)
+                build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/sonarqube.yml)
                   GRADLE_CHANGED=true
                   ;;
               esac
@@ -133,7 +139,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Enable KVM access (full-coverage mode only)
         if: steps.coverage-mode.outputs.full == 'true'
@@ -168,8 +174,8 @@ jobs:
           if [ ${#TASKS[@]} -eq 0 ]; then
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          gradle :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
-          gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
+          ./gradlew :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
+          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
 
       - name: Build and analyze (full connected coverage)
         if: steps.coverage-mode.outputs.full == 'true'
@@ -185,7 +191,7 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            gradle \
+            ./gradlew \
               :core:test \
               :core:jacocoTestReport \
               :fsrs-java:test \
@@ -200,7 +206,7 @@ jobs:
               -PsonarFullCoverage=true \
               -PsonarProjectVersion=${{ github.sha }}
             test -f app/build/reports/coverage/androidTest/debug/connected/report.xml
-            gradle sonar \
+            ./gradlew sonar \
               --parallel \
               -Dorg.gradle.parallel=true \
               -PsonarFullCoverage=true \

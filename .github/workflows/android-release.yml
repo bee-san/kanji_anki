@@ -3,11 +3,11 @@ name: Android Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag, for example v0.3.0"
+        description: 'Release tag, for example v0.4.34'
         required: true
         type: string
 
@@ -40,7 +40,7 @@ jobs:
           fi
 
           if [[ ! "${release_tag}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "::error::Release tag must match vMAJOR.MINOR.PATCH."
+            echo '::error::Release tag must match vMAJOR.MINOR.PATCH.'
             exit 1
           fi
 
@@ -76,12 +76,10 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
-        with:
-          gradle-version: "9.4.1"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
@@ -89,19 +87,7 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Test, coverage, lint, and asset validation
-        run: |
-          gradle --parallel -Dorg.gradle.parallel=true \
-            :core:test \
-            :core:jacocoTestReport \
-            :core:jacocoTestCoverageVerification \
-            :app:testDebugUnitTest \
-            :app:jacocoDebugUnitTestReport \
-            :app:compileDebugAndroidTestJavaWithJavac \
-            :app:lintDebug
-          python3 -m unittest tools/test_generate_dictionary_assets.py
+          sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Decode signing keystore
         id: signing
@@ -113,7 +99,7 @@ jobs:
           printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
           echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
 
-      - name: Test, coverage, lint, and release build
+      - name: Run release gate and build signed APK
         env:
           KANI_VERSION_NAME: ${{ needs.metadata.outputs.version_name }}
           KANI_VERSION_CODE: ${{ needs.metadata.outputs.version_code }}
@@ -121,19 +107,29 @@ jobs:
           KANI_SIGNING_STORE_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_STORE_PASSWORD }}
           KANI_SIGNING_KEY_ALIAS: ${{ secrets.KANJI_ANKI_SIGNING_KEY_ALIAS }}
           KANI_SIGNING_KEY_PASSWORD: ${{ secrets.KANJI_ANKI_SIGNING_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --parallel -Dorg.gradle.parallel=true
+        run: ./gradlew ciRelease --parallel -Dorg.gradle.parallel=true
 
-      - name: Prepare release assets
-        id: assets
+      - name: Verify release APK metadata and signature
         run: |
-          source_apk="app/build/outputs/apk/release/app-release.apk"
+          set -euo pipefail
+          source_apk='app/build/outputs/apk/release/app-release.apk'
           if [[ ! -f "${source_apk}" ]]; then
             echo "::error::Expected release APK at ${source_apk}"
             exit 1
           fi
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${source_apk}"
+          badging="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${source_apk}")"
+          grep -F "package: name='dev.bee.kanjianki'" <<< "${badging}"
+          grep -F "versionCode='${{ needs.metadata.outputs.version_code }}'" <<< "${badging}"
+          grep -F "versionName='${{ needs.metadata.outputs.version_name }}'" <<< "${badging}"
 
-          apk_name="${{ needs.metadata.outputs.apk_name }}"
-          checksum_name="${{ needs.metadata.outputs.checksum_name }}"
+      - name: Prepare release assets
+        id: assets
+        run: |
+          set -euo pipefail
+          source_apk='app/build/outputs/apk/release/app-release.apk'
+          apk_name='${{ needs.metadata.outputs.apk_name }}'
+          checksum_name='${{ needs.metadata.outputs.checksum_name }}'
           apk_path="${RUNNER_TEMP}/${apk_name}"
           sha_path="${RUNNER_TEMP}/${checksum_name}"
           cp "${source_apk}" "${apk_path}"
@@ -152,6 +148,65 @@ jobs:
             ${{ steps.assets.outputs.apk_path }}
             ${{ steps.assets.outputs.sha_path }}
 
+  quality-status:
+    name: Require green commit checks
+    runs-on: ubuntu-latest
+    needs: metadata
+    permissions:
+      checks: read
+      contents: read
+    timeout-minutes: 5
+
+    steps:
+      - name: Require Android CI, SonarQube, and CodeQL success
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIRED_CHECKS: Fast confidence gate|Build coverage and analyze|Analyze Java/Kotlin
+        run: |
+          set -euo pipefail
+          checks_json="${RUNNER_TEMP}/check-runs.json"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" > "${checks_json}"
+          python3 - "${checks_json}" <<'PY'
+          import json
+          import os
+          import sys
+
+          required = os.environ["REQUIRED_CHECKS"].split("|")
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              payload = json.load(handle)
+          runs = payload.get("check_runs", [])
+          by_name = {}
+          for run in runs:
+              by_name.setdefault(run.get("name"), []).append(run)
+
+          failures = []
+          for name in required:
+              candidates = by_name.get(name, [])
+              if not candidates:
+                  failures.append(f"{name}: missing")
+                  continue
+              latest = sorted(
+                  candidates,
+                  key=lambda item: item.get("completed_at") or item.get("started_at") or "",
+                  reverse=True,
+              )[0]
+              conclusion = latest.get("conclusion")
+              status = latest.get("status")
+              if status != "completed" or conclusion != "success":
+                  failures.append(f"{name}: status={status} conclusion={conclusion}")
+
+          if failures:
+              print("Required commit checks are not green:")
+              for failure in failures:
+                  print(f"- {failure}")
+              raise SystemExit(1)
+          PY
+
+  ankidroid-fixture:
+    name: Verify AnkiDroid provider fixture
+    needs: metadata
+    uses: ./.github/workflows/android-instrumented.yml
+
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
@@ -160,6 +215,8 @@ jobs:
     needs:
       - metadata
       - validate
+      - quality-status
+      - ankidroid-fixture
 
     steps:
       - name: Download release assets
@@ -172,12 +229,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          release_tag="${{ needs.metadata.outputs.release_tag }}"
+          set -euo pipefail
+          release_tag='${{ needs.metadata.outputs.release_tag }}'
           apk_path="${RUNNER_TEMP}/release-assets/${{ needs.metadata.outputs.apk_name }}"
           sha_path="${RUNNER_TEMP}/release-assets/${{ needs.metadata.outputs.checksum_name }}"
 
           if [[ ! -f "${apk_path}" || ! -f "${sha_path}" ]]; then
-            echo "::error::Downloaded release assets are missing."
+            echo '::error::Downloaded release assets are missing.'
             exit 1
           fi
 

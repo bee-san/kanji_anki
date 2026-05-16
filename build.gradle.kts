@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.Exec
+
 plugins {
     id("com.android.application") version "9.1.0" apply false
     id("org.sonarqube") version "7.3.0.8198"
@@ -39,8 +41,51 @@ sonar {
         property("sonar.java.binaries", maybeSonarMainBinaries.joinToString(","))
         property("sonar.java.test.binaries", maybeSonarTestBinaries.joinToString(","))
         property("sonar.coverage.jacoco.xmlReportPaths", maybeSonarCoveragePaths.joinToString(","))
-        property("sonar.issue.ignore.multicriteria", "gameRandomness")
-        property("sonar.issue.ignore.multicriteria.gameRandomness.ruleKey", "java:S2245")
-        property("sonar.issue.ignore.multicriteria.gameRandomness.resourceKey", "**/KanjiGameEngine.java")
     }
+}
+
+tasks.register<Exec>("testDictionaryAssets") {
+    group = "verification"
+    description = "Runs deterministic Python tests for generated dictionary and similar-kanji assets."
+    commandLine("python3", "-m", "unittest", "discover", "-s", "tools", "-p", "test_*.py")
+}
+
+val fastCiTasks = listOf(
+    ":fsrs-java:test",
+    ":fsrs-java:jacocoTestReport",
+    ":fsrs-java:jacocoTestCoverageVerification",
+    ":core:test",
+    ":core:jacocoTestReport",
+    ":core:jacocoTestCoverageVerification",
+    ":app:testDebugUnitTest",
+    ":app:jacocoDebugUnitTestReport",
+    ":app:compileDebugAndroidTestJavaWithJavac",
+    ":app:lintDebug",
+    "testDictionaryAssets",
+)
+
+tasks.register("ciFast") {
+    group = "verification"
+    description = "Runs the deterministic PR confidence gate: JVM tests, coverage, app unit tests, androidTest compile, lint, and asset tests."
+    dependsOn(fastCiTasks)
+}
+
+tasks.register("ciQuality") {
+    group = "verification"
+    description = "Builds the deterministic test, coverage, and bytecode inputs used by SonarQube."
+    dependsOn(
+        "ciFast",
+        ":fsrs-java:jar",
+        ":core:jar",
+        ":app:compileDebugJavaWithJavac",
+    )
+}
+
+tasks.register("ciRelease") {
+    group = "verification"
+    description = "Runs the release confidence gate and assembles the signed release APK."
+    dependsOn(
+        "ciFast",
+        ":app:assembleRelease",
+    )
 }
