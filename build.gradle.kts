@@ -39,5 +39,8 @@ sonar {
         property("sonar.java.binaries", maybeSonarMainBinaries.joinToString(","))
         property("sonar.java.test.binaries", maybeSonarTestBinaries.joinToString(","))
         property("sonar.coverage.jacoco.xmlReportPaths", maybeSonarCoveragePaths.joinToString(","))
+        property("sonar.issue.ignore.multicriteria", "gameRandomness")
+        property("sonar.issue.ignore.multicriteria.gameRandomness.ruleKey", "java:S2245")
+        property("sonar.issue.ignore.multicriteria.gameRandomness.resourceKey", "**/KanjiGameEngine.java")
     }
 }

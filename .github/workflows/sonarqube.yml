@@ -42,7 +42,7 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Build and analyze
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     permissions:
       contents: read
 
@@ -104,6 +104,18 @@ jobs:
           echo "fsrs=$FSRS_CHANGED" >> "$GITHUB_OUTPUT"
           echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
 
+      - name: Select coverage mode
+        id: coverage-mode
+        run: |
+          set -euo pipefail
+          FULL_COVERAGE=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.full_coverage }}" = "true" ]; then
+            FULL_COVERAGE=true
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ steps.changed-areas.outputs.app }}" = "true" ]; then
+            FULL_COVERAGE=true
+          fi
+          echo "full=$FULL_COVERAGE" >> "$GITHUB_OUTPUT"
+
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
@@ -125,55 +137,12 @@ jobs:
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Install emulator packages (manual full-coverage mode only)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
-        run: |
-          sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
-
-      - name: Enable KVM access (manual full-coverage mode only)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+      - name: Enable KVM access (full-coverage mode only)
+        if: steps.coverage-mode.outputs.full == 'true'
         run: |
           sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-
-      - name: Start Android emulator (manual full-coverage mode)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
-        run: |
-          set -euo pipefail
-          echo "no" | avdmanager create avd --force --name sonar-api30 --package "system-images;android-30;google_apis;x86_64"
-          "$ANDROID_HOME/emulator/emulator" \
-            -avd sonar-api30 \
-            -no-window \
-            -no-audio \
-            -no-snapshot \
-            -gpu swiftshader_indirect \
-            -no-boot-anim \
-            -no-skin \
-            -no-anim \
-            > /tmp/emulator.log 2>&1 &
-          EMULATOR_PID=$!
-          if ! timeout 90s adb wait-for-device; then
-            echo "adb wait-for-device timed out."
-            kill "$EMULATOR_PID" || true
-            cat /tmp/emulator.log
-            exit 1
-          fi
-          boot_completed=""
-          for attempt in $(seq 1 90); do
-            boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
-            if [ "$boot_completed" = "1" ]; then
-              break
-            fi
-            sleep 4
-          done
-          if [ "$boot_completed" != "1" ]; then
-            echo "Emulator failed to report sys.boot_completed in time."
-            kill "$EMULATOR_PID" || true
-            cat /tmp/emulator.log
-            exit 1
-          fi
-          adb shell input keyevent 82
 
       - name: Cache SonarQube packages
         uses: actions/cache@v5
@@ -183,7 +152,7 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
 
       - name: Build and analyze (PR-safe fast path)
-        if: github.event_name != 'workflow_dispatch' || github.event.inputs.full_coverage != 'true'
+        if: steps.coverage-mode.outputs.full != 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -204,23 +173,36 @@ jobs:
           gradle :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
           gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
 
-      - name: Build and analyze (manual full-coverage mode)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
+      - name: Build and analyze (full connected coverage)
+        if: steps.coverage-mode.outputs.full == 'true'
+        uses: reactivecircus/android-emulator-runner@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: >
-          gradle
-          :core:test
-          :core:jacocoTestReport
-          :fsrs-java:test
-          :fsrs-java:jacocoTestReport
-          :app:testDebugUnitTest
-          :app:jacocoDebugUnitTestReport
-          :app:lintDebug
-          :app:compileDebugAndroidTestJavaWithJavac
-          :app:createDebugCoverageReport
-          --parallel
-          -Dorg.gradle.parallel=true
-          -PsonarFullCoverage=true
-          -PsonarProjectVersion=${{ github.sha }}
-          sonar
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            gradle \
+              :core:test \
+              :core:jacocoTestReport \
+              :fsrs-java:test \
+              :fsrs-java:jacocoTestReport \
+              :app:testDebugUnitTest \
+              :app:jacocoDebugUnitTestReport \
+              :app:lintDebug \
+              :app:compileDebugAndroidTestJavaWithJavac \
+              :app:createDebugCoverageReport \
+              --parallel \
+              -Dorg.gradle.parallel=true \
+              -PsonarFullCoverage=true \
+              -PsonarProjectVersion=${{ github.sha }}
+            test -f app/build/reports/coverage/androidTest/debug/connected/report.xml
+            gradle sonar \
+              --parallel \
+              -Dorg.gradle.parallel=true \
+              -PsonarFullCoverage=true \
+              -PsonarProjectVersion=${{ github.sha }}
