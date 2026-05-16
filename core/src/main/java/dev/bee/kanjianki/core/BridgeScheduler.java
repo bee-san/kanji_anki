@@ -623,6 +623,7 @@ public final class BridgeScheduler {
         state.stepIndex = 0;
         KaniFsrsReviewResult result = fsrsAdapter.initialReview(
                 context.rating,
+                state.stability,
                 state.difficulty,
                 context.parameters.targetRetention,
                 isNewLearning

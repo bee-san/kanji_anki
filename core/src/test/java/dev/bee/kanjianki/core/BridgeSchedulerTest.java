@@ -765,6 +765,51 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void relearningGraduationPreservesPostLapseStability() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long dueAt = 30L * BridgeScheduler.DAY;
+        Records.TaskMemory taskMemory = new Records.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .stability(5.0)
+                .difficulty(6.0)
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .kanjiMeaningMemory(taskMemory)
+                .build();
+        HashSet<String> consumed = new HashSet<>();
+
+        Records.ReviewResult lapsed = scheduler.applyReview(
+                item.withToken("lapse"),
+                new Records.ReviewRequest("裂", "lapse", "again", false, false, false, 0),
+                consumed,
+                dueAt
+        );
+        double postLapseStability = lapsed.item.stability;
+
+        Records.ReviewResult graduated = scheduler.applyReview(
+                lapsed.item.withToken("graduate"),
+                new Records.ReviewRequest("裂", "graduate", "good", false, false, false, 0),
+                consumed,
+                lapsed.item.dueAtMillis
+        );
+
+        assertEquals(Records.SchedulerPhase.REVIEW, graduated.item.phase);
+        assertEquals(postLapseStability, graduated.item.stability, 0.0);
+        assertEquals(postLapseStability, graduated.item.kanjiMeaningMemory.stability, 0.0);
+    }
+
+    @Test
     public void activeRungInitialMemoryFallsBackToItemFsrsState() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long dueAt = 30L * BridgeScheduler.DAY;

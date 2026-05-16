@@ -10,16 +10,16 @@ public final class KaniFsrsAdapterTest {
     public void latestAdapterUsesTwentyOneParameterEngineAndClampsMigratedState() {
         LatestFsrsAdapter adapter = new LatestFsrsAdapter();
 
-        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9, true);
+        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 0.4, 6.0, 0.9, true);
         assertEquals(2.3065, initial.stability, 0.000001);
         assertEquals(2.118103970459, initial.difficulty, 0.000001);
         assertEquals(2, initial.intervalDays());
 
         KaniFsrsReviewResult relearningGraduation =
-                adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9, false);
-        assertEquals(2.3065, relearningGraduation.stability, 0.000001);
+                adapter.initialReview(BridgeScheduler.RATING_GOOD, 0.96, 6.0, 0.9, false);
+        assertEquals(0.96, relearningGraduation.stability, 0.000001);
         assertEquals(5.989228369297, relearningGraduation.difficulty, 0.000001);
-        assertEquals(2, relearningGraduation.intervalDays());
+        assertEquals(1, relearningGraduation.intervalDays());
 
         KaniFsrsReviewResult review = adapter.review(
                 0.0,

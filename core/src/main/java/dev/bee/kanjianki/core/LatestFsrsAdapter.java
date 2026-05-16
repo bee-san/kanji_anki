@@ -23,6 +23,7 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
     @Override
     public KaniFsrsReviewResult initialReview(
             String rating,
+            double currentStability,
             double currentDifficulty,
             double targetRetention,
             boolean isNewLearning
@@ -31,7 +32,7 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
         FsrsMemoryState state = engine.initialState(fsrsRating);
         if (!isNewLearning) {
             state = new FsrsMemoryState(
-                    state.stability(),
+                    Math.max(currentStability, Fsrs.STABILITY_MIN),
                     engine.nextDifficulty(clampDifficulty(currentDifficulty), fsrsRating)
             );
         }
