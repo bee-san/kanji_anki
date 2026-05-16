@@ -85,7 +85,7 @@ public final class LocalStoreInstrumentedTest {
                 Collections.singletonList(example)
         );
 
-        long syncId = store.saveSuccessfulSync(
+        store.saveSuccessfulSync(
                 snapshot,
                 Collections.singletonList(imported),
                 Collections.singletonList(row),
@@ -515,7 +515,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testLegacyTimelineBackfillsSuspendedImportAndRetiredOrphanStudyItem() {
+    public void testVersionSeventeenMigrationResetsLegacyTimelineHistory() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -560,19 +560,17 @@ public final class LocalStoreInstrumentedTest {
         store = new LocalStore(context);
 
         Records.KanjiRecoveryTimeline imported = store.timelineForKanji("拉");
-        assertEquals(1, countTimelineType(imported, "suspended_imported"));
-        assertTimelineEventSource(imported, "suspended_imported", "拉麺", "らーめん");
         Records.KanjiRecoveryTimeline orphan = store.timelineForKanji("孤");
+        assertEquals(0, count("kanji_timeline_events"));
+        assertEquals(0, countTimelineType(imported, "suspended_imported"));
         assertNull(orphan.currentRow);
         assertNull(orphan.currentStudyItem);
-        assertEquals(1, countTimelineType(orphan, "first_seen"));
-        assertEquals(1, countTimelineType(orphan, "retired"));
-        assertTimelineEventDetailContains(orphan, "first_seen", "historical Kani study state");
-        assertTimelineEventDetailContains(orphan, "retired", "already retired");
+        assertEquals(0, countTimelineType(orphan, "first_seen"));
+        assertEquals(0, countTimelineType(orphan, "retired"));
     }
 
     @Test
-    public void testVersionFourMigrationPreservesV1DataBackfillsTimelineAndAddsStudyLadderColumns() {
+    public void testVersionSeventeenMigrationPreservesProviderMirrorAndResetsLocalStatsHistory() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -633,13 +631,14 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
         assertEquals(1, count("dashboard_rows"));
-        assertEquals(1, count("review_log"));
+        assertEquals(0, count("review_log"));
+        assertEquals(0, count("kanji_timeline_events"));
+        assertEquals(0, count("sync_kanji_snapshots"));
         assertMigratedColumnsExist();
-        assertMigratedTimelineState();
     }
 
     @Test
-    public void testLegacyHistoricalSyncBackfillsLatestSuccessfulMirrorRows() {
+    public void testVersionSeventeenMigrationResetsLegacyHistoricalSyncHistoryButKeepsMirrorRows() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.Note note = note(1L, "確認", "かくにん", "confirmation", "確認した。");
         Records.Card card = new Records.Card(400L, 1L, 0, "9001", "Kiku Deck", 2, 2, 0, 25, 9, 1, false, 6.5, 4.5, 0.82);
@@ -661,19 +660,12 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
 
-        assertEquals(1, count("sync_card_snapshots"));
-        assertEquals(1, count("sync_note_snapshots"));
-        assertTrue(count("sync_kanji_snapshots") >= 2);
-        assertHistoricalCardSnapshot(syncId, 400L, 0, 1, 9, 1, 6.5, 4.5, 0.82);
-        assertHistoricalIdentitySnapshot(syncId, 400L, "Kiku Deck", "Kiku Deck", 0L, "Kiku Deck", "Kiku Deck");
-        assertHistoricalKanjiSnapshot(syncId, "確", 1, 0);
-        assertScalarString(
-                "sync_kanji_snapshots",
-                "reason_code",
-                "sync_id=? AND kanji=?",
-                new String[]{Long.toString(syncId), "確"},
-                "suspended_archive"
-        );
+        assertEquals(1, count("source_cards"));
+        assertEquals(1, count("source_notes"));
+        assertEquals(1, count("dashboard_rows"));
+        assertEquals(0, count("sync_card_snapshots"));
+        assertEquals(0, count("sync_note_snapshots"));
+        assertEquals(0, count("sync_kanji_snapshots"));
     }
 
     @Test
@@ -807,11 +799,18 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("similar_kanji_repair_queue", "repair_kanji"));
         assertTrue(hasColumn("similar_kanji_review_log", "selected_kanji"));
         assertTrue(hasColumn("review_log", "task_type"));
+        assertTrue(hasColumn("review_log", "review_day_start"));
         assertTrue(hasColumn("review_log", "hints_used"));
         assertTrue(hasColumn("review_log", "memory_before"));
         assertTrue(hasColumn("review_log", "scheduler_state_after_json"));
         assertTrue(hasColumn("study_task_log", "task_key"));
         assertTrue(hasColumn("study_task_log", "active_elapsed_ms"));
+        assertTrue(hasIndex("review_log", "idx_review_log_reviewed_at"));
+        assertTrue(hasIndex("review_log", "idx_review_log_day_reviewed"));
+        assertTrue(hasIndex("review_log", "idx_review_log_kanji_reviewed"));
+        assertTrue(hasIndex("review_log", "idx_review_log_rating_reviewed"));
+        assertTrue(hasIndex("study_items", "idx_study_items_ladder_stats"));
+        assertTrue(hasIndex("sync_kanji_snapshots", "idx_sync_kanji_snapshots_kanji_finished"));
     }
 
     private void assertMigratedHistoricalSyncColumns() {
@@ -1363,9 +1362,10 @@ public final class LocalStoreInstrumentedTest {
 
     @Test
     public void testReviewStatsAndSchedulerParametersPersist() {
-        store.saveReview(new Records.ReviewRequest("拉", "token-a", "again", true, false, false, 0), "again", 1000L);
-        store.saveReview(new Records.ReviewRequest("麺", "token-b", "good", true, true, false, 0), "good", 2000L);
-        store.saveReview(new Records.ReviewRequest("泳", "token-c", "easy", false, false, true, 0), "easy", 3000L);
+        long firstReviewAt = 86_400_000L;
+        store.saveReview(new Records.ReviewRequest("拉", "token-a", "again", true, false, false, 0), "again", firstReviewAt);
+        store.saveReview(new Records.ReviewRequest("麺", "token-b", "good", true, true, false, 0), "good", firstReviewAt + 1000L);
+        store.saveReview(new Records.ReviewRequest("泳", "token-c", "easy", false, false, true, 0), "easy", firstReviewAt + 2000L);
         Records.ReviewStats stats = store.reviewStatsSince(0L);
         assertEquals(3, stats.total);
         assertEquals(1, stats.again);
@@ -1380,6 +1380,13 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, impact.writingPassed);
         assertEquals(1, impact.writingFailed);
         assertEquals(1, impact.manualOverrides);
+        assertScalarLong(
+                "review_log",
+                "review_day_start",
+                "token=?",
+                new String[]{"token-a"},
+                localDayStart(firstReviewAt)
+        );
 
         Records.SchedulerParameters tuned = Records.SchedulerParameters.defaults()
                 .withTargetRetention(0.92)
@@ -2461,6 +2468,17 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
+    private void assertScalarLong(String table, String column, String where, String[] args, long expected) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT " + column + " FROM " + table + " WHERE " + where, args);
+        try {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(expected, cursor.getLong(0));
+        } finally {
+            cursor.close();
+        }
+    }
+
     private void assertSourceCardFsrs(double stability, double difficulty, double retrievability) {
         SQLiteDatabase db = store.getReadableDatabase();
         Cursor cursor = db.rawQuery("SELECT fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM source_cards WHERE card_id=10", null);
@@ -2544,6 +2562,21 @@ public final class LocalStoreInstrumentedTest {
         try {
             while (cursor.moveToNext()) {
                 if (column.equals(cursor.getString(cursor.getColumnIndexOrThrow("name")))) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private boolean hasIndex(String table, String index) {
+        SQLiteDatabase db = store.getReadableDatabase();
+        Cursor cursor = db.rawQuery("PRAGMA index_list(" + table + ")", null);
+        try {
+            while (cursor.moveToNext()) {
+                if (index.equals(cursor.getString(cursor.getColumnIndexOrThrow("name")))) {
                     return true;
                 }
             }

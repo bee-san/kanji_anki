@@ -13,6 +13,7 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,6 +92,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         values.put(COLUMN_WRITING_PASSED, request.writingPassed ? 1 : 0);
         values.put(COLUMN_MANUAL_OVERRIDE, request.manualOverride ? 1 : 0);
         values.put(COLUMN_REVIEWED_AT, reviewedAt);
+        values.put(COLUMN_REVIEW_DAY_START, localDayStart(reviewedAt));
         values.put(COLUMN_TASK_TYPE, request.taskType);
         values.put(COLUMN_ANSWER_SIGNATURE, request.answerSignature);
         values.put("prompt", request.prompt);
@@ -546,49 +548,32 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public Records.ReviewStats reviewStatsSince(long sinceMillis) {
-        Cursor cursor = getReadableDatabase().query(
-                TABLE_REVIEW_LOG,
-                new String[]{COLUMN_RATING, COLUMN_WRITING_REQUIRED, COLUMN_WRITING_PASSED, COLUMN_MANUAL_OVERRIDE},
-                "reviewed_at>=?",
-                new String[]{Long.toString(sinceMillis)},
-                null,
-                null,
-                null
+        Cursor cursor = getReadableDatabase().rawQuery(
+                "SELECT "
+                        + "COUNT(*) AS total, "
+                        + "COALESCE(SUM(CASE WHEN rating='again' THEN 1 ELSE 0 END), 0) AS again_count, "
+                        + "COALESCE(SUM(CASE WHEN rating='hard' THEN 1 ELSE 0 END), 0) AS hard_count, "
+                        + "COALESCE(SUM(CASE WHEN rating='easy' THEN 1 ELSE 0 END), 0) AS easy_count, "
+                        + "COALESCE(SUM(CASE WHEN rating NOT IN ('again', 'hard', 'easy') THEN 1 ELSE 0 END), 0) AS good_count, "
+                        + "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, "
+                        + "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count "
+                        + "FROM " + TABLE_REVIEW_LOG + " WHERE reviewed_at>=?",
+                new String[]{Long.toString(sinceMillis)}
         );
-        int total = 0;
-        int again = 0;
-        int hard = 0;
-        int good = 0;
-        int easy = 0;
-        int writingRequired = 0;
-        int writingFailed = 0;
         try {
-            while (cursor.moveToNext()) {
-                total++;
-                String rating = string(cursor, COLUMN_RATING);
-                if (RATING_AGAIN.equals(rating)) {
-                    again++;
-                } else if ("hard".equals(rating)) {
-                    hard++;
-                } else if ("easy".equals(rating)) {
-                    easy++;
-                } else {
-                    good++;
-                }
-                boolean required = integer(cursor, COLUMN_WRITING_REQUIRED) == 1;
-                boolean passed = integer(cursor, COLUMN_WRITING_PASSED) == 1;
-                boolean override = integer(cursor, COLUMN_MANUAL_OVERRIDE) == 1;
-                if (required) {
-                    writingRequired++;
-                    if (!passed && !override) {
-                        writingFailed++;
-                    }
-                }
-            }
+            cursor.moveToFirst();
+            return new Records.ReviewStats(
+                    cursor.getInt(0),
+                    cursor.getInt(1),
+                    cursor.getInt(2),
+                    cursor.getInt(4),
+                    cursor.getInt(3),
+                    cursor.getInt(5),
+                    cursor.getInt(6)
+            );
         } finally {
             cursor.close();
         }
-        return new Records.ReviewStats(total, again, hard, good, easy, writingRequired, writingFailed);
     }
 
     public boolean recordStudyTaskAnswered(String taskKey, String kanji, String taskType, long startedAt, long answeredAt, long activeElapsedMillis, String outcome) {
@@ -648,5 +633,15 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
             cursor.close();
         }
         return kanji;
+    }
+
+    private static long localDayStart(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
     }
 }

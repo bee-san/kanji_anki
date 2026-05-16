@@ -26,7 +26,7 @@ import java.util.Set;
 public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final java.util.regex.Pattern TAB_SEPARATOR = java.util.regex.Pattern.compile("\\t");
     static final String DB_NAME = "kanji_anki_simple.db";
-    static final int DB_VERSION = 16;
+    static final int DB_VERSION = 17;
     static final String TABLE_SETTINGS = "settings";
     static final String TABLE_SYNC_RUNS = "sync_runs";
     static final String TABLE_SOURCE_NOTES = "source_notes";
@@ -123,6 +123,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String COLUMN_REASON_TEXT = "reason_text";
     static final String COLUMN_REMOVAL_MESSAGE = "removal_message";
     static final String COLUMN_REPS = "reps";
+    static final String COLUMN_REVIEW_DAY_START = "review_day_start";
     static final String COLUMN_REVIEWED_AT = "reviewed_at";
     static final String COLUMN_SENTENCE = "sentence";
     static final String COLUMN_SOURCE = "source";
@@ -158,7 +159,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String COLUMN_SIMILAR_KANJI_MEMORY = "similar_kanji_memory";
     static final String STUDY_ITEMS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_STUDY_ITEMS + " (kanji TEXT NOT NULL, state TEXT NOT NULL, due_at INTEGER NOT NULL, stability REAL NOT NULL, difficulty REAL NOT NULL, total_reviews INTEGER NOT NULL, lapses INTEGER NOT NULL, learning_step INTEGER NOT NULL, writing_level INTEGER NOT NULL, recognition_stage INTEGER NOT NULL DEFAULT 0, consecutive_failed_recognition_days INTEGER NOT NULL DEFAULT 0, last_failed_recognition_day INTEGER NOT NULL DEFAULT 0, writing_remediation_pending INTEGER NOT NULL DEFAULT 0, suppressed_by_task_type TEXT NOT NULL DEFAULT '', suppressed_at INTEGER NOT NULL DEFAULT 0, mature_interval_days INTEGER NOT NULL DEFAULT 0, answer_signature TEXT NOT NULL DEFAULT '', typing_meaning_memory TEXT NOT NULL DEFAULT '', kanji_meaning_memory TEXT NOT NULL DEFAULT '', font_meaning_memory TEXT NOT NULL DEFAULT '', word_reading_memory TEXT NOT NULL DEFAULT '', writing_remediation_memory TEXT NOT NULL DEFAULT '', rung TEXT NOT NULL DEFAULT 'kanji_meaning', phase TEXT NOT NULL DEFAULT 'new_learning', real_pass_streak INTEGER NOT NULL DEFAULT 0, real_again_streak INTEGER NOT NULL DEFAULT 0, last_real_review_due_at INTEGER NOT NULL DEFAULT 0, similar_kanji_memory TEXT NOT NULL DEFAULT '', active_token TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature))";
     static final String LEARNING_REPEATS_TABLE_SQL = SQL_CREATE_TABLE + TABLE_LEARNING_REPEATS + " (kanji TEXT NOT NULL, answer_signature TEXT NOT NULL DEFAULT '', task_type TEXT NOT NULL, repeat_type TEXT NOT NULL, step_index INTEGER NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (kanji, answer_signature, task_type))";
-    static final String REVIEW_LOG_TABLE_SQL = SQL_CREATE_TABLE + TABLE_REVIEW_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
+    static final String REVIEW_LOG_TABLE_SQL = SQL_CREATE_TABLE + TABLE_REVIEW_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, token TEXT NOT NULL UNIQUE, rating TEXT NOT NULL, writing_required INTEGER NOT NULL, writing_passed INTEGER NOT NULL, manual_override INTEGER NOT NULL, reviewed_at INTEGER NOT NULL, review_day_start INTEGER NOT NULL DEFAULT 0, task_type TEXT NOT NULL DEFAULT '', answer_signature TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '', hints_used INTEGER NOT NULL DEFAULT 0, writing_clean INTEGER NOT NULL DEFAULT 0, memory_before TEXT NOT NULL DEFAULT '', memory_after TEXT NOT NULL DEFAULT '', scheduler_state_after_json TEXT NOT NULL DEFAULT '')";
     static final String STUDY_TASK_LOG_TABLE_SQL = SQL_CREATE_TABLE_IF_NEEDED + TABLE_STUDY_TASK_LOG + " (id INTEGER PRIMARY KEY AUTOINCREMENT, task_key TEXT NOT NULL UNIQUE, kanji TEXT NOT NULL, task_type TEXT NOT NULL, started_at INTEGER NOT NULL, answered_at INTEGER NOT NULL, active_elapsed_ms INTEGER NOT NULL, outcome TEXT NOT NULL)";
     static final long MAX_STUDY_TASK_ELAPSED_MS = 30L * 60L * 1000L;
     static final String RATING_AGAIN = "again";
@@ -225,6 +226,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX idx_learning_repeats_due ON " + TABLE_LEARNING_REPEATS + "(due_at)");
         createTimelineTables(db);
         createHistoricalSyncTables(db);
+        createStatsIndexes(db);
     }
 
     @Override
@@ -298,6 +300,9 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         if (oldVersion < 16) {
             rebuildStudyItemsForLadderScheduler(db);
         }
+        if (oldVersion < 17) {
+            migrateStatsStorageForAggregates(db);
+        }
     }
 
     void rebuildStudyItemsForLadderScheduler(SQLiteDatabase db) {
@@ -315,6 +320,34 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     void createStudyTaskLogTable(SQLiteDatabase db) {
         db.execSQL(STUDY_TASK_LOG_TABLE_SQL);
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_task_log_answered ON " + TABLE_STUDY_TASK_LOG + "(answered_at)");
+    }
+
+    void createStatsIndexes(SQLiteDatabase db) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_review_log_reviewed_at ON " + TABLE_REVIEW_LOG + "(reviewed_at)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_review_log_day_reviewed ON " + TABLE_REVIEW_LOG + "(review_day_start, reviewed_at)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_review_log_kanji_reviewed ON " + TABLE_REVIEW_LOG + "(kanji, reviewed_at)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_review_log_rating_reviewed ON " + TABLE_REVIEW_LOG + "(rating, reviewed_at)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_study_items_ladder_stats ON " + TABLE_STUDY_ITEMS + "(state, phase, rung)");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_finished ON " + TABLE_SYNC_KANJI_SNAPSHOTS + "(kanji, finished_at)");
+    }
+
+    void migrateStatsStorageForAggregates(SQLiteDatabase db) {
+        db.execSQL(REVIEW_LOG_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED));
+        addNullableColumn(db, TABLE_REVIEW_LOG, COLUMN_REVIEW_DAY_START, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
+        createStudyTaskLogTable(db);
+        createTimelineTables(db);
+        createHistoricalSyncTables(db);
+        clearLocalStatsHistory(db);
+        createStatsIndexes(db);
+    }
+
+    void clearLocalStatsHistory(SQLiteDatabase db) {
+        db.delete(TABLE_REVIEW_LOG, null, null);
+        db.delete(TABLE_STUDY_TASK_LOG, null, null);
+        db.delete(TABLE_KANJI_TIMELINE_EVENTS, null, null);
+        db.delete(TABLE_SYNC_CARD_SNAPSHOTS, null, null);
+        db.delete(TABLE_SYNC_NOTE_SNAPSHOTS, null, null);
+        db.delete(TABLE_SYNC_KANJI_SNAPSHOTS, null, null);
     }
 
     void createKanjiInventoryTables(SQLiteDatabase db) {
