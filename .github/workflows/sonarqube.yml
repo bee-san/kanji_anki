@@ -111,8 +111,6 @@ jobs:
           FULL_COVERAGE=false
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.full_coverage }}" = "true" ]; then
             FULL_COVERAGE=true
-          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ steps.changed-areas.outputs.app }}" = "true" ]; then
-            FULL_COVERAGE=true
           fi
           echo "full=$FULL_COVERAGE" >> "$GITHUB_OUTPUT"
 
