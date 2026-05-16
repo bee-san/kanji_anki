@@ -376,13 +376,13 @@ public class LadderSchedulerTest {
     @Test
     public void similarRungIncludedWhenAvailable() {
         Records.LadderRung demoted = BridgeScheduler.demoteRung(
-                Records.LadderRung.KANJI_MEANING,
+                Records.LadderRung.TYPE_MEANING,
                 true
         );
         assertEquals(Records.LadderRung.SIMILAR_KANJI, demoted);
 
         Records.LadderRung promoted = BridgeScheduler.promoteRung(
-                Records.LadderRung.TYPE_MEANING,
+                Records.LadderRung.WRITE_KANJI,
                 true
         );
         assertEquals(Records.LadderRung.SIMILAR_KANJI, promoted);
@@ -789,12 +789,12 @@ public class LadderSchedulerTest {
 
     @Test
     public void promotionLandsOnSimilarKanjiWhenAvailable() {
-        // Card at TYPE_MEANING with hasSimilarKanji=true: 3 passes should
-        // promote to SIMILAR_KANJI (not skip to KANJI_MEANING).
+        // Card at WRITE_KANJI with hasSimilarKanji=true: 3 passes should
+        // promote to SIMILAR_KANJI (not skip to TYPE_MEANING).
         BridgeScheduler scheduler = new BridgeScheduler();
         HashSet<String> consumed = new HashSet<>();
-        Records.StudyItem item = reviewCard("裂", Records.LadderRung.TYPE_MEANING, 0L)
-                .copyBuilder().rung(Records.LadderRung.TYPE_MEANING).build()
+        Records.StudyItem item = reviewCard("裂", Records.LadderRung.WRITE_KANJI, 0L)
+                .copyBuilder().rung(Records.LadderRung.WRITE_KANJI).build()
                 .withHasSimilarKanji(true);
         long now = 1000L;
 

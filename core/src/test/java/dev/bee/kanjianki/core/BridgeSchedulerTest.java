@@ -1507,8 +1507,8 @@ public class BridgeSchedulerTest {
         );
 
         assertNotNull(session);
-        assertEquals(Records.LadderRung.SIMILAR_KANJI, session.item.rung);
-        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session.taskType);
+        assertEquals(Records.LadderRung.TYPE_MEANING, session.item.rung);
+        assertEquals(BridgeScheduler.TASK_TYPE_MEANING, session.taskType);
     }
 
     @Test
