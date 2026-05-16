@@ -85,7 +85,7 @@ public final class LocalStoreInstrumentedTest {
                 Collections.singletonList(example)
         );
 
-        store.saveSuccessfulSync(
+        long syncId = store.saveSuccessfulSync(
                 snapshot,
                 Collections.singletonList(imported),
                 Collections.singletonList(row),
