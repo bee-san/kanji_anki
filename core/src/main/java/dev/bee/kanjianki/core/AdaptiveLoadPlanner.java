@@ -25,30 +25,6 @@ public final class AdaptiveLoadPlanner {
         return planInternal(PlanInputs.from(request));
     }
 
-    public Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
-            int currentStreakDays,
-            Set<String> studiedToday,
-            int workloadPercent,
-            long nowMillis
-    ) {
-        return plan(new PlanRequest.Builder(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, nowMillis).build());
-    }
-
-    public Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
-            int currentStreakDays,
-            Set<String> studiedToday,
-            int workloadPercent,
-            Object... options
-    ) {
-        return plan(PlanRequest.fromLegacy(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, options));
-    }
-
     private Records.AdaptiveLoadPlan planInternal(PlanInputs inputs) {
         List<Candidate> candidates = candidatesFor(inputs);
         if (candidates.isEmpty()) {
@@ -165,15 +141,72 @@ public final class AdaptiveLoadPlanner {
         return statusFor(inputs.workloadPercent, targetPlan.adjustedTarget, targetPlan.ceiling, inputs.stats, recoveryDue);
     }
 
+    public enum WorkloadMode {
+        AUTO(MODE_AUTO),
+        MANUAL(MODE_MANUAL);
+
+        private final String settingValue;
+
+        WorkloadMode(String settingValue) {
+            this.settingValue = settingValue;
+        }
+
+        public String settingValue() {
+            return settingValue;
+        }
+
+        public boolean isAuto() {
+            return this == AUTO;
+        }
+
+        public static WorkloadMode fromSetting(String mode) {
+            return MODE_MANUAL.equals(mode) ? MANUAL : AUTO;
+        }
+    }
+
+    public static final class WorkloadPolicy {
+        private final WorkloadMode mode;
+        private final int workloadPercent;
+        private final int maxItems;
+
+        private WorkloadPolicy(WorkloadMode mode, int workloadPercent, int maxItems) {
+            this.mode = mode == null ? WorkloadMode.AUTO : mode;
+            this.workloadPercent = snapWorkloadPercent(workloadPercent);
+            this.maxItems = maxItems == Integer.MAX_VALUE ? Integer.MAX_VALUE : normalizeMaxItems(maxItems);
+        }
+
+        public static WorkloadPolicy of(WorkloadMode mode, int workloadPercent, int maxItems) {
+            return new WorkloadPolicy(mode, workloadPercent, maxItems);
+        }
+
+        public static WorkloadPolicy manual(int workloadPercent) {
+            return new WorkloadPolicy(WorkloadMode.MANUAL, workloadPercent, Integer.MAX_VALUE);
+        }
+
+        public static WorkloadPolicy fromSettings(int workloadPercent, String workloadMode, int maxItems) {
+            return of(WorkloadMode.fromSetting(workloadMode), workloadPercent, maxItems);
+        }
+
+        public WorkloadMode mode() {
+            return mode;
+        }
+
+        public int workloadPercent() {
+            return workloadPercent;
+        }
+
+        public int maxItems() {
+            return maxItems;
+        }
+    }
+
     public static final class PlanRequest {
         private final List<Records.DashboardRow> rows;
         private final List<Records.StudyItem> items;
         private final Records.ReviewStats recentStats;
         private final int currentStreakDays;
         private final Set<String> studiedToday;
-        private final int workloadPercent;
-        private final String workloadMode;
-        private final int maxItems;
+        private final WorkloadPolicy workloadPolicy;
         private final long nowMillis;
         private final Records.Settings settings;
 
@@ -183,57 +216,21 @@ public final class AdaptiveLoadPlanner {
             this.recentStats = builder.recentStats;
             this.currentStreakDays = builder.currentStreakDays;
             this.studiedToday = builder.studiedToday;
-            this.workloadPercent = builder.workloadPercent;
-            this.workloadMode = builder.workloadMode;
-            this.maxItems = builder.maxItems;
+            this.workloadPolicy = builder.workloadPolicy;
             this.nowMillis = builder.nowMillis;
             this.settings = builder.settings;
         }
 
-        private static PlanRequest fromLegacy(
+        public static Builder builder(
                 List<Records.DashboardRow> rows,
                 List<Records.StudyItem> items,
                 Records.ReviewStats recentStats,
                 int currentStreakDays,
                 Set<String> studiedToday,
-                int workloadPercent,
-                Object[] options
+                WorkloadPolicy workloadPolicy,
+                long nowMillis
         ) {
-            Builder builder = new Builder(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, 0L);
-            Object[] safeOptions = options == null ? new Object[0] : options;
-            if (safeOptions.length == 2) {
-                applyNowAndSettings(builder, safeOptions[0], safeOptions[1], true);
-            } else if (safeOptions.length == 3) {
-                builder.workloadMode((String) safeOptions[0]);
-                applyNowAndSettings(builder, safeOptions[1], safeOptions[2], false);
-            } else if (safeOptions.length >= 4) {
-                builder.workloadMode((String) safeOptions[0]);
-                builder.maxItems((Integer) safeOptions[1]);
-                applyNowAndSettings(builder, safeOptions[2], safeOptions[3], false);
-            } else {
-                applyLooseOptions(builder, safeOptions);
-            }
-            return builder.build();
-        }
-
-        private static void applyNowAndSettings(Builder builder, Object nowMillis, Object settings, boolean manualMode) {
-            if (manualMode) {
-                builder.workloadMode(MODE_MANUAL);
-            }
-            if (nowMillis instanceof Long value) {
-                builder.nowMillis(value);
-            }
-            builder.settings((Records.Settings) settings);
-        }
-
-        private static void applyLooseOptions(Builder builder, Object[] options) {
-            for (Object option : options) {
-                if (option instanceof Long nowMillis) {
-                    builder.nowMillis(nowMillis);
-                } else if (option instanceof Records.Settings settings) {
-                    builder.settings(settings);
-                }
-            }
+            return new Builder(rows, items, recentStats, currentStreakDays, studiedToday, workloadPolicy, nowMillis);
         }
 
         public static final class Builder {
@@ -242,19 +239,17 @@ public final class AdaptiveLoadPlanner {
             private final Records.ReviewStats recentStats;
             private final int currentStreakDays;
             private final Set<String> studiedToday;
-            private final int workloadPercent;
-            private String workloadMode = MODE_MANUAL;
-            private int maxItems = Integer.MAX_VALUE;
+            private WorkloadPolicy workloadPolicy;
             private long nowMillis;
             private Records.Settings settings = Records.Settings.kikuDefaults();
 
-            public Builder(
+            private Builder(
                     List<Records.DashboardRow> rows,
                     List<Records.StudyItem> items,
                     Records.ReviewStats recentStats,
                     int currentStreakDays,
                     Set<String> studiedToday,
-                    int workloadPercent,
+                    WorkloadPolicy workloadPolicy,
                     long nowMillis
             ) {
                 this.rows = rows;
@@ -262,17 +257,12 @@ public final class AdaptiveLoadPlanner {
                 this.recentStats = recentStats;
                 this.currentStreakDays = currentStreakDays;
                 this.studiedToday = studiedToday;
-                this.workloadPercent = workloadPercent;
+                this.workloadPolicy = workloadPolicy;
                 this.nowMillis = nowMillis;
             }
 
-            public Builder workloadMode(String workloadMode) {
-                this.workloadMode = workloadMode;
-                return this;
-            }
-
-            public Builder maxItems(int maxItems) {
-                this.maxItems = maxItems;
+            public Builder workloadPolicy(WorkloadPolicy workloadPolicy) {
+                this.workloadPolicy = workloadPolicy;
                 return this;
             }
 
@@ -305,13 +295,16 @@ public final class AdaptiveLoadPlanner {
         private final Map<String, Records.StudyItem> itemByKanji;
 
         private PlanInputs(PlanRequest request) {
+            WorkloadPolicy policy = request.workloadPolicy == null
+                    ? WorkloadPolicy.manual(DEFAULT_WORKLOAD_PERCENT)
+                    : request.workloadPolicy;
             this.rows = request.rows == null ? Collections.emptyList() : request.rows;
             this.stats = request.recentStats == null ? new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0) : request.recentStats;
             this.studiedToday = request.studiedToday == null ? Collections.emptySet() : request.studiedToday;
             this.currentStreakDays = request.currentStreakDays;
-            this.workloadPercent = snapWorkloadPercent(request.workloadPercent);
-            this.autoMode = isAutoMode(request.workloadMode);
-            this.itemCap = request.maxItems == Integer.MAX_VALUE ? Integer.MAX_VALUE : normalizeMaxItems(request.maxItems);
+            this.workloadPercent = policy.workloadPercent();
+            this.autoMode = policy.mode().isAuto();
+            this.itemCap = policy.maxItems();
             this.nowMillis = request.nowMillis;
             this.settings = request.settings == null ? Records.Settings.kikuDefaults() : request.settings;
             this.itemByKanji = itemIndex(request.items);
@@ -319,7 +312,7 @@ public final class AdaptiveLoadPlanner {
 
         private static PlanInputs from(PlanRequest request) {
             return new PlanInputs(request == null
-                    ? new PlanRequest.Builder(null, null, null, 0, null, DEFAULT_WORKLOAD_PERCENT, 0L).build()
+                    ? PlanRequest.builder(null, null, null, 0, null, WorkloadPolicy.manual(DEFAULT_WORKLOAD_PERCENT), 0L).build()
                     : request);
         }
 
@@ -349,11 +342,11 @@ public final class AdaptiveLoadPlanner {
     }
 
     public static String normalizeWorkloadMode(String mode) {
-        return MODE_MANUAL.equals(mode) ? MODE_MANUAL : MODE_AUTO;
+        return WorkloadMode.fromSetting(mode).settingValue();
     }
 
     public static boolean isAutoMode(String mode) {
-        return MODE_AUTO.equals(normalizeWorkloadMode(mode));
+        return WorkloadMode.fromSetting(mode).isAuto();
     }
 
     public static int snapWorkloadPercent(int value) {

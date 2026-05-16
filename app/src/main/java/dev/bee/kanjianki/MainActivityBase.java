@@ -507,16 +507,21 @@ abstract class MainActivityBase extends Activity {
 
     Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
         return new AdaptiveLoadPlanner().plan(
-                rows,
-                items,
-                store.reviewStatsSince(now - 7 * DAY_MILLIS),
-                store.studyStreak(now).currentDays,
-                store.studiedKanjiSince(startOfDay(now)),
-                store.adaptiveLoadWorkPercent(),
-                store.adaptiveLoadMode(),
-                store.adaptiveLoadMaxItems(),
-                now,
-                settings()
+                AdaptiveLoadPlanner.PlanRequest.builder(
+                                rows,
+                                items,
+                                store.reviewStatsSince(now - 7 * DAY_MILLIS),
+                                store.studyStreak(now).currentDays,
+                                store.studiedKanjiSince(startOfDay(now)),
+                                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                                        store.adaptiveLoadWorkPercent(),
+                                        store.adaptiveLoadMode(),
+                                        store.adaptiveLoadMaxItems()
+                                ),
+                                now
+                        )
+                        .settings(settings())
+                        .build()
         );
     }
 

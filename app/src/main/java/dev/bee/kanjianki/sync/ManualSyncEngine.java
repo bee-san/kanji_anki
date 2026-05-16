@@ -139,16 +139,21 @@ public final class ManualSyncEngine {
         long dayStart = startOfDay(nowMillis);
         Set<String> studiedToday = store.studiedKanjiSince(dayStart);
         return planner.plan(
-                rows,
-                items,
-                store.reviewStatsSince(nowMillis - 7 * 86_400_000L),
-                store.studyStreak(nowMillis).currentDays,
-                studiedToday,
-                store.adaptiveLoadWorkPercent(),
-                store.adaptiveLoadMode(),
-                store.adaptiveLoadMaxItems(),
-                nowMillis,
-                settings
+                AdaptiveLoadPlanner.PlanRequest.builder(
+                                rows,
+                                items,
+                                store.reviewStatsSince(nowMillis - 7 * 86_400_000L),
+                                store.studyStreak(nowMillis).currentDays,
+                                studiedToday,
+                                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                                        store.adaptiveLoadWorkPercent(),
+                                        store.adaptiveLoadMode(),
+                                        store.adaptiveLoadMaxItems()
+                                ),
+                                nowMillis
+                        )
+                        .settings(settings)
+                        .build()
         );
     }
 

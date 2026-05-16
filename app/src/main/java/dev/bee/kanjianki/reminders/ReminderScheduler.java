@@ -282,16 +282,17 @@ public final class ReminderScheduler {
             return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
         }
         Records.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
-                rows,
-                items,
-                recentStats,
-                currentStreakDays,
-                studiedToday,
-                workloadPercent,
-                workloadMode,
-                maxItems,
-                now,
-                Records.Settings.kikuDefaults()
+                AdaptiveLoadPlanner.PlanRequest.builder(
+                                rows,
+                                items,
+                                recentStats,
+                                currentStreakDays,
+                                studiedToday,
+                                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(workloadPercent, workloadMode, maxItems),
+                                now
+                        )
+                        .settings(Records.Settings.kikuDefaults())
+                        .build()
         );
         return reminderCopyFor(plan.remaining, currentDueCount(rows, items, now));
     }
