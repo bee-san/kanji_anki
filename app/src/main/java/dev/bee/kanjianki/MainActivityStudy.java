@@ -58,6 +58,7 @@ import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
+import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingSample;
@@ -774,6 +775,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         drawingPad = new DrawingPadView(this);
         drawingPad.setTarget(session.item.kanji);
         drawingPad.setInkEditListener(this::handleDrawingEdited);
+        drawingPad.setStrokeBlockedListener(this::handleDrawingBlocked);
         drawingPad.setGuide(guide, currentHintState, false);
         LinearLayout padShell = softInsetPanel();
         padShell.setPadding(dp(8), dp(8), dp(8), dp(8));
@@ -1248,6 +1250,9 @@ abstract class MainActivityStudy extends MainActivityStats {
             updateResultActions();
         });
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
+        undoStrokeButton = studySecondaryButton("Undo");
+        undoStrokeButton.setOnClickListener(v -> undoWritingStroke());
+        actions.addView(undoStrokeButton, new LinearLayout.LayoutParams(0, dp(58), 1));
         hintButton = studySecondaryButton("Hint");
         hintButton.setOnClickListener(v -> showWritingHint());
         actions.addView(hintButton, new LinearLayout.LayoutParams(0, dp(58), 1));
@@ -1558,6 +1563,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         boolean messyPass = hasResult && activeAnalysis.status == WritingAnalysis.Status.CLOSE;
         boolean submittable = activeAnalysis != null && canSubmitAnalysis(activeAnalysis);
         StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
+        updateUndoStrokeButton();
         updateCheckWritingButton(passed, messyPass);
         updateDownloadModelButton();
         updateNextAfterPassButton(submittable);
@@ -1582,6 +1588,13 @@ abstract class MainActivityStudy extends MainActivityStats {
             return "Checking...";
         }
         return messyPass ? "Try cleaner" : "Check";
+    }
+
+    void updateUndoStrokeButton() {
+        if (undoStrokeButton != null) {
+            undoStrokeButton.setVisibility(View.VISIBLE);
+            undoStrokeButton.setEnabled(!checkingWriting && drawingPad != null && drawingPad.canUndoStroke());
+        }
     }
 
     void updateDownloadModelButton() {
@@ -1675,6 +1688,19 @@ abstract class MainActivityStudy extends MainActivityStats {
         updateResultActions();
     }
 
+    void undoWritingStroke() {
+        if (drawingPad == null || activeSession == null || !drawingPad.undoLastStroke()) {
+            updateUndoStrokeButton();
+            return;
+        }
+        activeAnalysis = null;
+        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\nUndid the last stroke.", MUTED);
+        if (resultStatus != null) {
+            resultStatus.setVisibility(View.GONE);
+        }
+        updateResultActions();
+    }
+
     void replayWritingAnalysis() {
         if (drawingPad == null || activeSession == null) {
             return;
@@ -1687,6 +1713,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void handleDrawingEdited() {
+        updateUndoStrokeButton();
         if (checkingWriting || activeAnalysis == null || activeSession == null || drawingPad == null) {
             return;
         }
@@ -1697,6 +1724,17 @@ abstract class MainActivityStudy extends MainActivityStats {
             resultStatus.setVisibility(View.GONE);
         }
         updateResultActions();
+    }
+
+    void handleDrawingBlocked(StrokeGuideGuard.Decision decision) {
+        if (activeSession == null || drawingPad == null) {
+            return;
+        }
+        String message = decision == null || decision.message.isEmpty()
+                ? "Stay close to the guide."
+                : decision.message;
+        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\n" + message, MUTED);
+        updateUndoStrokeButton();
     }
 
     boolean canReplayAnalysis(WritingAnalysis analysis, StrokeGuide guide) {

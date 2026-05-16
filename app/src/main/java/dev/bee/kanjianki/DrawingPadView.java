@@ -17,6 +17,7 @@ import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
 import dev.bee.kanjianki.core.study.StrokeGuide;
+import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.study.CapturedStroke;
 import dev.bee.kanjianki.study.CapturedWriting;
@@ -50,8 +51,10 @@ final class DrawingPadView extends View {
     private boolean replayOverlayVisible;
     private long replayStartedAtMillis;
     private Runnable inkEditListener;
+    private StrokeBlockedListener strokeBlockedListener;
     private String target = "";
     private int activePointerId = -1;
+    private boolean blockingCurrentStroke;
 
     DrawingPadView(Context context) {
         super(context);
@@ -84,6 +87,24 @@ final class DrawingPadView extends View {
         return !committedStrokes.isEmpty();
     }
 
+    boolean canUndoStroke() {
+        return !committedStrokes.isEmpty();
+    }
+
+    boolean undoLastStroke() {
+        if (committedStrokes.isEmpty()) {
+            return false;
+        }
+        int last = committedStrokes.size() - 1;
+        committedStrokes.remove(last);
+        if (!paths.isEmpty()) {
+            paths.remove(Math.min(last, paths.size() - 1));
+        }
+        clearReplaySnapshot();
+        invalidate();
+        return true;
+    }
+
     void clear() {
         paths.clear();
         committedStrokes.clear();
@@ -91,6 +112,7 @@ final class DrawingPadView extends View {
         currentPoints.clear();
         current = null;
         activePointerId = -1;
+        blockingCurrentStroke = false;
         stopReplay();
         invalidate();
     }
@@ -101,6 +123,10 @@ final class DrawingPadView extends View {
 
     void setInkEditListener(Runnable listener) {
         this.inkEditListener = listener;
+    }
+
+    void setStrokeBlockedListener(StrokeBlockedListener listener) {
+        this.strokeBlockedListener = listener;
     }
 
     void setGuide(StrokeGuide guide, int level, boolean revealGuide) {
@@ -235,11 +261,22 @@ final class DrawingPadView extends View {
 
     private boolean handleTouchDown(MotionEvent event) {
         stopReplay();
+        activePointerId = event.getPointerId(0);
+        StrokeGuideGuard.Decision decision = guideDecision(event.getX(0), event.getY(0));
+        if (!decision.allowed) {
+            notifyStrokeBlocked(decision);
+            current = null;
+            currentPoints.clear();
+            blockingCurrentStroke = true;
+            requestParentIntercept(true);
+            invalidate();
+            return true;
+        }
         if (inkEditListener != null) {
             inkEditListener.run();
         }
         requestParentIntercept(false);
-        activePointerId = event.getPointerId(0);
+        blockingCurrentStroke = false;
         current = new Path();
         current.moveTo(event.getX(0), event.getY(0));
         currentPoints.clear();
@@ -249,6 +286,9 @@ final class DrawingPadView extends View {
     }
 
     private void handleTouchMove(MotionEvent event) {
+        if (blockingCurrentStroke) {
+            return;
+        }
         if (current == null) {
             return;
         }
@@ -258,15 +298,22 @@ final class DrawingPadView extends View {
             return;
         }
         for (int i = 0; i < event.getHistorySize(); i++) {
-            appendPoint(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i), event.getHistoricalEventTime(i), true);
+            if (!appendPointIfAllowed(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i), event.getHistoricalEventTime(i), true)) {
+                invalidate();
+                return;
+            }
         }
-        appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
+        appendPointIfAllowed(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
         invalidate();
     }
 
     private boolean handlePointerUp(MotionEvent event) {
         if (current != null && event.getPointerId(event.getActionIndex()) == activePointerId) {
-            finishStroke(event, event.getActionIndex());
+            if (blockingCurrentStroke) {
+                finishBlockedStroke();
+            } else {
+                finishStroke(event, event.getActionIndex());
+            }
         }
         return true;
     }
@@ -274,8 +321,14 @@ final class DrawingPadView extends View {
     private boolean handleTouchEnd(MotionEvent event) {
         if (current != null) {
             int pointerIndex = activePointerIndex(event);
-            finishStroke(event, pointerIndex < 0 ? 0 : pointerIndex);
+            if (blockingCurrentStroke) {
+                finishBlockedStroke();
+            } else {
+                finishStroke(event, pointerIndex < 0 ? 0 : pointerIndex);
+            }
         }
+        blockingCurrentStroke = false;
+        activePointerId = -1;
         requestParentIntercept(true);
         return true;
     }
@@ -292,13 +345,35 @@ final class DrawingPadView extends View {
     }
 
     private void finishStroke(MotionEvent event, int pointerIndex) {
-        appendPoint(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true);
+        if (!appendPointIfAllowed(event.getX(pointerIndex), event.getY(pointerIndex), event.getEventTime(), true)) {
+            finishBlockedStroke();
+            return;
+        }
         paths.add(current);
         committedStrokes.add(new ArrayList<>(currentPoints));
         currentPoints.clear();
         current = null;
         activePointerId = -1;
+        notifyInkEdited();
         invalidate();
+    }
+
+    private void finishBlockedStroke() {
+        currentPoints.clear();
+        current = null;
+        activePointerId = -1;
+        invalidate();
+    }
+
+    private boolean appendPointIfAllowed(float x, float y, long timestamp, boolean drawLine) {
+        StrokeGuideGuard.Decision decision = guideDecision(x, y);
+        if (!decision.allowed) {
+            blockingCurrentStroke = true;
+            notifyStrokeBlocked(decision);
+            return false;
+        }
+        appendPoint(x, y, timestamp, drawLine);
+        return true;
     }
 
     private void appendPoint(float x, float y, long timestamp, boolean drawLine) {
@@ -309,6 +384,22 @@ final class DrawingPadView extends View {
         currentPoints.add(new CapturedStroke.Point(x, y, timestamp));
         if (drawLine) {
             current.lineTo(x, y);
+        }
+    }
+
+    private StrokeGuideGuard.Decision guideDecision(float x, float y) {
+        return StrokeGuideGuard.evaluatePoint(guide, committedStrokes.size(), getWidth(), getHeight(), x, y);
+    }
+
+    private void notifyInkEdited() {
+        if (inkEditListener != null) {
+            inkEditListener.run();
+        }
+    }
+
+    private void notifyStrokeBlocked(StrokeGuideGuard.Decision decision) {
+        if (strokeBlockedListener != null) {
+            strokeBlockedListener.onStrokeBlocked(decision);
         }
     }
 
@@ -422,5 +513,9 @@ final class DrawingPadView extends View {
         markerText.setTextSize(18f);
         markerText.setColor(active ? DRAWING_CORAL : Color.rgb(111, 74, 39));
         canvas.drawText(Integer.toString(number), x, y - (markerText.descent() + markerText.ascent()) / 2f, markerText);
+    }
+
+    interface StrokeBlockedListener {
+        void onStrokeBlocked(StrokeGuideGuard.Decision decision);
     }
 }

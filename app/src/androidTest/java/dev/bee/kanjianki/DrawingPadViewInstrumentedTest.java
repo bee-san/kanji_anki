@@ -111,6 +111,75 @@ public final class DrawingPadViewInstrumentedTest {
     }
 
     @Test
+    public void drawingPadUndoRemovesCommittedStrokesAndReplaySnapshot() {
+        DrawingPadView pad = laidOutPad();
+
+        sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 100f, 100f);
+        sendTouch(pad, 100L, 120L, MotionEvent.ACTION_UP, 300f, 300f);
+        sendTouch(pad, 200L, 200L, MotionEvent.ACTION_DOWN, 600f, 600f);
+        sendTouch(pad, 200L, 220L, MotionEvent.ACTION_UP, 800f, 800f);
+        pad.captureReplaySnapshot();
+        pad.startReplay();
+
+        assertTrue(pad.canUndoStroke());
+        assertTrue(pad.hasReplaySnapshot());
+
+        assertTrue(pad.undoLastStroke());
+        assertFalse(pad.hasReplaySnapshot());
+        assertTrue(pad.hasInk());
+        assertEquals(1, pad.writingSample().strokes.size());
+
+        assertTrue(pad.undoLastStroke());
+        assertFalse(pad.hasInk());
+        assertFalse(pad.canUndoStroke());
+        assertFalse(pad.undoLastStroke());
+    }
+
+    @Test
+    public void drawingPadBlocksFarStartEvenWhenGuideIsHidden() {
+        DrawingPadView pad = laidOutPad();
+        AtomicInteger blocked = new AtomicInteger();
+        pad.setStrokeBlockedListener(decision -> {
+            blocked.incrementAndGet();
+            assertEquals("Stay close to stroke 1.", decision.message);
+        });
+        pad.setGuide(twoStrokeGuide(), new HintState(HintLevel.BLIND, 0, 0), false);
+
+        sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 950f, 950f);
+        sendTouch(pad, 100L, 120L, MotionEvent.ACTION_MOVE, 960f, 960f);
+        sendTouch(pad, 100L, 140L, MotionEvent.ACTION_UP, 970f, 970f);
+
+        assertFalse(pad.hasInk());
+        assertEquals(1, blocked.get());
+    }
+
+    @Test
+    public void drawingPadBlocksFarMoveWithoutCommittingPartialStroke() {
+        DrawingPadView pad = laidOutPad();
+        AtomicInteger blocked = new AtomicInteger();
+        pad.setStrokeBlockedListener(decision -> blocked.incrementAndGet());
+        pad.setGuide(twoStrokeGuide(), HintState.initial(), false);
+
+        sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 200f, 220f);
+        sendTouch(pad, 100L, 120L, MotionEvent.ACTION_MOVE, 220f, 420f);
+        sendTouch(pad, 100L, 140L, MotionEvent.ACTION_MOVE, 900f, 500f);
+        sendTouch(pad, 100L, 160L, MotionEvent.ACTION_UP, 920f, 540f);
+
+        assertFalse(pad.hasInk());
+        assertFalse(pad.canUndoStroke());
+        assertEquals(0, pad.writingSample().strokes.size());
+        assertEquals(1, blocked.get());
+
+        sendTouch(pad, 200L, 200L, MotionEvent.ACTION_DOWN, 200f, 220f);
+        sendTouch(pad, 200L, 220L, MotionEvent.ACTION_MOVE, 200f, 420f);
+        sendTouch(pad, 200L, 240L, MotionEvent.ACTION_UP, 200f, 720f);
+
+        CapturedWriting writing = pad.capturedWriting();
+        assertEquals(1, writing.strokes.size());
+        assertStrokePoint(writing.strokes.get(0).points.get(0), 200f, 220f, 200L);
+    }
+
+    @Test
     public void drawingPadClearReplaySnapshotRemovesStoredReplayAndOverlay() {
         DrawingPadView pad = laidOutPad();
 

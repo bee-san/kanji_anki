@@ -970,6 +970,26 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testWritingModeBlocksFarOffGuideStrokeAndShowsUndo() {
+        seedDueWritingItem(3);
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, STUDY_NOW);
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Undo");
+                drawFarOffGuideStroke(activity);
+            });
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Stay close to stroke 1");
+                DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
+                assertNotNull(pad);
+                assertFalse(pad.hasInk());
+                assertFalse(pad.canUndoStroke());
+            });
+        }
+    }
+
+    @Test
     public void testTryCleanerStartsFreshWritingAttemptAtSameHelpLevel() {
         seedDueWritingItem(2);
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
@@ -1053,7 +1073,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testDrawingAfterCheckClearsPriorReplayState() {
+    public void testUndoAfterCheckClearsPriorReplayState() {
         seedDueWritingItem();
         MainActivity.setWritingRecognizerForTests(new FakeWritingRecognizer("拉"));
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -1064,10 +1084,10 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Replay");
                 assertHasText(activity, PASS_AFTER_WRITING);
-                drawFreeformStroke(activity);
             });
+            clickText(scenario, "Undo");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Updated ink");
+                assertHasText(activity, "Undid the last stroke");
                 assertNoText(activity, CLEAN_MATCH);
                 assertNoText(activity, "Replay");
                 assertNoText(activity, PASS_AFTER_WRITING);
@@ -2648,6 +2668,16 @@ public final class MainActivityInstrumentedTest {
         sendTouch(pad, now, now + 16L, MotionEvent.ACTION_MOVE, 520f, 460f);
         sendTouch(pad, now, now + 32L, MotionEvent.ACTION_UP, 760f, 640f);
         assertTrue(pad.hasInk());
+    }
+
+    private static void drawFarOffGuideStroke(MainActivity activity) {
+        DrawingPadView pad = findType(activity.findViewById(android.R.id.content), DrawingPadView.class);
+        assertNotNull(pad);
+        pad.layout(0, 0, 1000, 1000);
+        long now = System.currentTimeMillis();
+        sendTouch(pad, now, now, MotionEvent.ACTION_DOWN, 950f, 950f);
+        sendTouch(pad, now, now + 16L, MotionEvent.ACTION_MOVE, 970f, 970f);
+        sendTouch(pad, now, now + 32L, MotionEvent.ACTION_UP, 980f, 980f);
     }
 
     private static void sendTouch(View view, long downTime, long eventTime, int action, float x, float y) {
