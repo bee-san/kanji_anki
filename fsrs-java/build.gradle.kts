@@ -1,5 +1,5 @@
 plugins {
-    id("java-library")
+    `java-library`
     jacoco
 }
 
@@ -43,6 +43,5 @@ tasks.check {
 }
 
 dependencies {
-    implementation(project(":fsrs-java"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

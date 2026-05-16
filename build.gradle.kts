@@ -12,14 +12,17 @@ val sonarProjectVersion = providers.gradleProperty("KANI_VERSION_NAME")
 
 val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String::toBoolean).getOrElse(false)
 val maybeSonarMainBinaries = listOf(
+    rootPath("fsrs-java/build/classes"),
     rootPath("core/build/classes"),
     rootPath("app/build/intermediates/javac"),
 )
 val maybeSonarTestBinaries = listOf(
+    rootPath("fsrs-java/build/classes"),
     rootPath("core/build/classes"),
     rootPath("app/build/intermediates/javac"),
 )
 val maybeSonarCoveragePaths = buildList<String> {
+    add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
