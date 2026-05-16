@@ -16,19 +16,6 @@ on:
       - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'app/**'
-      - 'core/**'
-      - 'fsrs-java/**'
-      - '.github/workflows/codeql.yml'
-      - 'build.gradle*'
-      - 'settings.gradle*'
-      - 'gradle/**'
-      - 'gradlew*'
-      - 'gradle.properties'
-      - 'gradle/libs.versions.toml'
   schedule:
     - cron: '36 4 * * 1'
 

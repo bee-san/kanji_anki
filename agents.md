@@ -20,24 +20,26 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 ## CI And Static Analysis Notes
 
-The normal PR confidence gate is `./gradlew ciFast`. It runs deterministic JVM
-tests, coverage reports/checks, app unit tests, Android instrumentation
-compilation, lint, and Python asset tests. Do not use SonarCloud or CodeQL as a
+The normal local confidence gate is `./gradlew ciFast`. It runs deterministic
+JVM tests, coverage reports/checks, app unit tests, Android instrumentation
+compilation, lint, and Python asset tests. GitHub's default Android CI splits
+that same deterministic surface across parallel jobs and aggregates them under
+the `Fast confidence gate` check. Do not use SonarCloud or CodeQL as a
 substitute for the normal Android CI workflow.
 
 `./gradlew ciQuality` produces the deterministic bytecode and coverage inputs
 used by SonarQube. `./gradlew ciRelease` runs the release confidence gate and
 assembles the signed release APK when signing environment variables are set.
 
-SonarCloud and CodeQL both run on pushes to `main` and on internal pull
-requests. If you change either workflow, push it and watch the first GitHub
-Actions run to completion; local Gradle success alone is not enough to validate
-the service integration.
+SonarCloud and CodeQL run on pushes to `main`, and can also be run manually.
+CodeQL also has a scheduled weekly run. If you change either workflow, push it
+and watch the first GitHub Actions run to completion; local Gradle success
+alone is not enough to validate the service integration.
 
-The deterministic AnkiDroid fixture workflow runs on `main`, nightly,
-workflow-dispatch, and release. It generates a small sanitized Kiku collection
-in CI, installs pinned AnkiDroid in an emulator, grants the real provider
-permission, and runs the live-provider sync subset with
+The deterministic AnkiDroid fixture workflow runs nightly, through
+workflow-dispatch, and as part of the release workflow. It generates a small
+sanitized Kiku collection in CI, installs pinned AnkiDroid in an emulator,
+grants the real provider permission, and runs the live-provider sync subset with
 `kanjiLiveAnkiDroid=true` and a small `kanjiLiveMinimumNotes` value.
 
 The local real-collection live gate remains stricter. Do not cut a release for
