@@ -74,7 +74,7 @@ abstract class MainActivityStats extends MainActivityGames {
                 signals.add(countText(stats.matureSupportGained.matureSupportGained, "mature Anki card has been gained", "mature Anki cards have been gained"));
             }
             if (ladder.promotionReadyCount > 0) {
-                signals.add(countText(ladder.promotionReadyCount, "review-phase item is ready to climb", "review-phase items are ready to climb"));
+                signals.add(countText(ladder.promotionReadyCount, "review-phase item crossed the FSRS climb threshold", "review-phase items crossed the FSRS climb threshold"));
             }
             String body = String.join(". ", signals) + ".";
             if (ladder.demotionRiskCount > 0) {
@@ -125,13 +125,18 @@ abstract class MainActivityStats extends MainActivityGames {
         if (metric.totalActiveItems == 0) {
             return "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder.";
         }
-        String body = countText(metric.promotionReadyCount, "promotion-ready review item", "promotion-ready review items")
+        String body = countText(metric.promotionReadyCount, "FSRS-mature review item", "FSRS-mature review items")
                 + " · "
                 + countText(metric.demotionRiskCount, "demotion-risk review item", "demotion-risk review items");
         if (metric.demotionReadyCount > 0) {
             body += " · " + countText(metric.demotionReadyCount, "at the demotion threshold", "at the demotion threshold");
         }
-        return body + ". Threshold: " + metric.realDueReviewsToMove + " real due reviews.";
+        return body
+                + ". Thresholds: climb when FSRS schedules more than "
+                + metric.ladderPromotionIntervalDays
+                + " days; demote after "
+                + metric.ladderDemotionFailStreak
+                + " real due-review fails.";
     }
 
     List<String> ladderDistributionRows(StudyStatsStore.LadderHealthMetric metric) {

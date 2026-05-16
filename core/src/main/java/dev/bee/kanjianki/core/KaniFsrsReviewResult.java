@@ -12,6 +12,8 @@ final class KaniFsrsReviewResult {
     }
 
     int intervalDays() {
-        return Math.max(1, (int) Math.round((double) intervalMillis / BridgeScheduler.DAY));
+        long safeInterval = Math.max(1L, intervalMillis);
+        long days = ((safeInterval - 1L) / BridgeScheduler.DAY) + 1L;
+        return days > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) days;
     }
 }

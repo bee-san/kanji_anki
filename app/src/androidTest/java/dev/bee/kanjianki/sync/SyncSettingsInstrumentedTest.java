@@ -62,6 +62,8 @@ public final class SyncSettingsInstrumentedTest {
             store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, 9);
             store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, 4);
             store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, 5);
+            store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 30);
+            store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 6);
             store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1);
             store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, 0);
             store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, 1);
@@ -85,6 +87,8 @@ public final class SyncSettingsInstrumentedTest {
         assertEquals(9, settings.writingTriggerMissDays);
         assertEquals(4, settings.recognitionPromotionPasses);
         assertEquals(5, settings.realDueReviewsToMove);
+        assertEquals(30, settings.ladderPromotionIntervalDays);
+        assertEquals(6, settings.ladderDemotionFailStreak);
         assertTrue(settings.importActiveCards);
         assertFalse(settings.importSuspendedCards);
         assertTrue(settings.importTaggedCards);

@@ -1204,43 +1204,41 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Records.Settings current = settings();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Ladder thresholds", 23, INK, true));
-        box.addView(text("Recognition rungs move only after repeated FSRS-due reviews. Learning-step repeats stay practice-only.", 15, MUTED, false));
+        box.addView(text("Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.", 15, MUTED, false));
 
-        EditText passes = thresholdInput(current.recognitionPromotionPasses);
-        EditText misses = thresholdInput(current.writingTriggerMissDays);
-        box.addView(text("Passes to go up", 15, INK, true));
-        box.addView(passes, new LinearLayout.LayoutParams(-1, dp(58)));
-        box.addView(text("Misses to go down", 15, INK, true));
-        box.addView(misses, new LinearLayout.LayoutParams(-1, dp(58)));
+        EditText promotionDays = thresholdInput(current.ladderPromotionIntervalDays);
+        EditText failStreak = thresholdInput(current.ladderDemotionFailStreak);
+        box.addView(text("FSRS days to go up", 15, INK, true));
+        box.addView(promotionDays, new LinearLayout.LayoutParams(-1, dp(58)));
+        box.addView(text("Fails to go down", 15, INK, true));
+        box.addView(failStreak, new LinearLayout.LayoutParams(-1, dp(58)));
 
-        Button defaults = secondaryButton("Use 3 and 3");
+        Button defaults = secondaryButton("Use 21 and 3");
         defaults.setOnClickListener(v -> {
-            passes.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_RECOGNITION_PROMOTION_PASSES));
-            misses.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS));
+            promotionDays.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
+            failStreak.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
         });
         box.addView(defaults);
 
         Button save = primaryButton("Save ladder thresholds", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            int passCount;
-            int missCount;
+            int promotionDayCount;
+            int failCount;
             try {
-                passCount = parseThresholdInput(passes);
-                missCount = parseThresholdInput(misses);
+                promotionDayCount = parseThresholdInput(promotionDays);
+                failCount = parseThresholdInput(failStreak);
             } catch (NumberFormatException error) {
-                Toast.makeText(this, "Use whole numbers from 1 to 10.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Use positive whole numbers.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (passCount < 1 || passCount > 10 || missCount < 1 || missCount > 10) {
-                Toast.makeText(this, "Use whole numbers from 1 to 10.", Toast.LENGTH_SHORT).show();
+            if (promotionDayCount < 1 || failCount < 1) {
+                Toast.makeText(this, "Use positive whole numbers.", Toast.LENGTH_SHORT).show();
                 return;
             }
-        store.putIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, passCount);
-        store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, missCount);
-        // The ladder state machine uses a single threshold for both promotion
-        // and demotion. Persist the maximum of the two UI values so that the
-        // scheduler honours the user's intent for both directions.
-        store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, Math.max(passCount, missCount));
+            store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, promotionDayCount);
+            store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, failCount);
+            store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, failCount);
+            store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, failCount);
             Toast.makeText(this, "Ladder thresholds saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
