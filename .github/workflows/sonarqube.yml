@@ -201,7 +201,7 @@ jobs:
           if [ ${#TASKS[@]} -eq 0 ]; then
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          gradle "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
+          gradle :core:jar "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
           gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
 
       - name: Build and analyze (manual full-coverage mode)
