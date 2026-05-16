@@ -43,6 +43,7 @@ public final class BridgeScheduler {
     static final String RATING_HARD = "hard";
     static final String RATING_GOOD = "good";
     static final String RATING_EASY = "easy";
+    private static final String FSRS_ENGINE_FSRS5 = "fsrs5";
     private static final String FSRS_ENGINE_LATEST_21P = "latest21p";
 
     private final KaniFsrsAdapter fsrsAdapter;
@@ -68,10 +69,11 @@ public final class BridgeScheduler {
     public static final String TASK_WRITING_REMEDIATION = "writing_remediation";
 
     private static KaniFsrsAdapter defaultFsrsAdapter() {
-        if (FSRS_ENGINE_LATEST_21P.equals(System.getProperty("kani.fsrs.engine"))) {
-            return new LatestFsrsAdapter();
+        String engine = System.getProperty("kani.fsrs.engine", FSRS_ENGINE_LATEST_21P);
+        if (FSRS_ENGINE_FSRS5.equals(engine)) {
+            return new Fsrs5Adapter();
         }
-        return new Fsrs5Adapter();
+        return new LatestFsrsAdapter();
     }
 
     public List<Records.StudyItem> seedQueue(
@@ -669,8 +671,7 @@ public final class BridgeScheduler {
                 state.stability,
                 state.difficulty,
                 RATING_AGAIN,
-                context.item.dueAtMillis,
-                context.nowMillis,
+                context.elapsedReviewDays,
                 context.parameters.targetRetention
         );
         state.stability = result.stability;
@@ -700,8 +701,7 @@ public final class BridgeScheduler {
                 state.stability,
                 state.difficulty,
                 context.rating,
-                context.item.dueAtMillis,
-                context.nowMillis,
+                context.elapsedReviewDays,
                 context.parameters.targetRetention
         );
         state.stability = result.stability;
@@ -1196,6 +1196,7 @@ public final class BridgeScheduler {
         Records.LadderRung rung;
         Records.SchedulerPhase phase;
         long nowMillis;
+        int elapsedReviewDays;
         String rating;
         String reviewedTaskType;
         boolean cleanWritingPass;
@@ -1220,6 +1221,7 @@ public final class BridgeScheduler {
             context.phase = item.phase;
             context.reviewedTaskType = context.rung.wireName();
             context.previousTaskMemory = item.memoryForRung(context.rung);
+            context.elapsedReviewDays = elapsedReviewDays(context.previousTaskMemory, nowMillis);
             context.rating = resolveRating(request, context.rung);
             boolean writingRung = context.rung == Records.LadderRung.WRITE_KANJI;
             boolean writingReviewCanMoveHelp = writingRung && request.writingRequired && !request.manualOverride;
@@ -1254,6 +1256,13 @@ public final class BridgeScheduler {
                 default -> RATING_AGAIN;
             };
         }
+    }
+
+    private static int elapsedReviewDays(Records.TaskMemory memory, long nowMillis) {
+        long previousIntervalMillis = Math.max(0L, memory.matureIntervalDays) * DAY;
+        long lastReviewAtMillis = Math.max(0L, memory.dueAtMillis - previousIntervalMillis);
+        long elapsedMillis = Math.max(0L, nowMillis - lastReviewAtMillis);
+        return (int) Math.min(Integer.MAX_VALUE, elapsedMillis / DAY);
     }
 
     private static final class ReviewState {

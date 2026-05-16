@@ -727,6 +727,54 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void defaultLatestFsrsUsesLastReviewElapsedDaysForOnTimeReviews() {
+        String previousEngine = System.getProperty("kani.fsrs.engine");
+        System.clearProperty("kani.fsrs.engine");
+        try {
+            BridgeScheduler scheduler = new BridgeScheduler();
+            long dueAt = 30L * BridgeScheduler.DAY;
+            Records.TaskMemory taskMemory = new Records.TaskMemory(
+                    "review",
+                    dueAt,
+                    5.0,
+                    6.0,
+                    4,
+                    0,
+                    0,
+                    "good",
+                    7
+            );
+            Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+                    .copyBuilder()
+                    .stability(5.0)
+                    .difficulty(6.0)
+                    .totalReviews(4)
+                    .matureIntervalDays(7)
+                    .kanjiMeaningMemory(taskMemory)
+                    .build()
+                    .withToken("latest");
+
+            Records.ReviewResult result = scheduler.applyReview(
+                    item,
+                    new Records.ReviewRequest("裂", "latest", "good", false, false, false, 0),
+                    new HashSet<>(),
+                    dueAt
+            );
+
+            assertEquals(18, result.item.matureIntervalDays);
+            assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis);
+            assertEquals(18.01, result.item.stability, 0.0);
+            assertEquals(5.99, result.item.difficulty, 0.0);
+        } finally {
+            if (previousEngine == null) {
+                System.clearProperty("kani.fsrs.engine");
+            } else {
+                System.setProperty("kani.fsrs.engine", previousEngine);
+            }
+        }
+    }
+
+    @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.TaskMemory matureMemory = new Records.TaskMemory("review", 0L, 10.0, 5.0, 5, 0, 0, "good", 10);

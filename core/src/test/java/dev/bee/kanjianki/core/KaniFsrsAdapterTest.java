@@ -19,14 +19,11 @@ public final class KaniFsrsAdapterTest {
         assertEquals(expectedInitialDifficulty, initial.difficulty, 0.000001);
         assertEquals(engine.nextIntervalMillis(expectedInitialStability), initial.intervalMillis);
 
-        long dueAt = 1_000L;
-        long now = dueAt + 7L * BridgeScheduler.DAY;
         KaniFsrsReviewResult review = adapter.review(
                 5.0,
                 6.0,
                 BridgeScheduler.RATING_HARD,
-                dueAt,
-                now,
+                7,
                 0.9
         );
         double nextDifficulty = engine.updateDifficulty(6.0, Fsrs5Engine.ratingToInt(BridgeScheduler.RATING_HARD));
@@ -61,8 +58,7 @@ public final class KaniFsrsAdapterTest {
                 0.0,
                 50.0,
                 BridgeScheduler.RATING_AGAIN,
-                1_000L,
-                1_000L + 2L * BridgeScheduler.DAY,
+                2,
                 5.0
         );
         assertTrue(review.stability >= 0.001);

@@ -23,9 +23,10 @@ Result:
 
 - The synthetic test matrix runs as part of `:core:test`.
 - At least one interval-ratio flag is expected, so the test verifies that migration risk is visible rather than silently assumed safe.
-- The new adapter remains behind the internal `kani.fsrs.engine=latest21p` flag; FSRS-5 remains the default until a real-data report is reviewed.
+- The latest 21-parameter adapter is now the default engine. The legacy FSRS-5 adapter remains available with `-Dkani.fsrs.engine=fsrs5`.
+- Review elapsed time is computed from the previous task-memory due timestamp minus the previous scheduled interval, so on-time reviews feed FSRS the full elapsed interval rather than `0` overdue days.
 
 Rollout decision:
 
-- Do not enable the 21-parameter adapter by default from this synthetic report alone.
-- Before production rollout, run the same old-vs-new comparison over a copy of real Kani study data and review the interval-ratio distribution.
+- Keep the legacy FSRS-5 adapter available as a system-property rollback path.
+- Run the same old-vs-new comparison over a copy of real Kani study data before removing the rollback path.

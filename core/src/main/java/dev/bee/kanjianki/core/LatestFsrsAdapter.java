@@ -44,14 +44,13 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
             double stability,
             double difficulty,
             String rating,
-            long dueAtMillis,
-            long nowMillis,
+            int elapsedDays,
             double targetRetention
     ) {
         FsrsReviewOutput output = engine.review(new FsrsReviewInput(
                 new FsrsMemoryState(Math.max(stability, Fsrs.STABILITY_MIN), clampDifficulty(difficulty)),
                 toRating(rating),
-                elapsedFullDays(dueAtMillis, nowMillis),
+                elapsedDays,
                 retention(targetRetention),
                 MAXIMUM_INTERVAL_DAYS
         ));
@@ -73,11 +72,6 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
             return FsrsRating.EASY;
         }
         return FsrsRating.AGAIN;
-    }
-
-    private static int elapsedFullDays(long dueAtMillis, long nowMillis) {
-        long elapsed = Math.max(0L, nowMillis - dueAtMillis);
-        return (int) Math.min(Integer.MAX_VALUE, elapsed / BridgeScheduler.DAY);
     }
 
     private static double retention(double targetRetention) {

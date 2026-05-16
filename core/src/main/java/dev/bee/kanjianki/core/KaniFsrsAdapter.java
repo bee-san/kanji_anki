@@ -12,8 +12,7 @@ interface KaniFsrsAdapter {
             double stability,
             double difficulty,
             String rating,
-            long dueAtMillis,
-            long nowMillis,
+            int elapsedDays,
             double targetRetention
     );
 }

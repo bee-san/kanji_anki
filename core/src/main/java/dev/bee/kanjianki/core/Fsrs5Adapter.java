@@ -20,13 +20,11 @@ final class Fsrs5Adapter implements KaniFsrsAdapter {
             double stability,
             double difficulty,
             String rating,
-            long dueAtMillis,
-            long nowMillis,
+            int elapsedDays,
             double targetRetention
     ) {
         int fsrsRating = Fsrs5Engine.ratingToInt(rating);
         Fsrs5Engine engine = new Fsrs5Engine(null, targetRetention);
-        double elapsedDays = Fsrs5Engine.elapsedDays(dueAtMillis, nowMillis);
         double nextDifficulty = engine.updateDifficulty(difficulty, fsrsRating);
         double retrievability = engine.retrievability(elapsedDays, stability);
         double nextStability = fsrsRating == Fsrs5Engine.ratingToInt(BridgeScheduler.RATING_AGAIN)

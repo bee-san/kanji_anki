@@ -10,7 +10,6 @@ public final class FsrsImpactSimulationTest {
     public void syntheticMigrationScenariosProduceReviewedImpactReport() {
         Fsrs5Adapter oldAdapter = new Fsrs5Adapter();
         LatestFsrsAdapter latestAdapter = new LatestFsrsAdapter();
-        long now = 30L * BridgeScheduler.DAY;
 
         int flagged = 0;
         int total = 0;
@@ -25,11 +24,10 @@ public final class FsrsImpactSimulationTest {
                             BridgeScheduler.RATING_GOOD,
                             BridgeScheduler.RATING_EASY
                     }) {
-                        long dueAt = now - elapsedDays * BridgeScheduler.DAY;
                         KaniFsrsReviewResult oldResult = oldAdapter.review(
-                                stability, difficulty, rating, dueAt, now, 0.9);
+                                stability, difficulty, rating, elapsedDays, 0.9);
                         KaniFsrsReviewResult latestResult = latestAdapter.review(
-                                stability, difficulty, rating, dueAt, now, 0.9);
+                                stability, difficulty, rating, elapsedDays, 0.9);
                         double ratio = (double) latestResult.intervalDays() / oldResult.intervalDays();
                         boolean flag = ratio > 2.0 || ratio < 0.5;
                         if (flag) {
