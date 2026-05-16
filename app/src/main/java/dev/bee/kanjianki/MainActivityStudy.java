@@ -779,8 +779,13 @@ abstract class MainActivityStudy extends MainActivityStats {
         drawingPad.setGuide(guide, currentHintState, false);
         LinearLayout padShell = softInsetPanel();
         padShell.setPadding(dp(8), dp(8), dp(8), dp(8));
-        padShell.addView(drawingPad, new LinearLayout.LayoutParams(-1, studyPadHeight()));
+        SquarePadFrame squarePad = new SquarePadFrame(this, studyPadHeight());
+        squarePad.addView(drawingPad);
+        padShell.addView(squarePad, new LinearLayout.LayoutParams(-1, -2));
         card.addView(padShell);
+        resultStatus = text("", 16, STUDY_MUTED, false);
+        resultStatus.setVisibility(View.GONE);
+        card.addView(resultStatus);
         content.addView(card);
 
         buildStudyActionBar();
@@ -1236,10 +1241,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyActionBar.removeAllViews();
         studyActionBar.setVisibility(View.VISIBLE);
 
-        resultStatus = text("", 16, STUDY_MUTED, false);
-        resultStatus.setVisibility(View.GONE);
-        studyActionBar.addView(resultStatus);
-
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Button clear = studySecondaryButton("Erase");
@@ -1269,10 +1270,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
         nextAfterPassButton = pinkPrimaryButton(LABEL_PASS);
-        // Write_kanji rung exposes only Pass / Fail per the ladder contract.
-        // A successful writing recognition is always treated as Good; Hard /
-        // Easy grading from the recognizer is not surfaced on this rung.
-        nextAfterPassButton.setOnClickListener(v -> submitReview(RATING_GOOD, false));
+        nextAfterPassButton.setOnClickListener(v -> submitReview(writingSubmitRating(activeAnalysis), false));
         primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
         studyActionBar.addView(primaryActions);
 
@@ -1607,9 +1605,30 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (nextAfterPassButton != null) {
             nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
             if (submittable) {
-                nextAfterPassButton.setText(LABEL_PASS);
+                nextAfterPassButton.setText(writingSubmitLabel(activeAnalysis));
+                nextAfterPassButton.setOnClickListener(v -> submitReview(writingSubmitRating(activeAnalysis), false));
             }
         }
+    }
+
+    String writingSubmitLabel(WritingAnalysis analysis) {
+        if (analysis == null || !analysis.writingPassed) {
+            return "Fail";
+        }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return "Save hard";
+        }
+        return LABEL_PASS;
+    }
+
+    String writingSubmitRating(WritingAnalysis analysis) {
+        if (analysis == null || !analysis.writingPassed) {
+            return RATING_AGAIN;
+        }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return RATING_HARD;
+        }
+        return RATING_GOOD;
     }
 
     void updateFallbackActionButtons(boolean hasResult, boolean passed, StrokeGuide guide) {
@@ -1836,7 +1855,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             return false;
         }
         switch (analysis.status) {
-            case WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
+            case CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
                 return true;
             default:
                 return false;

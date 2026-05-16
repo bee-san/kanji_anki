@@ -12,6 +12,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -1840,6 +1841,137 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
+    public void writingResultActionsUseOutcomeSpecificLabels() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                prepareWritingUi(activity, session("裂", BridgeScheduler.TASK_WRITE_KANJI, row));
+                activity.writingModelStatusKnown = true;
+                activity.writingModelDownloaded = true;
+                StrokeOrderEvaluator.StrokeOrderResult order = StrokeOrderEvaluator
+                        .evaluate(guide("裂"), sample())
+                        .withDiagnosis(StrokeDiagnosis.builder().add(StrokeDiagnosis.Label.WRONG_ORDER, 1).build());
+
+                activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
+                activity.updateResultActions();
+                assertEquals("Fail", activity.nextAfterPassButton.getText().toString());
+                assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
+                assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
+
+                activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
+                activity.updateResultActions();
+                assertEquals("Try cleaner", activity.checkWritingButton.getText().toString());
+                assertEquals("Save hard", activity.nextAfterPassButton.getText().toString());
+                assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
+
+                activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
+                activity.updateResultActions();
+                assertEquals("Pass", activity.nextAfterPassButton.getText().toString());
+                assertEquals(View.GONE, activity.manualOverrideButton.getVisibility());
+            });
+        }
+    }
+
+    @Test
+    public void squarePadFrameKeepsDrawingPadSquareUnderRectangularConstraints() {
+        MainActivityUiSupport.SquarePadFrame frame = new MainActivityUiSupport.SquarePadFrame(context, 390);
+        DrawingPadView pad = new DrawingPadView(context);
+        frame.addView(pad);
+
+        frame.measure(
+                View.MeasureSpec.makeMeasureSpec(260, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(900, View.MeasureSpec.AT_MOST)
+        );
+        frame.layout(0, 0, 260, frame.getMeasuredHeight());
+        assertEquals(260, pad.getMeasuredWidth());
+        assertEquals(260, pad.getMeasuredHeight());
+
+        frame.measure(
+                View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(900, View.MeasureSpec.AT_MOST)
+        );
+        frame.layout(0, 0, 800, frame.getMeasuredHeight());
+        assertEquals(390, pad.getMeasuredWidth());
+        assertEquals(390, pad.getMeasuredHeight());
+        assertEquals(205, pad.getLeft());
+    }
+
+    @Test
+    public void homeAndReminderActionGridsUseTwoColumnsWithWrappingHeights() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                View homeGrid = activity.homeActionRow();
+                measureAtWidth(homeGrid, 320);
+                assertTwoColumnGrid(homeGrid, 3);
+                assertTrue(containsText(homeGrid, "Recent mistakes"));
+                assertTrue(containsText(homeGrid, "Settings"));
+
+                Button time = new Button(activity);
+                int[] hour = new int[]{8};
+                int[] minute = new int[]{0};
+                List<View> presets = Arrays.asList(
+                        activity.reminderPresetButton("Morning", 8, 0, hour, minute, time),
+                        activity.reminderPresetButton("Lunch", 12, 30, hour, minute, time),
+                        activity.reminderPresetButton("Evening", 19, 0, hour, minute, time),
+                        activity.reminderPresetButton("Night", 21, 0, hour, minute, time)
+                );
+                View reminderGrid = activity.twoColumnGrid(presets);
+                measureAtWidth(reminderGrid, 320);
+                assertTwoColumnGrid(reminderGrid, 2);
+                assertTrue(containsText(reminderGrid, "Morning 08:00"));
+                assertTrue(containsText(reminderGrid, "Night 21:00"));
+            });
+        }
+    }
+
+    @Test
+    public void browseAndDetailCopyAvoidMisleadingOrBlankRows() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertEquals("No matches", activity.browseResultHeading(0));
+                assertEquals("2 kanji", activity.browseResultHeading(2));
+                assertEquals("Showing first 300 matches", activity.browseResultHeading(300));
+
+                Records.DashboardRow row = new Records.DashboardRow(
+                        "裂",
+                        1000,
+                        "split",
+                        "",
+                        "deck:Japanese tag:kani prop:due>0 rated:30:1 very-long-browser-query",
+                        10,
+                        "reason",
+                        "",
+                        1,
+                        0,
+                        0,
+                        Collections.emptyList()
+                );
+                LinearLayout why = activity.detailReasonPanel(row, null);
+                assertTrue(containsText(why, "Current local practice evidence from AnkiDroid."));
+                assertContainsText(why, "Anki browser: deck:Japanese");
+
+                activity.content = new LinearLayout(activity);
+                activity.addDetailIdentity(row, null, false);
+                assertTrue(containsText(activity.content, "split"));
+                assertEquals(1, activity.content.getChildCount());
+            });
+        }
+    }
+
+    @Test
+    public void updaterLoadingRowShowsIndeterminateProgress() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                LinearLayout row = activity.indeterminateProgressRow("Checking GitHub Releases");
+                ProgressBar progress = findProgressBar(row);
+                assertNotNull(progress);
+                assertTrue(progress.isIndeterminate());
+                assertTrue(containsText(row, "Checking GitHub Releases"));
+            });
+        }
+    }
+
+    @Test
     public void writingRecognizerStatusCallbacksUpdateTheVisibleState() {
         FakeWritingRecognizer recognizer = new FakeWritingRecognizer(
                 CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", false, "missing")),
@@ -2182,6 +2314,26 @@ public final class MainActivityHelperInstrumentedTest {
         pad.layout(0, 0, 320, 320);
     }
 
+    private static void measureAtWidth(View view, int width) {
+        view.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.AT_MOST)
+        );
+        view.layout(0, 0, width, view.getMeasuredHeight());
+    }
+
+    private static void assertTwoColumnGrid(View view, int expectedRows) {
+        assertTrue(view instanceof ViewGroup);
+        ViewGroup grid = (ViewGroup) view;
+        assertEquals(expectedRows, grid.getChildCount());
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            assertTrue(grid.getChildAt(i) instanceof ViewGroup);
+            ViewGroup row = (ViewGroup) grid.getChildAt(i);
+            assertEquals(2, row.getChildCount());
+            assertTrue(row.getMeasuredHeight() > 0);
+        }
+    }
+
     private static void prepareWritingUi(MainActivity activity, Records.StudySession session) {
         activity.activeSession = session;
         activity.currentHintState = HintState.fromWritingLevel(1);
@@ -2286,6 +2438,22 @@ public final class MainActivityHelperInstrumentedTest {
         }
         for (int i = 0; i < group.getChildCount(); i++) {
             Button found = findButton(group.getChildAt(i), label);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    private static ProgressBar findProgressBar(View view) {
+        if (view instanceof ProgressBar progressBar) {
+            return progressBar;
+        }
+        if (!(view instanceof ViewGroup group)) {
+            return null;
+        }
+        for (int i = 0; i < group.getChildCount(); i++) {
+            ProgressBar found = findProgressBar(group.getChildAt(i));
             if (found != null) {
                 return found;
             }

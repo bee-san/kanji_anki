@@ -55,6 +55,21 @@ public final class StudyTopBarViewInstrumentedTest {
         assertEquals(1, settingsClicks.get());
     }
 
+    @Test
+    public void studyTopBarMeasuresAtCompactWidth() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        StudyTopBarView topBar = new StudyTopBarView(context, 12, 24, 0.5f, () -> { }, () -> { });
+
+        topBar.measure(
+                View.MeasureSpec.makeMeasureSpec(260, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(180, View.MeasureSpec.AT_MOST)
+        );
+        topBar.layout(0, 0, 260, topBar.getMeasuredHeight());
+
+        assertEquals(260, topBar.getMeasuredWidth());
+        assertNotNull(findText(topBar, "12 / 24"));
+    }
+
     private static void measureLayoutAndDraw(View view) {
         view.measure(
                 View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),

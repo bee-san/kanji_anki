@@ -69,6 +69,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     static final String LABEL_NEW_CARDS = "New cards";
     static final String LABEL_CONTINUE_ALL_KANJI = "Continue all kanji";
     static final String RATING_AGAIN = "again";
+    static final String RATING_HARD = "hard";
     static final String RATING_GOOD = "good";
     static final String STATE_LEARNING = "learning";
     static final String STATE_RETIRED = "retired";
@@ -92,6 +93,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     LinearLayout content;
     ScrollView contentScroll;
     LinearLayout studyActionBar;
+    int studyActionBarBottomInset;
     Records.StudySession activeSession;
     Records.SimilarKanjiWritingRepair activeSimilarWritingRepair;
     Records.AdaptiveLoadPlan activeStudyPlan;
@@ -327,14 +329,16 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         studyActionBar = new LinearLayout(this);
         studyActionBar.setOrientation(LinearLayout.VERTICAL);
-        studyActionBar.setPadding(dp(18), dp(10), dp(18), dp(8));
+        applyStudyActionBarPadding();
         studyActionBar.setBackgroundColor(STUDY_BG_SOFT);
         studyActionBar.setVisibility(View.GONE);
         root.addView(studyActionBar, new LinearLayout.LayoutParams(-1, -2));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             Insets bars = WindowInsetsCompat.toWindowInsetsCompat(insets, view)
                     .getInsets(WindowInsetsCompat.Type.systemBars());
+            studyActionBarBottomInset = bars.bottom;
             content.setPadding(dp(18), dp(18) + bars.top, dp(18), dp(18) + bars.bottom);
+            applyStudyActionBarPadding();
             return insets;
         });
         root.requestApplyInsets();
@@ -557,8 +561,14 @@ abstract class MainActivityBase extends MainActivityUiSupport {
 
     void styleStudyActionBarShell() {
         if (studyActionBar != null) {
-            studyActionBar.setPadding(dp(18), dp(10), dp(18), dp(8));
+            applyStudyActionBarPadding();
             studyActionBar.setBackgroundColor(STUDY_BG);
+        }
+    }
+
+    void applyStudyActionBarPadding() {
+        if (studyActionBar != null) {
+            studyActionBar.setPadding(dp(18), dp(10), dp(18), dp(8) + studyActionBarBottomInset);
         }
     }
 

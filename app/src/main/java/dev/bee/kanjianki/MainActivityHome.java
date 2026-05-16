@@ -87,6 +87,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
+    String activeBrowseQuery = "";
+
     abstract void renderStats();
     abstract void renderGames();
 
@@ -309,26 +311,13 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     View homeActionRow() {
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setBaselineAligned(false);
-
-        LinearLayout firstRow = new LinearLayout(this);
-        firstRow.setOrientation(LinearLayout.HORIZONTAL);
-        firstRow.setBaselineAligned(false);
-        firstRow.addView(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
-        firstRow.addView(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
-        firstRow.addView(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
-        column.addView(firstRow);
-
-        LinearLayout secondRow = new LinearLayout(this);
-        secondRow.setOrientation(LinearLayout.HORIZONTAL);
-        secondRow.setBaselineAligned(false);
-        secondRow.addView(pillButton("Games", R.drawable.ic_game_24, this::renderGames));
-        secondRow.addView(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
-        column.addView(secondRow);
-
-        return column;
+        List<View> actions = new ArrayList<>();
+        actions.add(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
+        actions.add(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
+        actions.add(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
+        actions.add(pillButton("Games", R.drawable.ic_game_24, this::renderGames));
+        actions.add(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
+        return twoColumnGrid(actions);
     }
 
     void renderBrowseKanji() {
@@ -393,9 +382,7 @@ abstract class MainActivityHome extends MainActivityBase {
         button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
         button.setClickable(true);
         button.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(56), 1);
-        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
-        button.setLayoutParams(lp);
+        button.setMinimumHeight(dp(62));
         return button;
     }
 
@@ -812,6 +799,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void renderBrowseKanji(String query) {
+        activeBrowseQuery = query == null ? "" : query;
         base("home");
         content.addView(fullWidthHomeButton());
         content.addView(text("Browse Kanji", 34, INK, true));
@@ -830,7 +818,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(submit);
 
         List<Records.KanjiInventoryItem> items = store.searchKanjiInventory(query);
-        content.addView(sectionTitle(items.isEmpty() ? "No matches" : countText(items.size(), "kanji", "kanji")));
+        content.addView(sectionTitle(browseResultHeading(items.size())));
         if (items.isEmpty()) {
             emptyState("No local kanji found", "Sync AnkiDroid first, or try a different search.");
             return;
@@ -866,7 +854,21 @@ abstract class MainActivityHome extends MainActivityBase {
         return box;
     }
 
+    String browseResultHeading(int size) {
+        if (size <= 0) {
+            return "No matches";
+        }
+        if (size >= 300) {
+            return "Showing first 300 matches";
+        }
+        return countText(size, "kanji", "kanji");
+    }
+
     void renderDetail(String kanji, boolean fromBrowse) {
+        renderDetail(kanji, fromBrowse, fromBrowse ? activeBrowseQuery : "");
+    }
+
+    void renderDetail(String kanji, boolean fromBrowse, String browseQuery) {
         base("home");
         Records.KanjiRecoveryTimeline timeline = store.timelineForKanji(kanji);
         Records.DashboardRow row = timeline.currentRow;
@@ -877,7 +879,7 @@ abstract class MainActivityHome extends MainActivityBase {
             return;
         }
         String displayKanji = detailDisplayKanji(kanji, row, inventory);
-        addDetailHeader(displayKanji, fromBrowse);
+        addDetailHeader(displayKanji, fromBrowse, browseQuery);
         boolean suspended = inventory != null && inventory.suspended;
         addDetailIdentity(row, inventory, suspended);
         addSpace(10);
@@ -885,7 +887,7 @@ abstract class MainActivityHome extends MainActivityBase {
         if (inventory != null) {
             content.addView(localInventoryPanel(inventory));
         }
-        addDetailActions(row, inventory, displayKanji, fromBrowse, suspended);
+        addDetailActions(row, inventory, displayKanji, fromBrowse, browseQuery, suspended);
         addSpace(12);
         addRecoveryTimeline(timeline);
         if (row != null) {
@@ -900,7 +902,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return inventory == null ? fallback : inventory.kanji;
     }
 
-    void addDetailHeader(String displayKanji, boolean fromBrowse) {
+    void addDetailHeader(String displayKanji, boolean fromBrowse, String browseQuery) {
         if (!fromBrowse) {
             content.addView(fullWidthHomeButton());
         }
@@ -909,7 +911,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(glyph);
         if (fromBrowse) {
             Button back = secondaryButton("Back to Browse Kanji");
-            back.setOnClickListener(v -> renderBrowseKanji(""));
+            back.setOnClickListener(v -> renderBrowseKanji(browseQuery));
             content.addView(back);
         }
     }
@@ -928,7 +930,9 @@ abstract class MainActivityHome extends MainActivityBase {
             }
         } else {
             content.addView(text(rowMeaning(row), 25, INK, true));
-            content.addView(text(row.reading, 20, TEAL, true));
+            if (!row.reading.isEmpty()) {
+                content.addView(text(row.reading, 20, TEAL, true));
+            }
         }
     }
 
@@ -945,33 +949,47 @@ abstract class MainActivityHome extends MainActivityBase {
         if (row == null) {
             why.addView(text("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.", 17, Color.WHITE, false));
             if (inventory != null && !inventory.browserSearch.isEmpty()) {
-                why.addView(text("Anki browser: " + inventory.browserSearch, 14, Color.WHITE, false));
+                why.addView(text("Anki browser: " + compact(inventory.browserSearch, 96), 14, Color.WHITE, false));
             }
         } else {
-            why.addView(text(row.reasonText, 17, Color.WHITE, false));
-            why.addView(text("Anki browser: " + row.browserSearch, 14, Color.WHITE, false));
+            String reason = row.reasonText.isEmpty() ? "Current local practice evidence from AnkiDroid." : row.reasonText;
+            why.addView(text(reason, 17, Color.WHITE, false));
+            if (!row.browserSearch.isEmpty()) {
+                why.addView(text("Anki browser: " + compact(row.browserSearch, 96), 14, Color.WHITE, false));
+            }
         }
         return why;
     }
 
-    void addDetailActions(Records.DashboardRow row, Records.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, boolean suspended) {
+    void addDetailActions(Records.DashboardRow row, Records.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
         if (row != null && !suspended) {
             Button practice = primaryButton("Review this now", CORAL);
             practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
             content.addView(practice);
         }
-        if (inventory != null && !inventory.browserSearch.isEmpty()) {
+        String browserSearch = detailBrowserSearch(row, inventory);
+        if (!browserSearch.isEmpty()) {
             Button copy = secondaryButton("Copy Anki search");
-            copy.setOnClickListener(v -> copyAnkiSearch(inventory.browserSearch, v));
+            copy.setOnClickListener(v -> copyAnkiSearch(browserSearch, v));
             content.addView(copy);
         }
         Button suspend = secondaryButton(suspended ? "Unsuspend locally" : "Suspend locally");
         suspend.setOnClickListener(v -> {
             store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
             Toast.makeText(this, suspended ? "Kanji unsuspended." : "Kanji suspended locally.", Toast.LENGTH_SHORT).show();
-            renderDetail(displayKanji, fromBrowse);
+            renderDetail(displayKanji, fromBrowse, browseQuery);
         });
         content.addView(suspend);
+    }
+
+    String detailBrowserSearch(Records.DashboardRow row, Records.KanjiInventoryItem inventory) {
+        if (inventory != null && !inventory.browserSearch.isEmpty()) {
+            return inventory.browserSearch;
+        }
+        if (row != null && !row.browserSearch.isEmpty()) {
+            return row.browserSearch;
+        }
+        return "";
     }
 
     void addDetailExamples(Records.DashboardRow row) {
@@ -987,7 +1005,7 @@ abstract class MainActivityHome extends MainActivityBase {
         box.addView(text("Local inventory", 19, INK, true));
         box.addView(text(countText(inventory.sourceCount, "source note/card", "source notes/cards") + " · " + countText(inventory.exampleCount, "stored example", "stored examples"), 15, MUTED, false));
         if (!inventory.browserSearch.isEmpty()) {
-            box.addView(text("Search: " + inventory.browserSearch, 14, MUTED, false));
+            box.addView(text("Search: " + compact(inventory.browserSearch, 96), 14, MUTED, false));
         }
         if (inventory.lastSeenAtMillis > 0L) {
             box.addView(text("Last seen locally " + shortDateTime(inventory.lastSeenAtMillis), 14, MUTED, false));

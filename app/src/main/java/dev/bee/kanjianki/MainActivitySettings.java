@@ -34,6 +34,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -89,6 +90,8 @@ import java.util.concurrent.Executors;
 abstract class MainActivitySettings extends MainActivityStudy {
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
+        content.addView(fullWidthHomeButton());
+        content.addView(backToSettingsButton());
         content.addView(text("GitHub updater", 34, INK, true));
         content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.", 16, MUTED, false));
         content.addView(autoUpdatePanel("Automatic updates"));
@@ -159,8 +162,18 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return getPackageManager().canRequestPackageInstalls();
     }
 
+    Button backToSettingsButton() {
+        Button back = secondaryButton("Back to settings");
+        back.setOnClickListener(v -> renderSettings(false));
+        return back;
+    }
+
     void renderSettings() {
-        int scrollY = contentScroll != null ? contentScroll.getScrollY() : 0;
+        renderSettings(false);
+    }
+
+    void renderSettings(boolean preserveScroll) {
+        int scrollY = preserveScroll && contentScroll != null ? contentScroll.getScrollY() : 0;
         base(NAV_SETTINGS_ROUTE);
         Records.Settings current = settings();
         content.addView(fullWidthHomeButton());
@@ -174,7 +187,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 settingsAnkiExpanded,
                 () -> {
                     settingsAnkiExpanded = !settingsAnkiExpanded;
-                    renderSettings();
+                    renderSettings(true);
                 },
                 noteTypeSettingsPanel(current),
                 importFilterSettingsPanel(current),
@@ -187,7 +200,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 settingsStudyExpanded,
                 () -> {
                     settingsStudyExpanded = !settingsStudyExpanded;
-                    renderSettings();
+                    renderSettings(true);
                 },
                 newCardSortSettingsPanel(current),
                 workloadSettingsPanel(),
@@ -204,7 +217,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 settingsSyncExpanded,
                 () -> {
                     settingsSyncExpanded = !settingsSyncExpanded;
-                    renderSettings();
+                    renderSettings(true);
                 },
                 reminderSettingsPanel(),
                 autoSyncSettingsPanel(),
@@ -217,11 +230,13 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 settingsAppExpanded,
                 () -> {
                     settingsAppExpanded = !settingsAppExpanded;
-                    renderSettings();
+                    renderSettings(true);
                 },
                 dataLicenseSettingsPanel()
         ));
-        contentScroll.post(() -> contentScroll.scrollTo(0, scrollY));
+        if (preserveScroll) {
+            contentScroll.post(() -> contentScroll.scrollTo(0, scrollY));
+        }
     }
 
     View settingsHero(
@@ -297,10 +312,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         labelView.setIncludeFontPadding(false);
         pill.addView(labelView);
 
-        TextView valueView = text(value, 17, valueColor, true);
+        TextView valueView = text(compact(value, 56), 17, valueColor, true);
         valueView.setSingleLine(false);
+        valueView.setMaxLines(2);
         valueView.setPadding(0, dp(3), 0, 0);
         pill.addView(valueView);
+        pill.setContentDescription(label + ": " + value);
         return pill;
     }
 
@@ -645,6 +662,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     void renderDataSources() {
         base(NAV_SETTINGS_ROUTE);
+        content.addView(fullWidthHomeButton());
+        content.addView(backToSettingsButton());
         content.addView(text("Data licenses", 34, INK, true));
         content.addView(text("Dictionary and stroke-order data bundled for offline study.", 16, MUTED, false));
 
@@ -664,7 +683,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         content.addView(fonts);
 
         Button back = secondaryButton("Back to settings");
-        back.setOnClickListener(v -> renderSettings());
+        back.setOnClickListener(v -> renderSettings(false));
         content.addView(back);
     }
 
@@ -1386,13 +1405,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         ).show());
         box.addView(time);
 
-        LinearLayout quick = new LinearLayout(this);
-        quick.setOrientation(LinearLayout.HORIZONTAL);
-        addReminderPreset(quick, "Morning", 8, 0, selectedHour, selectedMinute, time);
-        addReminderPreset(quick, "Lunch", 12, 30, selectedHour, selectedMinute, time);
-        addReminderPreset(quick, "Evening", 19, 0, selectedHour, selectedMinute, time);
-        addReminderPreset(quick, "Night", 21, 0, selectedHour, selectedMinute, time);
-        box.addView(quick);
+        List<View> presets = new ArrayList<>();
+        presets.add(reminderPresetButton("Morning", 8, 0, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton("Lunch", 12, 30, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton("Evening", 19, 0, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton("Night", 21, 0, selectedHour, selectedMinute, time));
+        box.addView(twoColumnGrid(presets));
 
         Button save = primaryButton(reminder.enabled ? "Save reminder" : "Enable reminder", STUDY_PINK_DARK);
         save.setOnClickListener(v -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true));
@@ -1538,15 +1556,16 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return String.format(Locale.ROOT, "Reminder time: %02d:%02d", hour, minute);
     }
 
-    void addReminderPreset(LinearLayout row, String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
+    Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
         Button preset = secondaryButton(label + " " + reminderTime(hour, minute));
         preset.setTextSize(13);
+        preset.setMinHeight(dp(54));
         preset.setOnClickListener(v -> {
             selectedHour[0] = hour;
             selectedMinute[0] = minute;
             timeButton.setText(reminderTimeButtonLabel(hour, minute));
         });
-        row.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
+        return preset;
     }
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
@@ -1591,8 +1610,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     void runUpdate(boolean cachedPending) {
         base(NAV_SETTINGS_ROUTE);
+        content.addView(fullWidthHomeButton());
+        content.addView(backToSettingsButton());
         content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
         content.addView(text(cachedPending ? "Using the verified APK already cached by Kani." : "Downloading metadata and verifying assets.", 16, MUTED, false));
+        content.addView(indeterminateProgressRow(cachedPending ? "Preparing verified APK" : "Checking GitHub Releases"));
         io.execute(() -> {
             GitHubUpdater updater = new GitHubUpdater(this);
             GitHubUpdater.UpdateResult result = cachedPending
@@ -1606,6 +1628,20 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 renderUpdate();
             });
         });
+    }
+
+    LinearLayout indeterminateProgressRow(String label) {
+        LinearLayout row = panelBox(Color.WHITE, STUDY_BORDER);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        ProgressBar progress = new ProgressBar(this);
+        progress.setIndeterminate(true);
+        progress.setContentDescription(label);
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(36), dp(36));
+        progressLp.setMargins(0, 0, dp(12), 0);
+        row.addView(progress, progressLp);
+        row.addView(text(label, 16, STUDY_PLUM, true), new LinearLayout.LayoutParams(0, -2, 1));
+        return row;
     }
 
 }

@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.widget.TextViewCompat;
+
+import java.util.List;
 
 abstract class MainActivityUiSupport extends Activity {
     static final int BG = Color.rgb(255, 247, 251);
@@ -146,6 +149,32 @@ abstract class MainActivityUiSupport extends Activity {
         lp.setMargins(0, dp(8), 0, dp(8));
         box.setLayoutParams(lp);
         return box;
+    }
+
+    LinearLayout twoColumnGrid(List<View> items) {
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        grid.setBaselineAligned(false);
+        for (int i = 0; i < items.size(); i += 2) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setBaselineAligned(false);
+            addGridCell(row, items.get(i), true);
+            if (i + 1 < items.size()) {
+                addGridCell(row, items.get(i + 1), false);
+            } else {
+                SpaceView spacer = new SpaceView(this);
+                addGridCell(row, spacer, false);
+            }
+            grid.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        }
+        return grid;
+    }
+
+    private void addGridCell(LinearLayout row, View child, boolean first) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+        lp.setMargins(first ? 0 : dp(4), dp(4), first ? dp(4) : 0, dp(4));
+        row.addView(child, lp);
     }
 
     LinearLayout panelBox(int fill, int stroke) {
@@ -308,6 +337,87 @@ abstract class MainActivityUiSupport extends Activity {
     static final class SpaceView extends View {
         SpaceView(Context context) {
             super(context);
+        }
+    }
+
+    static final class SquarePadFrame extends ViewGroup {
+        private final int maxSizePx;
+
+        SquarePadFrame(Context context) {
+            this(context, null, 0, 0);
+        }
+
+        SquarePadFrame(Context context, AttributeSet attrs) {
+            this(context, attrs, 0, 0);
+        }
+
+        SquarePadFrame(Context context, AttributeSet attrs, int defStyleAttr) {
+            this(context, attrs, defStyleAttr, 0);
+        }
+
+        SquarePadFrame(Context context, int maxSizePx) {
+            this(context, null, 0, maxSizePx);
+        }
+
+        private SquarePadFrame(Context context, AttributeSet attrs, int defStyleAttr, int maxSizePx) {
+            super(context, attrs, defStyleAttr);
+            this.maxSizePx = maxSizePx;
+            setClipToPadding(false);
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+            int widthSize = MeasureSpec.getSize(widthMeasureSpec);
+            int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+            int heightSize = MeasureSpec.getSize(heightMeasureSpec);
+            int horizontalPadding = getPaddingLeft() + getPaddingRight();
+            int verticalPadding = getPaddingTop() + getPaddingBottom();
+            int effectiveMaxSize = maxSizePx <= 0 ? Integer.MAX_VALUE : maxSizePx;
+            int availableWidth = widthMode == MeasureSpec.UNSPECIFIED
+                    ? effectiveMaxSize
+                    : Math.max(0, widthSize - horizontalPadding);
+            int availableHeight = heightMode == MeasureSpec.UNSPECIFIED
+                    ? effectiveMaxSize
+                    : Math.max(0, heightSize - verticalPadding);
+            int size = Math.max(0, Math.min(Math.min(availableWidth, availableHeight), effectiveMaxSize));
+            int childSpec = MeasureSpec.makeMeasureSpec(size, MeasureSpec.EXACTLY);
+            for (int i = 0; i < getChildCount(); i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() != GONE) {
+                    child.measure(childSpec, childSpec);
+                }
+            }
+            int measuredWidth = widthMode == MeasureSpec.EXACTLY ? widthSize : size + horizontalPadding;
+            int measuredHeight = size + verticalPadding;
+            if (heightMode == MeasureSpec.EXACTLY) {
+                measuredHeight = heightSize;
+            } else if (heightMode == MeasureSpec.AT_MOST) {
+                measuredHeight = Math.min(measuredHeight, heightSize);
+            }
+            setMeasuredDimension(measuredWidth, measuredHeight);
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+            int childCount = getChildCount();
+            if (childCount == 0) {
+                return;
+            }
+            int contentLeft = getPaddingLeft();
+            int contentTop = getPaddingTop();
+            int contentWidth = Math.max(0, right - left - getPaddingLeft() - getPaddingRight());
+            int contentHeight = Math.max(0, bottom - top - getPaddingTop() - getPaddingBottom());
+            for (int i = 0; i < childCount; i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() == GONE) {
+                    continue;
+                }
+                int size = Math.min(child.getMeasuredWidth(), child.getMeasuredHeight());
+                int childLeft = contentLeft + Math.max(0, (contentWidth - size) / 2);
+                int childTop = contentTop + Math.max(0, (contentHeight - size) / 2);
+                child.layout(childLeft, childTop, childLeft + size, childTop + size);
+            }
         }
     }
 }

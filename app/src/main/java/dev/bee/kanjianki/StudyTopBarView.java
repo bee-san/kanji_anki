@@ -50,7 +50,7 @@ final class StudyTopBarView extends LinearLayout {
 
         StudyProgressPillView progressPill = new StudyProgressPillView(context, STUDY_HERO_TRACK, STUDY_HERO_PINK);
         progressPill.setFraction(fraction);
-        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(180), dp(7));
+        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(-1, dp(7));
         progressLp.gravity = Gravity.CENTER_HORIZONTAL;
         progressLp.setMargins(0, dp(8), 0, 0);
         center.addView(progressPill, progressLp);

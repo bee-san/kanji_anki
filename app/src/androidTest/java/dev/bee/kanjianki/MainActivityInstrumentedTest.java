@@ -187,6 +187,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Browse Kanji");
             scenario.onActivity(activity -> {
                 assertHasText(activity, RAMEN_RADICAL_GAP);
+                activity.renderBrowseKanji("拉");
+                EditText search = findType(activity.findViewById(android.R.id.content), EditText.class);
+                assertNotNull(search);
+                assertEquals("拉", search.getText().toString());
             });
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity(activity -> {
@@ -206,6 +210,12 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "Review this now");
                 assertHasText(activity, "Suspend locally");
             });
+            clickText(scenario, "Back to Browse Kanji");
+            scenario.onActivity(activity -> {
+                EditText search = findType(activity.findViewById(android.R.id.content), EditText.class);
+                assertNotNull(search);
+                assertEquals("拉", search.getText().toString());
+            });
         }
     }
 
@@ -224,7 +234,7 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "App updates");
             clickText(scenario, "Open updater");
             waitForText(scenario, "GitHub updater");
-            scenario.onActivity(activity -> assertHasTexts(activity, "GitHub updater", "Current version", "Check for update"));
+            scenario.onActivity(activity -> assertHasTexts(activity, "GitHub updater", "Back to settings", "Home", "Current version", "Check for update"));
         }
     }
 
@@ -1462,6 +1472,7 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, CLEAN_MATCH);
                 assertHasText(activity, "Target: 拉");
                 assertHasText(activity, PASS_AFTER_WRITING);
+                assertNoText(activity, "Fail");
                 assertEquals(1, countText(activity.findViewById(android.R.id.content), CLEAN_MATCH));
             });
             clickText(scenario, PASS_AFTER_WRITING);
@@ -1521,9 +1532,10 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Try cleaner");
                 assertHasText(activity, "Save hard");
-                assertHasText(activity, PASS_AFTER_WRITING);
+                assertHasText(activity, "Mark right anyway");
+                assertNoText(activity, PASS_AFTER_WRITING);
             });
-            clickText(scenario, PASS_AFTER_WRITING);
+            clickText(scenario, "Save hard");
 
             try (LocalStore store = new LocalStore(context)) {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -1547,9 +1559,10 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "I could not read that as the target kanji yet");
                 assertHasText(activity, "Target: 拉");
-                assertHasText(activity, PASS_AFTER_WRITING);
+                assertHasText(activity, "Fail");
+                assertNoText(activity, PASS_AFTER_WRITING);
             });
-            clickText(scenario, PASS_AFTER_WRITING);
+            clickText(scenario, "Fail");
 
             try (LocalStore store = new LocalStore(context)) {
                 Records.ReviewStats stats = store.reviewStatsSince(0L);
@@ -1626,7 +1639,7 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Download the handwriting checker before automatic checks");
                 assertHasText(activity, "Target: 拉");
-                assertHasText(activity, PASS_AFTER_WRITING);
+                assertHasText(activity, "Fail");
                 assertHasText(activity, "Mark right anyway");
             });
             clickText(scenario, "Mark right anyway");
