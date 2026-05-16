@@ -902,7 +902,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public void promotionUpdatesNewActiveRungMemory() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
         HashSet<String> consumed = new HashSet<>();
         long dueAt = 30L * BridgeScheduler.DAY;
         Records.TaskMemory taskMemory = new Records.TaskMemory(
@@ -925,15 +925,13 @@ public class BridgeSchedulerTest {
                 .kanjiMeaningMemory(taskMemory)
                 .build();
 
-        for (int i = 0; i < Records.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE; i++) {
-            Records.ReviewResult result = scheduler.applyReview(
-                    item.withToken("promote-" + i),
-                    new Records.ReviewRequest("裂", "promote-" + i, "good", false, false, false, 0),
-                    consumed,
-                    item.dueAtMillis
-            );
-            item = result.item;
-        }
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("promote"),
+                new Records.ReviewRequest("裂", "promote", "good", false, false, false, 0),
+                consumed,
+                item.dueAtMillis
+        );
+        item = result.item;
 
         assertEquals(Records.LadderRung.FONT_MEANING, item.rung);
         assertEquals(item.dueAtMillis, item.fontMeaningMemory.dueAtMillis);
@@ -1513,7 +1511,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public void customLadderOrderControlsPromotion() {
-        BridgeScheduler scheduler = new BridgeScheduler();
+        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
         HashSet<String> consumed = new HashSet<>();
         Records.StudyLadderSettings ladder = new Records.StudyLadderSettings(
                 Arrays.asList(
@@ -1535,18 +1533,16 @@ public class BridgeSchedulerTest {
         );
         Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
 
-        for (int i = 0; i < Records.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE; i++) {
-            Records.ReviewResult result = scheduler.applyReview(
-                    item.withToken("custom-order-" + i),
-                    new Records.ReviewRequest("裂", "custom-order-" + i, "good", false, false, false, 0),
-                    consumed,
-                    item.dueAtMillis,
-                    Records.SchedulerParameters.defaults(),
-                    Records.Settings.kikuDefaults(),
-                    ladder
-            );
-            item = result.item;
-        }
+        Records.ReviewResult result = scheduler.applyReview(
+                item.withToken("custom-order"),
+                new Records.ReviewRequest("裂", "custom-order", "good", false, false, false, 0),
+                consumed,
+                item.dueAtMillis,
+                Records.SchedulerParameters.defaults(),
+                Records.Settings.kikuDefaults(),
+                ladder
+        );
+        item = result.item;
 
         assertEquals(Records.LadderRung.WORD_READING, item.rung);
     }
@@ -1790,6 +1786,40 @@ public class BridgeSchedulerTest {
                 difficulty,
                 retrievability
         );
+    }
+
+    private BridgeScheduler schedulerWithReviewIntervalDays(long intervalDays) {
+        return new BridgeScheduler(new FixedIntervalFsrsAdapter(intervalDays * BridgeScheduler.DAY));
+    }
+
+    private static final class FixedIntervalFsrsAdapter implements KaniFsrsAdapter {
+        private final long reviewIntervalMillis;
+
+        FixedIntervalFsrsAdapter(long reviewIntervalMillis) {
+            this.reviewIntervalMillis = reviewIntervalMillis;
+        }
+
+        @Override
+        public KaniFsrsReviewResult initialReview(
+                String rating,
+                double currentStability,
+                double currentDifficulty,
+                double targetRetention,
+                boolean isNewLearning
+        ) {
+            return new KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY);
+        }
+
+        @Override
+        public KaniFsrsReviewResult review(
+                double stability,
+                double difficulty,
+                String rating,
+                int elapsedDays,
+                double targetRetention
+        ) {
+            return new KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis);
+        }
     }
 
     private Records.Settings settingsWithQueue(int activeQueueCap, int newPerDay) {

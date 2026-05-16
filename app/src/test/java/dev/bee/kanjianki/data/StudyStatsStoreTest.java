@@ -95,21 +95,23 @@ public final class StudyStatsStoreTest {
     }
 
     @Test
-    public void ladderReadinessUsesReviewPhaseRealDueStreaksAndConfiguredThreshold() {
+    public void ladderReadinessUsesReviewPhaseFsrsIntervalsAndFailThreshold() {
         StudyStatsStore.KaniOutcomeStats stats = StudyStatsStore.calculateKaniOutcomeStats(
                 Collections.emptyList(),
                 Arrays.asList(
-                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 3, 0),
-                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.REVIEW, 2, 0),
+                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 9, 0, 22),
+                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.REVIEW, 9, 0, 21),
                         item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 0, 1),
                         item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 3),
-                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.NEW_LEARNING, 5, 5),
-                        item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.RELEARNING, 0, 5)
+                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.NEW_LEARNING, 5, 5, 40),
+                        item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.RELEARNING, 0, 5, 40)
                 ),
+                21,
                 3
         );
 
-        assertEquals(3, stats.ladderHealth.realDueReviewsToMove);
+        assertEquals(21, stats.ladderHealth.ladderPromotionIntervalDays);
+        assertEquals(3, stats.ladderHealth.ladderDemotionFailStreak);
         assertEquals(1, stats.ladderHealth.promotionReadyCount);
         assertEquals(2, stats.ladderHealth.demotionRiskCount);
         assertEquals(1, stats.ladderHealth.demotionReadyCount);
@@ -135,5 +137,16 @@ public final class StudyStatsStoreTest {
             int realAgainStreak
     ) {
         return new StudyStatsStore.LadderItemEvidence(state, rung, phase, realPassStreak, realAgainStreak);
+    }
+
+    private static StudyStatsStore.LadderItemEvidence item(
+            String state,
+            Records.LadderRung rung,
+            Records.SchedulerPhase phase,
+            int realPassStreak,
+            int realAgainStreak,
+            int matureIntervalDays
+    ) {
+        return new StudyStatsStore.LadderItemEvidence(state, rung, phase, realPassStreak, realAgainStreak, matureIntervalDays);
     }
 }

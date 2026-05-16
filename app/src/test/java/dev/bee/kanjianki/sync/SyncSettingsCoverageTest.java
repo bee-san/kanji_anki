@@ -32,6 +32,8 @@ public final class SyncSettingsCoverageTest {
         assertEquals(defaults.writingTriggerMissDays, settings.writingTriggerMissDays);
         assertEquals(defaults.recognitionPromotionPasses, settings.recognitionPromotionPasses);
         assertEquals(defaults.realDueReviewsToMove, settings.realDueReviewsToMove);
+        assertEquals(defaults.ladderPromotionIntervalDays, settings.ladderPromotionIntervalDays);
+        assertEquals(defaults.ladderDemotionFailStreak, settings.ladderDemotionFailStreak);
         assertFalse(settings.importActiveCards);
         assertTrue(settings.importSuspendedCards);
         assertFalse(settings.importTaggedCardsEnabled());

@@ -114,9 +114,12 @@ FSRS-due review attempts in the `review` phase count toward ladder movement.
 The boundary is the task's persisted FSRS due time, not the calendar day or
 any learning-repeat queue.
 
-Ladder movement uses a single user setting, `realDueReviewsToMove`, default
-3. `realDueReviewsToMove` due-review passes in a row promote the rung.
-`realDueReviewsToMove` due-review `Again`s in a row demote the rung. At
+Ladder movement uses real FSRS due-review evidence, not learning-repeat
+practice. A due-review `Hard`, `Good`, or `Easy` promotes the rung only when
+the FSRS result schedules the next review strictly more than
+`ladder_promotion_interval_days` into the future (default 21 days). A
+due-review `Again` increments a consecutive fail streak and demotes the rung
+when it reaches `ladder_demotion_fail_streak` (default 3 fails). At
 `write_kanji` the demotion floor is reached and further `Again`s keep the
 card on that rung. At `word_reading` the promotion ceiling is reached and
 further passes keep the card on that rung.

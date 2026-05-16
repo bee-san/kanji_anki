@@ -31,6 +31,8 @@ public abstract class RecordsSyncModels extends RecordsBase {
         public final int writingTriggerMissDays;
         public final int recognitionPromotionPasses;
         public final int realDueReviewsToMove;
+        public final int ladderPromotionIntervalDays;
+        public final int ladderDemotionFailStreak;
         public final boolean importActiveCards;
         public final boolean importSuspendedCards;
         public final boolean importTaggedCards;
@@ -78,6 +80,8 @@ public abstract class RecordsSyncModels extends RecordsBase {
             this.writingTriggerMissDays = Math.max(1, args.writingTriggerMissDays);
             this.recognitionPromotionPasses = Math.max(1, args.recognitionPromotionPasses);
             this.realDueReviewsToMove = Math.max(1, args.realDueReviewsToMove);
+            this.ladderPromotionIntervalDays = Math.max(1, args.ladderPromotionIntervalDays);
+            this.ladderDemotionFailStreak = Math.max(1, args.ladderDemotionFailStreak);
             this.importActiveCards = args.importActiveCards;
             this.importSuspendedCards = args.importSuspendedCards;
             this.importTags = Collections.unmodifiableList(normalizeImportTags(args.importTags));
@@ -152,6 +156,8 @@ public abstract class RecordsSyncModels extends RecordsBase {
             int writingTriggerMissDays = DEFAULT_WRITING_TRIGGER_MISS_DAYS;
             int recognitionPromotionPasses = DEFAULT_RECOGNITION_PROMOTION_PASSES;
             int realDueReviewsToMove = DEFAULT_REAL_DUE_REVIEWS_TO_MOVE;
+            int ladderPromotionIntervalDays = DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS;
+            int ladderDemotionFailStreak = DEFAULT_LADDER_DEMOTION_FAIL_STREAK;
             boolean importActiveCards = DEFAULT_IMPORT_ACTIVE_CARDS;
             boolean importSuspendedCards = DEFAULT_IMPORT_SUSPENDED_CARDS;
             boolean importTaggedCards = DEFAULT_IMPORT_TAGGED_CARDS;
@@ -165,7 +171,7 @@ public abstract class RecordsSyncModels extends RecordsBase {
             String newCardSortMode = DEFAULT_NEW_CARD_SORT_MODE;
 
             static SettingsArgs from(Object[] rest) {
-                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21, 22);
+                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21, 22, 24);
                 SettingsArgs args = new SettingsArgs();
                 args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS);
                 args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS);
@@ -215,6 +221,12 @@ public abstract class RecordsSyncModels extends RecordsBase {
                 }
                 if (rest.length >= 22) {
                     args.newCardSortMode = stringArg(rest, 21, CONTEXT_SETTINGS);
+                }
+                if (rest.length >= 24) {
+                    args.ladderPromotionIntervalDays = intArg(rest, 22, CONTEXT_SETTINGS);
+                    args.ladderDemotionFailStreak = intArg(rest, 23, CONTEXT_SETTINGS);
+                } else {
+                    args.ladderDemotionFailStreak = args.realDueReviewsToMove;
                 }
                 return args;
             }
@@ -271,7 +283,9 @@ public abstract class RecordsSyncModels extends RecordsBase {
                     DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
                     DEFAULT_IMPORT_BROWSER_QUERY_CARDS,
                     DEFAULT_IMPORT_BROWSER_QUERY,
-                    DEFAULT_NEW_CARD_SORT_MODE
+                    DEFAULT_NEW_CARD_SORT_MODE,
+                    DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                    DEFAULT_LADDER_DEMOTION_FAIL_STREAK
             );
         }
 

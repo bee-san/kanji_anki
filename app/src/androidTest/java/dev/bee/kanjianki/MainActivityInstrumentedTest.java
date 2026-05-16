@@ -248,8 +248,8 @@ public final class MainActivityInstrumentedTest {
                 assertHasText(activity, "FSRS retention");
                 assertHasText(activity, "Desired retention: 90%");
                 assertHasText(activity, "Ladder thresholds");
-                assertHasText(activity, "Passes to go up");
-                assertHasText(activity, "Misses to go down");
+                assertHasText(activity, "FSRS days to go up");
+                assertHasText(activity, "Fails to go down");
             });
             scenario.onActivity(activity -> {
                 editTextAfterLabel(activity, "New cards").setText("2m 15m");
@@ -261,8 +261,8 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Save study ahead");
             scenario.onActivity(activity -> {
-                editTextAfterLabel(activity, "Passes to go up").setText("4");
-                editTextAfterLabel(activity, "Misses to go down").setText("2");
+                editTextAfterLabel(activity, "FSRS days to go up").setText("30");
+                editTextAfterLabel(activity, "Fails to go down").setText("2");
             });
             clickText(scenario, "Save ladder thresholds");
             clickText(scenario, "Use manual workload");
@@ -2329,9 +2329,10 @@ public final class MainActivityInstrumentedTest {
             assertEquals(Arrays.asList(2, 15), store.learningStepSettings().newStepsMinutes);
             assertEquals(Arrays.asList(5, 20), store.learningStepSettings().reviewStepsMinutes);
             assertEquals(45, store.studyAheadMinutes());
-            assertEquals(4, store.getIntSetting(SyncSettings.RECOGNITION_PROMOTION_PASSES_SETTING_KEY, 0));
+            assertEquals(30, store.getIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 0));
+            assertEquals(2, store.getIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, 0));
-            assertEquals(4, store.getIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, 0));
+            assertEquals(2, store.getIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, 0));
             assertEquals(250, store.getIntSetting("suspended_rank_min", 100));
             assertEquals(3500, store.getIntSetting("suspended_rank_max", 3000));
             assertEquals(0, store.getIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, 1));
