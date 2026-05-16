@@ -9,8 +9,10 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'ci/scripts/**'
+      - 'ci/fixtures/ankidroid/**'
       - 'tools/**'
-      - '.github/workflows/android-ci.yml'
+      - '.github/workflows/**'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
@@ -23,8 +25,10 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'ci/scripts/**'
+      - 'ci/fixtures/ankidroid/**'
       - 'tools/**'
-      - '.github/workflows/android-ci.yml'
+      - '.github/workflows/**'
       - 'build.gradle*'
       - 'settings.gradle*'
       - 'gradle/**'
@@ -37,12 +41,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  fast-confidence-gate:
-    name: Fast confidence gate
+  gradle-checks:
+    name: ${{ matrix.label }}
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: jvm
+            label: JVM tests and coverage
+            tasks: ':fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification'
+            reports: |
+              core/build/reports/**
+              fsrs-java/build/reports/**
+              core/build/test-results/**
+              fsrs-java/build/test-results/**
+          - id: app-unit
+            label: App unit tests and coverage
+            tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
+            reports: |
+              app/build/reports/tests/**
+              app/build/reports/jacoco/**
+              app/build/test-results/**
+          - id: app-static
+            label: App lint and androidTest compile
+            tasks: ':app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
+            reports: |
+              app/build/reports/**
+              app/build/outputs/androidTest-results/**
 
     steps:
       - name: Check out repository
@@ -66,18 +95,39 @@ jobs:
           sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
 
       - name: Run deterministic fast gate
-        run: ./gradlew ciFast --parallel -Dorg.gradle.parallel=true
+        run: ./gradlew ${{ matrix.tasks }} --parallel -Dorg.gradle.parallel=true
 
       - name: Upload diagnostic reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: android-ci-diagnostics
+          name: android-ci-${{ matrix.id }}-diagnostics
           if-no-files-found: ignore
-          path: |
-            app/build/reports/**
-            core/build/reports/**
-            fsrs-java/build/reports/**
-            app/build/test-results/**
-            core/build/test-results/**
-            fsrs-java/build/test-results/**
+          path: ${{ matrix.reports }}
+
+  asset-tests:
+    name: Dictionary and asset tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run deterministic asset tests
+        run: python3 -m unittest discover -s tools -p 'test_*.py'
+
+  fast-confidence-gate:
+    name: Fast confidence gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    needs:
+      - gradle-checks
+      - asset-tests
+
+    steps:
+      - name: Confirm split checks passed
+        run: true

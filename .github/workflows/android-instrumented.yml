@@ -3,22 +3,6 @@ name: Android Instrumented
 on:
   workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'app/**'
-      - 'core/**'
-      - 'fsrs-java/**'
-      - 'ci/fixtures/ankidroid/**'
-      - 'ci/scripts/create_ankidroid_kiku_fixture.py'
-      - '.github/workflows/android-instrumented.yml'
-      - 'build.gradle*'
-      - 'settings.gradle*'
-      - 'gradle/**'
-      - 'gradlew*'
-      - 'gradle.properties'
-      - 'gradle/libs.versions.toml'
   schedule:
     - cron: '17 5 * * *'
 

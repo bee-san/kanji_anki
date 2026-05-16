@@ -23,21 +23,6 @@ on:
       - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'app/**'
-      - 'core/**'
-      - 'fsrs-java/**'
-      - 'tools/**'
-      - '.github/workflows/sonarqube.yml'
-      - 'build.gradle*'
-      - 'settings.gradle*'
-      - 'gradle/**'
-      - 'gradlew*'
-      - 'gradle.properties'
-      - 'gradle/libs.versions.toml'
-
 concurrency:
   group: sonarqube-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -46,11 +31,9 @@ jobs:
   analyze:
     name: Build coverage and analyze
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 40
     permissions:
       contents: read
-      pull-requests: read
 
     steps:
       - name: Check out repository
