@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -174,56 +173,35 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public int getIntSetting(String key, int fallback) {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
-            if (!cursor.moveToFirst()) {
-                return fallback;
-            }
-            return SettingValueParser.parseInt(string(cursor, COLUMN_VALUE), fallback);
-        }
+        return settingsRepository().getInt(key, fallback);
     }
 
     public long getLongSetting(String key, long fallback) {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
-            if (!cursor.moveToFirst()) {
-                return fallback;
-            }
-            return SettingValueParser.parseLong(string(cursor, COLUMN_VALUE), fallback);
-        }
+        return settingsRepository().getLong(key, fallback);
     }
 
     public String getStringSetting(String key, String fallback) {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
-            if (!cursor.moveToFirst()) {
-                return fallback;
-            }
-            String value = string(cursor, COLUMN_VALUE);
-            return value == null ? fallback : value;
-        }
+        return settingsRepository().getString(key, fallback);
     }
 
     public double getDoubleSetting(String key, double fallback) {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_SETTINGS, new String[]{COLUMN_VALUE}, WHERE_SETTING_KEY, new String[]{key}, null, null, null, "1")) {
-            if (!cursor.moveToFirst()) {
-                return fallback;
-            }
-            return SettingValueParser.parseDouble(string(cursor, COLUMN_VALUE), fallback);
-        }
+        return settingsRepository().getDouble(key, fallback);
     }
 
     public void putIntSetting(String key, int value) {
-        putSetting(key, Integer.toString(value));
+        settingsRepository().putInt(key, value);
     }
 
     public void putLongSetting(String key, long value) {
-        putSetting(key, Long.toString(value));
+        settingsRepository().putLong(key, value);
     }
 
     public void putStringSetting(String key, String value) {
-        putSetting(key, value == null ? "" : value);
+        settingsRepository().putString(key, value);
     }
 
     public void putDoubleSetting(String key, double value) {
-        putSetting(key, String.format(Locale.ROOT, "%.4f", value));
+        settingsRepository().putDouble(key, value);
     }
 
     public int adaptiveLoadWorkPercent() {

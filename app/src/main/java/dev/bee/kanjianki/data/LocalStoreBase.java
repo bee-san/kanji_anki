@@ -25,8 +25,8 @@ import java.util.Set;
 
 public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final java.util.regex.Pattern TAB_SEPARATOR = java.util.regex.Pattern.compile("\\t");
-    static final String DB_NAME = "kanji_anki_simple.db";
-    static final int DB_VERSION = 17;
+    static final String DB_NAME = LocalStoreSchema.DB_NAME;
+    static final int DB_VERSION = LocalStoreSchema.DB_VERSION;
     static final String TABLE_SETTINGS = "settings";
     static final String TABLE_SYNC_RUNS = "sync_runs";
     static final String TABLE_SOURCE_NOTES = "source_notes";
@@ -192,8 +192,18 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final int MAX_DISPLAYED_INVENTORY_READINGS = 3;
     static final String KEY_AUTO_UPDATE_PENDING_MESSAGE = "auto_update_pending_message";
 
+    private final SettingsRepository settingsRepository = new SettingsRepository(this);
+
     LocalStoreBase(Context context) {
         super(context.getApplicationContext(), DB_NAME, null, DB_VERSION);
+    }
+
+    SettingsRepository settingsRepository() {
+        return settingsRepository;
+    }
+
+    LocalStoreMigrationHooks migrationHooks() {
+        return new LocalStoreMigrationHooks(this);
     }
 
     abstract void createTimelineTables(SQLiteDatabase db);
@@ -205,104 +215,12 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SETTINGS + " (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SYNC_RUNS + " (id INTEGER PRIMARY KEY AUTOINCREMENT, started_at INTEGER NOT NULL, finished_at INTEGER, status TEXT NOT NULL, active_notes_count INTEGER NOT NULL, active_cards_count INTEGER NOT NULL, suspended_cards_archived_count INTEGER NOT NULL, suspended_kanji_imported_count INTEGER NOT NULL, deleted_notes_count INTEGER NOT NULL, deleted_cards_count INTEGER NOT NULL, error_code TEXT, error_message TEXT, removal_message TEXT)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SOURCE_NOTES + " (note_id INTEGER PRIMARY KEY, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, tags TEXT NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SOURCE_CARDS + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, ord INTEGER NOT NULL, queue INTEGER NOT NULL, type INTEGER NOT NULL, due INTEGER NOT NULL, interval_days INTEGER NOT NULL, reps INTEGER NOT NULL, lapses INTEGER NOT NULL, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SUSPENDED_ARCHIVE + " (card_id INTEGER PRIMARY KEY, note_id INTEGER NOT NULL, deck_name TEXT NOT NULL, model_name TEXT NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, fields_json TEXT NOT NULL, archived_at INTEGER NOT NULL, archived_sync_id INTEGER NOT NULL, restored_at INTEGER)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SUSPENDED_IMPORTS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, rank_known INTEGER NOT NULL, cutoff_used INTEGER NOT NULL, first_imported_at INTEGER NOT NULL, last_seen_sync_id INTEGER NOT NULL)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_SUSPENDED_SOURCES + " (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_DASHBOARD_ROWS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
-        db.execSQL(SQL_CREATE_TABLE + TABLE_KANJI_EXAMPLES + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
-        createKanjiInventoryTables(db);
-        createSimilarKanjiTables(db);
-        createSimilarKanjiPracticeTables(db);
-        db.execSQL(STUDY_ITEMS_TABLE_SQL);
-        db.execSQL(LEARNING_REPEATS_TABLE_SQL);
-        db.execSQL(REVIEW_LOG_TABLE_SQL);
-        createStudyTaskLogTable(db);
-        db.execSQL("CREATE INDEX idx_examples_kanji ON " + TABLE_KANJI_EXAMPLES + "(kanji)");
-        db.execSQL("CREATE INDEX idx_study_due ON " + TABLE_STUDY_ITEMS + "(state, due_at)");
-        db.execSQL("CREATE INDEX idx_learning_repeats_due ON " + TABLE_LEARNING_REPEATS + "(due_at)");
-        createTimelineTables(db);
-        createHistoricalSyncTables(db);
-        createStatsIndexes(db);
+        LocalStoreSchema.createInitialTables(db, migrationHooks());
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 2) {
-            createTimelineTables(db);
-            backfillTimelineEvents(db);
-        }
-        if (oldVersion < 3) {
-            addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_STABILITY, "REAL");
-            addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_DIFFICULTY, "REAL");
-            addNullableColumn(db, TABLE_SOURCE_CARDS, COLUMN_FSRS_RETRIEVABILITY, "REAL");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_INTERVAL_DAYS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_REPS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_STABILITY, "REAL");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_DIFFICULTY, "REAL");
-            addNullableColumn(db, TABLE_KANJI_EXAMPLES, COLUMN_FSRS_RETRIEVABILITY, "REAL");
-        }
-        if (oldVersion < 4) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_RECOGNITION_STAGE, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_CONSECUTIVE_FAILED_RECOGNITION_DAYS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_LAST_FAILED_RECOGNITION_DAY, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WRITING_REMEDIATION_PENDING, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-        }
-        if (oldVersion < 5) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_SUPPRESSED_BY_TASK_TYPE, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_SUPPRESSED_AT, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_MATURE_INTERVAL_DAYS, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_ANSWER_SIGNATURE, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-        }
-        if (oldVersion < 6) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_KANJI_MEANING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_FONT_MEANING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WORD_READING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_WRITING_REMEDIATION_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-        }
-        if (oldVersion < 7) {
-            rebuildStudyItemsWithAnswerSignatureKey(db);
-        }
-        if (oldVersion < 8) {
-            db.execSQL(LEARNING_REPEATS_TABLE_SQL);
-            db.execSQL("CREATE INDEX IF NOT EXISTS idx_learning_repeats_due ON " + TABLE_LEARNING_REPEATS + "(due_at)");
-        }
-        if (oldVersion < 9) {
-            createKanjiInventoryTables(db);
-            backfillKanjiInventory(db, System.currentTimeMillis(), Records.Settings.kikuDefaults());
-        }
-        if (oldVersion < 10) {
-            createSimilarKanjiTables(db);
-        }
-        if (oldVersion < 11) {
-            createSimilarKanjiPracticeTables(db);
-            rebuildSimilarKanjiChoiceStates(db, System.currentTimeMillis());
-        }
-        if (oldVersion < 12) {
-            createHistoricalSyncTables(db);
-            addRichReviewColumns(db);
-            addHistoricalIdentityColumns(db);
-            backfillLatestHistoricalSync(db);
-        }
-        if (oldVersion < 13) {
-            createHistoricalSyncTables(db);
-            addHistoricalIdentityColumns(db);
-        }
-        if (oldVersion < 14) {
-            addNullableColumn(db, TABLE_STUDY_ITEMS, COLUMN_TYPING_MEANING_MEMORY, SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
-        }
-        if (oldVersion < 15) {
-            createStudyTaskLogTable(db);
-        }
-        if (oldVersion < 16) {
-            rebuildStudyItemsForLadderScheduler(db);
-        }
-        if (oldVersion < 17) {
-            migrateStatsStorageForAggregates(db);
-        }
+        LocalStoreMigrations.upgrade(db, oldVersion, newVersion, migrationHooks());
     }
 
     void rebuildStudyItemsForLadderScheduler(SQLiteDatabase db) {
@@ -331,23 +249,19 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_finished ON " + TABLE_SYNC_KANJI_SNAPSHOTS + "(kanji, finished_at)");
     }
 
-    void migrateStatsStorageForAggregates(SQLiteDatabase db) {
+    void ensureStatsAggregateStorage(SQLiteDatabase db) {
         db.execSQL(REVIEW_LOG_TABLE_SQL.replace(SQL_CREATE_TABLE, SQL_CREATE_TABLE_IF_NEEDED));
+        addRichReviewColumns(db);
         addNullableColumn(db, TABLE_REVIEW_LOG, COLUMN_REVIEW_DAY_START, SQL_INTEGER_NOT_NULL_DEFAULT_ZERO);
         createStudyTaskLogTable(db);
         createTimelineTables(db);
         createHistoricalSyncTables(db);
-        clearLocalStatsHistory(db);
         createStatsIndexes(db);
     }
 
-    void clearLocalStatsHistory(SQLiteDatabase db) {
-        db.delete(TABLE_REVIEW_LOG, null, null);
-        db.delete(TABLE_STUDY_TASK_LOG, null, null);
-        db.delete(TABLE_KANJI_TIMELINE_EVENTS, null, null);
-        db.delete(TABLE_SYNC_CARD_SNAPSHOTS, null, null);
-        db.delete(TABLE_SYNC_NOTE_SNAPSHOTS, null, null);
-        db.delete(TABLE_SYNC_KANJI_SNAPSHOTS, null, null);
+    void repairHistoricalSyncSnapshotsIfPossible(SQLiteDatabase db) {
+        createHistoricalSyncTables(db);
+        backfillLatestHistoricalSync(db);
     }
 
     void createKanjiInventoryTables(SQLiteDatabase db) {

@@ -1194,14 +1194,6 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return fallback == null ? SourceSnapshot.EMPTY : new SourceSnapshot(fallback.expression, fallback.reading);
     }
 
-    void putSetting(String key, String value) {
-        ContentValues values = new ContentValues();
-        values.put("key", key);
-        values.put(COLUMN_VALUE, value);
-        values.put(COLUMN_UPDATED_AT, System.currentTimeMillis());
-        getWritableDatabase().insertWithOnConflict(TABLE_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-    }
-
     long insertSyncRun(SQLiteDatabase db, SyncRunInsert syncRun) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_STARTED_AT, syncRun.startedAt());

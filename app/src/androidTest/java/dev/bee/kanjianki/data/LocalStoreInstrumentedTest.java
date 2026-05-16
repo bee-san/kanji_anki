@@ -515,7 +515,7 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
-    public void testVersionSeventeenMigrationResetsLegacyTimelineHistory() {
+    public void testVersionEighteenMigrationPreservesLegacyTimelineHistory() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -561,16 +561,16 @@ public final class LocalStoreInstrumentedTest {
 
         Records.KanjiRecoveryTimeline imported = store.timelineForKanji("拉");
         Records.KanjiRecoveryTimeline orphan = store.timelineForKanji("孤");
-        assertEquals(0, count("kanji_timeline_events"));
-        assertEquals(0, countTimelineType(imported, "suspended_imported"));
+        assertEquals(3, count("kanji_timeline_events"));
+        assertEquals(1, countTimelineType(imported, "suspended_imported"));
         assertNull(orphan.currentRow);
         assertNull(orphan.currentStudyItem);
-        assertEquals(0, countTimelineType(orphan, "first_seen"));
-        assertEquals(0, countTimelineType(orphan, "retired"));
+        assertEquals(1, countTimelineType(orphan, "first_seen"));
+        assertEquals(1, countTimelineType(orphan, "retired"));
     }
 
     @Test
-    public void testVersionSeventeenMigrationPreservesProviderMirrorAndResetsLocalStatsHistory() {
+    public void testVersionEighteenMigrationPreservesProviderMirrorAndLocalStatsHistory() {
         store.close();
         context.deleteDatabase("kanji_anki_simple.db");
         SQLiteDatabase db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null);
@@ -631,18 +631,24 @@ public final class LocalStoreInstrumentedTest {
 
         store = new LocalStore(context);
         assertEquals(1, count("dashboard_rows"));
-        assertEquals(0, count("review_log"));
-        assertEquals(0, count("kanji_timeline_events"));
+        assertEquals(1, count("review_log"));
+        assertScalarString("review_log", "rating", "token=?", new String[]{"legacy-token"}, "good");
+        assertScalarLong("review_log", "review_day_start", "token=?", new String[]{"legacy-token"}, 0L);
+        assertEquals(3, count("kanji_timeline_events"));
+        Records.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
+        assertEquals(1, countTimelineType(timeline, "first_seen"));
+        assertEquals(1, countTimelineType(timeline, "weak_support_seen"));
+        assertEquals(1, countTimelineType(timeline, "review_passed"));
         assertEquals(0, count("sync_kanji_snapshots"));
         assertMigratedColumnsExist();
     }
 
     @Test
-    public void testVersionSeventeenMigrationResetsLegacyHistoricalSyncHistoryButKeepsMirrorRows() {
+    public void testVersionEighteenMigrationBackfillsMissingHistoricalSyncSnapshotsAndKeepsMirrorRows() {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.Note note = note(1L, "確認", "かくにん", "confirmation", "確認した。");
         Records.Card card = new Records.Card(400L, 1L, 0, "9001", "Kiku Deck", 2, 2, 0, 25, 9, 1, false, 6.5, 4.5, 0.82);
-        long syncId = store.saveSuccessfulSync(
+        store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
                 Collections.emptyList(),
                 Collections.singletonList(row("確", 2)),
@@ -663,9 +669,44 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("source_cards"));
         assertEquals(1, count("source_notes"));
         assertEquals(1, count("dashboard_rows"));
-        assertEquals(0, count("sync_card_snapshots"));
-        assertEquals(0, count("sync_note_snapshots"));
-        assertEquals(0, count("sync_kanji_snapshots"));
+        assertEquals(1, count("sync_card_snapshots"));
+        assertEquals(1, count("sync_note_snapshots"));
+        assertTrue(count("sync_kanji_snapshots") >= 1);
+        assertEquals(1, countWhere("sync_kanji_snapshots", "kanji=?", "確"));
+    }
+
+    @Test
+    public void testVersionEighteenMigrationKeepsExistingStatsAndSnapshotsIdempotent() {
+        store.saveReview(new Records.ReviewRequest("拉", "migration-token", "good", true, true, false, 0), "good", 3000L);
+        assertTrue(store.recordStudyTaskAnswered("migration-task", "拉", "kanji_meaning", 1000L, 2000L, 60_000L, "good"));
+        saveSingleRowSync(row("拉", 0), Collections.emptyList(), 4000L);
+        int reviewRows = count("review_log");
+        int taskRows = count("study_task_log");
+        int timelineRows = count("kanji_timeline_events");
+        int cardSnapshots = count("sync_card_snapshots");
+        int noteSnapshots = count("sync_note_snapshots");
+        int kanjiSnapshots = count("sync_kanji_snapshots");
+
+        SQLiteDatabase db = store.getWritableDatabase();
+        db.setVersion(17);
+        store.close();
+
+        store = new LocalStore(context);
+        assertEquals(reviewRows, count("review_log"));
+        assertEquals(taskRows, count("study_task_log"));
+        assertEquals(timelineRows, count("kanji_timeline_events"));
+        assertEquals(cardSnapshots, count("sync_card_snapshots"));
+        assertEquals(noteSnapshots, count("sync_note_snapshots"));
+        assertEquals(kanjiSnapshots, count("sync_kanji_snapshots"));
+
+        store.close();
+        store = new LocalStore(context);
+        assertEquals(reviewRows, count("review_log"));
+        assertEquals(taskRows, count("study_task_log"));
+        assertEquals(timelineRows, count("kanji_timeline_events"));
+        assertEquals(cardSnapshots, count("sync_card_snapshots"));
+        assertEquals(noteSnapshots, count("sync_note_snapshots"));
+        assertEquals(kanjiSnapshots, count("sync_kanji_snapshots"));
     }
 
     @Test
