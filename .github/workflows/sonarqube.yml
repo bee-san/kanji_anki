@@ -202,7 +202,7 @@ jobs:
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
           gradle :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
-          gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
+          gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
 
       - name: Build and analyze (manual full-coverage mode)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.full_coverage == 'true'
@@ -222,4 +222,5 @@ jobs:
           --parallel
           -Dorg.gradle.parallel=true
           -PsonarFullCoverage=true
+          -PsonarProjectVersion=${{ github.sha }}
           sonar

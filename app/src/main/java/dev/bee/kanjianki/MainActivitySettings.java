@@ -46,6 +46,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
@@ -188,10 +189,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     settingsStudyExpanded = !settingsStudyExpanded;
                     renderSettings();
                 },
+                newCardSortSettingsPanel(current),
                 workloadSettingsPanel(),
                 retentionSettingsPanel(),
                 learningStepsSettingsPanel(),
                 studyAheadSettingsPanel(),
+                studyLadderSettingsPanel(),
                 ladderThresholdSettingsPanel()
         ));
         content.addView(settingsCategory(
@@ -855,6 +858,51 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank);
     }
 
+    LinearLayout newCardSortSettingsPanel(Records.Settings current) {
+        final String[] selected = new String[]{current.newCardSortMode};
+        LinearLayout box = settingsPanelBox();
+        box.addView(text("New card sort", 23, INK, true));
+        TextView status = text(newCardSortStatusText(selected[0]), 17, TEAL, true);
+        box.addView(status);
+        box.addView(text("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", 15, MUTED, false));
+
+        addSortModeButton(box, "Frequency", Records.NEW_CARD_SORT_FREQUENCY, selected, status);
+        addSortModeButton(box, "Anki difficulty", Records.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
+        addSortModeButton(box, "Retrievability risk", Records.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
+        addSortModeButton(box, "Kani weakness", Records.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
+
+        Button save = primaryButton("Save new card sort", STUDY_PINK_DARK);
+        save.setOnClickListener(v -> {
+            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, selected[0]);
+            Toast.makeText(this, "New card sort saved.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(save);
+        return box;
+    }
+
+    void addSortModeButton(LinearLayout box, String label, String mode, String[] selected, TextView status) {
+        Button button = secondaryButton(label);
+        button.setOnClickListener(v -> {
+            selected[0] = mode;
+            status.setText(newCardSortStatusText(mode));
+        });
+        box.addView(button);
+    }
+
+    String newCardSortStatusText(String mode) {
+        return "Current: " + newCardSortLabel(mode);
+    }
+
+    String newCardSortLabel(String mode) {
+        return switch (Records.Settings.normalizeNewCardSortMode(mode)) {
+            case Records.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty";
+            case Records.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk";
+            case Records.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness";
+            default -> "Frequency";
+        };
+    }
+
     LinearLayout workloadSettingsPanel() {
         int current = store.adaptiveLoadWorkPercent();
         int currentMax = store.adaptiveLoadMaxItems();
@@ -1070,6 +1118,88 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return box;
     }
 
+    LinearLayout studyLadderSettingsPanel() {
+        Records.StudyLadderSettings ladder = studyLadderSettings();
+        LinearLayout box = settingsPanelBox();
+        box.addView(text("Study ladder", 23, INK, true));
+        box.addView(text("Turn rungs off or move them up and down. At least one always-available rung stays on.", 15, MUTED, false));
+
+        List<Records.LadderRung> rungs = ladder.orderedRungs;
+        for (int i = 0; i < rungs.size(); i++) {
+            Records.LadderRung rung = rungs.get(i);
+            LinearLayout row = softInsetPanel();
+            row.addView(text(ladderRungLabel(rung), 19, STUDY_PLUM, true));
+            row.addView(text(ladderRungSubtitle(ladder, rung), 13, MUTED, false));
+
+            LinearLayout controls = new LinearLayout(this);
+            controls.setOrientation(LinearLayout.HORIZONTAL);
+            Button toggle = secondaryButton(ladder.isEnabled(rung) ? "On" : "Off");
+            toggle.setOnClickListener(v -> toggleLadderRung(rung));
+            controls.addView(toggle, new LinearLayout.LayoutParams(0, dp(48), 1));
+
+            Button up = secondaryButton("Up");
+            up.setEnabled(i > 0);
+            up.setOnClickListener(v -> {
+                store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, -1));
+                renderSettings();
+            });
+            LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(0, dp(48), 1);
+            upLp.setMargins(dp(8), 0, 0, 0);
+            controls.addView(up, upLp);
+
+            Button down = secondaryButton("Down");
+            down.setEnabled(i < rungs.size() - 1);
+            down.setOnClickListener(v -> {
+                store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, 1));
+                renderSettings();
+            });
+            LinearLayout.LayoutParams downLp = new LinearLayout.LayoutParams(0, dp(48), 1);
+            downLp.setMargins(dp(8), 0, 0, 0);
+            controls.addView(down, downLp);
+            row.addView(controls);
+            box.addView(row);
+        }
+
+        Button reset = secondaryButton("Restore default ladder");
+        reset.setOnClickListener(v -> {
+            store.saveStudyLadderSettings(Records.StudyLadderSettings.defaults());
+            Toast.makeText(this, "Study ladder restored.", Toast.LENGTH_SHORT).show();
+            renderSettings();
+        });
+        box.addView(reset);
+        return box;
+    }
+
+    void toggleLadderRung(Records.LadderRung rung) {
+        Records.StudyLadderSettings current = studyLadderSettings();
+        boolean wasEnabled = current.isEnabled(rung);
+        Records.StudyLadderSettings next = current.withRungEnabled(rung, !wasEnabled);
+        if (wasEnabled && next.enabledText().equals(current.enabledText())) {
+            Toast.makeText(this, "Keep at least one always-available rung on.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        store.saveStudyLadderSettings(next);
+        Toast.makeText(this, ladderRungLabel(rung) + (wasEnabled ? " off." : " on."), Toast.LENGTH_SHORT).show();
+        renderSettings();
+    }
+
+    String ladderRungSubtitle(Records.StudyLadderSettings ladder, Records.LadderRung rung) {
+        String status = ladder.isEnabled(rung) ? "Enabled" : "Disabled";
+        String kind = rung == Records.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";
+        return status + " " + kind + " rung";
+    }
+
+    String ladderRungLabel(Records.LadderRung rung) {
+        return switch (rung) {
+            case WRITE_KANJI -> "Write kanji";
+            case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
+            case TYPE_MEANING -> "Type the meaning";
+            case KANJI_MEANING -> "Kanji -> meaning";
+            case FONT_MEANING -> "Font -> meaning";
+            case WORD_READING -> "Word -> reading";
+        };
+    }
+
     LinearLayout ladderThresholdSettingsPanel() {
         Records.Settings current = settings();
         LinearLayout box = settingsPanelBox();
@@ -1176,8 +1306,27 @@ abstract class MainActivitySettings extends MainActivityStudy {
         }
         box.addView(quick);
 
+        CheckBox rankRetentionEnabled = importFilterCheckBox("Use Jiten-rank retention ranges", current.frequencyRetentionEnabled);
+        box.addView(rankRetentionEnabled);
+        box.addView(text("Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.", 15, MUTED, false));
+        EditText rankRanges = rankRetentionRangesInput(current.frequencyRetentionRanges);
+        box.addView(rankRanges, new LinearLayout.LayoutParams(-1, dp(132)));
+
+        Button exampleRanges = secondaryButton("Use example ranges");
+        exampleRanges.setOnClickListener(v -> rankRanges.setText(FrequencyRetentionRanges.exampleText()));
+        box.addView(exampleRanges);
+
         Button save = primaryButton("Save retention", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
+            String rangesText = rankRanges.getText().toString().trim();
+            if (rankRetentionEnabled.isChecked()) {
+                try {
+                    FrequencyRetentionRanges.parse(rangesText);
+                } catch (IllegalArgumentException error) {
+                    Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show();
+                    return;
+                }
+            }
             Records.SchedulerParameters latest = store.schedulerParameters();
             store.saveSchedulerParameters(new Records.SchedulerParameters(
                     selected[0] / 100.0,
@@ -1186,13 +1335,27 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     latest.goodMultiplier,
                     latest.easyMultiplier,
                     latest.lastAdjustedAtMillis,
-                    latest.lastAdjustmentReviewCount
+                    latest.lastAdjustmentReviewCount,
+                    rankRetentionEnabled.isChecked(),
+                    rangesText
             ));
             Toast.makeText(this, "FSRS retention saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
         return box;
+    }
+
+    EditText rankRetentionRangesInput(String value) {
+        EditText input = new EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        input.setText(value == null || value.trim().isEmpty() ? FrequencyRetentionRanges.exampleText() : value.trim());
+        input.setTextSize(16);
+        input.setSingleLine(false);
+        input.setMinLines(3);
+        input.setGravity(Gravity.TOP | Gravity.START);
+        input.setSelectAllOnFocus(false);
+        return input;
     }
 
     int retentionPercent(double retention) {

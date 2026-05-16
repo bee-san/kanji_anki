@@ -192,6 +192,7 @@ public class RecordsValueModelsTest {
         assertEquals(7, elevenArg.realDueReviewsToMove);
         assertEquals(100, full.suspendedRankMin);
         assertEquals(5000, full.suspendedRankMax);
+        assertEquals(Records.DEFAULT_NEW_CARD_SORT_MODE, full.newCardSortMode);
     }
 
     @Test
@@ -205,10 +206,34 @@ public class RecordsValueModelsTest {
         assertTrue(full.hasImportSourceEnabled());
         assertEquals("mine archive", full.importTagsText());
         assertEquals(Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, full.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(Records.NEW_CARD_SORT_FSRS_DIFFICULTY, settingsWithSortMode(Records.NEW_CARD_SORT_FSRS_DIFFICULTY).newCardSortMode);
+        assertEquals(Records.DEFAULT_NEW_CARD_SORT_MODE, settingsWithSortMode("not-real").newCardSortMode);
         assertEquals(Arrays.asList("Expression", "ExpressionReading", "MainDefinition", "Sentence", "Frequency", "FreqSort"), full.requiredFields());
         assertEquals(Arrays.asList("mine", "archive"), Records.parseImportTags(" mine, archive mine "));
         assertTrue(Records.parseImportTags(" ").isEmpty());
         assertTrue(Records.parseImportTags(null).isEmpty());
+    }
+
+    @Test
+    public void schedulerParametersResolveFrequencyRetentionByRank() {
+        Records.SchedulerParameters parameters = new Records.SchedulerParameters(
+                0.90,
+                0.45,
+                1.20,
+                2.00,
+                3.10,
+                0L,
+                0,
+                true,
+                "1-500=95%\n501-2000=85%"
+        );
+
+        assertEquals(0.95, parameters.targetRetentionForRank(200), 0.001);
+        assertEquals(0.85, parameters.targetRetentionForRank(1000), 0.001);
+        assertEquals(0.90, parameters.targetRetentionForRank(3000), 0.001);
+        assertEquals(0.90, parameters.targetRetentionForRank(null), 0.001);
+        assertEquals(0.88, parameters.withTargetRetention(0.88).targetRetention, 0.001);
+        assertEquals(parameters.frequencyRetentionRanges, parameters.withAdjustment(0.5, 1.3, 2.3, 3.5, 10L, 40).frequencyRetentionRanges);
     }
 
     @Test
@@ -702,6 +727,39 @@ public class RecordsValueModelsTest {
                 "MainDefinition",
                 "Sentence",
                 values.toArray()
+        );
+    }
+
+    private static Records.Settings settingsWithSortMode(String mode) {
+        return new Records.Settings(
+                "Kiku",
+                "Mining",
+                "Expression",
+                "ExpressionReading",
+                "MainDefinition",
+                "Sentence",
+                "Frequency",
+                "FreqSort",
+                21,
+                2,
+                100,
+                3000,
+                24,
+                3,
+                3,
+                3,
+                3,
+                false,
+                true,
+                false,
+                Collections.emptyList(),
+                false,
+                7.0,
+                2,
+                1,
+                false,
+                "",
+                mode
         );
     }
 

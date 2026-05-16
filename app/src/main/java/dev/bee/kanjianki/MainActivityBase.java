@@ -501,6 +501,10 @@ abstract class MainActivityBase extends Activity {
         return SyncSettings.fromStore(store);
     }
 
+    Records.StudyLadderSettings studyLadderSettings() {
+        return store.studyLadderSettings();
+    }
+
     Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
         return new AdaptiveLoadPlanner().plan(
                 rows,

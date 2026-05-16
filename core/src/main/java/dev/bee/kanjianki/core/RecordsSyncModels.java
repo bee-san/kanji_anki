@@ -41,6 +41,7 @@ public abstract class RecordsSyncModels extends RecordsBase {
         public final int importMinMatchingCardsPerKanji;
         public final boolean importBrowserQueryCards;
         public final String importBrowserQuery;
+        public final String newCardSortMode;
 
         public Settings(
                 String modelName,
@@ -89,6 +90,7 @@ public abstract class RecordsSyncModels extends RecordsBase {
             this.importMinMatchingCardsPerKanji = Math.max(1, Math.min(1000, args.importMinMatchingCardsPerKanji));
             this.importBrowserQueryCards = args.importBrowserQueryCards;
             this.importBrowserQuery = nullToEmpty(args.importBrowserQuery);
+            this.newCardSortMode = normalizeNewCardSortMode(args.newCardSortMode);
         }
 
         public boolean importTaggedCardsEnabled() {
@@ -109,6 +111,15 @@ public abstract class RecordsSyncModels extends RecordsBase {
 
         public String importTagsText() {
             return String.join(" ", importTags);
+        }
+
+        public static String normalizeNewCardSortMode(String value) {
+            if (NEW_CARD_SORT_FSRS_DIFFICULTY.equals(value)
+                    || NEW_CARD_SORT_RETRIEVABILITY_RISK.equals(value)
+                    || NEW_CARD_SORT_KANI_WEAKNESS.equals(value)) {
+                return value;
+            }
+            return DEFAULT_NEW_CARD_SORT_MODE;
         }
 
         protected static boolean finitePositive(double value) {
@@ -151,9 +162,10 @@ public abstract class RecordsSyncModels extends RecordsBase {
             int importMinMatchingCardsPerKanji = DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI;
             boolean importBrowserQueryCards = DEFAULT_IMPORT_BROWSER_QUERY_CARDS;
             String importBrowserQuery = DEFAULT_IMPORT_BROWSER_QUERY;
+            String newCardSortMode = DEFAULT_NEW_CARD_SORT_MODE;
 
             static SettingsArgs from(Object[] rest) {
-                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21);
+                requireArgCount(CONTEXT_SETTINGS, rest, 7, 8, 9, 10, 11, 19, 21, 22);
                 SettingsArgs args = new SettingsArgs();
                 args.frequencyField = stringArg(rest, 0, CONTEXT_SETTINGS);
                 args.frequencySortField = stringArg(rest, 1, CONTEXT_SETTINGS);
@@ -200,6 +212,9 @@ public abstract class RecordsSyncModels extends RecordsBase {
                 if (rest.length >= 21) {
                     args.importBrowserQueryCards = booleanArg(rest, 19, CONTEXT_SETTINGS);
                     args.importBrowserQuery = stringArg(rest, 20, CONTEXT_SETTINGS);
+                }
+                if (rest.length >= 22) {
+                    args.newCardSortMode = stringArg(rest, 21, CONTEXT_SETTINGS);
                 }
                 return args;
             }
@@ -255,7 +270,8 @@ public abstract class RecordsSyncModels extends RecordsBase {
                     DEFAULT_IMPORT_WEAK_LAPSES,
                     DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
                     DEFAULT_IMPORT_BROWSER_QUERY_CARDS,
-                    DEFAULT_IMPORT_BROWSER_QUERY
+                    DEFAULT_IMPORT_BROWSER_QUERY,
+                    DEFAULT_NEW_CARD_SORT_MODE
             );
         }
 

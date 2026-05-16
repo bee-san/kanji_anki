@@ -95,7 +95,8 @@ public final class ManualSyncEngine {
                     settings,
                     finished,
                     startOfDay(finished),
-                    plan
+                    plan,
+                    store.studyLadderSettings()
             );
             // Apply the hasSimilarKanji predicate using the similarity data
             // just written, so newly-admitted items immediately know whether

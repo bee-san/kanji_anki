@@ -9,7 +9,7 @@ import dev.bee.kanjianki.data.StudyStatsStore;
 import java.util.ArrayList;
 import java.util.List;
 
-abstract class MainActivityStats extends MainActivityHome {
+abstract class MainActivityStats extends MainActivityGames {
     void renderStats() {
         base("stats");
         StudyStatsStore.KaniOutcomeStats stats = store.kaniOutcomeStats();

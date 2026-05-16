@@ -57,6 +57,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -715,6 +716,18 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(Records.DEFAULT_RECOGNITION_PROMOTION_PASSES, updated.recognitionPromotionPasses);
                 assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, updated.writingTriggerMissDays);
 
+                LinearLayout ladderOrder = activity.studyLadderSettingsPanel();
+                assertNotNull(findButton(ladderOrder, "Restore default ladder"));
+                activity.toggleLadderRung(Records.LadderRung.SIMILAR_KANJI);
+                assertFalse(activity.studyLadderSettings().isEnabled(Records.LadderRung.SIMILAR_KANJI));
+                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(Records.LadderRung.WORD_READING, -5));
+                assertEquals(Records.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
+
+                LinearLayout newCardSort = activity.newCardSortSettingsPanel(activity.settings());
+                performButtonClick(newCardSort, "Retrievability risk");
+                performButtonClick(newCardSort, "Save new card sort");
+                assertEquals(Records.NEW_CARD_SORT_RETRIEVABILITY_RISK, activity.settings().newCardSortMode);
+
                 LinearLayout retention = activity.retentionSettingsPanel();
                 SeekBar retentionSlider = seekBars(retention).get(0);
                 retentionSlider.setProgress(10);
@@ -722,6 +735,13 @@ public final class MainActivityHelperInstrumentedTest {
                 performButtonClick(retention, "95%");
                 performButtonClick(retention, "Save retention");
                 assertEquals(0.95, activity.store.schedulerParameters().targetRetention, 0.001);
+                retention = activity.retentionSettingsPanel();
+                checkBoxes(retention).get(0).setChecked(true);
+                editTexts(retention).get(0).setText("1-500=95%\n501-20000=85%");
+                performButtonClick(retention, "Save retention");
+                Records.SchedulerParameters savedRetention = activity.store.schedulerParameters();
+                assertTrue(savedRetention.frequencyRetentionEnabled);
+                assertEquals("1-500=95%\n501-20000=85%", savedRetention.frequencyRetentionRanges);
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 21, 0));
                 LinearLayout reminder = activity.reminderSettingsPanel();

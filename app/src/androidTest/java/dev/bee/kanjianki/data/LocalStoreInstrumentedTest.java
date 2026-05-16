@@ -1382,13 +1382,44 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, impact.manualOverrides);
 
         Records.SchedulerParameters tuned = Records.SchedulerParameters.defaults()
+                .withTargetRetention(0.92)
                 .withAdjustment(0.40, 1.10, 1.80, 2.80, 5000L, 30);
+        tuned = new Records.SchedulerParameters(
+                tuned.targetRetention,
+                tuned.againMultiplier,
+                tuned.hardMultiplier,
+                tuned.goodMultiplier,
+                tuned.easyMultiplier,
+                tuned.lastAdjustedAtMillis,
+                tuned.lastAdjustmentReviewCount,
+                true,
+                "1-500=95%"
+        );
         store.saveSchedulerParameters(tuned);
         Records.SchedulerParameters loaded = store.schedulerParameters();
+        assertEquals(0.92, loaded.targetRetention, 0.001);
         assertEquals(0.40, loaded.againMultiplier, 0.001);
         assertEquals(1.80, loaded.goodMultiplier, 0.001);
         assertEquals(5000L, loaded.lastAdjustedAtMillis);
         assertEquals(30, loaded.lastAdjustmentReviewCount);
+        assertTrue(loaded.frequencyRetentionEnabled);
+        assertEquals("1-500=95%", loaded.frequencyRetentionRanges);
+    }
+
+    @Test
+    public void testStudyLadderSettingsPersist() {
+        Records.StudyLadderSettings settings = Records.StudyLadderSettings.defaults()
+                .withRungEnabled(Records.LadderRung.SIMILAR_KANJI, false)
+                .moveRung(Records.LadderRung.WORD_READING, -5);
+
+        store.saveStudyLadderSettings(settings);
+        Records.StudyLadderSettings loaded = store.studyLadderSettings();
+
+        assertEquals(Records.LadderRung.WORD_READING, loaded.orderedRungs.get(0));
+        assertFalse(loaded.isEnabled(Records.LadderRung.SIMILAR_KANJI));
+        assertTrue(loaded.isEnabled(Records.LadderRung.WRITE_KANJI));
+        assertEquals(settings.orderText(), loaded.orderText());
+        assertEquals(settings.enabledText(), loaded.enabledText());
     }
 
     @Test

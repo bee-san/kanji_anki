@@ -152,10 +152,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         base(NAV_STUDY);
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
+        Records.StudyLadderSettings ladder = studyLadderSettings();
         activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
         initializeSessionProgressTarget(activeStudyPlan);
-        includeDueSimilarWritingRepairs(now);
-        Records.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
+        includeDueSimilarWritingRepairs(now, ladder);
+        Records.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
         if (repair != null) {
             renderSimilarWritingRepair(repair, activeStudyPlan, now);
             return;
@@ -174,8 +175,8 @@ abstract class MainActivityStudy extends MainActivityStats {
         Records.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
         activeStudyPlan = seededPlan;
         initializeSessionProgressTarget(seededPlan);
-        includeDueSimilarWritingRepairs(now);
-        repair = store.nextDueSimilarWritingRepair(now);
+        includeDueSimilarWritingRepairs(now, ladder);
+        repair = nextDueSimilarWritingRepair(now, ladder);
         if (repair != null) {
             renderSimilarWritingRepair(repair, seededPlan, now);
             return;
@@ -209,7 +210,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     Records.StudySession nextActiveSession(List<Records.DashboardRow> rows, List<Records.StudyItem> seeded, Records.AdaptiveLoadPlan plan, long now) {
         Set<String> focus = continueAllKanjiSession || plan.allKanjiMode ? null : new HashSet<>(plan.focusKanji);
-        return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus);
+        return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus, settings(), studyLadderSettings());
     }
 
     void renderNoStudySession(Records.AdaptiveLoadPlan seededPlan) {
@@ -307,7 +308,8 @@ abstract class MainActivityStudy extends MainActivityStats {
                 settings(),
                 now,
                 startOfDay(now),
-                Integer.MAX_VALUE
+                Integer.MAX_VALUE,
+                studyLadderSettings()
         );
         return result.availableCount;
     }
@@ -367,7 +369,8 @@ abstract class MainActivityStudy extends MainActivityStats {
                 settings(),
                 now,
                 startOfDay(now),
-                requestedCount
+                requestedCount,
+                studyLadderSettings()
         );
         if (!result.admittedAny()) {
             Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
@@ -416,6 +419,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         activeStudyPlan = adaptivePlan(rows, seeded, now);
         Records.StudyItem item = studyItemForTargetedKanji(seeded, kanji, now);
         String token = StudyTokenFactory.studyItem(item.kanji, item.activeToken);
+        item = item.withRung(studyLadderSettings().effectiveRung(item.rung, item.hasSimilarKanji));
         String taskType = rungTaskType(item);
         activeSession = new Records.StudySession(
                 item.withToken(token),
@@ -450,11 +454,11 @@ abstract class MainActivityStudy extends MainActivityStats {
                 0,
                 null,
                 now
-        );
+        ).withRung(studyLadderSettings().startingRung(false));
     }
 
     String rungTaskType(Records.StudyItem item) {
-        return item.rung.wireName();
+        return studyLadderSettings().effectiveRung(item.rung, item.hasSimilarKanji).wireName();
     }
 
     void renderSession(Records.StudySession session) {
@@ -862,7 +866,17 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void includeDueSimilarWritingRepairs(long nowMillis) {
+    Records.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis, Records.StudyLadderSettings ladder) {
+        if (!ladder.isEnabled(Records.LadderRung.WRITE_KANJI)) {
+            return null;
+        }
+        return store.nextDueSimilarWritingRepair(nowMillis);
+    }
+
+    void includeDueSimilarWritingRepairs(long nowMillis, Records.StudyLadderSettings ladder) {
+        if (!ladder.isEnabled(Records.LadderRung.WRITE_KANJI)) {
+            return;
+        }
         for (Records.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
             String key = similarRepairProgressKey(repair);
             if (!sessionSeenTaskKeys.contains(key) && !sessionCompletedTaskKeys.contains(key)) {
@@ -1348,7 +1362,12 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void submitSimilarKanjiChoice(Records.SimilarKanjiChoiceCard card, String selectedKanji) {
         long now = System.currentTimeMillis();
-        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(card, selectedKanji, now);
+        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(
+                card,
+                selectedKanji,
+                now,
+                studyLadderSettings().isEnabled(Records.LadderRung.WRITE_KANJI)
+        );
         submitReview(result.correct ? RATING_GOOD : RATING_AGAIN, false);
     }
 
@@ -1445,7 +1464,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         Set<String> consumed = new HashSet<>(store.consumedTokens());
         long now = System.currentTimeMillis();
         Records.SchedulerParameters parameters = store.schedulerParameters();
-        Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, parameters, settings());
+        Records.SchedulerParameters effectiveParameters = parameters.withTargetRetention(
+                parameters.targetRetentionForRank(activeSession.row.jitenRank)
+        );
+        Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, effectiveParameters, settings(), studyLadderSettings());
         completeActiveStudyTask(sessionTaskKey(activeSession), result.appliedRating, now);
         StudyStatsStore.StudyStreak streak = null;
         if (!result.duplicate) {

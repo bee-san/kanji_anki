@@ -73,6 +73,17 @@ public final class BridgeScheduler {
             long nowMillis,
             long startOfDayMillis
     ) {
+        return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, Records.StudyLadderSettings.defaults());
+    }
+
+    public List<Records.StudyItem> seedQueue(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> existing,
+            Records.Settings settings,
+            long nowMillis,
+            long startOfDayMillis,
+            Records.StudyLadderSettings ladder
+    ) {
         return seedQueueInternal(new SeedQueueRequest(
                 rows,
                 rows,
@@ -80,7 +91,8 @@ public final class BridgeScheduler {
                 settings,
                 nowMillis,
                 startOfDayMillis,
-                new SeedQueueLimits(settings.newPerDay, false)
+                new SeedQueueLimits(settings.newPerDay, false),
+                safeLadder(ladder)
         ));
     }
 
@@ -92,8 +104,20 @@ public final class BridgeScheduler {
             long startOfDayMillis,
             Records.AdaptiveLoadPlan plan
     ) {
+        return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, plan, Records.StudyLadderSettings.defaults());
+    }
+
+    public List<Records.StudyItem> seedQueue(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> existing,
+            Records.Settings settings,
+            long nowMillis,
+            long startOfDayMillis,
+            Records.AdaptiveLoadPlan plan,
+            Records.StudyLadderSettings ladder
+    ) {
         if (plan == null) {
-            return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis);
+            return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, ladder);
         }
         List<Records.DashboardRow> admissionRows = plan.allKanjiMode ? rows : rowsForFocus(rows, plan.focusKanji);
         int cappedAdmission = plan.allKanjiMode
@@ -106,7 +130,8 @@ public final class BridgeScheduler {
                 settings,
                 nowMillis,
                 startOfDayMillis,
-                new SeedQueueLimits(cappedAdmission, plan.allKanjiMode)
+                new SeedQueueLimits(cappedAdmission, plan.allKanjiMode),
+                safeLadder(ladder)
         ));
     }
 
@@ -118,6 +143,18 @@ public final class BridgeScheduler {
             long startOfDayMillis,
             int requestedCount
     ) {
+        return seedExtraNewCards(rows, existing, settings, nowMillis, startOfDayMillis, requestedCount, Records.StudyLadderSettings.defaults());
+    }
+
+    public ExtraNewCardsResult seedExtraNewCards(
+            List<Records.DashboardRow> rows,
+            List<Records.StudyItem> existing,
+            Records.Settings settings,
+            long nowMillis,
+            long startOfDayMillis,
+            int requestedCount,
+            Records.StudyLadderSettings ladder
+    ) {
         int requested = Math.max(0, requestedCount);
         SeedQueueRequest request = new SeedQueueRequest(
                 rows,
@@ -126,7 +163,8 @@ public final class BridgeScheduler {
                 settings,
                 nowMillis,
                 startOfDayMillis,
-                new SeedQueueLimits(Integer.MAX_VALUE, true)
+                new SeedQueueLimits(Integer.MAX_VALUE, true),
+                safeLadder(ladder)
         );
         SeedRowIndex rowIndex = indexSeedRows(request.allRows);
         SeedQueueState state = reconcileExistingItems(request, rowIndex);
@@ -167,7 +205,7 @@ public final class BridgeScheduler {
             String rowKey,
             Records.StudyItem current
     ) {
-        Records.StudyItem admitted = newStudyItem(row.kanji, request.nowMillis, answerSignature(row));
+        Records.StudyItem admitted = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
         if (current != null) {
             state.items.remove(current);
         }
@@ -210,17 +248,41 @@ public final class BridgeScheduler {
             long studyAheadMillis,
             Set<String> allowedKanji
     ) {
+        return nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, Records.Settings.kikuDefaults());
+    }
+
+    public Records.StudySession nextSession(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            long studyAheadMillis,
+            Set<String> allowedKanji,
+            Records.Settings settings
+    ) {
+        return nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, settings, Records.StudyLadderSettings.defaults());
+    }
+
+    public Records.StudySession nextSession(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            long studyAheadMillis,
+            Set<String> allowedKanji,
+            Records.Settings settings,
+            Records.StudyLadderSettings ladder
+    ) {
+        Records.StudyLadderSettings safeLadder = safeLadder(ladder);
         long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
         for (Records.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
         }
         Records.StudyItem best = null;
-        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji)) {
+        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
             if (item.dueAtMillis > horizon) {
                 continue;
             }
-            if (best == null || compareDueItems(item, best, rowByKanji) < 0) {
+            if (best == null || compareDueItems(item, best, rowByKanji, settings) < 0) {
                 best = item;
             }
         }
@@ -283,7 +345,7 @@ public final class BridgeScheduler {
             Records.StudyItem item
     ) {
         Records.DashboardRow row = seedRowForItem(rowIndex, item);
-        Records.StudyItem current = row == null ? item : alignAnswerSignature(item, row, request.nowMillis);
+        Records.StudyItem current = row == null ? alignRungToLadder(item, request.ladder) : alignAnswerSignature(item, row, request.nowMillis, request.ladder);
         if (shouldRetireSeedItem(request.settings, row, item, current)) {
             return retiredCopy(current);
         }
@@ -328,7 +390,7 @@ public final class BridgeScheduler {
         if (!state.hasAdmissionRoom(request)) {
             return;
         }
-        Records.StudyItem item = newStudyItem(row.kanji, request.nowMillis, answerSignature(row));
+        Records.StudyItem item = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
         state.items.add(item);
         state.byFamily.put(rowKey, item);
         state.activeCount++;
@@ -353,7 +415,7 @@ public final class BridgeScheduler {
             String rowKey,
             Records.StudyItem current
     ) {
-        Records.StudyItem reopened = newStudyItem(row.kanji, request.nowMillis, answerSignature(row));
+        Records.StudyItem reopened = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
         state.items.remove(current);
         state.items.add(reopened);
         state.byFamily.put(rowKey, reopened);
@@ -368,7 +430,8 @@ public final class BridgeScheduler {
                 .build();
     }
 
-    private Records.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature) {
+    private Records.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature, Records.StudyLadderSettings ladder) {
+        Records.LadderRung startingRung = safeLadder(ladder).startingRung(false);
         return new Records.StudyItem(
                 kanji,
                 STATE_NEW,
@@ -394,7 +457,7 @@ public final class BridgeScheduler {
                 Records.TaskMemory.initial(),
                 Records.TaskMemory.initial(),
                 Records.TaskMemory.initial(),
-                Records.LadderRung.startingRung(),
+                startingRung,
                 Records.SchedulerPhase.NEW_LEARNING,
                 0,
                 0,
@@ -404,19 +467,24 @@ public final class BridgeScheduler {
         );
     }
 
-    private Records.StudyItem alignAnswerSignature(Records.StudyItem item, Records.DashboardRow row, long nowMillis) {
+    private Records.StudyItem alignAnswerSignature(
+            Records.StudyItem item,
+            Records.DashboardRow row,
+            long nowMillis,
+            Records.StudyLadderSettings ladder
+    ) {
         String signature = answerSignature(row);
         if (item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
-            return item.withAnswerSignature(signature);
+            return alignRungToLadder(item.withAnswerSignature(signature), ladder);
         }
         boolean retired = STATE_RETIRED.equals(item.state);
         if (retired) {
-            return item.copyBuilder().answerSignature(signature).build();
+            return alignRungToLadder(item.copyBuilder().answerSignature(signature).build(), ladder);
         }
         // The answer signature under the card changed; reset short-term state
         // and demote one rung so the learner re-proves competence on the new
         // material.
-        Records.LadderRung fallbackRung = demoteRung(item.rung, item.hasSimilarKanji);
+        Records.LadderRung fallbackRung = demoteRung(item.rung, item.hasSimilarKanji, ladder);
         return item.copyBuilder()
                 .state(STATE_LEARNING)
                 .dueAtMillis(nowMillis)
@@ -447,10 +515,16 @@ public final class BridgeScheduler {
                 .build();
     }
 
+    private Records.StudyItem alignRungToLadder(Records.StudyItem item, Records.StudyLadderSettings ladder) {
+        Records.LadderRung effective = safeLadder(ladder).effectiveRung(item.rung, item.hasSimilarKanji);
+        return effective == item.rung ? item : item.withRung(effective);
+    }
+
     private static int compareDueItems(
             Records.StudyItem left,
             Records.StudyItem right,
-            Map<String, Records.DashboardRow> rowByKanji
+            Map<String, Records.DashboardRow> rowByKanji,
+            Records.Settings settings
     ) {
         int priority = Integer.compare(duePriority(left), duePriority(right));
         if (priority != 0) {
@@ -460,11 +534,25 @@ public final class BridgeScheduler {
         if (due != 0) {
             return due;
         }
+        if (isUnseenNewItem(left) && isUnseenNewItem(right)) {
+            int newCardSort = compareRowsForNewCardSort(
+                    rowByKanji.get(left.kanji),
+                    rowByKanji.get(right.kanji),
+                    settings
+            );
+            if (newCardSort != 0) {
+                return newCardSort;
+            }
+        }
         int weakness = Integer.compare(rowWeakness(right, rowByKanji), rowWeakness(left, rowByKanji));
         if (weakness != 0) {
             return weakness;
         }
         return left.kanji.compareTo(right.kanji);
+    }
+
+    private static boolean isUnseenNewItem(Records.StudyItem item) {
+        return item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews == 0;
     }
 
     private static int duePriority(Records.StudyItem item) {
@@ -478,7 +566,130 @@ public final class BridgeScheduler {
     }
 
     private static int rowWeakness(Records.StudyItem item, Map<String, Records.DashboardRow> rowByKanji) {
-        return rowByKanji.get(item.kanji).weaknessScore;
+        Records.DashboardRow row = rowByKanji.get(item.kanji);
+        return row == null ? 0 : row.weaknessScore;
+    }
+
+    private static List<Records.DashboardRow> sortedAdmissionRows(List<Records.DashboardRow> rows, Records.Settings settings) {
+        List<Records.DashboardRow> out = new ArrayList<>(rows);
+        out.sort((left, right) -> compareRowsForNewCardSort(left, right, settings));
+        return out;
+    }
+
+    private static int compareRowsForNewCardSort(
+            Records.DashboardRow left,
+            Records.DashboardRow right,
+            Records.Settings settings
+    ) {
+        String mode = settings == null ? Records.DEFAULT_NEW_CARD_SORT_MODE : settings.newCardSortMode;
+        if (Records.NEW_CARD_SORT_FREQUENCY.equals(mode)) {
+            return compareRank(left, right);
+        }
+        int primary = switch (mode) {
+            case Records.NEW_CARD_SORT_FSRS_DIFFICULTY -> compareOptionalDescending(maxDifficulty(left), maxDifficulty(right));
+            case Records.NEW_CARD_SORT_RETRIEVABILITY_RISK -> compareOptionalAscending(minRetrievability(left), minRetrievability(right));
+            case Records.NEW_CARD_SORT_KANI_WEAKNESS -> compareWeakness(left, right);
+            default -> compareRank(left, right);
+        };
+        if (primary != 0) {
+            return primary;
+        }
+        int rank = compareRank(left, right);
+        if (rank != 0) {
+            return rank;
+        }
+        return rowKanji(left).compareTo(rowKanji(right));
+    }
+
+    private static int compareWeakness(Records.DashboardRow left, Records.DashboardRow right) {
+        int weakness = Integer.compare(rowWeakness(right), rowWeakness(left));
+        if (weakness != 0) {
+            return weakness;
+        }
+        return Integer.compare(rowSuspendedExamples(right), rowSuspendedExamples(left));
+    }
+
+    private static int compareRank(Records.DashboardRow left, Records.DashboardRow right) {
+        return Integer.compare(rankSortValue(left), rankSortValue(right));
+    }
+
+    private static int compareOptionalDescending(Double left, Double right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return Double.compare(right, left);
+    }
+
+    private static int compareOptionalAscending(Double left, Double right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return Double.compare(left, right);
+    }
+
+    private static int rankSortValue(Records.DashboardRow row) {
+        return row == null || row.jitenRank == null ? Integer.MAX_VALUE : row.jitenRank;
+    }
+
+    private static int rowWeakness(Records.DashboardRow row) {
+        return row == null ? 0 : row.weaknessScore;
+    }
+
+    private static int rowSuspendedExamples(Records.DashboardRow row) {
+        return row == null ? 0 : row.suspendedExampleCount;
+    }
+
+    private static String rowKanji(Records.DashboardRow row) {
+        return row == null ? "" : row.kanji;
+    }
+
+    private static Double maxDifficulty(Records.DashboardRow row) {
+        if (row == null) {
+            return null;
+        }
+        Double best = null;
+        for (Records.Example example : row.examples) {
+            if (example.fsrsDifficulty != null && Double.isFinite(example.fsrsDifficulty)) {
+                best = best == null ? example.fsrsDifficulty : Math.max(best, example.fsrsDifficulty);
+            }
+        }
+        return best;
+    }
+
+    private static Double minRetrievability(Records.DashboardRow row) {
+        if (row == null) {
+            return null;
+        }
+        Double lowest = null;
+        for (Records.Example example : row.examples) {
+            Double normalized = normalizedRetrievability(example.fsrsRetrievability);
+            if (normalized != null) {
+                lowest = lowest == null ? normalized : Math.min(lowest, normalized);
+            }
+        }
+        return lowest;
+    }
+
+    private static Double normalizedRetrievability(Double value) {
+        if (value == null || !Double.isFinite(value) || value < 0.0) {
+            return null;
+        }
+        if (value > 1.0 && value <= 100.0) {
+            return value / 100.0;
+        }
+        return value > 1.0 ? null : value;
     }
 
     public Records.ReviewResult applyReview(
@@ -518,17 +729,43 @@ public final class BridgeScheduler {
             long nowMillis,
             Records.SchedulerParameters parameters,
             Records.Settings settings,
+            Records.StudyLadderSettings ladder
+    ) {
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, Records.LearningStepSettings.defaults(), ladder);
+    }
+
+    public Records.ReviewResult applyReview(
+            Records.StudyItem item,
+            Records.ReviewRequest request,
+            Set<String> consumedTokens,
+            long nowMillis,
+            Records.SchedulerParameters parameters,
+            Records.Settings settings,
             Records.LearningStepSettings learningSettings
+    ) {
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, learningSettings, Records.StudyLadderSettings.defaults());
+    }
+
+    public Records.ReviewResult applyReview(
+            Records.StudyItem item,
+            Records.ReviewRequest request,
+            Set<String> consumedTokens,
+            long nowMillis,
+            Records.SchedulerParameters parameters,
+            Records.Settings settings,
+            Records.LearningStepSettings learningSettings,
+            Records.StudyLadderSettings ladder
     ) {
         Records.SchedulerParameters resolvedParameters = parameters == null ? Records.SchedulerParameters.defaults() : parameters;
         Records.Settings resolvedSettings = settings == null ? Records.Settings.kikuDefaults() : settings;
         Records.LearningStepSettings resolvedSteps = learningSettings == null ? Records.LearningStepSettings.defaults() : learningSettings;
+        Records.StudyLadderSettings resolvedLadder = safeLadder(ladder);
         Records.ReviewResult duplicate = duplicateReviewResult(item, request, consumedTokens);
         if (duplicate != null) {
             return duplicate;
         }
         consumedTokens.add(request.token);
-        ReviewContext context = ReviewContext.from(item, request, resolvedParameters, resolvedSettings, resolvedSteps, nowMillis);
+        ReviewContext context = ReviewContext.from(item, request, resolvedParameters, resolvedSettings, resolvedSteps, resolvedLadder, nowMillis);
         ReviewState state = ReviewState.from(context);
         applyLadderTransition(context, state);
         updateWritingLevel(context, state);
@@ -680,7 +917,7 @@ public final class BridgeScheduler {
             state.realAgainStreak++;
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis;
             if (state.realAgainStreak >= context.settings.realDueReviewsToMove) {
-                state.rung = demoteRung(state.rung, context.item.hasSimilarKanji);
+                state.rung = demoteRung(state.rung, context.item.hasSimilarKanji, context.ladder);
                 state.realAgainStreak = 0;
                 state.realPassStreak = 0;
             }
@@ -709,7 +946,7 @@ public final class BridgeScheduler {
             state.realPassStreak++;
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis;
             if (state.realPassStreak >= context.settings.realDueReviewsToMove) {
-                state.rung = promoteRung(state.rung, context.item.hasSimilarKanji);
+                state.rung = promoteRung(state.rung, context.item.hasSimilarKanji, context.ladder);
                 state.realPassStreak = 0;
                 state.realAgainStreak = 0;
             }
@@ -735,27 +972,27 @@ public final class BridgeScheduler {
     }
 
     static Records.LadderRung promoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
-        Records.LadderRung[] order = Records.LadderRung.values();
-        for (int i = current.ordinal() + 1; i < order.length; i++) {
-            Records.LadderRung candidate = order[i];
-            if (candidate == Records.LadderRung.SIMILAR_KANJI && !hasSimilarKanji) {
-                continue;
-            }
-            return candidate;
-        }
-        return current;
+        return promoteRung(current, hasSimilarKanji, Records.StudyLadderSettings.defaults());
+    }
+
+    static Records.LadderRung promoteRung(
+            Records.LadderRung current,
+            boolean hasSimilarKanji,
+            Records.StudyLadderSettings ladder
+    ) {
+        return safeLadder(ladder).nextRung(current, hasSimilarKanji);
     }
 
     static Records.LadderRung demoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
-        Records.LadderRung[] order = Records.LadderRung.values();
-        for (int i = current.ordinal() - 1; i >= 0; i--) {
-            Records.LadderRung candidate = order[i];
-            if (candidate == Records.LadderRung.SIMILAR_KANJI && !hasSimilarKanji) {
-                continue;
-            }
-            return candidate;
-        }
-        return current;
+        return demoteRung(current, hasSimilarKanji, Records.StudyLadderSettings.defaults());
+    }
+
+    static Records.LadderRung demoteRung(
+            Records.LadderRung current,
+            boolean hasSimilarKanji,
+            Records.StudyLadderSettings ladder
+    ) {
+        return safeLadder(ladder).previousRung(current, hasSimilarKanji);
     }
 
     private void updateWritingLevel(ReviewContext context, ReviewState state) {
@@ -847,9 +1084,19 @@ public final class BridgeScheduler {
     }
 
     public int dueCount(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis, long studyAheadMillis) {
+        return dueCount(items, rows, nowMillis, studyAheadMillis, Records.StudyLadderSettings.defaults());
+    }
+
+    public int dueCount(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            long studyAheadMillis,
+            Records.StudyLadderSettings ladder
+    ) {
         long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         int count = 0;
-        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, null)) {
+        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
             if (item.dueAtMillis <= horizon) {
                 count++;
             }
@@ -873,6 +1120,18 @@ public final class BridgeScheduler {
             long studyAheadMillis,
             Set<String> allowedKanji
     ) {
+        return activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, Records.StudyLadderSettings.defaults());
+    }
+
+    public List<Records.StudyItem> activeQueueItems(
+            List<Records.StudyItem> items,
+            List<Records.DashboardRow> rows,
+            long nowMillis,
+            long studyAheadMillis,
+            Set<String> allowedKanji,
+            Records.StudyLadderSettings ladder
+    ) {
+        Records.StudyLadderSettings safeLadder = safeLadder(ladder);
         long horizon = nowMillis + clampStudyAheadMillis(studyAheadMillis);
         Set<String> currentRows = new HashSet<>();
         Set<String> currentFamilies = new HashSet<>();
@@ -882,13 +1141,14 @@ public final class BridgeScheduler {
         }
         Map<String, List<Records.StudyItem>> byFamily = new HashMap<>();
         for (Records.StudyItem item : items) {
-            if (isActiveQueueCandidate(item, currentRows, currentFamilies, allowedKanji)) {
-                addFamilyItem(byFamily, item);
+            Records.StudyItem effective = alignRungToLadder(item, safeLadder);
+            if (isActiveQueueCandidate(effective, currentRows, currentFamilies, allowedKanji)) {
+                addFamilyItem(byFamily, effective);
             }
         }
         List<Records.StudyItem> out = new ArrayList<>();
         for (List<Records.StudyItem> family : byFamily.values()) {
-            out.add(activeFamilyItem(family, horizon));
+            out.add(activeFamilyItem(family, horizon, safeLadder));
         }
         return out;
     }
@@ -1035,6 +1295,10 @@ public final class BridgeScheduler {
         return rung.wireName();
     }
 
+    private static Records.StudyLadderSettings safeLadder(Records.StudyLadderSettings ladder) {
+        return ladder == null ? Records.StudyLadderSettings.defaults() : ladder;
+    }
+
     private static int rungToLegacyStage(Records.LadderRung rung) {
         return switch (rung) {
             case TYPE_MEANING -> MIN_RECOGNITION_STAGE;
@@ -1044,18 +1308,28 @@ public final class BridgeScheduler {
         };
     }
 
-    private static Records.StudyItem activeFamilyItem(List<Records.StudyItem> family, long nowMillis) {
+    private static Records.StudyItem activeFamilyItem(
+            List<Records.StudyItem> family,
+            long nowMillis,
+            Records.StudyLadderSettings ladder
+    ) {
         Records.StudyItem best = null;
         for (Records.StudyItem item : family) {
-            if (best == null || compareFamilyActivity(item, best, nowMillis) < 0) {
+            if (best == null || compareFamilyActivity(item, best, nowMillis, ladder) < 0) {
                 best = item;
             }
         }
         return best;
     }
 
-    private static int compareFamilyActivity(Records.StudyItem left, Records.StudyItem right, long nowMillis) {
-        int rank = Integer.compare(-left.rung.ordinal(), -right.rung.ordinal());
+    private static int compareFamilyActivity(
+            Records.StudyItem left,
+            Records.StudyItem right,
+            long nowMillis,
+            Records.StudyLadderSettings ladder
+    ) {
+        Records.StudyLadderSettings safeLadder = safeLadder(ladder);
+        int rank = Integer.compare(-safeLadder.rankForRung(left.rung), -safeLadder.rankForRung(right.rung));
         if (rank != 0) {
             return rank;
         }
@@ -1135,6 +1409,7 @@ public final class BridgeScheduler {
         final long nowMillis;
         final long startOfDayMillis;
         final SeedQueueLimits limits;
+        final Records.StudyLadderSettings ladder;
 
         SeedQueueRequest(
                 List<Records.DashboardRow> allRows,
@@ -1143,15 +1418,17 @@ public final class BridgeScheduler {
                 Records.Settings settings,
                 long nowMillis,
                 long startOfDayMillis,
-                SeedQueueLimits limits
+                SeedQueueLimits limits,
+                Records.StudyLadderSettings ladder
         ) {
             this.allRows = allRows;
-            this.admissionRows = admissionRows;
+            this.admissionRows = sortedAdmissionRows(admissionRows, settings);
             this.existing = existing;
             this.settings = settings;
             this.nowMillis = nowMillis;
             this.startOfDayMillis = startOfDayMillis;
             this.limits = limits;
+            this.ladder = safeLadder(ladder);
         }
     }
 
@@ -1188,6 +1465,7 @@ public final class BridgeScheduler {
         Records.SchedulerParameters parameters;
         Records.Settings settings;
         Records.LearningStepSettings learningSettings;
+        Records.StudyLadderSettings ladder;
         Records.TaskMemory previousTaskMemory;
         Records.LadderRung rung;
         Records.SchedulerPhase phase;
@@ -1204,6 +1482,7 @@ public final class BridgeScheduler {
                 Records.SchedulerParameters parameters,
                 Records.Settings settings,
                 Records.LearningStepSettings learningSettings,
+                Records.StudyLadderSettings ladder,
                 long nowMillis
         ) {
             ReviewContext context = new ReviewContext();
@@ -1212,8 +1491,9 @@ public final class BridgeScheduler {
             context.parameters = parameters;
             context.settings = settings;
             context.learningSettings = learningSettings;
+            context.ladder = safeLadder(ladder);
             context.nowMillis = nowMillis;
-            context.rung = item.rung;
+            context.rung = context.ladder.effectiveRung(item.rung, item.hasSimilarKanji);
             context.phase = item.phase;
             context.reviewedTaskType = context.rung.wireName();
             context.previousTaskMemory = activeTaskMemory(item, context.rung);
@@ -1319,12 +1599,16 @@ public final class BridgeScheduler {
     // -------- Non-public helpers kept package-private for testing. --------
 
     static List<Records.LadderRung> rungsForItem(Records.StudyItem item) {
+        return rungsForItem(item, Records.StudyLadderSettings.defaults());
+    }
+
+    static List<Records.LadderRung> rungsForItem(Records.StudyItem item, Records.StudyLadderSettings ladder) {
         List<Records.LadderRung> out = new ArrayList<>();
-        for (Records.LadderRung rung : Records.LadderRung.values()) {
-            if (rung == Records.LadderRung.SIMILAR_KANJI && !item.hasSimilarKanji) {
-                continue;
+        Records.StudyLadderSettings safeLadder = safeLadder(ladder);
+        for (Records.LadderRung rung : safeLadder.orderedRungs) {
+            if (safeLadder.isValidForItem(rung, item.hasSimilarKanji)) {
+                out.add(rung);
             }
-            out.add(rung);
         }
         return Collections.unmodifiableList(out);
     }

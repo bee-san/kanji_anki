@@ -88,6 +88,7 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     abstract void renderStats();
+    abstract void renderGames();
 
     void renderHome() {
         clearStudyModeOverrides();
@@ -323,6 +324,7 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout secondRow = new LinearLayout(this);
         secondRow.setOrientation(LinearLayout.HORIZONTAL);
         secondRow.setBaselineAligned(false);
+        secondRow.addView(pillButton("Games", R.drawable.ic_game_24, this::renderGames));
         secondRow.addView(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
         column.addView(secondRow);
 
@@ -632,7 +634,7 @@ abstract class MainActivityHome extends MainActivityBase {
         }
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.AdaptiveLoadPlan effectivePlan = plan == null ? adaptivePlan(rows, currentItems, now) : plan;
-        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan);
+        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan, studyLadderSettings());
         seeded = store.annotateSimilarKanjiAvailability(seeded);
         store.replaceStudyItems(seeded);
         return seeded;
@@ -655,7 +657,7 @@ abstract class MainActivityHome extends MainActivityBase {
         }
         List<QueueEntry> entries = new ArrayList<>();
         BridgeScheduler scheduler = new BridgeScheduler();
-        for (Records.StudyItem item : scheduler.activeQueueItems(items, rows, now, studyAheadMillis(), null)) {
+        for (Records.StudyItem item : scheduler.activeQueueItems(items, rows, now, studyAheadMillis(), null, studyLadderSettings())) {
             Records.DashboardRow row = rowByKanji.get(item.kanji);
             if (row != null) {
                 entries.add(new QueueEntry(row, item));

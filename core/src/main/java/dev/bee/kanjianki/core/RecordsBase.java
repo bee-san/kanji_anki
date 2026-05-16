@@ -26,6 +26,13 @@ public abstract class RecordsBase {
     public static final int DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI = 1;
     public static final boolean DEFAULT_IMPORT_BROWSER_QUERY_CARDS = false;
     public static final String DEFAULT_IMPORT_BROWSER_QUERY = "";
+    public static final String NEW_CARD_SORT_FREQUENCY = "frequency";
+    public static final String NEW_CARD_SORT_FSRS_DIFFICULTY = "fsrs_difficulty";
+    public static final String NEW_CARD_SORT_RETRIEVABILITY_RISK = "retrievability_risk";
+    public static final String NEW_CARD_SORT_KANI_WEAKNESS = "kani_weakness";
+    public static final String DEFAULT_NEW_CARD_SORT_MODE = NEW_CARD_SORT_FREQUENCY;
+    public static final boolean DEFAULT_FREQUENCY_RETENTION_ENABLED = false;
+    public static final String DEFAULT_FREQUENCY_RETENTION_RANGES = "";
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
     public static final String SOURCE_ACTIVE = "active";
@@ -36,10 +43,10 @@ public abstract class RecordsBase {
     protected static final Pattern IMPORT_TAG_SEPARATOR = Pattern.compile("[,\\s]+");
 
     /**
-     * Ladder rungs that a study item can be on, from lowest to highest.
-     * New cards start on {@link #KANJI_MEANING}. The {@link #SIMILAR_KANJI}
-     * rung is included in the ladder only when {@code hasSimilarKanji} is
-     * true for the card; otherwise promotion and demotion skip over it.
+     * Ladder rungs that a study item can be on. User settings own the active
+     * low-to-high order; enum order is retained for storage compatibility.
+     * New cards start near {@link #KANJI_MEANING}. The {@link #SIMILAR_KANJI}
+     * rung is included only when {@code hasSimilarKanji} is true for the card.
      */
     public enum LadderRung {
         WRITE_KANJI("write_kanji"),
@@ -74,6 +81,245 @@ public abstract class RecordsBase {
             }
             LOGGER.warning(() -> "LadderRung.fromWireName: unknown wire name '" + name + "', defaulting to KANJI_MEANING");
             return KANJI_MEANING;
+        }
+    }
+
+    public static final class StudyLadderSettings {
+        public final List<LadderRung> orderedRungs;
+        public final List<LadderRung> enabledRungs;
+
+        public StudyLadderSettings(List<LadderRung> orderedRungs, List<LadderRung> enabledRungs) {
+            this(orderedRungs, enabledRungs, false);
+        }
+
+        private StudyLadderSettings(List<LadderRung> orderedRungs, List<LadderRung> enabledRungs, boolean fallbackOnInvalid) {
+            List<LadderRung> normalizedOrder = normalizeOrder(orderedRungs);
+            List<LadderRung> normalizedEnabled = normalizeEnabled(enabledRungs, normalizedOrder);
+            if (fallbackOnInvalid && !hasAlwaysAvailableRung(normalizedEnabled)) {
+                StudyLadderSettings defaults = defaults();
+                this.orderedRungs = defaults.orderedRungs;
+                this.enabledRungs = defaults.enabledRungs;
+                return;
+            }
+            if (!hasAlwaysAvailableRung(normalizedEnabled)) {
+                normalizedEnabled.add(LadderRung.KANJI_MEANING);
+            }
+            this.orderedRungs = Collections.unmodifiableList(normalizedOrder);
+            this.enabledRungs = Collections.unmodifiableList(normalizedEnabled);
+        }
+
+        public static StudyLadderSettings defaults() {
+            List<LadderRung> order = new ArrayList<>();
+            order.add(LadderRung.WRITE_KANJI);
+            order.add(LadderRung.TYPE_MEANING);
+            order.add(LadderRung.SIMILAR_KANJI);
+            order.add(LadderRung.KANJI_MEANING);
+            order.add(LadderRung.FONT_MEANING);
+            order.add(LadderRung.WORD_READING);
+            return new StudyLadderSettings(order, order, false);
+        }
+
+        public static StudyLadderSettings fromStored(String orderValue, String enabledValue) {
+            List<LadderRung> order = splitRungs(orderValue);
+            List<LadderRung> enabled = splitRungs(enabledValue);
+            if (order.isEmpty() && enabled.isEmpty()) {
+                return defaults();
+            }
+            return new StudyLadderSettings(order, enabled, true);
+        }
+
+        public String orderText() {
+            return joinRungs(orderedRungs);
+        }
+
+        public String enabledText() {
+            return joinRungs(enabledRungs);
+        }
+
+        public boolean isEnabled(LadderRung rung) {
+            return enabledRungs.contains(rung);
+        }
+
+        public boolean isValidForItem(LadderRung rung, boolean hasSimilarKanji) {
+            return isEnabled(rung) && (rung != LadderRung.SIMILAR_KANJI || hasSimilarKanji);
+        }
+
+        public StudyLadderSettings withRungEnabled(LadderRung rung, boolean enabled) {
+            if (rung == null) {
+                return this;
+            }
+            List<LadderRung> nextEnabled = new ArrayList<>(enabledRungs);
+            if (enabled) {
+                if (!nextEnabled.contains(rung)) {
+                    nextEnabled.add(rung);
+                }
+            } else {
+                if (alwaysAvailable(rung) && enabledAlwaysAvailableCount() <= 1 && nextEnabled.contains(rung)) {
+                    return this;
+                }
+                nextEnabled.remove(rung);
+            }
+            return new StudyLadderSettings(orderedRungs, nextEnabled, false);
+        }
+
+        public StudyLadderSettings moveRung(LadderRung rung, int delta) {
+            if (rung == null || delta == 0) {
+                return this;
+            }
+            List<LadderRung> order = new ArrayList<>(orderedRungs);
+            int from = order.indexOf(rung);
+            if (from < 0) {
+                return this;
+            }
+            int to = Math.max(0, Math.min(order.size() - 1, from + delta));
+            if (to == from) {
+                return this;
+            }
+            order.remove(from);
+            order.add(to, rung);
+            return new StudyLadderSettings(order, enabledRungs, false);
+        }
+
+        public int enabledAlwaysAvailableCount() {
+            int count = 0;
+            for (LadderRung rung : enabledRungs) {
+                if (alwaysAvailable(rung)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        public LadderRung startingRung(boolean hasSimilarKanji) {
+            return effectiveRung(LadderRung.startingRung(), hasSimilarKanji);
+        }
+
+        public LadderRung effectiveRung(LadderRung current, boolean hasSimilarKanji) {
+            LadderRung safeCurrent = current == null ? LadderRung.startingRung() : current;
+            if (isValidForItem(safeCurrent, hasSimilarKanji)) {
+                return safeCurrent;
+            }
+            int start = Math.max(0, orderedRungs.indexOf(safeCurrent));
+            for (int i = start - 1; i >= 0; i--) {
+                LadderRung candidate = orderedRungs.get(i);
+                if (isValidForItem(candidate, hasSimilarKanji)) {
+                    return candidate;
+                }
+            }
+            for (int i = start + 1; i < orderedRungs.size(); i++) {
+                LadderRung candidate = orderedRungs.get(i);
+                if (isValidForItem(candidate, hasSimilarKanji)) {
+                    return candidate;
+                }
+            }
+            return LadderRung.KANJI_MEANING;
+        }
+
+        public LadderRung nextRung(LadderRung current, boolean hasSimilarKanji) {
+            LadderRung effective = effectiveRung(current, hasSimilarKanji);
+            int start = orderedRungs.indexOf(effective);
+            for (int i = start + 1; i < orderedRungs.size(); i++) {
+                LadderRung candidate = orderedRungs.get(i);
+                if (isValidForItem(candidate, hasSimilarKanji)) {
+                    return candidate;
+                }
+            }
+            return effective;
+        }
+
+        public LadderRung previousRung(LadderRung current, boolean hasSimilarKanji) {
+            LadderRung effective = effectiveRung(current, hasSimilarKanji);
+            int start = orderedRungs.indexOf(effective);
+            for (int i = start - 1; i >= 0; i--) {
+                LadderRung candidate = orderedRungs.get(i);
+                if (isValidForItem(candidate, hasSimilarKanji)) {
+                    return candidate;
+                }
+            }
+            return effective;
+        }
+
+        public int rankForRung(LadderRung rung) {
+            int rank = orderedRungs.indexOf(rung);
+            return rank < 0 ? orderedRungs.size() : rank;
+        }
+
+        public static boolean alwaysAvailable(LadderRung rung) {
+            return rung != null && rung != LadderRung.SIMILAR_KANJI;
+        }
+
+        private static List<LadderRung> splitRungs(String value) {
+            List<LadderRung> out = new ArrayList<>();
+            if (value == null || value.trim().isEmpty()) {
+                return out;
+            }
+            String[] parts = value.trim().split("[,\\s]+");
+            for (String part : parts) {
+                LadderRung rung = LadderRung.fromWireName(part);
+                if (part.equals(rung.wireName()) && !out.contains(rung)) {
+                    out.add(rung);
+                }
+            }
+            return out;
+        }
+
+        private static List<LadderRung> normalizeOrder(List<LadderRung> requested) {
+            List<LadderRung> out = new ArrayList<>();
+            if (requested != null) {
+                for (LadderRung rung : requested) {
+                    if (rung != null && !out.contains(rung)) {
+                        out.add(rung);
+                    }
+                }
+            }
+            for (LadderRung rung : defaultsOrder()) {
+                if (!out.contains(rung)) {
+                    out.add(rung);
+                }
+            }
+            return out;
+        }
+
+        private static List<LadderRung> normalizeEnabled(List<LadderRung> requested, List<LadderRung> order) {
+            List<LadderRung> out = new ArrayList<>();
+            if (requested == null || requested.isEmpty()) {
+                out.addAll(order);
+                return out;
+            }
+            for (LadderRung rung : requested) {
+                if (rung != null && !out.contains(rung)) {
+                    out.add(rung);
+                }
+            }
+            return out;
+        }
+
+        private static boolean hasAlwaysAvailableRung(List<LadderRung> rungs) {
+            for (LadderRung rung : rungs) {
+                if (alwaysAvailable(rung)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static List<LadderRung> defaultsOrder() {
+            List<LadderRung> out = new ArrayList<>();
+            out.add(LadderRung.WRITE_KANJI);
+            out.add(LadderRung.TYPE_MEANING);
+            out.add(LadderRung.SIMILAR_KANJI);
+            out.add(LadderRung.KANJI_MEANING);
+            out.add(LadderRung.FONT_MEANING);
+            out.add(LadderRung.WORD_READING);
+            return out;
+        }
+
+        private static String joinRungs(List<LadderRung> rungs) {
+            List<String> values = new ArrayList<>();
+            for (LadderRung rung : rungs) {
+                values.add(rung.wireName());
+            }
+            return String.join(",", values);
         }
     }
 

@@ -853,7 +853,7 @@ public class LadderSchedulerTest {
         for (int i = 0; i < 4; i++) {
             Records.ReviewResult r = scheduler.applyReview(
                     item.withToken("ct" + i), passRequest("裂", "ct" + i), consumed, now,
-                    null, customSettings, null);
+                    null, customSettings, (Records.LearningStepSettings) null);
             item = r.item;
             now = item.dueAtMillis;
             item = item.copyBuilder().dueAtMillis(now).phase(Records.SchedulerPhase.REVIEW).state("review").build();
@@ -864,7 +864,7 @@ public class LadderSchedulerTest {
         // 5th pass promotes
         Records.ReviewResult r = scheduler.applyReview(
                 item.withToken("ct4"), passRequest("裂", "ct4"), consumed, now,
-                null, customSettings, null);
+                null, customSettings, (Records.LearningStepSettings) null);
         assertEquals("Promoted to FONT_MEANING after 5 passes with custom threshold",
                 Records.LadderRung.FONT_MEANING, r.item.rung);
     }
@@ -884,7 +884,7 @@ public class LadderSchedulerTest {
         for (int i = 0; i < 4; i++) {
             Records.ReviewResult r = scheduler.applyReview(
                     item.withToken("df" + i), failRequest("裂", "df" + i), consumed, now,
-                    null, customSettings, null);
+                    null, customSettings, (Records.LearningStepSettings) null);
             item = r.item;
             now = Math.max(item.dueAtMillis, now + 86_400_000L);
             item = item.copyBuilder().dueAtMillis(now - 60_000L).phase(Records.SchedulerPhase.REVIEW).state("review").build();
@@ -895,7 +895,7 @@ public class LadderSchedulerTest {
         // 5th fail demotes
         Records.ReviewResult r = scheduler.applyReview(
                 item.withToken("df4"), failRequest("裂", "df4"), consumed, now,
-                null, customSettings, null);
+                null, customSettings, (Records.LearningStepSettings) null);
         assertEquals("Demoted to TYPE_MEANING after 5 fails with custom threshold",
                 Records.LadderRung.TYPE_MEANING, r.item.rung);
     }

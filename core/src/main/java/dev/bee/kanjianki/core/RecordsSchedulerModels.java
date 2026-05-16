@@ -223,6 +223,8 @@ public abstract class RecordsSchedulerModels extends RecordsStudyModels {
         public final double easyMultiplier;
         public final long lastAdjustedAtMillis;
         public final int lastAdjustmentReviewCount;
+        public final boolean frequencyRetentionEnabled;
+        public final String frequencyRetentionRanges;
 
         public SchedulerParameters(
                 double targetRetention,
@@ -233,6 +235,30 @@ public abstract class RecordsSchedulerModels extends RecordsStudyModels {
                 long lastAdjustedAtMillis,
                 int lastAdjustmentReviewCount
         ) {
+            this(
+                    targetRetention,
+                    againMultiplier,
+                    hardMultiplier,
+                    goodMultiplier,
+                    easyMultiplier,
+                    lastAdjustedAtMillis,
+                    lastAdjustmentReviewCount,
+                    DEFAULT_FREQUENCY_RETENTION_ENABLED,
+                    DEFAULT_FREQUENCY_RETENTION_RANGES
+            );
+        }
+
+        public SchedulerParameters(
+                double targetRetention,
+                double againMultiplier,
+                double hardMultiplier,
+                double goodMultiplier,
+                double easyMultiplier,
+                long lastAdjustedAtMillis,
+                int lastAdjustmentReviewCount,
+                boolean frequencyRetentionEnabled,
+                String frequencyRetentionRanges
+        ) {
             this.targetRetention = targetRetention;
             this.againMultiplier = againMultiplier;
             this.hardMultiplier = hardMultiplier;
@@ -240,10 +266,38 @@ public abstract class RecordsSchedulerModels extends RecordsStudyModels {
             this.easyMultiplier = easyMultiplier;
             this.lastAdjustedAtMillis = lastAdjustedAtMillis;
             this.lastAdjustmentReviewCount = lastAdjustmentReviewCount;
+            this.frequencyRetentionEnabled = frequencyRetentionEnabled;
+            this.frequencyRetentionRanges = nullToEmpty(frequencyRetentionRanges).trim();
         }
 
         public static SchedulerParameters defaults() {
             return new SchedulerParameters(0.90, 0.45, 1.20, 2.00, 3.10, 0L, 0);
+        }
+
+        public double targetRetentionForRank(Integer jitenRank) {
+            if (!frequencyRetentionEnabled) {
+                return targetRetention;
+            }
+            try {
+                Double rankedRetention = FrequencyRetentionRanges.retentionForRank(frequencyRetentionRanges, jitenRank);
+                return rankedRetention == null ? targetRetention : rankedRetention;
+            } catch (IllegalArgumentException error) {
+                return targetRetention;
+            }
+        }
+
+        public SchedulerParameters withTargetRetention(double retention) {
+            return new SchedulerParameters(
+                    retention,
+                    againMultiplier,
+                    hardMultiplier,
+                    goodMultiplier,
+                    easyMultiplier,
+                    lastAdjustedAtMillis,
+                    lastAdjustmentReviewCount,
+                    frequencyRetentionEnabled,
+                    frequencyRetentionRanges
+            );
         }
 
         public SchedulerParameters withAdjustment(double again, double hard, double good, double easy, long adjustedAtMillis, int reviewCount) {
@@ -254,7 +308,9 @@ public abstract class RecordsSchedulerModels extends RecordsStudyModels {
                     clamp(good, 1.35, 3.20),
                     clamp(easy, 2.00, 4.80),
                     adjustedAtMillis,
-                    reviewCount
+                    reviewCount,
+                    frequencyRetentionEnabled,
+                    frequencyRetentionRanges
             );
         }
 

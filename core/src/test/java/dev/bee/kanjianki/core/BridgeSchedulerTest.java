@@ -493,6 +493,72 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void seedExtraNewCardsHonorsConfiguredNewCardSortMode() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        List<Records.DashboardRow> rows = Arrays.asList(
+                rankedRow("低", 300, 40, example("低", 3.0, 0.60)),
+                rankedRow("難", 100, 20, example("難", 8.0, 0.90)),
+                rankedRow("弱", 200, 80, example("弱", null, 45.0))
+        );
+
+        assertEquals(Arrays.asList("難", "弱", "低"), scheduler.seedExtraNewCards(
+                rows,
+                Collections.emptyList(),
+                settingsWithSortMode(Records.NEW_CARD_SORT_FREQUENCY),
+                2000L,
+                0L,
+                3
+        ).admittedKanji);
+        assertEquals(Arrays.asList("難", "低", "弱"), scheduler.seedExtraNewCards(
+                rows,
+                Collections.emptyList(),
+                settingsWithSortMode(Records.NEW_CARD_SORT_FSRS_DIFFICULTY),
+                2000L,
+                0L,
+                3
+        ).admittedKanji);
+        assertEquals(Arrays.asList("弱", "低", "難"), scheduler.seedExtraNewCards(
+                rows,
+                Collections.emptyList(),
+                settingsWithSortMode(Records.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                2000L,
+                0L,
+                3
+        ).admittedKanji);
+        assertEquals(Arrays.asList("弱", "低", "難"), scheduler.seedExtraNewCards(
+                rows,
+                Collections.emptyList(),
+                settingsWithSortMode(Records.NEW_CARD_SORT_KANI_WEAKNESS),
+                2000L,
+                0L,
+                3
+        ).admittedKanji);
+    }
+
+    @Test
+    public void nextSessionUsesNewCardSortOnlyForUnseenNewCards() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.Settings difficultySort = settingsWithSortMode(Records.NEW_CARD_SORT_FSRS_DIFFICULTY);
+        List<Records.DashboardRow> rows = Arrays.asList(
+                rankedRow("低", 300, 90, example("低", 3.0, 0.60)),
+                rankedRow("難", 100, 10, example("難", 8.0, 0.90))
+        );
+        BridgeScheduler.ExtraNewCardsResult result = scheduler.seedExtraNewCards(
+                rows,
+                Collections.emptyList(),
+                difficultySort,
+                2000L,
+                0L,
+                2
+        );
+
+        Records.StudySession session = scheduler.nextSession(result.items, rows, 2000L, 0L, null, difficultySort);
+
+        assertNotNull(session);
+        assertEquals("難", session.item.kanji);
+    }
+
+    @Test
     public void matureHigherRungSuppressesLowerRecognitionSiblings() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Records.StudyItem word = matureReview("裂", Records.LadderRung.WORD_READING);
@@ -934,7 +1000,7 @@ public class BridgeSchedulerTest {
                 Records.Settings.kikuDefaults(),
                 1000L,
                 0L,
-                null
+                (Records.AdaptiveLoadPlan) null
         );
 
         assertEquals(1, items.size());
@@ -1408,6 +1474,84 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void rungsForItemHonorsDisabledConfiguredRungs() {
+        Records.StudyItem withSimilar = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+                .withHasSimilarKanji(true);
+        Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
+                .withRungEnabled(Records.LadderRung.SIMILAR_KANJI, false)
+                .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
+
+        List<Records.LadderRung> rungs = BridgeScheduler.rungsForItem(withSimilar, ladder);
+
+        assertFalse(rungs.contains(Records.LadderRung.SIMILAR_KANJI));
+        assertFalse(rungs.contains(Records.LadderRung.KANJI_MEANING));
+        assertEquals(Records.LadderRung.WRITE_KANJI, rungs.get(0));
+    }
+
+    @Test
+    public void nextSessionMapsDisabledCurrentRungToNearestEnabledRung() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
+                .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+                .withHasSimilarKanji(true);
+
+        Records.StudySession session = scheduler.nextSession(
+                Collections.singletonList(item),
+                Collections.singletonList(row("裂", 20)),
+                0L,
+                0L,
+                null,
+                Records.Settings.kikuDefaults(),
+                ladder
+        );
+
+        assertNotNull(session);
+        assertEquals(Records.LadderRung.SIMILAR_KANJI, session.item.rung);
+        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session.taskType);
+    }
+
+    @Test
+    public void customLadderOrderControlsPromotion() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        Records.StudyLadderSettings ladder = new Records.StudyLadderSettings(
+                Arrays.asList(
+                        Records.LadderRung.WRITE_KANJI,
+                        Records.LadderRung.KANJI_MEANING,
+                        Records.LadderRung.WORD_READING,
+                        Records.LadderRung.FONT_MEANING,
+                        Records.LadderRung.TYPE_MEANING,
+                        Records.LadderRung.SIMILAR_KANJI
+                ),
+                Arrays.asList(
+                        Records.LadderRung.WRITE_KANJI,
+                        Records.LadderRung.KANJI_MEANING,
+                        Records.LadderRung.WORD_READING,
+                        Records.LadderRung.FONT_MEANING,
+                        Records.LadderRung.TYPE_MEANING,
+                        Records.LadderRung.SIMILAR_KANJI
+                )
+        );
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
+
+        for (int i = 0; i < Records.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE; i++) {
+            Records.ReviewResult result = scheduler.applyReview(
+                    item.withToken("custom-order-" + i),
+                    new Records.ReviewRequest("裂", "custom-order-" + i, "good", false, false, false, 0),
+                    consumed,
+                    item.dueAtMillis,
+                    Records.SchedulerParameters.defaults(),
+                    Records.Settings.kikuDefaults(),
+                    ladder
+            );
+            item = result.item;
+        }
+
+        assertEquals(Records.LadderRung.WORD_READING, item.rung);
+    }
+
+    @Test
     public void dueCountAndTokenSetCoverCollectionHelpers() {
         BridgeScheduler scheduler = new BridgeScheduler();
         Set<String> tokens = scheduler.tokenSet(Arrays.asList("a", "b", "a"));
@@ -1622,6 +1766,32 @@ public class BridgeSchedulerTest {
         return new Records.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, list);
     }
 
+    private Records.DashboardRow rankedRow(String kanji, Integer rank, int score, Records.Example... examples) {
+        ArrayList<Records.Example> list = new ArrayList<>();
+        Collections.addAll(list, examples);
+        return new Records.DashboardRow(kanji, rank, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, list);
+    }
+
+    private Records.Example example(String kanji, Double difficulty, Double retrievability) {
+        long id = kanji.codePointAt(0);
+        return new Records.Example(
+                "active",
+                id,
+                id + 1L,
+                kanji,
+                "reading",
+                "meaning",
+                "",
+                false,
+                0,
+                10,
+                3,
+                20.0,
+                difficulty,
+                retrievability
+        );
+    }
+
     private Records.Settings settingsWithQueue(int activeQueueCap, int newPerDay) {
         Records.Settings defaults = Records.Settings.kikuDefaults();
         return new Records.Settings(
@@ -1642,6 +1812,40 @@ public class BridgeSchedulerTest {
                 defaults.writingTriggerMissDays,
                 defaults.recognitionPromotionPasses,
                 defaults.realDueReviewsToMove
+        );
+    }
+
+    private Records.Settings settingsWithSortMode(String mode) {
+        Records.Settings defaults = Records.Settings.kikuDefaults();
+        return new Records.Settings(
+                defaults.modelName,
+                defaults.templateName,
+                defaults.expressionField,
+                defaults.readingField,
+                defaults.meaningField,
+                defaults.sentenceField,
+                defaults.frequencyField,
+                defaults.frequencySortField,
+                defaults.matureDays,
+                defaults.matureSupportThreshold,
+                defaults.suspendedRankMin,
+                defaults.suspendedRankMax,
+                defaults.activeQueueCap,
+                defaults.newPerDay,
+                defaults.writingTriggerMissDays,
+                defaults.recognitionPromotionPasses,
+                defaults.realDueReviewsToMove,
+                defaults.importActiveCards,
+                defaults.importSuspendedCards,
+                defaults.importTaggedCards,
+                defaults.importTags,
+                defaults.importWeakCards,
+                defaults.importWeakFsrsDifficultyThreshold,
+                defaults.importWeakLapsesThreshold,
+                defaults.importMinMatchingCardsPerKanji,
+                defaults.importBrowserQueryCards,
+                defaults.importBrowserQuery,
+                mode
         );
     }
 }

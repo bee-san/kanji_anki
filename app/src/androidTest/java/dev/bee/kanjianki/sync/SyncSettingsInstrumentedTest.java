@@ -46,6 +46,7 @@ public final class SyncSettingsInstrumentedTest {
         assertTrue(settings.importSuspendedCards);
         assertEquals(defaults.importWeakLapsesThreshold, settings.importWeakLapsesThreshold);
         assertEquals("", settings.importBrowserQuery);
+        assertEquals(defaults.newCardSortMode, settings.newCardSortMode);
     }
 
     @Test
@@ -71,6 +72,7 @@ public final class SyncSettingsInstrumentedTest {
             store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 2);
             store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, 1);
             store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, "tag:kani");
+            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, Records.NEW_CARD_SORT_RETRIEVABILITY_RISK);
         });
 
         assertEquals("Custom Japanese", settings.modelName);
@@ -93,6 +95,16 @@ public final class SyncSettingsInstrumentedTest {
         assertEquals(2, settings.importMinMatchingCardsPerKanji);
         assertTrue(settings.importBrowserQueryCards);
         assertEquals("tag:kani", settings.importBrowserQuery);
+        assertEquals(Records.NEW_CARD_SORT_RETRIEVABILITY_RISK, settings.newCardSortMode);
+    }
+
+    @Test
+    public void fromStoreFallsBackFromUnknownNewCardSortMode() {
+        Records.Settings settings = settingsFromStore(store ->
+                store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, "fastest")
+        );
+
+        assertEquals(Records.DEFAULT_NEW_CARD_SORT_MODE, settings.newCardSortMode);
     }
 
     @Test

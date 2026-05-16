@@ -199,6 +199,15 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
             String selectedKanji,
             long nowMillis
     ) {
+        return submitSimilarChoice(submitted, selectedKanji, nowMillis, true);
+    }
+
+    public Records.SimilarKanjiChoiceResult submitSimilarChoice(
+            Records.SimilarKanjiChoiceCard submitted,
+            String selectedKanji,
+            long nowMillis,
+            boolean enqueueRepairs
+    ) {
         if (submitted == null) {
             return new Records.SimilarKanjiChoiceResult(null, selectedKanji, false, Collections.emptyList());
         }
@@ -237,7 +246,7 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
             log.put(COLUMN_REVIEWED_AT, nowMillis);
             db.insert(TABLE_SIMILAR_KANJI_REVIEW_LOG, null, log);
 
-            if (!result.correct) {
+            if (!result.correct && enqueueRepairs) {
                 for (String repairKanji : result.repairKanji) {
                     enqueueSimilarWritingRepair(db, card, repairKanji, result.selectedKanji, nowMillis);
                 }

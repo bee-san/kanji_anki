@@ -4,7 +4,8 @@ plugins {
 }
 
 fun rootPath(path: String): String = layout.projectDirectory.dir(path).asFile.absolutePath
-val sonarProjectVersion = providers.gradleProperty("KANI_VERSION_NAME")
+val sonarProjectVersion = providers.gradleProperty("sonarProjectVersion")
+    .orElse(providers.gradleProperty("KANI_VERSION_NAME"))
     .orElse(providers.gradleProperty("KANJI_ANKI_VERSION_NAME"))
     .orElse(providers.environmentVariable("KANI_VERSION_NAME"))
     .orElse(providers.environmentVariable("KANJI_ANKI_VERSION_NAME"))

@@ -24,6 +24,7 @@ public final class SyncSettings {
     public static final String IMPORT_MIN_MATCHING_CARDS_SETTING_KEY = "import_min_matching_cards_per_kanji";
     public static final String IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY = "import_browser_query_cards";
     public static final String IMPORT_BROWSER_QUERY_SETTING_KEY = "import_browser_query";
+    public static final String NEW_CARD_SORT_MODE_SETTING_KEY = "new_card_sort_mode";
     private static final int ABSENT_INT_SETTING = Integer.MIN_VALUE;
     private static final double ABSENT_DOUBLE_SETTING = Double.NaN;
     private static final int OLD_DEFAULT_IMPORT_ACTIVE_CARDS = 1;
@@ -81,6 +82,9 @@ public final class SyncSettings {
         String importBrowserQuery = store == null
                 ? defaults.importBrowserQuery
                 : nullToEmpty(store.getStringSetting(IMPORT_BROWSER_QUERY_SETTING_KEY, defaults.importBrowserQuery));
+        String newCardSortMode = store == null
+                ? defaults.newCardSortMode
+                : store.getStringSetting(NEW_CARD_SORT_MODE_SETTING_KEY, defaults.newCardSortMode);
         return new Records.Settings(
                 modelName,
                 defaults.templateName,
@@ -108,7 +112,8 @@ public final class SyncSettings {
                 importWeakLapses,
                 importMinMatchingCards,
                 importBrowserQueryCards,
-                importBrowserQuery
+                importBrowserQuery,
+                Records.Settings.normalizeNewCardSortMode(newCardSortMode)
         );
     }
 

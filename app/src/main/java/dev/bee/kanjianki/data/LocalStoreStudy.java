@@ -24,6 +24,9 @@ import java.util.Map;
 import java.util.Set;
 
 abstract class LocalStoreStudy extends LocalStoreHistory {
+    private static final String KEY_STUDY_LADDER_ORDER = "study_ladder_order";
+    private static final String KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled";
+
     LocalStoreStudy(Context context) {
         super(context);
     }
@@ -240,6 +243,26 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         putIntSetting(SETTING_STUDY_AHEAD_MINUTES, clampStudyAheadMinutes(minutes));
     }
 
+    public Records.StudyLadderSettings studyLadderSettings() {
+        return Records.StudyLadderSettings.fromStored(
+                getStringSetting(KEY_STUDY_LADDER_ORDER, ""),
+                getStringSetting(KEY_STUDY_LADDER_ENABLED, "")
+        );
+    }
+
+    public void saveStudyLadderSettings(Records.StudyLadderSettings settings) {
+        Records.StudyLadderSettings normalized = settings == null ? Records.StudyLadderSettings.defaults() : settings;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            putStringSetting(KEY_STUDY_LADDER_ORDER, normalized.orderText());
+            putStringSetting(KEY_STUDY_LADDER_ENABLED, normalized.enabledText());
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     static int clampStudyAheadMinutes(int minutes) {
         if (minutes <= 0) {
             return 0;
@@ -405,7 +428,9 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
                 getDoubleSetting("scheduler_good_multiplier", defaults.goodMultiplier),
                 getDoubleSetting("scheduler_easy_multiplier", defaults.easyMultiplier),
                 getLongSetting("scheduler_last_adjusted_at", defaults.lastAdjustedAtMillis),
-                getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount)
+                getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount),
+                getIntSetting("scheduler_frequency_retention_enabled", defaults.frequencyRetentionEnabled ? 1 : 0) == 1,
+                getStringSetting("scheduler_frequency_retention_ranges", defaults.frequencyRetentionRanges)
         );
     }
 
@@ -420,6 +445,8 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
             putDoubleSetting("scheduler_easy_multiplier", parameters.easyMultiplier);
             putLongSetting("scheduler_last_adjusted_at", parameters.lastAdjustedAtMillis);
             putIntSetting("scheduler_last_adjustment_review_count", parameters.lastAdjustmentReviewCount);
+            putIntSetting("scheduler_frequency_retention_enabled", parameters.frequencyRetentionEnabled ? 1 : 0);
+            putStringSetting("scheduler_frequency_retention_ranges", parameters.frequencyRetentionRanges);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
