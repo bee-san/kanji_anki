@@ -1203,7 +1203,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
-    public void testSimilarChoiceMissLogsAReviewWithoutLegacyWritingRepairQueue() throws Exception {
+    public void testSimilarChoiceMissLogsReviewAndShowsWritingRepairQueue() throws Exception {
         seedSimilarChoiceDashboard();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -1212,8 +1212,9 @@ public final class MainActivityInstrumentedTest {
 
             clickText(scenario, "提");
             scenario.onActivity(activity -> {
-                assertHasText(activity, "Today's focus done");
-                assertNoText(activity, "Similar writing");
+                assertHasText(activity, "1 / 3");
+                assertHasText(activity, "Write to repair");
+                assertHasText(activity, "Why: similar-kanji miss · writing repair · practice-only");
             });
 
             assertSimilarChoiceReviewStored("again");
@@ -2453,7 +2454,7 @@ public final class MainActivityInstrumentedTest {
             } else {
                 assertEquals(1, stats.good);
             }
-            assertEquals(0, countSimilarRepairs(store));
+            assertEquals("again".equals(expectedRating) ? 2 : 0, countSimilarRepairs(store));
             Records.StudyItem item = onlyStudyItem(store);
             assertEquals(1, item.similarKanjiMemory.totalReviews);
         }

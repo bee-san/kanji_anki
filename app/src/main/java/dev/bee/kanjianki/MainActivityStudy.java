@@ -49,6 +49,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -86,7 +87,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-abstract class MainActivityStudy extends MainActivityHome {
+abstract class MainActivityStudy extends MainActivityStats {
     View learningPanel(Records.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
@@ -153,6 +154,12 @@ abstract class MainActivityStudy extends MainActivityHome {
         long now = System.currentTimeMillis();
         activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
         initializeSessionProgressTarget(activeStudyPlan);
+        includeDueSimilarWritingRepairs(now);
+        Records.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
+        if (repair != null) {
+            renderSimilarWritingRepair(repair, activeStudyPlan, now);
+            return;
+        }
         if (studyRunAtHardCap()) {
             renderStudyRunDone(activeStudyPlan);
             return;
@@ -167,11 +174,18 @@ abstract class MainActivityStudy extends MainActivityHome {
         Records.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
         activeStudyPlan = seededPlan;
         initializeSessionProgressTarget(seededPlan);
+        includeDueSimilarWritingRepairs(now);
+        repair = store.nextDueSimilarWritingRepair(now);
+        if (repair != null) {
+            renderSimilarWritingRepair(repair, seededPlan, now);
+            return;
+        }
         if (studyRunAtHardCap()) {
             renderStudyRunDone(seededPlan);
             return;
         }
         activeSession = nextActiveSession(rows, seeded, seededPlan, now);
+        activeSimilarWritingRepair = null;
         if (activeSession == null) {
             renderNoStudySession(seededPlan);
             return;
@@ -383,6 +397,7 @@ abstract class MainActivityStudy extends MainActivityHome {
         clearStudyModeOverrides();
         resetStudyRunProgress();
         base(NAV_STUDY);
+        activeSimilarWritingRepair = null;
         List<Records.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
         activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
@@ -454,6 +469,7 @@ abstract class MainActivityStudy extends MainActivityHome {
 
     void renderSimilarKanjiSession(Records.StudySession session) {
         prepareStudyContent(activeStudyPlan, true);
+        activeSimilarWritingRepair = null;
         activeAnalysis = null;
         checkingWriting = false;
         flashcardAnswerRevealed = false;
@@ -467,7 +483,8 @@ abstract class MainActivityStudy extends MainActivityHome {
             studyActionBar.setVisibility(View.GONE);
         }
 
-        List<String> choices = buildSimilarKanjiChoices(session.item.kanji);
+        Records.SimilarKanjiChoiceCard choiceCard = similarChoiceCardForSession(session);
+        List<String> choices = new ArrayList<>(choiceCard.choices);
         if (choices.size() < 2) {
             // Not enough similar kanji to show a choice — fall back to
             // standard flashcard for this card.
@@ -481,14 +498,31 @@ abstract class MainActivityStudy extends MainActivityHome {
         cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
         cardShell.addView(text(LABEL_SIMILAR_KANJI, 16, STUDY_PINK_DARK, true));
         cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
+        addStudyReasonLine(cardShell, session);
         LinearLayout box = softInsetPanel();
-        String meaning = session.row != null ? session.row.primaryMeaning : "";
+        String meaning = choiceCard.primaryMeaning;
         box.addView(text("Which kanji means " + meaning + "?", 22, STUDY_PLUM, true));
-        box.addView(similarKanjiGrid(choices, session.item.kanji));
+        box.addView(similarKanjiGrid(choices, choiceCard));
         cardShell.addView(box);
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
         cardLp.setMargins(0, dp(6), 0, dp(12));
         content.addView(cardShell, cardLp);
+    }
+
+    Records.SimilarKanjiChoiceCard similarChoiceCardForSession(Records.StudySession session) {
+        long now = System.currentTimeMillis();
+        Records.SimilarKanjiChoiceCard stored = store.dueSimilarChoiceForActiveTarget(session.item.kanji, now);
+        if (stored != null) {
+            return stored;
+        }
+        List<String> choices = buildSimilarKanjiChoices(session.item.kanji);
+        String meaning = session.row == null ? "" : rowMeaning(session.row);
+        return new Records.SimilarKanjiChoiceCard(
+                session.item.kanji,
+                meaning,
+                choices,
+                SimilarKanjiChoicePlanner.choiceSignature(choices)
+        );
     }
 
     List<String> buildSimilarKanjiChoices(String targetKanji) {
@@ -505,7 +539,7 @@ abstract class MainActivityStudy extends MainActivityHome {
         return new ArrayList<>(choices);
     }
 
-    View similarKanjiGrid(List<String> choices, String correctKanji) {
+    View similarKanjiGrid(List<String> choices, Records.SimilarKanjiChoiceCard card) {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
@@ -522,8 +556,7 @@ abstract class MainActivityStudy extends MainActivityHome {
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
             button.setOnClickListener(v -> {
-                boolean correct = glyph.equals(correctKanji);
-                submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
+                submitSimilarKanjiChoice(card, glyph);
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
             lp.setMargins(dp(4), dp(8), dp(4), 0);
@@ -541,8 +574,21 @@ abstract class MainActivityStudy extends MainActivityHome {
         return grid;
     }
 
+    View similarKanjiGrid(List<String> choices, String correctKanji) {
+        return similarKanjiGrid(
+                choices,
+                new Records.SimilarKanjiChoiceCard(
+                        correctKanji,
+                        "",
+                        choices,
+                        SimilarKanjiChoicePlanner.choiceSignature(choices)
+                )
+        );
+    }
+
     void renderFlashcardSession(Records.StudySession session) {
         prepareStudyContent(activeStudyPlan, true);
+        activeSimilarWritingRepair = null;
         activeAnalysis = null;
         checkingWriting = false;
         flashcardAnswerRevealed = false;
@@ -600,6 +646,7 @@ abstract class MainActivityStudy extends MainActivityHome {
         LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
         hintLp.setMargins(0, dp(6), 0, 0);
         card.addView(hiddenHint, hintLp);
+        addStudyReasonLine(card, session);
 
         flashcardHeroPanel = heroKanjiPanel(session);
         card.addView(flashcardHeroPanel);
@@ -697,6 +744,7 @@ abstract class MainActivityStudy extends MainActivityHome {
         card.addView(modePill(LABEL_PRACTICE));
         card.addView(text("Draw this kanji", 30, STUDY_PLUM, true));
         card.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
+        addStudyReasonLine(card, session);
         if (session.row != null) {
             if (isRecallTask(session)) {
                 card.addView(text("Prompt: " + sessionClue(session), 17, STUDY_PLUM, true));
@@ -734,9 +782,61 @@ abstract class MainActivityStudy extends MainActivityHome {
         refreshWritingModelStatus();
     }
 
+    void addStudyReasonLine(LinearLayout card, Records.StudySession session) {
+        String reason = studyReasonLine(session);
+        if (!reason.isEmpty()) {
+            card.addView(text(reason, 14, STUDY_MUTED, false));
+        }
+    }
+
+    String studyReasonLine(Records.StudySession session) {
+        if (activeSimilarWritingRepair != null) {
+            return "Why: similar-kanji miss · writing repair · practice-only";
+        }
+        if (session == null || session.row == null) {
+            return "";
+        }
+        return focusReasonLine(session.row, session.item, System.currentTimeMillis());
+    }
+
+    void renderSimilarWritingRepair(Records.SimilarKanjiWritingRepair repair, Records.AdaptiveLoadPlan plan, long now) {
+        String token = StudyTokenFactory.studyItem("repair-" + repair.id, repair.activeToken);
+        Records.SimilarKanjiWritingRepair activeRepair = repair.withToken(token, now);
+        store.saveSimilarWritingRepair(activeRepair);
+        activeSimilarWritingRepair = activeRepair;
+        Records.StudyItem item = newTargetedStudyItem(activeRepair.repairKanji, now);
+        activeSession = new Records.StudySession(
+                item.withToken(token),
+                null,
+                token,
+                TASK_REPAIR_WRITING,
+                true,
+                similarRepairPrompt(activeRepair)
+        );
+        activeStudyPlan = plan;
+        String progressKey = similarRepairProgressKey(activeRepair);
+        registerStudyTaskShown(progressKey);
+        startActiveStudyTask(similarRepairStudyTaskKey(activeRepair), activeRepair.repairKanji, TASK_REPAIR_WRITING, now);
+        renderWritingSession(activeSession);
+    }
+
+    String similarRepairPrompt(Records.SimilarKanjiWritingRepair repair) {
+        StringBuilder prompt = new StringBuilder("Repair the shape mix-up");
+        if (!repair.promptMeaning.isEmpty()) {
+            prompt.append(" for ").append(repair.promptMeaning);
+        }
+        if (!repair.wrongSelection.isEmpty()) {
+            prompt.append(". You picked ").append(repair.wrongSelection).append("; write ").append(repair.repairKanji).append(".");
+        } else {
+            prompt.append(". Write ").append(repair.repairKanji).append(".");
+        }
+        return prompt.toString();
+    }
+
     void resetStudyRunProgress() {
         sessionProgressCompleted = 0;
         sessionProgressMax = 0;
+        activeSimilarWritingRepair = null;
         sessionCompletedTaskKeys.clear();
         sessionSeenTaskKeys.clear();
     }
@@ -759,6 +859,16 @@ abstract class MainActivityStudy extends MainActivityHome {
     void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan) {
         if (sessionProgressMax <= 0 && plan != null) {
             sessionProgressMax = Math.max(0, plan.remaining > 0 ? plan.remaining : plan.target);
+        }
+    }
+
+    void includeDueSimilarWritingRepairs(long nowMillis) {
+        for (Records.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
+            String key = similarRepairProgressKey(repair);
+            if (!sessionSeenTaskKeys.contains(key) && !sessionCompletedTaskKeys.contains(key)) {
+                sessionSeenTaskKeys.add(key);
+                sessionProgressMax++;
+            }
         }
     }
 
@@ -792,6 +902,17 @@ abstract class MainActivityStudy extends MainActivityHome {
             return "";
         }
         return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token;
+    }
+
+    String similarRepairProgressKey(Records.SimilarKanjiWritingRepair repair) {
+        return repair == null ? "" : "repair:" + repair.id;
+    }
+
+    String similarRepairStudyTaskKey(Records.SimilarKanjiWritingRepair repair) {
+        if (repair == null) {
+            return "";
+        }
+        return similarRepairProgressKey(repair) + ":" + repair.activeToken;
     }
 
     void startActiveStudyTask(String key, String kanji, String taskType, long startedAt) {
@@ -1225,6 +1346,12 @@ abstract class MainActivityStudy extends MainActivityHome {
         });
     }
 
+    void submitSimilarKanjiChoice(Records.SimilarKanjiChoiceCard card, String selectedKanji) {
+        long now = System.currentTimeMillis();
+        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(card, selectedKanji, now);
+        submitReview(result.correct ? RATING_GOOD : RATING_AGAIN, false);
+    }
+
     boolean showNoInkWhenNeeded() {
         if (drawingPad != null && drawingPad.hasInk()) {
             return false;
@@ -1259,6 +1386,10 @@ abstract class MainActivityStudy extends MainActivityHome {
         if (activeSession == null) {
             return;
         }
+        if (activeSimilarWritingRepair != null) {
+            submitSimilarWritingRepair(rating);
+            return;
+        }
         StudyReviewRequests.MappedReview mappedReview = StudyReviewRequests.from(
                 activeSession,
                 activeAnalysis,
@@ -1268,6 +1399,45 @@ abstract class MainActivityStudy extends MainActivityHome {
         );
         Records.ReviewRequest request = mappedReview.request();
         submitNormalReview(request);
+    }
+
+    void submitSimilarWritingRepair(String rating) {
+        Records.SimilarKanjiWritingRepair repair = activeSimilarWritingRepair;
+        if (repair == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        boolean passed = !RATING_AGAIN.equals(rating);
+        completeActiveRepairStudyTask(similarRepairStudyTaskKey(repair), rating, now);
+        boolean saved = store.finishSimilarWritingRepair(repair.id, repair.activeToken, passed, now);
+        if (saved && passed) {
+            markStudyTaskCompleted(similarRepairProgressKey(repair));
+        }
+        Toast.makeText(
+                this,
+                passed ? "Repair saved." : "Saved. Try that repair again.",
+                Toast.LENGTH_SHORT
+        ).show();
+        activeSimilarWritingRepair = null;
+        renderStudy();
+    }
+
+    void completeActiveRepairStudyTask(String key, String outcome, long answeredAt) {
+        if (activeStudyTask == null || key == null || !key.equals(activeStudyTask.taskKey)) {
+            return;
+        }
+        long nowElapsed = SystemClock.elapsedRealtime();
+        activeStudyTask.pause(nowElapsed);
+        store.recordStudyTaskAnswered(
+                activeStudyTask.taskKey,
+                activeStudyTask.kanji,
+                activeStudyTask.taskType,
+                activeStudyTask.startedAtMillis,
+                answeredAt,
+                activeStudyTask.activeElapsedMillis,
+                outcome
+        );
+        activeStudyTask = null;
     }
 
     void submitNormalReview(Records.ReviewRequest request) {

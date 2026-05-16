@@ -137,6 +137,7 @@ abstract class MainActivityBase extends Activity {
     static final String TASK_TARGETED_WRITING = "targeted_writing";
     static final String TASK_TYPING_MEANING = "typing_meaning";
     static final String TASK_WORD_READING = "word_reading";
+    static final String TASK_REPAIR_WRITING = "repair_writing";
 
     static final String EMPTY_ACTIVE_PRACTICE_TITLE = "No active practice yet";
     static final String EMPTY_ACTIVE_PRACTICE_BODY = "Kani found candidates from AnkiDroid. Study now will admit the next problem kanji through your adaptive focus.";
@@ -150,6 +151,7 @@ abstract class MainActivityBase extends Activity {
     ScrollView contentScroll;
     LinearLayout studyActionBar;
     Records.StudySession activeSession;
+    Records.SimilarKanjiWritingRepair activeSimilarWritingRepair;
     Records.AdaptiveLoadPlan activeStudyPlan;
     DrawingPadView drawingPad;
     TextView studyStatus;
@@ -880,7 +882,7 @@ abstract class MainActivityBase extends Activity {
             case BridgeScheduler.TASK_SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
             case "meaning_flashcard" -> "Quick recall";
             case "font_recognition" -> "Font check";
-            case "repair_writing" -> "Write to repair";
+            case TASK_REPAIR_WRITING -> "Write to repair";
             case TASK_TARGETED_WRITING -> "Focused practice";
             case "context_writing" -> "New problem kanji";
             case "guided_writing" -> "Guided review";

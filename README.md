@@ -40,13 +40,6 @@ Kani will pick up (by default) up to 5 Kanji that are the absolute best bang for
 
 No more wasting time. I want you to spend as little time in this app as possible to spend more time immersing.
 
-**todo**
-- similar kanji cards
-- writing similar kanji cards
-
-
-
-
 ## Install
 
 1. Install AnkiDroid.
