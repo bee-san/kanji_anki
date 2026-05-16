@@ -727,51 +727,107 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public void defaultLatestFsrsUsesLastReviewElapsedDaysForOnTimeReviews() {
-        String previousEngine = System.getProperty("kani.fsrs.engine");
-        System.clearProperty("kani.fsrs.engine");
-        try {
-            BridgeScheduler scheduler = new BridgeScheduler();
-            long dueAt = 30L * BridgeScheduler.DAY;
-            Records.TaskMemory taskMemory = new Records.TaskMemory(
-                    "review",
-                    dueAt,
-                    5.0,
-                    6.0,
-                    4,
-                    0,
-                    0,
-                    "good",
-                    7
-            );
-            Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
-                    .copyBuilder()
-                    .stability(5.0)
-                    .difficulty(6.0)
-                    .totalReviews(4)
-                    .matureIntervalDays(7)
-                    .kanjiMeaningMemory(taskMemory)
-                    .build()
-                    .withToken("latest");
+    public void latestFsrsUsesLastReviewElapsedDaysForOnTimeReviews() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long dueAt = 30L * BridgeScheduler.DAY;
+        Records.TaskMemory taskMemory = new Records.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .stability(5.0)
+                .difficulty(6.0)
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .kanjiMeaningMemory(taskMemory)
+                .build()
+                .withToken("latest");
 
+        Records.ReviewResult result = scheduler.applyReview(
+                item,
+                new Records.ReviewRequest("裂", "latest", "good", false, false, false, 0),
+                new HashSet<>(),
+                dueAt
+        );
+
+        assertEquals(18, result.item.matureIntervalDays);
+        assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(18.01, result.item.stability, 0.0);
+        assertEquals(5.99, result.item.difficulty, 0.0);
+    }
+
+    @Test
+    public void activeRungInitialMemoryFallsBackToItemFsrsState() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        long dueAt = 30L * BridgeScheduler.DAY;
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.FONT_MEANING, dueAt)
+                .copyBuilder()
+                .stability(5.0)
+                .difficulty(6.0)
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .build()
+                .withToken("fallback");
+
+        Records.ReviewResult result = scheduler.applyReview(
+                item,
+                new Records.ReviewRequest("裂", "fallback", "good", false, false, false, 0),
+                new HashSet<>(),
+                dueAt
+        );
+
+        assertEquals(18, result.item.matureIntervalDays);
+        assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(18, result.item.fontMeaningMemory.matureIntervalDays);
+    }
+
+    @Test
+    public void promotionUpdatesNewActiveRungMemory() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        HashSet<String> consumed = new HashSet<>();
+        long dueAt = 30L * BridgeScheduler.DAY;
+        Records.TaskMemory taskMemory = new Records.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .stability(5.0)
+                .difficulty(6.0)
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .kanjiMeaningMemory(taskMemory)
+                .build();
+
+        for (int i = 0; i < Records.DEFAULT_REAL_DUE_REVIEWS_TO_MOVE; i++) {
             Records.ReviewResult result = scheduler.applyReview(
-                    item,
-                    new Records.ReviewRequest("裂", "latest", "good", false, false, false, 0),
-                    new HashSet<>(),
-                    dueAt
+                    item.withToken("promote-" + i),
+                    new Records.ReviewRequest("裂", "promote-" + i, "good", false, false, false, 0),
+                    consumed,
+                    item.dueAtMillis
             );
-
-            assertEquals(18, result.item.matureIntervalDays);
-            assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis);
-            assertEquals(18.01, result.item.stability, 0.0);
-            assertEquals(5.99, result.item.difficulty, 0.0);
-        } finally {
-            if (previousEngine == null) {
-                System.clearProperty("kani.fsrs.engine");
-            } else {
-                System.setProperty("kani.fsrs.engine", previousEngine);
-            }
+            item = result.item;
         }
+
+        assertEquals(Records.LadderRung.FONT_MEANING, item.rung);
+        assertEquals(item.dueAtMillis, item.fontMeaningMemory.dueAtMillis);
+        assertEquals(item.matureIntervalDays, item.fontMeaningMemory.matureIntervalDays);
+        assertEquals(item.totalReviews, item.fontMeaningMemory.totalReviews);
     }
 
     @Test

@@ -7,39 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 public final class KaniFsrsAdapterTest {
     @Test
-    public void fsrs5AdapterPreservesLegacyInitialAndReviewMath() {
-        Fsrs5Adapter adapter = new Fsrs5Adapter();
-        Fsrs5Engine engine = new Fsrs5Engine(null, 0.9);
-
-        KaniFsrsReviewResult initial = adapter.initialReview(BridgeScheduler.RATING_GOOD, 6.0, 0.9, true);
-        int good = Fsrs5Engine.ratingToInt(BridgeScheduler.RATING_GOOD);
-        double expectedInitialStability = engine.initialStability(good);
-        double expectedInitialDifficulty = engine.updateDifficulty(6.0, good);
-        assertEquals(expectedInitialStability, initial.stability, 0.000001);
-        assertEquals(expectedInitialDifficulty, initial.difficulty, 0.000001);
-        assertEquals(engine.nextIntervalMillis(expectedInitialStability), initial.intervalMillis);
-
-        KaniFsrsReviewResult review = adapter.review(
-                5.0,
-                6.0,
-                BridgeScheduler.RATING_HARD,
-                7,
-                0.9
-        );
-        double nextDifficulty = engine.updateDifficulty(6.0, Fsrs5Engine.ratingToInt(BridgeScheduler.RATING_HARD));
-        double retrievability = engine.retrievability(7.0, 5.0);
-        double nextStability = engine.stabilityAfterRecall(
-                5.0,
-                nextDifficulty,
-                retrievability,
-                Fsrs5Engine.ratingToInt(BridgeScheduler.RATING_HARD)
-        );
-        assertEquals(nextDifficulty, review.difficulty, 0.000001);
-        assertEquals(nextStability, review.stability, 0.000001);
-        assertEquals(engine.nextIntervalMillis(nextStability), review.intervalMillis);
-    }
-
-    @Test
     public void latestAdapterUsesTwentyOneParameterEngineAndClampsMigratedState() {
         LatestFsrsAdapter adapter = new LatestFsrsAdapter();
 

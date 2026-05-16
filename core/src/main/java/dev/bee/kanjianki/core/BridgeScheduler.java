@@ -43,13 +43,11 @@ public final class BridgeScheduler {
     static final String RATING_HARD = "hard";
     static final String RATING_GOOD = "good";
     static final String RATING_EASY = "easy";
-    private static final String FSRS_ENGINE_FSRS5 = "fsrs5";
-    private static final String FSRS_ENGINE_LATEST_21P = "latest21p";
 
     private final KaniFsrsAdapter fsrsAdapter;
 
     public BridgeScheduler() {
-        this(defaultFsrsAdapter());
+        this(new LatestFsrsAdapter());
     }
 
     BridgeScheduler(KaniFsrsAdapter fsrsAdapter) {
@@ -67,14 +65,6 @@ public final class BridgeScheduler {
     // read these task-type strings (review_log, task memory lookup).
     public static final String TASK_TYPING_MEANING = "typing_meaning";
     public static final String TASK_WRITING_REMEDIATION = "writing_remediation";
-
-    private static KaniFsrsAdapter defaultFsrsAdapter() {
-        String engine = System.getProperty("kani.fsrs.engine", FSRS_ENGINE_LATEST_21P);
-        if (FSRS_ENGINE_FSRS5.equals(engine)) {
-            return new Fsrs5Adapter();
-        }
-        return new LatestFsrsAdapter();
-    }
 
     public List<Records.StudyItem> seedQueue(
             List<Records.DashboardRow> rows,
@@ -820,7 +810,12 @@ public final class BridgeScheduler {
                 .lastRealReviewDueAtMillis(state.lastRealReviewDueAtMillis)
                 .activeToken(null)
                 .build();
-        return base.withTaskMemory(context.reviewedTaskType, updatedMemory);
+        Records.StudyItem updated = base.withTaskMemory(context.reviewedTaskType, updatedMemory);
+        String activeTaskType = state.rung.wireName();
+        if (!activeTaskType.equals(context.reviewedTaskType)) {
+            updated = updated.withTaskMemory(activeTaskType, updatedMemory);
+        }
+        return updated;
     }
 
     private int taskMemoryConsecutivePasses(ReviewContext context, ReviewState state) {
@@ -1220,7 +1215,7 @@ public final class BridgeScheduler {
             context.rung = item.rung;
             context.phase = item.phase;
             context.reviewedTaskType = context.rung.wireName();
-            context.previousTaskMemory = item.memoryForRung(context.rung);
+            context.previousTaskMemory = activeTaskMemory(item, context.rung);
             context.elapsedReviewDays = elapsedReviewDays(context.previousTaskMemory, nowMillis);
             context.rating = resolveRating(request, context.rung);
             boolean writingRung = context.rung == Records.LadderRung.WRITE_KANJI;
@@ -1263,6 +1258,23 @@ public final class BridgeScheduler {
         long lastReviewAtMillis = Math.max(0L, memory.dueAtMillis - previousIntervalMillis);
         long elapsedMillis = Math.max(0L, nowMillis - lastReviewAtMillis);
         return (int) Math.min(Integer.MAX_VALUE, elapsedMillis / DAY);
+    }
+
+    private static Records.TaskMemory activeTaskMemory(Records.StudyItem item, Records.LadderRung rung) {
+        Records.TaskMemory memory = item.memoryForRung(rung);
+        if (memory.totalReviews > 0 || item.totalReviews <= 0) {
+            return memory;
+        }
+        return Records.TaskMemory.fromStudyFields(
+                item.state,
+                item.dueAtMillis,
+                item.stability,
+                item.difficulty,
+                item.totalReviews,
+                item.lapses,
+                item.learningStep,
+                item.matureIntervalDays
+        );
     }
 
     private static final class ReviewState {
