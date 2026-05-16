@@ -116,11 +116,11 @@ jobs:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
@@ -201,7 +201,7 @@ jobs:
           if [ ${#TASKS[@]} -eq 0 ]; then
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          gradle :core:jar "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
+          gradle :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
           gradle sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false
 
       - name: Build and analyze (manual full-coverage mode)
