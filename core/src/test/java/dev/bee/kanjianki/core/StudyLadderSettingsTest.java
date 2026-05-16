@@ -14,8 +14,8 @@ public class StudyLadderSettingsTest {
         Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults();
 
         assertEquals(Records.LadderRung.WRITE_KANJI, ladder.orderedRungs.get(0));
-        assertEquals(Records.LadderRung.TYPE_MEANING, ladder.orderedRungs.get(1));
-        assertEquals(Records.LadderRung.SIMILAR_KANJI, ladder.orderedRungs.get(2));
+        assertEquals(Records.LadderRung.SIMILAR_KANJI, ladder.orderedRungs.get(1));
+        assertEquals(Records.LadderRung.TYPE_MEANING, ladder.orderedRungs.get(2));
         assertEquals(Records.LadderRung.KANJI_MEANING, ladder.startingRung(true));
         assertTrue(ladder.isEnabled(Records.LadderRung.WORD_READING));
     }
@@ -25,9 +25,12 @@ public class StudyLadderSettingsTest {
         Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
                 .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
 
-        assertEquals(Records.LadderRung.SIMILAR_KANJI, ladder.startingRung(true));
-        assertEquals(Records.LadderRung.SIMILAR_KANJI, ladder.effectiveRung(Records.LadderRung.KANJI_MEANING, true));
+        assertEquals(Records.LadderRung.TYPE_MEANING, ladder.startingRung(true));
+        assertEquals(Records.LadderRung.TYPE_MEANING, ladder.effectiveRung(Records.LadderRung.KANJI_MEANING, true));
         assertEquals(Records.LadderRung.TYPE_MEANING, ladder.effectiveRung(Records.LadderRung.KANJI_MEANING, false));
+
+        Records.StudyLadderSettings nearerHigher = ladder.withRungEnabled(Records.LadderRung.TYPE_MEANING, false);
+        assertEquals(Records.LadderRung.FONT_MEANING, nearerHigher.effectiveRung(Records.LadderRung.KANJI_MEANING, true));
     }
 
     @Test

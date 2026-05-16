@@ -109,13 +109,7 @@ public abstract class RecordsBase {
         }
 
         public static StudyLadderSettings defaults() {
-            List<LadderRung> order = new ArrayList<>();
-            order.add(LadderRung.WRITE_KANJI);
-            order.add(LadderRung.TYPE_MEANING);
-            order.add(LadderRung.SIMILAR_KANJI);
-            order.add(LadderRung.KANJI_MEANING);
-            order.add(LadderRung.FONT_MEANING);
-            order.add(LadderRung.WORD_READING);
+            List<LadderRung> order = defaultsOrder();
             return new StudyLadderSettings(order, order, false);
         }
 
@@ -199,17 +193,25 @@ public abstract class RecordsBase {
             if (isValidForItem(safeCurrent, hasSimilarKanji)) {
                 return safeCurrent;
             }
-            int start = Math.max(0, orderedRungs.indexOf(safeCurrent));
-            for (int i = start - 1; i >= 0; i--) {
-                LadderRung candidate = orderedRungs.get(i);
-                if (isValidForItem(candidate, hasSimilarKanji)) {
-                    return candidate;
-                }
+            int start = orderedRungs.indexOf(safeCurrent);
+            if (start < 0) {
+                start = orderedRungs.indexOf(LadderRung.startingRung());
             }
-            for (int i = start + 1; i < orderedRungs.size(); i++) {
-                LadderRung candidate = orderedRungs.get(i);
-                if (isValidForItem(candidate, hasSimilarKanji)) {
-                    return candidate;
+            start = Math.max(0, start);
+            for (int distance = 1; distance < orderedRungs.size(); distance++) {
+                int before = start - distance;
+                if (before >= 0) {
+                    LadderRung candidate = orderedRungs.get(before);
+                    if (isValidForItem(candidate, hasSimilarKanji)) {
+                        return candidate;
+                    }
+                }
+                int after = start + distance;
+                if (after < orderedRungs.size()) {
+                    LadderRung candidate = orderedRungs.get(after);
+                    if (isValidForItem(candidate, hasSimilarKanji)) {
+                        return candidate;
+                    }
                 }
             }
             return LadderRung.KANJI_MEANING;
@@ -306,8 +308,8 @@ public abstract class RecordsBase {
         private static List<LadderRung> defaultsOrder() {
             List<LadderRung> out = new ArrayList<>();
             out.add(LadderRung.WRITE_KANJI);
-            out.add(LadderRung.TYPE_MEANING);
             out.add(LadderRung.SIMILAR_KANJI);
+            out.add(LadderRung.TYPE_MEANING);
             out.add(LadderRung.KANJI_MEANING);
             out.add(LadderRung.FONT_MEANING);
             out.add(LadderRung.WORD_READING);
