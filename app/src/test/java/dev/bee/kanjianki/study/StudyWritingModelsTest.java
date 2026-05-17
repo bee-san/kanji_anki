@@ -25,16 +25,19 @@ import static org.junit.Assert.assertTrue;
 public final class StudyWritingModelsTest {
     @Test
     public void capturedStrokeRejectsInvalidInputs() {
-        assertThrows(NullPointerException.class, () -> new CapturedStroke(null));
-        assertThrows(IllegalArgumentException.class, () -> new CapturedStroke(Collections.emptyList()));
+        List<CapturedStroke.Point> emptyPoints = Collections.emptyList();
+        List<CapturedStroke.Point> pointsWithNull = Arrays.asList(point(1f, 2f), null);
+
+        assertThrows(NullPointerException.class, () -> newCapturedStroke(null));
+        assertThrows(IllegalArgumentException.class, () -> newCapturedStroke(emptyPoints));
         assertThrows(
                 NullPointerException.class,
-                () -> new CapturedStroke(Arrays.asList(point(1f, 2f), null))
+                () -> newCapturedStroke(pointsWithNull)
         );
-        assertThrows(IllegalArgumentException.class, () -> new CapturedStroke.Point(Float.NaN, 0f));
-        assertThrows(IllegalArgumentException.class, () -> new CapturedStroke.Point(Float.POSITIVE_INFINITY, 0f));
-        assertThrows(IllegalArgumentException.class, () -> new CapturedStroke.Point(0f, Float.NEGATIVE_INFINITY));
-        assertThrows(IllegalArgumentException.class, () -> new CapturedStroke.Point(0f, 0f, -1L));
+        assertThrows(IllegalArgumentException.class, () -> newCapturedPoint(Float.NaN, 0f));
+        assertThrows(IllegalArgumentException.class, () -> newCapturedPoint(Float.POSITIVE_INFINITY, 0f));
+        assertThrows(IllegalArgumentException.class, () -> newCapturedPoint(0f, Float.NEGATIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> newCapturedPoint(0f, 0f, -1L));
     }
 
     @Test
@@ -45,6 +48,7 @@ public final class StudyWritingModelsTest {
 
         CapturedStroke stroke = CapturedStroke.of(source);
         source.add(point(9f, 9f));
+        CapturedStroke.Point appendedPoint = point(5f, 6f);
 
         assertEquals(2, stroke.points.size());
         assertEquals(1f, stroke.points.get(0).x, 0f);
@@ -53,35 +57,38 @@ public final class StudyWritingModelsTest {
         assertEquals(3f, stroke.points.get(1).x, 0f);
         assertEquals(4f, stroke.points.get(1).y, 0f);
         assertNull(stroke.points.get(1).timestampMillis);
-        assertThrows(UnsupportedOperationException.class, () -> stroke.points.add(point(5f, 6f)));
+        assertThrows(UnsupportedOperationException.class, () -> stroke.points.add(appendedPoint));
     }
 
     @Test
     public void capturedWritingRejectsInvalidInputs() {
         CapturedStroke stroke = stroke(point(1f, 1f));
+        List<CapturedStroke> emptyStrokes = Collections.emptyList();
+        List<CapturedStroke> nullStroke = Collections.singletonList(null);
+        List<CapturedStroke> oneStroke = Collections.singletonList(stroke);
 
-        assertThrows(NullPointerException.class, () -> new CapturedWriting(null));
-        assertThrows(IllegalArgumentException.class, () -> new CapturedWriting(Collections.emptyList()));
-        assertThrows(NullPointerException.class, () -> new CapturedWriting(Collections.singletonList(null)));
+        assertThrows(NullPointerException.class, () -> newCapturedWriting(null));
+        assertThrows(IllegalArgumentException.class, () -> newCapturedWriting(emptyStrokes));
+        assertThrows(NullPointerException.class, () -> newCapturedWriting(nullStroke));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new CapturedWriting(Collections.singletonList(stroke), 100f, null, "")
+                () -> newCapturedWriting(oneStroke, 100f, null, "")
         );
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new CapturedWriting(Collections.singletonList(stroke), null, 100f, "")
+                () -> newCapturedWriting(oneStroke, null, 100f, "")
         );
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new CapturedWriting(Collections.singletonList(stroke), 0f, 100f, "")
+                () -> newCapturedWriting(oneStroke, 0f, 100f, "")
         );
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new CapturedWriting(Collections.singletonList(stroke), 100f, Float.NaN, "")
+                () -> newCapturedWriting(oneStroke, 100f, Float.NaN, "")
         );
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new CapturedWriting(Collections.singletonList(stroke), Float.POSITIVE_INFINITY, 100f, "")
+                () -> newCapturedWriting(oneStroke, Float.POSITIVE_INFINITY, 100f, "")
         );
     }
 
@@ -112,17 +119,18 @@ public final class StudyWritingModelsTest {
     @Test
     public void prepareForRecognitionRejectsInvalidInputs() {
         List<CapturedStroke> strokes = Collections.singletonList(stroke(point(1f, 1f), point(2f, 2f)));
+        List<CapturedStroke> emptyStrokes = Collections.emptyList();
 
-        assertThrows(NullPointerException.class, () -> CapturedWriting.prepareForRecognition(null, 100f, 100f));
+        assertThrows(NullPointerException.class, () -> prepareForRecognition(null, 100f, 100f));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> CapturedWriting.prepareForRecognition(Collections.emptyList(), 100f, 100f)
+                () -> prepareForRecognition(emptyStrokes, 100f, 100f)
         );
-        assertThrows(IllegalArgumentException.class, () -> CapturedWriting.prepareForRecognition(strokes, 0f, 100f));
-        assertThrows(IllegalArgumentException.class, () -> CapturedWriting.prepareForRecognition(strokes, 100f, Float.NaN));
+        assertThrows(IllegalArgumentException.class, () -> prepareForRecognition(strokes, 0f, 100f));
+        assertThrows(IllegalArgumentException.class, () -> prepareForRecognition(strokes, 100f, Float.NaN));
         assertThrows(
                 IllegalArgumentException.class,
-                () -> CapturedWriting.prepareForRecognition(strokes, Float.NEGATIVE_INFINITY, 100f)
+                () -> prepareForRecognition(strokes, Float.NEGATIVE_INFINITY, 100f)
         );
     }
 
@@ -202,11 +210,36 @@ public final class StudyWritingModelsTest {
     @Test
     public void prepareForRecognitionRejectsStrokeStateThatSimplifiesAway() throws Exception {
         CapturedStroke emptyStroke = emptyStrokeForDefensiveBranch();
+        List<CapturedStroke> emptySimplifiedStroke = Collections.singletonList(emptyStroke);
 
         assertThrows(
                 IllegalArgumentException.class,
-                () -> CapturedWriting.prepareForRecognition(Collections.singletonList(emptyStroke), 100f, 100f)
+                () -> prepareForRecognition(emptySimplifiedStroke, 100f, 100f)
         );
+    }
+
+    private static CapturedStroke newCapturedStroke(List<CapturedStroke.Point> points) {
+        return new CapturedStroke(points);
+    }
+
+    private static CapturedStroke.Point newCapturedPoint(float x, float y) {
+        return new CapturedStroke.Point(x, y);
+    }
+
+    private static CapturedStroke.Point newCapturedPoint(float x, float y, long timestampMillis) {
+        return new CapturedStroke.Point(x, y, timestampMillis);
+    }
+
+    private static CapturedWriting newCapturedWriting(List<CapturedStroke> strokes) {
+        return new CapturedWriting(strokes);
+    }
+
+    private static CapturedWriting newCapturedWriting(List<CapturedStroke> strokes, Float width, Float height, String preContext) {
+        return new CapturedWriting(strokes, width, height, preContext);
+    }
+
+    private static CapturedWriting prepareForRecognition(List<CapturedStroke> strokes, float width, float height) {
+        return CapturedWriting.prepareForRecognition(strokes, width, height);
     }
 
     @Test

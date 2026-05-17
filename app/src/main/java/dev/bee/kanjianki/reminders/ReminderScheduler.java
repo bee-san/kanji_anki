@@ -26,7 +26,6 @@ import dev.bee.kanjianki.time.AppClock;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public final class ReminderScheduler {
     public static final String ACTION_DAILY_REMINDER = "dev.bee.kanjianki.action.DAILY_REMINDER";
@@ -146,16 +145,6 @@ public final class ReminderScheduler {
         return new AndroidReminderServices(context);
     }
 
-    private static PendingIntent alarmIntent(Context context, int lookupFlag) {
-        Intent intent = new Intent(context, ReminderReceiver.class).setAction(ACTION_DAILY_REMINDER);
-        return PendingIntent.getBroadcast(
-                context,
-                REQUEST_CODE,
-                intent,
-                lookupFlag | PendingIntent.FLAG_IMMUTABLE
-        );
-    }
-
     interface ReminderServices {
         void scheduleAlarm(long triggerAtMillis);
 
@@ -186,17 +175,27 @@ public final class ReminderScheduler {
             alarmManager.set(
                     AlarmManager.RTC_WAKEUP,
                     triggerAtMillis,
-                    alarmIntent(context, PendingIntent.FLAG_UPDATE_CURRENT)
+                    alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT)
             );
         }
 
         @Override
         public void cancelAlarm() {
             AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            PendingIntent pendingIntent = alarmIntent(context, PendingIntent.FLAG_NO_CREATE);
+            PendingIntent pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE);
             if (alarmManager != null && pendingIntent != null) {
                 alarmManager.cancel(pendingIntent);
             }
+        }
+
+        private PendingIntent alarmIntent(int lookupFlag) {
+            Intent intent = new Intent(context, ReminderReceiver.class).setAction(ACTION_DAILY_REMINDER);
+            return PendingIntent.getBroadcast(
+                    context,
+                    REQUEST_CODE,
+                    intent,
+                    lookupFlag | PendingIntent.FLAG_IMMUTABLE
+            );
         }
 
         @Override
@@ -279,48 +278,31 @@ public final class ReminderScheduler {
     private static ReminderCopy reminderCopy(Context context, AppClock clock) {
         try (LocalStore store = new LocalStore(context)) {
             List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+            List<RecordsStudyModels.StudyItem> items = store.studyItems();
             long now = AppClock.orSystem(clock).nowMillis();
-            return reminderCopy(
-                    rows,
-                    store.studyItems(),
-                    store.reviewStatsSince(now - 7 * 86_400_000L),
-                    store.studyStreak(now).currentDays,
-                    store.studiedKanjiSince(startOfLocalDay(now)),
-                    store.adaptiveLoadWorkPercent(),
-                    store.adaptiveLoadMode(),
-                    store.adaptiveLoadMaxItems(),
-                    now
-            );
+            return reminderCopy(AdaptiveLoadPlanner.PlanRequest.builder(
+                            rows,
+                            items,
+                            store.reviewStatsSince(now - 7 * 86_400_000L),
+                            store.studyStreak(now).currentDays,
+                            store.studiedKanjiSince(startOfLocalDay(now)),
+                            AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                                    store.adaptiveLoadWorkPercent(),
+                                    store.adaptiveLoadMode(),
+                                    store.adaptiveLoadMaxItems()),
+                            now
+                    )
+                    .settings(RecordsSyncModels.Settings.kikuDefaults())
+                    .build());
         }
     }
 
-    static ReminderCopy reminderCopy(
-            List<RecordsImportModels.DashboardRow> rows,
-            List<RecordsStudyModels.StudyItem> items,
-            RecordsSchedulerModels.ReviewStats recentStats,
-            int currentStreakDays,
-            Set<String> studiedToday,
-            int workloadPercent,
-            String workloadMode,
-            int maxItems,
-            long now) {
-        if (rows.isEmpty()) {
+    static ReminderCopy reminderCopy(AdaptiveLoadPlanner.PlanRequest request) {
+        if (request.rows().isEmpty()) {
             return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
         }
-        RecordsSchedulerModels.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
-                AdaptiveLoadPlanner.PlanRequest.builder(
-                                rows,
-                                items,
-                                recentStats,
-                                currentStreakDays,
-                                studiedToday,
-                                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(workloadPercent, workloadMode, maxItems),
-                                now
-                        )
-                        .settings(RecordsSyncModels.Settings.kikuDefaults())
-                        .build()
-        );
-        return reminderCopyFor(plan.remaining, currentDueCount(rows, items, now));
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(request);
+        return reminderCopyFor(plan.remaining, currentDueCount(request.rows(), request.items(), request.nowMillis()));
     }
 
     static ReminderCopy reminderCopyFor(int focusRemaining, int due) {

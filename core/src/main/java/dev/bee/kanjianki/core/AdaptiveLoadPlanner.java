@@ -233,6 +233,18 @@ public final class AdaptiveLoadPlanner {
             return new Builder(rows, items, recentStats, currentStreakDays, studiedToday, workloadPolicy, nowMillis);
         }
 
+        public List<RecordsImportModels.DashboardRow> rows() {
+            return rows;
+        }
+
+        public List<RecordsStudyModels.StudyItem> items() {
+            return items;
+        }
+
+        public long nowMillis() {
+            return nowMillis;
+        }
+
         public static final class Builder {
             private final List<RecordsImportModels.DashboardRow> rows;
             private final List<RecordsStudyModels.StudyItem> items;

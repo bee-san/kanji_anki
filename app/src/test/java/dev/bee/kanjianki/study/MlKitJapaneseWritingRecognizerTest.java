@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -189,29 +190,34 @@ public final class MlKitJapaneseWritingRecognizerTest {
 
     @Test
     public void constructorRejectsNonPositiveMaxResultCount() {
-        try {
-            new MlKitJapaneseWritingRecognizer(Runnable::run, 0, new DownloadConditions.Builder().build());
-            fail("Expected maxResultCount validation failure.");
-        } catch (IllegalArgumentException error) {
-            assertEquals("maxResultCount must be positive.", error.getMessage());
-        }
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> newRecognizerWithMaxResultCount(0)
+        );
+        assertEquals("maxResultCount must be positive.", error.getMessage());
     }
 
     @Test
     public void constructorsRejectNullCollaborators() {
-        try {
-            new MlKitJapaneseWritingRecognizer(Runnable::run, 1, null);
-            fail("Expected download condition validation failure.");
-        } catch (NullPointerException error) {
-            assertEquals("downloadConditions", error.getMessage());
-        }
+        NullPointerException downloadConditions = assertThrows(
+                NullPointerException.class,
+                () -> newRecognizerWithDownloadConditions(null)
+        );
+        assertEquals("downloadConditions", downloadConditions.getMessage());
 
-        try {
-            new MlKitJapaneseWritingRecognizer((MlKitJapaneseWritingRecognizer.RecognitionBackend) null);
-            fail("Expected backend validation failure.");
-        } catch (NullPointerException error) {
-            assertEquals("backend", error.getMessage());
-        }
+        NullPointerException backend = assertThrows(
+                NullPointerException.class,
+                () -> new MlKitJapaneseWritingRecognizer((MlKitJapaneseWritingRecognizer.RecognitionBackend) null)
+        );
+        assertEquals("backend", backend.getMessage());
+    }
+
+    private static MlKitJapaneseWritingRecognizer newRecognizerWithMaxResultCount(int maxResultCount) {
+        return new MlKitJapaneseWritingRecognizer(Runnable::run, maxResultCount, new DownloadConditions.Builder().build());
+    }
+
+    private static MlKitJapaneseWritingRecognizer newRecognizerWithDownloadConditions(DownloadConditions downloadConditions) {
+        return new MlKitJapaneseWritingRecognizer(Runnable::run, 1, downloadConditions);
     }
 
     private static CapturedWriting simpleWriting() {

@@ -12,6 +12,7 @@ import org.junit.Test;
 
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.List;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
@@ -185,17 +186,11 @@ public final class ReminderSchedulerTest {
 
     @Test
     public void reminderCopyAsksForSyncBeforeAnyActiveKanjiExist() {
-        ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(
+        ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(planRequest(
                 Collections.emptyList(),
                 Collections.emptyList(),
-                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
-                0,
-                Collections.emptySet(),
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS,
-                utc(2026, Calendar.MAY, 15, 8, 0)
-        );
+                utc(2026, Calendar.MAY, 15, 8, 0)));
 
         assertEquals("Sync Kani", copy.title);
         assertEquals("Sync AnkiDroid to find the kanji your reviews keep exposing.", copy.message);
@@ -205,17 +200,11 @@ public final class ReminderSchedulerTest {
     public void reminderCopyPlansActiveRowsBeforeFormattingMessage() {
         long now = utc(2026, Calendar.MAY, 15, 8, 0);
 
-        ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(
+        ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(planRequest(
                 Collections.singletonList(row("裂", 80)),
                 Collections.singletonList(new RecordsStudyModels.StudyItem("裂", "review", now - 1L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
-                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
-                0,
-                Collections.emptySet(),
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE,
                 1,
-                now
-        );
+                now));
 
         assertEquals("Kani focus is ready", copy.title);
         assertEquals("1 focus kanji is left today. Draw one now.", copy.message);
@@ -259,6 +248,26 @@ public final class ReminderSchedulerTest {
         calendar.set(year, month, day, hour, minute, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTimeInMillis();
+    }
+
+    private static AdaptiveLoadPlanner.PlanRequest planRequest(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            int maxItems,
+            long now
+    ) {
+        return AdaptiveLoadPlanner.PlanRequest.builder(
+                        rows,
+                        items,
+                        new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                        0,
+                        Collections.emptySet(),
+                        AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
+                                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
+                                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE,
+                                maxItems),
+                        now)
+                .build();
     }
 
     private static RecordsImportModels.DashboardRow row(String kanji, int score) {
