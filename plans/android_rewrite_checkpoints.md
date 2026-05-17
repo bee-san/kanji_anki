@@ -432,6 +432,16 @@ Current artifacts:
   - row-field fallback and whitespace normalization.
   - family keys built from kanji plus answer signature.
   - retired and suppressed queue item flags.
+- `StudyActiveQueueSelector` in `:domain` filters active queue candidates and
+  chooses one active item per answer family.
+- `StudyActiveQueueSelectorTest` covers:
+  - retired, suppressed, disallowed, and missing-row item filtering.
+  - blank-signature legacy items matching current rows by kanji.
+  - answer-family matching by signature.
+  - highest-rung active item selection within a family.
+  - horizon-due preference and earliest-due tie breaking.
+  - disabled rung alignment before family selection.
+  - due counts after active queue filtering.
 
 Explicit gaps:
 
@@ -441,7 +451,9 @@ Explicit gaps:
 - Review token guard is not wired into the runtime review transition yet.
 - Task memory updates and handoff are not wired into the runtime review
   transition yet.
-- Study session selection does not use `StudyAheadPolicy` yet.
+- Full `nextSession` selection is not ported yet.
+- Study session selection does not use `StudyActiveQueueSelector` or
+  `StudyAheadPolicy` at runtime yet.
 - Study queue models are not wired to Room repository mappers yet.
 - Adaptive planner split is not ported yet.
 
