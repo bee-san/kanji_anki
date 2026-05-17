@@ -377,12 +377,27 @@ Current artifacts:
   - `Hard` on later steps repeats the current step.
   - `Easy` graduates immediately.
   - relearning preserves the relearning phase until graduation.
+- `LadderMovementEngine` in `:domain` handles the configurable study-rung
+  movement rules around real due reviews.
+- `StudyLadderSettings` keeps rung order, enabled rungs, the promotion
+  interval threshold, and consecutive-fail demotion threshold configurable.
+- `LadderMovementEngineTest` covers:
+  - promotion only when FSRS schedules strictly beyond the configured
+    interval.
+  - custom promotion and demotion thresholds.
+  - `Hard`, `Good`, and `Easy` as pass outcomes.
+  - `Again` demotion only at the configured consecutive-fail threshold.
+  - same due-slot and future-due reviews not advancing streaks.
+  - conditional use of the similar-kanji rung.
+  - disabled-rung alignment to the nearest lower enabled rung on a tie.
+  - rejecting settings where similar-kanji is the only enabled rung.
 
 Explicit gaps:
 
 - FSRS graduation remains in the Java scheduler/adapter path.
-- Ladder movement, study session selection, adaptive planner split, token
-  guard, and progress calculator are not ported yet.
+- Ladder movement is not wired into the runtime review transition yet.
+- Study session selection, adaptive planner split, token guard, and progress
+  calculator are not ported yet.
 
 Verification commands:
 
