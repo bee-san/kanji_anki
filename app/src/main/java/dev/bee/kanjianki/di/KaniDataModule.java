@@ -14,11 +14,13 @@ import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyQueueRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyRuntimeSnapshotRepository;
+import dev.bee.kanjianki.data.repository.RoomStudyReviewPersistenceRepository;
 import dev.bee.kanjianki.data.repository.RoomSyncRunRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository;
+import dev.bee.kanjianki.domain.repository.StudyReviewPersistenceRepository;
 import dev.bee.kanjianki.domain.repository.StudyRuntimeSnapshotRepository;
 import dev.bee.kanjianki.domain.repository.SyncRunRepository;
 import dev.bee.kanjianki.domain.scheduler.ApplyStudyReviewUseCase;
@@ -76,6 +78,12 @@ public final class KaniDataModule {
     }
 
     @Provides
+    @Singleton
+    static StudyReviewPersistenceRepository provideStudyReviewPersistenceRepository(KaniRoomDatabase database) {
+        return new RoomStudyReviewPersistenceRepository(database);
+    }
+
+    @Provides
     static LoadNextStudySessionUseCase provideLoadNextStudySessionUseCase(
             StudyQueueRepository studyQueueRepository,
             StudyDashboardRepository studyDashboardRepository
@@ -89,10 +97,10 @@ public final class KaniDataModule {
 
     @Provides
     static ApplyStudyReviewUseCase provideApplyStudyReviewUseCase(
-            StudyQueueRepository studyQueueRepository
+            StudyReviewPersistenceRepository studyReviewPersistenceRepository
     ) {
         return new ApplyStudyReviewUseCase(
-                studyQueueRepository,
+                studyReviewPersistenceRepository,
                 new StudyReviewTransitionEngine()
         );
     }

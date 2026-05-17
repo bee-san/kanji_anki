@@ -70,6 +70,11 @@ class RoomStudyDashboardRepositoryTest {
             limit: Int,
         ): List<KanjiExampleEntity> = examples.filter { it.kanji == kanji }.take(limit)
 
+        override suspend fun listForTimeline(
+            kanji: String,
+            limit: Int,
+        ): List<KanjiExampleEntity> = examples.filter { it.kanji == kanji }.take(limit)
+
         override suspend fun upsertAll(examples: List<KanjiExampleEntity>) {
             this.examples = this.examples + examples
         }

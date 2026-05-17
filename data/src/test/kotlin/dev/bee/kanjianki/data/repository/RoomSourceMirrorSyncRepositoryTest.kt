@@ -498,6 +498,12 @@ class RoomSourceMirrorSyncRepositoryTest {
         ): List<KanjiExampleEntity> =
             upserted.filter { it.kanji == kanji }.take(limit)
 
+        override suspend fun listForTimeline(
+            kanji: String,
+            limit: Int,
+        ): List<KanjiExampleEntity> =
+            upserted.filter { it.kanji == kanji }.take(limit)
+
         override suspend fun upsertAll(examples: List<KanjiExampleEntity>) {
             upserted += examples
         }

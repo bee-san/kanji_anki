@@ -35,7 +35,7 @@ class ReviewRatingResolver {
             !writingPassed
 }
 
-data class StudyReviewRequest(
+data class StudyReviewRequest @JvmOverloads constructor(
     val kanji: String,
     val rating: StudyRating,
     val token: String = "",
@@ -44,6 +44,9 @@ data class StudyReviewRequest(
     val writingClean: Boolean = false,
     val hintsUsed: Int = 0,
     val manualOverride: Boolean = false,
+    val taskType: String = "",
+    val answerSignature: String = "",
+    val prompt: String = "",
 ) {
     init {
         require(kanji.isNotBlank()) { "kanji must not be blank" }

@@ -4,7 +4,8 @@ import dev.bee.kanjianki.domain.model.study.StudyItemState
 import dev.bee.kanjianki.domain.model.study.StudyPhase
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.study.StudyRating
-import dev.bee.kanjianki.domain.repository.StudyQueueRepository
+import dev.bee.kanjianki.domain.repository.StudyReviewPersistenceInput
+import dev.bee.kanjianki.domain.repository.StudyReviewPersistenceRepository
 import dev.bee.kanjianki.fsrs.FsrsMemory
 import dev.bee.kanjianki.fsrs.FsrsReviewRating
 import dev.bee.kanjianki.fsrs.FsrsReviewRequest
@@ -19,9 +20,9 @@ import org.junit.Test
 
 class ApplyStudyReviewUseCaseTest {
     private val fsrsEngine = RecordingFsrsEngine()
-    private val repository = FakeStudyQueueRepository()
+    private val repository = FakeStudyReviewPersistenceRepository()
     private val useCase = ApplyStudyReviewUseCase(
-        studyQueueRepository = repository,
+        reviewPersistenceRepository = repository,
         transitionEngine = StudyReviewTransitionEngine(
             fsrsScheduler = StudyFsrsScheduler(fsrsEngine),
         ),
@@ -42,7 +43,7 @@ class ApplyStudyReviewUseCaseTest {
 
         assertTrue(result.transition.duplicate)
         assertFalse(result.persisted)
-        assertEquals(emptyList<StudyQueueItem>(), repository.updatedItems)
+        assertEquals(emptyList<StudyReviewPersistenceInput>(), repository.savedReviews)
     }
 
     @Test
@@ -66,15 +67,18 @@ class ApplyStudyReviewUseCaseTest {
 
         assertFalse(result.transition.duplicate)
         assertTrue(result.persisted)
-        assertEquals(1, repository.updatedItems.size)
-        assertEquals(StudyPhase.REVIEW, repository.updatedItems.single().phase)
-        assertEquals(NOW + 4 * DAY, repository.updatedItems.single().dueAtMillis)
-        assertNull(repository.updatedItems.single().activeToken)
+        assertEquals(1, repository.savedReviews.size)
+        assertEquals(item, repository.savedReviews.single().before)
+        assertEquals(StudyRating.EASY, repository.savedReviews.single().appliedRating)
+        assertEquals(NOW, repository.savedReviews.single().reviewedAtMillis)
+        assertEquals(StudyPhase.REVIEW, repository.savedReviews.single().after.phase)
+        assertEquals(NOW + 4 * DAY, repository.savedReviews.single().after.dueAtMillis)
+        assertNull(repository.savedReviews.single().after.activeToken)
     }
 
     @Test
     fun missingRowsAreReportedWithoutChangingTransitionResult() = runBlocking {
-        repository.updateResult = false
+        repository.saveResult = false
         val item = item(activeToken = "ok")
 
         val result = useCase.apply(
@@ -87,31 +91,18 @@ class ApplyStudyReviewUseCaseTest {
 
         assertFalse(result.transition.duplicate)
         assertFalse(result.persisted)
-        assertEquals(1, repository.updatedItems.size)
+        assertEquals(1, repository.savedReviews.size)
         assertEquals("Review applied.", result.transition.message)
     }
 
-    private class FakeStudyQueueRepository : StudyQueueRepository {
-        var updateResult = true
-        val updatedItems = mutableListOf<StudyQueueItem>()
+    private class FakeStudyReviewPersistenceRepository : StudyReviewPersistenceRepository {
+        var saveResult = true
+        val savedReviews = mutableListOf<StudyReviewPersistenceInput>()
 
-        override suspend fun listActive(): List<StudyQueueItem> = emptyList()
-
-        override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> = emptyList()
-
-        override suspend fun listAllForSeeding(): List<StudyQueueItem> = emptyList()
-
-        override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
-
-        override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean {
-            updatedItems += item
-            return updateResult
+        override suspend fun saveAppliedReview(input: StudyReviewPersistenceInput): Boolean {
+            savedReviews += input
+            return saveResult
         }
-
-        override suspend fun dueCount(
-            state: StudyItemState,
-            nowMillis: Long,
-        ): Int = 0
     }
 
     private class RecordingFsrsEngine : KaniFsrsEngine {

@@ -225,7 +225,10 @@ final class LegacyStudyMappers {
                 request.writingPassed,
                 request.writingClean,
                 request.hintsUsed,
-                request.manualOverride
+                request.manualOverride,
+                request.taskType,
+                request.answerSignature,
+                request.prompt
         );
     }
 
