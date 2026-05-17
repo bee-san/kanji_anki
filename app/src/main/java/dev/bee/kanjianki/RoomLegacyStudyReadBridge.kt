@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import javax.inject.Inject
+import kotlinx.coroutines.runBlocking
 
 class RoomLegacyStudyReadBridge @Inject constructor(
     private val studyDashboardRepository: StudyDashboardRepository,
@@ -19,6 +20,13 @@ class RoomLegacyStudyReadBridge @Inject constructor(
             rows = LegacyStudyMappers.toLegacyRows(rows),
             items = LegacyStudyMappers.toLegacyItems(items),
         )
+    }
+
+    @JvmOverloads
+    fun activeSnapshotBlocking(
+        dashboardLimit: Int = DEFAULT_DASHBOARD_LIMIT,
+    ): RoomLegacyStudySnapshot = runBlocking {
+        activeSnapshot(dashboardLimit)
     }
 
     companion object {

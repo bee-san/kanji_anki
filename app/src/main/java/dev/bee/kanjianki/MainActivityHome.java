@@ -96,13 +96,18 @@ abstract class MainActivityHome extends MainActivityBase {
     abstract void renderGames();
 
     void renderHome() {
+        renderHome(legacyStudySnapshot());
+        loadRoomStudySnapshot("home", this::renderHome);
+    }
+
+    void renderHome(RoomLegacyStudySnapshot snapshot) {
         clearStudyModeOverrides();
         base("home");
         long now = System.currentTimeMillis();
         LocalStore.SyncStatus sync = store.latestSync();
         StudyStatsStore.StudyStreak streak = store.studyStreak(now);
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, now, false);
+        List<RecordsImportModels.DashboardRow> rows = snapshot.getRows();
+        List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, snapshot.getItems(), now, false, null);
         RecordsSchedulerModels.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
         AnkiDroidGateway.ProviderStatus provider = gateway.status();
@@ -618,7 +623,16 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        List<RecordsStudyModels.StudyItem> currentItems = store.studyItems();
+        return studyQueue(rows, store.studyItems(), now, persist, plan);
+    }
+
+    List<RecordsStudyModels.StudyItem> studyQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> currentItems,
+            long now,
+            boolean persist,
+            RecordsSchedulerModels.AdaptiveLoadPlan plan
+    ) {
         if (!persist) {
             return currentItems;
         }

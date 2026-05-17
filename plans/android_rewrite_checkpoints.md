@@ -766,6 +766,11 @@ Current artifacts:
   into the existing legacy record shapes. `RoomLegacyStudyReadBridge` reads
   active dashboard rows and study queue items from Room repositories and returns
   a legacy-compatible snapshot for the current Java/View Home and Study code.
+- `MainActivity` accesses `RoomLegacyStudyReadBridge` through a Hilt singleton
+  entry point because the legacy Java Activity is still a plain `Activity`, not
+  a `ComponentActivity`. Home and Study render the legacy snapshot immediately
+  for current installs, then asynchronously replace it with a non-empty
+  Room-backed snapshot loaded on the existing IO executor.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
   mapping with decoded task memory and dashboard row/example mapping.
 - `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
@@ -810,9 +815,9 @@ Explicit gaps:
   sessions through the legacy bridge.
 - Study progress is wired into the runtime Study screen through the legacy
   tracker bridge; the future Compose/ViewModel surface is not built yet.
-- A Room-backed legacy read bridge exists for Home/Study, but the Activity
-  runtime still calls `LocalStore` directly until the async read path is wired
-  through the lifecycle.
+- Home and Study can render from the Room-backed legacy snapshot path, but they
+  still keep a legacy `LocalStore` fallback and secondary Study actions still
+  read/write through `LocalStore` until each interaction is moved to Room.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
   write path.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
@@ -854,6 +859,10 @@ The same `:app:testDebugUnitTest` command passed after adding
 `RoomLegacyStudyReadBridge`; tests cover Room/domain dashboard rows, examples,
 and study items mapping into legacy runtime records.
 
+The same `:app:testDebugUnitTest` command passed after wiring Home and Study to
+load non-empty Room-backed legacy snapshots through the Hilt entry point and IO
+executor.
+
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew :core:test :app:testDebugUnitTest
@@ -878,6 +887,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 Result: `BUILD SUCCESSFUL`.
 
 The same `ciFast` command passed after adding `RoomLegacyStudyReadBridge`.
+
+The same `ciFast` command passed after wiring Home and Study to load non-empty
+Room-backed legacy snapshots through the Hilt entry point and IO executor.
 
 ## Current Persistence Facts For Room Migration
 

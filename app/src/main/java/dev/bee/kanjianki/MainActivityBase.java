@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import dagger.hilt.android.EntryPointAccessors;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
@@ -38,6 +39,7 @@ import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.data.StudyStatsStore;
+import dev.bee.kanjianki.di.KaniRuntimeEntryPoint;
 import dev.bee.kanjianki.domain.scheduler.StudyProgressSnapshot;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
@@ -91,6 +93,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     final ExecutorService io = Executors.newSingleThreadExecutor();
     final HintProgression hintProgression = new HintProgression();
     final StudySessionTracker studySessionTracker = new StudySessionTracker();
+    RoomLegacyStudyReadBridge roomStudyReadBridge;
     LocalStore store;
     AnkiDroidGateway gateway;
     LinearLayout content;
@@ -134,12 +137,14 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     WritingRecognizer writingRecognizer;
     DictionaryLookup dictionaryLookup;
     LocalStore.ReminderSettings pendingReminderSettings;
+    String activeRoute = "";
     boolean settingsAnkiExpanded = true;
     boolean settingsStudyExpanded;
     boolean settingsSyncExpanded;
     boolean settingsAppExpanded;
     int updateUiRunCounter;
     int activeUpdateUiRunToken;
+    int studySnapshotRunCounter;
     static AnkiDroidGateway ankiDroidGatewayForTests;
     static CollectionGateway collectionGatewayForTests;
     static WritingRecognizer writingRecognizerForTests;
@@ -150,6 +155,10 @@ abstract class MainActivityBase extends MainActivityUiSupport {
 
     interface WritingRecognizerFactory {
         WritingRecognizer create(ExecutorService executor);
+    }
+
+    interface StudySnapshotConsumer {
+        void accept(RoomLegacyStudySnapshot snapshot);
     }
 
     abstract void renderHome();
@@ -177,6 +186,10 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         store = new LocalStore(this);
+        roomStudyReadBridge = EntryPointAccessors.fromApplication(
+                getApplicationContext(),
+                KaniRuntimeEntryPoint.class
+        ).roomLegacyStudyReadBridge();
         gateway = ankiDroidGatewayForTests == null ? new AnkiDroidGateway(this) : ankiDroidGatewayForTests;
         requestAnkiPermissionIfNeeded();
         ReminderScheduler.schedule(this);
@@ -307,6 +320,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     void base(String selected) {
+        activeRoute = selected;
+        studySnapshotRunCounter++;
         activeUpdateUiRunToken = 0;
         if (!NAV_STUDY.equals(selected)) {
             abandonActiveStudyTask();
@@ -343,6 +358,36 @@ abstract class MainActivityBase extends MainActivityUiSupport {
             return insets;
         });
         root.requestApplyInsets();
+    }
+
+    void loadRoomStudySnapshot(String route, StudySnapshotConsumer consumer) {
+        int token = ++studySnapshotRunCounter;
+        io.execute(() -> {
+            RoomLegacyStudySnapshot snapshot = roomStudySnapshotOrNull();
+            main.post(() -> {
+                if (snapshot != null && token == studySnapshotRunCounter && route.equals(activeRoute)) {
+                    consumer.accept(snapshot);
+                }
+            });
+        });
+    }
+
+    RoomLegacyStudySnapshot roomStudySnapshotOrNull() {
+        try {
+            if (roomStudyReadBridge != null) {
+                RoomLegacyStudySnapshot snapshot = roomStudyReadBridge.activeSnapshotBlocking();
+                if (!snapshot.getRows().isEmpty() || !snapshot.getItems().isEmpty()) {
+                    return snapshot;
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // Keep current installs usable while the Room runtime path is phased in.
+        }
+        return null;
+    }
+
+    RoomLegacyStudySnapshot legacyStudySnapshot() {
+        return new RoomLegacyStudySnapshot(store.activeDashboardRows(), store.studyItems());
     }
 
     boolean isActiveToken(String token) {

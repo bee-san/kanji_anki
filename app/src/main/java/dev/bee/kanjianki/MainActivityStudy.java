@@ -158,11 +158,17 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderStudy() {
+        renderStudy(legacyStudySnapshot());
+        loadRoomStudySnapshot(NAV_STUDY, this::renderStudy);
+    }
+
+    void renderStudy(RoomLegacyStudySnapshot snapshot) {
         base(NAV_STUDY);
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = snapshot.getRows();
+        List<RecordsStudyModels.StudyItem> snapshotItems = snapshot.getItems();
         long now = System.currentTimeMillis();
         RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
-        activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
+        activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, snapshotItems, now);
         initializeSessionProgressTarget(activeStudyPlan);
         includeDueSimilarWritingRepairs(now, ladder);
         RecordsImportModels.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
@@ -178,9 +184,9 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderEmptyStudyQueue();
             return;
         }
-        List<RecordsStudyModels.StudyItem> beforeSeed = store.studyItems();
+        List<RecordsStudyModels.StudyItem> beforeSeed = snapshotItems;
         RecordsSchedulerModels.AdaptiveLoadPlan plan = studyPlanForMode(rows, beforeSeed, now);
-        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true, plan);
+        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, beforeSeed, now, true, plan);
         RecordsSchedulerModels.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
         activeStudyPlan = seededPlan;
         initializeSessionProgressTarget(seededPlan);
