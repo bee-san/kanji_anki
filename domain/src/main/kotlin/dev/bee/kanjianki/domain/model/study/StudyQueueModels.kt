@@ -20,6 +20,8 @@ data class StudyExample(
     val expression: String,
     val reading: String,
     val meaning: String,
+    val fsrsDifficulty: Double? = null,
+    val fsrsRetrievability: Double? = null,
 )
 
 data class StudyDashboardRow(

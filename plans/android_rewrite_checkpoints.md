@@ -442,6 +442,13 @@ Current artifacts:
   - horizon-due preference and earliest-due tie breaking.
   - disabled rung alignment before family selection.
   - due counts after active queue filtering.
+- `NewCardSortPolicy` in `:domain` preserves new-card row ordering modes.
+- `NewCardSortPolicyTest` covers:
+  - frequency sorting by Jiten rank with unknown ranks last.
+  - FSRS difficulty sorting by highest finite difficulty.
+  - retrievability-risk sorting by lowest normalized retrievability.
+  - Kani weakness sorting by weakness and suspended support count.
+  - null-row fallback ordering.
 
 Explicit gaps:
 
