@@ -64,16 +64,18 @@ import java.io.StringReader;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import static dev.bee.kanjianki.TestDates.localDayStart;
+import static dev.bee.kanjianki.TestDates.moveLocalDays;
+import static dev.bee.kanjianki.TestRecords.kikuCard;
+import static dev.bee.kanjianki.TestRecords.kikuNote;
+import static dev.bee.kanjianki.TestRecords.review;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1689,13 +1691,13 @@ public final class MainActivityInstrumentedTest {
     @Test
     public void testManualSyncShowsLiveCardProgress() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note first = note(1L, "確認", "かくにん", "confirmation", "確認した。");
-        Records.Note second = note(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
+        Records.Note first = kikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
+        Records.Note second = kikuNote(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(first, second),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, settings.matureDays + 5, 12, 0, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true)
+                        kikuCard(10L, 1L).history(settings.matureDays + 5, 12, 0).build(),
+                        kikuCard(20L, 2L).suspended().build()
                 )
         );
         HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
@@ -1737,10 +1739,10 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testLastSyncHeadlineInvitesAndStartsManualSync() throws Exception {
-        Records.Note note = note(2L, "同期", "どうき", "sync", "同期する。");
+        Records.Note note = kikuNote(2L, "同期", "どうき", "sync", "同期する。");
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Collections.singletonList(note),
-                Collections.singletonList(new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true))
+                Collections.singletonList(kikuCard(20L, 2L).suspended().build())
         );
         HoldingProgressGateway progressGateway = new HoldingProgressGateway(snapshot);
         progressGateway.finish();
@@ -1853,27 +1855,6 @@ public final class MainActivityInstrumentedTest {
         return "true".equals(InstrumentationRegistry.getArguments().getString(LIVE_ARG));
     }
 
-    private static Records.ReviewRequest review(String kanji, String token) {
-        return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
-    }
-
-    private static long localDayStart(long millis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(millis);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
-    }
-
-    private static long moveLocalDays(long localDayStart, int days) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(localDayStart);
-        calendar.add(Calendar.DAY_OF_YEAR, days);
-        return calendar.getTimeInMillis();
-    }
-
     private void seedDashboard() {
         seedDashboard(Collections.singletonList(dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS)));
     }
@@ -1928,12 +1909,12 @@ public final class MainActivityInstrumentedTest {
         Records.DashboardRow row = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
-                        note(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。"),
-                        note(2L, "提案", "ていあん", "carry radical gap", "提案を見た。")
+                        kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。"),
+                        kikuNote(2L, "提案", "ていあん", "carry radical gap", "提案を見た。")
                 ),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                        kikuCard(10L, 1L).build(),
+                        kikuCard(20L, 2L).history(30, 4, 0).build()
                 )
         );
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("拉\t提\tfixture\n"));
@@ -1961,14 +1942,14 @@ public final class MainActivityInstrumentedTest {
         Records.DashboardRow activeRow = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
-                        note(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。"),
-                        note(2L, "提案", "ていあん", "carry radical gap", "提案を見た。"),
-                        note(3L, "謎語", "なぞご", "riddle radical gap", "謎語を見た。")
+                        kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。"),
+                        kikuNote(2L, "提案", "ていあん", "carry radical gap", "提案を見た。"),
+                        kikuNote(3L, "謎語", "なぞご", "riddle radical gap", "謎語を見た。")
                 ),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
-                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                        kikuCard(10L, 1L).build(),
+                        kikuCard(20L, 2L).history(30, 4, 0).build(),
+                        kikuCard(30L, 3L).history(30, 4, 0).build()
                 )
         );
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("提\t謎\tfixture\n"));
@@ -2061,8 +2042,8 @@ public final class MainActivityInstrumentedTest {
 
     private void saveSyncFinishedAt(long finishedAt, List<Records.DashboardRow> rows) {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note note = note(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。");
-        Records.Card card = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false);
+        Records.Note note = kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。");
+        Records.Card card = kikuCard(10L, 1L).build();
         try (LocalStore store = new LocalStore(context)) {
             store.saveSuccessfulSync(
                     new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
@@ -2097,17 +2078,6 @@ public final class MainActivityInstrumentedTest {
                 matureSupportCount,
                 Arrays.asList(active, suspended)
         );
-    }
-
-    private Records.Note note(long id, String expression, String reading, String meaning, String sentence) {
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("Expression", expression);
-        fields.put("ExpressionReading", reading);
-        fields.put("MainDefinition", meaning);
-        fields.put("Sentence", sentence);
-        fields.put("Frequency", "1000");
-        fields.put("FreqSort", "1000");
-        return new Records.Note(id, "Kiku", fields, Collections.emptyList());
     }
 
     private static final class HoldingProgressGateway implements CollectionGateway {

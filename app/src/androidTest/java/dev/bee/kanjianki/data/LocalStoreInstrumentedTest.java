@@ -23,12 +23,18 @@ import org.junit.runner.RunWith;
 
 import java.io.StringReader;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.bee.kanjianki.TestDates.localDayStart;
+import static dev.bee.kanjianki.TestDates.moveLocalDays;
+import static dev.bee.kanjianki.TestRecords.card;
+import static dev.bee.kanjianki.TestRecords.customMiningNote;
+import static dev.bee.kanjianki.TestRecords.kikuCard;
+import static dev.bee.kanjianki.TestRecords.review;
+import static dev.bee.kanjianki.TestRecords.sourceKikuNote;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -59,10 +65,13 @@ public final class LocalStoreInstrumentedTest {
     @Test
     public void testSyncPersistsActiveMirrorSuspendedArchiveAndDerivedRows() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note active = note(1L, "確認", "かくにん", "confirmation", "確認した。");
-        Records.Note suspended = note(2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
-        Records.Card activeCard = new Records.Card(10L, 1L, 0, "101", "例文マイニング", 2, 2, 0, 45, 12, 1, false, 18.5, 7.0, 0.48);
-        Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "101", "例文マイニング", -1, 0, 0, 0, 0, 0, true, null, null, null);
+        Records.Note active = sourceKikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
+        Records.Note suspended = sourceKikuNote(2L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
+        Records.Card activeCard = card(10L, 1L, "101", "例文マイニング")
+                .history(45, 12, 1)
+                .fsrs(18.5, 7.0, 0.48)
+                .build();
+        Records.Card suspendedCard = card(20L, 2L, "101", "例文マイニング").suspended().build();
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(active, suspended),
                 Arrays.asList(activeCard, suspendedCard)
@@ -129,8 +138,8 @@ public final class LocalStoreInstrumentedTest {
         suspendedFields.put("FreqSort", "1000");
         Records.Note suspended = new Records.Note(12L, 1012L, "Kiku", suspendedFields, Collections.emptyList());
 
-        Records.Card activeCard = new Records.Card(111L, 11L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false);
-        Records.Card suspendedCard = new Records.Card(112L, 12L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true);
+        Records.Card activeCard = kikuCard(111L, 11L).history(30, 4, 0).build();
+        Records.Card suspendedCard = kikuCard(112L, 12L).suspended().build();
         Records.SuspendedImport imported = new Records.SuspendedImport(
                 "拉",
                 3401,
@@ -197,8 +206,8 @@ public final class LocalStoreInstrumentedTest {
         try {
             store.saveSuccessfulSync(
                     new Records.CollectionSnapshot(
-                            Collections.singletonList(note(30L, "壊語", "こわ", "broken", "壊を見た。")),
-                            Collections.singletonList(new Records.Card(300L, 30L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false))
+                            Collections.singletonList(sourceKikuNote(30L, "壊語", "こわ", "broken", "壊を見た。")),
+                            Collections.singletonList(kikuCard(300L, 30L).build())
                     ),
                     Collections.singletonList(suspendedImport("壊")),
                     Collections.singletonList(malformedRow),
@@ -257,16 +266,16 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
-                        note(1L, "読一", "あ", "read one", "読んだ。"),
-                        note(2L, "読二", "い", "read two", "読んだ。"),
-                        note(3L, "読三", "う", "read three", "読んだ。"),
-                        note(4L, "読四", "え", "read four", "読んだ。")
+                        sourceKikuNote(1L, "読一", "あ", "read one", "読んだ。"),
+                        sourceKikuNote(2L, "読二", "い", "read two", "読んだ。"),
+                        sourceKikuNote(3L, "読三", "う", "read three", "読んだ。"),
+                        sourceKikuNote(4L, "読四", "え", "read four", "読んだ。")
                 ),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                        new Records.Card(40L, 4L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false)
+                        kikuCard(10L, 1L).build(),
+                        kikuCard(20L, 2L).build(),
+                        kikuCard(30L, 3L).build(),
+                        kikuCard(40L, 4L).build()
                 )
         );
 
@@ -296,8 +305,8 @@ public final class LocalStoreInstrumentedTest {
                 3
         );
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
-                Collections.singletonList(customNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")),
-                Collections.singletonList(new Records.Card(10L, 1L, 0, "Custom", 2, 2, 0, 3, 4, 1, false))
+                Collections.singletonList(customMiningNote(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。")),
+                Collections.singletonList(card(10L, 1L, "Custom").build())
         );
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("""
                 拉\t麺\tfixture
@@ -331,14 +340,14 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
-                        note(1L, "拉", "ら", "pull", "拉を見た。"),
-                        note(2L, "提", "てい", "carry", "提を見た。"),
-                        note(3L, "謎", "なぞ", "riddle", "謎を見た。")
+                        sourceKikuNote(1L, "拉", "ら", "pull", "拉を見た。"),
+                        sourceKikuNote(2L, "提", "てい", "carry", "提を見た。"),
+                        sourceKikuNote(3L, "謎", "なぞ", "riddle", "謎を見た。")
                 ),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
-                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                        kikuCard(10L, 1L).history(30, 4, 0).build(),
+                        kikuCard(20L, 2L).history(30, 4, 0).build(),
+                        kikuCard(30L, 3L).history(30, 4, 0).build()
                 )
         );
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("""
@@ -380,14 +389,14 @@ public final class LocalStoreInstrumentedTest {
         Records.Settings settings = Records.Settings.kikuDefaults();
         Records.CollectionSnapshot fullSnapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
-                        note(1L, "拉", "ら", "pull", "拉を見た。"),
-                        note(2L, "提", "てい", "carry", "提を見た。"),
-                        note(3L, "謎", "なぞ", "riddle", "謎を見た。")
+                        sourceKikuNote(1L, "拉", "ら", "pull", "拉を見た。"),
+                        sourceKikuNote(2L, "提", "てい", "carry", "提を見た。"),
+                        sourceKikuNote(3L, "謎", "なぞ", "riddle", "謎を見た。")
                 ),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
-                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                        kikuCard(10L, 1L).history(30, 4, 0).build(),
+                        kikuCard(20L, 2L).history(30, 4, 0).build(),
+                        kikuCard(30L, 3L).history(30, 4, 0).build()
                 )
         );
         SimilarKanjiIndex index = SimilarKanjiIndex.parseTsv(new StringReader("拉\t提\tfixture\n拉\t謎\tfixture\n"));
@@ -400,12 +409,12 @@ public final class LocalStoreInstrumentedTest {
 
         Records.CollectionSnapshot reducedSnapshot = new Records.CollectionSnapshot(
                 Arrays.asList(
-                        note(1L, "拉", "ら", "pull", "拉を見た。"),
-                        note(2L, "提", "てい", "carry", "提を見た。")
+                        sourceKikuNote(1L, "拉", "ら", "pull", "拉を見た。"),
+                        sourceKikuNote(2L, "提", "てい", "carry", "提を見た。")
                 ),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 30, 4, 0, false)
+                        kikuCard(10L, 1L).history(30, 4, 0).build(),
+                        kikuCard(20L, 2L).history(30, 4, 0).build()
                 )
         );
         SimilarKanjiIndex emptyIndex = SimilarKanjiIndex.parseTsv(new StringReader(""));
@@ -646,8 +655,11 @@ public final class LocalStoreInstrumentedTest {
     @Test
     public void testVersionEighteenMigrationBackfillsMissingHistoricalSyncSnapshotsAndKeepsMirrorRows() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note note = note(1L, "確認", "かくにん", "confirmation", "確認した。");
-        Records.Card card = new Records.Card(400L, 1L, 0, "9001", "Kiku Deck", 2, 2, 0, 25, 9, 1, false, 6.5, 4.5, 0.82);
+        Records.Note note = sourceKikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
+        Records.Card card = card(400L, 1L, "9001", "Kiku Deck")
+                .history(25, 9, 1)
+                .fsrs(6.5, 4.5, 0.82)
+                .build();
         store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
                 Collections.emptyList(),
@@ -1117,15 +1129,15 @@ public final class LocalStoreInstrumentedTest {
     @Test
     public void testKanjiImpactBaselineStartsWhenKaniStartsTracking() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note firstNote = note(101L, "裂語", "れつご", "split word", "裂語を見た。");
-        Records.Note secondNote = note(102L, "裂文", "れつぶん", "split sentence", "裂文を見た。");
+        Records.Note firstNote = sourceKikuNote(101L, "裂語", "れつご", "split word", "裂語を見た。");
+        Records.Note secondNote = sourceKikuNote(102L, "裂文", "れつぶん", "split sentence", "裂文を見た。");
 
         store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(
                         Arrays.asList(firstNote, secondNote),
                         Arrays.asList(
-                                new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 80, 50, 0, false, null, 4.0, 0.95),
-                                new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 80, 50, 0, false, null, 4.0, 0.95)
+                                kikuCard(1001L, 101L).history(80, 50, 0).fsrs(null, 4.0, 0.95).build(),
+                                kikuCard(1002L, 102L).history(80, 50, 0).fsrs(null, 4.0, 0.95).build()
                         )
                 ),
                 Collections.emptyList(),
@@ -1140,8 +1152,8 @@ public final class LocalStoreInstrumentedTest {
                 new Records.CollectionSnapshot(
                         Arrays.asList(firstNote, secondNote),
                         Arrays.asList(
-                                new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 5, 20, 8, false, null, 7.2, 0.62),
-                                new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 5, 20, 8, false, null, 7.2, 0.62)
+                                kikuCard(1001L, 101L).history(5, 20, 8).fsrs(null, 7.2, 0.62).build(),
+                                kikuCard(1002L, 102L).history(5, 20, 8).fsrs(null, 7.2, 0.62).build()
                         )
                 ),
                 Collections.emptyList(),
@@ -1158,8 +1170,8 @@ public final class LocalStoreInstrumentedTest {
                 new Records.CollectionSnapshot(
                         Arrays.asList(firstNote, secondNote),
                         Arrays.asList(
-                                new Records.Card(1001L, 101L, 0, "Kiku", 2, 2, 0, 40, 30, 2, false, null, 5.8, 0.84),
-                                new Records.Card(1002L, 102L, 0, "Kiku", 2, 2, 0, 40, 30, 2, false, null, 5.8, 0.84)
+                                kikuCard(1001L, 101L).history(40, 30, 2).fsrs(null, 5.8, 0.84).build(),
+                                kikuCard(1002L, 102L).history(40, 30, 2).fsrs(null, 5.8, 0.84).build()
                         )
                 ),
                 Collections.emptyList(),
@@ -1222,16 +1234,16 @@ public final class LocalStoreInstrumentedTest {
     @Test
     public void testKanjiImpactReportUsesSameCardMetricsAndCountsNewCards() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note baselineOne = note(201L, "鈍語", "どんご", "dull word", "鈍語を見た。");
-        Records.Note baselineTwo = note(202L, "鈍文", "どんぶん", "dull sentence", "鈍文を見た。");
-        Records.Note newCard = note(203L, "鈍例", "どんれい", "dull example", "鈍例を見た。");
+        Records.Note baselineOne = sourceKikuNote(201L, "鈍語", "どんご", "dull word", "鈍語を見た。");
+        Records.Note baselineTwo = sourceKikuNote(202L, "鈍文", "どんぶん", "dull sentence", "鈍文を見た。");
+        Records.Note newCard = sourceKikuNote(203L, "鈍例", "どんれい", "dull example", "鈍例を見た。");
 
         store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(
                         Arrays.asList(baselineOne, baselineTwo),
                         Arrays.asList(
-                                new Records.Card(2001L, 201L, 0, "Kiku", 2, 2, 0, 3, 10, 2, false, null, 6.0, 0.70),
-                                new Records.Card(2002L, 202L, 0, "Kiku", 2, 2, 0, 3, 10, 2, false, null, 6.0, 0.70)
+                                kikuCard(2001L, 201L).history(3, 10, 2).fsrs(null, 6.0, 0.70).build(),
+                                kikuCard(2002L, 202L).history(3, 10, 2).fsrs(null, 6.0, 0.70).build()
                         )
                 ),
                 Collections.emptyList(),
@@ -1246,9 +1258,9 @@ public final class LocalStoreInstrumentedTest {
                 new Records.CollectionSnapshot(
                         Arrays.asList(baselineOne, baselineTwo, newCard),
                         Arrays.asList(
-                                new Records.Card(2001L, 201L, 0, "Kiku", 2, 2, 0, 3, 20, 4, false, null, 6.1, 0.71),
-                                new Records.Card(2002L, 202L, 0, "Kiku", 2, 2, 0, 3, 20, 4, false, null, 6.1, 0.71),
-                                new Records.Card(2003L, 203L, 0, "Kiku", 2, 2, 0, 1, 1, 0, false, null, 4.0, 0.90)
+                                kikuCard(2001L, 201L).history(3, 20, 4).fsrs(null, 6.1, 0.71).build(),
+                                kikuCard(2002L, 202L).history(3, 20, 4).fsrs(null, 6.1, 0.71).build(),
+                                kikuCard(2003L, 203L).history(1, 1, 0).fsrs(null, 4.0, 0.90).build()
                         )
                 ),
                 Collections.emptyList(),
@@ -1625,12 +1637,12 @@ public final class LocalStoreInstrumentedTest {
         store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(
                         Arrays.asList(
-                                note(1L, "拉語", "ら", "ramen radical gap", "拉を見た。"),
-                                note(2L, "提語", "てい", "carry", "提を見た。")
+                                sourceKikuNote(1L, "拉語", "ら", "ramen radical gap", "拉を見た。"),
+                                sourceKikuNote(2L, "提語", "てい", "carry", "提を見た。")
                         ),
                         Arrays.asList(
-                                new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                                new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false)
+                                kikuCard(10L, 1L).build(),
+                                kikuCard(20L, 2L).build()
                         )
                 ),
                 Collections.singletonList(suspendedImport("拉")),
@@ -1762,12 +1774,12 @@ public final class LocalStoreInstrumentedTest {
         store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(
                         Arrays.asList(
-                                note(1L, "拉語", "ら", "pull", "拉語を見た。"),
-                                note(2L, "提語", "てい", "carry", "提語を見た。")
+                                sourceKikuNote(1L, "拉語", "ら", "pull", "拉語を見た。"),
+                                sourceKikuNote(2L, "提語", "てい", "carry", "提語を見た。")
                         ),
                         Arrays.asList(
-                                new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false),
-                                new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false)
+                                kikuCard(10L, 1L).build(),
+                                kikuCard(20L, 2L).build()
                         )
                 ),
                 Collections.emptyList(),
@@ -1910,8 +1922,8 @@ public final class LocalStoreInstrumentedTest {
     @Test
     public void testHistoricalSyncSkipsOrphanCardsAndUndeckedNotes() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note noteWithoutCards = note(1L, "孤語", "こ", "orphan note", "孤語を見た。");
-        Records.Card cardWithoutNote = new Records.Card(900L, 99L, 0, "Kiku", 2, 2, 0, 15, 4, 0, false);
+        Records.Note noteWithoutCards = sourceKikuNote(1L, "孤語", "こ", "orphan note", "孤語を見た。");
+        Records.Card cardWithoutNote = kikuCard(900L, 99L).history(15, 4, 0).build();
 
         store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(
@@ -1970,23 +1982,12 @@ public final class LocalStoreInstrumentedTest {
     @Test
     public void testUnselectedSuspendedCardsStayOutOfArchiveButRemainInHistory() {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note suspendedNote = note(77L, "孤語", "こ", "alone", "孤語を見た。");
-        Records.Card suspendedCard = new Records.Card(
-                770L,
-                77L,
-                0,
-                "Kiku",
-                -1,
-                0,
-                0,
-                0,
-                5,
-                1,
-                true,
-                3.5,
-                7.5,
-                0.22
-        );
+        Records.Note suspendedNote = sourceKikuNote(77L, "孤語", "こ", "alone", "孤語を見た。");
+        Records.Card suspendedCard = kikuCard(770L, 77L)
+                .suspended()
+                .history(0, 5, 1)
+                .fsrs(3.5, 7.5, 0.22)
+                .build();
 
         long syncId = store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(Collections.singletonList(suspendedNote), Collections.singletonList(suspendedCard)),
@@ -2106,10 +2107,6 @@ public final class LocalStoreInstrumentedTest {
         assertEquals("", pendingUpdate.pendingMessage);
     }
 
-    private Records.ReviewRequest review(String kanji, String token) {
-        return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
-    }
-
     private void assertLatestSyncArchivedSuspendedCard() {
         LocalStore.SyncStatus status = store.latestSync();
         assertNotNull(status);
@@ -2194,8 +2191,8 @@ public final class LocalStoreInstrumentedTest {
 
     private long saveSingleRowSync(Records.DashboardRow row, List<Records.SuspendedImport> imports, long finishedAt) {
         Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note note = note(1L, row.kanji + "語", row.reading, row.primaryMeaning, row.kanji + "を見た。");
-        Records.Card card = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 4, 1, false);
+        Records.Note note = sourceKikuNote(1L, row.kanji + "語", row.reading, row.primaryMeaning, row.kanji + "を見た。");
+        Records.Card card = kikuCard(10L, 1L).build();
         return store.saveSuccessfulSync(
                 new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
                 imports,
@@ -2464,23 +2461,6 @@ public final class LocalStoreInstrumentedTest {
         db.execSQL("CREATE TABLE similar_kanji_repair_queue (id INTEGER PRIMARY KEY AUTOINCREMENT, target_kanji TEXT NOT NULL, repair_kanji TEXT NOT NULL, choice_signature TEXT NOT NULL, wrong_selection TEXT NOT NULL, prompt_meaning TEXT NOT NULL, status TEXT NOT NULL, due_at INTEGER NOT NULL, active_token TEXT NOT NULL DEFAULT '', attempts INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER NOT NULL DEFAULT 0)");
     }
 
-    private static long localDayStart(long millis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(millis);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
-    }
-
-    private static long moveLocalDays(long localDayStart, int days) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(localDayStart);
-        calendar.add(Calendar.DAY_OF_YEAR, days);
-        return calendar.getTimeInMillis();
-    }
-
     private int count(String table) {
         SQLiteDatabase db = store.getReadableDatabase();
         Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + table, null);
@@ -2632,64 +2612,4 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
-    private Records.Note note(long id, String expression, String reading, String meaning, String sentence) {
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("Expression", expression);
-        fields.put("ExpressionReading", reading);
-        fields.put("MainDefinition", meaning);
-        fields.put("Sentence", sentence);
-        fields.put("Frequency", "1000");
-        fields.put("FreqSort", "1000");
-        return new Records.Note(id, 1001L, "Kiku", fields, Collections.emptyList());
-    }
-
-    private Records.Note customNote(long id, String expression, String reading, String meaning, String sentence) {
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("Word", expression);
-        fields.put("Kana", reading);
-        fields.put("Gloss", meaning);
-        fields.put("Context", sentence);
-        fields.put("Frequency", "1000");
-        fields.put("Sort", "1000");
-        return new Records.Note(id, 2002L, "Custom Mining", fields, Collections.emptyList());
-    }
-
-    private static final class ContentValuesBuilder {
-        private final SQLiteDatabase db;
-        private final String table;
-        private final ContentValues values = new ContentValues();
-
-        private ContentValuesBuilder(SQLiteDatabase db, String table) {
-            this.db = db;
-            this.table = table;
-        }
-
-        private static ContentValuesBuilder insert(SQLiteDatabase db, String table) {
-            return new ContentValuesBuilder(db, table);
-        }
-
-        private ContentValuesBuilder put(String key, String value) {
-            values.put(key, value);
-            return this;
-        }
-
-        private ContentValuesBuilder put(String key, int value) {
-            values.put(key, value);
-            return this;
-        }
-
-        private ContentValuesBuilder put(String key, long value) {
-            values.put(key, value);
-            return this;
-        }
-
-        private ContentValuesBuilder put(String key, double value) {
-            values.put(key, value);
-            return this;
-        }
-
-        private void commit() {
-            db.insertOrThrow(table, null, values);
-        }
-    }
 }
