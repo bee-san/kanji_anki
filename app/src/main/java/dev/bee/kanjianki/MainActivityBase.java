@@ -161,6 +161,10 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         void accept(RoomLegacyStudySnapshot snapshot);
     }
 
+    interface StudySnapshotFallback {
+        void run();
+    }
+
     abstract void renderHome();
     abstract void renderUpdate();
     abstract void renderSettings();
@@ -367,6 +371,22 @@ abstract class MainActivityBase extends MainActivityUiSupport {
             main.post(() -> {
                 if (snapshot != null && token == studySnapshotRunCounter && route.equals(activeRoute)) {
                     consumer.accept(snapshot);
+                }
+            });
+        });
+    }
+
+    void loadRoomStudySnapshotOrFallback(String route, StudySnapshotConsumer consumer, StudySnapshotFallback fallback) {
+        int token = ++studySnapshotRunCounter;
+        io.execute(() -> {
+            RoomLegacyStudySnapshot snapshot = roomStudySnapshotOrNull();
+            main.post(() -> {
+                if (token == studySnapshotRunCounter && route.equals(activeRoute)) {
+                    if (snapshot == null) {
+                        fallback.run();
+                    } else {
+                        consumer.accept(snapshot);
+                    }
                 }
             });
         });

@@ -768,9 +768,11 @@ Current artifacts:
   a legacy-compatible snapshot for the current Java/View Home and Study code.
 - `MainActivity` accesses `RoomLegacyStudyReadBridge` through a Hilt singleton
   entry point because the legacy Java Activity is still a plain `Activity`, not
-  a `ComponentActivity`. Home and Study render the legacy snapshot immediately
-  for current installs, then asynchronously replace it with a non-empty
-  Room-backed snapshot loaded on the existing IO executor.
+  a `ComponentActivity`. Home renders the legacy snapshot immediately for
+  current installs, then asynchronously replaces it with a non-empty
+  Room-backed snapshot loaded on the existing IO executor. Study shows a
+  neutral loading state first so it renders exactly one active session from the
+  Room snapshot or the legacy fallback.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
   mapping with decoded task memory and dashboard row/example mapping.
 - `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
@@ -863,6 +865,9 @@ The same `:app:testDebugUnitTest` command passed after wiring Home and Study to
 load non-empty Room-backed legacy snapshots through the Hilt entry point and IO
 executor.
 
+The same command passed after changing Study to wait for the Room snapshot or
+legacy fallback before starting an active session.
+
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew :core:test :app:testDebugUnitTest
@@ -890,6 +895,9 @@ The same `ciFast` command passed after adding `RoomLegacyStudyReadBridge`.
 
 The same `ciFast` command passed after wiring Home and Study to load non-empty
 Room-backed legacy snapshots through the Hilt entry point and IO executor.
+
+The same `ciFast` command passed after changing Study to wait for the Room
+snapshot or legacy fallback before starting an active session.
 
 ## Current Persistence Facts For Room Migration
 
