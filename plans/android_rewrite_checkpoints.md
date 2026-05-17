@@ -1152,3 +1152,8 @@ the visible Java runtime while Room study ownership is disabled:
   in-memory Room database. `ciFast` now compiles data-module android tests so
   Room query/test drift is caught in the deterministic gate, while connected
   execution remains part of emulator/device confidence work.
+- `StudyLocalSuspensionRepository` and `RoomStudyLocalSuspensionRepository`
+  expose the Room-owned `local_kanji_suspensions` set as a domain boundary for
+  sync request construction. This is read-only for now; local suspend/unsuspend
+  writes remain owned by the existing gated bridge so queue cleanup semantics do
+  not fork.

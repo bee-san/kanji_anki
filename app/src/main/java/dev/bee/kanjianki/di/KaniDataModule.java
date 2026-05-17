@@ -18,6 +18,7 @@ import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyKanjiDetailRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyKanjiInventoryRepository;
+import dev.bee.kanjianki.data.repository.RoomStudyLocalSuspensionRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyQueueRepository;
 import dev.bee.kanjianki.data.repository.RoomStudySchedulerSettingsRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyReviewStatsRepository;
@@ -29,6 +30,7 @@ import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
 import dev.bee.kanjianki.domain.repository.StudyKanjiDetailRepository;
 import dev.bee.kanjianki.domain.repository.StudyKanjiInventoryRepository;
+import dev.bee.kanjianki.domain.repository.StudyLocalSuspensionRepository;
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository;
 import dev.bee.kanjianki.domain.repository.StudyReviewPersistenceRepository;
 import dev.bee.kanjianki.domain.repository.StudyReviewStatsRepository;
@@ -101,6 +103,12 @@ public final class KaniDataModule {
     @Singleton
     static StudyKanjiDetailRepository provideStudyKanjiDetailRepository(KaniRoomDatabase database) {
         return new RoomStudyKanjiDetailRepository(database, RoomStudyDashboardRepository.DEFAULT_EXAMPLE_LIMIT);
+    }
+
+    @Provides
+    @Singleton
+    static StudyLocalSuspensionRepository provideStudyLocalSuspensionRepository(KaniRoomDatabase database) {
+        return new RoomStudyLocalSuspensionRepository(database);
     }
 
     @Provides
