@@ -249,58 +249,84 @@ public final class MainActivityInstrumentedTest {
     public void testSettingsControlsPersist() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            scenario.onActivity(activity -> {
-                List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-                assertTrue(sliders.size() >= 2);
-                sliders.get(0).setProgress(249);
-                sliders.get(1).setProgress(3499);
-            });
+            configureFrequencyRangeSliders(scenario);
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study behavior");
-            scenario.onActivity(activity -> {
-                assertHasText(activity, "Daily workload");
-                assertHasText(activity, "Auto Pareto: waiting for problem kanji");
-                assertHasText(activity, "Use manual workload");
-                assertHasText(activity, "FSRS retention");
-                assertHasText(activity, "Desired retention: 90%");
-                assertHasText(activity, "Ladder thresholds");
-                assertHasText(activity, "FSRS days to go up");
-                assertHasText(activity, "Fails to go down");
-            });
-            scenario.onActivity(activity -> {
-                editTextAfterLabel(activity, "New cards").setText("2m 15m");
-                editTextAfterLabel(activity, "Review misses").setText("5m 20m");
-            });
+            verifyStudyBehaviorPanel(scenario);
+            setLearningStepText(scenario);
             clickText(scenario, "Save learning steps");
-            scenario.onActivity(activity -> {
-                editTextAfterLabel(activity, "Minutes (0-1440)").setText("45");
-            });
+            setStudyAheadMinutes(scenario);
             clickText(scenario, "Save study ahead");
-            scenario.onActivity(activity -> {
-                editTextAfterLabel(activity, "FSRS days to go up").setText("30");
-                editTextAfterLabel(activity, "Fails to go down").setText("2");
-            });
+            setLadderThresholdText(scenario);
             clickText(scenario, "Save ladder thresholds");
-            clickText(scenario, "Use manual workload");
-            waitForText(scenario, "Pareto: up to 5 items");
-            scenario.onActivity(activity -> {
-                List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-                assertTrue(sliders.size() >= 3);
-                sliders.get(2).setProgress(70);
-            });
-            clickText(scenario, "Save workload");
+            configureManualWorkload(scenario);
             clickText(scenario, "95%");
             clickText(scenario, "Save retention");
-            clickText(scenario, "Automation");
-            scenario.onActivity(activity -> assertHasTexts(activity, "Daily reminder", "Daily Anki sync"));
-            clickText(scenario, "Morning 08:00");
-            clickText(scenario, "Enable reminder");
-            clickTextIfPresent("Allow");
-            waitForText(scenario, "Daily around 08:00");
+            enableMorningReminder(scenario);
 
             assertNavigationSettingsPersisted();
         }
+    }
+
+    private static void configureFrequencyRangeSliders(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> {
+            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
+            assertTrue(sliders.size() >= 2);
+            sliders.get(0).setProgress(249);
+            sliders.get(1).setProgress(3499);
+        });
+    }
+
+    private static void verifyStudyBehaviorPanel(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> {
+            assertHasText(activity, "Daily workload");
+            assertHasText(activity, "Auto Pareto: waiting for problem kanji");
+            assertHasText(activity, "Use manual workload");
+            assertHasText(activity, "FSRS retention");
+            assertHasText(activity, "Desired retention: 90%");
+            assertHasText(activity, "Ladder thresholds");
+            assertHasText(activity, "FSRS days to go up");
+            assertHasText(activity, "Fails to go down");
+        });
+    }
+
+    private static void setLearningStepText(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> {
+            editTextAfterLabel(activity, "New cards").setText("2m 15m");
+            editTextAfterLabel(activity, "Review misses").setText("5m 20m");
+        });
+    }
+
+    private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> editTextAfterLabel(activity, "Minutes (0-1440)").setText("45"));
+    }
+
+    private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> {
+            editTextAfterLabel(activity, "FSRS days to go up").setText("30");
+            editTextAfterLabel(activity, "Fails to go down").setText("2");
+        });
+    }
+
+    private static void configureManualWorkload(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, "Use manual workload");
+        waitForText(scenario, "Pareto: up to 5 items");
+        scenario.onActivity(activity -> {
+            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
+            assertTrue(sliders.size() >= 3);
+            sliders.get(2).setProgress(70);
+        });
+        clickText(scenario, "Save workload");
+    }
+
+    private static void enableMorningReminder(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, "Automation");
+        scenario.onActivity(activity -> assertHasTexts(activity, "Daily reminder", "Daily Anki sync"));
+        clickText(scenario, "Morning 08:00");
+        clickText(scenario, "Enable reminder");
+        clickTextIfPresent("Allow");
+        waitForText(scenario, "Daily around 08:00");
     }
 
     @Test

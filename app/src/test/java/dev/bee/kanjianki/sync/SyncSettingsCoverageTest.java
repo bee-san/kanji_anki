@@ -176,7 +176,7 @@ public final class SyncSettingsCoverageTest {
     }
 
     private static void assertClose(double expected, double actual) {
-        assertEquals(expected, actual, 0.001);
+        assertTrue(Math.abs(expected - actual) <= 0.001);
     }
 
     private static long millis(int year, int month, int day, int hour, int minute) {

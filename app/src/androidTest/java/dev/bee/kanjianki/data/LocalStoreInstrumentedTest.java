@@ -188,13 +188,8 @@ public final class LocalStoreInstrumentedTest {
 
     @Test
     public void testFailedImportSyncRollsBackAllDurableRows() {
-        long baselineSyncId = saveSingleRowSync(row("拉", 0), Collections.singletonList(suspendedImport("拉")), 2000L);
-        assertEquals(1, count("sync_runs"));
-        assertEquals(1, count("dashboard_rows"));
-        assertEquals(1, count("suspended_imports"));
-        assertEquals(1, count("import_rule_audits"));
-        assertEquals(1, count("import_decisions"));
-        assertEquals(1, count("sync_card_snapshots"));
+        String baselineSyncId = Long.toString(saveSingleRowSync(row("拉", 0), Collections.singletonList(suspendedImport("拉")), 2000L));
+        verifyBaselineImportRows();
 
         RecordsImportModels.DashboardRow malformedRow = new RecordsImportModels.DashboardRow(
                 "壊",
@@ -229,6 +224,19 @@ public final class LocalStoreInstrumentedTest {
             // Expected: the important assertion is that the surrounding DB transaction rolled back.
         }
 
+        verifyRolledBackImportRows(baselineSyncId);
+    }
+
+    private void verifyBaselineImportRows() {
+        assertEquals(1, count("sync_runs"));
+        assertEquals(1, count("dashboard_rows"));
+        assertEquals(1, count("suspended_imports"));
+        assertEquals(1, count("import_rule_audits"));
+        assertEquals(1, count("import_decisions"));
+        assertEquals(1, count("sync_card_snapshots"));
+    }
+
+    private void verifyRolledBackImportRows(String baselineSyncId) {
         assertEquals(1, count("sync_runs"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("suspended_imports"));
@@ -237,7 +245,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("source_cards"));
         assertEquals(1, count("source_notes"));
         assertEquals(1, count("sync_card_snapshots"));
-        assertEquals(1, countWhere("sync_card_snapshots", "sync_id=?", Long.toString(baselineSyncId)));
+        assertEquals(1, countWhere("sync_card_snapshots", "sync_id=?", baselineSyncId));
         assertEquals(0, countWhere("dashboard_rows", "kanji=?", "壊"));
         assertEquals(0, countWhere("suspended_imports", "kanji=?", "壊"));
         assertEquals(0, countWhere("sync_note_snapshots", "note_id=?", "30"));
@@ -714,15 +722,21 @@ public final class LocalStoreInstrumentedTest {
         store.close();
 
         store = new LocalStore(context);
-        assertEquals(reviewRows, count("review_log"));
-        assertEquals(taskRows, count("study_task_log"));
-        assertEquals(timelineRows, count("kanji_timeline_events"));
-        assertEquals(cardSnapshots, count("sync_card_snapshots"));
-        assertEquals(noteSnapshots, count("sync_note_snapshots"));
-        assertEquals(kanjiSnapshots, count("sync_kanji_snapshots"));
+        verifyVersionEighteenMigrationCounts(reviewRows, taskRows, timelineRows, cardSnapshots, noteSnapshots, kanjiSnapshots);
 
         store.close();
         store = new LocalStore(context);
+        verifyVersionEighteenMigrationCounts(reviewRows, taskRows, timelineRows, cardSnapshots, noteSnapshots, kanjiSnapshots);
+    }
+
+    private void verifyVersionEighteenMigrationCounts(
+            int reviewRows,
+            int taskRows,
+            int timelineRows,
+            int cardSnapshots,
+            int noteSnapshots,
+            int kanjiSnapshots
+    ) {
         assertEquals(reviewRows, count("review_log"));
         assertEquals(taskRows, count("study_task_log"));
         assertEquals(timelineRows, count("kanji_timeline_events"));
@@ -2607,10 +2621,10 @@ public final class LocalStoreInstrumentedTest {
     }
 
     private static void assertClose(double expected, double actual) {
-        assertEquals(expected, actual, 0.001);
+        assertTrue(Math.abs(expected - actual) <= 0.001);
     }
 
     private static void assertClose(double expected, Double actual) {
-        assertEquals(expected, actual.doubleValue(), 0.001);
+        assertTrue(actual != null && Math.abs(expected - actual) <= 0.001);
     }
 }

@@ -905,6 +905,6 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     private static void assertClose(double expected, Double actual) {
-        assertEquals(expected, actual.doubleValue(), 0.001);
+        assertTrue(actual != null && Math.abs(expected - actual) <= 0.001);
     }
 }
