@@ -21,7 +21,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -264,7 +263,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
         card.addView(text("Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.", 17, STUDY_MUTED, false));
         LinearLayout summary = softInsetPanel();
-        summary.addView(text("Study now: " + sessionProgressCompleted + " / " + Math.max(1, sessionProgressMax), 20, STUDY_PLUM, true));
+        summary.addView(text("Study now: " + studySessionTracker.completedCount() + " / " + Math.max(1, studySessionTracker.targetCount()), 20, STUDY_PLUM, true));
         if (plan != null && !plan.status.isEmpty()) {
             summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         }
@@ -383,7 +382,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyMoreNewCardKanji.addAll(result.admittedKanji);
         continueAllKanjiSession = false;
         resetStudyRunProgress();
-        sessionProgressMax = result.admittedCount;
+        studySessionTracker.setTargetCount(result.admittedCount);
         if (result.admittedCount < requestedCount) {
             Toast.makeText(this, "Only " + countText(result.admittedCount, "new card was", "new cards were") + " available.", Toast.LENGTH_SHORT).show();
         }
@@ -845,11 +844,8 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void resetStudyRunProgress() {
-        sessionProgressCompleted = 0;
-        sessionProgressMax = 0;
         activeSimilarWritingRepair = null;
-        sessionCompletedTaskKeys.clear();
-        sessionSeenTaskKeys.clear();
+        studySessionTracker.resetProgress();
     }
 
     void clearStudyModeOverrides() {
@@ -868,9 +864,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan) {
-        if (sessionProgressMax <= 0 && plan != null) {
-            sessionProgressMax = Math.max(0, plan.remaining > 0 ? plan.remaining : plan.target);
-        }
+        studySessionTracker.initializeTarget(plan);
     }
 
     Records.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis, Records.StudyLadderSettings ladder) {
@@ -885,103 +879,52 @@ abstract class MainActivityStudy extends MainActivityStats {
             return;
         }
         for (Records.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
-            String key = similarRepairProgressKey(repair);
-            if (!sessionSeenTaskKeys.contains(key) && !sessionCompletedTaskKeys.contains(key)) {
-                sessionSeenTaskKeys.add(key);
-                sessionProgressMax++;
-            }
+            studySessionTracker.includePendingTask(similarRepairProgressKey(repair));
         }
     }
 
     boolean studyRunAtHardCap() {
-        return !continueAllKanjiSession && sessionProgressMax > 0 && sessionProgressCompleted >= sessionProgressMax;
+        return studySessionTracker.atHardCap(continueAllKanjiSession);
     }
 
     void registerStudyTaskShown(String key) {
-        if (key == null || key.isEmpty()) {
-            return;
-        }
-        sessionSeenTaskKeys.add(key);
-        if (sessionProgressMax <= 0) {
-            sessionProgressMax = 1;
-        }
+        studySessionTracker.registerTaskShown(key);
     }
 
     void markStudyTaskCompleted(String key) {
-        if (key == null || key.isEmpty()) {
-            return;
-        }
-        registerStudyTaskShown(key);
-        if (sessionCompletedTaskKeys.add(key)) {
-            sessionProgressCompleted++;
-            sessionProgressMax = Math.max(sessionProgressMax, sessionProgressCompleted);
-        }
+        studySessionTracker.markTaskCompleted(key);
     }
 
     String sessionTaskKey(Records.StudySession session) {
-        if (session == null) {
-            return "";
-        }
-        return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token;
+        return StudySessionTracker.sessionTaskKey(session);
     }
 
     String similarRepairProgressKey(Records.SimilarKanjiWritingRepair repair) {
-        return repair == null ? "" : "repair:" + repair.id;
+        return StudySessionTracker.similarRepairProgressKey(repair);
     }
 
     String similarRepairStudyTaskKey(Records.SimilarKanjiWritingRepair repair) {
-        if (repair == null) {
-            return "";
-        }
-        return similarRepairProgressKey(repair) + ":" + repair.activeToken;
+        return StudySessionTracker.similarRepairStudyTaskKey(repair);
     }
 
     void startActiveStudyTask(String key, String kanji, String taskType, long startedAt) {
-        if (key == null || key.isEmpty()) {
-            return;
-        }
-        if (activeStudyTask != null && key.equals(activeStudyTask.taskKey)) {
-            return;
-        }
-        activeStudyTask = new ActiveStudyTask(key, kanji, taskType, startedAt);
-        if (!activityPaused) {
-            activeStudyTask.resume(SystemClock.elapsedRealtime());
-        }
+        studySessionTracker.startActiveTask(key, kanji, taskType, startedAt, !activityPaused);
     }
 
     void completeActiveStudyTask(String key, String outcome, long answeredAt) {
-        if (activeStudyTask == null || key == null || !key.equals(activeStudyTask.taskKey)) {
-            return;
-        }
-        long nowElapsed = SystemClock.elapsedRealtime();
-        activeStudyTask.pause(nowElapsed);
-        store.recordStudyTaskAnswered(
-                activeStudyTask.taskKey,
-                activeStudyTask.kanji,
-                activeStudyTask.taskType,
-                activeStudyTask.startedAtMillis,
-                answeredAt,
-                activeStudyTask.activeElapsedMillis,
-                outcome
-        );
-        markStudyTaskCompleted(key);
-        activeStudyTask = null;
+        studySessionTracker.completeActiveTask(store, key, outcome, answeredAt, true);
     }
 
     void pauseActiveStudyTask() {
-        if (activeStudyTask != null) {
-            activeStudyTask.pause(SystemClock.elapsedRealtime());
-        }
+        studySessionTracker.pauseActiveTask();
     }
 
     void resumeActiveStudyTask() {
-        if (activeStudyTask != null) {
-            activeStudyTask.resume(SystemClock.elapsedRealtime());
-        }
+        studySessionTracker.resumeActiveTask();
     }
 
     void abandonActiveStudyTask() {
-        activeStudyTask = null;
+        studySessionTracker.abandonActiveTask();
     }
 
     String flashcardTitle(Records.StudySession session) {
@@ -1445,21 +1388,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void completeActiveRepairStudyTask(String key, String outcome, long answeredAt) {
-        if (activeStudyTask == null || key == null || !key.equals(activeStudyTask.taskKey)) {
-            return;
-        }
-        long nowElapsed = SystemClock.elapsedRealtime();
-        activeStudyTask.pause(nowElapsed);
-        store.recordStudyTaskAnswered(
-                activeStudyTask.taskKey,
-                activeStudyTask.kanji,
-                activeStudyTask.taskType,
-                activeStudyTask.startedAtMillis,
-                answeredAt,
-                activeStudyTask.activeElapsedMillis,
-                outcome
-        );
-        activeStudyTask = null;
+        studySessionTracker.completeActiveTask(store, key, outcome, answeredAt, false);
     }
 
     void submitNormalReview(Records.ReviewRequest request) {

@@ -8,7 +8,6 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
@@ -44,7 +43,6 @@ import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,6 +86,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     final Handler main = new Handler(Looper.getMainLooper());
     final ExecutorService io = Executors.newSingleThreadExecutor();
     final HintProgression hintProgression = new HintProgression();
+    final StudySessionTracker studySessionTracker = new StudySessionTracker();
     LocalStore store;
     AnkiDroidGateway gateway;
     LinearLayout content;
@@ -123,14 +122,9 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     final List<String> studyMoreNewCardKanji = new ArrayList<>();
     int hintsUsed;
     int currentPracticeLevel;
-    int sessionProgressCompleted;
-    int sessionProgressMax;
     float flashcardTouchStartX;
     float flashcardTouchStartY;
-    ActiveStudyTask activeStudyTask;
     boolean activityPaused;
-    final Set<String> sessionCompletedTaskKeys = new HashSet<>();
-    final Set<String> sessionSeenTaskKeys = new HashSet<>();
     HintState currentHintState = HintState.initial();
     Map<String, StrokeGuide> strokeGuides;
     WritingRecognizer writingRecognizer;
@@ -548,8 +542,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
 
     View studyTopBar(Records.AdaptiveLoadPlan plan) {
         initializeSessionProgressTarget(plan);
-        int completed = sessionProgressCompleted;
-        int target = sessionProgressMax;
+        int completed = studySessionTracker.completedCount();
+        int target = studySessionTracker.targetCount();
         boolean activeTask = activeSession != null;
         if (activeTask && target <= completed && continueAllKanjiSession) {
             target = completed + 1;
@@ -763,36 +757,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
             this.difficulty = difficulty;
             this.lapseThreshold = lapseThreshold;
             this.minCards = minCards;
-        }
-    }
-
-    static final class ActiveStudyTask {
-        final String taskKey;
-        final String kanji;
-        final String taskType;
-        final long startedAtMillis;
-        long activeElapsedMillis;
-        long visibleSinceElapsedMillis;
-
-        ActiveStudyTask(String taskKey, String kanji, String taskType, long startedAtMillis) {
-            this.taskKey = taskKey;
-            this.kanji = kanji == null ? "" : kanji;
-            this.taskType = taskType == null ? "" : taskType;
-            this.startedAtMillis = Math.max(0L, startedAtMillis);
-        }
-
-        void pause(long nowElapsedMillis) {
-            if (visibleSinceElapsedMillis <= 0L) {
-                return;
-            }
-            activeElapsedMillis += Math.max(0L, nowElapsedMillis - visibleSinceElapsedMillis);
-            visibleSinceElapsedMillis = 0L;
-        }
-
-        void resume(long nowElapsedMillis) {
-            if (visibleSinceElapsedMillis <= 0L) {
-                visibleSinceElapsedMillis = nowElapsedMillis;
-            }
         }
     }
 
