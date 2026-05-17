@@ -17,6 +17,7 @@ class KaniRoomDatabaseResetPolicyTest {
     fun resetPolicyClassifiesCurrentLegacyAndUnknownDatabaseNames() {
         val policy = KaniRoomDatabaseResetPolicy()
 
+        assertEquals(false, policy.allowDestructiveRoomReset)
         assertEquals(
             KaniRoomDatabaseDisposition.CURRENT_ROOM_DATABASE,
             policy.classify("kanji_anki_room.db"),

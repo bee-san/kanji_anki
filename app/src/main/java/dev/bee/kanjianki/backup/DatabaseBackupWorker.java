@@ -20,7 +20,8 @@ import java.util.Locale;
 
 public final class DatabaseBackupWorker extends Worker {
     private static final String TAG = "DatabaseBackupWorker";
-    private static final String DB_NAME = "kanji_anki_simple.db";
+    private static final String[] DB_NAMES = {"kanji_anki_simple.db", "kanji_anki_room.db"};
+    private static final String[] SQLITE_SIDECAR_SUFFIXES = {"-wal", "-shm"};
     private static final String BACKUP_DIR = "backups";
     private static final int MAX_BACKUPS = 31;
 
@@ -35,12 +36,35 @@ public final class DatabaseBackupWorker extends Worker {
     }
 
     static Result doWork(BackupEnvironment environment, long nowMillis) {
-        return backupDatabase(
-                environment.databasePath(DB_NAME),
+        File[] databases = new File[DB_NAMES.length];
+        for (int i = 0; i < DB_NAMES.length; i++) {
+            databases[i] = environment.databasePath(DB_NAMES[i]);
+        }
+        return backupDatabases(
+                databases,
                 environment.filesDir(),
                 nowMillis,
                 DatabaseBackupWorker::checkpoint,
                 DatabaseBackupWorker::copyFile);
+    }
+
+    static Result backupDatabases(
+            File[] dbFiles,
+            File filesDir,
+            long nowMillis,
+            Checkpointer checkpointer,
+            FileCopier copier) {
+        boolean backedUpAny = false;
+        for (File dbFile : dbFiles) {
+            if (!dbFile.exists()) {
+                continue;
+            }
+            if (!backupDatabaseFile(dbFile, filesDir, nowMillis, checkpointer, copier, true)) {
+                return Result.failure();
+            }
+            backedUpAny = true;
+        }
+        return backedUpAny ? Result.success() : Result.failure();
     }
 
     static Result backupDatabase(
@@ -49,13 +73,31 @@ public final class DatabaseBackupWorker extends Worker {
             long nowMillis,
             Checkpointer checkpointer,
             FileCopier copier) {
+        return backupDatabaseFile(
+                dbFile,
+                filesDir,
+                nowMillis,
+                checkpointer,
+                copier,
+                true)
+                ? Result.success()
+                : Result.failure();
+    }
+
+    private static boolean backupDatabaseFile(
+            File dbFile,
+            File filesDir,
+            long nowMillis,
+            Checkpointer checkpointer,
+            FileCopier copier,
+            boolean pruneAfterBackup) {
         if (!dbFile.exists()) {
-            return Result.failure();
+            return false;
         }
 
         File backupDir = new File(filesDir, BACKUP_DIR);
         if (!backupDir.exists() && !backupDir.mkdirs()) {
-            return Result.failure();
+            return false;
         }
 
         try {
@@ -65,20 +107,52 @@ public final class DatabaseBackupWorker extends Worker {
         }
 
         String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date(nowMillis));
-        File dest = new File(backupDir, "kanji_anki_simple_" + timestamp + ".db");
+        File dest = new File(backupDir, backupPrefix(dbFile) + timestamp + ".db");
 
         try {
             copier.copy(dbFile, dest);
+            copySidecars(dbFile, dest, copier);
         } catch (IOException e) {
-            if (!dest.delete()) {
-                warn("Failed to delete incomplete backup: " + dest.getName());
-            }
+            deleteIncompleteBackup(dest);
             warn("Database backup failed.", e);
-            return Result.failure();
+            return false;
         }
 
-        pruneOldBackups(backupDir);
-        return Result.success();
+        if (pruneAfterBackup) {
+            pruneOldBackups(backupDir);
+        }
+        return true;
+    }
+
+    private static void copySidecars(File dbFile, File dest, FileCopier copier) throws IOException {
+        for (String suffix : SQLITE_SIDECAR_SUFFIXES) {
+            File sidecar = new File(dbFile.getPath() + suffix);
+            if (!sidecar.exists()) {
+                continue;
+            }
+            copier.copy(sidecar, new File(dest.getPath() + suffix));
+        }
+    }
+
+    private static void deleteIncompleteBackup(File dest) {
+        deleteBackupFile(dest);
+        for (String suffix : SQLITE_SIDECAR_SUFFIXES) {
+            deleteBackupFile(new File(dest.getPath() + suffix));
+        }
+    }
+
+    private static void deleteBackupFile(File file) {
+        if (file.exists() && !file.delete()) {
+            warn("Failed to delete incomplete backup: " + file.getName());
+        }
+    }
+
+    private static String backupPrefix(File dbFile) {
+        String name = dbFile.getName();
+        if (name.endsWith(".db")) {
+            name = name.substring(0, name.length() - 3);
+        }
+        return name + "_";
     }
 
     interface Checkpointer {
@@ -193,16 +267,34 @@ public final class DatabaseBackupWorker extends Worker {
     }
 
     static void pruneOldBackups(File backupDir) {
+        for (String dbName : DB_NAMES) {
+            pruneOldBackups(backupDir, dbName);
+        }
+    }
+
+    private static void pruneOldBackups(File backupDir, String dbName) {
+        String prefix = backupPrefix(new File(dbName));
         File[] files = backupDir.listFiles((dir, name) ->
-                name.startsWith("kanji_anki_simple_") && name.endsWith(".db"));
+                name.startsWith(prefix) && name.endsWith(".db"));
         if (files == null || files.length <= MAX_BACKUPS) {
             return;
         }
         Arrays.sort(files);
         int toDelete = files.length - MAX_BACKUPS;
         for (int i = 0; i < toDelete; i++) {
-            if (!files[i].delete()) {
-                warn("Failed to prune old backup: " + files[i].getName());
+            deletePrunedBackup(files[i]);
+        }
+    }
+
+    private static void deletePrunedBackup(File backup) {
+        if (!backup.delete()) {
+            warn("Failed to prune old backup: " + backup.getName());
+            return;
+        }
+        for (String suffix : SQLITE_SIDECAR_SUFFIXES) {
+            File sidecar = new File(backup.getPath() + suffix);
+            if (sidecar.exists() && !sidecar.delete()) {
+                warn("Failed to prune old backup sidecar: " + sidecar.getName());
             }
         }
     }

@@ -6,19 +6,23 @@ import androidx.room.Room
 class KaniRoomDatabaseFactory(
     private val resetPolicy: KaniRoomDatabaseResetPolicy = KaniRoomDatabaseResetPolicy(),
 ) {
-    fun create(context: Context): KaniRoomDatabase =
-        Room.databaseBuilder(
+    fun create(context: Context): KaniRoomDatabase {
+        val builder = Room.databaseBuilder(
             context.applicationContext,
             KaniRoomDatabase::class.java,
             resetPolicy.roomDatabaseName,
         )
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .build()
+        if (resetPolicy.allowDestructiveRoomReset) {
+            builder.fallbackToDestructiveMigration(dropAllTables = true)
+        }
+        return builder.build()
+    }
 }
 
 data class KaniRoomDatabaseResetPolicy(
     val roomDatabaseName: String = KaniRoomDatabase.DATABASE_NAME,
     val legacyDatabaseNames: Set<String> = setOf(KaniRoomDatabase.LEGACY_DATABASE_NAME),
+    val allowDestructiveRoomReset: Boolean = false,
 ) {
     init {
         require(roomDatabaseName.isNotBlank()) { "Room database name must be explicit." }

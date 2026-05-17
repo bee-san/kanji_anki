@@ -59,19 +59,31 @@ public final class DatabaseBackupWorkerTest {
 
     @Test
     public void doWorkUsesRealBackupFlowAndCheckpointFallback() throws Exception {
-        File db = temp.newFile("kanji_anki_simple.db");
-        byte[] content = "not a sqlite database but still backup-worthy".getBytes(StandardCharsets.UTF_8);
-        try (FileOutputStream output = new FileOutputStream(db)) {
-            output.write(content);
+        File legacyDb = temp.newFile("kanji_anki_simple.db");
+        File roomDb = temp.newFile("kanji_anki_room.db");
+        byte[] legacyContent = "legacy db".getBytes(StandardCharsets.UTF_8);
+        byte[] roomContent = "room db".getBytes(StandardCharsets.UTF_8);
+        try (FileOutputStream output = new FileOutputStream(legacyDb)) {
+            output.write(legacyContent);
         }
+        try (FileOutputStream output = new FileOutputStream(roomDb)) {
+            output.write(roomContent);
+        }
+        write(new File(roomDb.getPath() + "-wal"), "wal");
+        write(new File(roomDb.getPath() + "-shm"), "shm");
         File filesDir = temp.newFolder("files");
         long now = 1_778_832_000_000L;
 
         ListenableWorker.Result result = DatabaseBackupWorker.doWork(new DatabaseBackupWorker.BackupEnvironment() {
             @Override
             public File databasePath(String name) {
-                assertEquals("kanji_anki_simple.db", name);
-                return db;
+                if ("kanji_anki_simple.db".equals(name)) {
+                    return legacyDb;
+                }
+                if ("kanji_anki_room.db".equals(name)) {
+                    return roomDb;
+                }
+                throw new AssertionError("unexpected database name: " + name);
             }
 
             @Override
@@ -81,8 +93,39 @@ public final class DatabaseBackupWorkerTest {
         }, now);
 
         assertSuccess(result);
-        File backup = new File(new File(filesDir, "backups"), "kanji_anki_simple_" + timestamp(now) + ".db");
-        assertArrayEquals(content, read(backup));
+        File backupDir = new File(filesDir, "backups");
+        File legacyBackup = new File(backupDir, "kanji_anki_simple_" + timestamp(now) + ".db");
+        File roomBackup = new File(backupDir, "kanji_anki_room_" + timestamp(now) + ".db");
+        assertArrayEquals(legacyContent, read(legacyBackup));
+        assertArrayEquals(roomContent, read(roomBackup));
+        assertArrayEquals("wal".getBytes(StandardCharsets.UTF_8), read(new File(roomBackup.getPath() + "-wal")));
+        assertArrayEquals("shm".getBytes(StandardCharsets.UTF_8), read(new File(roomBackup.getPath() + "-shm")));
+    }
+
+    @Test
+    public void doWorkSucceedsWhenOnlyRoomDatabaseExists() throws Exception {
+        File roomDb = temp.newFile("kanji_anki_room.db");
+        write(roomDb, "room db");
+        File filesDir = temp.newFolder("files");
+        long now = 1_778_832_000_000L;
+
+        ListenableWorker.Result result = DatabaseBackupWorker.doWork(new DatabaseBackupWorker.BackupEnvironment() {
+            @Override
+            public File databasePath(String name) {
+                if ("kanji_anki_room.db".equals(name)) {
+                    return roomDb;
+                }
+                return new File(temp.getRoot(), name);
+            }
+
+            @Override
+            public File filesDir() {
+                return filesDir;
+            }
+        }, now);
+
+        assertSuccess(result);
+        assertTrue(new File(new File(filesDir, "backups"), "kanji_anki_room_" + timestamp(now) + ".db").isFile());
     }
 
     @Test
@@ -195,6 +238,30 @@ public final class DatabaseBackupWorkerTest {
     }
 
     @Test
+    public void backupDatabaseCopiesExistingSqliteSidecars() throws Exception {
+        File db = temp.newFile("kanji_anki_room.db");
+        write(db, "room");
+        write(new File(db.getPath() + "-wal"), "wal");
+        write(new File(db.getPath() + "-shm"), "shm");
+        File filesDir = temp.newFolder("files");
+        long now = 1_778_832_000_000L;
+
+        ListenableWorker.Result result = DatabaseBackupWorker.backupDatabase(
+                db,
+                filesDir,
+                now,
+                ignored -> {
+                },
+                DatabaseBackupWorker::copyFile);
+
+        assertSuccess(result);
+        File backup = new File(new File(filesDir, "backups"), "kanji_anki_room_" + timestamp(now) + ".db");
+        assertArrayEquals("room".getBytes(StandardCharsets.UTF_8), read(backup));
+        assertArrayEquals("wal".getBytes(StandardCharsets.UTF_8), read(new File(backup.getPath() + "-wal")));
+        assertArrayEquals("shm".getBytes(StandardCharsets.UTF_8), read(new File(backup.getPath() + "-shm")));
+    }
+
+    @Test
     public void checkpointSkipsCloseWhenDatabaseCannotBeOpened() {
         boolean[] opened = {false};
 
@@ -239,7 +306,9 @@ public final class DatabaseBackupWorkerTest {
         File dir = temp.newFolder("backups");
         for (int i = 1; i <= 35; i++) {
             write(new File(dir, String.format("kanji_anki_simple_20260515_%06d.db", i)), "db-" + i);
+            write(new File(dir, String.format("kanji_anki_room_20260515_%06d.db", i)), "room-" + i);
         }
+        write(new File(dir, "kanji_anki_room_20260515_000001.db-wal"), "stale wal");
         File ignored = new File(dir, "notes.txt");
         write(ignored, "keep");
         File wrongSuffix = new File(dir, "kanji_anki_simple_20260515_999999.tmp");
@@ -257,6 +326,10 @@ public final class DatabaseBackupWorkerTest {
         assertFalse(names.contains("kanji_anki_simple_20260515_000004.db"));
         assertTrue(names.contains("kanji_anki_simple_20260515_000005.db"));
         assertTrue(names.contains("kanji_anki_simple_20260515_000035.db"));
+        assertFalse(names.contains("kanji_anki_room_20260515_000001.db"));
+        assertFalse(names.contains("kanji_anki_room_20260515_000001.db-wal"));
+        assertTrue(names.contains("kanji_anki_room_20260515_000005.db"));
+        assertTrue(names.contains("kanji_anki_room_20260515_000035.db"));
     }
 
     @Test

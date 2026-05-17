@@ -928,6 +928,13 @@ calculation and `study_items` replacement. Session token claims, direct queue
 updates, and review persistence must enter the same gate before their Room
 transaction.
 
+Room schema upgrades must not silently fall back to destructive migration once
+Room can own study history. Destructive Room resets are an explicit reset
+policy only; normal database creation requires migrations or a deliberate
+existing-install reset path. Daily backups must include both the legacy
+`kanji_anki_simple.db` and Room `kanji_anki_room.db` files, including any
+SQLite WAL/SHM sidecars that still exist after checkpointing.
+
 ### 5.2 Domain Model Families
 
 Replace broad `Records*` namespaces with focused domain packages:
