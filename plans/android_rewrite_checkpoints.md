@@ -34,8 +34,8 @@ Strong existing coverage:
 
 Highest-risk characterization gaps before replacement:
 
-1. Full current-production database fixture migration into the Room schema,
-   preserving every current table family and old install defaults.
+1. Clean Room/DataStore reset path for legacy DBs, with enough empty-state and
+   first-sync coverage to prove the app rebuilds from AnkiDroid/source assets.
 2. Auto-sync parity with manual sync under customized import filters, adaptive
    planner settings, and note mappings.
 3. Study above-fold and progress-truth coverage across every task type and
@@ -174,9 +174,10 @@ Result: `BUILD SUCCESSFUL`.
 
 ## Step 5 Room Schema And Repositories
 
-Status: partial. The current slice adds schema-compatible Room coverage for
-the source mirror and sync run families only; repositories and full production
-DB migration tests are still pending.
+Status: partial. The current slices add schema-compatible Room coverage and
+repository seams for the key table families. Full production DB migration is
+no longer a hard requirement; destructive reset is acceptable when it keeps the
+Room schema clean and the app can rebuild through sync.
 
 Current artifacts:
 
@@ -694,7 +695,7 @@ Current table families:
   `similar_kanji_repair_queue`, `similar_kanji_review_log`.
 - Timeline: `kanji_timeline_events`.
 
-Migration hazards:
+Legacy reset/migration hazards:
 
 1. `study_items` uses composite primary key `(kanji, answer_signature)`.
 2. Task memories are stored as tab-separated encoded strings, not child rows.
@@ -705,13 +706,13 @@ Migration hazards:
    on `study_items`.
 7. v16 was a scheduler fresh-start rebuild: it recreated `study_items` and
    cleared `learning_repeats`, `similar_kanji_choice_state`, and
-   `similar_kanji_repair_queue`. Room migration tests must preserve this
-   historical behavior for old DBs.
+   `similar_kanji_repair_queue`. The rewrite may use the same fresh-start
+   strategy instead of migrating old scheduler state.
 8. Existing backup behavior checkpoints WAL and copies `kanji_anki_simple.db`
-   into `filesDir/backups/` with 31 retained backups. The first Room migration
-   path must keep a preflight backup equivalent.
+   into `filesDir/backups/` with 31 retained backups. A backup/reset UX is
+   useful, but it is not a blocker for the clean rewrite schema.
 
 Settings currently live in a string key/value table. Typed Room/DataStore
-settings need explicit migrations from keys in
+settings may reset to current defaults or explicitly migrate selected keys from
 `app/src/main/java/dev/bee/kanjianki/sync/SyncSettings.java` and
 `app/src/main/java/dev/bee/kanjianki/data/LocalStoreStudy.java`.

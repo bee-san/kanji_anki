@@ -48,7 +48,6 @@ Preserve:
 - Sideloaded APK distribution through GitHub Releases.
 - Signed release APK plus SHA-256 checksum.
 - Existing install/update path.
-- Existing data continuity for current users.
 - Existing requirement that Kani is an AnkiDroid companion app.
 
 Do not introduce:
@@ -60,6 +59,18 @@ Do not introduce:
 - A WebView app.
 - A Python server, fixture runtime, or polling loop.
 - A dependency on desktop Anki runtime.
+
+Database compatibility note:
+
+- Existing local Kani databases may be reset, replaced, or destructively
+  migrated when that produces a cleaner Room/DataStore architecture.
+- Do not preserve legacy DB shape, key/value settings, or encoded columns just
+  to avoid a local reset.
+- Product behavior still matters. After a reset, the app must rebuild from
+  AnkiDroid/source assets through the intended sync path and must not corrupt
+  AnkiDroid data.
+- Destructive paths must be explicit in code and user-facing status. Avoid
+  silent partial migrations that leave mixed old/new state behind.
 
 ### 2.2 AnkiDroid Relationship
 
@@ -727,21 +738,29 @@ Do not put all settings in one giant Proto if many settings are relationally tie
 
 ### 4.4 Database Migrations
 
-Use Room migrations.
+Use Room migrations or an explicit destructive reset. The user has approved
+breaking existing local Kani databases when that makes the rewrite cleaner.
 
 Rules:
 
-- Every schema version has an explicit migration.
-- No destructive migration for normal users.
-- Migration tests must verify every migration path from the current production DB version to the new Room schema.
-- Migration must preserve all Kani-owned data.
-- Migration must preserve old install behavior.
+- Prefer a fresh, well-normalized Room/DataStore schema over compatibility
+  with legacy `SQLiteOpenHelper` storage.
+- Destructive replacement is acceptable for Kani-owned local data.
+- Do not build compatibility scaffolding solely for old DB versions.
+- If a migration is kept, it must be explicit, tested, and simpler than
+  a reset-and-resync path.
+- Old install behavior that affects product semantics, such as suspended-only
+  import defaults, must be represented by current domain defaults or an
+  intentional settings reset, not by preserving legacy storage.
 - Migration must be idempotent where re-entry can happen.
-- Migration must have preflight checks and backup.
-- Migration failures should leave the old database untouched if possible.
-- A backup should be made before first Room migration.
+- Destructive reset must have clear preflight detection and a single ownership
+  point; avoid scattered table drops.
+- A backup is optional for developer/debug builds and future UX polish, not a
+  blocker for the rewrite architecture.
 
-The current SQLite DB is `kanji_anki_simple.db`, current schema version observed as `20`. The rewrite should not casually rename it if doing so breaks continuity. Prefer an in-place Room database with the same database name, or a carefully managed copy/migrate/swap path.
+The current SQLite DB is `kanji_anki_simple.db`, current schema version observed
+as `20`. The rewrite may keep that name or replace it with a new Room database
+name if doing so makes ownership and reset behavior clearer.
 
 ### 4.5 Dependency Injection
 
@@ -1038,7 +1057,11 @@ Rules:
 
 ## 6. Data Schema Plan
 
-The exact Room schema should be designed from the current schema, not invented loosely. This section defines required aggregate groups and key tables. The implementing engineer should translate each into Room entities, DAOs, relations, indexes, and migrations.
+The Room schema should be designed from product aggregates and current behavior,
+not copied mechanically from legacy table shape. This section defines required
+aggregate groups and key tables. The implementing engineer should translate
+each into Room entities, DAOs, relations, indexes, and either clean migrations
+or an explicit destructive reset path.
 
 ### 6.1 Settings
 
@@ -2266,14 +2289,13 @@ Import/sync:
 
 Data:
 
-- DB migration from current version
-- settings key migration
-- no duplicate timeline events
-- no lost review logs
-- no lost source mirror rows
-- no lost suspended archive
-- no lost study items/task memories
-- old persisted installs keep import defaults
+- clean Room/DataStore schema initializes from empty state
+- destructive reset path is explicit when legacy DB state is incompatible
+- no duplicate timeline events after fresh sync/rebuild
+- review logs and task memories are preserved only when using a deliberate
+  non-destructive migration path
+- source mirror, suspended archive, and study items rebuild correctly from sync
+- import defaults after reset match current product defaults
 
 UI/instrumented:
 
@@ -2360,18 +2382,18 @@ Do not delete old `Records*` until all users are migrated.
 
 ### 10.7 Create Room Schema
 
-Design Room entities/DAOs/migrations.
+Design Room entities/DAOs and the reset/migration policy.
 
 Steps:
 
-1. Export current schema facts from `LocalStoreSchema` and migrations.
+1. Export current schema facts from `LocalStoreSchema` only as behavioral input.
 2. Design Room entities with indexes.
 3. Implement DAOs by aggregate.
-4. Implement migrations from current DB.
-5. Write migration tests with representative current DB fixture.
+4. Choose destructive reset by default unless a migration is genuinely simpler.
+5. If migration is retained for a table family, write a representative fixture test.
 6. Implement repositories.
 7. Add repository contract tests.
-8. Add backup-before-migration path.
+8. Add one reset/migration owner that prevents mixed old/new state.
 
 DAO grouping:
 
@@ -2735,7 +2757,7 @@ For every rewrite PR/slice:
 - No background worker owns product logic.
 - No sync path bypasses import/adaptive settings.
 - No FSRS update without fixture impact.
-- No settings change without old-install migration.
+- No settings change without an explicit reset/default/migration decision.
 - No provider change without fake and, when needed, live provider validation.
 
 ## 12. Testing Strategy
@@ -2817,7 +2839,7 @@ Before switching subsystems, build comparison harnesses:
 
 - old scheduler vs new scheduler for representative study items
 - old import analysis vs new import analysis for fixture snapshots
-- old DB migrated to new DB and queried for equivalent domain data
+- legacy DB reset/migration path opens the new app cleanly and rebuilds from sync
 - old FSRS Java vs new FSRS Kotlin
 - old Study progress snapshot vs new progress calculator
 
@@ -2921,8 +2943,8 @@ Before tagging a release from the rewritten app:
 
 - `ciFast` passes locally.
 - Signed release build passes locally.
-- Migration tested from current production DB.
-- App launches after migration on emulator.
+- Legacy DB reset/migration path tested on emulator.
+- App launches after reset/migration on emulator.
 - Manual sync works against fake provider.
 - Manual sync works against real AnkiDroid if provider/sync touched.
 - Study can complete at least one session.
@@ -2957,22 +2979,24 @@ Must preserve:
 - local kanji suspensions
 - update state if persisted
 
-### 14.2 Migration Safety Path
+### 14.2 Reset And Migration Safety Path
 
-Recommended migration implementation:
+Recommended implementation:
 
-1. On first launch of rewritten app, detect old DB version/name.
-2. Create local backup of old DB.
-3. Run Room migration in transaction where possible.
-4. Validate critical tables/counts after migration.
-5. Mark migration success.
-6. If migration fails, keep old DB backup and show recoverable error.
+1. On first launch of rewritten app, detect legacy DB version/name.
+2. If the legacy DB is incompatible with the clean Room schema, move or delete
+   it through one reset owner before opening the new database.
+3. Initialize Room/DataStore from domain defaults.
+4. Show clear status that Kani needs a fresh AnkiDroid sync.
+5. Keep AnkiDroid source data untouched.
+6. Only run a non-destructive migration for a table family if it is simpler
+   than reset-and-resync and has a focused fixture test.
 
-Validation after migration:
+Validation after reset/migration:
 
-- settings rows/typed settings load
-- study item count
-- review log count
+- typed settings load from current defaults or intentional migrated values
+- app opens to a coherent empty/sync-needed state
+- first sync rebuilds source mirror and dashboard data
 - suspended archive count
 - sync run count
 - timeline event count
@@ -3076,16 +3100,16 @@ Done when:
 Deliverables:
 
 - Room entities/DAOs
-- migrations from current DB
+- reset/migration owner
 - repositories
-- migration tests
+- reset/migration tests where a migration is deliberately kept
 - repository tests
 
 Done when:
 
-- current DB fixture migrates
+- legacy DB/reset fixture opens the app cleanly
 - repositories expose equivalent data
-- no data loss in critical tables
+- clean sync rebuilds critical data
 
 ### Step 6: Sync Domain Rewrite
 
