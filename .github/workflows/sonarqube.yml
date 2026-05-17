@@ -13,8 +13,17 @@ on:
       - main
     paths:
       - 'app/**'
+      - 'ankidroid/**'
       - 'core/**'
+      - 'data/**'
+      - 'designsystem/**'
+      - 'dictionary-android/**'
+      - 'dictionary-core/**'
+      - 'domain/**'
+      - 'fsrs/**'
       - 'fsrs-java/**'
+      - 'writing-android/**'
+      - 'writing-core/**'
       - 'tools/**'
       - '.github/workflows/sonarqube.yml'
       - 'build.gradle*'
@@ -65,6 +74,7 @@ jobs:
           APP_CHANGED=false
           CORE_CHANGED=false
           FSRS_CHANGED=false
+          REWRITE_CHANGED=false
           GRADLE_CHANGED=false
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -78,8 +88,11 @@ jobs:
                 core/*)
                   CORE_CHANGED=true
                   ;;
-                fsrs-java/*)
+                fsrs/*|fsrs-java/*)
                   FSRS_CHANGED=true
+                  ;;
+                ankidroid/*|data/*|designsystem/*|dictionary-android/*|dictionary-core/*|domain/*|writing-android/*|writing-core/*)
+                  REWRITE_CHANGED=true
                   ;;
                 build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/sonarqube.yml)
                   GRADLE_CHANGED=true
@@ -91,6 +104,7 @@ jobs:
           echo "app=$APP_CHANGED" >> "$GITHUB_OUTPUT"
           echo "core=$CORE_CHANGED" >> "$GITHUB_OUTPUT"
           echo "fsrs=$FSRS_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "rewrite=$REWRITE_CHANGED" >> "$GITHUB_OUTPUT"
           echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Select coverage mode
@@ -127,11 +141,11 @@ jobs:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.rewrite == 'true' || steps.changed-areas.outputs.gradle == 'true'
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.rewrite == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
@@ -158,10 +172,13 @@ jobs:
           set -euo pipefail
           TASKS=()
           if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :fsrs-java:test :fsrs-java:jacocoTestReport )
+            TASKS+=( :fsrs:test :fsrs-java:test :fsrs-java:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :core:test :core:jacocoTestReport )
+          fi
+          if [ "${{ steps.changed-areas.outputs.rewrite }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS+=( :domain:test :dictionary-core:test :writing-core:test :designsystem:compileDebugKotlin :data:compileDebugKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin )
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac )
@@ -169,7 +186,7 @@ jobs:
           if [ ${#TASKS[@]} -eq 0 ]; then
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          ./gradlew :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          ./gradlew :fsrs:jar :domain:jar :dictionary-core:jar :writing-core:jar :core:jar :designsystem:compileDebugKotlin :data:compileDebugKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
           ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
 
       - name: Build and analyze (full connected coverage)
@@ -189,8 +206,17 @@ jobs:
             ./gradlew \
               :core:test \
               :core:jacocoTestReport \
+              :fsrs:test \
               :fsrs-java:test \
               :fsrs-java:jacocoTestReport \
+              :domain:test \
+              :dictionary-core:test \
+              :writing-core:test \
+              :designsystem:compileDebugKotlin \
+              :data:compileDebugKotlin \
+              :ankidroid:compileDebugKotlin \
+              :dictionary-android:compileDebugKotlin \
+              :writing-android:compileDebugKotlin \
               :app:testDebugUnitTest \
               :app:jacocoDebugUnitTestReport \
               :app:lintDebug \

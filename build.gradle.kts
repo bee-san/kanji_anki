@@ -1,11 +1,32 @@
 import org.gradle.api.tasks.Exec
 
 plugins {
-    id("com.android.application") version "9.1.0" apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.hilt.android) apply false
     id("org.sonarqube") version "7.3.0.8198"
 }
 
 fun rootPath(path: String): String = layout.projectDirectory.dir(path).asFile.absolutePath
+fun jvmMainBinaries(module: String) = listOf(
+    rootPath("$module/build/classes/java/main"),
+    rootPath("$module/build/classes/kotlin/main"),
+)
+fun jvmTestBinaries(module: String) = listOf(
+    rootPath("$module/build/classes/java/test"),
+    rootPath("$module/build/classes/kotlin/test"),
+)
+fun androidMainBinaries(module: String) = listOf(
+    rootPath("$module/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
+    rootPath("$module/build/tmp/kotlin-classes/debug"),
+)
+fun androidTestBinaries(module: String) = listOf(
+    rootPath("$module/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes"),
+    rootPath("$module/build/tmp/kotlin-classes/debugUnitTest"),
+)
 val sonarProjectVersion = providers.gradleProperty("sonarProjectVersion")
     .orElse(providers.gradleProperty("KANI_VERSION_NAME"))
     .orElse(providers.gradleProperty("KANJI_ANKI_VERSION_NAME"))
@@ -14,16 +35,26 @@ val sonarProjectVersion = providers.gradleProperty("sonarProjectVersion")
     .orElse("0.4.33")
 
 val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String::toBoolean).getOrElse(false)
-val maybeSonarMainBinaries = listOf(
-    rootPath("fsrs-java/build/classes"),
-    rootPath("core/build/classes"),
-    rootPath("app/build/intermediates/javac"),
+val jvmModules = listOf(
+    "fsrs",
+    "domain",
+    "dictionary-core",
+    "writing-core",
+    "fsrs-java",
+    "core",
 )
-val maybeSonarTestBinaries = listOf(
-    rootPath("fsrs-java/build/classes"),
-    rootPath("core/build/classes"),
-    rootPath("app/build/intermediates/javac"),
+val androidModules = listOf(
+    "designsystem",
+    "data",
+    "ankidroid",
+    "dictionary-android",
+    "writing-android",
+    "app",
 )
+val maybeSonarMainBinaries = jvmModules.flatMap(::jvmMainBinaries) +
+    androidModules.flatMap(::androidMainBinaries)
+val maybeSonarTestBinaries = jvmModules.flatMap(::jvmTestBinaries) +
+    androidModules.flatMap(::androidTestBinaries)
 val maybeSonarCoveragePaths = buildList<String> {
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -72,6 +103,15 @@ tasks.register<Exec>("testDictionaryAssets") {
 }
 
 val fastCiTasks = listOf(
+    ":fsrs:test",
+    ":domain:test",
+    ":dictionary-core:test",
+    ":writing-core:test",
+    ":designsystem:compileDebugKotlin",
+    ":data:compileDebugKotlin",
+    ":ankidroid:compileDebugKotlin",
+    ":dictionary-android:compileDebugKotlin",
+    ":writing-android:compileDebugKotlin",
     ":fsrs-java:test",
     ":fsrs-java:jacocoTestReport",
     ":fsrs-java:jacocoTestCoverageVerification",

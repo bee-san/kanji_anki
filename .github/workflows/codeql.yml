@@ -7,8 +7,17 @@ on:
       - main
     paths:
       - 'app/**'
+      - 'ankidroid/**'
       - 'core/**'
+      - 'data/**'
+      - 'designsystem/**'
+      - 'dictionary-android/**'
+      - 'dictionary-core/**'
+      - 'domain/**'
+      - 'fsrs/**'
       - 'fsrs-java/**'
+      - 'writing-android/**'
+      - 'writing-core/**'
       - '.github/workflows/codeql.yml'
       - 'build.gradle*'
       - 'settings.gradle*'
@@ -65,7 +74,16 @@ jobs:
         run: |
           ./gradlew clean \
             :fsrs-java:compileJava \
+            :fsrs:compileKotlin \
             :core:compileJava \
+            :domain:compileKotlin \
+            :dictionary-core:compileKotlin \
+            :writing-core:compileKotlin \
+            :designsystem:compileDebugKotlin \
+            :data:compileDebugKotlin \
+            :ankidroid:compileDebugKotlin \
+            :dictionary-android:compileDebugKotlin \
+            :writing-android:compileDebugKotlin \
             :app:compileDebugJavaWithJavac \
             --no-daemon \
             --no-build-cache \

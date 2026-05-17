@@ -7,8 +7,17 @@ on:
       - main
     paths:
       - 'app/**'
+      - 'ankidroid/**'
       - 'core/**'
+      - 'data/**'
+      - 'designsystem/**'
+      - 'dictionary-android/**'
+      - 'dictionary-core/**'
+      - 'domain/**'
+      - 'fsrs/**'
       - 'fsrs-java/**'
+      - 'writing-android/**'
+      - 'writing-core/**'
       - 'ci/scripts/**'
       - 'ci/fixtures/ankidroid/**'
       - 'tools/**'
@@ -23,8 +32,17 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - 'app/**'
+      - 'ankidroid/**'
       - 'core/**'
+      - 'data/**'
+      - 'designsystem/**'
+      - 'dictionary-android/**'
+      - 'dictionary-core/**'
+      - 'domain/**'
+      - 'fsrs/**'
       - 'fsrs-java/**'
+      - 'writing-android/**'
+      - 'writing-core/**'
       - 'ci/scripts/**'
       - 'ci/fixtures/ankidroid/**'
       - 'tools/**'
@@ -53,12 +71,20 @@ jobs:
         include:
           - id: jvm
             label: JVM tests and coverage
-            tasks: ':fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification'
+            tasks: ':fsrs:test :domain:test :dictionary-core:test :writing-core:test :fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification'
             reports: |
               core/build/reports/**
+              dictionary-core/build/reports/**
+              domain/build/reports/**
+              fsrs/build/reports/**
               fsrs-java/build/reports/**
+              writing-core/build/reports/**
               core/build/test-results/**
+              dictionary-core/build/test-results/**
+              domain/build/test-results/**
+              fsrs/build/test-results/**
               fsrs-java/build/test-results/**
+              writing-core/build/test-results/**
           - id: app-unit
             label: App unit tests and coverage
             tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
@@ -68,10 +94,14 @@ jobs:
               app/build/test-results/**
           - id: app-static
             label: App lint and androidTest compile
-            tasks: ':app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
+            tasks: ':designsystem:compileDebugKotlin :data:compileDebugKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
             reports: |
               app/build/reports/**
               app/build/outputs/androidTest-results/**
+              data/build/reports/**
+              designsystem/build/reports/**
+              dictionary-android/build/reports/**
+              writing-android/build/reports/**
 
     steps:
       - name: Check out repository
