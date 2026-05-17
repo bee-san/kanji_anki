@@ -15,13 +15,18 @@ enum class StudyItemState(val wireName: String) {
     }
 }
 
-data class StudyExample(
+data class StudyExample @JvmOverloads constructor(
     val sourceType: String,
     val expression: String,
     val reading: String,
     val meaning: String,
     val fsrsDifficulty: Double? = null,
     val fsrsRetrievability: Double? = null,
+    val mature: Boolean = false,
+    val lapses: Int = 0,
+    val intervalDays: Int = 0,
+    val reps: Int = 0,
+    val fsrsStability: Double? = null,
 )
 
 data class StudyDashboardRow(

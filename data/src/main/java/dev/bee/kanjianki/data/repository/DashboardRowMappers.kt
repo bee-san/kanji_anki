@@ -29,4 +29,9 @@ internal fun KanjiExampleEntity.toDomain(): StudyExample = StudyExample(
     meaning = meaning,
     fsrsDifficulty = fsrsDifficulty,
     fsrsRetrievability = fsrsRetrievability,
+    mature = mature != 0,
+    lapses = lapses,
+    intervalDays = intervalDays,
+    reps = reps,
+    fsrsStability = fsrsStability,
 )

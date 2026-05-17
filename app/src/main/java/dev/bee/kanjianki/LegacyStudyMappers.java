@@ -197,7 +197,12 @@ final class LegacyStudyMappers {
                 example.reading,
                 example.meaning,
                 example.fsrsDifficulty,
-                example.fsrsRetrievability
+                example.fsrsRetrievability,
+                example.mature,
+                example.lapses,
+                example.intervalDays,
+                example.reps,
+                example.fsrsStability
         );
     }
 

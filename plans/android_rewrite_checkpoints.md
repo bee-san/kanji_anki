@@ -564,6 +564,20 @@ Current artifacts:
   mapping with decoded task memory and dashboard row/example mapping.
 - `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
   active dashboard rows.
+- `AdaptiveStudyPlanner` in `:domain` ports the current Pareto/adaptive
+  workload planning algorithm, including manual focus sizing, auto drop-off
+  detection, due-recovery priority, remaining-count behavior, and FSRS/example
+  risk scoring.
+- `AdaptiveStudyPlannerTest` covers:
+  - default Pareto sizing, very-low workload, and manual all-kanji behavior.
+  - recent-review strain and steady-streak target adjustment.
+  - due recovery filling or capping admissions.
+  - learning cards with future step times still counting as remaining.
+  - FSRS retrievability, difficulty, stability, interval, rep, and lapse
+    ordering inputs.
+  - auto Pareto drop-off detection, composite priority ordering, and max-item
+    caps.
+  - workload labels, ceilings, and null-plan fallback.
 
 Explicit gaps:
 
@@ -578,7 +592,9 @@ Explicit gaps:
   write path.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
   until the detail screen is moved to the Room repository.
-- Adaptive planner split is not ported yet.
+- Adaptive planner is ported into `:domain`, but runtime settings/study
+  surfaces still use the legacy Java planner until a bridge or use case wires
+  the new planner in.
 
 Verification commands:
 
@@ -588,6 +604,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 ```
 
 Result: `BUILD SUCCESSFUL`.
+
+The same `:domain:test` command passed after adding `AdaptiveStudyPlanner` and
+`AdaptiveStudyPlannerTest`.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
