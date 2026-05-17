@@ -1064,3 +1064,8 @@ the visible Java runtime while Room study ownership is disabled:
   current provider snapshot still owns sync counts, import audit rows, and
   archive cleanup; retained archive evidence is analysis-only so second syncs do
   not drop suspended-only practice candidates after AnkiDroid archive tagging.
+- `RoomLocalKanjiSuspensionBridge` maps the legacy detail-page local
+  suspend/unsuspend action to `StudyDashboardRepository.setLocallySuspended`
+  behind the same Room study ownership gate as review writes. It is staged for
+  cutover and is not wired into `MainActivityHome` while legacy `LocalStore`
+  owns the visible runtime.
