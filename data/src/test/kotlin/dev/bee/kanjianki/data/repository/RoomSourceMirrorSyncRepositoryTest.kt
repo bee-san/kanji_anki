@@ -18,6 +18,8 @@ import dev.bee.kanjianki.data.inventory.DashboardRowDao
 import dev.bee.kanjianki.data.inventory.DashboardRowEntity
 import dev.bee.kanjianki.data.inventory.KanjiExampleDao
 import dev.bee.kanjianki.data.inventory.KanjiExampleEntity
+import dev.bee.kanjianki.data.inventory.KanjiInventoryDao
+import dev.bee.kanjianki.data.inventory.KanjiInventoryEntity
 import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceCardEntity
 import dev.bee.kanjianki.data.source.SourceNoteDao
@@ -68,6 +70,21 @@ class RoomSourceMirrorSyncRepositoryTest {
         val suspendedSources = FakeSuspendedSourceDao()
         val dashboardRows = FakeDashboardRowDao()
         val kanjiExamples = FakeKanjiExampleDao()
+        val kanjiInventory = FakeKanjiInventoryDao(
+            existing = listOf(
+                KanjiInventoryEntity(
+                    kanji = "古",
+                    primaryMeaning = "old",
+                    readings = "ふる",
+                    browserSearch = "note:Kiku Expression:*古*",
+                    searchText = "古 old",
+                    sourceCount = 9,
+                    exampleCount = 8,
+                    firstSeenAt = 4,
+                    lastSeenAt = 5,
+                ),
+            ),
+        )
         val syncNoteSnapshots = FakeSyncNoteSnapshotDao()
         val syncCardSnapshots = FakeSyncCardSnapshotDao()
         var transactions = 0
@@ -82,6 +99,7 @@ class RoomSourceMirrorSyncRepositoryTest {
             suspendedSources = suspendedSources,
             dashboardRows = dashboardRows,
             kanjiExamples = kanjiExamples,
+            kanjiInventory = kanjiInventory,
             syncNoteSnapshots = syncNoteSnapshots,
             syncCardSnapshots = syncCardSnapshots,
             runInTransaction = { block ->
@@ -149,6 +167,11 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(20L, dashboardRows.upserted.single().rebuiltAt)
         assertEquals(listOf(10L), kanjiExamples.upserted.map { it.cardId })
         assertEquals("日本へ行く。", kanjiExamples.upserted.single().sentence)
+        assertEquals(setOf("古", "日", "本"), kanjiInventory.upserted.map { it.kanji }.toSet())
+        assertEquals(4L, kanjiInventory.upserted.single { it.kanji == "古" }.firstSeenAt)
+        assertEquals(9, kanjiInventory.upserted.single { it.kanji == "古" }.sourceCount)
+        assertEquals(20L, kanjiInventory.upserted.single { it.kanji == "日" }.lastSeenAt)
+        assertTrue(kanjiInventory.upserted.single { it.kanji == "日" }.searchText.contains("日本"))
     }
 
     private class FakeSyncRunDao(
@@ -383,6 +406,27 @@ class RoomSourceMirrorSyncRepositoryTest {
         override suspend fun deleteAll() {
             deletedAll = true
             upserted.clear()
+        }
+    }
+
+    private class FakeKanjiInventoryDao(
+        existing: List<KanjiInventoryEntity> = emptyList(),
+    ) : KanjiInventoryDao {
+        val upserted = existing.toMutableList()
+
+        override fun observeAll(): Flow<List<KanjiInventoryEntity>> = emptyFlow()
+
+        override suspend fun get(kanji: String): KanjiInventoryEntity? =
+            upserted.firstOrNull { it.kanji == kanji }
+
+        override suspend fun listAll(): List<KanjiInventoryEntity> =
+            upserted.sortedBy { it.kanji }
+
+        override suspend fun upsertAll(items: List<KanjiInventoryEntity>) {
+            for (item in items) {
+                upserted.removeAll { it.kanji == item.kanji }
+                upserted += item
+            }
         }
     }
 

@@ -13,6 +13,9 @@ interface KanjiInventoryDao {
     @Query("SELECT * FROM kanji_inventory WHERE kanji = :kanji")
     suspend fun get(kanji: String): KanjiInventoryEntity?
 
+    @Query("SELECT * FROM kanji_inventory ORDER BY kanji ASC")
+    suspend fun listAll(): List<KanjiInventoryEntity>
+
     @Upsert
     suspend fun upsertAll(items: List<KanjiInventoryEntity>)
 }

@@ -14,6 +14,7 @@ import dev.bee.kanjianki.data.importing.SuspendedImportDao
 import dev.bee.kanjianki.data.importing.SuspendedSourceDao
 import dev.bee.kanjianki.data.inventory.DashboardRowDao
 import dev.bee.kanjianki.data.inventory.KanjiExampleDao
+import dev.bee.kanjianki.data.inventory.KanjiInventoryDao
 import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceNoteDao
 import dev.bee.kanjianki.data.sync.SyncRunDao
@@ -25,6 +26,7 @@ import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
+import dev.bee.kanjianki.domain.sync.SyncKanjiInventoryBuilder
 
 class RoomSourceMirrorSyncRepository internal constructor(
     private val syncRuns: SyncRunDao,
@@ -37,6 +39,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val suspendedSources: SuspendedSourceDao,
     private val dashboardRows: DashboardRowDao,
     private val kanjiExamples: KanjiExampleDao,
+    private val kanjiInventory: KanjiInventoryDao,
     private val syncNoteSnapshots: SyncNoteSnapshotDao,
     private val syncCardSnapshots: SyncCardSnapshotDao,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
@@ -52,6 +55,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         suspendedSources = database.suspendedSourceDao(),
         dashboardRows = database.dashboardRowDao(),
         kanjiExamples = database.kanjiExampleDao(),
+        kanjiInventory = database.kanjiInventoryDao(),
         syncNoteSnapshots = database.syncNoteSnapshotDao(),
         syncCardSnapshots = database.syncCardSnapshotDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
@@ -87,6 +91,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
         recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
         recordDashboardRows(finishedAt, dashboardRows)
+        recordKanjiInventory(finishedAt, notes, cards, importCandidates, dashboardRows, settings)
         syncRunId
     }
 
@@ -139,6 +144,30 @@ class RoomSourceMirrorSyncRepository internal constructor(
         }
         this.dashboardRows.upsertAll(rows.map { it.toEntity(rebuiltAt) })
         kanjiExamples.upsertAll(rows.flatMap { it.toExampleEntities() })
+    }
+
+    private suspend fun recordKanjiInventory(
+        nowMillis: Long,
+        notes: List<SourceNote>,
+        cards: List<SourceCard>,
+        importCandidates: List<ImportedKanjiCandidate>,
+        dashboardRows: List<StudyDashboardRow>,
+        settings: ImportSettings,
+    ) {
+        val previous = kanjiInventory.listAll().associateBy { it.kanji }
+        val records = SyncKanjiInventoryBuilder().build(
+            notes = notes,
+            cards = cards,
+            importCandidates = importCandidates,
+            dashboardRows = dashboardRows,
+            settings = settings,
+            knownKanji = previous.keys,
+        )
+        kanjiInventory.upsertAll(
+            records.map { record ->
+                record.toEntity(previous[record.kanji], nowMillis)
+            },
+        )
     }
 
     private suspend fun recordSuspendedArchive(
