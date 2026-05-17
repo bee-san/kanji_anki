@@ -98,7 +98,7 @@ jobs:
               data/build/test-results/**
           - id: app-static
             label: App lint and androidTest compile
-            tasks: ':designsystem:compileDebugKotlin :data:compileDebugKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
+            tasks: ':designsystem:compileDebugKotlin :data:compileDebugKotlin :data:compileDebugAndroidTestKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'
             reports: |
               app/build/reports/**
               app/build/outputs/androidTest-results/**
