@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.ankidroid
 
+import android.content.ContentValues
 import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
@@ -7,6 +8,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.OperationCanceledException
+import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
@@ -17,13 +19,15 @@ import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.sync.CollectionGateway
 import dev.bee.kanjianki.domain.sync.CollectionGatewayException
 import dev.bee.kanjianki.domain.sync.CollectionSnapshot
+import dev.bee.kanjianki.domain.sync.SuspendedCardArchiveGateway
+import dev.bee.kanjianki.domain.sync.SuspendedCardArchiveSummary
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 
 class AnkiDroidCollectionGateway(
     private val provider: AnkiDroidProviderClient,
     private val targets: List<AnkiDroidProviderTarget> = AnkiDroidProviderTarget.defaults,
-) : CollectionGateway {
+) : CollectionGateway, SuspendedCardArchiveGateway {
     constructor(context: Context) : this(AndroidAnkiDroidProviderClient(context.applicationContext))
 
     override suspend fun readCollection(settings: ImportSettings): CollectionSnapshot {
@@ -84,6 +88,36 @@ class AnkiDroidCollectionGateway(
                 cause = error,
             )
         }
+    }
+
+    override suspend fun archiveSelectedSuspendedCards(
+        snapshot: CollectionSnapshot,
+        importCandidates: List<ImportedKanjiCandidate>,
+    ): SuspendedCardArchiveSummary {
+        val target = provider.resolveTarget(targets)
+            ?: return SuspendedCardArchiveSummary(0, 0, "No provider removal attempted.")
+        if (snapshot.cards.isEmpty()) {
+            return SuspendedCardArchiveSummary(0, 0, "No provider removal attempted.")
+        }
+        val index = SuspendedCardArchiveIndex.from(snapshot.cards, selectedSuspendedCardIds(importCandidates))
+        if (index.suspendedCards.isEmpty()) {
+            return SuspendedCardArchiveSummary(0, 0, "No suspended cards needed provider cleanup.")
+        }
+
+        var tagged = 0
+        var failed = index.partiallySuspendedCardCount()
+        for (noteId in index.notesFullySuspended()) {
+            if (tagNoteArchived(target, noteId)) {
+                tagged++
+            } else {
+                failed++
+            }
+        }
+        return SuspendedCardArchiveSummary(
+            sourceCards = index.suspendedCards.size,
+            taggedNotes = tagged,
+            message = removalMessage(tagged, failed),
+        )
     }
 
     private fun findConfiguredModel(
@@ -363,6 +397,62 @@ class AnkiDroidCollectionGateway(
     private fun configuredBrowserQuerySearch(settings: ImportSettings): String =
         "note:\"${settings.noteMapping.noteTypeName}\" (${settings.importBrowserQuery.trim()})"
 
+    private fun selectedSuspendedCardIds(importCandidates: List<ImportedKanjiCandidate>): Set<Long> =
+        importCandidates.flatMap { candidate ->
+            candidate.sources.filter { it.suspended }.map { it.cardId.value }
+        }.toSet()
+
+    private fun tagNoteArchived(
+        target: AnkiDroidProviderTarget,
+        noteId: Long,
+    ): Boolean {
+        return try {
+            val tags = provider.query(
+                target.authority,
+                listOf("notes", noteId.toString()),
+                projection = listOf(COLUMN_TAGS),
+                selection = null,
+                selectionArgs = null,
+            )?.use { cursor ->
+                if (cursor.moveToNext()) {
+                    cursor.string(COLUMN_TAGS).orEmpty()
+                } else {
+                    ""
+                }
+            }.orEmpty()
+            val nextTags = if (isArchivedTagPresent(splitTags(tags))) {
+                tags
+            } else {
+                "$tags $ARCHIVED_TAG".trim()
+            }
+            provider.update(
+                target.authority,
+                listOf("notes", noteId.toString()),
+                values = mapOf(COLUMN_TAGS to nextTags),
+                selection = null,
+                selectionArgs = null,
+            ) > 0
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun removalMessage(
+        tagged: Int,
+        failed: Int,
+    ): String {
+        return when {
+            tagged > 0 && failed == 0 ->
+                "Archived suspended notes were tagged in AnkiDroid and hidden from future syncs."
+            tagged > 0 ->
+                "Archived suspended notes were partly tagged in AnkiDroid; any leftovers stay in the local archive."
+            else ->
+                "Archived suspended cards were kept in the local archive; AnkiDroid did not allow provider tagging."
+        }
+    }
+
     private data class ModelMapping(
         val modelId: Long,
         val name: String,
@@ -380,6 +470,62 @@ class AnkiDroidCollectionGateway(
         val difficulty: Double?,
         val retrievability: Double?,
     )
+
+    private data class SuspendedCardArchiveIndex(
+        val cardsByNote: Map<Long, Int>,
+        val suspendedByNote: Map<Long, Int>,
+        val selectedSuspendedByNote: Map<Long, Int>,
+        val suspendedCards: List<SourceCard>,
+    ) {
+        fun notesFullySuspended(): Set<Long> =
+            suspendedCards.mapNotNullTo(linkedSetOf()) { card ->
+                val noteId = card.noteId.value
+                if (cardsByNote[noteId] == suspendedByNote[noteId] &&
+                    suspendedByNote[noteId] == selectedSuspendedByNote[noteId]
+                ) {
+                    noteId
+                } else {
+                    null
+                }
+            }
+
+        fun partiallySuspendedCardCount(): Int =
+            suspendedCards.count { card ->
+                val noteId = card.noteId.value
+                cardsByNote[noteId] != suspendedByNote[noteId] ||
+                    suspendedByNote[noteId] != selectedSuspendedByNote[noteId]
+            }
+
+        companion object {
+            fun from(
+                cards: List<SourceCard>,
+                selectedSuspendedCardIds: Set<Long>,
+            ): SuspendedCardArchiveIndex {
+                val cardsByNote = linkedMapOf<Long, Int>()
+                val suspendedByNote = linkedMapOf<Long, Int>()
+                val selectedSuspendedByNote = linkedMapOf<Long, Int>()
+                val suspendedCards = mutableListOf<SourceCard>()
+                for (card in cards) {
+                    val noteId = card.noteId.value
+                    cardsByNote[noteId] = cardsByNote.getOrDefault(noteId, 0) + 1
+                    if (!card.suspended) {
+                        continue
+                    }
+                    suspendedByNote[noteId] = suspendedByNote.getOrDefault(noteId, 0) + 1
+                    if (card.cardId.value in selectedSuspendedCardIds) {
+                        suspendedCards += card
+                        selectedSuspendedByNote[noteId] = selectedSuspendedByNote.getOrDefault(noteId, 0) + 1
+                    }
+                }
+                return SuspendedCardArchiveIndex(
+                    cardsByNote = cardsByNote,
+                    suspendedByNote = suspendedByNote,
+                    selectedSuspendedByNote = selectedSuspendedByNote,
+                    suspendedCards = suspendedCards,
+                )
+            }
+        }
+    }
 
     private companion object {
         const val DEFAULT_MODEL_NAME = "Kiku"
@@ -447,6 +593,9 @@ class AnkiDroidCollectionGateway(
 
         fun splitTags(value: String): List<String> =
             value.split(Regex("\\s+")).mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+
+        fun isArchivedTagPresent(tags: List<String>): Boolean =
+            ARCHIVED_TAG in tags || LEGACY_ARCHIVED_TAG in tags
 
         fun selectRequiredFields(
             modelFields: List<String>,
@@ -517,6 +666,14 @@ interface AnkiDroidProviderClient {
         selection: String?,
         selectionArgs: List<String>?,
     ): AnkiDroidCursor?
+
+    fun update(
+        authority: String,
+        pathSegments: List<String>,
+        values: Map<String, String>,
+        selection: String?,
+        selectionArgs: List<String>?,
+    ): Int
 }
 
 interface AnkiDroidCursor : AutoCloseable {
@@ -576,6 +733,26 @@ private class AndroidAnkiDroidProviderClient(
             selectionArgs?.toTypedArray(),
             null,
         )?.let(::AndroidAnkiDroidCursor)
+    }
+
+    override fun update(
+        authority: String,
+        pathSegments: List<String>,
+        values: Map<String, String>,
+        selection: String?,
+        selectionArgs: List<String>?,
+    ): Int {
+        val uri = Uri.Builder().scheme("content").authority(authority).apply {
+            for (segment in pathSegments) {
+                appendPath(segment)
+            }
+        }.build()
+        val contentValues = ContentValues().apply {
+            for ((key, value) in values) {
+                put(key, value)
+            }
+        }
+        return resolver.update(uri, contentValues, selection, selectionArgs?.toTypedArray())
     }
 }
 

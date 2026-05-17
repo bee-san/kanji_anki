@@ -385,6 +385,10 @@ Current artifacts:
 - `AnkiDroidCollectionGateway` preserves coroutine cancellation through provider
   fallback paths and maps browser-query provider exceptions to permanent
   configuration failures, matching the legacy user-facing invalid-filter policy.
+- `SuspendedCardArchiveGateway` gives the domain sync path a provider cleanup
+  boundary. `AnkiDroidCollectionGateway` tags fully selected suspended notes
+  with `kani_archived`, keeps partial-note cases local, and `RunSourceMirrorSyncUseCase`
+  stores the cleanup message after the local sync transaction is committed.
 - `LegacySyncMappers`, `LegacySyncRequestFactory`, and
   `CoreSimilarKanjiIndexAdapter` in `:app` bridge current `LocalStore`,
   `SyncSettings`, adaptive settings, ladder settings, and the bundled
@@ -396,8 +400,6 @@ Current artifacts:
 
 Explicit gaps:
 
-- No post-provider archive cleanup equivalent to legacy
-  `removeArchivedSuspendedCards()` in the new domain path yet.
 - No progress callback surface for `SyncProgressPanel` yet.
 - Manual and background sync still use the legacy Java path. This is
   deliberate until Home/Study reads the same Room data that the new sync path
@@ -518,6 +520,15 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 Result: `BUILD SUCCESSFUL`; AnkiDroid gateway tests cover cancellation
 preservation and permanent configuration classification for invalid browser
 query provider failures.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test :ankidroid:testDebugUnitTest :app:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; focused tests cover archive cleanup message
+persistence, provider tagging for fully selected suspended notes, partial-note
+local retention, and Hilt wiring.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

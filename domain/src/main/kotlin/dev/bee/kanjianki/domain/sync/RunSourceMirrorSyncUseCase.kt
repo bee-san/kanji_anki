@@ -38,6 +38,7 @@ class RunSourceMirrorSyncUseCase(
     private val queueSeeder: StudyQueueSeeder = StudyQueueSeeder(),
     private val adaptiveStudyPlanner: AdaptiveStudyPlanner = AdaptiveStudyPlanner(),
     private val executionGate: SyncExecutionGate = SyncExecutionGate(),
+    private val archiveGateway: SuspendedCardArchiveGateway = NoOpSuspendedCardArchiveGateway,
 ) {
     suspend operator fun invoke(settings: ImportSettings): SyncRunId =
         invoke(RunSourceMirrorSyncRequest(importSettings = settings))
@@ -54,7 +55,7 @@ class RunSourceMirrorSyncUseCase(
             val dashboardRows = dashboardBuilder.build(importCandidates, settings)
             val finishedAt = clock.nowMillis()
             val seededQueueItems = seedQueueItems(request, dashboardRows, finishedAt)
-            sourceMirrorSync.recordSuccessfulSnapshot(
+            val syncRunId = sourceMirrorSync.recordSuccessfulSnapshot(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
                 notes = snapshot.notes,
                 cards = snapshot.cards,
@@ -64,6 +65,8 @@ class RunSourceMirrorSyncUseCase(
                 seededQueueItems = seededQueueItems,
                 similarKanjiIndex = request.similarKanjiIndex,
             )
+            recordArchiveCleanup(syncRunId, snapshot, importCandidates)
+            syncRunId
         } catch (error: CollectionGatewayException) {
             val finishedAt = clock.nowMillis()
             syncRuns.insert(failureRun(startedAt, finishedAt, error))
@@ -72,6 +75,31 @@ class RunSourceMirrorSyncUseCase(
         } catch (error: Exception) {
             val finishedAt = clock.nowMillis()
             syncRuns.insert(unexpectedFailureRun(startedAt, finishedAt, error))
+        }
+    }
+
+    private suspend fun recordArchiveCleanup(
+        syncRunId: SyncRunId,
+        snapshot: CollectionSnapshot,
+        importCandidates: List<ImportedKanjiCandidate>,
+    ) {
+        val message = try {
+            archiveGateway.archiveSelectedSuspendedCards(snapshot, importCandidates).message
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            "Archived suspended cards were kept in the local archive; provider cleanup failed."
+        }
+        if (message.isBlank()) {
+            return
+        }
+        try {
+            val syncRun = syncRuns.get(syncRunId) ?: return
+            syncRuns.update(syncRun.copy(removalMessage = message))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // Local sync data is already committed; a cleanup-status update should not create a second failed run.
         }
     }
 

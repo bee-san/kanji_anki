@@ -17,6 +17,7 @@ import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner;
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeeder;
 import dev.bee.kanjianki.domain.sync.CollectionGateway;
 import dev.bee.kanjianki.domain.sync.RunSourceMirrorSyncUseCase;
+import dev.bee.kanjianki.domain.sync.SuspendedCardArchiveGateway;
 import dev.bee.kanjianki.domain.sync.SyncExecutionGate;
 import dev.bee.kanjianki.domain.sync.SyncDashboardBuilder;
 import dev.bee.kanjianki.sync.AndroidKanjiRankLookup;
@@ -30,8 +31,20 @@ public final class KaniSyncModule {
 
     @Provides
     @Singleton
-    static CollectionGateway provideCollectionGateway(@ApplicationContext Context context) {
+    static AnkiDroidCollectionGateway provideAnkiDroidCollectionGateway(@ApplicationContext Context context) {
         return new AnkiDroidCollectionGateway(context);
+    }
+
+    @Provides
+    @Singleton
+    static CollectionGateway provideCollectionGateway(AnkiDroidCollectionGateway gateway) {
+        return gateway;
+    }
+
+    @Provides
+    @Singleton
+    static SuspendedCardArchiveGateway provideSuspendedCardArchiveGateway(AnkiDroidCollectionGateway gateway) {
+        return gateway;
     }
 
     @Provides
@@ -71,7 +84,8 @@ public final class KaniSyncModule {
             SyncDashboardBuilder syncDashboardBuilder,
             dev.bee.kanjianki.domain.common.AppClock clock,
             StudyQueueRepository studyQueueRepository,
-            SyncExecutionGate syncExecutionGate
+            SyncExecutionGate syncExecutionGate,
+            SuspendedCardArchiveGateway suspendedCardArchiveGateway
     ) {
         return new RunSourceMirrorSyncUseCase(
                 gateway,
@@ -83,7 +97,8 @@ public final class KaniSyncModule {
                 studyQueueRepository,
                 new StudyQueueSeeder(),
                 new AdaptiveStudyPlanner(),
-                syncExecutionGate
+                syncExecutionGate,
+                suspendedCardArchiveGateway
         );
     }
 }

@@ -335,6 +335,32 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(SyncRunId(1), firstRun.await())
     }
 
+    @Test
+    fun successfulReadStoresArchiveCleanupMessage() = runBlocking {
+        val syncRuns = FakeSyncRunRepository()
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository(syncRuns = syncRuns)
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10)),
+                    cards = listOf(sourceCard(noteId = 10, suspended = true)),
+                ),
+            ),
+            syncRuns = syncRuns,
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10, 20),
+            archiveGateway = FakeArchiveGateway("cleanup done"),
+        )
+
+        val id = useCase(ImportSettings())
+
+        assertEquals(SyncRunId(1), id)
+        assertEquals("cleanup done", syncRuns.inserted.single().removalMessage)
+        assertEquals(listOf("日", "本"), sourceMirrorSync.importCandidates.map { it.kanji })
+    }
+
     private fun importSelector(): ImportCandidateSelector =
         ImportCandidateSelector { kanji ->
             when (kanji) {
@@ -378,6 +404,19 @@ class RunSourceMirrorSyncUseCaseTest {
         }
     }
 
+    private class FakeArchiveGateway(
+        private val message: String,
+    ) : SuspendedCardArchiveGateway {
+        override suspend fun archiveSelectedSuspendedCards(
+            snapshot: CollectionSnapshot,
+            importCandidates: List<ImportedKanjiCandidate>,
+        ): SuspendedCardArchiveSummary = SuspendedCardArchiveSummary(
+            sourceCards = importCandidates.flatMap { it.sources }.count { it.suspended },
+            taggedNotes = 1,
+            message = message,
+        )
+    }
+
     private class FakeClock(private vararg val values: Long) : AppClock {
         private var index = 0
 
@@ -399,11 +438,17 @@ class RunSourceMirrorSyncUseCaseTest {
             return id
         }
 
-        override suspend fun update(syncRun: SyncRun) = Unit
+        override suspend fun update(syncRun: SyncRun) {
+            val index = inserted.indexOfFirst { it.id == syncRun.id }
+            if (index >= 0) {
+                inserted[index] = syncRun
+            }
+        }
     }
 
     private class FakeSourceMirrorSyncRepository(
         private val failure: Exception? = null,
+        private val syncRuns: FakeSyncRunRepository? = null,
     ) : SourceMirrorSyncRepository {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
@@ -424,7 +469,7 @@ class RunSourceMirrorSyncUseCaseTest {
             similarKanjiIndex: SimilarKanjiIndex?,
         ): SyncRunId {
             failure?.let { throw it }
-            val id = SyncRunId(1)
+            val id = syncRuns?.insert(syncRun) ?: SyncRunId(1)
             this.syncRun = syncRun.copy(id = id)
             this.notes += notes.map { it.copy(lastSeenSyncId = id) }
             this.cards += cards.map { it.copy(lastSeenSyncId = id) }

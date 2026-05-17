@@ -1,8 +1,16 @@
 package dev.bee.kanjianki.ankidroid
 
+import dev.bee.kanjianki.domain.importing.ImportSourceEvidence
+import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
+import dev.bee.kanjianki.domain.model.CardId
+import dev.bee.kanjianki.domain.model.NoteId
+import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
+import dev.bee.kanjianki.domain.model.importing.ImportSource
+import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.sync.CollectionGatewayException
+import dev.bee.kanjianki.domain.sync.CollectionSnapshot
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -165,12 +173,55 @@ class AnkiDroidCollectionGatewayTest {
         assertEquals(SyncErrorCode.PERMANENT_PERMISSION, error.errorCode)
     }
 
+    @Test
+    fun archiveSelectedSuspendedCardsTagsFullySelectedSuspendedNotes() = runBlocking {
+        val provider = FakeProviderClient()
+        provider.rows("notes/10") {
+            row("tags" to "leech")
+        }
+
+        val summary = AnkiDroidCollectionGateway(provider).archiveSelectedSuspendedCards(
+            snapshot = CollectionSnapshot(
+                notes = emptyList(),
+                cards = listOf(sourceCard(cardId = 100, noteId = 10, suspended = true)),
+            ),
+            importCandidates = listOf(importCandidate(cardId = 100, noteId = 10)),
+        )
+
+        assertEquals(1, summary.sourceCards)
+        assertEquals(1, summary.taggedNotes)
+        assertEquals(mapOf("tags" to "leech kani_archived"), provider.updatedValues.single())
+        assertTrue(summary.message.contains("tagged in AnkiDroid"))
+    }
+
+    @Test
+    fun archiveSelectedSuspendedCardsKeepsPartiallySuspendedNotesLocal() = runBlocking {
+        val provider = FakeProviderClient()
+
+        val summary = AnkiDroidCollectionGateway(provider).archiveSelectedSuspendedCards(
+            snapshot = CollectionSnapshot(
+                notes = emptyList(),
+                cards = listOf(
+                    sourceCard(cardId = 100, noteId = 10, suspended = true),
+                    sourceCard(cardId = 101, noteId = 10, suspended = false),
+                ),
+            ),
+            importCandidates = listOf(importCandidate(cardId = 100, noteId = 10)),
+        )
+
+        assertEquals(1, summary.sourceCards)
+        assertEquals(0, summary.taggedNotes)
+        assertTrue(provider.updatedValues.isEmpty())
+        assertTrue(summary.message.contains("kept in the local archive"))
+    }
+
     private class FakeProviderClient(
         private val permissionGranted: Boolean = true,
     ) : AnkiDroidProviderClient {
         private val target = AnkiDroidProviderTarget("fake.authority", "permission")
         private val responses = linkedMapOf<QueryKey, List<Map<String, String>>>()
         private val failures = linkedMapOf<QueryKey, RuntimeException>()
+        val updatedValues = mutableListOf<Map<String, String>>()
 
         override fun resolveTarget(targets: List<AnkiDroidProviderTarget>): AnkiDroidProviderTarget = target
 
@@ -186,6 +237,17 @@ class AnkiDroidCollectionGatewayTest {
             val key = QueryKey(pathSegments.joinToString("/"), selection)
             failures[key]?.let { throw it }
             return FakeCursor(responses[key].orEmpty())
+        }
+
+        override fun update(
+            authority: String,
+            pathSegments: List<String>,
+            values: Map<String, String>,
+            selection: String?,
+            selectionArgs: List<String>?,
+        ): Int {
+            updatedValues += values
+            return 1
         }
 
         fun rows(
@@ -246,6 +308,60 @@ class AnkiDroidCollectionGatewayTest {
         "100",
         "100",
     ).joinToString(FIELD_SEPARATOR)
+
+    private fun sourceCard(
+        cardId: Long,
+        noteId: Long,
+        suspended: Boolean,
+    ): SourceCard = SourceCard(
+        cardId = CardId(cardId),
+        noteId = NoteId(noteId),
+        deckName = "Mining",
+        ord = 0,
+        queue = if (suspended) -1 else 0,
+        type = 2,
+        due = 0,
+        intervalDays = 0,
+        reps = 0,
+        lapses = 0,
+        suspended = suspended,
+        browserQueryMatched = false,
+        fsrsStability = null,
+        fsrsDifficulty = null,
+        fsrsRetrievability = null,
+        lastSeenSyncId = SyncRunId(0),
+    )
+
+    private fun importCandidate(
+        cardId: Long,
+        noteId: Long,
+    ): ImportedKanjiCandidate = ImportedKanjiCandidate(
+        kanji = "日",
+        jitenRank = 100,
+        rankRangeMax = 3000,
+        sources = listOf(
+            ImportSourceEvidence(
+                kanji = "日",
+                cardId = CardId(cardId),
+                noteId = NoteId(noteId),
+                expression = "日本",
+                reading = "にほん",
+                meaning = "Japan",
+                sentence = "日本へ行く。",
+                sourceType = ImportSource.SUSPENDED,
+                suspended = true,
+                forcePractice = true,
+                mature = false,
+                lapses = 0,
+                intervalDays = 0,
+                reps = 0,
+                fsrsStability = null,
+                fsrsDifficulty = null,
+                fsrsRetrievability = null,
+                ruleTypes = setOf(ImportSource.SUSPENDED),
+            ),
+        ),
+    )
 
     private companion object {
         const val FIELD_SEPARATOR = "\u001f"
