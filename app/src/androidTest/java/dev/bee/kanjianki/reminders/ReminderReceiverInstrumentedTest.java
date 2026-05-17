@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(AndroidJUnit4.class)
 public final class ReminderReceiverInstrumentedTest {
     private static final int REMINDER_REQUEST_CODE = 2701;
+    private static final long FUTURE_ALARM_AT_MILLIS = 4_102_444_800_000L;
 
     private Context context;
 
@@ -166,7 +167,7 @@ public final class ReminderReceiverInstrumentedTest {
         ReminderScheduler.ReminderServices missingServices =
                 ReminderScheduler.androidReminderServices(new NullSystemServiceContext(context));
 
-        missingServices.scheduleAlarm(System.currentTimeMillis() + 60_000L);
+        missingServices.scheduleAlarm(FUTURE_ALARM_AT_MILLIS);
         missingServices.cancelAlarm();
         assertFalse(missingServices.areNotificationsEnabled());
         assertEquals(Integer.valueOf(NotificationManager.IMPORTANCE_NONE), missingServices.reminderChannelImportance());
@@ -175,7 +176,7 @@ public final class ReminderReceiverInstrumentedTest {
         clearPendingReminderIntent();
         ReminderScheduler.ReminderServices realServices = ReminderScheduler.androidReminderServices(context);
         realServices.cancelAlarm();
-        realServices.scheduleAlarm(System.currentTimeMillis() + 60_000L);
+        realServices.scheduleAlarm(FUTURE_ALARM_AT_MILLIS);
         realServices.cancelAlarm();
         realServices.areNotificationsEnabled();
         realServices.ensureNotificationChannel();

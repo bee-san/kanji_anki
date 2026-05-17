@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 
@@ -41,9 +42,10 @@ public final class AutoSyncSchedulerInstrumentedTest {
     @Test
     public void androidBackendRecordsNextRunWhenSystemSchedulerAcceptsJob() {
         try (LocalStore store = new LocalStore(context)) {
-            AutoSyncScheduler.schedule(context, store, settings());
+            long now = fixedNow();
+            AutoSyncScheduler.schedule(context, store, settings(), () -> now);
 
-            assertTrue(store.autoSyncSettings().nextRunAt > 0L);
+            assertEquals(nextRunAfter(now), store.autoSyncSettings().nextRunAt);
         }
     }
 
@@ -74,12 +76,13 @@ public final class AutoSyncSchedulerInstrumentedTest {
     @Test
     public void scheduleAtClearsRecordedRunWhenBackendThrowsOnAndroidLogPath() {
         RecordingRecorder recorder = new RecordingRecorder();
+        long now = fixedNow();
 
         AutoSyncScheduler.scheduleAt(
                 recorder,
                 new ThrowingBackend(),
-                System.currentTimeMillis() + 60_000L,
-                System.currentTimeMillis()
+                now + 60_000L,
+                now
         );
 
         assertEquals(0L, recorder.nextRunAt);
@@ -87,6 +90,23 @@ public final class AutoSyncSchedulerInstrumentedTest {
 
     private static LocalStore.AutoSyncSettings settings() {
         return new LocalStore.AutoSyncSettings(true, true, 23, 59, 0L, 0L, 0L);
+    }
+
+    private static long fixedNow() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(2026, Calendar.MAY, 15, 12, 0, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private static long nextRunAfter(long now) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(now);
+        calendar.set(Calendar.HOUR_OF_DAY, 23);
+        calendar.set(Calendar.MINUTE, 59);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
     }
 
     private static final class RecordingRecorder implements AutoSyncScheduler.ScheduleRecorder {

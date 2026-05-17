@@ -5,6 +5,7 @@ import android.content.Context;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.time.AppClock;
 
 import java.util.Calendar;
 
@@ -12,18 +13,28 @@ public final class AutoSyncRunner {
     private final Context context;
     private final LocalStore store;
     private final CollectionGateway gateway;
+    private final AppClock clock;
 
     public AutoSyncRunner(Context context, LocalStore store, CollectionGateway gateway) {
+        this(context, store, gateway, AppClock.system());
+    }
+
+    public AutoSyncRunner(Context context, LocalStore store, CollectionGateway gateway, AppClock clock) {
         this.context = context.getApplicationContext();
         this.store = store;
         this.gateway = gateway;
+        this.clock = AppClock.orSystem(clock);
     }
 
     public Result run() {
-        return run(System.currentTimeMillis());
+        return run(clock.nowMillis(), clock);
     }
 
     Result run(long now) {
+        return run(now, () -> now);
+    }
+
+    private Result run(long now, AppClock syncClock) {
         LocalStore.AutoSyncSettings settings = store.autoSyncSettings();
         if (!settings.enabled) {
             return Result.skipped("Daily Anki sync is off.");
@@ -40,7 +51,14 @@ public final class AutoSyncRunner {
             }
         }
 
-        ManualSyncEngine.SyncResult sync = new ManualSyncEngine(context, store, gateway, SyncSettings.fromStore(store)).run();
+        ManualSyncEngine.SyncResult sync = new ManualSyncEngine(
+                context,
+                store,
+                gateway,
+                SyncSettings.fromStore(store),
+                SyncProgress.NONE,
+                syncClock
+        ).run();
         if (!sync.skipped) {
             store.recordAutoSyncAttempt(now, sync.success);
         }

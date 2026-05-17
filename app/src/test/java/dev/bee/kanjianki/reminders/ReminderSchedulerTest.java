@@ -61,13 +61,13 @@ public final class ReminderSchedulerTest {
             FakeReminderServices services = new FakeReminderServices();
             long now = utc(2026, Calendar.MAY, 15, 7, 15);
 
-            ReminderScheduler.schedule(null, services, now);
+            ReminderScheduler.schedule(null, services, () -> now);
             assertEquals(1, services.cancelCount);
 
-            ReminderScheduler.schedule(new LocalStore.ReminderSettings(false, 8, 30), services, now);
+            ReminderScheduler.schedule(new LocalStore.ReminderSettings(false, 8, 30), services, () -> now);
             assertEquals(2, services.cancelCount);
 
-            ReminderScheduler.schedule(new LocalStore.ReminderSettings(true, 8, 30), services, now);
+            ReminderScheduler.schedule(new LocalStore.ReminderSettings(true, 8, 30), services, () -> now);
 
             assertEquals(utc(2026, Calendar.MAY, 15, 8, 30), services.scheduledAtMillis);
         } finally {
@@ -220,12 +220,18 @@ public final class ReminderSchedulerTest {
     }
 
     @Test
-    public void nextTriggerWrapperUsesCurrentClock() {
-        long before = System.currentTimeMillis();
+    public void nextTriggerWrapperUsesInjectedClock() {
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+            long now = utc(2026, Calendar.MAY, 15, 7, 15);
 
-        long trigger = ReminderScheduler.nextTriggerMillis(new LocalStore.ReminderSettings(true, 0, 0));
+            long trigger = ReminderScheduler.nextTriggerMillis(new LocalStore.ReminderSettings(true, 8, 30), () -> now);
 
-        assertTrue(trigger >= before);
+            assertEquals(utc(2026, Calendar.MAY, 15, 8, 30), trigger);
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 
     @Test
