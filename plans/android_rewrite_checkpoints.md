@@ -291,6 +291,16 @@ Additional schema guard:
   list and critical legacy defaults/indexes.
 - `ciFast` now includes `:data:testDebugUnitTest`.
 
+Repository foundation:
+
+- `SourceMirrorRepository` and `SyncRunRepository` define the first domain
+  repository seams.
+- `RoomSourceMirrorRepository` writes notes/cards in a Room transaction and
+  maps source mirror rows to domain models.
+- `RoomSyncRunRepository` maps persisted sync-run wire status values to domain
+  `SyncRunStatus` and keeps generated IDs at the repository boundary.
+- `RepositoryMappersTest` covers source note/card and sync-run mapper parity.
+
 Verification commands:
 
 ```sh
@@ -307,6 +317,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; the fast gate now runs `259` actionable tasks with
 the data schema parity test included.
+
+The same `ciFast` command passed after adding the first repository interfaces,
+Room implementations, and mapper tests.
 
 ## Current Persistence Facts For Room Migration
 
