@@ -918,6 +918,25 @@ by kanji before overlaying dashboard fields, note snapshots extract kanji from
 expression plus sentence, and default manual Sonar fast runs mark all module
 areas changed so every configured non-connected coverage XML is generated.
 
+Full review then found Room runtime cutover hazards. Room study session tokens
+are now claimed before a session is returned, accepted Room reviews persist the
+review log, task log, timeline event, and queue update in one transaction, and
+stale review tokens/current-state mismatches are rejected before any audit row
+is written. Room study runtime reads, review writes, sync queue replacement,
+queue token claims, and direct queue updates are all behind the
+`RoomStudyRuntimeOwnershipPolicy` plus a shared process-level
+`StudyQueueMutationGate`. Sync queue seeding now reads current Room queue state
+and builds replacement rows inside the same gated Room transaction that records
+the source snapshot.
+
+The same full review found data-loss blockers before Room can become
+authoritative. `KaniRoomDatabaseFactory` no longer enables destructive Room
+migration by default; destructive reset is explicit through
+`KaniRoomDatabaseResetPolicy.allowDestructiveRoomReset`. Daily backup now backs
+up every configured app database that exists, currently `kanji_anki_simple.db`
+and `kanji_anki_room.db`, and copies any `-wal`/`-shm` sidecars after
+checkpointing. `ciFast` passed after both hardening commits.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:
@@ -930,10 +949,10 @@ Current app database:
   `app/src/main/java/dev/bee/kanjianki/data/LocalStoreBase.java`.
 - Schema constants: `app/src/main/java/dev/bee/kanjianki/data/LocalStoreSchema.java`.
 - Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
-  It rejects ambiguous ownership and uses destructive migration for the
-  Room-owned file. The Room DB remains a non-authoritative rewrite store while
-  destructive migration is enabled; before Room becomes authoritative, add
-  explicit migrations or an intentional backup/reset path for user-facing state.
+  It rejects ambiguous ownership and does not enable destructive Room migration
+  by default. Destructive Room reset is an explicit reset-policy option only;
+  before Room becomes authoritative, future schema changes need migrations or a
+  deliberate existing-install reset path.
 - Source mirror parity: Room `source_cards` now stores explicit `suspended`
   and `browser_query_matched` flags. These are required for Room-owned import
   analysis to distinguish suspended, active, weak, tagged, and browser-query
@@ -979,9 +998,10 @@ Legacy reset/migration hazards:
    cleared `learning_repeats`, `similar_kanji_choice_state`, and
    `similar_kanji_repair_queue`. The rewrite may use the same fresh-start
    strategy instead of migrating old scheduler state.
-8. Existing backup behavior checkpoints WAL and copies `kanji_anki_simple.db`
-   into `filesDir/backups/` with 31 retained backups. A backup/reset UX is
-   useful, but it is not a blocker for the clean rewrite schema.
+8. Existing backup behavior checkpoints WAL and copies configured app
+   databases into `filesDir/backups/` with 31 retained backups per database
+   prefix. The backup set now includes `kanji_anki_simple.db` and
+   `kanji_anki_room.db`, plus any remaining `-wal`/`-shm` sidecars.
 
 Settings currently live in a string key/value table. Typed Room/DataStore
 settings may reset to current defaults or explicitly migrate selected keys from
