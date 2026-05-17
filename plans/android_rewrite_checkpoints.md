@@ -506,9 +506,14 @@ Current artifacts:
 - `StudyQueueRepository` in `:domain` defines the read-side queue boundary.
 - `RoomStudyQueueRepository` in `:data` reads active `study_items` through
   Room and annotates similar-kanji availability from `similar_kanji_pairs`.
+- `StudyQueueRepository.updateReviewedItem` defines the write boundary for a
+  reviewed study item.
+- `RoomStudyQueueRepository.updateReviewedItem` updates the existing Room row
+  while preserving entity-only columns such as `created_at` and suppression
+  timestamps.
 - `StudyItemMappers` maps `StudyItemEntity` to `StudyQueueItem`, including
   rung/phase/state wire names, real-review evidence fields, and task-memory
-  decode.
+  decode, and maps reviewed domain items back onto existing Room rows.
 - `StudyDashboardRepository` in `:domain` defines top and active read-side
   dashboard row boundaries.
 - `RoomStudyDashboardRepository` in `:data` reads `dashboard_rows` and
@@ -525,8 +530,7 @@ Explicit gaps:
   runtime review write path yet.
 - Study progress is not wired into the runtime Study screen yet.
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
-- Study queue repository is read-only for now; review-transition writes remain
-  on the legacy path.
+- Kotlin review-transition writes remain on the legacy runtime path.
 - Study dashboard repository is read-only for now; local suspension writes
   remain on the legacy path.
 - Adaptive planner split is not ported yet.

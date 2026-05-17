@@ -18,6 +18,12 @@ class RoomStudyQueueRepository(
     override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> =
         studyItems.listByState(state.wireName).toDomainWithSimilarAvailability()
 
+    override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean {
+        val current = studyItems.get(item.kanji, item.answerSignature) ?: return false
+        studyItems.upsert(current.withReviewUpdate(item))
+        return true
+    }
+
     override suspend fun dueCount(
         state: StudyItemState,
         nowMillis: Long,

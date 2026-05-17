@@ -10,6 +10,9 @@ interface StudyItemDao {
     @Query("SELECT * FROM study_items WHERE kanji = :kanji AND answer_signature = :answerSignature")
     fun observe(kanji: String, answerSignature: String): Flow<StudyItemEntity?>
 
+    @Query("SELECT * FROM study_items WHERE kanji = :kanji AND answer_signature = :answerSignature")
+    suspend fun get(kanji: String, answerSignature: String): StudyItemEntity?
+
     @Query("SELECT * FROM study_items WHERE state = :state ORDER BY due_at ASC, kanji ASC")
     suspend fun listByState(state: String): List<StudyItemEntity>
 

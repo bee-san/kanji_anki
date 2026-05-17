@@ -172,6 +172,8 @@ class LoadNextStudySessionUseCaseTest {
             return itemsByState[state].orEmpty()
         }
 
+        override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = true
+
         override suspend fun dueCount(
             state: StudyItemState,
             nowMillis: Long,

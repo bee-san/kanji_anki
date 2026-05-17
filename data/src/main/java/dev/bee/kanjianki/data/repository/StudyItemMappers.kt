@@ -40,3 +40,42 @@ internal fun StudyItemEntity.toDomain(
         similarKanjiMemory = TaskMemory.decode(similarKanjiMemory),
     ),
 )
+
+internal fun StudyItemEntity.withReviewUpdate(item: StudyQueueItem): StudyItemEntity = copy(
+    state = item.state.wireName,
+    dueAt = item.dueAtMillis,
+    stability = item.stability,
+    difficulty = item.difficulty,
+    totalReviews = item.totalReviews,
+    lapses = item.lapses,
+    learningStep = item.learningStep,
+    writingLevel = item.writingLevel,
+    recognitionStage = item.rung.toLegacyRecognitionStage(),
+    consecutiveFailedRecognitionDays = item.realAgainStreak,
+    lastFailedRecognitionDay = item.lastRealReviewDueAtMillis,
+    writingRemediationPending = if (item.rung == StudyRung.WRITE_KANJI) 1 else 0,
+    matureIntervalDays = item.matureIntervalDays,
+    rung = item.rung.wireName,
+    phase = item.phase.wireName,
+    realPassStreak = item.realPassStreak,
+    realAgainStreak = item.realAgainStreak,
+    lastRealReviewDueAt = item.lastRealReviewDueAtMillis,
+    activeToken = item.activeToken,
+    typingMeaningMemory = item.memories.typingMeaningMemory.encode(),
+    meaningKanjiMemory = item.memories.meaningKanjiMemory.encode(),
+    kanjiMeaningMemory = item.memories.kanjiMeaningMemory.encode(),
+    fontMeaningMemory = item.memories.fontMeaningMemory.encode(),
+    wordReadingMemory = item.memories.wordReadingMemory.encode(),
+    writingRemediationMemory = item.memories.writingRemediationMemory.encode(),
+    similarKanjiMemory = item.memories.similarKanjiMemory.encode(),
+)
+
+private fun StudyRung.toLegacyRecognitionStage(): Int = when (this) {
+    StudyRung.TYPE_MEANING -> -1
+    StudyRung.FONT_MEANING -> 1
+    StudyRung.WORD_READING -> 2
+    StudyRung.WRITE_KANJI,
+    StudyRung.SIMILAR_KANJI,
+    StudyRung.MEANING_KANJI,
+    StudyRung.KANJI_MEANING -> 0
+}

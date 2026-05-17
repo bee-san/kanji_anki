@@ -123,6 +123,72 @@ class RepositoryMappersTest {
     }
 
     @Test
+    fun reviewUpdateMapsDomainFieldsAndPreservesEntityOnlyColumns() {
+        val current = studyItemEntity()
+        val reviewedMemory = TaskMemory.from(
+            state = "learning",
+            dueAtMillis = 2000,
+            stability = 1.23,
+            difficulty = 5.68,
+            totalReviews = 8,
+            lapses = 2,
+            learningStep = 1,
+            lastRating = "again",
+            matureIntervalDays = 0,
+        )
+        val item = current.toDomain().copy(
+            state = StudyItemState.LEARNING,
+            dueAtMillis = 2000,
+            stability = 1.23,
+            difficulty = 5.68,
+            totalReviews = 8,
+            lapses = 2,
+            learningStep = 1,
+            writingLevel = 3,
+            matureIntervalDays = 0,
+            rung = StudyRung.WRITE_KANJI,
+            phase = StudyPhase.RELEARNING,
+            realPassStreak = 0,
+            realAgainStreak = 2,
+            lastRealReviewDueAtMillis = 1500,
+            activeToken = null,
+            memories = current.toDomain().memories.copy(
+                kanjiMeaningMemory = reviewedMemory,
+                writingRemediationMemory = reviewedMemory,
+            ),
+        )
+
+        val updated = current.withReviewUpdate(item)
+
+        assertEquals("learning", updated.state)
+        assertEquals(2000, updated.dueAt)
+        assertEquals(1.23, updated.stability, 0.0)
+        assertEquals(5.68, updated.difficulty, 0.0)
+        assertEquals(8, updated.totalReviews)
+        assertEquals(2, updated.lapses)
+        assertEquals(1, updated.learningStep)
+        assertEquals(3, updated.writingLevel)
+        assertEquals(0, updated.recognitionStage)
+        assertEquals(2, updated.consecutiveFailedRecognitionDays)
+        assertEquals(1500, updated.lastFailedRecognitionDay)
+        assertEquals(1, updated.writingRemediationPending)
+        assertEquals(0, updated.matureIntervalDays)
+        assertEquals("write_kanji", updated.rung)
+        assertEquals("relearning", updated.phase)
+        assertEquals(0, updated.realPassStreak)
+        assertEquals(2, updated.realAgainStreak)
+        assertEquals(1500, updated.lastRealReviewDueAt)
+        assertEquals(null, updated.activeToken)
+        assertEquals(reviewedMemory.encode(), updated.kanjiMeaningMemory)
+        assertEquals(reviewedMemory.encode(), updated.writingRemediationMemory)
+        assertEquals(50, updated.suppressedAt)
+        assertEquals(10, updated.createdAt)
+        assertEquals("裂|sig", updated.answerSignature)
+        assertEquals(1, current.withReviewUpdate(item.copy(rung = StudyRung.FONT_MEANING)).recognitionStage)
+        assertEquals(2, current.withReviewUpdate(item.copy(rung = StudyRung.WORD_READING)).recognitionStage)
+    }
+
+    @Test
     fun dashboardRowEntityMapsToDomainModelWithExamples() {
         val row = dashboardRowEntity()
         val example = kanjiExampleEntity()

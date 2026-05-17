@@ -8,6 +8,8 @@ interface StudyQueueRepository {
 
     suspend fun listByState(state: StudyItemState): List<StudyQueueItem>
 
+    suspend fun updateReviewedItem(item: StudyQueueItem): Boolean
+
     suspend fun dueCount(
         state: StudyItemState,
         nowMillis: Long,
