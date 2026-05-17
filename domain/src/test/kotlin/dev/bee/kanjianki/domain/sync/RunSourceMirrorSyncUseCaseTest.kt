@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.coroutines.cancellation.CancellationException
 
 class RunSourceMirrorSyncUseCaseTest {
     @Test
@@ -252,6 +254,55 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(0, studyQueue.listAllForSeedingCalls)
     }
 
+    @Test
+    fun repositoryFailureWritesRetryableSyncRunWithoutSourceSnapshot() = runBlocking {
+        val syncRuns = FakeSyncRunRepository()
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository(
+            failure = IllegalStateException("room unavailable"),
+        )
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10)),
+                    cards = listOf(sourceCard(noteId = 10, suspended = true)),
+                ),
+            ),
+            syncRuns = syncRuns,
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10, 20, 30),
+        )
+
+        val id = useCase(ImportSettings())
+
+        assertEquals(SyncRunId(1), id)
+        assertEquals(SyncRunStatus.RETRYABLE_ERROR, syncRuns.inserted.single().status)
+        assertEquals("unexpected", syncRuns.inserted.single().errorCode)
+        assertEquals("room unavailable", syncRuns.inserted.single().errorMessage)
+        assertTrue(sourceMirrorSync.notes.isEmpty())
+        assertTrue(sourceMirrorSync.cards.isEmpty())
+    }
+
+    @Test
+    fun cancellationIsRethrownWithoutFailedSyncRun() {
+        val syncRuns = FakeSyncRunRepository()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(unexpectedFailure = CancellationException("cancelled")),
+            syncRuns = syncRuns,
+            sourceMirrorSync = FakeSourceMirrorSyncRepository(),
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10),
+        )
+
+        assertThrows(CancellationException::class.java) {
+            runBlocking {
+                useCase(ImportSettings())
+            }
+        }
+        assertTrue(syncRuns.inserted.isEmpty())
+    }
 
     private fun importSelector(): ImportCandidateSelector =
         ImportCandidateSelector { kanji ->
@@ -274,9 +325,11 @@ class RunSourceMirrorSyncUseCaseTest {
     private class FakeGateway(
         private val snapshot: CollectionSnapshot? = null,
         private val failure: CollectionGatewayException? = null,
+        private val unexpectedFailure: Exception? = null,
     ) : CollectionGateway {
         override suspend fun readCollection(settings: ImportSettings): CollectionSnapshot {
             failure?.let { throw it }
+            unexpectedFailure?.let { throw it }
             return requireNotNull(snapshot)
         }
     }
@@ -305,7 +358,9 @@ class RunSourceMirrorSyncUseCaseTest {
         override suspend fun update(syncRun: SyncRun) = Unit
     }
 
-    private class FakeSourceMirrorSyncRepository : SourceMirrorSyncRepository {
+    private class FakeSourceMirrorSyncRepository(
+        private val failure: Exception? = null,
+    ) : SourceMirrorSyncRepository {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
         val importCandidates = mutableListOf<ImportedKanjiCandidate>()
@@ -324,6 +379,7 @@ class RunSourceMirrorSyncUseCaseTest {
             seededQueueItems: List<StudyQueueItem>?,
             similarKanjiIndex: SimilarKanjiIndex?,
         ): SyncRunId {
+            failure?.let { throw it }
             val id = SyncRunId(1)
             this.syncRun = syncRun.copy(id = id)
             this.notes += notes.map { it.copy(lastSeenSyncId = id) }

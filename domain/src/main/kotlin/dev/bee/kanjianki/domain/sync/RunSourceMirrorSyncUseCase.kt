@@ -9,6 +9,7 @@ import dev.bee.kanjianki.domain.model.similar.SimilarKanjiIndex
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
+import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
@@ -24,6 +25,7 @@ import dev.bee.kanjianki.domain.scheduler.StudyLadderSettings
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedRequest
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeeder
+import kotlin.coroutines.cancellation.CancellationException
 
 class RunSourceMirrorSyncUseCase(
     private val gateway: CollectionGateway,
@@ -61,6 +63,11 @@ class RunSourceMirrorSyncUseCase(
         } catch (error: CollectionGatewayException) {
             val finishedAt = clock.nowMillis()
             syncRuns.insert(failureRun(startedAt, finishedAt, error))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            val finishedAt = clock.nowMillis()
+            syncRuns.insert(unexpectedFailureRun(startedAt, finishedAt, error))
         }
     }
 
@@ -146,8 +153,7 @@ class RunSourceMirrorSyncUseCase(
         startedAt: Long,
         finishedAt: Long,
         error: CollectionGatewayException,
-    ): SyncRun = SyncRun(
-        id = null,
+    ): SyncRun = failureRun(
         startedAt = startedAt,
         finishedAt = finishedAt,
         status = if (error.permanent) {
@@ -155,14 +161,41 @@ class RunSourceMirrorSyncUseCase(
         } else {
             SyncRunStatus.RETRYABLE_ERROR
         },
+        errorCode = error.errorCode.wireName,
+        errorMessage = error.message,
+    )
+
+    private fun unexpectedFailureRun(
+        startedAt: Long,
+        finishedAt: Long,
+        error: Exception,
+    ): SyncRun = failureRun(
+        startedAt = startedAt,
+        finishedAt = finishedAt,
+        status = SyncRunStatus.RETRYABLE_ERROR,
+        errorCode = SyncErrorCode.UNEXPECTED.wireName,
+        errorMessage = error.message ?: error::class.simpleName ?: "Unexpected sync failure.",
+    )
+
+    private fun failureRun(
+        startedAt: Long,
+        finishedAt: Long,
+        status: SyncRunStatus,
+        errorCode: String,
+        errorMessage: String?,
+    ): SyncRun = SyncRun(
+        id = null,
+        startedAt = startedAt,
+        finishedAt = finishedAt,
+        status = status,
         activeNotesCount = 0,
         activeCardsCount = 0,
         suspendedCardsArchivedCount = 0,
         suspendedKanjiImportedCount = 0,
         deletedNotesCount = 0,
         deletedCardsCount = 0,
-        errorCode = error.errorCode.wireName,
-        errorMessage = error.message,
+        errorCode = errorCode,
+        errorMessage = errorMessage,
         removalMessage = "",
     )
 
