@@ -102,56 +102,69 @@ public final class MainActivityHelperInstrumentedTest {
     public void baseTextHelpersDescribeStudyModesAndWritingGuides() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertEquals("1 item", activity.countText(1, "item", "items"));
-                assertEquals("2 items", activity.countText(2, "item", "items"));
-                assertEquals("", activity.compact(null, 12));
-                assertEquals("short", activity.compact("short", 12));
-                assertEquals("a very long s...", activity.compact("a very long sentence that should be shortened", 16));
-
-                assertEquals("Study", activity.labelForTask(null));
-                assertEquals("Focused recall", activity.labelForTask("targeted_flashcard"));
-                assertEquals("Kanji -> meaning", activity.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
-                assertEquals("Type the meaning", activity.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
-                assertEquals("Meaning -> kanji", activity.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
-                assertEquals("Font -> meaning", activity.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
-                assertEquals("Word -> reading", activity.labelForTask(BridgeScheduler.TASK_WORD_READING));
-                assertEquals("Write kanji", activity.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
-                assertEquals("Similar kanji", activity.labelForTask(BridgeScheduler.TASK_SIMILAR_KANJI));
-                assertEquals("Quick recall", activity.labelForTask("meaning_flashcard"));
-                assertEquals("Font check", activity.labelForTask("font_recognition"));
-                assertEquals("Write to repair", activity.labelForTask("repair_writing"));
-                assertEquals("Focused practice", activity.labelForTask("targeted_writing"));
-                assertEquals("New problem kanji", activity.labelForTask("context_writing"));
-                assertEquals("Guided review", activity.labelForTask("guided_writing"));
-                assertEquals("Memory check", activity.labelForTask("blind_writing"));
-                assertEquals("Memory check", activity.labelForTask("sampled_handwriting"));
-                assertEquals("Learn the shape", activity.labelForTask("confusable_recognition"));
-                assertEquals("Study", activity.labelForTask("unexpected"));
-                assertEquals("android.permission.POST_NOTIFICATIONS", MainActivityBase.PERMISSION_POST_NOTIFICATIONS);
-
-                RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
-                RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
-                RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
-                assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(null));
-                assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(waiting));
-                assertEquals("Adaptive focus is set to all current problem kanji", activity.adaptiveFocusText(all));
-                assertEquals("Today's adaptive focus: 2 items left / 5", activity.adaptiveFocusText(focused));
-
-                StrokeGuide emptyGuide = new StrokeGuide("裂", Collections.emptyList());
-                StrokeGuide guide = guide("裂");
-                assertTrue(activity.guideLabel(3, emptyGuide).startsWith("Write from memory"));
-                assertTrue(activity.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
-                assertTrue(activity.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
-                assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", activity.guideLabel(HintState.fromWritingLevel(0), guide));
-                assertEquals("Copy the faint outline; the current stroke is emphasized.", activity.guideLabel(HintState.fromWritingLevel(1), guide));
-                assertEquals("Write with only the current stroke hinted, then check.", activity.guideLabel(HintState.fromWritingLevel(2), guide));
-                assertEquals("Write from memory, then check. Use Hint if you are stuck.", activity.guideLabel(HintState.fromWritingLevel(3), guide));
-                assertEquals("Trace", activity.stageLabel(HintLevel.TRACE));
-                assertEquals("Blind", activity.stageLabel(HintLevel.BLIND));
-                assertEquals("", activity.attemptProgressText(null));
-                assertEquals("", activity.targetRevealText(null));
+                assertCountAndCompactText(activity);
+                assertStudyModeLabels(activity);
+                assertAdaptiveFocusText(activity);
+                assertWritingGuideText(activity);
             });
         }
+    }
+
+    private static void assertCountAndCompactText(MainActivity activity) {
+        assertEquals("1 item", activity.countText(1, "item", "items"));
+        assertEquals("2 items", activity.countText(2, "item", "items"));
+        assertEquals("", activity.compact(null, 12));
+        assertEquals("short", activity.compact("short", 12));
+        assertEquals("a very long s...", activity.compact("a very long sentence that should be shortened", 16));
+    }
+
+    private static void assertStudyModeLabels(MainActivity activity) {
+        assertEquals("Study", activity.labelForTask(null));
+        assertEquals("Focused recall", activity.labelForTask("targeted_flashcard"));
+        assertEquals("Kanji -> meaning", activity.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
+        assertEquals("Type the meaning", activity.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
+        assertEquals("Meaning -> kanji", activity.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
+        assertEquals("Font -> meaning", activity.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
+        assertEquals("Word -> reading", activity.labelForTask(BridgeScheduler.TASK_WORD_READING));
+        assertEquals("Write kanji", activity.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
+        assertEquals("Similar kanji", activity.labelForTask(BridgeScheduler.TASK_SIMILAR_KANJI));
+        assertEquals("Quick recall", activity.labelForTask("meaning_flashcard"));
+        assertEquals("Font check", activity.labelForTask("font_recognition"));
+        assertEquals("Write to repair", activity.labelForTask("repair_writing"));
+        assertEquals("Focused practice", activity.labelForTask("targeted_writing"));
+        assertEquals("New problem kanji", activity.labelForTask("context_writing"));
+        assertEquals("Guided review", activity.labelForTask("guided_writing"));
+        assertEquals("Memory check", activity.labelForTask("blind_writing"));
+        assertEquals("Memory check", activity.labelForTask("sampled_handwriting"));
+        assertEquals("Learn the shape", activity.labelForTask("confusable_recognition"));
+        assertEquals("Study", activity.labelForTask("unexpected"));
+        assertEquals("android.permission.POST_NOTIFICATIONS", MainActivityBase.PERMISSION_POST_NOTIFICATIONS);
+    }
+
+    private static void assertAdaptiveFocusText(MainActivity activity) {
+        RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
+        RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
+        RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
+        assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(null));
+        assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(waiting));
+        assertEquals("Adaptive focus is set to all current problem kanji", activity.adaptiveFocusText(all));
+        assertEquals("Today's adaptive focus: 2 items left / 5", activity.adaptiveFocusText(focused));
+    }
+
+    private static void assertWritingGuideText(MainActivity activity) {
+        StrokeGuide emptyGuide = new StrokeGuide("裂", Collections.emptyList());
+        StrokeGuide guide = guide("裂");
+        assertTrue(activity.guideLabel(3, emptyGuide).startsWith("Write from memory"));
+        assertTrue(activity.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
+        assertTrue(activity.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
+        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", activity.guideLabel(HintState.fromWritingLevel(0), guide));
+        assertEquals("Copy the faint outline; the current stroke is emphasized.", activity.guideLabel(HintState.fromWritingLevel(1), guide));
+        assertEquals("Write with only the current stroke hinted, then check.", activity.guideLabel(HintState.fromWritingLevel(2), guide));
+        assertEquals("Write from memory, then check. Use Hint if you are stuck.", activity.guideLabel(HintState.fromWritingLevel(3), guide));
+        assertEquals("Trace", activity.stageLabel(HintLevel.TRACE));
+        assertEquals("Blind", activity.stageLabel(HintLevel.BLIND));
+        assertEquals("", activity.attemptProgressText(null));
+        assertEquals("", activity.targetRevealText(null));
     }
 
     @Test
@@ -359,147 +372,169 @@ public final class MainActivityHelperInstrumentedTest {
     public void settingsHelpersSummarizeImportTimingAndWorkloadChoices() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertEquals("unknown version", activity.versionText(""));
-                assertEquals("0.4.33", activity.versionText("v0.4.33"));
-                assertEquals(1, MainActivitySettings.boolFlag(true));
-                assertEquals(0, MainActivitySettings.boolFlag(false));
-                assertEquals(0, activity.rankSliderProgress(-20));
-                assertEquals(19999, activity.rankSliderProgress(50_000));
-                assertEquals(1, activity.rankFromSliderProgress(-4));
-                assertEquals(20000, activity.rankFromSliderProgress(50_000));
-                assertEquals("Jiten ranks 10-25", activity.frequencyRangeStatusText(10, 25));
-                assertEquals(80, activity.retentionPercent(0.1));
-                assertEquals(97, activity.retentionPercent(1.0));
-                assertEquals("Desired retention: 90%", activity.retentionStatusText(90));
-
-                assertTrue(activity.validImportThresholds(7.5, 3, 2));
-                assertFalse(activity.validImportThresholds(0.5, 3, 2));
-                assertFalse(activity.hasSelectedImportSource(
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, false),
-                        Collections.emptyList(),
-                        ""
-                ));
-                assertTrue(activity.hasSelectedImportSource(
-                        checked(activity, false),
-                        checked(activity, true),
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, false),
-                        Collections.emptyList(),
-                        ""
-                ));
-                assertTrue(activity.hasSelectedImportSource(
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, true),
-                        checked(activity, false),
-                        checked(activity, false),
-                        Collections.singletonList("leeches"),
-                        ""
-                ));
-                assertTrue(activity.hasSelectedImportSource(
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, false),
-                        checked(activity, true),
-                        Collections.emptyList(),
-                        "deck:Kiku"
-                ));
-                assertEquals("3 matching cards per kanji", activity.matchingCardsSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")));
-                assertTrue(activity.settingsImportSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")).contains("tagged"));
-                assertEquals("No sources", activity.settingsImportSummary(settings(false, false, false, Collections.emptyList(), false, false, "")));
-
-                LocalStore.AutoSyncSettings unconfigured = new LocalStore.AutoSyncSettings(false, true, 7, 30, 0L, 0L, 0L);
-                LocalStore.AutoSyncSettings enabled = new LocalStore.AutoSyncSettings(true, true, 7, 30, 1000L, 2000L, 3000L);
-                LocalStore.AutoSyncSettings disabled = new LocalStore.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L);
-                LocalStore.AutoSyncSettings enabledNoHistory = new LocalStore.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L);
-                LocalStore.AutoSyncSettings disabledNoHistory = new LocalStore.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L);
-                assertEquals("After first sync", activity.settingsAutoSyncSummary(unconfigured));
-                assertEquals("07:30", activity.settingsAutoSyncSummary(enabled));
-                assertEquals("Off", activity.settingsAutoSyncSummary(disabled));
-                assertEquals("Starts after first successful sync", activity.autoSyncStatus(unconfigured));
-                assertEquals("On around 07:30", activity.autoSyncStatus(enabled));
-                assertEquals("Off", activity.autoSyncStatus(disabled));
-                assertTrue(activity.autoSyncDetail(enabled).contains("Last auto success"));
-                assertTrue(activity.autoSyncDetail(disabled).contains("Last auto attempt"));
-                assertTrue(activity.autoSyncDetail(enabledNoHistory).contains("Scheduled once"));
-                assertTrue(activity.autoSyncDetail(disabledNoHistory).contains("paused"));
-
-                assertEquals("Pareto: up to 5 items", activity.workloadStatusText(20, 5));
-                assertEquals("All kanji: up to 9 items", activity.workloadStatusText(100, 9));
-                assertEquals("Maximum: 1 item", activity.maxItemsStatusText(1));
-                assertEquals("Auto Pareto: waiting for problem kanji", activity.autoWorkloadStatusText(null));
-                assertEquals(
-                        "Auto Pareto: 2 items today",
-                        activity.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
-                );
-                assertEquals("Blocked: notifications off", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), true));
-                assertEquals("Daily around 21:05", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), false));
-                assertEquals("Off", activity.reminderStatus(new LocalStore.ReminderSettings(false, 21, 5), false));
-                assertEquals("21:05", activity.reminderTime(21, 5));
-                assertEquals("Reminder time: 21:05", activity.reminderTimeButtonLabel(21, 5));
-                int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
-                assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), activity.maxItemsStatusText(0));
-
-                EditText difficulty = new EditText(activity);
-                EditText lapses = new EditText(activity);
-                EditText minMatching = new EditText(activity);
-                difficulty.setText("not numeric");
-                lapses.setText("3");
-                minMatching.setText("2");
-                assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
-                difficulty.setText("0.5");
-                assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
-                difficulty.setText("7.5");
-                MainActivityBase.ImportThresholds thresholds = activity.readImportThresholds(difficulty, lapses, minMatching);
-                assertNotNull(thresholds);
-                assertEquals(7.5, thresholds.difficulty, 0.001);
-                assertEquals(3, thresholds.lapseThreshold);
-                assertEquals(2, thresholds.minCards);
-
-                int[] selectedRanks = {10, 100};
-                TextView rankStatus = new TextView(activity);
-                EditText minRank = new EditText(activity);
-                EditText maxRank = new EditText(activity);
-                SeekBar minSlider = new SeekBar(activity);
-                SeekBar maxSlider = new SeekBar(activity);
-                activity.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
-                touchSeekBar(minSlider);
-                touchSeekBar(maxSlider);
-                minSlider.setProgress(activity.rankSliderProgress(50));
-                maxSlider.setProgress(activity.rankSliderProgress(80));
-                assertEquals(50, selectedRanks[0]);
-                assertEquals(80, selectedRanks[1]);
-                minSlider.setProgress(activity.rankSliderProgress(90));
-                assertEquals(80, selectedRanks[0]);
-                maxSlider.setProgress(activity.rankSliderProgress(70));
-                assertEquals(80, selectedRanks[1]);
-                assertTrue(rankStatus.getText().toString().contains("Jiten ranks"));
-
-                LinearLayout maxOnlyBox = new LinearLayout(activity);
-                int[] selectedMaxOnly = {AdaptiveLoadPlanner.MIN_MAX_ITEMS};
-                activity.addMaxItemsControl(maxOnlyBox, selectedMaxOnly, null, null);
-                SeekBar maxOnlySlider = seekBars(maxOnlyBox).get(0);
-                touchSeekBar(maxOnlySlider);
-                maxOnlySlider.setProgress(3);
-                assertEquals(AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 3), selectedMaxOnly[0]);
-
-                LinearLayout linkedMaxBox = new LinearLayout(activity);
-                int[] selectedMax = {5};
-                int[] selectedWorkload = {20};
-                TextView workloadStatus = new TextView(activity);
-                activity.addMaxItemsControl(linkedMaxBox, selectedMax, workloadStatus, selectedWorkload);
-                SeekBar linkedSlider = seekBars(linkedMaxBox).get(0);
-                touchSeekBar(linkedSlider);
-                linkedSlider.setProgress(5);
-                assertTrue(workloadStatus.getText().toString().contains("Pareto: up to"));
+                verifyVersionRankAndRetentionText(activity);
+                verifyImportSourceSummaries(activity);
+                verifyAutoSyncSummaries(activity);
+                verifyWorkloadAndReminderSummaries(activity);
+                verifyImportThresholdReader(activity);
+                verifyRankAndMaxItemControls(activity);
             });
         }
+    }
+
+    private static void verifyVersionRankAndRetentionText(MainActivity activity) {
+        assertEquals("unknown version", activity.versionText(""));
+        assertEquals("0.4.33", activity.versionText("v0.4.33"));
+        assertEquals(1, MainActivitySettings.boolFlag(true));
+        assertEquals(0, MainActivitySettings.boolFlag(false));
+        assertEquals(0, activity.rankSliderProgress(-20));
+        assertEquals(19999, activity.rankSliderProgress(50_000));
+        assertEquals(1, activity.rankFromSliderProgress(-4));
+        assertEquals(20000, activity.rankFromSliderProgress(50_000));
+        assertEquals("Jiten ranks 10-25", activity.frequencyRangeStatusText(10, 25));
+        assertEquals(80, activity.retentionPercent(0.1));
+        assertEquals(97, activity.retentionPercent(1.0));
+        assertEquals("Desired retention: 90%", activity.retentionStatusText(90));
+    }
+
+    private static void verifyImportSourceSummaries(MainActivity activity) {
+        assertTrue(activity.validImportThresholds(7.5, 3, 2));
+        assertFalse(activity.validImportThresholds(0.5, 3, 2));
+        assertFalse(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, false),
+                Collections.emptyList(),
+                ""
+        ));
+        assertTrue(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, true),
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, false),
+                Collections.emptyList(),
+                ""
+        ));
+        assertTrue(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, true),
+                checked(activity, false),
+                checked(activity, false),
+                Collections.singletonList("leeches"),
+                ""
+        ));
+        assertTrue(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, true),
+                Collections.emptyList(),
+                "deck:Kiku"
+        ));
+        assertEquals("3 matching cards per kanji", activity.matchingCardsSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")));
+        assertTrue(activity.settingsImportSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")).contains("tagged"));
+        assertEquals("No sources", activity.settingsImportSummary(settings(false, false, false, Collections.emptyList(), false, false, "")));
+    }
+
+    private static void verifyAutoSyncSummaries(MainActivity activity) {
+        LocalStore.AutoSyncSettings unconfigured = new LocalStore.AutoSyncSettings(false, true, 7, 30, 0L, 0L, 0L);
+        LocalStore.AutoSyncSettings enabled = new LocalStore.AutoSyncSettings(true, true, 7, 30, 1000L, 2000L, 3000L);
+        LocalStore.AutoSyncSettings disabled = new LocalStore.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L);
+        LocalStore.AutoSyncSettings enabledNoHistory = new LocalStore.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L);
+        LocalStore.AutoSyncSettings disabledNoHistory = new LocalStore.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L);
+        assertEquals("After first sync", activity.settingsAutoSyncSummary(unconfigured));
+        assertEquals("07:30", activity.settingsAutoSyncSummary(enabled));
+        assertEquals("Off", activity.settingsAutoSyncSummary(disabled));
+        assertEquals("Starts after first successful sync", activity.autoSyncStatus(unconfigured));
+        assertEquals("On around 07:30", activity.autoSyncStatus(enabled));
+        assertEquals("Off", activity.autoSyncStatus(disabled));
+        assertTrue(activity.autoSyncDetail(enabled).contains("Last auto success"));
+        assertTrue(activity.autoSyncDetail(disabled).contains("Last auto attempt"));
+        assertTrue(activity.autoSyncDetail(enabledNoHistory).contains("Scheduled once"));
+        assertTrue(activity.autoSyncDetail(disabledNoHistory).contains("paused"));
+    }
+
+    private static void verifyWorkloadAndReminderSummaries(MainActivity activity) {
+        assertEquals("Pareto: up to 5 items", activity.workloadStatusText(20, 5));
+        assertEquals("All kanji: up to 9 items", activity.workloadStatusText(100, 9));
+        assertEquals("Maximum: 1 item", activity.maxItemsStatusText(1));
+        assertEquals("Auto Pareto: waiting for problem kanji", activity.autoWorkloadStatusText(null));
+        assertEquals(
+                "Auto Pareto: 2 items today",
+                activity.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
+        );
+        assertEquals("Blocked: notifications off", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), true));
+        assertEquals("Daily around 21:05", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), false));
+        assertEquals("Off", activity.reminderStatus(new LocalStore.ReminderSettings(false, 21, 5), false));
+        assertEquals("21:05", activity.reminderTime(21, 5));
+        assertEquals("Reminder time: 21:05", activity.reminderTimeButtonLabel(21, 5));
+        int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
+        assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), activity.maxItemsStatusText(0));
+    }
+
+    private static void verifyImportThresholdReader(MainActivity activity) {
+        EditText difficulty = new EditText(activity);
+        EditText lapses = new EditText(activity);
+        EditText minMatching = new EditText(activity);
+        difficulty.setText("not numeric");
+        lapses.setText("3");
+        minMatching.setText("2");
+        assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
+        difficulty.setText("0.5");
+        assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
+        difficulty.setText("7.5");
+        MainActivityBase.ImportThresholds thresholds = activity.readImportThresholds(difficulty, lapses, minMatching);
+        assertNotNull(thresholds);
+        assertEquals(7.5, thresholds.difficulty, 0.001);
+        assertEquals(3, thresholds.lapseThreshold);
+        assertEquals(2, thresholds.minCards);
+    }
+
+    private static void verifyRankAndMaxItemControls(MainActivity activity) {
+        int[] selectedRanks = {10, 100};
+        TextView rankStatus = new TextView(activity);
+        EditText minRank = new EditText(activity);
+        EditText maxRank = new EditText(activity);
+        SeekBar minSlider = new SeekBar(activity);
+        SeekBar maxSlider = new SeekBar(activity);
+        activity.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
+        touchSeekBar(minSlider);
+        touchSeekBar(maxSlider);
+        minSlider.setProgress(activity.rankSliderProgress(50));
+        maxSlider.setProgress(activity.rankSliderProgress(80));
+        assertEquals(50, selectedRanks[0]);
+        assertEquals(80, selectedRanks[1]);
+        minSlider.setProgress(activity.rankSliderProgress(90));
+        assertEquals(80, selectedRanks[0]);
+        maxSlider.setProgress(activity.rankSliderProgress(70));
+        assertEquals(80, selectedRanks[1]);
+        assertTrue(rankStatus.getText().toString().contains("Jiten ranks"));
+        verifyMaxItemControls(activity);
+    }
+
+    private static void verifyMaxItemControls(MainActivity activity) {
+        LinearLayout maxOnlyBox = new LinearLayout(activity);
+        int[] selectedMaxOnly = {AdaptiveLoadPlanner.MIN_MAX_ITEMS};
+        activity.addMaxItemsControl(maxOnlyBox, selectedMaxOnly, null, null);
+        SeekBar maxOnlySlider = seekBars(maxOnlyBox).get(0);
+        touchSeekBar(maxOnlySlider);
+        maxOnlySlider.setProgress(3);
+        assertEquals(AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 3), selectedMaxOnly[0]);
+
+        LinearLayout linkedMaxBox = new LinearLayout(activity);
+        int[] selectedMax = {5};
+        int[] selectedWorkload = {20};
+        TextView workloadStatus = new TextView(activity);
+        activity.addMaxItemsControl(linkedMaxBox, selectedMax, workloadStatus, selectedWorkload);
+        SeekBar linkedSlider = seekBars(linkedMaxBox).get(0);
+        touchSeekBar(linkedSlider);
+        linkedSlider.setProgress(5);
+        assertTrue(workloadStatus.getText().toString().contains("Pareto: up to"));
     }
 
     @Test
