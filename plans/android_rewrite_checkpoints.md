@@ -786,6 +786,11 @@ Current artifacts:
   existing `RecordsStudyModels.KanjiRecoveryTimeline` shape for the Java detail
   screen. It is gated by `RoomStudyRuntimeOwnershipPolicy` and is staged only
   while visible runtime reads still come from `LocalStore`.
+- `StudyReviewStatsRepository` in `:domain` defines the review-stat boundary
+  needed by Room-owned adaptive planning and sync request construction.
+- `RoomStudyReviewStatsRepository` reads Room `review_log` rows and produces
+  adaptive review buckets, studied-today kanji, and current streak days without
+  reaching into legacy `LocalStore`.
 - `StudySessionTracker` can now complete an active task into a
   `StudyReviewTaskCompletion` snapshot without writing legacy SQLite. The
   existing legacy completion method delegates through that snapshot and still
@@ -897,6 +902,17 @@ Result: `BUILD SUCCESSFUL`; focused tests cover Room timeline detail joins,
 event ordering, blank/zero-limit behavior, legacy mapper output, gated policy
 rejection, and DAO fake updates after adding `latestForKanji` and
 `listLatestForKanji`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test \
+  :data:testDebugUnitTest \
+  --tests dev.bee.kanjianki.data.repository.RoomStudyReviewStatsRepositoryTest \
+  :app:compileDebugJavaWithJavac
+```
+
+Result: `BUILD SUCCESSFUL`; this gate covers the Room review-stats repository
+and Hilt binding.
 
 The same `:app:testDebugUnitTest` command passed after wiring Home and Study to
 load non-empty Room-backed legacy snapshots through the Hilt entry point and IO
