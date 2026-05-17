@@ -458,6 +458,12 @@ Current artifacts:
   - task type, writing-required flag, and prompt projection.
   - due-priority, due-time, new-card sort, weakness, and kanji tie-breaking.
   - allowed-kanji and active-queue filtering.
+- `StudyQueueRepository` in `:domain` defines the read-side queue boundary.
+- `RoomStudyQueueRepository` in `:data` reads `study_items` through Room.
+- `StudyItemMappers` maps `StudyItemEntity` to `StudyQueueItem`, including
+  rung/phase/state wire names and task-memory decode.
+- `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
+  mapping with decoded task memory.
 
 Explicit gaps:
 
@@ -469,7 +475,8 @@ Explicit gaps:
   transition yet.
 - Study session selection does not use `StudyActiveQueueSelector` or
   `StudyAheadPolicy` at runtime yet.
-- Study queue models are not wired to Room repository mappers yet.
+- Study queue repository is read-only for now; review-transition writes remain
+  on the legacy path.
 - Adaptive planner split is not ported yet.
 
 Verification commands:
