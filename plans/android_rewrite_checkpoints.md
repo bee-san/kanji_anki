@@ -422,6 +422,16 @@ Current artifacts:
   - positive windows passing through.
   - windows above one day clamping to one day.
   - due-at-horizon inclusion and beyond-horizon exclusion.
+- `StudyQueueItem`, `StudyDashboardRow`, `StudyExample`, and
+  `StudyItemState` in `:domain` provide the minimal study queue model needed
+  by the future session selector.
+- `StudyQueueModelsTest` covers:
+  - stable study-item state wire names.
+  - answer signatures preferring suspended examples, then active examples, then
+    first available examples.
+  - row-field fallback and whitespace normalization.
+  - family keys built from kanji plus answer signature.
+  - retired and suppressed queue item flags.
 
 Explicit gaps:
 
@@ -432,6 +442,7 @@ Explicit gaps:
 - Task memory updates and handoff are not wired into the runtime review
   transition yet.
 - Study session selection does not use `StudyAheadPolicy` yet.
+- Study queue models are not wired to Room repository mappers yet.
 - Adaptive planner split is not ported yet.
 
 Verification commands:
