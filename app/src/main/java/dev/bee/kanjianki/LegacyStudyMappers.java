@@ -77,7 +77,9 @@ final class LegacyStudyMappers {
                         toDomain(item.wordReadingMemory),
                         toDomain(item.writingRemediationMemory),
                         toDomain(item.similarKanjiMemory)
-                )
+                ),
+                item.createdAtMillis,
+                item.suppressedAtMillis
         );
     }
 
@@ -98,7 +100,10 @@ final class LegacyStudyMappers {
                 .consecutiveFailedRecognitionDays(item.getRealAgainStreak())
                 .lastFailedRecognitionDayMillis(item.getLastRealReviewDueAtMillis())
                 .writingRemediationPending(item.getRung() == StudyRung.WRITE_KANJI)
+                .suppressedByTaskType(item.getSuppressedByTaskType())
+                .suppressedAtMillis(item.getSuppressedAtMillis())
                 .matureIntervalDays(item.getMatureIntervalDays())
+                .createdAtMillis(item.getCreatedAtMillis())
                 .activeToken(item.getActiveToken())
                 .typingMeaningMemory(toLegacy(item.getMemories().getTypingMeaningMemory()))
                 .meaningKanjiMemory(toLegacy(item.getMemories().getMeaningKanjiMemory()))

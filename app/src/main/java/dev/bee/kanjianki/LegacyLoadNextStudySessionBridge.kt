@@ -81,6 +81,10 @@ class LegacyLoadNextStudySessionBridge(
         override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> =
             items.filter { it.state == state }
 
+        override suspend fun listAllForSeeding(): List<StudyQueueItem> = items
+
+        override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
+
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = false
 
         override suspend fun dueCount(

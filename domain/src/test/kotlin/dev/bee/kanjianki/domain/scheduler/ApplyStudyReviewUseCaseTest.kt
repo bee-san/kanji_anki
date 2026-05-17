@@ -99,6 +99,10 @@ class ApplyStudyReviewUseCaseTest {
 
         override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> = emptyList()
 
+        override suspend fun listAllForSeeding(): List<StudyQueueItem> = emptyList()
+
+        override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
+
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean {
             updatedItems += item
             return updateResult

@@ -71,7 +71,7 @@ data class StudyDashboardRow(
     }
 }
 
-data class StudyQueueItem(
+data class StudyQueueItem @JvmOverloads constructor(
     val kanji: String,
     val state: StudyItemState,
     val dueAtMillis: Long,
@@ -92,6 +92,8 @@ data class StudyQueueItem(
     val hasSimilarKanji: Boolean = false,
     val activeToken: String? = null,
     val memories: TaskMemoryBank = TaskMemoryBank(),
+    val createdAtMillis: Long = 0L,
+    val suppressedAtMillis: Long = 0L,
 ) {
     init {
         require(kanji.isNotBlank()) { "kanji must not be blank" }
@@ -106,6 +108,8 @@ data class StudyQueueItem(
         require(lastRealReviewDueAtMillis >= 0L) {
             "lastRealReviewDueAtMillis must not be negative"
         }
+        require(createdAtMillis >= 0L) { "createdAtMillis must not be negative" }
+        require(suppressedAtMillis >= 0L) { "suppressedAtMillis must not be negative" }
     }
 
     val familyKey: String

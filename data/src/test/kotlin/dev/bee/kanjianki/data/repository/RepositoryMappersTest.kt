@@ -116,8 +116,10 @@ class RepositoryMappersTest {
         assertEquals(2, item.realPassStreak)
         assertEquals(0, item.realAgainStreak)
         assertEquals(900, item.lastRealReviewDueAtMillis)
+        assertEquals(10, item.createdAtMillis)
         assertEquals("裂|sig", item.answerSignature)
         assertEquals("font_meaning", item.suppressedByTaskType)
+        assertEquals(50, item.suppressedAtMillis)
         assertEquals("active", item.activeToken)
         assertEquals(true, item.hasSimilarKanji)
         assertEquals(typingMemory, item.memories.typingMeaningMemory)
@@ -188,6 +190,48 @@ class RepositoryMappersTest {
         assertEquals("裂|sig", updated.answerSignature)
         assertEquals(1, current.withReviewUpdate(item.copy(rung = StudyRung.FONT_MEANING)).recognitionStage)
         assertEquals(2, current.withReviewUpdate(item.copy(rung = StudyRung.WORD_READING)).recognitionStage)
+    }
+
+    @Test
+    fun studyQueueItemMapsToFullSeedEntity() {
+        val memory = TaskMemory.from(
+            state = "review",
+            dueAtMillis = 12,
+            stability = 2.0,
+            difficulty = 4.0,
+            totalReviews = 3,
+            lapses = 1,
+            learningStep = 0,
+            lastRating = "good",
+            matureIntervalDays = 5,
+        )
+        val item = studyItemEntity().toDomain().copy(
+            state = StudyItemState.LEARNING,
+            dueAtMillis = 200,
+            rung = StudyRung.WRITE_KANJI,
+            phase = StudyPhase.RELEARNING,
+            suppressedByTaskType = "kanji_meaning",
+            suppressedAtMillis = 150,
+            createdAtMillis = 25,
+            activeToken = null,
+            memories = studyItemEntity().toDomain().memories.copy(
+                similarKanjiMemory = memory,
+            ),
+        )
+
+        val entity = item.toEntity()
+
+        assertEquals("learning", entity.state)
+        assertEquals(200, entity.dueAt)
+        assertEquals(0, entity.recognitionStage)
+        assertEquals(1, entity.writingRemediationPending)
+        assertEquals("write_kanji", entity.rung)
+        assertEquals("relearning", entity.phase)
+        assertEquals("kanji_meaning", entity.suppressedByTaskType)
+        assertEquals(150, entity.suppressedAt)
+        assertEquals(25, entity.createdAt)
+        assertEquals(null, entity.activeToken)
+        assertEquals(memory.encode(), entity.similarKanjiMemory)
     }
 
     @Test

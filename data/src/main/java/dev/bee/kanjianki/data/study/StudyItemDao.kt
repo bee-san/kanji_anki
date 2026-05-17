@@ -19,6 +19,9 @@ interface StudyItemDao {
     @Query("SELECT * FROM study_items WHERE state IN (:states) ORDER BY due_at ASC, kanji ASC")
     suspend fun listByStates(states: List<String>): List<StudyItemEntity>
 
+    @Query("SELECT * FROM study_items ORDER BY state ASC, due_at ASC, kanji ASC, answer_signature ASC")
+    suspend fun listAll(): List<StudyItemEntity>
+
     @Query("SELECT COUNT(*) FROM study_items WHERE state = :state AND due_at <= :nowMillis")
     suspend fun dueCount(state: String, nowMillis: Long): Int
 
@@ -27,4 +30,7 @@ interface StudyItemDao {
 
     @Upsert
     suspend fun upsertAll(items: List<StudyItemEntity>)
+
+    @Query("DELETE FROM study_items")
+    suspend fun deleteAll()
 }

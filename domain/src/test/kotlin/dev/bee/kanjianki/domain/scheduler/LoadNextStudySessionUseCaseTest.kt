@@ -172,6 +172,10 @@ class LoadNextStudySessionUseCaseTest {
             return itemsByState[state].orEmpty()
         }
 
+        override suspend fun listAllForSeeding(): List<StudyQueueItem> = itemsByState.values.flatten()
+
+        override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
+
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = true
 
         override suspend fun dueCount(
