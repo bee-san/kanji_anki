@@ -445,6 +445,13 @@ Current artifacts:
   - review passes using elapsed task-memory days and promotion thresholds.
   - review lapses entering relearning and demoting after the configured fail
     streak.
+- `ApplyStudyReviewUseCase` composes the extracted review transition with
+  `StudyQueueRepository.updateReviewedItem`.
+- `ApplyStudyReviewUseCaseTest` covers:
+  - duplicate reviews not being persisted.
+  - accepted reviews persisting the transitioned item.
+  - missing Room rows reporting an unpersisted result without changing the
+    transition outcome.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
@@ -526,11 +533,11 @@ Current artifacts:
 
 Explicit gaps:
 
-- Kotlin review-transition policy is extracted but is not wired into the
-  runtime review write path yet.
+- Kotlin review-transition use case is extracted but is not wired into the
+  runtime Study screen yet.
 - Study progress is not wired into the runtime Study screen yet.
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
-- Kotlin review-transition writes remain on the legacy runtime path.
+- Runtime Study still calls the legacy Java review write path.
 - Study dashboard repository is read-only for now; local suspension writes
   remain on the legacy path.
 - Adaptive planner split is not ported yet.
