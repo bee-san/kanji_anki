@@ -13,13 +13,15 @@ class RoomStudyQueueRepository internal constructor(
     private val studyItems: StudyItemDao,
     private val similarKanjiPairs: SimilarKanjiPairDao,
     private val runInTransaction: suspend (suspend () -> Unit) -> Unit,
+    private val claimInTransaction: suspend (suspend () -> StudyItemEntity?) -> StudyItemEntity?,
 ) : StudyQueueRepository {
     constructor(
-    database: KaniRoomDatabase,
+        database: KaniRoomDatabase,
     ) : this(
         studyItems = database.studyItemDao(),
         similarKanjiPairs = database.similarKanjiPairDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
+        claimInTransaction = { block -> database.withTransaction { block() } },
     )
 
     override suspend fun listActive(): List<StudyQueueItem> =
@@ -38,6 +40,32 @@ class RoomStudyQueueRepository internal constructor(
                 studyItems.upsertAll(items.map { it.toEntity() })
             }
         }
+    }
+
+    override suspend fun claimActiveToken(
+        kanji: String,
+        answerSignature: String,
+        token: String,
+    ): StudyQueueItem? {
+        val safeToken = token.takeIf { it.isNotEmpty() } ?: return null
+        val claimed = claimInTransaction {
+            val current = studyItems.get(kanji, answerSignature) ?: return@claimInTransaction null
+            if (current.state !in activeStateWireNames) {
+                return@claimInTransaction null
+            }
+            val existingToken = current.activeToken?.takeIf { it.isNotEmpty() }
+            val updated = if (existingToken == null) {
+                current.copy(activeToken = safeToken)
+            } else {
+                current
+            }
+            if (updated != current) {
+                studyItems.upsert(updated)
+            }
+            updated
+        } ?: return null
+        val withSimilar = similarKanjiPairs.kanjiWithSimilarNeighbors().toSet()
+        return claimed.toDomain(hasSimilarKanji = withSimilar.contains(claimed.kanji))
     }
 
     override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean {

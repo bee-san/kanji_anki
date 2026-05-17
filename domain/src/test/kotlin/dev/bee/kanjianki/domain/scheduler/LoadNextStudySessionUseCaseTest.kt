@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class LoadNextStudySessionUseCaseTest {
@@ -47,8 +48,11 @@ class LoadNextStudySessionUseCaseTest {
         )
 
         assertEquals("裂", session?.item?.kanji)
+        assertEquals("token-裂", session?.token)
+        assertEquals("token-裂", session?.item?.activeToken)
         assertEquals(12, dashboardRepository.lastListActiveLimit)
         assertEquals(1, queueRepository.listActiveCalls)
+        assertEquals(listOf("裂" to "token-裂"), queueRepository.claimedTokens)
     }
 
     @Test
@@ -89,6 +93,25 @@ class LoadNextStudySessionUseCaseTest {
     }
 
     @Test
+    fun returnsPersistedClaimedTokenBeforeShowingSession() = runBlocking {
+        val dashboardRepository = FakeStudyDashboardRepository(rows = listOf(row("裂")))
+        val queueRepository = FakeStudyQueueRepository(
+            itemsByState = mapOf(
+                StudyItemState.REVIEW to listOf(item("裂", activeToken = "persisted-token")),
+            ),
+        )
+
+        val session = useCase(queueRepository, dashboardRepository)(
+            LoadNextStudySessionRequest(nowMillis = 1_000L),
+        )
+
+        assertNotNull(session)
+        assertEquals("persisted-token", session?.token)
+        assertEquals("persisted-token", session?.item?.activeToken)
+        assertEquals(listOf("裂" to "persisted-token"), queueRepository.claimedTokens)
+    }
+
+    @Test
     fun returnsNullWhenRepositoriesHaveNoActiveDueSession() = runBlocking {
         val dashboardRepository = FakeStudyDashboardRepository(rows = listOf(row("裂")))
         val queueRepository = FakeStudyQueueRepository(
@@ -124,6 +147,7 @@ class LoadNextStudySessionUseCaseTest {
         dueAtMillis: Long = 1_000L,
         phase: StudyPhase = StudyPhase.REVIEW,
         totalReviews: Int = 1,
+        activeToken: String? = null,
     ): StudyQueueItem = StudyQueueItem(
         kanji = kanji,
         state = state,
@@ -135,6 +159,7 @@ class LoadNextStudySessionUseCaseTest {
         learningStep = 0,
         writingLevel = 0,
         phase = phase,
+        activeToken = activeToken,
     )
 
     private fun row(
@@ -155,9 +180,13 @@ class LoadNextStudySessionUseCaseTest {
     )
 
     private class FakeStudyQueueRepository(
-        private val itemsByState: Map<StudyItemState, List<StudyQueueItem>>,
+        itemsByState: Map<StudyItemState, List<StudyQueueItem>>,
     ) : StudyQueueRepository {
+        private val items = itemsByState.values.flatten()
+            .associateBy { it.kanji to it.answerSignature }
+            .toMutableMap()
         var listActiveCalls = 0
+        val claimedTokens = mutableListOf<Pair<String, String>>()
 
         override suspend fun listActive(): List<StudyQueueItem> {
             listActiveCalls += 1
@@ -165,23 +194,37 @@ class LoadNextStudySessionUseCaseTest {
                 StudyItemState.NEW,
                 StudyItemState.LEARNING,
                 StudyItemState.REVIEW,
-            ).flatMap { itemsByState[it].orEmpty() }
+            ).flatMap { state -> items.values.filter { it.state == state } }
         }
 
         override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> {
-            return itemsByState[state].orEmpty()
+            return items.values.filter { it.state == state }
         }
 
-        override suspend fun listAllForSeeding(): List<StudyQueueItem> = itemsByState.values.flatten()
+        override suspend fun listAllForSeeding(): List<StudyQueueItem> = items.values.toList()
 
         override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
+
+        override suspend fun claimActiveToken(
+            kanji: String,
+            answerSignature: String,
+            token: String,
+        ): StudyQueueItem? {
+            val key = kanji to answerSignature
+            val current = items[key] ?: return null
+            val claimed = current.activeToken?.takeIf { it.isNotEmpty() }?.let { current }
+                ?: current.copy(activeToken = token)
+            items[key] = claimed
+            claimedTokens += kanji to (claimed.activeToken ?: "")
+            return claimed
+        }
 
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = true
 
         override suspend fun dueCount(
             state: StudyItemState,
             nowMillis: Long,
-        ): Int = itemsByState[state].orEmpty().count { it.dueAtMillis <= nowMillis }
+        ): Int = items.values.count { it.state == state && it.dueAtMillis <= nowMillis }
     }
 
     private class FakeStudyDashboardRepository(

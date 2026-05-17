@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,6 +28,7 @@ class RoomStudyQueueRepositoryTest {
             ),
             similarKanjiPairs = FakeSimilarKanjiPairDao(listOf("裂")),
             runInTransaction = { block -> block() },
+            claimInTransaction = { block -> block() },
         )
 
         val items = repository.listAllForSeeding()
@@ -48,6 +50,7 @@ class RoomStudyQueueRepositoryTest {
                 dao.events += "transaction"
                 block()
             },
+            claimInTransaction = { block -> block() },
         )
 
         repository.replaceAllSeeded(
@@ -61,6 +64,63 @@ class RoomStudyQueueRepositoryTest {
         assertEquals(listOf("transaction", "deleteAll", "upsertAll"), dao.events)
         assertEquals(listOf("裂", "浅"), dao.items.map { it.kanji })
         assertEquals(listOf("new", "retired"), dao.items.map { it.state })
+    }
+
+    @Test
+    fun claimActiveTokenPersistsGeneratedTokenInsideTransaction() = runBlocking {
+        val dao = FakeStudyItemDao(listOf(entity("裂", "review")))
+        var claimTransactions = 0
+        val repository = RoomStudyQueueRepository(
+            studyItems = dao,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(listOf("裂")),
+            runInTransaction = { block -> block() },
+            claimInTransaction = { block ->
+                claimTransactions++
+                dao.events += "claimTransaction"
+                block()
+            },
+        )
+
+        val claimed = repository.claimActiveToken("裂", "裂|sig", "token-1")
+
+        assertEquals(1, claimTransactions)
+        assertEquals("token-1", claimed?.activeToken)
+        assertTrue(claimed?.hasSimilarKanji == true)
+        assertEquals("token-1", dao.items.single().activeToken)
+        assertEquals(listOf("claimTransaction"), dao.events)
+    }
+
+    @Test
+    fun claimActiveTokenKeepsExistingToken() = runBlocking {
+        val dao = FakeStudyItemDao(listOf(entity("裂", "review", activeToken = "existing-token")))
+        val repository = RoomStudyQueueRepository(
+            studyItems = dao,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            runInTransaction = { block -> block() },
+            claimInTransaction = { block -> block() },
+        )
+
+        val claimed = repository.claimActiveToken("裂", "裂|sig", "new-token")
+
+        assertEquals("existing-token", claimed?.activeToken)
+        assertEquals("existing-token", dao.items.single().activeToken)
+        assertEquals(emptyList<String>(), dao.events)
+    }
+
+    @Test
+    fun claimActiveTokenReturnsNullWhenItemStoppedBeingActive() = runBlocking {
+        val dao = FakeStudyItemDao(listOf(entity("裂", "retired")))
+        val repository = RoomStudyQueueRepository(
+            studyItems = dao,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            runInTransaction = { block -> block() },
+            claimInTransaction = { block -> block() },
+        )
+
+        val claimed = repository.claimActiveToken("裂", "裂|sig", "token-1")
+
+        assertNull(claimed)
+        assertNull(dao.items.single().activeToken)
     }
 
     private class FakeStudyItemDao(
@@ -147,6 +207,7 @@ class RoomStudyQueueRepositoryTest {
     private fun entity(
         kanji: String,
         state: String,
+        activeToken: String? = null,
     ): StudyItemEntity = StudyItemEntity(
         kanji = kanji,
         state = state,
@@ -177,7 +238,7 @@ class RoomStudyQueueRepositoryTest {
         realAgainStreak = 0,
         lastRealReviewDueAt = 0,
         similarKanjiMemory = "",
-        activeToken = null,
+        activeToken = activeToken,
         createdAt = 10,
     )
 }

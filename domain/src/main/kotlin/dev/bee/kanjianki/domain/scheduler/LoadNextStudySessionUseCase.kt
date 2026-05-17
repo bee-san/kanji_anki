@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.domain.scheduler
 
 import dev.bee.kanjianki.domain.model.importing.NewCardSortMode
+import dev.bee.kanjianki.domain.model.study.StudyRung
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 
@@ -12,7 +13,7 @@ class LoadNextStudySessionUseCase(
     suspend operator fun invoke(request: LoadNextStudySessionRequest): StudySession? {
         val rows = studyDashboardRepository.listActive(request.dashboardLimit)
         val items = studyQueueRepository.listActive()
-        return selector.nextSession(
+        val selected = selector.nextSession(
             NextSessionInput(
                 items = items,
                 rows = rows,
@@ -22,6 +23,18 @@ class LoadNextStudySessionUseCase(
                 ladderSettings = request.ladderSettings,
                 newCardSortMode = request.newCardSortMode,
             ),
+        ) ?: return null
+        val claimedItem = studyQueueRepository.claimActiveToken(
+            kanji = selected.item.kanji,
+            answerSignature = selected.item.answerSignature,
+            token = selected.token,
+        ) ?: return null
+        val claimedToken = claimedItem.activeToken?.takeIf { it.isNotEmpty() } ?: return null
+        return selected.copy(
+            item = claimedItem,
+            token = claimedToken,
+            taskType = claimedItem.rung.wireName,
+            writingRequired = claimedItem.rung == StudyRung.WRITE_KANJI,
         )
     }
 }

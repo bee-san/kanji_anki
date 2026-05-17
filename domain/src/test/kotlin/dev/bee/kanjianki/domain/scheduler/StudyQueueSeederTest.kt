@@ -230,6 +230,12 @@ class StudyQueueSeederTest {
             replaced += items
         }
 
+        override suspend fun claimActiveToken(
+            kanji: String,
+            answerSignature: String,
+            token: String,
+        ): StudyQueueItem? = existing.firstOrNull { it.kanji == kanji && it.answerSignature == answerSignature }
+
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = false
 
         override suspend fun dueCount(
