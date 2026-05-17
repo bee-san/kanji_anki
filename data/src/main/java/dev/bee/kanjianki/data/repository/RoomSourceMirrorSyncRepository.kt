@@ -19,11 +19,15 @@ import dev.bee.kanjianki.data.inventory.KanjiExampleDao
 import dev.bee.kanjianki.data.inventory.KanjiInventoryDao
 import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceNoteDao
+import dev.bee.kanjianki.data.similar.SimilarKanjiPairDao
+import dev.bee.kanjianki.data.similar.SimilarKanjiPairEntity
 import dev.bee.kanjianki.data.study.StudyItemDao
 import dev.bee.kanjianki.data.sync.SyncRunDao
 import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiIndex
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiPair
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
@@ -48,6 +52,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val syncCardSnapshots: SyncCardSnapshotDao,
     private val syncKanjiSnapshots: SyncKanjiSnapshotDao,
     private val studyItems: StudyItemDao,
+    private val similarKanjiPairs: SimilarKanjiPairDao,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
 ) : SourceMirrorSyncRepository {
     constructor(database: KaniRoomDatabase) : this(
@@ -66,6 +71,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         syncCardSnapshots = database.syncCardSnapshotDao(),
         syncKanjiSnapshots = database.syncKanjiSnapshotDao(),
         studyItems = database.studyItemDao(),
+        similarKanjiPairs = database.similarKanjiPairDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
@@ -77,6 +83,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         dashboardRows: List<StudyDashboardRow>,
         settings: ImportSettings,
         seededQueueItems: List<StudyQueueItem>?,
+        similarKanjiIndex: SimilarKanjiIndex?,
     ): SyncRunId = runInTransaction {
         val finishedAt = requireNotNull(syncRun.finishedAt)
         val previousNoteIds = sourceNotes.listIds().toSet()
@@ -102,6 +109,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         recordHistoricalKanjiSnapshots(syncRunId, finishedAt, dashboardRows)
         recordDashboardRows(finishedAt, dashboardRows)
         recordKanjiInventory(finishedAt, notes, cards, importCandidates, dashboardRows, settings)
+        rebuildSimilarKanjiPairs(finishedAt, similarKanjiIndex)
         replaceStudyQueue(seedQueueItems = seededQueueItems)
         syncRunId
     }
@@ -190,6 +198,49 @@ class RoomSourceMirrorSyncRepository internal constructor(
             studyItems.upsertAll(seedQueueItems.map { it.toEntity() })
         }
     }
+
+    private suspend fun rebuildSimilarKanjiPairs(
+        nowMillis: Long,
+        similarKanjiIndex: SimilarKanjiIndex?,
+    ) {
+        if (similarKanjiIndex == null) {
+            return
+        }
+        val firstSeenByKey = similarKanjiPairs.listAll().associateBy(
+            keySelector = { similarPairKey(it.kanjiA, it.kanjiB, it.source) },
+            valueTransform = { it.firstSeenAt },
+        )
+        val localKanji = kanjiInventory.listAll().map { it.kanji }
+        val pairs = similarKanjiIndex.pairsWithin(localKanji)
+            .asSequence()
+            .map { it.canonical() }
+            .distinctBy { it.key() }
+            .sortedWith(
+                compareBy<SimilarKanjiPair> { it.kanjiA }
+                    .thenBy { it.kanjiB }
+                    .thenBy { it.source },
+            )
+            .map { pair ->
+                SimilarKanjiPairEntity(
+                    kanjiA = pair.kanjiA,
+                    kanjiB = pair.kanjiB,
+                    source = pair.source,
+                    firstSeenAt = firstSeenByKey[pair.key()] ?: nowMillis,
+                    lastSeenAt = nowMillis,
+                )
+            }
+            .toList()
+        similarKanjiPairs.deleteAll()
+        if (pairs.isNotEmpty()) {
+            similarKanjiPairs.upsertAll(pairs)
+        }
+    }
+
+    private fun similarPairKey(
+        kanjiA: String,
+        kanjiB: String,
+        source: String,
+    ): String = SimilarKanjiPair.canonical(kanjiA, kanjiB, source).key()
 
     private suspend fun recordSuspendedArchive(
         syncRunId: SyncRunId,

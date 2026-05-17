@@ -118,6 +118,8 @@ class RoomStudyQueueRepositoryTest {
 
         override suspend fun kanjiWithSimilarNeighbors(): List<String> = kanjiWithSimilar
 
+        override suspend fun listAll(): List<SimilarKanjiPairEntity> = emptyList()
+
         override suspend fun upsertAll(pairs: List<SimilarKanjiPairEntity>) = Unit
 
         override suspend fun deleteAll() = Unit

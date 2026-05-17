@@ -26,6 +26,8 @@ import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceCardEntity
 import dev.bee.kanjianki.data.source.SourceNoteDao
 import dev.bee.kanjianki.data.source.SourceNoteEntity
+import dev.bee.kanjianki.data.similar.SimilarKanjiPairDao
+import dev.bee.kanjianki.data.similar.SimilarKanjiPairEntity
 import dev.bee.kanjianki.data.study.StudyItemDao
 import dev.bee.kanjianki.data.study.StudyItemEntity
 import dev.bee.kanjianki.data.sync.SyncRunDao
@@ -37,6 +39,8 @@ import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.importing.ImportSource
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiIndex
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiPair
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
@@ -97,6 +101,17 @@ class RoomSourceMirrorSyncRepositoryTest {
         val syncCardSnapshots = FakeSyncCardSnapshotDao()
         val syncKanjiSnapshots = FakeSyncKanjiSnapshotDao()
         val studyItems = FakeStudyItemDao()
+        val similarKanjiPairs = FakeSimilarKanjiPairDao(
+            existing = listOf(
+                SimilarKanjiPairEntity(
+                    kanjiA = "古",
+                    kanjiB = "日",
+                    source = "fixture",
+                    firstSeenAt = 7,
+                    lastSeenAt = 8,
+                ),
+            ),
+        )
         var transactions = 0
         val repository = RoomSourceMirrorSyncRepository(
             syncRuns = syncRuns,
@@ -114,6 +129,7 @@ class RoomSourceMirrorSyncRepositoryTest {
             syncCardSnapshots = syncCardSnapshots,
             syncKanjiSnapshots = syncKanjiSnapshots,
             studyItems = studyItems,
+            similarKanjiPairs = similarKanjiPairs,
             runInTransaction = { block ->
                 transactions++
                 block()
@@ -141,6 +157,13 @@ class RoomSourceMirrorSyncRepositoryTest {
             dashboardRows = listOf(dashboardRow("日")),
             settings = ImportSettings(importActiveCards = true),
             seededQueueItems = listOf(studyQueueItem("日")),
+            similarKanjiIndex = FakeSimilarKanjiIndex(
+                listOf(
+                    SimilarKanjiPair.canonical("日", "本", "fixture"),
+                    SimilarKanjiPair.canonical("日", "古", "fixture"),
+                    SimilarKanjiPair.canonical("日", "外", "fixture"),
+                ),
+            ),
         )
 
         assertEquals(SyncRunId(42), id)
@@ -201,6 +224,11 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertTrue(studyItems.deletedAll)
         assertEquals(listOf("日"), studyItems.upserted.map { it.kanji })
         assertEquals(listOf("new"), studyItems.upserted.map { it.state })
+        assertTrue(similarKanjiPairs.deletedAll)
+        assertEquals(listOf("古日", "日本"), similarKanjiPairs.upserted.map { it.kanjiA + it.kanjiB })
+        assertEquals(7L, similarKanjiPairs.upserted.single { it.kanjiA == "古" }.firstSeenAt)
+        assertEquals(20L, similarKanjiPairs.upserted.single { it.kanjiA == "古" }.lastSeenAt)
+        assertEquals(20L, similarKanjiPairs.upserted.single { it.kanjiA == "日" }.firstSeenAt)
     }
 
     private class FakeSyncRunDao(
@@ -548,6 +576,45 @@ class RoomSourceMirrorSyncRepositoryTest {
         override suspend fun deleteAll() {
             deletedAll = true
             upserted.clear()
+        }
+    }
+
+    private class FakeSimilarKanjiPairDao(
+        existing: List<SimilarKanjiPairEntity> = emptyList(),
+    ) : SimilarKanjiPairDao {
+        val upserted = existing.toMutableList()
+        var deletedAll = false
+
+        override suspend fun listForKanji(kanji: String): List<SimilarKanjiPairEntity> =
+            upserted.filter { it.kanjiA == kanji || it.kanjiB == kanji }
+
+        override suspend fun kanjiWithSimilarNeighbors(): List<String> =
+            upserted.flatMap { listOf(it.kanjiA, it.kanjiB) }.distinct().sorted()
+
+        override suspend fun listAll(): List<SimilarKanjiPairEntity> =
+            upserted.sortedWith(compareBy<SimilarKanjiPairEntity> { it.kanjiA }.thenBy { it.kanjiB }.thenBy { it.source })
+
+        override suspend fun upsertAll(pairs: List<SimilarKanjiPairEntity>) {
+            for (pair in pairs) {
+                upserted.removeAll {
+                    it.kanjiA == pair.kanjiA && it.kanjiB == pair.kanjiB && it.source == pair.source
+                }
+                upserted += pair
+            }
+        }
+
+        override suspend fun deleteAll() {
+            deletedAll = true
+            upserted.clear()
+        }
+    }
+
+    private class FakeSimilarKanjiIndex(
+        private val pairs: List<SimilarKanjiPair>,
+    ) : SimilarKanjiIndex {
+        override fun pairsWithin(kanji: Collection<String>): List<SimilarKanjiPair> {
+            val local = kanji.toSet()
+            return pairs.filter { it.kanjiA in local && it.kanjiB in local }
         }
     }
 

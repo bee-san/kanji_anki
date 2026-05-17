@@ -7,6 +7,8 @@ import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiIndex
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiPair
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
@@ -107,6 +109,34 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(StudyItemState.NEW, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.state)
         assertEquals(150L, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.createdAtMillis)
         assertEquals(StudyItemState.RETIRED, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "火" }.state)
+    }
+
+    @Test
+    fun successfulReadPassesSimilarKanjiIndexToSourceRepository() = runBlocking {
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val similarIndex = FakeSimilarKanjiIndex()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10)),
+                    cards = listOf(sourceCard(noteId = 10, suspended = false)),
+                ),
+            ),
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(100, 150),
+        )
+
+        useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                similarKanjiIndex = similarIndex,
+            ),
+        )
+
+        assertEquals(similarIndex, sourceMirrorSync.similarKanjiIndex)
     }
 
     @Test
@@ -230,6 +260,7 @@ class RunSourceMirrorSyncUseCaseTest {
         val importCandidates = mutableListOf<ImportedKanjiCandidate>()
         val dashboardRows = mutableListOf<StudyDashboardRow>()
         var seededQueueItems: List<StudyQueueItem>? = null
+        var similarKanjiIndex: SimilarKanjiIndex? = null
         lateinit var syncRun: SyncRun
 
         override suspend fun recordSuccessfulSnapshot(
@@ -240,6 +271,7 @@ class RunSourceMirrorSyncUseCaseTest {
             dashboardRows: List<StudyDashboardRow>,
             settings: ImportSettings,
             seededQueueItems: List<StudyQueueItem>?,
+            similarKanjiIndex: SimilarKanjiIndex?,
         ): SyncRunId {
             val id = SyncRunId(1)
             this.syncRun = syncRun.copy(id = id)
@@ -248,8 +280,13 @@ class RunSourceMirrorSyncUseCaseTest {
             this.importCandidates += importCandidates
             this.dashboardRows += dashboardRows
             this.seededQueueItems = seededQueueItems
+            this.similarKanjiIndex = similarKanjiIndex
             return id
         }
+    }
+
+    private class FakeSimilarKanjiIndex : SimilarKanjiIndex {
+        override fun pairsWithin(kanji: Collection<String>): List<SimilarKanjiPair> = emptyList()
     }
 
     private class FakeStudyQueueRepository(

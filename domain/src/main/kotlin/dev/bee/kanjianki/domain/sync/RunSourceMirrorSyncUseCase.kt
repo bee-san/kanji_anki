@@ -5,6 +5,7 @@ import dev.bee.kanjianki.domain.importing.ImportCandidateSelector
 import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
+import dev.bee.kanjianki.domain.model.similar.SimilarKanjiIndex
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
@@ -49,6 +50,7 @@ class RunSourceMirrorSyncUseCase(
                 dashboardRows = dashboardRows,
                 settings = settings,
                 seededQueueItems = seededQueueItems,
+                similarKanjiIndex = request.similarKanjiIndex,
             )
         } catch (error: CollectionGatewayException) {
             val finishedAt = clock.nowMillis()
@@ -139,4 +141,5 @@ data class RunSourceMirrorSyncRequest(
     val startOfDayMillis: Long = 0L,
     val adaptivePlan: AdaptiveStudyPlan? = null,
     val ladderSettings: StudyLadderSettings = StudyLadderSettings.defaults,
+    val similarKanjiIndex: SimilarKanjiIndex? = null,
 )

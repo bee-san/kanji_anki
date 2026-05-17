@@ -18,6 +18,9 @@ interface SimilarKanjiPairDao {
     )
     suspend fun kanjiWithSimilarNeighbors(): List<String>
 
+    @Query("SELECT * FROM similar_kanji_pairs ORDER BY kanji_a ASC, kanji_b ASC, source ASC")
+    suspend fun listAll(): List<SimilarKanjiPairEntity>
+
     @Upsert
     suspend fun upsertAll(pairs: List<SimilarKanjiPairEntity>)
 
