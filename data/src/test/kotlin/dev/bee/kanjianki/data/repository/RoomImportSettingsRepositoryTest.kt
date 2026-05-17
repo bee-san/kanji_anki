@@ -72,18 +72,46 @@ class RoomImportSettingsRepositoryTest {
         assertEquals(ImportSettings(), repository.get())
     }
 
+    @Test
+    fun loadsImportSettingsFromSingleDaoSnapshot() = runBlocking {
+        val dao = FakeSettingsDao(
+            initialValues = mapOf(
+                "sync.import.active_cards" to "true",
+                "sync.import.suspended_cards" to "false",
+            ),
+            failSingleKeyReads = true,
+        )
+        val repository = RoomImportSettingsRepository(dao)
+
+        val loaded = repository.get()
+
+        assertEquals(1, dao.getAllCalls)
+        assertEquals(true, loaded.importActiveCards)
+        assertEquals(false, loaded.importSuspendedCards)
+    }
+
     private class FakeSettingsDao(
         initialValues: Map<String, String> = emptyMap(),
+        private val failSingleKeyReads: Boolean = false,
     ) : SettingsDao {
         val values = initialValues.mapValues { (key, value) ->
             SettingEntity(key = key, value = value, updatedAt = 1L)
         }.toMutableMap()
+        var getAllCalls = 0
+            private set
 
         override fun observe(key: String): Flow<SettingEntity?> =
             flowOf(values[key])
 
-        override suspend fun get(key: String): SettingEntity? =
-            values[key]
+        override suspend fun get(key: String): SettingEntity? {
+            check(!failSingleKeyReads) { "Import settings must load through getAll." }
+            return values[key]
+        }
+
+        override suspend fun getAll(keys: List<String>): List<SettingEntity> {
+            getAllCalls += 1
+            return keys.mapNotNull { key -> values[key] }
+        }
 
         override suspend fun upsert(setting: SettingEntity) {
             values[setting.key] = setting

@@ -1030,5 +1030,8 @@ The first typed Room adapter is
 Empty Room settings load current domain defaults, so a clean reset starts with
 suspended-only Kiku import behavior instead of legacy key/value state. Customized
 sync/import filters round-trip through typed `sync.*` keys in the Room settings
-table, and invalid persisted settings fall back to current defaults rather than
-carrying corrupt values into sync.
+table from a single DAO snapshot, and invalid persisted settings fall back to
+current defaults rather than carrying corrupt values into sync. The app graph
+does not expose this as an unqualified Hilt binding while Room is still running
+in sandbox mode; live runtime settings stay on the legacy source of truth until
+the Room cutover explicitly moves sync ownership.

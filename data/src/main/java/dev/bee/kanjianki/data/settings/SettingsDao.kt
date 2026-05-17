@@ -13,6 +13,9 @@ interface SettingsDao {
     @Query("SELECT * FROM settings WHERE `key` = :key")
     suspend fun get(key: String): SettingEntity?
 
+    @Query("SELECT * FROM settings WHERE `key` IN (:keys)")
+    suspend fun getAll(keys: List<String>): List<SettingEntity>
+
     @Upsert
     suspend fun upsert(setting: SettingEntity)
 

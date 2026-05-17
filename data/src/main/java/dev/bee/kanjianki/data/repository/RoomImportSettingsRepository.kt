@@ -12,45 +12,52 @@ class RoomImportSettingsRepository(
 ) : ImportSettingsRepository {
     override suspend fun get(): ImportSettings {
         val defaults = ImportSettings()
+        val values = settings.getAll(ALL_KEYS).associate { it.key to it.value }
         val mappingDefaults = defaults.noteMapping
         val noteMapping = runCatching {
             NoteTypeMapping(
-                noteTypeName = string(KEY_NOTE_TYPE, mappingDefaults.noteTypeName),
-                templateName = string(KEY_TEMPLATE_NAME, mappingDefaults.templateName),
-                expressionField = string(KEY_EXPRESSION_FIELD, mappingDefaults.expressionField),
-                readingField = string(KEY_READING_FIELD, mappingDefaults.readingField),
-                meaningField = string(KEY_MEANING_FIELD, mappingDefaults.meaningField),
-                sentenceField = string(KEY_SENTENCE_FIELD, mappingDefaults.sentenceField),
-                frequencyField = string(KEY_FREQUENCY_FIELD, mappingDefaults.frequencyField),
-                frequencySortField = string(KEY_FREQUENCY_SORT_FIELD, mappingDefaults.frequencySortField),
+                noteTypeName = values.string(KEY_NOTE_TYPE, mappingDefaults.noteTypeName),
+                templateName = values.string(KEY_TEMPLATE_NAME, mappingDefaults.templateName),
+                expressionField = values.string(KEY_EXPRESSION_FIELD, mappingDefaults.expressionField),
+                readingField = values.string(KEY_READING_FIELD, mappingDefaults.readingField),
+                meaningField = values.string(KEY_MEANING_FIELD, mappingDefaults.meaningField),
+                sentenceField = values.string(KEY_SENTENCE_FIELD, mappingDefaults.sentenceField),
+                frequencyField = values.string(KEY_FREQUENCY_FIELD, mappingDefaults.frequencyField),
+                frequencySortField = values.string(KEY_FREQUENCY_SORT_FIELD, mappingDefaults.frequencySortField),
             )
         }.getOrDefault(mappingDefaults)
 
         return runCatching {
             ImportSettings(
                 noteMapping = noteMapping,
-                matureDays = int(KEY_MATURE_DAYS, defaults.matureDays),
-                matureSupportThreshold = int(KEY_MATURE_SUPPORT_THRESHOLD, defaults.matureSupportThreshold),
-                importActiveCards = boolean(KEY_IMPORT_ACTIVE_CARDS, defaults.importActiveCards),
-                importSuspendedCards = boolean(KEY_IMPORT_SUSPENDED_CARDS, defaults.importSuspendedCards),
-                importTaggedCards = boolean(KEY_IMPORT_TAGGED_CARDS, defaults.importTaggedCards),
-                importTags = list(KEY_IMPORT_TAGS, defaults.importTags),
-                importWeakCards = boolean(KEY_IMPORT_WEAK_CARDS, defaults.importWeakCards),
-                importWeakFsrsDifficultyThreshold = double(
+                matureDays = values.int(KEY_MATURE_DAYS, defaults.matureDays),
+                matureSupportThreshold = values.int(KEY_MATURE_SUPPORT_THRESHOLD, defaults.matureSupportThreshold),
+                importActiveCards = values.boolean(KEY_IMPORT_ACTIVE_CARDS, defaults.importActiveCards),
+                importSuspendedCards = values.boolean(KEY_IMPORT_SUSPENDED_CARDS, defaults.importSuspendedCards),
+                importTaggedCards = values.boolean(KEY_IMPORT_TAGGED_CARDS, defaults.importTaggedCards),
+                importTags = values.list(KEY_IMPORT_TAGS, defaults.importTags),
+                importWeakCards = values.boolean(KEY_IMPORT_WEAK_CARDS, defaults.importWeakCards),
+                importWeakFsrsDifficultyThreshold = values.double(
                     KEY_IMPORT_WEAK_FSRS_DIFFICULTY_THRESHOLD,
                     defaults.importWeakFsrsDifficultyThreshold,
                 ),
-                importWeakLapsesThreshold = int(KEY_IMPORT_WEAK_LAPSES_THRESHOLD, defaults.importWeakLapsesThreshold),
-                importMinMatchingCardsPerKanji = int(
+                importWeakLapsesThreshold = values.int(
+                    KEY_IMPORT_WEAK_LAPSES_THRESHOLD,
+                    defaults.importWeakLapsesThreshold,
+                ),
+                importMinMatchingCardsPerKanji = values.int(
                     KEY_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
                     defaults.importMinMatchingCardsPerKanji,
                 ),
-                importBrowserQueryCards = boolean(KEY_IMPORT_BROWSER_QUERY_CARDS, defaults.importBrowserQueryCards),
-                importBrowserQuery = string(KEY_IMPORT_BROWSER_QUERY, defaults.importBrowserQuery),
-                suspendedRankMin = int(KEY_SUSPENDED_RANK_MIN, defaults.suspendedRankMin),
-                suspendedRankMax = int(KEY_SUSPENDED_RANK_MAX, defaults.suspendedRankMax),
+                importBrowserQueryCards = values.boolean(
+                    KEY_IMPORT_BROWSER_QUERY_CARDS,
+                    defaults.importBrowserQueryCards,
+                ),
+                importBrowserQuery = values.string(KEY_IMPORT_BROWSER_QUERY, defaults.importBrowserQuery),
+                suspendedRankMin = values.int(KEY_SUSPENDED_RANK_MIN, defaults.suspendedRankMin),
+                suspendedRankMax = values.int(KEY_SUSPENDED_RANK_MAX, defaults.suspendedRankMax),
                 newCardSortMode = NewCardSortMode.fromWireName(
-                    string(KEY_NEW_CARD_SORT_MODE, defaults.newCardSortMode.wireName),
+                    values.string(KEY_NEW_CARD_SORT_MODE, defaults.newCardSortMode.wireName),
                 ),
             )
         }.getOrDefault(defaults)
@@ -96,30 +103,30 @@ class RoomImportSettingsRepository(
         )
     }
 
-    private suspend fun string(
+    private fun Map<String, String>.string(
         key: String,
         default: String,
-    ): String = settings.get(key)?.value ?: default
+    ): String = get(key) ?: default
 
-    private suspend fun int(
+    private fun Map<String, String>.int(
         key: String,
         default: Int,
-    ): Int = settings.get(key)?.value?.toIntOrNull() ?: default
+    ): Int = get(key)?.toIntOrNull() ?: default
 
-    private suspend fun double(
+    private fun Map<String, String>.double(
         key: String,
         default: Double,
-    ): Double = settings.get(key)?.value?.toDoubleOrNull() ?: default
+    ): Double = get(key)?.toDoubleOrNull() ?: default
 
-    private suspend fun boolean(
+    private fun Map<String, String>.boolean(
         key: String,
         default: Boolean,
-    ): Boolean = settings.get(key)?.value?.toBooleanStrictOrNull() ?: default
+    ): Boolean = get(key)?.toBooleanStrictOrNull() ?: default
 
-    private suspend fun list(
+    private fun Map<String, String>.list(
         key: String,
         default: List<String>,
-    ): List<String> = settings.get(key)?.value
+    ): List<String> = get(key)
         ?.split(TAG_SEPARATOR)
         ?.filter(String::isNotBlank)
         ?: default
@@ -149,5 +156,30 @@ class RoomImportSettingsRepository(
         private const val KEY_SUSPENDED_RANK_MIN = "sync.import.suspended_rank_min"
         private const val KEY_SUSPENDED_RANK_MAX = "sync.import.suspended_rank_max"
         private const val KEY_NEW_CARD_SORT_MODE = "sync.new_card_sort_mode"
+        private val ALL_KEYS = listOf(
+            KEY_NOTE_TYPE,
+            KEY_TEMPLATE_NAME,
+            KEY_EXPRESSION_FIELD,
+            KEY_READING_FIELD,
+            KEY_MEANING_FIELD,
+            KEY_SENTENCE_FIELD,
+            KEY_FREQUENCY_FIELD,
+            KEY_FREQUENCY_SORT_FIELD,
+            KEY_MATURE_DAYS,
+            KEY_MATURE_SUPPORT_THRESHOLD,
+            KEY_IMPORT_ACTIVE_CARDS,
+            KEY_IMPORT_SUSPENDED_CARDS,
+            KEY_IMPORT_TAGGED_CARDS,
+            KEY_IMPORT_TAGS,
+            KEY_IMPORT_WEAK_CARDS,
+            KEY_IMPORT_WEAK_FSRS_DIFFICULTY_THRESHOLD,
+            KEY_IMPORT_WEAK_LAPSES_THRESHOLD,
+            KEY_IMPORT_MIN_MATCHING_CARDS_PER_KANJI,
+            KEY_IMPORT_BROWSER_QUERY_CARDS,
+            KEY_IMPORT_BROWSER_QUERY,
+            KEY_SUSPENDED_RANK_MIN,
+            KEY_SUSPENDED_RANK_MAX,
+            KEY_NEW_CARD_SORT_MODE,
+        )
     }
 }

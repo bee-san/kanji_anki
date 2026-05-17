@@ -13,7 +13,6 @@ import dev.bee.kanjianki.data.KaniRoomDatabaseResetPolicy;
 import dev.bee.kanjianki.data.RoomStudyQueueMutationGate;
 import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy;
 import dev.bee.kanjianki.data.StudyQueueMutationGate;
-import dev.bee.kanjianki.data.repository.RoomImportSettingsRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
@@ -21,7 +20,6 @@ import dev.bee.kanjianki.data.repository.RoomStudyQueueRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyRuntimeSnapshotRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyReviewPersistenceRepository;
 import dev.bee.kanjianki.data.repository.RoomSyncRunRepository;
-import dev.bee.kanjianki.domain.repository.ImportSettingsRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
@@ -51,12 +49,6 @@ public final class KaniDataModule {
     @Singleton
     static SourceMirrorRepository provideSourceMirrorRepository(KaniRoomDatabase database) {
         return new RoomSourceMirrorRepository(database);
-    }
-
-    @Provides
-    @Singleton
-    static ImportSettingsRepository provideImportSettingsRepository(KaniRoomDatabase database) {
-        return new RoomImportSettingsRepository(database.settingsDao());
     }
 
     @Provides
