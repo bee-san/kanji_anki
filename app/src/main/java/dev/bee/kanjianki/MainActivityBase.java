@@ -28,7 +28,6 @@ import androidx.core.view.WindowInsetsCompat;
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -446,22 +445,17 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     RecordsSchedulerModels.AdaptiveLoadPlan adaptivePlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        return new AdaptiveLoadPlanner().plan(
-                AdaptiveLoadPlanner.PlanRequest.builder(
-                                rows,
-                                items,
-                                store.reviewStatsSince(now - 7 * DAY_MILLIS),
-                                store.studyStreak(now).currentDays,
-                                store.studiedKanjiSince(startOfDay(now)),
-                                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                                        store.adaptiveLoadWorkPercent(),
-                                        store.adaptiveLoadMode(),
-                                        store.adaptiveLoadMaxItems()
-                                ),
-                                now
-                        )
-                        .settings(settings())
-                        .build()
+        return new LegacyAdaptiveStudyPlannerBridge().plan(
+                rows,
+                items,
+                store.reviewStatsSince(now - 7 * DAY_MILLIS),
+                store.studyStreak(now).currentDays,
+                store.studiedKanjiSince(startOfDay(now)),
+                store.adaptiveLoadWorkPercent(),
+                store.adaptiveLoadMode(),
+                store.adaptiveLoadMaxItems(),
+                now,
+                settings()
         );
     }
 

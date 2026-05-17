@@ -7,9 +7,9 @@ import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 
 import dev.bee.kanjianki.R;
+import dev.bee.kanjianki.LegacyAdaptiveStudyPlannerBridge;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
@@ -146,25 +146,19 @@ public final class ManualSyncEngine {
     }
 
     private RecordsSchedulerModels.AdaptiveLoadPlan adaptivePlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long nowMillis) {
-        AdaptiveLoadPlanner planner = new AdaptiveLoadPlanner();
         long dayStart = startOfDay(nowMillis);
         Set<String> studiedToday = store.studiedKanjiSince(dayStart);
-        return planner.plan(
-                AdaptiveLoadPlanner.PlanRequest.builder(
-                                rows,
-                                items,
-                                store.reviewStatsSince(nowMillis - 7 * 86_400_000L),
-                                store.studyStreak(nowMillis).currentDays,
-                                studiedToday,
-                                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                                        store.adaptiveLoadWorkPercent(),
-                                        store.adaptiveLoadMode(),
-                                        store.adaptiveLoadMaxItems()
-                                ),
-                                nowMillis
-                        )
-                        .settings(settings)
-                        .build()
+        return new LegacyAdaptiveStudyPlannerBridge().plan(
+                rows,
+                items,
+                store.reviewStatsSince(nowMillis - 7 * 86_400_000L),
+                store.studyStreak(nowMillis).currentDays,
+                studiedToday,
+                store.adaptiveLoadWorkPercent(),
+                store.adaptiveLoadMode(),
+                store.adaptiveLoadMaxItems(),
+                nowMillis,
+                settings
         );
     }
 

@@ -18,12 +18,14 @@ import android.os.Build;
 
 import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
+import dev.bee.kanjianki.LegacyAdaptiveStudyPlannerBridge;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.time.AppClock;
 
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -298,11 +300,18 @@ public final class ReminderScheduler {
     }
 
     static ReminderCopy reminderCopy(AdaptiveLoadPlanner.PlanRequest request) {
-        if (request.rows().isEmpty()) {
+        List<RecordsImportModels.DashboardRow> rows = request == null || request.rows() == null
+                ? Collections.emptyList()
+                : request.rows();
+        List<RecordsStudyModels.StudyItem> items = request == null || request.items() == null
+                ? Collections.emptyList()
+                : request.items();
+        long nowMillis = request == null ? 0L : request.nowMillis();
+        if (rows.isEmpty()) {
             return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
         }
-        RecordsSchedulerModels.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(request);
-        return reminderCopyFor(plan.remaining, currentDueCount(request.rows(), request.items(), request.nowMillis()));
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = new LegacyAdaptiveStudyPlannerBridge().plan(request);
+        return reminderCopyFor(plan.remaining, currentDueCount(rows, items, nowMillis));
     }
 
     static ReminderCopy reminderCopyFor(int focusRemaining, int due) {

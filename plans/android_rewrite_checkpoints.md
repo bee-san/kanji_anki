@@ -578,6 +578,18 @@ Current artifacts:
   - auto Pareto drop-off detection, composite priority ordering, and max-item
     caps.
   - workload labels, ceilings, and null-plan fallback.
+- `LegacyAdaptiveStudyPlannerBridge` maps current legacy dashboard rows, study
+  items, recent review stats, focus settings, and sync settings into
+  `AdaptiveStudyPlanner`, then maps the result back into
+  `RecordsSchedulerModels.AdaptiveLoadPlan`.
+- Runtime adaptive-plan calculation now goes through that bridge from:
+  - `MainActivityBase.adaptivePlan`
+  - `ManualSyncEngine.adaptivePlan`
+  - `ReminderScheduler.reminderCopy`
+- `LegacyAdaptiveStudyPlannerBridgeTest` compares the bridge against the
+  existing Java `AdaptiveLoadPlanner` for manual Pareto planning, auto Pareto
+  drop-offs, due recovery max-item caps, null request fallback, null fields
+  inside a request, and the explicit settings entrypoint.
 
 Explicit gaps:
 
@@ -592,9 +604,9 @@ Explicit gaps:
   write path.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
   until the detail screen is moved to the Room repository.
-- Adaptive planner is ported into `:domain`, but runtime settings/study
-  surfaces still use the legacy Java planner until a bridge or use case wires
-  the new planner in.
+- The legacy Java adaptive planner remains as a parity oracle and as the holder
+  for old settings constants/helper types until settings are moved to the
+  domain/DataStore boundary.
 
 Verification commands:
 
@@ -621,6 +633,14 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 ```
 
 Result: `BUILD SUCCESSFUL`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :core:test :app:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL` after wiring runtime adaptive-plan calculation
+through `LegacyAdaptiveStudyPlannerBridge`.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

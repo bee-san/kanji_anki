@@ -241,8 +241,28 @@ public final class AdaptiveLoadPlanner {
             return items;
         }
 
+        public RecordsSchedulerModels.ReviewStats recentStats() {
+            return recentStats;
+        }
+
+        public int currentStreakDays() {
+            return currentStreakDays;
+        }
+
+        public Set<String> studiedToday() {
+            return studiedToday;
+        }
+
+        public WorkloadPolicy workloadPolicy() {
+            return workloadPolicy;
+        }
+
         public long nowMillis() {
             return nowMillis;
+        }
+
+        public RecordsSyncModels.Settings settings() {
+            return settings;
         }
 
         public static final class Builder {
