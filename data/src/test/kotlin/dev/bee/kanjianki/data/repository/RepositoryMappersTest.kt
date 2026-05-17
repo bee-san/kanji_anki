@@ -51,6 +51,8 @@ class RepositoryMappersTest {
             intervalDays = 21,
             reps = 7,
             lapses = 1,
+            suspended = true,
+            browserQueryMatched = true,
             fsrsStability = 12.5,
             fsrsDifficulty = 6.5,
             fsrsRetrievability = null,
@@ -85,7 +87,7 @@ class RepositoryMappersTest {
     @Test
     fun rawEntitiesMapToDomainIds() {
         assertEquals(NoteId(1), SourceNoteEntity(1, "Kiku", "", "", "", "", "{}", "", 9).toDomain().noteId)
-        assertEquals(CardId(2), SourceCardEntity(2, 1, "", 0, 0, 0, 0, 0, 0, 0, null, null, null, 9).toDomain().cardId)
+        assertEquals(CardId(2), SourceCardEntity(2, 1, "", 0, 0, 0, 0, 0, 0, 0, false, false, null, null, null, 9).toDomain().cardId)
         assertEquals(SyncRunId(4), SyncRunEntity(4, 1, null, "success", 0, 0, 0, 0, 0, 0, null, null, null).toDomain().id)
     }
 

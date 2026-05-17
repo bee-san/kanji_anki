@@ -3,7 +3,9 @@ package dev.bee.kanjianki.domain.model.source
 import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SourceModelsTest {
@@ -34,8 +36,18 @@ class SourceModelsTest {
         }
     }
 
+    @Test
+    fun sourceCardMaturityRequiresActiveCardAndConfiguredInterval() {
+        assertTrue(validCard(intervalDays = 21, suspended = false).mature(21))
+        assertFalse(validCard(intervalDays = 21, suspended = true).mature(21))
+        assertThrows(IllegalArgumentException::class.java) {
+            validCard().mature(0)
+        }
+    }
+
     private fun validCard(
         intervalDays: Int = 0,
+        suspended: Boolean = true,
         fsrsStability: Double? = null,
     ): SourceCard = SourceCard(
         cardId = CardId(1),
@@ -48,6 +60,8 @@ class SourceModelsTest {
         intervalDays = intervalDays,
         reps = 0,
         lapses = 0,
+        suspended = suspended,
+        browserQueryMatched = false,
         fsrsStability = fsrsStability,
         fsrsDifficulty = null,
         fsrsRetrievability = null,

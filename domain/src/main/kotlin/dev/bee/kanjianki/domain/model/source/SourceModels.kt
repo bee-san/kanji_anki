@@ -31,6 +31,8 @@ data class SourceCard(
     val intervalDays: Int,
     val reps: Int,
     val lapses: Int,
+    val suspended: Boolean,
+    val browserQueryMatched: Boolean,
     val fsrsStability: Double?,
     val fsrsDifficulty: Double?,
     val fsrsRetrievability: Double?,
@@ -44,6 +46,14 @@ data class SourceCard(
         requireFiniteOrNull(fsrsStability, "fsrsStability")
         requireFiniteOrNull(fsrsDifficulty, "fsrsDifficulty")
         requireFiniteOrNull(fsrsRetrievability, "fsrsRetrievability")
+    }
+
+    val active: Boolean
+        get() = !suspended
+
+    fun mature(matureDays: Int): Boolean {
+        require(matureDays > 0) { "matureDays must be positive" }
+        return active && intervalDays >= matureDays
     }
 }
 

@@ -1,0 +1,2430 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 21,
+    "identityHash": "dd12ba3cf0637117a137c8b226c50da3",
+    "entities": [
+      {
+        "tableName": "settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      },
+      {
+        "tableName": "source_notes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`note_id` INTEGER NOT NULL, `model_name` TEXT NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `sentence` TEXT NOT NULL, `fields_json` TEXT NOT NULL, `tags` TEXT NOT NULL, `last_seen_sync_id` INTEGER NOT NULL, PRIMARY KEY(`note_id`))",
+        "fields": [
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentence",
+            "columnName": "sentence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldsJson",
+            "columnName": "fields_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenSyncId",
+            "columnName": "last_seen_sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "note_id"
+          ]
+        }
+      },
+      {
+        "tableName": "source_cards",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `deck_name` TEXT NOT NULL, `ord` INTEGER NOT NULL, `queue` INTEGER NOT NULL, `type` INTEGER NOT NULL, `due` INTEGER NOT NULL, `interval_days` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `suspended` INTEGER NOT NULL, `browser_query_matched` INTEGER NOT NULL, `fsrs_stability` REAL, `fsrs_difficulty` REAL, `fsrs_retrievability` REAL, `last_seen_sync_id` INTEGER NOT NULL, PRIMARY KEY(`card_id`))",
+        "fields": [
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckName",
+            "columnName": "deck_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ord",
+            "columnName": "ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queue",
+            "columnName": "queue",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "due",
+            "columnName": "due",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "interval_days",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapses",
+            "columnName": "lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspended",
+            "columnName": "suspended",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "browserQueryMatched",
+            "columnName": "browser_query_matched",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fsrsStability",
+            "columnName": "fsrs_stability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsDifficulty",
+            "columnName": "fsrs_difficulty",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsRetrievability",
+            "columnName": "fsrs_retrievability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "lastSeenSyncId",
+            "columnName": "last_seen_sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "card_id"
+          ]
+        }
+      },
+      {
+        "tableName": "sync_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `started_at` INTEGER NOT NULL, `finished_at` INTEGER, `status` TEXT NOT NULL, `active_notes_count` INTEGER NOT NULL, `active_cards_count` INTEGER NOT NULL, `suspended_cards_archived_count` INTEGER NOT NULL, `suspended_kanji_imported_count` INTEGER NOT NULL, `deleted_notes_count` INTEGER NOT NULL, `deleted_cards_count` INTEGER NOT NULL, `error_code` TEXT, `error_message` TEXT, `removal_message` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finished_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeNotesCount",
+            "columnName": "active_notes_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeCardsCount",
+            "columnName": "active_cards_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedCardsArchivedCount",
+            "columnName": "suspended_cards_archived_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedKanjiImportedCount",
+            "columnName": "suspended_kanji_imported_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedNotesCount",
+            "columnName": "deleted_notes_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedCardsCount",
+            "columnName": "deleted_cards_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "error_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "error_message",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "removalMessage",
+            "columnName": "removal_message",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "suspended_archive",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `deck_name` TEXT NOT NULL, `model_name` TEXT NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `sentence` TEXT NOT NULL, `fields_json` TEXT NOT NULL, `archived_at` INTEGER NOT NULL, `archived_sync_id` INTEGER NOT NULL, `restored_at` INTEGER, PRIMARY KEY(`card_id`))",
+        "fields": [
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckName",
+            "columnName": "deck_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentence",
+            "columnName": "sentence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldsJson",
+            "columnName": "fields_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archived_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedSyncId",
+            "columnName": "archived_sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "restoredAt",
+            "columnName": "restored_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "card_id"
+          ]
+        }
+      },
+      {
+        "tableName": "suspended_imports",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `jiten_rank` INTEGER, `rank_known` INTEGER NOT NULL, `cutoff_used` INTEGER NOT NULL, `first_imported_at` INTEGER NOT NULL, `last_seen_sync_id` INTEGER NOT NULL, PRIMARY KEY(`kanji`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jitenRank",
+            "columnName": "jiten_rank",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rankKnown",
+            "columnName": "rank_known",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cutoffUsed",
+            "columnName": "cutoff_used",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstImportedAt",
+            "columnName": "first_imported_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenSyncId",
+            "columnName": "last_seen_sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji"
+          ]
+        }
+      },
+      {
+        "tableName": "suspended_sources",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `sentence` TEXT NOT NULL, `sync_id` INTEGER NOT NULL, PRIMARY KEY(`kanji`, `card_id`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentence",
+            "columnName": "sentence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji",
+            "card_id"
+          ]
+        }
+      },
+      {
+        "tableName": "import_rule_audits",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sync_id` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `model_name` TEXT NOT NULL, `enabled_sources` TEXT NOT NULL, `rank_min` INTEGER NOT NULL, `rank_max` INTEGER NOT NULL, `min_matching_cards` INTEGER NOT NULL, `import_tags` TEXT NOT NULL, `weak_fsrs_difficulty` REAL NOT NULL, `weak_lapses` INTEGER NOT NULL, `browser_query` TEXT NOT NULL, `settings_json` TEXT NOT NULL, PRIMARY KEY(`sync_id`))",
+        "fields": [
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabledSources",
+            "columnName": "enabled_sources",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rankMin",
+            "columnName": "rank_min",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rankMax",
+            "columnName": "rank_max",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minMatchingCards",
+            "columnName": "min_matching_cards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importTags",
+            "columnName": "import_tags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weakFsrsDifficulty",
+            "columnName": "weak_fsrs_difficulty",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weakLapses",
+            "columnName": "weak_lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "browserQuery",
+            "columnName": "browser_query",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settingsJson",
+            "columnName": "settings_json",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sync_id"
+          ]
+        }
+      },
+      {
+        "tableName": "import_decisions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sync_id` INTEGER NOT NULL, `kanji` TEXT NOT NULL, `decision` TEXT NOT NULL, `reason_code` TEXT NOT NULL, `reason_text` TEXT NOT NULL, `jiten_rank` INTEGER, `rank_known` INTEGER NOT NULL, `rank_min` INTEGER NOT NULL, `rank_max` INTEGER NOT NULL, `min_matching_cards` INTEGER NOT NULL, `source_count` INTEGER NOT NULL, `source_types` TEXT NOT NULL, `rule_types` TEXT NOT NULL, `source_card_ids` TEXT NOT NULL, `source_note_ids` TEXT NOT NULL, `created_at` INTEGER NOT NULL, PRIMARY KEY(`sync_id`, `kanji`))",
+        "fields": [
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "decision",
+            "columnName": "decision",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reasonCode",
+            "columnName": "reason_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reasonText",
+            "columnName": "reason_text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jitenRank",
+            "columnName": "jiten_rank",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rankKnown",
+            "columnName": "rank_known",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rankMin",
+            "columnName": "rank_min",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rankMax",
+            "columnName": "rank_max",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minMatchingCards",
+            "columnName": "min_matching_cards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceCount",
+            "columnName": "source_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceTypes",
+            "columnName": "source_types",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ruleTypes",
+            "columnName": "rule_types",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceCardIds",
+            "columnName": "source_card_ids",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceNoteIds",
+            "columnName": "source_note_ids",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sync_id",
+            "kanji"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_import_decisions_kanji_sync",
+            "unique": false,
+            "columnNames": [
+              "kanji",
+              "sync_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_import_decisions_kanji_sync` ON `${TABLE_NAME}` (`kanji`, `sync_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "dashboard_rows",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `jiten_rank` INTEGER, `primary_meaning` TEXT NOT NULL, `reading` TEXT NOT NULL, `browser_search` TEXT NOT NULL, `weakness_score` INTEGER NOT NULL, `reason_code` TEXT NOT NULL, `reason_text` TEXT NOT NULL, `active_example_count` INTEGER NOT NULL, `suspended_example_count` INTEGER NOT NULL, `mature_support_count` INTEGER NOT NULL, `rebuilt_at` INTEGER NOT NULL, PRIMARY KEY(`kanji`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "jitenRank",
+            "columnName": "jiten_rank",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "primaryMeaning",
+            "columnName": "primary_meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "browserSearch",
+            "columnName": "browser_search",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weaknessScore",
+            "columnName": "weakness_score",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reasonCode",
+            "columnName": "reason_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reasonText",
+            "columnName": "reason_text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeExampleCount",
+            "columnName": "active_example_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedExampleCount",
+            "columnName": "suspended_example_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matureSupportCount",
+            "columnName": "mature_support_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rebuiltAt",
+            "columnName": "rebuilt_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji"
+          ]
+        }
+      },
+      {
+        "tableName": "kanji_examples",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `kanji` TEXT NOT NULL, `source_type` TEXT NOT NULL, `card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `sentence` TEXT NOT NULL, `mature` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `interval_days` INTEGER NOT NULL DEFAULT 0, `reps` INTEGER NOT NULL DEFAULT 0, `fsrs_stability` REAL, `fsrs_difficulty` REAL, `fsrs_retrievability` REAL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceType",
+            "columnName": "source_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentence",
+            "columnName": "sentence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mature",
+            "columnName": "mature",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapses",
+            "columnName": "lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "interval_days",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "fsrsStability",
+            "columnName": "fsrs_stability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsDifficulty",
+            "columnName": "fsrs_difficulty",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsRetrievability",
+            "columnName": "fsrs_retrievability",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_examples_kanji",
+            "unique": false,
+            "columnNames": [
+              "kanji"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_examples_kanji` ON `${TABLE_NAME}` (`kanji`)"
+          }
+        ]
+      },
+      {
+        "tableName": "kanji_inventory",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `primary_meaning` TEXT NOT NULL, `readings` TEXT NOT NULL, `browser_search` TEXT NOT NULL, `search_text` TEXT NOT NULL, `source_count` INTEGER NOT NULL, `example_count` INTEGER NOT NULL, `first_seen_at` INTEGER NOT NULL, `last_seen_at` INTEGER NOT NULL, PRIMARY KEY(`kanji`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "primaryMeaning",
+            "columnName": "primary_meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readings",
+            "columnName": "readings",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "browserSearch",
+            "columnName": "browser_search",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "searchText",
+            "columnName": "search_text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceCount",
+            "columnName": "source_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exampleCount",
+            "columnName": "example_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstSeenAt",
+            "columnName": "first_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenAt",
+            "columnName": "last_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_kanji_inventory_search",
+            "unique": false,
+            "columnNames": [
+              "search_text"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_kanji_inventory_search` ON `${TABLE_NAME}` (`search_text`)"
+          }
+        ]
+      },
+      {
+        "tableName": "local_kanji_suspensions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `suspended_at` INTEGER NOT NULL, PRIMARY KEY(`kanji`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedAt",
+            "columnName": "suspended_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji"
+          ]
+        }
+      },
+      {
+        "tableName": "study_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `state` TEXT NOT NULL, `due_at` INTEGER NOT NULL, `stability` REAL NOT NULL, `difficulty` REAL NOT NULL, `total_reviews` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `learning_step` INTEGER NOT NULL, `writing_level` INTEGER NOT NULL, `recognition_stage` INTEGER NOT NULL DEFAULT 0, `consecutive_failed_recognition_days` INTEGER NOT NULL DEFAULT 0, `last_failed_recognition_day` INTEGER NOT NULL DEFAULT 0, `writing_remediation_pending` INTEGER NOT NULL DEFAULT 0, `suppressed_by_task_type` TEXT NOT NULL DEFAULT '', `suppressed_at` INTEGER NOT NULL DEFAULT 0, `mature_interval_days` INTEGER NOT NULL DEFAULT 0, `answer_signature` TEXT NOT NULL DEFAULT '', `typing_meaning_memory` TEXT NOT NULL DEFAULT '', `meaning_kanji_memory` TEXT NOT NULL DEFAULT '', `kanji_meaning_memory` TEXT NOT NULL DEFAULT '', `font_meaning_memory` TEXT NOT NULL DEFAULT '', `word_reading_memory` TEXT NOT NULL DEFAULT '', `writing_remediation_memory` TEXT NOT NULL DEFAULT '', `rung` TEXT NOT NULL DEFAULT 'kanji_meaning', `phase` TEXT NOT NULL DEFAULT 'new_learning', `real_pass_streak` INTEGER NOT NULL DEFAULT 0, `real_again_streak` INTEGER NOT NULL DEFAULT 0, `last_real_review_due_at` INTEGER NOT NULL DEFAULT 0, `similar_kanji_memory` TEXT NOT NULL DEFAULT '', `active_token` TEXT, `created_at` INTEGER NOT NULL, PRIMARY KEY(`kanji`, `answer_signature`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueAt",
+            "columnName": "due_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stability",
+            "columnName": "stability",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "difficulty",
+            "columnName": "difficulty",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalReviews",
+            "columnName": "total_reviews",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapses",
+            "columnName": "lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "learningStep",
+            "columnName": "learning_step",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "writingLevel",
+            "columnName": "writing_level",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recognitionStage",
+            "columnName": "recognition_stage",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "consecutiveFailedRecognitionDays",
+            "columnName": "consecutive_failed_recognition_days",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "lastFailedRecognitionDay",
+            "columnName": "last_failed_recognition_day",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "writingRemediationPending",
+            "columnName": "writing_remediation_pending",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "suppressedByTaskType",
+            "columnName": "suppressed_by_task_type",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "suppressedAt",
+            "columnName": "suppressed_at",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "matureIntervalDays",
+            "columnName": "mature_interval_days",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "answerSignature",
+            "columnName": "answer_signature",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "typingMeaningMemory",
+            "columnName": "typing_meaning_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "meaningKanjiMemory",
+            "columnName": "meaning_kanji_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "kanjiMeaningMemory",
+            "columnName": "kanji_meaning_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "fontMeaningMemory",
+            "columnName": "font_meaning_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "wordReadingMemory",
+            "columnName": "word_reading_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "writingRemediationMemory",
+            "columnName": "writing_remediation_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "rung",
+            "columnName": "rung",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'kanji_meaning'"
+          },
+          {
+            "fieldPath": "phase",
+            "columnName": "phase",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'new_learning'"
+          },
+          {
+            "fieldPath": "realPassStreak",
+            "columnName": "real_pass_streak",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "realAgainStreak",
+            "columnName": "real_again_streak",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "lastRealReviewDueAt",
+            "columnName": "last_real_review_due_at",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "similarKanjiMemory",
+            "columnName": "similar_kanji_memory",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "activeToken",
+            "columnName": "active_token",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji",
+            "answer_signature"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_study_due",
+            "unique": false,
+            "columnNames": [
+              "state",
+              "due_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_study_due` ON `${TABLE_NAME}` (`state`, `due_at`)"
+          },
+          {
+            "name": "idx_study_items_ladder_stats",
+            "unique": false,
+            "columnNames": [
+              "state",
+              "phase",
+              "rung"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_study_items_ladder_stats` ON `${TABLE_NAME}` (`state`, `phase`, `rung`)"
+          }
+        ]
+      },
+      {
+        "tableName": "learning_repeats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji` TEXT NOT NULL, `answer_signature` TEXT NOT NULL DEFAULT '', `task_type` TEXT NOT NULL, `repeat_type` TEXT NOT NULL, `step_index` INTEGER NOT NULL, `due_at` INTEGER NOT NULL, `active_token` TEXT NOT NULL DEFAULT '', `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`kanji`, `answer_signature`, `task_type`))",
+        "fields": [
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answerSignature",
+            "columnName": "answer_signature",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "taskType",
+            "columnName": "task_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repeatType",
+            "columnName": "repeat_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stepIndex",
+            "columnName": "step_index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueAt",
+            "columnName": "due_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeToken",
+            "columnName": "active_token",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji",
+            "answer_signature",
+            "task_type"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_learning_repeats_due",
+            "unique": false,
+            "columnNames": [
+              "due_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_learning_repeats_due` ON `${TABLE_NAME}` (`due_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "review_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `kanji` TEXT NOT NULL, `token` TEXT NOT NULL, `rating` TEXT NOT NULL, `writing_required` INTEGER NOT NULL, `writing_passed` INTEGER NOT NULL, `manual_override` INTEGER NOT NULL, `reviewed_at` INTEGER NOT NULL, `review_day_start` INTEGER NOT NULL DEFAULT 0, `task_type` TEXT NOT NULL DEFAULT '', `answer_signature` TEXT NOT NULL DEFAULT '', `prompt` TEXT NOT NULL DEFAULT '', `hints_used` INTEGER NOT NULL DEFAULT 0, `writing_clean` INTEGER NOT NULL DEFAULT 0, `memory_before` TEXT NOT NULL DEFAULT '', `memory_after` TEXT NOT NULL DEFAULT '', `scheduler_state_after_json` TEXT NOT NULL DEFAULT '')",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "token",
+            "columnName": "token",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "writingRequired",
+            "columnName": "writing_required",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "writingPassed",
+            "columnName": "writing_passed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "manualOverride",
+            "columnName": "manual_override",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewedAt",
+            "columnName": "reviewed_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewDayStart",
+            "columnName": "review_day_start",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "taskType",
+            "columnName": "task_type",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "answerSignature",
+            "columnName": "answer_signature",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "prompt",
+            "columnName": "prompt",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "hintsUsed",
+            "columnName": "hints_used",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "writingClean",
+            "columnName": "writing_clean",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "memoryBefore",
+            "columnName": "memory_before",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "memoryAfter",
+            "columnName": "memory_after",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "schedulerStateAfterJson",
+            "columnName": "scheduler_state_after_json",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_review_log_token",
+            "unique": true,
+            "columnNames": [
+              "token"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_review_log_token` ON `${TABLE_NAME}` (`token`)"
+          },
+          {
+            "name": "idx_review_log_reviewed_at",
+            "unique": false,
+            "columnNames": [
+              "reviewed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_review_log_reviewed_at` ON `${TABLE_NAME}` (`reviewed_at`)"
+          },
+          {
+            "name": "idx_review_log_day_reviewed",
+            "unique": false,
+            "columnNames": [
+              "review_day_start",
+              "reviewed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_review_log_day_reviewed` ON `${TABLE_NAME}` (`review_day_start`, `reviewed_at`)"
+          },
+          {
+            "name": "idx_review_log_kanji_reviewed",
+            "unique": false,
+            "columnNames": [
+              "kanji",
+              "reviewed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_review_log_kanji_reviewed` ON `${TABLE_NAME}` (`kanji`, `reviewed_at`)"
+          },
+          {
+            "name": "idx_review_log_rating_reviewed",
+            "unique": false,
+            "columnNames": [
+              "rating",
+              "reviewed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_review_log_rating_reviewed` ON `${TABLE_NAME}` (`rating`, `reviewed_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "study_task_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `task_key` TEXT NOT NULL, `kanji` TEXT NOT NULL, `task_type` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `answered_at` INTEGER NOT NULL, `active_elapsed_ms` INTEGER NOT NULL, `outcome` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "taskKey",
+            "columnName": "task_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskType",
+            "columnName": "task_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "answeredAt",
+            "columnName": "answered_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeElapsedMs",
+            "columnName": "active_elapsed_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "outcome",
+            "columnName": "outcome",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_study_task_log_task_key",
+            "unique": true,
+            "columnNames": [
+              "task_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_study_task_log_task_key` ON `${TABLE_NAME}` (`task_key`)"
+          },
+          {
+            "name": "idx_study_task_log_answered",
+            "unique": false,
+            "columnNames": [
+              "answered_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_study_task_log_answered` ON `${TABLE_NAME}` (`answered_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "similar_kanji_pairs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kanji_a` TEXT NOT NULL, `kanji_b` TEXT NOT NULL, `source` TEXT NOT NULL, `first_seen_at` INTEGER NOT NULL, `last_seen_at` INTEGER NOT NULL, PRIMARY KEY(`kanji_a`, `kanji_b`, `source`))",
+        "fields": [
+          {
+            "fieldPath": "kanjiA",
+            "columnName": "kanji_a",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kanjiB",
+            "columnName": "kanji_b",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstSeenAt",
+            "columnName": "first_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenAt",
+            "columnName": "last_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kanji_a",
+            "kanji_b",
+            "source"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_similar_kanji_pairs_a",
+            "unique": false,
+            "columnNames": [
+              "kanji_a"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_similar_kanji_pairs_a` ON `${TABLE_NAME}` (`kanji_a`)"
+          },
+          {
+            "name": "idx_similar_kanji_pairs_b",
+            "unique": false,
+            "columnNames": [
+              "kanji_b"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_similar_kanji_pairs_b` ON `${TABLE_NAME}` (`kanji_b`)"
+          }
+        ]
+      },
+      {
+        "tableName": "similar_kanji_choice_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`target_kanji` TEXT NOT NULL, `choice_signature` TEXT NOT NULL, `primary_meaning` TEXT NOT NULL, `choices` TEXT NOT NULL, `due_at` INTEGER NOT NULL, `passed_at` INTEGER NOT NULL DEFAULT 0, `last_reviewed_at` INTEGER NOT NULL DEFAULT 0, `correct_count` INTEGER NOT NULL DEFAULT 0, `wrong_count` INTEGER NOT NULL DEFAULT 0, `active_token` TEXT NOT NULL DEFAULT '', `first_seen_at` INTEGER NOT NULL, `last_seen_at` INTEGER NOT NULL, PRIMARY KEY(`target_kanji`, `choice_signature`))",
+        "fields": [
+          {
+            "fieldPath": "targetKanji",
+            "columnName": "target_kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "choiceSignature",
+            "columnName": "choice_signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "primaryMeaning",
+            "columnName": "primary_meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "choices",
+            "columnName": "choices",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueAt",
+            "columnName": "due_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "passedAt",
+            "columnName": "passed_at",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "lastReviewedAt",
+            "columnName": "last_reviewed_at",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "correctCount",
+            "columnName": "correct_count",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "wrongCount",
+            "columnName": "wrong_count",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "activeToken",
+            "columnName": "active_token",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "firstSeenAt",
+            "columnName": "first_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenAt",
+            "columnName": "last_seen_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "target_kanji",
+            "choice_signature"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_similar_choice_due",
+            "unique": false,
+            "columnNames": [
+              "passed_at",
+              "due_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_similar_choice_due` ON `${TABLE_NAME}` (`passed_at`, `due_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "similar_kanji_repair_queue",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `target_kanji` TEXT NOT NULL, `repair_kanji` TEXT NOT NULL, `choice_signature` TEXT NOT NULL, `wrong_selection` TEXT NOT NULL, `prompt_meaning` TEXT NOT NULL, `status` TEXT NOT NULL, `due_at` INTEGER NOT NULL, `active_token` TEXT NOT NULL DEFAULT '', `attempts` INTEGER NOT NULL DEFAULT 0, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, `completed_at` INTEGER NOT NULL DEFAULT 0)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "targetKanji",
+            "columnName": "target_kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "repairKanji",
+            "columnName": "repair_kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "choiceSignature",
+            "columnName": "choice_signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wrongSelection",
+            "columnName": "wrong_selection",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "promptMeaning",
+            "columnName": "prompt_meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dueAt",
+            "columnName": "due_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeToken",
+            "columnName": "active_token",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completed_at",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_similar_repair_due",
+            "unique": false,
+            "columnNames": [
+              "status",
+              "due_at",
+              "created_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_similar_repair_due` ON `${TABLE_NAME}` (`status`, `due_at`, `created_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "similar_kanji_review_log",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `target_kanji` TEXT NOT NULL, `choice_signature` TEXT NOT NULL, `selected_kanji` TEXT NOT NULL, `correct` INTEGER NOT NULL, `reviewed_at` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "targetKanji",
+            "columnName": "target_kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "choiceSignature",
+            "columnName": "choice_signature",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "selectedKanji",
+            "columnName": "selected_kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "correct",
+            "columnName": "correct",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewedAt",
+            "columnName": "reviewed_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_similar_review_log_target",
+            "unique": false,
+            "columnNames": [
+              "target_kanji",
+              "reviewed_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_similar_review_log_target` ON `${TABLE_NAME}` (`target_kanji`, `reviewed_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "kanji_timeline_events",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `kanji` TEXT NOT NULL, `occurred_at` INTEGER NOT NULL, `event_type` TEXT NOT NULL, `title` TEXT NOT NULL, `detail` TEXT NOT NULL, `source_expression` TEXT NOT NULL, `source_reading` TEXT NOT NULL, `rating` TEXT NOT NULL, `writing_required` INTEGER NOT NULL DEFAULT 0, `writing_passed` INTEGER NOT NULL DEFAULT 0, `manual_override` INTEGER NOT NULL DEFAULT 0, `weakness_score` INTEGER, `mature_support_count` INTEGER, `sync_id` INTEGER, `dedupe_key` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventType",
+            "columnName": "event_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detail",
+            "columnName": "detail",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceExpression",
+            "columnName": "source_expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceReading",
+            "columnName": "source_reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "writingRequired",
+            "columnName": "writing_required",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "writingPassed",
+            "columnName": "writing_passed",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "manualOverride",
+            "columnName": "manual_override",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "weaknessScore",
+            "columnName": "weakness_score",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "matureSupportCount",
+            "columnName": "mature_support_count",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dedupeKey",
+            "columnName": "dedupe_key",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_timeline_dedupe",
+            "unique": true,
+            "columnNames": [
+              "dedupe_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `idx_timeline_dedupe` ON `${TABLE_NAME}` (`dedupe_key`)"
+          },
+          {
+            "name": "idx_timeline_kanji_time",
+            "unique": false,
+            "columnNames": [
+              "kanji",
+              "occurred_at",
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_timeline_kanji_time` ON `${TABLE_NAME}` (`kanji`, `occurred_at`, `id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sync_card_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `sync_id` INTEGER NOT NULL, `started_at` INTEGER NOT NULL, `finished_at` INTEGER NOT NULL, `card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `deck_id` TEXT NOT NULL DEFAULT '', `deck_name` TEXT NOT NULL, `model_id` INTEGER NOT NULL DEFAULT 0, `model_name` TEXT NOT NULL, `ord` INTEGER NOT NULL, `queue` INTEGER NOT NULL, `type` INTEGER NOT NULL, `due` INTEGER NOT NULL, `interval_days` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `suspended` INTEGER NOT NULL, `fsrs_stability` REAL, `fsrs_difficulty` REAL, `fsrs_retrievability` REAL, `mature` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finished_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckId",
+            "columnName": "deck_id",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "deckName",
+            "columnName": "deck_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelId",
+            "columnName": "model_id",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ord",
+            "columnName": "ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queue",
+            "columnName": "queue",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "due",
+            "columnName": "due",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "interval_days",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapses",
+            "columnName": "lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspended",
+            "columnName": "suspended",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fsrsStability",
+            "columnName": "fsrs_stability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsDifficulty",
+            "columnName": "fsrs_difficulty",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsRetrievability",
+            "columnName": "fsrs_retrievability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "mature",
+            "columnName": "mature",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_sync_card_snapshots_sync_card",
+            "unique": true,
+            "columnNames": [
+              "sync_id",
+              "card_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `idx_sync_card_snapshots_sync_card` ON `${TABLE_NAME}` (`sync_id`, `card_id`)"
+          },
+          {
+            "name": "idx_sync_card_snapshots_note",
+            "unique": false,
+            "columnNames": [
+              "sync_id",
+              "note_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_sync_card_snapshots_note` ON `${TABLE_NAME}` (`sync_id`, `note_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sync_note_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sync_id` INTEGER NOT NULL, `finished_at` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `model_id` INTEGER NOT NULL DEFAULT 0, `model_name` TEXT NOT NULL, `deck_ids` TEXT NOT NULL DEFAULT '', `deck_names` TEXT NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `sentence` TEXT NOT NULL, `tags` TEXT NOT NULL, `fields_json` TEXT NOT NULL, `extracted_kanji` TEXT NOT NULL, PRIMARY KEY(`sync_id`, `note_id`))",
+        "fields": [
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finished_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelId",
+            "columnName": "model_id",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckIds",
+            "columnName": "deck_ids",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "deckNames",
+            "columnName": "deck_names",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentence",
+            "columnName": "sentence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldsJson",
+            "columnName": "fields_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "extractedKanji",
+            "columnName": "extracted_kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sync_id",
+            "note_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_sync_note_snapshots_kanji",
+            "unique": false,
+            "columnNames": [
+              "sync_id",
+              "extracted_kanji"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_sync_note_snapshots_kanji` ON `${TABLE_NAME}` (`sync_id`, `extracted_kanji`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sync_kanji_snapshots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sync_id` INTEGER NOT NULL, `finished_at` INTEGER NOT NULL, `kanji` TEXT NOT NULL, `active_cards` INTEGER NOT NULL, `suspended_cards` INTEGER NOT NULL, `mature_support_count` INTEGER NOT NULL, `average_interval_days` REAL NOT NULL, `total_lapses` INTEGER NOT NULL, `total_reps` INTEGER NOT NULL, `fsrs_stability_avg` REAL, `fsrs_difficulty_avg` REAL, `fsrs_retrievability_avg` REAL, `weakness_score` INTEGER NOT NULL, `reason_code` TEXT NOT NULL, `active_example_count` INTEGER NOT NULL, `suspended_example_count` INTEGER NOT NULL, PRIMARY KEY(`sync_id`, `kanji`))",
+        "fields": [
+          {
+            "fieldPath": "syncId",
+            "columnName": "sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finished_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kanji",
+            "columnName": "kanji",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeCards",
+            "columnName": "active_cards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedCards",
+            "columnName": "suspended_cards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matureSupportCount",
+            "columnName": "mature_support_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averageIntervalDays",
+            "columnName": "average_interval_days",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalLapses",
+            "columnName": "total_lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalReps",
+            "columnName": "total_reps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fsrsStabilityAvg",
+            "columnName": "fsrs_stability_avg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsDifficultyAvg",
+            "columnName": "fsrs_difficulty_avg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsRetrievabilityAvg",
+            "columnName": "fsrs_retrievability_avg",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "weaknessScore",
+            "columnName": "weakness_score",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reasonCode",
+            "columnName": "reason_code",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeExampleCount",
+            "columnName": "active_example_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedExampleCount",
+            "columnName": "suspended_example_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sync_id",
+            "kanji"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_sync_kanji_snapshots_kanji_sync",
+            "unique": false,
+            "columnNames": [
+              "kanji",
+              "sync_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_sync_kanji_snapshots_kanji_sync` ON `${TABLE_NAME}` (`kanji`, `sync_id`)"
+          },
+          {
+            "name": "idx_sync_kanji_snapshots_kanji_finished",
+            "unique": false,
+            "columnNames": [
+              "kanji",
+              "finished_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_sync_kanji_snapshots_kanji_finished` ON `${TABLE_NAME}` (`kanji`, `finished_at`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dd12ba3cf0637117a137c8b226c50da3')"
+    ]
+  }
+}

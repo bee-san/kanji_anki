@@ -676,13 +676,18 @@ Current app database:
 
 - Legacy `SQLiteOpenHelper` name: `kanji_anki_simple.db`.
 - Rewrite Room name: `kanji_anki_room.db`.
-- Version: `20`.
+- Legacy version: `20`.
+- Rewrite Room version: `21`.
 - Source of truth today: `SQLiteOpenHelper` in
   `app/src/main/java/dev/bee/kanjianki/data/LocalStoreBase.java`.
 - Schema constants: `app/src/main/java/dev/bee/kanjianki/data/LocalStoreSchema.java`.
 - Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
   It rejects ambiguous ownership and uses destructive migration for the
   Room-owned file.
+- Source mirror parity: Room `source_cards` now stores explicit `suspended`
+  and `browser_query_matched` flags. These are required for Room-owned import
+  analysis to distinguish suspended, active, weak, tagged, and browser-query
+  sources without consulting legacy `RecordsSyncModels.Card`.
 - App graph creation point:
   `app/src/main/java/dev/bee/kanjianki/di/KaniDataModule.java`.
   `KaniApplication` is now `@HiltAndroidApp`, and Hilt owns singleton bindings

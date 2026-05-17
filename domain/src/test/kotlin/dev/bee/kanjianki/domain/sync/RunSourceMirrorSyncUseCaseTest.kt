@@ -143,6 +143,8 @@ class RunSourceMirrorSyncUseCaseTest {
         intervalDays = 0,
         reps = 0,
         lapses = 0,
+        suspended = true,
+        browserQueryMatched = false,
         fsrsStability = null,
         fsrsDifficulty = null,
         fsrsRetrievability = null,

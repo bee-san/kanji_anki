@@ -27,6 +27,10 @@ data class SourceCardEntity(
     val reps: Int,
     @ColumnInfo(name = "lapses")
     val lapses: Int,
+    @ColumnInfo(name = "suspended")
+    val suspended: Boolean,
+    @ColumnInfo(name = "browser_query_matched")
+    val browserQueryMatched: Boolean,
     @ColumnInfo(name = "fsrs_stability")
     val fsrsStability: Double?,
     @ColumnInfo(name = "fsrs_difficulty")

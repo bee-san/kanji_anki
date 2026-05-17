@@ -20,6 +20,8 @@ class KaniRoomSchemaParityTest {
     fun exportedSchemaKeepsLegacyIndexesAndDefaults() {
         val schema = schemaText()
 
+        assertTrue(schema.contains("`suspended` INTEGER NOT NULL"))
+        assertTrue(schema.contains("`browser_query_matched` INTEGER NOT NULL"))
         assertTrue(schema.contains("PRIMARY KEY(`kanji`, `answer_signature`)"))
         assertTrue(schema.contains("`rung` TEXT NOT NULL DEFAULT 'kanji_meaning'"))
         assertTrue(schema.contains("`phase` TEXT NOT NULL DEFAULT 'new_learning'"))
@@ -35,8 +37,8 @@ class KaniRoomSchemaParityTest {
         .readText()
 
     private fun schemaCandidates(): Sequence<File> = sequenceOf(
-        File("schemas/dev.bee.kanjianki.data.KaniRoomDatabase/20.json"),
-        File("data/schemas/dev.bee.kanjianki.data.KaniRoomDatabase/20.json"),
+        File("schemas/dev.bee.kanjianki.data.KaniRoomDatabase/${KaniRoomDatabase.SCHEMA_VERSION}.json"),
+        File("data/schemas/dev.bee.kanjianki.data.KaniRoomDatabase/${KaniRoomDatabase.SCHEMA_VERSION}.json"),
     )
 
     private companion object {

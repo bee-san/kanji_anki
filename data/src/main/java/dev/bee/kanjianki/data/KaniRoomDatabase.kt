@@ -114,6 +114,6 @@ abstract class KaniRoomDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "kanji_anki_room.db"
         const val LEGACY_DATABASE_NAME = "kanji_anki_simple.db"
-        const val SCHEMA_VERSION = 20
+        const val SCHEMA_VERSION = 21
     }
 }
