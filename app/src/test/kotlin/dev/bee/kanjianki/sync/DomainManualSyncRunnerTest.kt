@@ -5,7 +5,9 @@ import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlan
 import dev.bee.kanjianki.domain.sync.RunSourceMirrorSyncRequest
+import dev.bee.kanjianki.domain.sync.SyncAdaptivePlanListener
 import dev.bee.kanjianki.domain.sync.SyncAlreadyRunningException
 import dev.bee.kanjianki.domain.sync.SyncProgressSnapshot
 import dev.bee.kanjianki.domain.sync.SyncProgressStage
@@ -36,6 +38,7 @@ class DomainManualSyncRunnerTest {
                     SyncProgressSnapshot.atStage(SyncProgressStage.FINDING_NOTE_TYPE),
                 )
                 request.progress.onSyncProgress(SyncProgressSnapshot.cardsScanned(3, 10))
+                request.adaptivePlanListener.onAdaptivePlan(adaptivePlan("Today's Pareto focus: 3 kanji."))
                 SyncRunId(7)
             },
             syncRunReader = { id ->
@@ -50,10 +53,6 @@ class DomainManualSyncRunnerTest {
             dashboardRowCounter = {
                 dashboardCounterCalls++
                 12
-            },
-            adaptiveSummaryReader = { requestedSettings ->
-                assertEquals(settings, requestedSettings)
-                "Today's Pareto focus: 3 kanji."
             },
         )
 
@@ -137,21 +136,49 @@ class DomainManualSyncRunnerTest {
     }
 
     @Test
-    fun adaptiveSummaryFailureDoesNotTurnRecordedSuccessIntoFailedResult() = runBlocking {
+    fun missingAdaptivePlanLeavesSummaryBlank() = runBlocking {
         val runner = runnerReturning(
             syncRun = syncRun(
                 status = SyncRunStatus.SUCCESS,
                 suspendedKanjiImportedCount = 2,
             ),
-            adaptiveSummaryReader = {
-                throw IllegalStateException("summary unavailable")
-            },
         )
 
         val result = runner.run(RecordsSyncModels.Settings.kikuDefaults())
 
         assertTrue(result.success)
         assertEquals("", result.adaptiveSummary)
+        assertEquals(2, result.importedSuspendedKanji)
+    }
+
+    @Test
+    fun adaptivePlanListenerFailureDoesNotFailRunner() = runBlocking {
+        val runner = DomainManualSyncRunner(
+            requestFactory = {
+                RunSourceMirrorSyncRequest(
+                    importSettings = ImportSettings(),
+                    adaptivePlanListener = SyncAdaptivePlanListener {
+                        throw IllegalStateException("detached UI")
+                    },
+                )
+            },
+            runSourceMirrorSync = { request ->
+                request.adaptivePlanListener.onAdaptivePlan(adaptivePlan("Adaptive status."))
+                SyncRunId(1)
+            },
+            syncRunReader = {
+                syncRun(
+                    status = SyncRunStatus.SUCCESS,
+                    suspendedKanjiImportedCount = 2,
+                )
+            },
+            dashboardRowCounter = { 3 },
+        )
+
+        val result = runner.run(RecordsSyncModels.Settings.kikuDefaults())
+
+        assertTrue(result.success)
+        assertEquals("Adaptive status.", result.adaptiveSummary)
         assertEquals(2, result.importedSuspendedKanji)
     }
 
@@ -212,7 +239,6 @@ class DomainManualSyncRunnerTest {
     private fun runnerReturning(
         syncRun: SyncRun,
         dashboardRowCounter: suspend () -> Int = { 3 },
-        adaptiveSummaryReader: suspend (RecordsSyncModels.Settings) -> String = { "Adaptive status." },
         progressReporter: suspend (RunSourceMirrorSyncRequest) -> Unit = {},
     ): DomainManualSyncRunner =
         DomainManualSyncRunner(
@@ -223,7 +249,18 @@ class DomainManualSyncRunnerTest {
             },
             syncRunReader = { syncRun },
             dashboardRowCounter = dashboardRowCounter,
-            adaptiveSummaryReader = adaptiveSummaryReader,
+        )
+
+    private fun adaptivePlan(status: String): AdaptiveStudyPlan =
+        AdaptiveStudyPlan(
+            autoMode = true,
+            workloadPercent = 20,
+            targetCount = 3,
+            remainingCount = 3,
+            focusKanji = listOf("日"),
+            newAdmissionLimit = 1,
+            allKanjiMode = false,
+            status = status,
         )
 
     private fun syncRun(

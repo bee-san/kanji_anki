@@ -184,7 +184,19 @@ class RunSourceMirrorSyncUseCase(
                     matureSupportThreshold = request.importSettings.matureSupportThreshold,
                 ),
             ),
-        )
+        ).also { plan ->
+            request.adaptivePlanListener.report(plan)
+        }
+    }
+
+    private fun SyncAdaptivePlanListener.report(plan: AdaptiveStudyPlan) {
+        try {
+            onAdaptivePlan(plan)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            // Adaptive summary listeners are UI/status side effects and must not change sync outcome.
+        }
     }
 
     private fun successRun(
@@ -301,6 +313,7 @@ data class RunSourceMirrorSyncRequest(
     val queueSeedContext: SyncStudyQueueSeedContext? = null,
     val similarKanjiIndex: SimilarKanjiIndex? = null,
     val progress: SyncProgressListener = NoOpSyncProgressListener,
+    val adaptivePlanListener: SyncAdaptivePlanListener = NoOpSyncAdaptivePlanListener,
 )
 
 data class SyncStudyQueueSeedContext(
@@ -322,3 +335,11 @@ data class SyncAdaptivePlanContext(
             AdaptiveStudyPlanner.DEFAULT_MAX_ITEMS,
         ),
 )
+
+fun interface SyncAdaptivePlanListener {
+    fun onAdaptivePlan(plan: AdaptiveStudyPlan)
+}
+
+object NoOpSyncAdaptivePlanListener : SyncAdaptivePlanListener {
+    override fun onAdaptivePlan(plan: AdaptiveStudyPlan) = Unit
+}

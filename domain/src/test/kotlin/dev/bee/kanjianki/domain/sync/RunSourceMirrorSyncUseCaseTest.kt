@@ -24,6 +24,7 @@ import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueSeedBuilder
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
 import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlan
 import dev.bee.kanjianki.domain.scheduler.AdaptiveWorkloadPolicy
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
 import kotlinx.coroutines.CompletableDeferred
@@ -160,6 +161,55 @@ class RunSourceMirrorSyncUseCaseTest {
             ),
         )
 
+        assertEquals(listOf("日"), sourceMirrorSync.seededQueueItems!!.map { it.kanji })
+    }
+
+    @Test
+    fun successfulReadReportsExactAdaptivePlanUsedForQueueSeeding() = runBlocking {
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val reportedPlans = mutableListOf<AdaptiveStudyPlan>()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10), sourceNote(noteId = 11)),
+                    cards = listOf(
+                        sourceCard(noteId = 10, suspended = false),
+                        sourceCard(cardId = 21, noteId = 11, suspended = true),
+                    ),
+                ),
+            ),
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(100, 150),
+        )
+
+        useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                queueSeedContext = SyncStudyQueueSeedContext(
+                    settings = StudyQueueSeedSettings(
+                        activeQueueCap = 10,
+                        newPerDay = 10,
+                        matureSupportThreshold = 2,
+                    ),
+                    startOfDayMillis = 50,
+                    locallySuspendedKanji = setOf("本"),
+                    adaptiveContext = SyncAdaptivePlanContext(
+                        recentStats = AdaptiveReviewStats(total = 8, good = 8, writingRequired = 4),
+                        currentStreakDays = 5,
+                        workloadPolicy = AdaptiveWorkloadPolicy.manual(0),
+                    ),
+                ),
+                adaptivePlanListener = SyncAdaptivePlanListener { reportedPlans += it },
+            ),
+        )
+
+        val plan = reportedPlans.single()
+        assertEquals(listOf("日"), plan.focusKanji)
+        assertEquals(0, plan.workloadPercent)
+        assertEquals("Very little work today: one focused kanji unless recovery is already due.", plan.status)
         assertEquals(listOf("日"), sourceMirrorSync.seededQueueItems!!.map { it.kanji })
     }
 
@@ -446,6 +496,45 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(SyncRunId(1), id)
         assertEquals(SyncRunStatus.SUCCESS, syncRuns.inserted.single().status)
         assertEquals("cleanup done", syncRuns.inserted.single().removalMessage)
+    }
+
+    @Test
+    fun adaptivePlanListenerFailureDoesNotTurnSuccessfulSyncIntoFailedRun() = runBlocking {
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10)),
+                    cards = listOf(sourceCard(noteId = 10, suspended = true)),
+                ),
+            ),
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10, 20),
+        )
+
+        val id = useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                queueSeedContext = SyncStudyQueueSeedContext(
+                    settings = StudyQueueSeedSettings(
+                        activeQueueCap = 10,
+                        newPerDay = 10,
+                        matureSupportThreshold = 2,
+                    ),
+                    startOfDayMillis = 0,
+                    adaptiveContext = SyncAdaptivePlanContext(),
+                ),
+                adaptivePlanListener = SyncAdaptivePlanListener {
+                    throw IllegalStateException("detached UI")
+                },
+            ),
+        )
+
+        assertEquals(SyncRunId(1), id)
+        assertEquals(SyncRunStatus.SUCCESS, sourceMirrorSync.syncRun.status)
     }
 
     private fun importSelector(): ImportCandidateSelector =
