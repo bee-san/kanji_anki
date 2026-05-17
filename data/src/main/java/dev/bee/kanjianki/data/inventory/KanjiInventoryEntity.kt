@@ -2,9 +2,15 @@ package dev.bee.kanjianki.data.inventory
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "kanji_inventory")
+@Entity(
+    tableName = "kanji_inventory",
+    indices = [
+        Index(value = ["search_text"], name = "idx_kanji_inventory_search"),
+    ],
+)
 data class KanjiInventoryEntity(
     @PrimaryKey
     @ColumnInfo(name = "kanji")

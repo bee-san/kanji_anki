@@ -190,9 +190,25 @@ Current artifacts:
   - `KanjiExampleEntity`
   - `KanjiInventoryEntity`
   - `LocalKanjiSuspensionEntity`
+- Study/log entities and DAOs:
+  - `StudyItemEntity`
+  - `LearningRepeatEntity`
+  - `ReviewLogEntity`
+  - `StudyTaskLogEntity`
+- Similar-kanji entities and DAOs:
+  - `SimilarKanjiPairEntity`
+  - `SimilarChoiceStateEntity`
+  - `SimilarRepairQueueEntity`
+  - `SimilarReviewLogEntity`
+- Timeline and historical sync entities and DAOs:
+  - `KanjiTimelineEventEntity`
+  - `SyncCardSnapshotEntity`
+  - `SyncNoteSnapshotEntity`
+  - `SyncKanjiSnapshotEntity`
 - `KaniRoomDatabase` now declares `settings`, `source_notes`, `source_cards`,
   `sync_runs`, suspended/import tables, dashboard rows, kanji examples, kanji
-  inventory, and local kanji suspensions.
+  inventory, local kanji suspensions, study/log tables, similar-kanji tables,
+  timeline events, and historical sync snapshots.
 - Room schema export updated at
   `data/schemas/dev.bee.kanjianki.data.KaniRoomDatabase/20.json`.
 
@@ -210,6 +226,12 @@ Compatibility notes:
   `import_decisions(kanji, sync_id)` are declared in Room.
 - Legacy defaults on `kanji_examples.interval_days` and `kanji_examples.reps`
   remain `0`.
+- Legacy indexes for study due lookups, stats rollups, similar-kanji due
+  queues, kanji inventory search, timeline dedupe, and historical sync
+  snapshots are declared in Room.
+- Encoded task-memory columns remain embedded in `StudyItemEntity` for this
+  parity-first schema pass; extracting typed task memory belongs behind a
+  migration fixture and scheduler parity tests.
 
 Verification command:
 
@@ -222,6 +244,38 @@ Result: `BUILD SUCCESSFUL`; schema export regenerated from Room.
 
 The same command also passed after adding the suspended/import and
 inventory/dashboard table families.
+
+It also passed after adding the study/log, similar-kanji, timeline, and
+historical sync snapshot table families. The exported schema now contains the
+current v20 user-data tables:
+
+```text
+settings
+source_notes
+source_cards
+sync_runs
+suspended_archive
+suspended_imports
+suspended_sources
+import_rule_audits
+import_decisions
+dashboard_rows
+kanji_examples
+kanji_inventory
+local_kanji_suspensions
+study_items
+learning_repeats
+review_log
+study_task_log
+similar_kanji_pairs
+similar_kanji_choice_state
+similar_kanji_repair_queue
+similar_kanji_review_log
+kanji_timeline_events
+sync_card_snapshots
+sync_note_snapshots
+sync_kanji_snapshots
+```
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
