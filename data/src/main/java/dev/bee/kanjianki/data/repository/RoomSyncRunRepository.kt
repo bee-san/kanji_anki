@@ -16,6 +16,9 @@ class RoomSyncRunRepository(
 
     override suspend fun latest(): SyncRun? = dao.latest()?.toDomain()
 
+    override suspend fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean =
+        dao.hasSuccessfulSyncSince(finishedAtMillis)
+
     override suspend fun insert(syncRun: SyncRun): SyncRunId =
         SyncRunId(dao.insert(syncRun.copy(id = null).toEntity()))
 

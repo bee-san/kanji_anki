@@ -449,6 +449,9 @@ class RoomSourceMirrorSyncRepositoryTest {
 
         override suspend fun latest(): SyncRunEntity? = inserted.lastOrNull()
 
+        override suspend fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean =
+            inserted.any { it.status == "success" && it.finishedAt != null && it.finishedAt >= finishedAtMillis }
+
         override suspend fun insert(syncRun: SyncRunEntity): Long {
             inserted += syncRun.copy(id = generatedId)
             return generatedId

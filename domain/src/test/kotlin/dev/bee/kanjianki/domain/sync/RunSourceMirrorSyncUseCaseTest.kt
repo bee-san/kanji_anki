@@ -617,6 +617,9 @@ class RunSourceMirrorSyncUseCaseTest {
 
         override suspend fun latest(): SyncRun? = inserted.lastOrNull()
 
+        override suspend fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean =
+            inserted.any { it.status == SyncRunStatus.SUCCESS && it.finishedAt != null && it.finishedAt >= finishedAtMillis }
+
         override suspend fun insert(syncRun: SyncRun): SyncRunId {
             val id = SyncRunId((inserted.size + 1).toLong())
             inserted += syncRun.copy(id = id)

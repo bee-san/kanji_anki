@@ -17,6 +17,9 @@ interface SyncRunDao {
     @Query("SELECT * FROM sync_runs ORDER BY id DESC LIMIT 1")
     suspend fun latest(): SyncRunEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM sync_runs WHERE status = 'success' AND finished_at >= :finishedAtMillis LIMIT 1)")
+    suspend fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean
+
     @Insert
     suspend fun insert(syncRun: SyncRunEntity): Long
 

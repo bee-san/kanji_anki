@@ -11,6 +11,8 @@ interface SyncRunRepository {
 
     suspend fun latest(): SyncRun?
 
+    suspend fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean
+
     suspend fun insert(syncRun: SyncRun): SyncRunId
 
     suspend fun update(syncRun: SyncRun)

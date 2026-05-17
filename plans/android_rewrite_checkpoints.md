@@ -1166,3 +1166,7 @@ the visible Java runtime while Room study ownership is disabled:
   constructor for the staged `RoomSyncRequestFactory`. The current legacy
   constructor still maps `RecordsSyncModels.Settings` through `LocalStore`, but
   the runner no longer requires sync-request construction to be synchronous.
+- `SyncRunRepository` and `RoomSyncRunRepository` now expose the
+  `hasSuccessfulSyncSince` read used by auto-sync scheduling. Room can answer
+  the same "already synced today" question as legacy `LocalStore` without
+  loading sync rows into the caller.
