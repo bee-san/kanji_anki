@@ -339,6 +339,7 @@ class RunSourceMirrorSyncUseCaseTest {
     fun successfulReadStoresArchiveCleanupMessage() = runBlocking {
         val syncRuns = FakeSyncRunRepository()
         val sourceMirrorSync = FakeSourceMirrorSyncRepository(syncRuns = syncRuns)
+        val progressEvents = mutableListOf<SyncProgressSnapshot>()
         val useCase = RunSourceMirrorSyncUseCase(
             gateway = FakeGateway(
                 CollectionSnapshot(
@@ -354,11 +355,24 @@ class RunSourceMirrorSyncUseCaseTest {
             archiveGateway = FakeArchiveGateway("cleanup done"),
         )
 
-        val id = useCase(ImportSettings())
+        val id = useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                progress = SyncProgressListener { progressEvents += it },
+            ),
+        )
 
         assertEquals(SyncRunId(1), id)
         assertEquals("cleanup done", syncRuns.inserted.single().removalMessage)
         assertEquals(listOf("日", "本"), sourceMirrorSync.importCandidates.map { it.kanji })
+        assertEquals(
+            listOf(
+                SyncProgressStage.PROCESSING_IMPORTED_CARDS,
+                SyncProgressStage.BUILDING_PRACTICE_QUEUE,
+                SyncProgressStage.ARCHIVING_IMPORTED_CARDS,
+            ),
+            progressEvents.map { it.stage },
+        )
     }
 
     private fun importSelector(): ImportCandidateSelector =

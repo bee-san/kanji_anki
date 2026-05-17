@@ -389,6 +389,11 @@ Current artifacts:
   boundary. `AnkiDroidCollectionGateway` tags fully selected suspended notes
   with `kani_archived`, keeps partial-note cases local, and `RunSourceMirrorSyncUseCase`
   stores the cleanup message after the local sync transaction is committed.
+- `SyncProgressListener`, `SyncProgressSnapshot`, and `SyncProgressStage` define
+  the domain sync progress surface using the legacy `SyncProgressPanel` stage
+  vocabulary. `AnkiDroidCollectionGateway` emits provider read/scan stages,
+  while `RunSourceMirrorSyncUseCase` emits local processing, queue-building,
+  and archive-cleanup stages.
 - `LegacySyncMappers`, `LegacySyncRequestFactory`, and
   `CoreSimilarKanjiIndexAdapter` in `:app` bridge current `LocalStore`,
   `SyncSettings`, adaptive settings, ladder settings, and the bundled
@@ -400,7 +405,6 @@ Current artifacts:
 
 Explicit gaps:
 
-- No progress callback surface for `SyncProgressPanel` yet.
 - Manual and background sync still use the legacy Java path. This is
   deliberate until Home/Study reads the same Room data that the new sync path
   writes; otherwise manual sync would appear invisible in the current UI.
@@ -530,6 +534,10 @@ Result: `BUILD SUCCESSFUL`; focused tests cover archive cleanup message
 persistence, provider tagging for fully selected suspended notes, partial-note
 local retention, and Hilt wiring.
 
+The same focused command passed after adding the domain sync progress callback
+surface. Domain and AnkiDroid tests cover emitted processing, queue-building,
+archive-cleanup, provider read, and provider scan stages.
+
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew ciFast
@@ -537,6 +545,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL` after adding the AnkiDroid gateway, adaptive sync
 request context, and app sync bridge/Hilt bindings.
+
+The same `ciFast` command passed after adding the domain sync progress callback
+surface.
 
 ## Step 7 Scheduler Rewrite
 

@@ -11,6 +11,9 @@ import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.sync.CollectionGatewayException
 import dev.bee.kanjianki.domain.sync.CollectionSnapshot
+import dev.bee.kanjianki.domain.sync.SyncProgressListener
+import dev.bee.kanjianki.domain.sync.SyncProgressSnapshot
+import dev.bee.kanjianki.domain.sync.SyncProgressStage
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,12 +54,14 @@ class AnkiDroidCollectionGatewayTest {
                 "fsrs_retrievability" to "0.72",
             )
         }
+        val progressEvents = mutableListOf<SyncProgressSnapshot>()
 
         val snapshot = AnkiDroidCollectionGateway(provider).readCollection(
             ImportSettings(
                 importBrowserQueryCards = true,
                 importBrowserQuery = " tag:focus ",
             ),
+            SyncProgressListener { progressEvents += it },
         )
 
         assertEquals(listOf(10L), snapshot.notes.map { it.noteId.value })
@@ -71,6 +76,17 @@ class AnkiDroidCollectionGatewayTest {
         assertEquals(4.5, snapshot.cards.single().fsrsStability!!, 0.0)
         assertEquals(6.5, snapshot.cards.single().fsrsDifficulty!!, 0.0)
         assertEquals(0.72, snapshot.cards.single().fsrsRetrievability!!, 0.0)
+        assertEquals(
+            listOf(
+                SyncProgressStage.FINDING_NOTE_TYPE,
+                SyncProgressStage.READING_NOTES,
+                SyncProgressStage.SCANNING_CARDS,
+                SyncProgressStage.SCANNING_CARDS,
+            ),
+            progressEvents.map { it.stage },
+        )
+        assertEquals(1, progressEvents.last().scannedCards)
+        assertFalse(progressEvents.last().totalKnown)
     }
 
     @Test

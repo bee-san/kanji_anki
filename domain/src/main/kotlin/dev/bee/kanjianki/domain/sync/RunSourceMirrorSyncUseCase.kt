@@ -50,10 +50,13 @@ class RunSourceMirrorSyncUseCase(
         val startedAt = clock.nowMillis()
         return try {
             val settings = request.importSettings
-            val snapshot = gateway.readCollection(settings)
+            val progress = request.progress
+            val snapshot = gateway.readCollection(settings, progress)
+            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.PROCESSING_IMPORTED_CARDS))
             val importCandidates = importCandidateSelector.select(snapshot, settings)
             val dashboardRows = dashboardBuilder.build(importCandidates, settings)
             val finishedAt = clock.nowMillis()
+            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.BUILDING_PRACTICE_QUEUE))
             val seededQueueItems = seedQueueItems(request, dashboardRows, finishedAt)
             val syncRunId = sourceMirrorSync.recordSuccessfulSnapshot(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
@@ -65,7 +68,7 @@ class RunSourceMirrorSyncUseCase(
                 seededQueueItems = seededQueueItems,
                 similarKanjiIndex = request.similarKanjiIndex,
             )
-            recordArchiveCleanup(syncRunId, snapshot, importCandidates)
+            recordArchiveCleanup(syncRunId, snapshot, importCandidates, progress)
             syncRunId
         } catch (error: CollectionGatewayException) {
             val finishedAt = clock.nowMillis()
@@ -82,7 +85,9 @@ class RunSourceMirrorSyncUseCase(
         syncRunId: SyncRunId,
         snapshot: CollectionSnapshot,
         importCandidates: List<ImportedKanjiCandidate>,
+        progress: SyncProgressListener,
     ) {
+        progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.ARCHIVING_IMPORTED_CARDS))
         val message = try {
             archiveGateway.archiveSelectedSuspendedCards(snapshot, importCandidates).message
         } catch (error: CancellationException) {
@@ -237,6 +242,7 @@ data class RunSourceMirrorSyncRequest(
     val importSettings: ImportSettings,
     val queueSeedContext: SyncStudyQueueSeedContext? = null,
     val similarKanjiIndex: SimilarKanjiIndex? = null,
+    val progress: SyncProgressListener = NoOpSyncProgressListener,
 )
 
 data class SyncStudyQueueSeedContext(

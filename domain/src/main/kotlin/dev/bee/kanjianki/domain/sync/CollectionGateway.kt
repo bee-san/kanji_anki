@@ -8,6 +8,12 @@ import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 interface CollectionGateway {
     @Throws(CollectionGatewayException::class)
     suspend fun readCollection(settings: ImportSettings): CollectionSnapshot
+
+    @Throws(CollectionGatewayException::class)
+    suspend fun readCollection(
+        settings: ImportSettings,
+        progress: SyncProgressListener,
+    ): CollectionSnapshot = readCollection(settings)
 }
 
 data class CollectionSnapshot(
