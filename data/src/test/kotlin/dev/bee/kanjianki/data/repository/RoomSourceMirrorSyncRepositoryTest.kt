@@ -4,6 +4,8 @@ import dev.bee.kanjianki.data.importing.ImportDecisionDao
 import dev.bee.kanjianki.data.importing.ImportDecisionEntity
 import dev.bee.kanjianki.data.importing.ImportRuleAuditDao
 import dev.bee.kanjianki.data.importing.ImportRuleAuditEntity
+import dev.bee.kanjianki.data.importing.SuspendedArchiveDao
+import dev.bee.kanjianki.data.importing.SuspendedArchiveEntity
 import dev.bee.kanjianki.data.importing.SuspendedImportDao
 import dev.bee.kanjianki.data.importing.SuspendedImportEntity
 import dev.bee.kanjianki.data.importing.SuspendedSourceDao
@@ -40,6 +42,7 @@ class RoomSourceMirrorSyncRepositoryTest {
         val cards = FakeSourceCardDao(existingIds = listOf(10, 999))
         val audits = FakeImportRuleAuditDao()
         val decisions = FakeImportDecisionDao()
+        val archive = FakeSuspendedArchiveDao()
         val suspendedImports = FakeSuspendedImportDao(
             existing = mapOf(
                 "日" to SuspendedImportEntity(
@@ -60,6 +63,7 @@ class RoomSourceMirrorSyncRepositoryTest {
             sourceCards = cards,
             importRuleAudits = audits,
             importDecisions = decisions,
+            suspendedArchive = archive,
             suspendedImports = suspendedImports,
             suspendedSources = suspendedSources,
             runInTransaction = { block ->
@@ -111,6 +115,10 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(listOf("日"), suspendedSources.deletedForKanji)
         assertEquals(listOf(10L), suspendedSources.upserted.map { it.cardId })
         assertEquals(42L, suspendedSources.upserted.single().syncId)
+        assertEquals(listOf(10L), archive.upserted.map { it.cardId })
+        assertEquals("Kiku", archive.upserted.single().modelName)
+        assertEquals(20L, archive.upserted.single().archivedAt)
+        assertEquals(42L, archive.upserted.single().archivedSyncId)
     }
 
     private class FakeSyncRunDao(
@@ -221,6 +229,32 @@ class RoomSourceMirrorSyncRepositoryTest {
             for (decision in decisions) {
                 upserted.removeAll { it.syncId == decision.syncId && it.kanji == decision.kanji }
                 upserted += decision
+            }
+        }
+    }
+
+    private class FakeSuspendedArchiveDao(
+        private val existing: Map<Long, SuspendedArchiveEntity> = emptyMap(),
+    ) : SuspendedArchiveDao {
+        val upserted = mutableListOf<SuspendedArchiveEntity>()
+
+        override fun observe(cardId: Long): Flow<SuspendedArchiveEntity?> = emptyFlow()
+
+        override suspend fun get(cardId: Long): SuspendedArchiveEntity? =
+            upserted.firstOrNull { it.cardId == cardId } ?: existing[cardId]
+
+        override suspend fun listActive(): List<SuspendedArchiveEntity> =
+            (existing.values + upserted).filter { it.restoredAt == null }
+                .sortedWith(compareByDescending<SuspendedArchiveEntity> { it.archivedAt }.thenBy { it.cardId })
+
+        override suspend fun upsert(entry: SuspendedArchiveEntity) {
+            upserted.removeAll { it.cardId == entry.cardId }
+            upserted += entry
+        }
+
+        override suspend fun upsertAll(entries: List<SuspendedArchiveEntity>) {
+            for (entry in entries) {
+                upsert(entry)
             }
         }
     }

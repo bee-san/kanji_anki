@@ -4,6 +4,8 @@ import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
 import dev.bee.kanjianki.data.importing.ImportDecisionDao
 import dev.bee.kanjianki.data.importing.ImportRuleAuditDao
+import dev.bee.kanjianki.data.importing.SuspendedArchiveDao
+import dev.bee.kanjianki.data.importing.SuspendedArchiveEntity
 import dev.bee.kanjianki.data.importing.SuspendedImportDao
 import dev.bee.kanjianki.data.importing.SuspendedSourceDao
 import dev.bee.kanjianki.data.source.SourceCardDao
@@ -23,6 +25,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val sourceCards: SourceCardDao,
     private val importRuleAudits: ImportRuleAuditDao,
     private val importDecisions: ImportDecisionDao,
+    private val suspendedArchive: SuspendedArchiveDao,
     private val suspendedImports: SuspendedImportDao,
     private val suspendedSources: SuspendedSourceDao,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
@@ -33,6 +36,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         sourceCards = database.sourceCardDao(),
         importRuleAudits = database.importRuleAuditDao(),
         importDecisions = database.importDecisionDao(),
+        suspendedArchive = database.suspendedArchiveDao(),
         suspendedImports = database.suspendedImportDao(),
         suspendedSources = database.suspendedSourceDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
@@ -45,6 +49,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         importCandidates: List<ImportedKanjiCandidate>,
         settings: ImportSettings,
     ): SyncRunId = runInTransaction {
+        val finishedAt = requireNotNull(syncRun.finishedAt)
         val previousNoteIds = sourceNotes.listIds().toSet()
         val previousCardIds = sourceCards.listIds().toSet()
         val currentNoteIds = notes.mapTo(mutableSetOf()) { it.noteId.value }
@@ -62,7 +67,8 @@ class RoomSourceMirrorSyncRepository internal constructor(
         sourceNotes.deleteAll()
         sourceNotes.upsertAll(notes.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
         sourceCards.upsertAll(cards.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
-        recordImportEvidence(syncRunId, requireNotNull(syncRun.finishedAt), importCandidates, settings)
+        recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
+        recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
         syncRunId
     }
 
@@ -102,5 +108,47 @@ class RoomSourceMirrorSyncRepository internal constructor(
                 candidate.toSuspendedSourceEntities(syncRunId)
             },
         )
+    }
+
+    private suspend fun recordSuspendedArchive(
+        syncRunId: SyncRunId,
+        finishedAt: Long,
+        notes: List<SourceNote>,
+        cards: List<SourceCard>,
+        importCandidates: List<ImportedKanjiCandidate>,
+    ) {
+        val selectedSuspendedCardIds = importCandidates.flatMap { candidate ->
+            candidate.sources.filter { it.suspended }.map { it.cardId }
+        }.toSet()
+        if (selectedSuspendedCardIds.isEmpty()) {
+            return
+        }
+        val notesById = notes.associateBy { it.noteId }
+        val archiveRows = cards.mapNotNull { card ->
+            if (!card.suspended || card.cardId !in selectedSuspendedCardIds) {
+                return@mapNotNull null
+            }
+            val note = notesById[card.noteId] ?: return@mapNotNull null
+            if (suspendedArchive.get(card.cardId.value) != null) {
+                return@mapNotNull null
+            }
+            SuspendedArchiveEntity(
+                cardId = card.cardId.value,
+                noteId = card.noteId.value,
+                deckName = card.deckName,
+                modelName = note.modelName,
+                expression = note.expression,
+                reading = note.reading,
+                meaning = note.meaning,
+                sentence = note.sentence,
+                fieldsJson = note.fieldsJson,
+                archivedAt = finishedAt,
+                archivedSyncId = syncRunId.value,
+                restoredAt = null,
+            )
+        }
+        if (archiveRows.isNotEmpty()) {
+            suspendedArchive.upsertAll(archiveRows)
+        }
     }
 }
