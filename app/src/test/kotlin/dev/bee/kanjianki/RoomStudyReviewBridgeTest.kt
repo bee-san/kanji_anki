@@ -94,9 +94,10 @@ class RoomStudyReviewBridgeTest {
         val repository = FakeStudyReviewPersistenceRepository(saveResult = false)
         val bridge = bridge(repository, RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE)
         val consumed = linkedSetOf<String>()
+        val item = reviewItem(token = "tok")
 
         val result = bridge.applyReview(
-            item = reviewItem(token = "tok"),
+            item = item,
             request = reviewRequest(token = "tok", rating = "good"),
             consumedTokens = consumed,
             nowMillis = 1_000L,
@@ -107,6 +108,9 @@ class RoomStudyReviewBridgeTest {
         )
 
         assertFalse(result.persisted)
+        assertTrue(result.reviewResult.duplicate)
+        assertEquals("not_persisted", result.reviewResult.appliedRating)
+        assertEquals(item, result.reviewResult.item)
         assertEquals(emptySet<String>(), consumed)
         assertEquals(1, repository.saved.size)
     }

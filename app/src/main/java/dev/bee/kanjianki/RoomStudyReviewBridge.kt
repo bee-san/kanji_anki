@@ -43,6 +43,17 @@ class RoomStudyReviewBridge @Inject constructor(
         if (!result.transition.duplicate && result.persisted && consumedTokens != null) {
             consumedTokens.add(request.token ?: "")
         }
+        if (!result.transition.duplicate && !result.persisted) {
+            return RoomStudyReviewBridgeResult(
+                reviewResult = RecordsSchedulerModels.ReviewResult(
+                    item,
+                    RATING_NOT_PERSISTED,
+                    true,
+                    "Review was not saved.",
+                ),
+                persisted = false,
+            )
+        }
         return RoomStudyReviewBridgeResult(
             reviewResult = RecordsSchedulerModels.ReviewResult(
                 if (result.transition.duplicate) {
@@ -98,3 +109,5 @@ data class RoomStudyReviewBridgeResult(
     val reviewResult: RecordsSchedulerModels.ReviewResult,
     val persisted: Boolean,
 )
+
+private const val RATING_NOT_PERSISTED = "not_persisted"
