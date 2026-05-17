@@ -25,6 +25,8 @@ import dev.bee.kanjianki.domain.repository.SyncRunRepository
 import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
 import dev.bee.kanjianki.domain.scheduler.AdaptiveWorkloadPolicy
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -304,6 +306,35 @@ class RunSourceMirrorSyncUseCaseTest {
         assertTrue(syncRuns.inserted.isEmpty())
     }
 
+    @Test
+    fun concurrentRunFailsFastWithoutWritingSkippedSyncRun() = runBlocking {
+        val syncRuns = FakeSyncRunRepository()
+        val gateway = BlockingGateway(
+            CollectionSnapshot(
+                notes = listOf(sourceNote(noteId = 10)),
+                cards = listOf(sourceCard(noteId = 10, suspended = true)),
+            ),
+        )
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = gateway,
+            syncRuns = syncRuns,
+            sourceMirrorSync = FakeSourceMirrorSyncRepository(),
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10, 20),
+        )
+
+        val firstRun = async { useCase(ImportSettings()) }
+        gateway.started.await()
+
+        val secondError = runCatching { useCase(ImportSettings()) }.exceptionOrNull()
+
+        assertTrue(secondError is SyncAlreadyRunningException)
+        assertTrue(syncRuns.inserted.isEmpty())
+        gateway.release.complete(Unit)
+        assertEquals(SyncRunId(1), firstRun.await())
+    }
+
     private fun importSelector(): ImportCandidateSelector =
         ImportCandidateSelector { kanji ->
             when (kanji) {
@@ -331,6 +362,19 @@ class RunSourceMirrorSyncUseCaseTest {
             failure?.let { throw it }
             unexpectedFailure?.let { throw it }
             return requireNotNull(snapshot)
+        }
+    }
+
+    private class BlockingGateway(
+        private val snapshot: CollectionSnapshot,
+    ) : CollectionGateway {
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+
+        override suspend fun readCollection(settings: ImportSettings): CollectionSnapshot {
+            started.complete(Unit)
+            release.await()
+            return snapshot
         }
     }
 

@@ -364,6 +364,9 @@ Current artifacts:
   retryable sync-run status.
 - `RunSourceMirrorSyncUseCase` records unexpected non-provider exceptions from
   the sync path as retryable sync runs while rethrowing coroutine cancellation.
+- `SyncExecutionGate` gives the domain sync path an injectable single-flight
+  guard. Concurrent runs fail fast with `SyncAlreadyRunningException` and do
+  not write a skipped run as a retryable failure.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
   source mirror snapshot using active, suspended, tagged, weak-card, and
   browser-query rules without depending on legacy record classes.
@@ -399,7 +402,6 @@ Explicit gaps:
 - Manual and background sync still use the legacy Java path. This is
   deliberate until Home/Study reads the same Room data that the new sync path
   writes; otherwise manual sync would appear invisible in the current UI.
-- The domain sync path has no explicit concurrency guard yet.
 
 Verification commands:
 
@@ -504,6 +506,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; sync use-case tests cover unexpected repository
 failures as retryable sync runs and verify coroutine cancellation is rethrown.
+
+The same command passed after adding `SyncExecutionGate`; use-case tests cover
+concurrent calls failing fast without writing a skipped sync as a failed run.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

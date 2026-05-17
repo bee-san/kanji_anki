@@ -37,11 +37,15 @@ class RunSourceMirrorSyncUseCase(
     private val studyQueue: StudyQueueRepository? = null,
     private val queueSeeder: StudyQueueSeeder = StudyQueueSeeder(),
     private val adaptiveStudyPlanner: AdaptiveStudyPlanner = AdaptiveStudyPlanner(),
+    private val executionGate: SyncExecutionGate = SyncExecutionGate(),
 ) {
     suspend operator fun invoke(settings: ImportSettings): SyncRunId =
         invoke(RunSourceMirrorSyncRequest(importSettings = settings))
 
-    suspend operator fun invoke(request: RunSourceMirrorSyncRequest): SyncRunId {
+    suspend operator fun invoke(request: RunSourceMirrorSyncRequest): SyncRunId =
+        executionGate.run { runUnlocked(request) }
+
+    private suspend fun runUnlocked(request: RunSourceMirrorSyncRequest): SyncRunId {
         val startedAt = clock.nowMillis()
         return try {
             val settings = request.importSettings

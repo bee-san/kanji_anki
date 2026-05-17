@@ -17,6 +17,7 @@ import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner;
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeeder;
 import dev.bee.kanjianki.domain.sync.CollectionGateway;
 import dev.bee.kanjianki.domain.sync.RunSourceMirrorSyncUseCase;
+import dev.bee.kanjianki.domain.sync.SyncExecutionGate;
 import dev.bee.kanjianki.domain.sync.SyncDashboardBuilder;
 import dev.bee.kanjianki.sync.AndroidKanjiRankLookup;
 import javax.inject.Singleton;
@@ -56,6 +57,12 @@ public final class KaniSyncModule {
     }
 
     @Provides
+    @Singleton
+    static SyncExecutionGate provideSyncExecutionGate() {
+        return new SyncExecutionGate();
+    }
+
+    @Provides
     static RunSourceMirrorSyncUseCase provideRunSourceMirrorSyncUseCase(
             CollectionGateway gateway,
             SyncRunRepository syncRunRepository,
@@ -63,7 +70,8 @@ public final class KaniSyncModule {
             ImportCandidateSelector importCandidateSelector,
             SyncDashboardBuilder syncDashboardBuilder,
             dev.bee.kanjianki.domain.common.AppClock clock,
-            StudyQueueRepository studyQueueRepository
+            StudyQueueRepository studyQueueRepository,
+            SyncExecutionGate syncExecutionGate
     ) {
         return new RunSourceMirrorSyncUseCase(
                 gateway,
@@ -74,7 +82,8 @@ public final class KaniSyncModule {
                 clock,
                 studyQueueRepository,
                 new StudyQueueSeeder(),
-                new AdaptiveStudyPlanner()
+                new AdaptiveStudyPlanner(),
+                syncExecutionGate
         );
     }
 }
