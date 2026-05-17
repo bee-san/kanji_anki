@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.inventory.KanjiInventoryEntity
+import dev.bee.kanjianki.domain.model.study.StudyKanjiInventoryItem
 import dev.bee.kanjianki.domain.sync.SyncKanjiInventoryRecord
 
 internal fun SyncKanjiInventoryRecord.toEntity(
@@ -29,3 +30,16 @@ private fun SyncKanjiInventoryRecord.mergedSearchText(previous: KanjiInventoryEn
         .filter { it.isNotBlank() }
         .distinct()
         .joinToString(" ")
+
+internal fun KanjiInventoryEntity.toDomain(
+    suspended: Boolean,
+): StudyKanjiInventoryItem = StudyKanjiInventoryItem(
+    kanji = kanji,
+    primaryMeaning = primaryMeaning,
+    readings = readings,
+    browserSearch = browserSearch,
+    sourceCount = sourceCount.coerceAtLeast(0),
+    exampleCount = exampleCount.coerceAtLeast(0),
+    suspended = suspended,
+    lastSeenAtMillis = lastSeenAt.coerceAtLeast(0L),
+)

@@ -701,6 +701,15 @@ class RoomSourceMirrorSyncRepositoryTest {
         override suspend fun listAll(): List<KanjiInventoryEntity> =
             upserted.sortedBy { it.kanji }
 
+        override suspend fun listLimited(limit: Int): List<KanjiInventoryEntity> =
+            listAll().take(limit)
+
+        override suspend fun search(
+            query: String,
+            limit: Int,
+        ): List<KanjiInventoryEntity> =
+            listAll().filter { it.searchText.contains(query) }.take(limit)
+
         override suspend fun upsertAll(items: List<KanjiInventoryEntity>) {
             for (item in items) {
                 upserted.removeAll { it.kanji == item.kanji }

@@ -9,6 +9,7 @@ import dev.bee.kanjianki.domain.model.importing.NewCardSortMode;
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow;
 import dev.bee.kanjianki.domain.model.study.StudyExample;
 import dev.bee.kanjianki.domain.model.study.StudyItemState;
+import dev.bee.kanjianki.domain.model.study.StudyKanjiInventoryItem;
 import dev.bee.kanjianki.domain.model.study.StudyPhase;
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem;
 import dev.bee.kanjianki.domain.model.study.StudyRating;
@@ -60,6 +61,14 @@ final class LegacyStudyMappers {
         List<RecordsImportModels.DashboardRow> out = new ArrayList<>();
         for (StudyDashboardRow row : rows) {
             out.add(toLegacy(row));
+        }
+        return out;
+    }
+
+    static List<RecordsImportModels.KanjiInventoryItem> toLegacyInventoryItems(List<StudyKanjiInventoryItem> items) {
+        List<RecordsImportModels.KanjiInventoryItem> out = new ArrayList<>();
+        for (StudyKanjiInventoryItem item : items) {
+            out.add(toLegacy(item));
         }
         return out;
     }
@@ -213,6 +222,19 @@ final class LegacyStudyMappers {
                 row.getSuspendedExampleCount(),
                 row.getMatureSupportCount(),
                 examples
+        );
+    }
+
+    static RecordsImportModels.KanjiInventoryItem toLegacy(StudyKanjiInventoryItem item) {
+        return new RecordsImportModels.KanjiInventoryItem(
+                item.getKanji(),
+                item.getPrimaryMeaning(),
+                item.getReadings(),
+                item.getBrowserSearch(),
+                item.getSourceCount(),
+                item.getExampleCount(),
+                item.getSuspended(),
+                item.getLastSeenAtMillis()
         );
     }
 

@@ -16,6 +16,12 @@ interface KanjiInventoryDao {
     @Query("SELECT * FROM kanji_inventory ORDER BY kanji ASC")
     suspend fun listAll(): List<KanjiInventoryEntity>
 
+    @Query("SELECT * FROM kanji_inventory ORDER BY kanji ASC LIMIT :limit")
+    suspend fun listLimited(limit: Int): List<KanjiInventoryEntity>
+
+    @Query("SELECT * FROM kanji_inventory WHERE search_text LIKE '%' || :query || '%' ORDER BY kanji ASC LIMIT :limit")
+    suspend fun search(query: String, limit: Int): List<KanjiInventoryEntity>
+
     @Upsert
     suspend fun upsertAll(items: List<KanjiInventoryEntity>)
 }

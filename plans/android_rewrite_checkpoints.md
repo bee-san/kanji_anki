@@ -1069,3 +1069,8 @@ the visible Java runtime while Room study ownership is disabled:
   behind the same Room study ownership gate as review writes. It is staged for
   cutover and is not wired into `MainActivityHome` while legacy `LocalStore`
   owns the visible runtime.
+- `StudyKanjiInventoryRepository` and `RoomLegacyKanjiInventoryBridge` provide
+  gated Room-backed inventory reads for Browse/Games/Detail surfaces. Search
+  queries are normalized before hitting Room `kanji_inventory.search_text`, and
+  local suspension state is joined from `local_kanji_suspensions`; the bridge is
+  staged only and remains disabled until Room study reads are explicitly owned.
