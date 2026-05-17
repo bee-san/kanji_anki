@@ -10,10 +10,12 @@ import dagger.hilt.components.SingletonComponent;
 import dev.bee.kanjianki.data.KaniRoomDatabase;
 import dev.bee.kanjianki.data.KaniRoomDatabaseFactory;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
+import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyQueueRepository;
 import dev.bee.kanjianki.data.repository.RoomSyncRunRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorRepository;
+import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository;
 import dev.bee.kanjianki.domain.repository.SyncRunRepository;
@@ -39,6 +41,12 @@ public final class KaniDataModule {
     @Singleton
     static SourceMirrorRepository provideSourceMirrorRepository(KaniRoomDatabase database) {
         return new RoomSourceMirrorRepository(database);
+    }
+
+    @Provides
+    @Singleton
+    static SourceMirrorSyncRepository provideSourceMirrorSyncRepository(KaniRoomDatabase database) {
+        return new RoomSourceMirrorSyncRepository(database);
     }
 
     @Provides

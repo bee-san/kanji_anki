@@ -334,8 +334,11 @@ Current artifacts:
 
 - `CollectionGateway` in `:domain` defines a suspendable collection-read
   boundary.
-- `RunSourceMirrorSyncUseCase` reads a collection snapshot, inserts a sync-run
-  summary, and writes source note/card rows with the generated sync ID.
+- `RunSourceMirrorSyncUseCase` reads a collection snapshot and records the
+  successful source mirror snapshot through a transaction-owned repository.
+- `RoomSourceMirrorSyncRepository` inserts the successful sync-run summary,
+  computes deleted source note/card counts, and replaces `source_notes` and
+  `source_cards` with the generated sync ID inside one Room transaction.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
@@ -359,6 +362,15 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; fake gateway tests cover source snapshot write and
 failure sync-run mapping.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test :data:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; source mirror sync repository tests cover the
+transactional replace path, generated sync IDs, deleted row counts, and
+preservation of suspended/browser-query source-card flags.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
@@ -694,8 +706,9 @@ Current app database:
 - App graph creation point:
   `app/src/main/java/dev/bee/kanjianki/di/KaniDataModule.java`.
   `KaniApplication` is now `@HiltAndroidApp`, and Hilt owns singleton bindings
-  for the Room DB plus source mirror, sync run, study queue, study dashboard,
-  session-selection, and review-application domain entrypoints.
+  for the Room DB plus source mirror, transactional source mirror sync, sync
+  run, study queue, study dashboard, session-selection, and review-application
+  domain entrypoints.
 
 Runtime DI gap:
 

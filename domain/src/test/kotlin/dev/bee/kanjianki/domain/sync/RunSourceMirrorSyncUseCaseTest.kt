@@ -10,7 +10,7 @@ import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
-import dev.bee.kanjianki.domain.repository.SourceMirrorRepository
+import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -22,18 +22,28 @@ import org.junit.Test
 class RunSourceMirrorSyncUseCaseTest {
     @Test
     fun successfulReadWritesSyncRunThenSourceSnapshotWithGeneratedSyncId() = runBlocking {
-        val gateway = FakeGateway(CollectionSnapshot(listOf(sourceNote()), listOf(sourceCard())))
+        val gateway = FakeGateway(
+            CollectionSnapshot(
+                notes = listOf(sourceNote(noteId = 10), sourceNote(noteId = 11)),
+                cards = listOf(
+                    sourceCard(noteId = 10, suspended = false),
+                    sourceCard(cardId = 21, noteId = 11, suspended = true),
+                ),
+            ),
+        )
         val syncRuns = FakeSyncRunRepository()
-        val sourceMirror = FakeSourceMirrorRepository()
-        val useCase = RunSourceMirrorSyncUseCase(gateway, syncRuns, sourceMirror, FakeClock(100, 150))
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val useCase = RunSourceMirrorSyncUseCase(gateway, syncRuns, sourceMirrorSync, FakeClock(100, 150))
 
         val id = useCase(ImportSettings())
 
         assertEquals(SyncRunId(1), id)
-        assertEquals(SyncRunStatus.SUCCESS, syncRuns.inserted.single().status)
-        assertEquals(1, syncRuns.inserted.single().activeNotesCount)
-        assertEquals(SyncRunId(1), sourceMirror.notes.single().lastSeenSyncId)
-        assertEquals(SyncRunId(1), sourceMirror.cards.single().lastSeenSyncId)
+        assertTrue(syncRuns.inserted.isEmpty())
+        assertEquals(SyncRunStatus.SUCCESS, sourceMirrorSync.syncRun.status)
+        assertEquals(1, sourceMirrorSync.syncRun.activeNotesCount)
+        assertEquals(1, sourceMirrorSync.syncRun.activeCardsCount)
+        assertEquals(SyncRunId(1), sourceMirrorSync.notes.single { it.noteId == NoteId(10) }.lastSeenSyncId)
+        assertEquals(SyncRunId(1), sourceMirrorSync.cards.single { it.cardId == CardId(20) }.lastSeenSyncId)
     }
 
     @Test
@@ -46,16 +56,16 @@ class RunSourceMirrorSyncUseCaseTest {
             ),
         )
         val syncRuns = FakeSyncRunRepository()
-        val sourceMirror = FakeSourceMirrorRepository()
-        val useCase = RunSourceMirrorSyncUseCase(gateway, syncRuns, sourceMirror, FakeClock(10, 20))
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val useCase = RunSourceMirrorSyncUseCase(gateway, syncRuns, sourceMirrorSync, FakeClock(10, 20))
 
         val id = useCase(ImportSettings())
 
         assertEquals(SyncRunId(1), id)
         assertEquals(SyncRunStatus.CONFIG_ERROR, syncRuns.inserted.single().status)
         assertEquals("permanent_permission", syncRuns.inserted.single().errorCode)
-        assertTrue(sourceMirror.notes.isEmpty())
-        assertTrue(sourceMirror.cards.isEmpty())
+        assertTrue(sourceMirrorSync.notes.isEmpty())
+        assertTrue(sourceMirrorSync.cards.isEmpty())
     }
 
     private class FakeGateway(
@@ -92,36 +102,26 @@ class RunSourceMirrorSyncUseCaseTest {
         override suspend fun update(syncRun: SyncRun) = Unit
     }
 
-    private class FakeSourceMirrorRepository : SourceMirrorRepository {
+    private class FakeSourceMirrorSyncRepository : SourceMirrorSyncRepository {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
+        lateinit var syncRun: SyncRun
 
-        override fun observeNote(noteId: NoteId): Flow<SourceNote?> = emptyFlow()
-
-        override suspend fun getNote(noteId: NoteId): SourceNote? = notes.firstOrNull { it.noteId == noteId }
-
-        override suspend fun getCard(cardId: CardId): SourceCard? = cards.firstOrNull { it.cardId == cardId }
-
-        override suspend fun listNotesForSync(syncRunId: SyncRunId): List<SourceNote> =
-            notes.filter { it.lastSeenSyncId == syncRunId }
-
-        override suspend fun listCardsForNote(noteId: NoteId): List<SourceCard> =
-            cards.filter { it.noteId == noteId }
-
-        override suspend fun listCardsForSync(syncRunId: SyncRunId): List<SourceCard> =
-            cards.filter { it.lastSeenSyncId == syncRunId }
-
-        override suspend fun upsertSnapshot(
+        override suspend fun recordSuccessfulSnapshot(
+            syncRun: SyncRun,
             notes: List<SourceNote>,
             cards: List<SourceCard>,
-        ) {
-            this.notes += notes
-            this.cards += cards
+        ): SyncRunId {
+            val id = SyncRunId(1)
+            this.syncRun = syncRun.copy(id = id)
+            this.notes += notes.map { it.copy(lastSeenSyncId = id) }
+            this.cards += cards.map { it.copy(lastSeenSyncId = id) }
+            return id
         }
     }
 
-    private fun sourceNote(): SourceNote = SourceNote(
-        noteId = NoteId(10),
+    private fun sourceNote(noteId: Long = 10): SourceNote = SourceNote(
+        noteId = NoteId(noteId),
         modelName = "Kiku",
         expression = "日本",
         reading = "にほん",
@@ -132,18 +132,22 @@ class RunSourceMirrorSyncUseCaseTest {
         lastSeenSyncId = SyncRunId(0),
     )
 
-    private fun sourceCard(): SourceCard = SourceCard(
-        cardId = CardId(20),
-        noteId = NoteId(10),
+    private fun sourceCard(
+        cardId: Long = 20,
+        noteId: Long = 10,
+        suspended: Boolean = true,
+    ): SourceCard = SourceCard(
+        cardId = CardId(cardId),
+        noteId = NoteId(noteId),
         deckName = "Mining",
         ord = 0,
-        queue = -1,
+        queue = if (suspended) -1 else 0,
         type = 2,
         due = 0,
         intervalDays = 0,
         reps = 0,
         lapses = 0,
-        suspended = true,
+        suspended = suspended,
         browserQueryMatched = false,
         fsrsStability = null,
         fsrsDifficulty = null,

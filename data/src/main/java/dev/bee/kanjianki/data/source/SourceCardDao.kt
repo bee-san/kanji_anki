@@ -19,6 +19,9 @@ interface SourceCardDao {
     @Query("SELECT * FROM source_cards WHERE last_seen_sync_id = :syncId ORDER BY card_id")
     suspend fun listForSync(syncId: Long): List<SourceCardEntity>
 
+    @Query("SELECT card_id FROM source_cards")
+    suspend fun listIds(): List<Long>
+
     @Upsert
     suspend fun upsert(card: SourceCardEntity)
 

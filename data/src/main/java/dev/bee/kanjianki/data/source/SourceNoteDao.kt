@@ -16,6 +16,9 @@ interface SourceNoteDao {
     @Query("SELECT * FROM source_notes WHERE last_seen_sync_id = :syncId ORDER BY note_id")
     suspend fun listForSync(syncId: Long): List<SourceNoteEntity>
 
+    @Query("SELECT note_id FROM source_notes")
+    suspend fun listIds(): List<Long>
+
     @Upsert
     suspend fun upsert(note: SourceNoteEntity)
 
