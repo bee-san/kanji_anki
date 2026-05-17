@@ -169,7 +169,7 @@ public final class BridgeScheduler {
             Set<String> consumedTokens,
             long nowMillis
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, RecordsSchedulerModels.SchedulerParameters.defaults(), RecordsSyncModels.Settings.kikuDefaults());
+        return applyReview(ReviewApplication.builder(item, request, consumedTokens, nowMillis).build());
     }
 
     public RecordsSchedulerModels.ReviewResult applyReview(
@@ -179,7 +179,9 @@ public final class BridgeScheduler {
             long nowMillis,
             RecordsSchedulerModels.SchedulerParameters parameters
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, RecordsSyncModels.Settings.kikuDefaults());
+        return applyReview(ReviewApplication.builder(item, request, consumedTokens, nowMillis)
+                .parameters(parameters)
+                .build());
     }
 
     public RecordsSchedulerModels.ReviewResult applyReview(
@@ -190,7 +192,10 @@ public final class BridgeScheduler {
             RecordsSchedulerModels.SchedulerParameters parameters,
             RecordsSyncModels.Settings settings
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, RecordsSchedulerModels.LearningStepSettings.defaults());
+        return applyReview(ReviewApplication.builder(item, request, consumedTokens, nowMillis)
+                .parameters(parameters)
+                .settings(settings)
+                .build());
     }
 
     public RecordsSchedulerModels.ReviewResult applyReview(
@@ -202,7 +207,11 @@ public final class BridgeScheduler {
             RecordsSyncModels.Settings settings,
             RecordsBase.StudyLadderSettings ladder
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, RecordsSchedulerModels.LearningStepSettings.defaults(), ladder);
+        return applyReview(ReviewApplication.builder(item, request, consumedTokens, nowMillis)
+                .parameters(parameters)
+                .settings(settings)
+                .ladder(ladder)
+                .build());
     }
 
     public RecordsSchedulerModels.ReviewResult applyReview(
@@ -214,20 +223,15 @@ public final class BridgeScheduler {
             RecordsSyncModels.Settings settings,
             RecordsSchedulerModels.LearningStepSettings learningSettings
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, learningSettings, RecordsBase.StudyLadderSettings.defaults());
+        return applyReview(ReviewApplication.builder(item, request, consumedTokens, nowMillis)
+                .parameters(parameters)
+                .settings(settings)
+                .learningSettings(learningSettings)
+                .build());
     }
 
-    public RecordsSchedulerModels.ReviewResult applyReview(
-            RecordsStudyModels.StudyItem item,
-            RecordsSchedulerModels.ReviewRequest request,
-            Set<String> consumedTokens,
-            long nowMillis,
-            RecordsSchedulerModels.SchedulerParameters parameters,
-            RecordsSyncModels.Settings settings,
-            RecordsSchedulerModels.LearningStepSettings learningSettings,
-            RecordsBase.StudyLadderSettings ladder
-    ) {
-        return transitionEngine.applyReview(item, request, consumedTokens, nowMillis, parameters, settings, learningSettings, ladder);
+    public RecordsSchedulerModels.ReviewResult applyReview(ReviewApplication application) {
+        return transitionEngine.applyReview(application);
     }
 
     public int dueCount(List<RecordsStudyModels.StudyItem> items, long nowMillis) {
@@ -350,6 +354,84 @@ public final class BridgeScheduler {
 
         public boolean admittedAny() {
             return admittedCount > 0;
+        }
+    }
+
+    public static final class ReviewApplication {
+        final RecordsStudyModels.StudyItem item;
+        final RecordsSchedulerModels.ReviewRequest request;
+        final Set<String> consumedTokens;
+        final long nowMillis;
+        final RecordsSchedulerModels.SchedulerParameters parameters;
+        final RecordsSyncModels.Settings settings;
+        final RecordsSchedulerModels.LearningStepSettings learningSettings;
+        final RecordsBase.StudyLadderSettings ladder;
+
+        private ReviewApplication(Builder builder) {
+            this.item = builder.item;
+            this.request = builder.request;
+            this.consumedTokens = builder.consumedTokens;
+            this.nowMillis = builder.nowMillis;
+            this.parameters = builder.parameters;
+            this.settings = builder.settings;
+            this.learningSettings = builder.learningSettings;
+            this.ladder = builder.ladder;
+        }
+
+        public static Builder builder(
+                RecordsStudyModels.StudyItem item,
+                RecordsSchedulerModels.ReviewRequest request,
+                Set<String> consumedTokens,
+                long nowMillis
+        ) {
+            return new Builder(item, request, consumedTokens, nowMillis);
+        }
+
+        public static final class Builder {
+            private final RecordsStudyModels.StudyItem item;
+            private final RecordsSchedulerModels.ReviewRequest request;
+            private final Set<String> consumedTokens;
+            private final long nowMillis;
+            private RecordsSchedulerModels.SchedulerParameters parameters = RecordsSchedulerModels.SchedulerParameters.defaults();
+            private RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+            private RecordsSchedulerModels.LearningStepSettings learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults();
+            private RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults();
+
+            private Builder(
+                    RecordsStudyModels.StudyItem item,
+                    RecordsSchedulerModels.ReviewRequest request,
+                    Set<String> consumedTokens,
+                    long nowMillis
+            ) {
+                this.item = item;
+                this.request = request;
+                this.consumedTokens = consumedTokens;
+                this.nowMillis = nowMillis;
+            }
+
+            public Builder parameters(RecordsSchedulerModels.SchedulerParameters parameters) {
+                this.parameters = parameters;
+                return this;
+            }
+
+            public Builder settings(RecordsSyncModels.Settings settings) {
+                this.settings = settings;
+                return this;
+            }
+
+            public Builder learningSettings(RecordsSchedulerModels.LearningStepSettings learningSettings) {
+                this.learningSettings = learningSettings;
+                return this;
+            }
+
+            public Builder ladder(RecordsBase.StudyLadderSettings ladder) {
+                this.ladder = ladder;
+                return this;
+            }
+
+            public ReviewApplication build() {
+                return new ReviewApplication(this);
+            }
         }
     }
 }

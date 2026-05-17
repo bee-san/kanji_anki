@@ -11,26 +11,24 @@ final class ReviewTransitionEngine {
         this.fsrsAdapter = Objects.requireNonNull(fsrsAdapter);
     }
 
-    RecordsSchedulerModels.ReviewResult applyReview(
-            RecordsStudyModels.StudyItem item,
-            RecordsSchedulerModels.ReviewRequest request,
-            Set<String> consumedTokens,
-            long nowMillis,
-            RecordsSchedulerModels.SchedulerParameters parameters,
-            RecordsSyncModels.Settings settings,
-            RecordsSchedulerModels.LearningStepSettings learningSettings,
-            RecordsBase.StudyLadderSettings ladder
-    ) {
-        RecordsSchedulerModels.SchedulerParameters resolvedParameters = parameters == null ? RecordsSchedulerModels.SchedulerParameters.defaults() : parameters;
-        RecordsSyncModels.Settings resolvedSettings = settings == null ? RecordsSyncModels.Settings.kikuDefaults() : settings;
-        RecordsSchedulerModels.LearningStepSettings resolvedSteps = learningSettings == null ? RecordsSchedulerModels.LearningStepSettings.defaults() : learningSettings;
-        RecordsBase.StudyLadderSettings resolvedLadder = StudyLadderRules.safeLadder(ladder);
-        RecordsSchedulerModels.ReviewResult duplicate = duplicateReviewResult(item, request, consumedTokens);
+    RecordsSchedulerModels.ReviewResult applyReview(BridgeScheduler.ReviewApplication application) {
+        RecordsSchedulerModels.SchedulerParameters resolvedParameters = application.parameters == null ? RecordsSchedulerModels.SchedulerParameters.defaults() : application.parameters;
+        RecordsSyncModels.Settings resolvedSettings = application.settings == null ? RecordsSyncModels.Settings.kikuDefaults() : application.settings;
+        RecordsSchedulerModels.LearningStepSettings resolvedSteps = application.learningSettings == null ? RecordsSchedulerModels.LearningStepSettings.defaults() : application.learningSettings;
+        RecordsBase.StudyLadderSettings resolvedLadder = StudyLadderRules.safeLadder(application.ladder);
+        RecordsSchedulerModels.ReviewResult duplicate = duplicateReviewResult(application.item, application.request, application.consumedTokens);
         if (duplicate != null) {
             return duplicate;
         }
-        consumedTokens.add(request.token);
-        ReviewContext context = ReviewContext.from(item, request, resolvedParameters, resolvedSettings, resolvedSteps, resolvedLadder, nowMillis);
+        application.consumedTokens.add(application.request.token);
+        ReviewContext context = ReviewContext.from(
+                application.item,
+                application.request,
+                resolvedParameters,
+                resolvedSettings,
+                resolvedSteps,
+                resolvedLadder,
+                application.nowMillis);
         ReviewState state = ReviewState.from(context);
         applyLadderTransition(context, state);
         updateWritingLevel(context, state);
