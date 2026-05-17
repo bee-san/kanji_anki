@@ -307,7 +307,11 @@ class RoomStudyReviewPersistenceRepositoryTest {
     ) : DashboardRowDao {
         override fun observeTop(limit: Int): Flow<List<DashboardRowEntity>> = emptyFlow()
 
+        override fun observeAllOrdered(): Flow<List<DashboardRowEntity>> = emptyFlow()
+
         override suspend fun listTop(limit: Int): List<DashboardRowEntity> = row?.let(::listOf).orEmpty()
+
+        override suspend fun listAllOrdered(): List<DashboardRowEntity> = row?.let(::listOf).orEmpty()
 
         override suspend fun get(kanji: String): DashboardRowEntity? = row?.takeIf { it.kanji == kanji }
 

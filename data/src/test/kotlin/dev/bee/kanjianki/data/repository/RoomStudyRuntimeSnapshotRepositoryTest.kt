@@ -50,12 +50,32 @@ class RoomStudyRuntimeSnapshotRepositoryTest {
         assertTrue(snapshot.items.single().hasSimilarKanji)
     }
 
+    @Test
+    fun activeSnapshotAppliesDashboardLimitAfterLocalSuspensionFiltering() = runBlocking {
+        val repository = RoomStudyRuntimeSnapshotRepository(
+            dashboardRows = FakeDashboardRowDao(listOf(row("裂"), row("浅"), row("本"))),
+            kanjiExamples = FakeKanjiExampleDao(emptyList()),
+            localSuspensions = FakeLocalKanjiSuspensionDao(listOf(LocalKanjiSuspensionEntity("裂", 100L))),
+            studyItems = FakeStudyItemDao(emptyList()),
+            similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            runInTransaction = { block -> block() },
+        )
+
+        val snapshot = repository.activeSnapshot(dashboardLimit = 1)
+
+        assertEquals(listOf("浅"), snapshot.rows.map { it.kanji })
+    }
+
     private class FakeDashboardRowDao(
         private val rows: List<DashboardRowEntity>,
     ) : DashboardRowDao {
         override fun observeTop(limit: Int): Flow<List<DashboardRowEntity>> = emptyFlow()
 
+        override fun observeAllOrdered(): Flow<List<DashboardRowEntity>> = emptyFlow()
+
         override suspend fun listTop(limit: Int): List<DashboardRowEntity> = rows.take(limit)
+
+        override suspend fun listAllOrdered(): List<DashboardRowEntity> = rows
 
         override suspend fun get(kanji: String): DashboardRowEntity? = rows.firstOrNull { it.kanji == kanji }
 
@@ -131,7 +151,7 @@ class RoomStudyRuntimeSnapshotRepositoryTest {
     }
 
     private class FakeSimilarKanjiPairDao(
-        private val kanjiWithSimilar: List<String>,
+        private val kanjiWithSimilar: List<String> = emptyList(),
     ) : SimilarKanjiPairDao {
         override suspend fun listForKanji(kanji: String): List<SimilarKanjiPairEntity> = emptyList()
 

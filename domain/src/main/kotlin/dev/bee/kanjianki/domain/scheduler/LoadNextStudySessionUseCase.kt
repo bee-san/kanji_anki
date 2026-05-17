@@ -29,7 +29,7 @@ class LoadNextStudySessionUseCase(
             token = selected.token,
         ) ?: return null
         val claimedToken = claimedItem.activeToken?.takeIf { it.isNotEmpty() } ?: return null
-        val effectiveItem = selected.item.copy(activeToken = claimedToken)
+        val effectiveItem = claimedItem
         return selected.copy(
             item = effectiveItem,
             token = claimedToken,

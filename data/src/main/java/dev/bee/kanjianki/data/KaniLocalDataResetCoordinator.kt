@@ -14,8 +14,11 @@ class KaniLocalDataResetCoordinator(
         if (legacyDatabases.isEmpty()) {
             return KaniLocalDataResetReport()
         }
-        check(resetPolicy.allowLegacyDatabaseReset) {
-            "Legacy Kani database(s) ${legacyDatabases.joinToString()} are present, but legacy reset is not allowed."
+        if (!resetPolicy.allowLegacyDatabaseReset) {
+            check(!resetPolicy.blockRoomOpenWhenLegacyDatabasesExist) {
+                "Legacy Kani database(s) ${legacyDatabases.joinToString()} are present, but legacy reset is not allowed."
+            }
+            return KaniLocalDataResetReport(legacyDatabasesFound = legacyDatabases)
         }
 
         legacyDatabases.forEach(databaseStore::deleteDatabaseFamily)

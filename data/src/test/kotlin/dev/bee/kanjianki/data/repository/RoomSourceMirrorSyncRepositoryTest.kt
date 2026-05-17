@@ -554,12 +554,21 @@ class RoomSourceMirrorSyncRepositoryTest {
 
         override fun observeTop(limit: Int): Flow<List<DashboardRowEntity>> = emptyFlow()
 
+        override fun observeAllOrdered(): Flow<List<DashboardRowEntity>> = emptyFlow()
+
         override suspend fun listTop(limit: Int): List<DashboardRowEntity> =
             upserted.sortedWith(
                 compareByDescending<DashboardRowEntity> { it.weaknessScore }
                     .thenByDescending { it.suspendedExampleCount }
                     .thenBy { it.kanji },
             ).take(limit)
+
+        override suspend fun listAllOrdered(): List<DashboardRowEntity> =
+            upserted.sortedWith(
+                compareByDescending<DashboardRowEntity> { it.weaknessScore }
+                    .thenByDescending { it.suspendedExampleCount }
+                    .thenBy { it.kanji },
+            )
 
         override suspend fun get(kanji: String): DashboardRowEntity? =
             upserted.firstOrNull { it.kanji == kanji }

@@ -106,6 +106,47 @@ internal fun StudyItemEntity.withReviewUpdate(item: StudyQueueItem): StudyItemEn
     similarKanjiMemory = item.memories.similarKanjiMemory.encode(),
 )
 
+internal fun StudyItemEntity.matchesSessionClaimBase(item: StudyQueueItem): Boolean =
+    kanji == item.kanji &&
+        state == item.state.wireName &&
+        dueAt == item.dueAtMillis &&
+        stability == item.stability &&
+        difficulty == item.difficulty &&
+        totalReviews == item.totalReviews &&
+        lapses == item.lapses &&
+        learningStep == item.learningStep &&
+        writingLevel == item.writingLevel &&
+        matureIntervalDays == item.matureIntervalDays &&
+        answerSignature == item.answerSignature &&
+        phase == item.phase.wireName &&
+        realPassStreak == item.realPassStreak &&
+        realAgainStreak == item.realAgainStreak &&
+        lastRealReviewDueAt == item.lastRealReviewDueAtMillis &&
+        suppressedByTaskType == item.suppressedByTaskType &&
+        suppressedAt == item.suppressedAtMillis &&
+        memoryMatches(typingMeaningMemory, item.memories.typingMeaningMemory) &&
+        memoryMatches(meaningKanjiMemory, item.memories.meaningKanjiMemory) &&
+        memoryMatches(kanjiMeaningMemory, item.memories.kanjiMeaningMemory) &&
+        memoryMatches(fontMeaningMemory, item.memories.fontMeaningMemory) &&
+        memoryMatches(wordReadingMemory, item.memories.wordReadingMemory) &&
+        memoryMatches(writingRemediationMemory, item.memories.writingRemediationMemory) &&
+        memoryMatches(similarKanjiMemory, item.memories.similarKanjiMemory)
+
+private fun memoryMatches(
+    encoded: String,
+    memory: TaskMemory,
+): Boolean = TaskMemory.decode(encoded).encode() == memory.encode()
+
+internal fun StudyItemEntity.withSessionClaim(
+    item: StudyQueueItem,
+    token: String,
+): StudyItemEntity = copy(
+    recognitionStage = item.rung.toLegacyRecognitionStage(),
+    writingRemediationPending = if (item.rung == StudyRung.WRITE_KANJI) 1 else 0,
+    rung = item.rung.wireName,
+    activeToken = token,
+)
+
 private fun StudyRung.toLegacyRecognitionStage(): Int = when (this) {
     StudyRung.TYPE_MEANING -> -1
     StudyRung.FONT_MEANING -> 1

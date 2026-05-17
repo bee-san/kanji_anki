@@ -487,6 +487,15 @@ public final class AnkiDroidGatewayTest {
     }
 
     @Test
+    public void cardSuspensionPrefersPerCardQueueOverSuspendedNoteSearch() {
+        assertFalse(AnkiDroidCardReader.isCardSuspended(0, null, true));
+        assertTrue(AnkiDroidCardReader.isCardSuspended(-1, null, false));
+        assertTrue(AnkiDroidCardReader.isCardSuspended(null, 3, false));
+        assertFalse(AnkiDroidCardReader.isCardSuspended(null, 2, true));
+        assertTrue(AnkiDroidCardReader.isCardSuspended(null, null, true));
+    }
+
+    @Test
     public void cardProgressReporterOnlyEmitsThrottledScanEvents() throws Exception {
         List<SyncProgress> events = new java.util.ArrayList<>();
 

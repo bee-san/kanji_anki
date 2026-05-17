@@ -48,14 +48,34 @@ class RoomStudyDashboardRepositoryTest {
         assertEquals(listOf("裂", "浅"), repository.listActive(10).map { it.kanji })
     }
 
+    @Test
+    fun activeRowsApplyLimitAfterLocalSuspensionFiltering() = runBlocking {
+        val localSuspensions = FakeLocalKanjiSuspensionDao()
+        localSuspensions.upsert(LocalKanjiSuspensionEntity("裂", 100L))
+        val repository = RoomStudyDashboardRepository(
+            dashboardRows = FakeDashboardRowDao(listOf(row("裂"), row("浅"), row("本"))),
+            kanjiExamples = FakeKanjiExampleDao(),
+            localSuspensions = localSuspensions,
+            learningRepeats = FakeLearningRepeatDao(),
+        )
+
+        assertEquals(listOf("浅"), repository.listActive(1).map { it.kanji })
+    }
+
     private class FakeDashboardRowDao(
         private var rows: List<DashboardRowEntity>,
     ) : DashboardRowDao {
         override fun observeTop(limit: Int): Flow<List<DashboardRowEntity>> =
             flowOf(rows.take(limit))
 
+        override fun observeAllOrdered(): Flow<List<DashboardRowEntity>> =
+            flowOf(rows)
+
         override suspend fun listTop(limit: Int): List<DashboardRowEntity> =
             rows.take(limit)
+
+        override suspend fun listAllOrdered(): List<DashboardRowEntity> =
+            rows
 
         override suspend fun get(kanji: String): DashboardRowEntity? =
             rows.firstOrNull { it.kanji == kanji }

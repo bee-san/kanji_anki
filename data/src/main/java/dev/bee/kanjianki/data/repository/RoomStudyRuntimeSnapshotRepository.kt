@@ -40,8 +40,9 @@ class RoomStudyRuntimeSnapshotRepository internal constructor(
     override suspend fun activeSnapshot(dashboardLimit: Int): StudyRuntimeSnapshot =
         runInTransaction {
             val suspendedKanji = localSuspensions.listAll().mapTo(mutableSetOf()) { it.kanji }
-            val rows = dashboardRows.listTop(dashboardLimit.coerceAtLeast(0))
+            val rows = dashboardRows.listAllOrdered()
                 .filterNot { suspendedKanji.contains(it.kanji) }
+                .take(dashboardLimit.coerceAtLeast(0))
                 .map { row -> row.toDomain(kanjiExamples.listForKanji(row.kanji, exampleLimit)) }
             val itemRows = studyItems.listByStates(activeStateWireNames)
             val withSimilar = if (itemRows.isEmpty()) {

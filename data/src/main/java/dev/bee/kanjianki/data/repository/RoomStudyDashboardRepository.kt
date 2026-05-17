@@ -44,16 +44,16 @@ class RoomStudyDashboardRepository internal constructor(
         }
 
     override fun observeActive(limit: Int): Flow<List<StudyDashboardRow>> =
-        combine(dashboardRows.observeTop(limit), localSuspensions.observeAll()) { rows, suspensions ->
-            rows.withoutSuspended(suspensions).map { it.toDomainWithExamples() }
+        combine(dashboardRows.observeAllOrdered(), localSuspensions.observeAll()) { rows, suspensions ->
+            rows.activeRows(limit, suspensions).map { it.toDomainWithExamples() }
         }
 
     override suspend fun listTop(limit: Int): List<StudyDashboardRow> =
         dashboardRows.listTop(limit).map { it.toDomainWithExamples() }
 
     override suspend fun listActive(limit: Int): List<StudyDashboardRow> =
-        dashboardRows.listTop(limit)
-            .withoutSuspended(localSuspensions.listAll())
+        dashboardRows.listAllOrdered()
+            .activeRows(limit, localSuspensions.listAll())
             .map { it.toDomainWithExamples() }
 
     override suspend fun get(kanji: String): StudyDashboardRow? =
@@ -92,11 +92,15 @@ class RoomStudyDashboardRepository internal constructor(
     private suspend fun DashboardRowEntity.toDomainWithExamples(): StudyDashboardRow =
         toDomain(kanjiExamples.listForKanji(kanji, exampleLimit))
 
-    private fun List<DashboardRowEntity>.withoutSuspended(
+    private fun List<DashboardRowEntity>.activeRows(
+        limit: Int,
         suspensions: List<LocalKanjiSuspensionEntity>,
     ): List<DashboardRowEntity> {
+        if (limit <= 0) {
+            return emptyList()
+        }
         val suspendedKanji = suspensions.mapTo(mutableSetOf()) { it.kanji }
-        return filterNot { suspendedKanji.contains(it.kanji) }
+        return filterNot { suspendedKanji.contains(it.kanji) }.take(limit)
     }
 
     companion object {

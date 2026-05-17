@@ -161,8 +161,10 @@ final class AnkiDroidCardReader {
             while (cardCursor.moveToNext()) {
                 int ord = intValue(cardCursor, COLUMN_ORD, 0);
                 boolean suspendedFromSearch = suspendedNoteIds.contains(noteId);
-                int queue = intValue(cardCursor, COLUMN_QUEUE, suspendedFromSearch ? -1 : 0);
-                boolean suspended = suspendedFromSearch || queue < 0;
+                Integer cardQueue = nullableIntValue(cardCursor, COLUMN_QUEUE);
+                int queue = cardQueue == null ? (suspendedFromSearch ? -1 : 0) : cardQueue;
+                Integer cardType = nullableIntValue(cardCursor, COLUMN_TYPE);
+                boolean suspended = isCardSuspended(cardQueue, cardType, suspendedFromSearch);
                 FsrsMemoryState fsrs = fsrsMemoryState(cardCursor);
                 String deckId = value(cardCursor, COLUMN_DECK_ID);
                 cards.add(new RecordsSyncModels.Card(
@@ -172,7 +174,7 @@ final class AnkiDroidCardReader {
                         deckId,
                         deckId,
                         queue,
-                        intValue(cardCursor, COLUMN_TYPE, suspended ? 3 : 0),
+                        cardType == null ? (suspended ? 3 : 0) : cardType,
                         intValue(cardCursor, COLUMN_DUE, 0),
                         intValue(cardCursor, COLUMN_INTERVAL, 0),
                         intValue(cardCursor, COLUMN_REPS, 0),
@@ -183,8 +185,18 @@ final class AnkiDroidCardReader {
                         fsrs.retrievability
                 ));
             }
-            return cards;
         }
+        return cards;
+    }
+
+    static boolean isCardSuspended(Integer cardQueue, Integer cardType, boolean suspendedFromSearch) {
+        if (cardQueue != null) {
+            return cardQueue < 0;
+        }
+        if (cardType != null) {
+            return cardType == 3;
+        }
+        return suspendedFromSearch;
     }
 
     private Set<Long> querySuspendedNoteIds(String authority, RecordsSyncModels.Settings settings) {
@@ -237,6 +249,19 @@ final class AnkiDroidCardReader {
     private static int intValue(Cursor cursor, String column, int fallback) {
         int index = cursor.getColumnIndex(column);
         return index < 0 || cursor.isNull(index) ? fallback : cursor.getInt(index);
+    }
+
+    private static Integer nullableIntValue(Cursor cursor, String column) {
+        int index = cursor.getColumnIndex(column);
+        if (index < 0 || cursor.isNull(index)) {
+            return null;
+        }
+        try {
+            String value = cursor.getString(index);
+            return value == null ? null : Integer.valueOf(value);
+        } catch (NumberFormatException error) {
+            return null;
+        }
     }
 
     private static FsrsMemoryState fsrsMemoryState(Cursor cursor) {

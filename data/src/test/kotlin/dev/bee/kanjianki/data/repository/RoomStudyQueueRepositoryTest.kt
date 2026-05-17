@@ -121,6 +121,29 @@ class RoomStudyQueueRepositoryTest {
     }
 
     @Test
+    fun claimActiveTokenRejectsStaleSelectedItemWithoutOverwritingCurrentState() = runBlocking {
+        val dao = FakeStudyItemDao(listOf(entity("裂", "review", dueAt = 20)))
+        val repository = RoomStudyQueueRepository(
+            studyItems = dao,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            runInTransaction = { block -> block() },
+            claimInTransaction = { block -> block() },
+        )
+
+        val claimed = repository.claimActiveToken(
+            item("裂", StudyItemState.REVIEW, dueAtMillis = 10, rung = StudyRung.TYPE_MEANING),
+            "token-1",
+        )
+
+        assertNull(claimed)
+        assertEquals(20, dao.items.single().dueAt)
+        assertEquals("kanji_meaning", dao.items.single().rung)
+        assertNull(dao.items.single().activeToken)
+    }
+
+    @Test
     fun claimActiveTokenKeepsExistingToken() = runBlocking {
         val dao = FakeStudyItemDao(listOf(entity("裂", "review", activeToken = "existing-token")))
         val repository = RoomStudyQueueRepository(
@@ -265,10 +288,11 @@ class RoomStudyQueueRepositoryTest {
         kanji: String,
         state: StudyItemState,
         rung: StudyRung = StudyRung.KANJI_MEANING,
+        dueAtMillis: Long = 10,
     ): StudyQueueItem = StudyQueueItem(
         kanji = kanji,
         state = state,
-        dueAtMillis = 10,
+        dueAtMillis = dueAtMillis,
         stability = 0.4,
         difficulty = 5.0,
         totalReviews = 0,
@@ -286,10 +310,11 @@ class RoomStudyQueueRepositoryTest {
         state: String,
         activeToken: String? = null,
         rung: String = "kanji_meaning",
+        dueAt: Long = 10,
     ): StudyItemEntity = StudyItemEntity(
         kanji = kanji,
         state = state,
-        dueAt = 10,
+        dueAt = dueAt,
         stability = 0.4,
         difficulty = 5.0,
         totalReviews = 0,

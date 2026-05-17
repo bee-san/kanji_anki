@@ -88,9 +88,14 @@ class RoomStudyQueueRepository internal constructor(
                 if (current.state !in activeStateWireNames) {
                     return@claimInTransaction null
                 }
+                if (!current.matchesSessionClaimBase(item)) {
+                    return@claimInTransaction null
+                }
                 val existingToken = current.activeToken?.takeIf { it.isNotEmpty() }
-                val aligned = item.copy(activeToken = existingToken ?: safeToken)
-                val updated = current.withReviewUpdate(aligned)
+                val updated = current.withSessionClaim(
+                    item = item,
+                    token = existingToken ?: safeToken,
+                )
                 if (updated != current) {
                     studyItems.upsert(updated)
                 }

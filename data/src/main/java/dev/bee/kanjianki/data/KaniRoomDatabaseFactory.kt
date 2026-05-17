@@ -27,6 +27,7 @@ class KaniRoomDatabaseFactory(
 data class KaniRoomDatabaseResetPolicy(
     val roomDatabaseName: String = KaniRoomDatabase.DATABASE_NAME,
     val legacyDatabaseNames: Set<String> = setOf(KaniRoomDatabase.LEGACY_DATABASE_NAME),
+    val blockRoomOpenWhenLegacyDatabasesExist: Boolean = true,
     val allowLegacyDatabaseReset: Boolean = false,
     val allowDestructiveRoomReset: Boolean = false,
 ) {
@@ -44,6 +45,12 @@ data class KaniRoomDatabaseResetPolicy(
     }
 
     companion object {
+        @JvmField
+        val ROOM_SANDBOX_DURING_LEGACY_RUNTIME: KaniRoomDatabaseResetPolicy = KaniRoomDatabaseResetPolicy(
+            blockRoomOpenWhenLegacyDatabasesExist = false,
+            allowDestructiveRoomReset = true,
+        )
+
         @JvmField
         val CLEAN_REWRITE: KaniRoomDatabaseResetPolicy = KaniRoomDatabaseResetPolicy(
             allowLegacyDatabaseReset = true,

@@ -44,6 +44,22 @@ class KaniLocalDataResetCoordinatorTest {
     }
 
     @Test
+    fun roomSandboxAllowsLegacyDatabaseFamilyToRemainUntilRuntimeCutover() {
+        val store = FakeDatabaseStore(existingFamilies = setOf(KaniRoomDatabase.LEGACY_DATABASE_NAME))
+
+        val report = KaniLocalDataResetCoordinator(
+            KaniRoomDatabaseResetPolicy.ROOM_SANDBOX_DURING_LEGACY_RUNTIME,
+            store,
+        ).prepareForRoomOpen()
+
+        assertTrue(report.resetRequired)
+        assertEquals(listOf(KaniRoomDatabase.LEGACY_DATABASE_NAME), report.legacyDatabasesFound)
+        assertEquals(emptyList<String>(), report.legacyDatabasesDeleted)
+        assertEquals(emptyList<String>(), store.deletedFamilies)
+        assertTrue(store.hasDatabaseFamily(KaniRoomDatabase.LEGACY_DATABASE_NAME))
+    }
+
+    @Test
     fun cleanRewriteFailsWhenLegacyDatabaseFamilyCannotBeDeleted() {
         val store = FakeDatabaseStore(
             existingFamilies = setOf(KaniRoomDatabase.LEGACY_DATABASE_NAME),

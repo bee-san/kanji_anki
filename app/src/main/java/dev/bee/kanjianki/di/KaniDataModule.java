@@ -42,7 +42,7 @@ public final class KaniDataModule {
     @Provides
     @Singleton
     static KaniRoomDatabase provideKaniRoomDatabase(@ApplicationContext Context context) {
-        return new KaniRoomDatabaseFactory(KaniRoomDatabaseResetPolicy.CLEAN_REWRITE).create(context);
+        return new KaniRoomDatabaseFactory(KaniRoomDatabaseResetPolicy.ROOM_SANDBOX_DURING_LEGACY_RUNTIME).create(context);
     }
 
     @Provides

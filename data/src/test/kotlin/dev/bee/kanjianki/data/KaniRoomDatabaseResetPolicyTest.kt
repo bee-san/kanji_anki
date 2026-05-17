@@ -17,6 +17,7 @@ class KaniRoomDatabaseResetPolicyTest {
     fun resetPolicyClassifiesCurrentLegacyAndUnknownDatabaseNames() {
         val policy = KaniRoomDatabaseResetPolicy()
 
+        assertEquals(true, policy.blockRoomOpenWhenLegacyDatabasesExist)
         assertEquals(false, policy.allowLegacyDatabaseReset)
         assertEquals(false, policy.allowDestructiveRoomReset)
         assertEquals(
@@ -34,9 +35,23 @@ class KaniRoomDatabaseResetPolicyTest {
     }
 
     @Test
+    fun roomSandboxPolicyKeepsLegacyDatabaseFamilyButAllowsRoomReset() {
+        val policy = KaniRoomDatabaseResetPolicy.ROOM_SANDBOX_DURING_LEGACY_RUNTIME
+
+        assertEquals(false, policy.blockRoomOpenWhenLegacyDatabasesExist)
+        assertEquals(false, policy.allowLegacyDatabaseReset)
+        assertEquals(true, policy.allowDestructiveRoomReset)
+        assertEquals(
+            KaniRoomDatabaseDisposition.LEGACY_LOCAL_STORE_DATABASE,
+            policy.classify(KaniRoomDatabase.LEGACY_DATABASE_NAME),
+        )
+    }
+
+    @Test
     fun cleanRewritePolicyExplicitlyAllowsDestructiveRoomReset() {
         val policy = KaniRoomDatabaseResetPolicy.CLEAN_REWRITE
 
+        assertEquals(true, policy.blockRoomOpenWhenLegacyDatabasesExist)
         assertEquals(true, policy.allowLegacyDatabaseReset)
         assertEquals(true, policy.allowDestructiveRoomReset)
         assertEquals(

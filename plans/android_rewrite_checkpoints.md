@@ -962,10 +962,14 @@ Current app database:
   `data/src/main/java/dev/bee/kanjianki/data/KaniLocalDataResetCoordinator.kt`.
   Room open now preflights legacy Kani database families through this single
   owner. The default policy blocks mixed old/new local state when a legacy
-  database is present; `CLEAN_REWRITE` deletes the legacy database family before
-  Room opens. A clean-start sync repository test verifies source mirror,
-  dashboard, inventory, study queue, suspended imports/archive, decisions, and
-  historical snapshots rebuild from an empty reset state.
+  database is present. While the visible Java runtime still uses `LocalStore`,
+  the app graph uses `ROOM_SANDBOX_DURING_LEGACY_RUNTIME`, which can reset only
+  the Room file and must leave the legacy database family untouched.
+  `CLEAN_REWRITE` is reserved for the cutover flow that makes Room
+  authoritative and is allowed to delete the legacy database family before Room
+  opens. A clean-start sync repository test verifies source mirror, dashboard,
+  inventory, study queue, suspended imports/archive, decisions, and historical
+  snapshots rebuild from an empty reset state.
 - Source mirror parity: Room `source_cards` now stores explicit `suspended`
   and `browser_query_matched` flags. These are required for Room-owned import
   analysis to distinguish suspended, active, weak, tagged, and browser-query
