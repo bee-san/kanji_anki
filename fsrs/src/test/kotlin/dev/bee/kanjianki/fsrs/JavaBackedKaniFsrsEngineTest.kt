@@ -5,6 +5,7 @@ import dev.bee.fsrs.FsrsEngine
 import dev.bee.fsrs.FsrsMemoryState
 import dev.bee.fsrs.FsrsRating
 import dev.bee.fsrs.FsrsReviewInput
+import dev.bee.fsrs.Fsrs as JavaFsrs
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -58,5 +59,15 @@ class JavaBackedKaniFsrsEngineTest {
         assertEquals(FsrsAlgorithmInfo.UPSTREAM_COMMIT, FsrsProvenance.upstreamCommit)
         assertEquals(FsrsAlgorithmInfo.UPSTREAM_SCHEDULER_BLOB, FsrsProvenance.upstreamSchedulerBlob)
         assertEquals(FsrsAlgorithmInfo.PARAMETER_COUNT, FsrsProvenance.parameterCount)
+    }
+
+    @Test
+    fun schedulingBoundsMirrorCurrentJavaEngine() {
+        assertEquals(JavaFsrs.STABILITY_MIN, FsrsSchedulingBounds.STABILITY_MINIMUM, 0.0)
+        assertEquals(JavaFsrs.MIN_DIFFICULTY, FsrsSchedulingBounds.MIN_DIFFICULTY, 0.0)
+        assertEquals(JavaFsrs.MAX_DIFFICULTY, FsrsSchedulingBounds.MAX_DIFFICULTY, 0.0)
+        assertEquals(0.01, FsrsSchedulingBounds.MIN_DESIRED_RETENTION, 0.0)
+        assertEquals(0.99, FsrsSchedulingBounds.MAX_DESIRED_RETENTION, 0.0)
+        assertEquals(36_500, FsrsSchedulingBounds.MAXIMUM_INTERVAL_DAYS)
     }
 }

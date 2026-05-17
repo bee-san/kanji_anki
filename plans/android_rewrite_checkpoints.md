@@ -112,6 +112,8 @@ Current artifact:
   keeping ladder/import policy outside FSRS.
 - The Kotlin FSRS wrapper exposes `nextDifficulty` so relearning graduation can
   preserve the current Java review-transition semantics.
+- `FsrsSchedulingBounds` publishes the Java FSRS stability, difficulty,
+  retention, and maximum-interval bounds for Kotlin scheduler policy code.
 - `:fsrs-java:test` remains required in rewrite gates because it owns the
   strongest generated oracle and pinned upstream fixture tests.
 
@@ -424,6 +426,14 @@ Current artifacts:
   - legacy fallback to study item fields when task memory is empty.
   - new items keeping initial task memory.
   - elapsed day calculation from the previous scheduled interval.
+- `StudyFsrsScheduler` in `:domain` adapts study ratings and task memory into
+  FSRS initial-review and existing-review requests.
+- `StudyFsrsSchedulerTest` covers:
+  - new-learning graduation using fresh FSRS initial state.
+  - relearning graduation preserving current memory with Java-equivalent
+    stability, difficulty, retention, and maximum-interval clamps.
+  - existing reviews sending clamped state into the Kotlin FSRS API.
+  - elapsed-day and interval-result validation.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
@@ -500,7 +510,8 @@ Current artifacts:
 
 Explicit gaps:
 
-- FSRS graduation remains in the Java scheduler/adapter path.
+- FSRS scheduling policy is extracted but is not wired into the runtime review
+  transition yet.
 - Ladder movement is not wired into the runtime review transition yet.
 - Study progress is not wired into the runtime Study screen yet.
 - Review token guard is not wired into the runtime review transition yet.

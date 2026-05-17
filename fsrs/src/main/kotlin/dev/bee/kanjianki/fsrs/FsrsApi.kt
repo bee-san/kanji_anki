@@ -33,6 +33,15 @@ data class FsrsReviewSchedule(
     val nextIntervalDays: Int,
 )
 
+object FsrsSchedulingBounds {
+    const val STABILITY_MINIMUM: Double = 0.001
+    const val MIN_DIFFICULTY: Double = 1.0
+    const val MAX_DIFFICULTY: Double = 10.0
+    const val MIN_DESIRED_RETENTION: Double = 0.01
+    const val MAX_DESIRED_RETENTION: Double = 0.99
+    const val MAXIMUM_INTERVAL_DAYS: Int = 36_500
+}
+
 interface KaniFsrsEngine {
     fun initialState(firstRating: FsrsReviewRating): FsrsMemory
 
