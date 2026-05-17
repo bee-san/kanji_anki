@@ -44,8 +44,7 @@ abstract class MainActivityUiSupport extends Activity {
     static final int STUDY_HERO_MUTED = Color.rgb(102, 82, 110);
 
     void styleSystemBars() {
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(BG);
+        getWindow().getDecorView().setBackgroundColor(BG);
         WindowInsetsControllerCompat controller =
                 new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(true);

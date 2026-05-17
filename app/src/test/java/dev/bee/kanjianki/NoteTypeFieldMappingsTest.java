@@ -1,5 +1,7 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.anki.AnkiDroidGateway;
+
 import org.junit.Test;
 
 import java.lang.reflect.Constructor;
@@ -136,7 +138,7 @@ public final class NoteTypeFieldMappingsTest {
 
         NoteTypeFieldMappings.choose(
                 () -> {
-                    throw new Exception("Provider unavailable");
+                    throw AnkiDroidGateway.SyncFailure.retryable("Provider unavailable");
                 },
                 Runnable::run,
                 Runnable::run,

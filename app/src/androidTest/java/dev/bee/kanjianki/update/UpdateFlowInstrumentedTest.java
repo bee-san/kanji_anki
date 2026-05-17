@@ -828,7 +828,7 @@ public final class UpdateFlowInstrumentedTest {
         FakeUpdateClient client = new FakeUpdateClient()
                 .latest(releaseJson("v99.99.99", apkAsset(), checksumAsset()))
                 .checksum(repeat("a", 64))
-                .downloadFailure(new Exception("download broke"));
+                .downloadFailure(new IOException("download broke"));
 
         GitHubUpdater.UpdateResult result = new GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL);
 
@@ -985,13 +985,13 @@ public final class UpdateFlowInstrumentedTest {
         }
     }
 
-    private static void write(File file, String text) throws Exception {
+    private static void write(File file, String text) throws IOException {
         try (FileOutputStream output = new FileOutputStream(file)) {
             output.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
     }
 
-    private static String read(File file) throws Exception {
+    private static String read(File file) throws IOException {
         try (FileInputStream input = new FileInputStream(file)) {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
@@ -1303,7 +1303,7 @@ public final class UpdateFlowInstrumentedTest {
         private String checksumText = "";
         private byte[] downloadBytes = new byte[0];
         private GitHubUpdater.ApkMetadata metadata = new GitHubUpdater.ApkMetadata("", "");
-        private Exception downloadFailure;
+        private IOException downloadFailure;
         private RuntimeException inspectFailure;
         private boolean canInstall;
         private int downloads;
@@ -1337,7 +1337,7 @@ public final class UpdateFlowInstrumentedTest {
             return this;
         }
 
-        FakeUpdateClient downloadFailure(Exception downloadFailure) {
+        FakeUpdateClient downloadFailure(IOException downloadFailure) {
             this.downloadFailure = downloadFailure;
             return this;
         }
@@ -1353,7 +1353,7 @@ public final class UpdateFlowInstrumentedTest {
         }
 
         @Override
-        public void download(String url, File file) throws Exception {
+        public void download(String url, File file) throws IOException {
             downloads++;
             if (downloadFailure != null) {
                 throw downloadFailure;

@@ -50,7 +50,7 @@ final class NoteTypeFieldMappings {
             try {
                 List<Choice> noteTypes = reader.noteTypes();
                 main.run(() -> presentNoteTypes(noteTypes, inputs, ui));
-            } catch (Exception error) {
+            } catch (AnkiDroidGateway.SyncFailure | RuntimeException error) {
                 main.run(() -> ui.showLongMessage(errorMessage(error)));
             }
         });
@@ -135,7 +135,7 @@ final class NoteTypeFieldMappings {
 
     @FunctionalInterface
     interface NoteTypeReader {
-        List<Choice> noteTypes() throws Exception;
+        List<Choice> noteTypes() throws AnkiDroidGateway.SyncFailure;
     }
 
     @FunctionalInterface

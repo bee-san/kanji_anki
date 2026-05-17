@@ -290,30 +290,6 @@ final class ReviewTransitionEngine {
         return Math.round(value * 100.0) / 100.0;
     }
 
-    private static int elapsedReviewDays(RecordsStudyModels.TaskMemory memory, long nowMillis) {
-        long previousIntervalMillis = Math.max(0L, memory.matureIntervalDays) * StudyLadderRules.DAY;
-        long lastReviewAtMillis = Math.max(0L, memory.dueAtMillis - previousIntervalMillis);
-        long elapsedMillis = Math.max(0L, nowMillis - lastReviewAtMillis);
-        return (int) Math.min(Integer.MAX_VALUE, elapsedMillis / StudyLadderRules.DAY);
-    }
-
-    private static RecordsStudyModels.TaskMemory activeTaskMemory(RecordsStudyModels.StudyItem item, RecordsBase.LadderRung rung) {
-        RecordsStudyModels.TaskMemory memory = item.memoryForRung(rung);
-        if (memory.totalReviews > 0 || item.totalReviews <= 0) {
-            return memory;
-        }
-        return RecordsStudyModels.TaskMemory.fromStudyFields(
-                item.state,
-                item.dueAtMillis,
-                item.stability,
-                item.difficulty,
-                item.totalReviews,
-                item.lapses,
-                item.learningStep,
-                item.matureIntervalDays
-        );
-    }
-
     private static final class ReviewContext {
         RecordsStudyModels.StudyItem item;
         RecordsSchedulerModels.ReviewRequest request;
@@ -351,8 +327,8 @@ final class ReviewTransitionEngine {
             context.rung = context.ladder.effectiveRung(item.rung, item.hasSimilarKanji);
             context.phase = item.phase;
             context.reviewedTaskType = context.rung.wireName();
-            context.previousTaskMemory = activeTaskMemory(item, context.rung);
-            context.elapsedReviewDays = elapsedReviewDays(context.previousTaskMemory, nowMillis);
+            context.previousTaskMemory = context.activeTaskMemory();
+            context.elapsedReviewDays = context.elapsedReviewDays();
             context.rating = resolveRating(request, context.rung);
             boolean writingRung = context.rung == RecordsBase.LadderRung.WRITE_KANJI;
             boolean writingReviewCanMoveHelp = writingRung && request.writingRequired && !request.manualOverride;
@@ -362,6 +338,30 @@ final class ReviewTransitionEngine {
                     && request.hintsUsed <= 0;
             context.failedWriting = writingReviewCanMoveHelp && !request.writingPassed;
             return context;
+        }
+
+        private int elapsedReviewDays() {
+            long previousIntervalMillis = Math.max(0L, previousTaskMemory.matureIntervalDays) * StudyLadderRules.DAY;
+            long lastReviewAtMillis = Math.max(0L, previousTaskMemory.dueAtMillis - previousIntervalMillis);
+            long elapsedMillis = Math.max(0L, nowMillis - lastReviewAtMillis);
+            return (int) Math.min(Integer.MAX_VALUE, elapsedMillis / StudyLadderRules.DAY);
+        }
+
+        private RecordsStudyModels.TaskMemory activeTaskMemory() {
+            RecordsStudyModels.TaskMemory memory = item.memoryForRung(rung);
+            if (memory.totalReviews > 0 || item.totalReviews <= 0) {
+                return memory;
+            }
+            return RecordsStudyModels.TaskMemory.fromStudyFields(
+                    item.state,
+                    item.dueAtMillis,
+                    item.stability,
+                    item.difficulty,
+                    item.totalReviews,
+                    item.lapses,
+                    item.learningStep,
+                    item.matureIntervalDays
+            );
         }
 
         private static String resolveRating(RecordsSchedulerModels.ReviewRequest request, RecordsBase.LadderRung rung) {

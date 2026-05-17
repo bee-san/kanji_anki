@@ -55,12 +55,26 @@ public final class KanjiGameEngine {
             this.prompt = clean(prompt);
             this.promptDetail = clean(promptDetail);
             this.correctAnswer = clean(correctAnswer);
-            this.choices = Collections.unmodifiableList(new ArrayList<>(cleanList(choices)));
+            this.choices = Collections.unmodifiableList(new ArrayList<>(cleanChoices(choices)));
             this.explanation = clean(explanation);
         }
 
         public boolean isCorrect(String selectedAnswer) {
             return answerKey(correctAnswer).equals(answerKey(selectedAnswer));
+        }
+
+        private static List<String> cleanChoices(List<String> values) {
+            List<String> out = new ArrayList<>();
+            if (values == null) {
+                return out;
+            }
+            for (String value : values) {
+                String cleaned = clean(value);
+                if (!cleaned.isEmpty()) {
+                    out.add(cleaned);
+                }
+            }
+            return out;
         }
     }
 
@@ -266,18 +280,23 @@ public final class KanjiGameEngine {
             return out;
         }
         for (RecordsImportModels.SimilarKanjiPair pair : pairs) {
-            if (pair == null) {
-                continue;
+            if (hasUsablePair(pair)) {
+                String a = clean(pair.kanjiA);
+                String b = clean(pair.kanjiB);
+                addNeighbor(out, a, b);
+                addNeighbor(out, b, a);
             }
-            String a = clean(pair.kanjiA);
-            String b = clean(pair.kanjiB);
-            if (a.isEmpty() || b.isEmpty() || a.equals(b)) {
-                continue;
-            }
-            addNeighbor(out, a, b);
-            addNeighbor(out, b, a);
         }
         return out;
+    }
+
+    private static boolean hasUsablePair(RecordsImportModels.SimilarKanjiPair pair) {
+        if (pair == null) {
+            return false;
+        }
+        String a = clean(pair.kanjiA);
+        String b = clean(pair.kanjiB);
+        return !a.isEmpty() && !b.isEmpty() && !a.equals(b);
     }
 
     private static void addNeighbor(Map<String, List<String>> neighbors, String kanji, String neighbor) {
@@ -285,25 +304,6 @@ public final class KanjiGameEngine {
         if (!direct.contains(neighbor)) {
             direct.add(neighbor);
         }
-    }
-
-    private static List<String> cleanList(List<String> values) {
-        List<String> out = new ArrayList<>();
-        if (values == null) {
-            return out;
-        }
-        for (String value : values) {
-            String cleaned = clean(value);
-            if (!cleaned.isEmpty()) {
-                out.add(cleaned);
-            }
-        }
-        return out;
-    }
-
-    private static String firstNonEmpty(String first, String second) {
-        String safeFirst = clean(first);
-        return safeFirst.isEmpty() ? clean(second) : safeFirst;
     }
 
     private static String clean(String value) {
@@ -393,6 +393,11 @@ public final class KanjiGameEngine {
                 return kanji + " = " + reading;
             }
             return kanji + " = " + reading + " · " + meaning;
+        }
+
+        private static String firstNonEmpty(String first, String second) {
+            String safeFirst = clean(first);
+            return safeFirst.isEmpty() ? clean(second) : safeFirst;
         }
     }
 }

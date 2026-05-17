@@ -126,7 +126,7 @@ public final class DatabaseBackupWorker extends Worker {
         try {
             db = opener.open(dbFile);
             db.checkpoint();
-        } catch (Exception error) {
+        } catch (IOException | RuntimeException error) {
             warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error);
         } finally {
             closeCheckpointDatabase(db);
@@ -145,19 +145,19 @@ public final class DatabaseBackupWorker extends Worker {
         }
         try {
             db.close();
-        } catch (Exception e) {
+        } catch (IOException | RuntimeException e) {
             warn("Failed to close database after backup checkpoint.", e);
         }
     }
 
     interface CheckpointDatabaseOpener {
-        CheckpointDatabase open(File dbFile) throws Exception;
+        CheckpointDatabase open(File dbFile) throws IOException;
     }
 
     interface CheckpointDatabase {
-        void checkpoint() throws Exception;
+        void checkpoint() throws IOException;
 
-        void close() throws Exception;
+        void close() throws IOException;
     }
 
     private static final class SQLiteCheckpointDatabase implements CheckpointDatabase {

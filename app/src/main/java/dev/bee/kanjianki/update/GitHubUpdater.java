@@ -28,6 +28,7 @@ import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
 
 public final class GitHubUpdater {
@@ -97,7 +98,7 @@ public final class GitHubUpdater {
             }
 
             return installVerifiedApk(checkedAt, latest.tagName, apkFile, source);
-        } catch (Exception error) {
+        } catch (IOException | RuntimeException error) {
             return recordResult(checkedAt, UpdateResult.failed("Update check failed: " + readableMessage(error)), "", "", "");
         }
     }
@@ -129,7 +130,7 @@ public final class GitHubUpdater {
                 return recordResult(checkedAt, UpdateResult.failed(archive.message), status.lastVersion, "", "");
             }
             return installVerifiedApk(checkedAt, status.lastVersion, apkFile, source);
-        } catch (Exception error) {
+        } catch (IOException | RuntimeException error) {
             return recordResult(checkedAt, UpdateResult.failed("Update install failed: " + readableMessage(error)), status.lastVersion, status.pendingApkName, status.pendingMessage);
         }
     }
@@ -145,7 +146,7 @@ public final class GitHubUpdater {
         return error.getClass().getSimpleName();
     }
 
-    private UpdateResult installVerifiedApk(long checkedAt, String version, File apkFile, UpdateSource source) throws Exception {
+    private UpdateResult installVerifiedApk(long checkedAt, String version, File apkFile, UpdateSource source) throws IOException {
         if (!client.canRequestPackageInstalls()) {
             Intent permission = installPermissionIntent(context);
             String message = "APK verified. Grant install permission to continue.";
@@ -215,7 +216,7 @@ public final class GitHubUpdater {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     }
 
-    static String getText(String url) throws Exception {
+    static String getText(String url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestProperty("Accept", "application/vnd.github+json,text/plain,*/*");
         connection.setRequestProperty("User-Agent", "Kani/" + BuildConfig.VERSION_NAME);
@@ -229,7 +230,7 @@ public final class GitHubUpdater {
         }
     }
 
-    static void download(String url, File file) throws Exception {
+    static void download(String url, File file) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         connection.setRequestProperty("User-Agent", "Kani/" + BuildConfig.VERSION_NAME);
         connection.setConnectTimeout(12_000);
@@ -278,8 +279,8 @@ public final class GitHubUpdater {
         }
     }
 
-    static String sha256(File file) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+    static String sha256(File file) throws IOException {
+        MessageDigest digest = sha256Digest();
         try (InputStream input = new BufferedInputStream(new java.io.FileInputStream(file))) {
             byte[] buffer = new byte[32_768];
             int read;
@@ -292,6 +293,14 @@ public final class GitHubUpdater {
             out.append(String.format(Locale.ROOT, "%02x", b));
         }
         return out.toString();
+    }
+
+    private static MessageDigest sha256Digest() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException("SHA-256 digest is unavailable.", error);
+        }
     }
 
     public enum UpdateSource {
@@ -321,15 +330,15 @@ public final class GitHubUpdater {
     }
 
     interface UpdateClient {
-        String getText(String url) throws Exception;
+        String getText(String url) throws IOException;
 
-        void download(String url, File file) throws Exception;
+        void download(String url, File file) throws IOException;
 
         ApkMetadata inspectApk(File apkFile);
 
         boolean canRequestPackageInstalls();
 
-        void startPackageInstaller(File apkFile, String version, UpdateSource source) throws Exception;
+        void startPackageInstaller(File apkFile, String version, UpdateSource source) throws IOException;
 
         boolean showPendingUpdate(String version, String message);
     }
@@ -378,12 +387,12 @@ public final class GitHubUpdater {
         }
 
         @Override
-        public String getText(String url) throws Exception {
+        public String getText(String url) throws IOException {
             return textFetcher.getText(url);
         }
 
         @Override
-        public void download(String url, File file) throws Exception {
+        public void download(String url, File file) throws IOException {
             fileDownloader.download(url, file);
         }
 
@@ -399,7 +408,7 @@ public final class GitHubUpdater {
         }
 
         @Override
-        public void startPackageInstaller(File apkFile, String version, UpdateSource source) throws Exception {
+        public void startPackageInstaller(File apkFile, String version, UpdateSource source) throws IOException {
             GitHubUpdater.startPackageInstaller(context, installerBackendFactory.create(context), apkFile, version, source);
         }
 
@@ -422,7 +431,7 @@ public final class GitHubUpdater {
             File apkFile,
             String version,
             UpdateSource source
-    ) throws Exception {
+    ) throws IOException {
         PackageInstaller.SessionParams params = sessionParams(context.getPackageName(), Build.VERSION.SDK_INT);
 
         int sessionId = installer.createSession(params);
@@ -500,11 +509,11 @@ public final class GitHubUpdater {
     }
 
     interface TextFetcher {
-        String getText(String url) throws Exception;
+        String getText(String url) throws IOException;
     }
 
     interface FileDownloader {
-        void download(String url, File file) throws Exception;
+        void download(String url, File file) throws IOException;
     }
 
     interface InstallerSession {

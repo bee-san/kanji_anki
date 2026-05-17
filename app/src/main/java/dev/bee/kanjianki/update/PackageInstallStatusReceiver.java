@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.PackageInstaller;
 import android.util.Log;
 
+import androidx.core.content.IntentCompat;
+
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.io.File;
@@ -61,13 +63,20 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
             String message,
             PendingUserActionHandler handler
     ) {
-        Intent confirmation = intent == null ? null : intent.getParcelableExtra(Intent.EXTRA_INTENT);
+        Intent confirmation = pendingUserAction(intent);
         if (confirmation != null && UpdatePolicy.shouldLaunchInstallConfirmation(source)) {
             confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             handler.startActivity(confirmation);
             return;
         }
         handler.showPendingUpdate(version, message);
+    }
+
+    private static Intent pendingUserAction(Intent intent) {
+        if (intent == null) {
+            return null;
+        }
+        return IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent.class);
     }
 
     private static void deleteCachedApk(Context context, String apkName) {
