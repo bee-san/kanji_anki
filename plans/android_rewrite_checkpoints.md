@@ -791,6 +791,12 @@ Current artifacts:
 - `RoomStudyReviewStatsRepository` reads Room `review_log` rows and produces
   adaptive review buckets, studied-today kanji, and current streak days without
   reaching into legacy `LocalStore`.
+- `StudySchedulerSettingsRepository` in `:domain` defines the scheduler setting
+  boundary needed by Room-owned sync request construction.
+- `RoomStudySchedulerSettingsRepository` reads and writes typed queue caps,
+  ladder order/enabled rungs, ladder movement thresholds, and adaptive workload
+  policy through the Room `settings` table using clean rewrite defaults when no
+  legacy settings exist.
 - `StudySessionTracker` can now complete an active task into a
   `StudyReviewTaskCompletion` snapshot without writing legacy SQLite. The
   existing legacy completion method delegates through that snapshot and still
@@ -913,6 +919,17 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; this gate covers the Room review-stats repository
 and Hilt binding.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test \
+  :data:testDebugUnitTest \
+  --tests dev.bee.kanjianki.data.repository.RoomStudySchedulerSettingsRepositoryTest \
+  :app:compileDebugJavaWithJavac
+```
+
+Result: `BUILD SUCCESSFUL`; this gate covers the Room scheduler-settings
+repository and Hilt binding.
 
 The same `:app:testDebugUnitTest` command passed after wiring Home and Study to
 load non-empty Room-backed legacy snapshots through the Hilt entry point and IO
