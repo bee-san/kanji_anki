@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyExample
 import dev.bee.kanjianki.domain.model.study.StudyItemState
@@ -13,6 +14,7 @@ import dev.bee.kanjianki.domain.repository.StudyRuntimeSnapshot
 import dev.bee.kanjianki.domain.repository.StudyRuntimeSnapshotRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -95,6 +97,7 @@ class RoomLegacyStudyReadBridgeTest {
                     ),
                 ),
             ),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
         )
 
         val snapshot = bridge.activeSnapshot(dashboardLimit = 1)
@@ -146,6 +149,23 @@ class RoomLegacyStudyReadBridgeTest {
         assertEquals("again", item.writingRemediationMemory.lastRating)
         assertEquals(5, item.writingRemediationMemory.consecutivePasses)
         assertEquals(777L, item.writingRemediationMemory.lastPassedDueAtMillis)
+    }
+
+    @Test
+    fun activeSnapshotRequiresRoomRuntimeOwnership() {
+        val bridge = RoomLegacyStudyReadBridge(
+            studyRuntimeSnapshotRepository = FakeStudyRuntimeSnapshotRepository(
+                rows = emptyList(),
+                items = emptyList(),
+            ),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.DISABLED,
+        )
+
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking {
+                bridge.activeSnapshot(dashboardLimit = 1)
+            }
+        }
     }
 
     private class FakeStudyRuntimeSnapshotRepository(

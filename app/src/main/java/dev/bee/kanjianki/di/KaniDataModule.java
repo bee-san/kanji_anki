@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 import dagger.hilt.components.SingletonComponent;
 import dev.bee.kanjianki.data.KaniRoomDatabase;
 import dev.bee.kanjianki.data.KaniRoomDatabaseFactory;
+import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
@@ -79,8 +80,17 @@ public final class KaniDataModule {
 
     @Provides
     @Singleton
-    static StudyReviewPersistenceRepository provideStudyReviewPersistenceRepository(KaniRoomDatabase database) {
-        return new RoomStudyReviewPersistenceRepository(database);
+    static RoomStudyRuntimeOwnershipPolicy provideRoomStudyRuntimeOwnershipPolicy() {
+        return RoomStudyRuntimeOwnershipPolicy.DISABLED;
+    }
+
+    @Provides
+    @Singleton
+    static StudyReviewPersistenceRepository provideStudyReviewPersistenceRepository(
+            KaniRoomDatabase database,
+            RoomStudyRuntimeOwnershipPolicy ownershipPolicy
+    ) {
+        return new RoomStudyReviewPersistenceRepository(database, ownershipPolicy);
     }
 
     @Provides

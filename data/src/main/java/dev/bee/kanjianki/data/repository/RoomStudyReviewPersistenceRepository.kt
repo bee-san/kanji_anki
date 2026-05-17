@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data.repository
 
 import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
+import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
 import dev.bee.kanjianki.data.history.KanjiTimelineEventDao
 import dev.bee.kanjianki.data.history.KanjiTimelineEventEntity
 import dev.bee.kanjianki.data.inventory.DashboardRowDao
@@ -27,10 +28,12 @@ class RoomStudyReviewPersistenceRepository internal constructor(
     private val timelineEvents: KanjiTimelineEventDao,
     private val dashboardRows: DashboardRowDao,
     private val kanjiExamples: KanjiExampleDao,
+    private val ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
     private val runInTransaction: suspend (suspend () -> Boolean) -> Boolean,
 ) : StudyReviewPersistenceRepository {
     constructor(
         database: KaniRoomDatabase,
+        ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
     ) : this(
         studyItems = database.studyItemDao(),
         reviewLogs = database.reviewLogDao(),
@@ -38,11 +41,15 @@ class RoomStudyReviewPersistenceRepository internal constructor(
         timelineEvents = database.kanjiTimelineEventDao(),
         dashboardRows = database.dashboardRowDao(),
         kanjiExamples = database.kanjiExampleDao(),
+        ownershipPolicy = ownershipPolicy,
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
     override suspend fun saveAppliedReview(input: StudyReviewPersistenceInput): Boolean =
         runInTransaction {
+            if (!ownershipPolicy.canWriteReviewsToRoom()) {
+                return@runInTransaction false
+            }
             val current = studyItems.get(
                 kanji = input.before.kanji,
                 answerSignature = input.before.answerSignature,

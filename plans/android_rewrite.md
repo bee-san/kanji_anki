@@ -913,6 +913,13 @@ AnkiDroid provider snapshot
 
 No screen should reconstruct product truth by directly querying AnkiDroid or re-running import analysis during rendering.
 
+Runtime promotion from the legacy store to Room must stay behind an explicit
+ownership gate. Room Study reads and Room review writes are allowed only after
+the app has either completed the existing-install reset/migration path or is
+double-writing legacy and Room state. This prevents Room sync from replacing
+study items based only on Room-local seed state while production UI is still
+reading or writing legacy `LocalStore` data.
+
 ### 5.2 Domain Model Families
 
 Replace broad `Records*` namespaces with focused domain packages:
