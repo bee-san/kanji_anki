@@ -1,9 +1,13 @@
 package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.study.ReviewLogDao
+import dev.bee.kanjianki.data.study.ReviewDayAggregate
 import dev.bee.kanjianki.data.study.ReviewLogEntity
+import dev.bee.kanjianki.data.study.ReviewStatsAggregate
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
 
@@ -61,6 +65,28 @@ class RoomStudyReviewStatsRepositoryTest {
     }
 
     @Test
+    fun studyStreakMatchesLegacyStreakCardShape() = runBlocking {
+        val today = localDayStart(1_700_000_000_000L)
+        val repository = RoomStudyReviewStatsRepository(
+            FakeReviewLogDao(
+                log("日", "good", reviewedAt = today + 1_000L, reviewDayStart = today),
+                log("本", "hard", reviewedAt = today + 2_000L, reviewDayStart = today),
+                log("火", "good", reviewedAt = today - DAY_MILLIS + 3_000L, reviewDayStart = moveLocalDays(today, -1)),
+                log("水", "good", reviewedAt = today - 3 * DAY_MILLIS + 4_000L, reviewDayStart = moveLocalDays(today, -3)),
+                log("土", "good", reviewedAt = today - 4 * DAY_MILLIS + 5_000L, reviewDayStart = moveLocalDays(today, -4)),
+            ),
+        )
+
+        val streak = repository.studyStreak(today + 6_000L)
+
+        assertEquals(2, streak.currentDays)
+        assertEquals(2, streak.bestDays)
+        assertTrue(streak.studiedToday)
+        assertEquals(2, streak.reviewsToday)
+        assertEquals(today + 2_000L, streak.lastStudyAtMillis)
+    }
+
+    @Test
     fun currentStreakCanContinueFromYesterdayButStopsAfterAGap() = runBlocking {
         val today = localDayStart(1_700_000_000_000L)
         val continuing = RoomStudyReviewStatsRepository(
@@ -77,6 +103,7 @@ class RoomStudyReviewStatsRepositoryTest {
 
         assertEquals(2, continuing.currentStreakDays(today + 5_000L))
         assertEquals(0, stale.currentStreakDays(today + 5_000L))
+        assertFalse(continuing.studyStreak(today + 5_000L).studiedToday)
     }
 
     private class FakeReviewLogDao(
@@ -87,6 +114,38 @@ class RoomStudyReviewStatsRepositoryTest {
 
         override suspend fun listSince(fromMillis: Long): List<ReviewLogEntity> =
             logs.filter { it.reviewedAt >= fromMillis }.sortedWith(compareBy({ it.reviewedAt }, { it.id ?: 0L }))
+
+        override suspend fun reviewStatsSince(fromMillis: Long): ReviewStatsAggregate {
+            val matching = logs.filter { it.reviewedAt >= fromMillis }
+            return ReviewStatsAggregate(
+                total = matching.size,
+                again = matching.count { it.rating == "again" },
+                hard = matching.count { it.rating == "hard" },
+                good = matching.count { it.rating !in setOf("again", "hard", "easy") },
+                easy = matching.count { it.rating == "easy" },
+                writingRequired = matching.count { it.writingRequired == 1 },
+                writingFailed = matching.count {
+                    it.writingRequired == 1 && it.writingPassed == 0 && it.manualOverride == 0
+                },
+            )
+        }
+
+        override suspend fun distinctKanjiSince(fromMillis: Long): List<String> =
+            logs.filter { it.reviewedAt >= fromMillis }
+                .mapTo(linkedSetOf()) { it.kanji }
+                .toList()
+
+        override suspend fun listReviewDaysDescending(): List<ReviewDayAggregate> =
+            logs.filter { it.reviewDayStart > 0L }
+                .groupBy { it.reviewDayStart }
+                .map { (day, logsForDay) ->
+                    ReviewDayAggregate(
+                        dayStart = day,
+                        reviewCount = logsForDay.size,
+                        lastReviewedAt = logsForDay.maxOf { it.reviewedAt },
+                    )
+                }
+                .sortedByDescending { it.dayStart }
 
         override suspend fun insert(log: ReviewLogEntity): Long = -1L
     }

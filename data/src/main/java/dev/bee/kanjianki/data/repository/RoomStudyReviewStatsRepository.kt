@@ -1,7 +1,10 @@
 package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.study.ReviewLogDao
+import dev.bee.kanjianki.data.study.ReviewDayAggregate
+import dev.bee.kanjianki.data.study.ReviewStatsAggregate
 import dev.bee.kanjianki.domain.repository.StudyReviewStatsRepository
+import dev.bee.kanjianki.domain.repository.StudyStreak
 import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
 import java.util.Calendar
 
@@ -9,43 +12,49 @@ class RoomStudyReviewStatsRepository(
     private val reviewLogs: ReviewLogDao,
 ) : StudyReviewStatsRepository {
     override suspend fun reviewStatsSince(sinceMillis: Long): AdaptiveReviewStats {
-        val logs = reviewLogs.listSince(sinceMillis)
-        return AdaptiveReviewStats(
-            total = logs.size,
-            again = logs.count { it.rating == RATING_AGAIN },
-            hard = logs.count { it.rating == RATING_HARD },
-            good = logs.count { it.rating !in nonGoodRatings },
-            easy = logs.count { it.rating == RATING_EASY },
-            writingRequired = logs.count { it.writingRequired != 0 },
-            writingFailed = logs.count {
-                it.writingRequired != 0 && it.writingPassed == 0 && it.manualOverride == 0
-            },
-        )
+        return reviewLogs.reviewStatsSince(sinceMillis).toDomain()
     }
 
     override suspend fun studiedKanjiSince(sinceMillis: Long): Set<String> =
-        reviewLogs.listSince(sinceMillis)
-            .mapTo(linkedSetOf()) { it.kanji }
+        reviewLogs.distinctKanjiSince(sinceMillis).toSet()
 
-    override suspend fun currentStreakDays(nowMillis: Long): Int {
+    override suspend fun studyStreak(nowMillis: Long): StudyStreak {
         val today = localDayStart(nowMillis)
-        val days = reviewLogs.listSince(0L)
-            .map { it.reviewDayStart }
-            .filter { it > 0L }
-            .distinct()
-            .sortedDescending()
+        val days = reviewLogs.listReviewDaysDescending()
         if (days.isEmpty()) {
-            return 0
+            return StudyStreak.empty
         }
+        val studiedToday = days.first().dayStart == today
+        return StudyStreak(
+            currentDays = currentStreak(days, today),
+            bestDays = bestStreak(days),
+            studiedToday = studiedToday,
+            reviewsToday = days.firstOrNull { it.dayStart == today }?.reviewCount ?: 0,
+            lastStudyAtMillis = days.first().lastReviewedAt,
+        )
+    }
+
+    private fun ReviewStatsAggregate.toDomain(): AdaptiveReviewStats =
+        AdaptiveReviewStats(
+            total = total,
+            again = again,
+            hard = hard,
+            good = good,
+            easy = easy,
+            writingRequired = writingRequired,
+            writingFailed = writingFailed,
+        )
+
+    private fun currentStreak(days: List<ReviewDayAggregate>, today: Long): Int {
         val yesterday = moveLocalDays(today, -1)
-        val startsToday = days.first() == today
-        if (!startsToday && days.first() != yesterday) {
+        val firstDay = days.first().dayStart
+        if (firstDay != today && firstDay != yesterday) {
             return 0
         }
-        var expected = if (startsToday) today else yesterday
+        var expected = if (firstDay == today) today else yesterday
         var current = 0
         for (day in days) {
-            if (day != expected) {
+            if (day.dayStart != expected) {
                 break
             }
             current++
@@ -54,12 +63,24 @@ class RoomStudyReviewStatsRepository(
         return current
     }
 
-    private companion object {
-        const val RATING_AGAIN = "again"
-        const val RATING_HARD = "hard"
-        const val RATING_EASY = "easy"
-        val nonGoodRatings = setOf(RATING_AGAIN, RATING_HARD, RATING_EASY)
+    private fun bestStreak(days: List<ReviewDayAggregate>): Int {
+        var best = 0
+        var run = 0
+        var expectedPrevious = Long.MIN_VALUE
+        for (index in days.indices.reversed()) {
+            val day = days[index].dayStart
+            run = if (run == 0 || day == moveLocalDays(expectedPrevious, 1)) {
+                run + 1
+            } else {
+                1
+            }
+            best = maxOf(best, run)
+            expectedPrevious = day
+        }
+        return best
+    }
 
+    private companion object {
         fun localDayStart(millis: Long): Long {
             val calendar = Calendar.getInstance()
             calendar.timeInMillis = millis
@@ -74,6 +95,10 @@ class RoomStudyReviewStatsRepository(
             val calendar = Calendar.getInstance()
             calendar.timeInMillis = dayStartMillis
             calendar.add(Calendar.DAY_OF_YEAR, days)
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
             return calendar.timeInMillis
         }
     }

@@ -9,7 +9,9 @@ import dev.bee.kanjianki.data.inventory.DashboardRowEntity
 import dev.bee.kanjianki.data.inventory.KanjiExampleDao
 import dev.bee.kanjianki.data.inventory.KanjiExampleEntity
 import dev.bee.kanjianki.data.study.ReviewLogDao
+import dev.bee.kanjianki.data.study.ReviewDayAggregate
 import dev.bee.kanjianki.data.study.ReviewLogEntity
+import dev.bee.kanjianki.data.study.ReviewStatsAggregate
 import dev.bee.kanjianki.data.study.StudyItemDao
 import dev.bee.kanjianki.data.study.StudyItemEntity
 import dev.bee.kanjianki.data.study.StudyTaskLogDao
@@ -276,6 +278,13 @@ class RoomStudyReviewPersistenceRepositoryTest {
         override suspend fun listForKanji(kanji: String): List<ReviewLogEntity> = emptyList()
 
         override suspend fun listSince(fromMillis: Long): List<ReviewLogEntity> = emptyList()
+
+        override suspend fun reviewStatsSince(fromMillis: Long): ReviewStatsAggregate =
+            ReviewStatsAggregate(0, 0, 0, 0, 0, 0, 0)
+
+        override suspend fun distinctKanjiSince(fromMillis: Long): List<String> = emptyList()
+
+        override suspend fun listReviewDaysDescending(): List<ReviewDayAggregate> = emptyList()
 
         override suspend fun insert(log: ReviewLogEntity): Long {
             if (log.token in conflictingTokens) {

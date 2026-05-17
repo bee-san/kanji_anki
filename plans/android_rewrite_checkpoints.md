@@ -1141,3 +1141,14 @@ the visible Java runtime while Room study ownership is disabled:
   for the existing detail surface. They preserve the legacy timeline record
   shape while sourcing current item state from Room `study_items` and recent
   recovery history from `kanji_timeline_events`.
+- `StudyReviewStatsRepository` and `RoomStudyReviewStatsRepository` provide the
+  Room-owned review stats boundary needed by sync and Home. Review rating
+  buckets, studied-kanji sets, and streak day summaries are read through Room
+  DAO aggregate queries instead of materializing full `review_log` rows in
+  Kotlin. The domain streak shape now matches the legacy `StudyStreak` payload:
+  current days, best days, studied-today flag, reviews today, and last study
+  timestamp.
+- `ReviewLogDaoInstrumentedTest` covers the review-log aggregate SQL through an
+  in-memory Room database. `ciFast` now compiles data-module android tests so
+  Room query/test drift is caught in the deterministic gate, while connected
+  execution remains part of emulator/device confidence work.
