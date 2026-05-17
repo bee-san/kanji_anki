@@ -129,7 +129,7 @@ public final class TextUtil {
                 cut = Math.min(cut, index);
             }
         }
-        String result = stripped.substring(0, cut).trim();
+        String result = StudyCueFormatter.cleanMeaningText(stripped.substring(0, cut).trim());
         if (result.length() > 96) {
             result = result.substring(0, 93).trim() + "...";
         }

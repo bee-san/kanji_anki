@@ -51,6 +51,9 @@ public class TextUtilTest {
 
         assertEquals("", TextUtil.firstMeaningLine("<rt>だけ</rt>"));
         assertEquals("first", TextUtil.firstMeaningLine("first|second"));
+        assertEquals("to pull", TextUtil.firstMeaningLine("[2026-05-12] JMdict [v1] (priority news) 1. godan transitive to pull|ignored"));
+        assertEquals("quiet", TextUtil.firstMeaningLine("(form note) (suru verb) Jitendex.org na-adjective quiet"));
+        assertEquals("movement", TextUtil.firstMeaningLine("Meaning: Jitendex (noun) movement"));
         assertEquals(96, TextUtil.firstMeaningLine(longMeaning).length());
         assertTrue(TextUtil.firstMeaningLine(longMeaning).endsWith("..."));
     }

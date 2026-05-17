@@ -56,7 +56,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             this.noteId = noteId;
             this.expression = expression;
             this.reading = reading;
-            this.meaning = meaning;
+            this.meaning = cleanMeaning(meaning);
             this.sentence = sourceDetails.sentence;
             this.sourceType = normalizeSourceType(sourceDetails.sourceType, sourceDetails.suspended);
             this.suspended = sourceDetails.suspended;
@@ -239,7 +239,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             this.noteId = noteId;
             this.expression = expression;
             this.reading = reading;
-            this.meaning = meaning;
+            this.meaning = cleanMeaning(meaning);
             this.sentence = args.sentence;
             this.mature = args.mature;
             this.lapses = args.lapses;
@@ -296,7 +296,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             requireArgCount(CONTEXT_DASHBOARD_ROW, rest, 7);
             this.kanji = kanji;
             this.jitenRank = jitenRank;
-            this.primaryMeaning = primaryMeaning;
+            this.primaryMeaning = cleanMeaning(primaryMeaning);
             this.reading = reading;
             this.browserSearch = browserSearch;
             this.weaknessScore = intArg(rest, 0, CONTEXT_DASHBOARD_ROW);
@@ -332,7 +332,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
         public KanjiInventoryItem(String kanji, String primaryMeaning, String readings, String browserSearch, Object... rest) {
             requireArgCount(CONTEXT_KANJI_INVENTORY_ITEM, rest, 4);
             this.kanji = nullToEmpty(kanji);
-            this.primaryMeaning = nullToEmpty(primaryMeaning);
+            this.primaryMeaning = cleanMeaning(primaryMeaning);
             this.readings = nullToEmpty(readings);
             this.browserSearch = nullToEmpty(browserSearch);
             this.sourceCount = Math.max(0, intArg(rest, 0, CONTEXT_KANJI_INVENTORY_ITEM));
@@ -378,7 +378,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
         ) {
             requireArgCount(CONTEXT_SIMILAR_KANJI_CHOICE_CARD, rest, 0, 5);
             this.targetKanji = nullToEmpty(targetKanji);
-            this.primaryMeaning = nullToEmpty(primaryMeaning);
+            this.primaryMeaning = cleanMeaning(primaryMeaning);
             this.choices = Collections.unmodifiableList(new ArrayList<>(nullToEmptyList(choices)));
             this.choiceSignature = nullToEmpty(choiceSignature);
             this.dueAtMillis = rest.length == 0 ? 0L : Math.max(0L, longArg(rest, 0, CONTEXT_SIMILAR_KANJI_CHOICE_CARD));
@@ -420,7 +420,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
 
         public MeaningKanjiChoiceCard(String targetKanji, String primaryMeaning, String reading, List<String> choices) {
             this.targetKanji = nullToEmpty(targetKanji).trim();
-            this.primaryMeaning = nullToEmpty(primaryMeaning).trim();
+            this.primaryMeaning = cleanMeaning(primaryMeaning);
             this.reading = nullToEmpty(reading).trim();
             List<String> normalizedChoices = new ArrayList<>();
             for (String choice : nullToEmptyList(choices)) {
@@ -467,7 +467,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             this.repairKanji = nullToEmpty(repairKanji);
             this.choiceSignature = nullToEmpty(choiceSignature);
             this.wrongSelection = nullToEmpty(wrongSelection);
-            this.promptMeaning = nullToEmpty(promptMeaning);
+            this.promptMeaning = cleanMeaning(promptMeaning);
             String requestedStatus = stringArg(rest, 0, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR);
             this.status = requestedStatus == null || requestedStatus.isEmpty() ? "pending" : requestedStatus;
             this.dueAtMillis = Math.max(0L, longArg(rest, 1, CONTEXT_SIMILAR_KANJI_WRITING_REPAIR));
@@ -548,4 +548,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
         }
     }
 
+    private static String cleanMeaning(String meaning) {
+        return StudyCueFormatter.cleanCollectionMeaning(meaning, 96);
+    }
 }

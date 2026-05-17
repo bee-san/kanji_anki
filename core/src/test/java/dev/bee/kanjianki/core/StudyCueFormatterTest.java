@@ -100,6 +100,14 @@ public class StudyCueFormatterTest {
                 StudyCueFormatter.cleanFallbackMeaning("(jitendex marker) clean", "", 96)
         );
         assertEquals(
+                "Movement",
+                StudyCueFormatter.cleanFallbackMeaning("Meaning: Jitendex (noun) movement", "", 96)
+        );
+        assertEquals(
+                "movement",
+                StudyCueFormatter.cleanCollectionMeaning("Meaning: Jitendex (noun) movement", 96)
+        );
+        assertEquals(
                 "Collection clue",
                 StudyCueFormatter.cleanFallbackMeaning("", null, 96)
         );

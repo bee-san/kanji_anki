@@ -400,6 +400,27 @@ public class KanjiAnalyzerTest {
     }
 
     @Test
+    public void cleansDictionaryMetadataFromAnkiMeanings() throws Exception {
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("動,1500\n"));
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Collections.singletonList(note(
+                        1,
+                        "動く",
+                        "うごく",
+                        "Meaning: Jitendex (noun) movement|word-level fallback",
+                        "動く。"
+                )),
+                Collections.singletonList(card(10, 1, 0, 0, 0, null, null, null))
+        );
+
+        RecordsImportModels.DashboardRow row = new KanjiAnalyzer().rebuild(snapshot, Collections.emptyList(), ranks, settings).get(0);
+
+        assertEquals("movement", row.primaryMeaning);
+        assertEquals("movement", row.examples.get(0).meaning);
+    }
+
+    @Test
     public void fsrsRetrievabilityNormalizesPercentAndRejectsInvalidValues() throws Exception {
         RecordsSyncModels.Settings settings = settingsWithMatureSupport(2);
         JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader("弱,1500\n中,1550\n百,1600\n過,1700\n負,1800\n"));

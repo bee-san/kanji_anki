@@ -10,8 +10,9 @@ import java.util.regex.Pattern;
 
 public final class StudyCueFormatter {
     private static final Pattern DATE_METADATA_PATTERN = Pattern.compile("\\[\\d{4}-\\d{2}-\\d{2}\\]");
-    private static final Pattern JM_DICT_PATTERN = Pattern.compile("(?i)\\bJMdict\\s*\\[[^\\]]*\\]\\s*");
-    private static final Pattern JITENDEX_PATTERN = Pattern.compile("(?i)\\bJitendex\\.org\\s*");
+    private static final Pattern MEANING_LABEL_PATTERN = Pattern.compile("(?i)^\\s*meaning\\s*:\\s*");
+    private static final Pattern JM_DICT_PATTERN = Pattern.compile("(?i)\\bJMdict(?:\\s*\\[[^\\]]*\\])?\\s*");
+    private static final Pattern JITENDEX_PATTERN = Pattern.compile("(?i)(?<!\\()\\bJitendex(?:\\.org)?\\s*");
     private static final Pattern NUMBERED_PREFIX_PATTERN = Pattern.compile("^\\d+\\.\\s*");
     private static final Pattern GODAN_PATTERN = Pattern.compile("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+");
     private static final Pattern ADJECTIVE_VERB_PATTERN = Pattern.compile("(?i)^(ichidan|suru|na-adjective|i-adjective|no-adjective)\\s+");
@@ -82,10 +83,27 @@ public final class StudyCueFormatter {
     }
 
     public static String cleanFallbackMeaning(String raw, String fallback, int maxChars) {
-        String value = raw == null ? "" : raw;
+        String value = cleanMeaningText(raw);
+        if (value.isEmpty()) {
+            value = cleanMeaningText(fallback);
+        }
+        if (value.isEmpty()) {
+            value = "Collection clue";
+        }
+        return compact(capitalize(value), maxChars);
+    }
+
+    public static String cleanCollectionMeaning(String raw, int maxChars) {
+        return compact(cleanMeaningText(raw), maxChars);
+    }
+
+    static String cleanMeaningText(String raw) {
+        String value = TextUtil.stripHtml(raw);
+        value = MEANING_LABEL_PATTERN.matcher(value).replaceAll(" ");
         value = DATE_METADATA_PATTERN.matcher(value).replaceAll(" ");
         value = JM_DICT_PATTERN.matcher(value).replaceAll(" ");
         value = JITENDEX_PATTERN.matcher(value).replaceAll(" ");
+        value = MEANING_LABEL_PATTERN.matcher(value).replaceAll(" ");
         value = value.replace('\n', ' ').replace('\r', ' ').trim();
         boolean changed = true;
         while (changed && value.startsWith("(")) {
@@ -97,6 +115,7 @@ public final class StudyCueFormatter {
                         || metadata.contains("priority")
                         || metadata.contains("form")
                         || metadata.contains("noun")
+                        || metadata.contains("adjective")
                         || metadata.contains("verb")
                         || metadata.contains("transitive")
                         || metadata.contains("suru")) {
@@ -109,11 +128,7 @@ public final class StudyCueFormatter {
         value = GODAN_PATTERN.matcher(value).replaceAll("");
         value = ADJECTIVE_VERB_PATTERN.matcher(value).replaceAll("");
         value = stripLeadingMetadataWords(value);
-        value = cleanInline(value);
-        if (value.isEmpty()) {
-            value = fallback == null || fallback.trim().isEmpty() ? "Collection clue" : fallback.trim();
-        }
-        return compact(capitalize(value), maxChars);
+        return cleanInline(value);
     }
 
     public static String hiraganaReading(String reading) {
