@@ -462,8 +462,14 @@ Current artifacts:
 - `RoomStudyQueueRepository` in `:data` reads `study_items` through Room.
 - `StudyItemMappers` maps `StudyItemEntity` to `StudyQueueItem`, including
   rung/phase/state wire names and task-memory decode.
+- `StudyDashboardRepository` in `:domain` defines the read-side dashboard row
+  boundary.
+- `RoomStudyDashboardRepository` in `:data` reads `dashboard_rows` and
+  `kanji_examples` through Room with the legacy eight-example cap.
+- `DashboardRowMappers` maps dashboard rows and examples to the scheduler
+  domain models, including example FSRS difficulty and retrievability.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
-  mapping with decoded task memory.
+  mapping with decoded task memory and dashboard row/example mapping.
 
 Explicit gaps:
 
@@ -477,6 +483,8 @@ Explicit gaps:
   `StudyAheadPolicy` at runtime yet.
 - Study queue repository is read-only for now; review-transition writes remain
   on the legacy path.
+- Study dashboard repository is read-only for now and does not apply locally
+  suspended kanji filtering yet.
 - Adaptive planner split is not ported yet.
 
 Verification commands:

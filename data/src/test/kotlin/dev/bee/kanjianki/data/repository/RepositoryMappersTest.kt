@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.data.repository
 
+import dev.bee.kanjianki.data.inventory.DashboardRowEntity
+import dev.bee.kanjianki.data.inventory.KanjiExampleEntity
 import dev.bee.kanjianki.data.source.SourceCardEntity
 import dev.bee.kanjianki.data.source.SourceNoteEntity
 import dev.bee.kanjianki.data.study.StudyItemEntity
@@ -116,6 +118,33 @@ class RepositoryMappersTest {
         assertEquals(TaskMemory.initial(), item.memories.wordReadingMemory)
     }
 
+    @Test
+    fun dashboardRowEntityMapsToDomainModelWithExamples() {
+        val row = dashboardRowEntity()
+        val example = kanjiExampleEntity()
+
+        val domain = row.toDomain(listOf(example))
+
+        assertEquals("裂", domain.kanji)
+        assertEquals(352, domain.jitenRank)
+        assertEquals("split", domain.primaryMeaning)
+        assertEquals("レツ", domain.reading)
+        assertEquals("裂", domain.browserSearch)
+        assertEquals(86, domain.weaknessScore)
+        assertEquals("imported", domain.reasonCode)
+        assertEquals("Imported from suspended cards", domain.reasonText)
+        assertEquals(2, domain.activeExampleCount)
+        assertEquals(1, domain.suspendedExampleCount)
+        assertEquals(3, domain.matureSupportCount)
+        assertEquals(1, domain.examples.size)
+        assertEquals("suspended", domain.examples[0].sourceType)
+        assertEquals("分裂", domain.examples[0].expression)
+        assertEquals("ぶんれつ", domain.examples[0].reading)
+        assertEquals("division", domain.examples[0].meaning)
+        assertEquals(7.5, domain.examples[0].fsrsDifficulty)
+        assertEquals(0.42, domain.examples[0].fsrsRetrievability)
+    }
+
     private fun studyItemEntity(
         typingMeaningMemory: String = "",
     ): StudyItemEntity = StudyItemEntity(
@@ -150,5 +179,39 @@ class RepositoryMappersTest {
         similarKanjiMemory = "",
         activeToken = "active",
         createdAt = 10,
+    )
+
+    private fun dashboardRowEntity(): DashboardRowEntity = DashboardRowEntity(
+        kanji = "裂",
+        jitenRank = 352,
+        primaryMeaning = "split",
+        reading = "レツ",
+        browserSearch = "裂",
+        weaknessScore = 86,
+        reasonCode = "imported",
+        reasonText = "Imported from suspended cards",
+        activeExampleCount = 2,
+        suspendedExampleCount = 1,
+        matureSupportCount = 3,
+        rebuiltAt = 100,
+    )
+
+    private fun kanjiExampleEntity(): KanjiExampleEntity = KanjiExampleEntity(
+        id = 1,
+        kanji = "裂",
+        sourceType = "suspended",
+        cardId = 11,
+        noteId = 10,
+        expression = "分裂",
+        reading = "ぶんれつ",
+        meaning = "division",
+        sentence = "細胞分裂",
+        mature = 0,
+        lapses = 2,
+        intervalDays = 14,
+        reps = 5,
+        fsrsStability = 12.0,
+        fsrsDifficulty = 7.5,
+        fsrsRetrievability = 0.42,
     )
 }
