@@ -21,14 +21,12 @@ class AutoSyncPolicy(
         nowMillis: Long,
         alreadySyncedToday: Boolean = false,
     ): Long {
-        val calendar = calendarAt(nowMillis).apply {
-            set(Calendar.HOUR_OF_DAY, settings.hour)
-            set(Calendar.MINUTE, settings.minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+        var calendar = configuredTimeOnDate(nowMillis, settings)
         if (calendar.timeInMillis <= nowMillis || alreadySyncedToday) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
+            calendar = calendarAt(nowMillis).apply {
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+            calendar = configuredTimeOnDate(calendar.timeInMillis, settings)
         }
         return calendar.timeInMillis
     }
@@ -45,6 +43,16 @@ class AutoSyncPolicy(
         Calendar.getInstance(timeZoneProvider()).apply {
             timeInMillis = nowMillis
         }
+
+    private fun configuredTimeOnDate(
+        dateMillis: Long,
+        settings: AutoSyncSettings,
+    ): Calendar = calendarAt(dateMillis).apply {
+        set(Calendar.HOUR_OF_DAY, settings.hour)
+        set(Calendar.MINUTE, settings.minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
 
     companion object {
         const val MINIMUM_DELAY_MILLIS = 10_000L

@@ -79,6 +79,17 @@ class AutoSyncPolicyTest {
     }
 
     @Test
+    fun skippedSpringForwardTimeDoesNotPoisonNextDayTriggerHour() {
+        val settings = AutoSyncSettings(configured = true, enabled = true, hour = 1, minute = 30)
+        val nowAfterSkippedTrigger = millis(2026, Calendar.MARCH, 29, 3, 0)
+
+        assertEquals(
+            millis(2026, Calendar.MARCH, 30, 1, 30),
+            policy.nextTriggerMillis(settings, nowAfterSkippedTrigger),
+        )
+    }
+
+    @Test
     fun scheduleWindowPreservesLegacyMinimumLatencyAndDeadline() {
         val nearFutureDelay = policy.minimumLatencyMillis(
             triggerAtMillis = millis(2026, Calendar.MAY, 15, 8, 0) + 1_000L,
