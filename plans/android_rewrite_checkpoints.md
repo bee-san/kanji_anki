@@ -751,6 +751,10 @@ Current artifacts:
   timestamps to zero.
 - `DashboardRowMappers` maps dashboard rows and examples to the scheduler
   domain models, including example FSRS difficulty and retrievability.
+- `LegacyStudyMappers` now maps Room/domain dashboard rows and study items back
+  into the existing legacy record shapes. `RoomLegacyStudyReadBridge` reads
+  active dashboard rows and study queue items from Room repositories and returns
+  a legacy-compatible snapshot for the current Java/View Home and Study code.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
   mapping with decoded task memory and dashboard row/example mapping.
 - `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
@@ -795,6 +799,9 @@ Explicit gaps:
   sessions through the legacy bridge.
 - Study progress is wired into the runtime Study screen through the legacy
   tracker bridge; the future Compose/ViewModel surface is not built yet.
+- A Room-backed legacy read bridge exists for Home/Study, but the Activity
+  runtime still calls `LocalStore` directly until the async read path is wired
+  through the lifecycle.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
   write path.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
@@ -832,6 +839,10 @@ Result: `BUILD SUCCESSFUL`.
 The same `:app:testDebugUnitTest` command passed after wiring
 `LegacyStudySessionBridge` through `LoadNextStudySessionUseCase`.
 
+The same `:app:testDebugUnitTest` command passed after adding
+`RoomLegacyStudyReadBridge`; tests cover Room/domain dashboard rows, examples,
+and study items mapping into legacy runtime records.
+
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew :core:test :app:testDebugUnitTest
@@ -854,6 +865,8 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 ```
 
 Result: `BUILD SUCCESSFUL`.
+
+The same `ciFast` command passed after adding `RoomLegacyStudyReadBridge`.
 
 ## Current Persistence Facts For Room Migration
 

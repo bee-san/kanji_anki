@@ -48,6 +48,22 @@ final class LegacyStudyMappers {
         return out;
     }
 
+    static List<RecordsStudyModels.StudyItem> toLegacyItems(List<StudyQueueItem> items) {
+        List<RecordsStudyModels.StudyItem> out = new ArrayList<>();
+        for (StudyQueueItem item : items) {
+            out.add(toLegacy(item));
+        }
+        return out;
+    }
+
+    static List<RecordsImportModels.DashboardRow> toLegacyRows(List<StudyDashboardRow> rows) {
+        List<RecordsImportModels.DashboardRow> out = new ArrayList<>();
+        for (StudyDashboardRow row : rows) {
+            out.add(toLegacy(row));
+        }
+        return out;
+    }
+
     static StudyQueueItem toDomain(RecordsStudyModels.StudyItem item) {
         return new StudyQueueItem(
                 item.kanji,
@@ -80,6 +96,43 @@ final class LegacyStudyMappers {
                 ),
                 item.createdAtMillis,
                 item.suppressedAtMillis
+        );
+    }
+
+    static RecordsStudyModels.StudyItem toLegacy(StudyQueueItem item) {
+        return new RecordsStudyModels.StudyItem(
+                item.getKanji(),
+                item.getState().getWireName(),
+                item.getDueAtMillis(),
+                item.getStability(),
+                item.getDifficulty(),
+                item.getTotalReviews(),
+                item.getLapses(),
+                item.getLearningStep(),
+                item.getWritingLevel(),
+                legacyRecognitionStage(item.getRung()),
+                item.getRealAgainStreak(),
+                item.getLastRealReviewDueAtMillis(),
+                item.getRung() == StudyRung.WRITE_KANJI,
+                item.getSuppressedByTaskType(),
+                item.getSuppressedAtMillis(),
+                item.getMatureIntervalDays(),
+                item.getAnswerSignature(),
+                item.getActiveToken(),
+                item.getCreatedAtMillis(),
+                toLegacy(item.getMemories().getTypingMeaningMemory()),
+                toLegacy(item.getMemories().getMeaningKanjiMemory()),
+                toLegacy(item.getMemories().getKanjiMeaningMemory()),
+                toLegacy(item.getMemories().getFontMeaningMemory()),
+                toLegacy(item.getMemories().getWordReadingMemory()),
+                toLegacy(item.getMemories().getWritingRemediationMemory()),
+                toLegacy(item.getRung()),
+                toLegacy(item.getPhase()),
+                item.getRealPassStreak(),
+                item.getRealAgainStreak(),
+                item.getLastRealReviewDueAtMillis(),
+                item.getHasSimilarKanji(),
+                toLegacy(item.getMemories().getSimilarKanjiMemory())
         );
     }
 
@@ -138,6 +191,27 @@ final class LegacyStudyMappers {
                 row.activeExampleCount,
                 row.suspendedExampleCount,
                 row.matureSupportCount,
+                examples
+        );
+    }
+
+    static RecordsImportModels.DashboardRow toLegacy(StudyDashboardRow row) {
+        List<RecordsImportModels.Example> examples = new ArrayList<>();
+        for (StudyExample example : row.getExamples()) {
+            examples.add(toLegacy(example));
+        }
+        return new RecordsImportModels.DashboardRow(
+                row.getKanji(),
+                row.getJitenRank(),
+                row.getPrimaryMeaning(),
+                row.getReading(),
+                row.getBrowserSearch(),
+                row.getWeaknessScore(),
+                row.getReasonCode(),
+                row.getReasonText(),
+                row.getActiveExampleCount(),
+                row.getSuspendedExampleCount(),
+                row.getMatureSupportCount(),
                 examples
         );
     }
@@ -208,6 +282,25 @@ final class LegacyStudyMappers {
                 example.intervalDays,
                 example.reps,
                 example.fsrsStability
+        );
+    }
+
+    private static RecordsImportModels.Example toLegacy(StudyExample example) {
+        return new RecordsImportModels.Example(
+                example.getSourceType(),
+                example.getCardId(),
+                example.getNoteId(),
+                example.getExpression(),
+                example.getReading(),
+                example.getMeaning(),
+                example.getSentence(),
+                example.getMature(),
+                example.getLapses(),
+                example.getIntervalDays(),
+                example.getReps(),
+                example.getFsrsStability(),
+                example.getFsrsDifficulty(),
+                example.getFsrsRetrievability()
         );
     }
 
