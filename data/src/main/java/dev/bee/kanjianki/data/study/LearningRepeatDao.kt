@@ -17,4 +17,7 @@ interface LearningRepeatDao {
 
     @Query("DELETE FROM learning_repeats WHERE kanji = :kanji AND answer_signature = :answerSignature AND task_type = :taskType")
     suspend fun delete(kanji: String, answerSignature: String, taskType: String)
+
+    @Query("DELETE FROM learning_repeats WHERE kanji = :kanji")
+    suspend fun deleteForKanji(kanji: String)
 }

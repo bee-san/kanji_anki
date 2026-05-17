@@ -1,11 +1,13 @@
 package dev.bee.kanjianki.data.repository
 
+import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
 import dev.bee.kanjianki.data.inventory.DashboardRowDao
 import dev.bee.kanjianki.data.inventory.DashboardRowEntity
 import dev.bee.kanjianki.data.inventory.KanjiExampleDao
 import dev.bee.kanjianki.data.inventory.LocalKanjiSuspensionDao
 import dev.bee.kanjianki.data.inventory.LocalKanjiSuspensionEntity
+import dev.bee.kanjianki.data.study.LearningRepeatDao
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
 import kotlinx.coroutines.flow.Flow
@@ -16,16 +18,20 @@ class RoomStudyDashboardRepository internal constructor(
     private val dashboardRows: DashboardRowDao,
     private val kanjiExamples: KanjiExampleDao,
     private val localSuspensions: LocalKanjiSuspensionDao,
+    private val learningRepeats: LearningRepeatDao,
+    private val runInTransaction: suspend (suspend () -> Boolean) -> Boolean = { block -> block() },
     private val exampleLimit: Int = DEFAULT_EXAMPLE_LIMIT,
 ) : StudyDashboardRepository {
     constructor(
         database: KaniRoomDatabase,
         exampleLimit: Int = DEFAULT_EXAMPLE_LIMIT,
     ) : this(
-        database.dashboardRowDao(),
-        database.kanjiExampleDao(),
-        database.localKanjiSuspensionDao(),
-        exampleLimit,
+        dashboardRows = database.dashboardRowDao(),
+        kanjiExamples = database.kanjiExampleDao(),
+        localSuspensions = database.localKanjiSuspensionDao(),
+        learningRepeats = database.learningRepeatDao(),
+        runInTransaction = { block -> database.withTransaction { block() } },
+        exampleLimit = exampleLimit,
     )
 
     init {
@@ -67,17 +73,20 @@ class RoomStudyDashboardRepository internal constructor(
         if (safeKanji.isEmpty()) {
             return false
         }
-        if (suspended) {
-            localSuspensions.upsert(
-                LocalKanjiSuspensionEntity(
-                    kanji = safeKanji,
-                    suspendedAt = nowMillis.coerceAtLeast(0L),
-                ),
-            )
-        } else {
-            localSuspensions.delete(safeKanji)
+        return runInTransaction {
+            if (suspended) {
+                localSuspensions.upsert(
+                    LocalKanjiSuspensionEntity(
+                        kanji = safeKanji,
+                        suspendedAt = nowMillis.coerceAtLeast(0L),
+                    ),
+                )
+                learningRepeats.deleteForKanji(safeKanji)
+            } else {
+                localSuspensions.delete(safeKanji)
+            }
+            true
         }
-        return true
     }
 
     private suspend fun DashboardRowEntity.toDomainWithExamples(): StudyDashboardRow =
