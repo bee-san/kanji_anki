@@ -48,10 +48,7 @@ class LoadNextStudySessionUseCaseTest {
 
         assertEquals("裂", session?.item?.kanji)
         assertEquals(12, dashboardRepository.lastListActiveLimit)
-        assertEquals(
-            listOf(StudyItemState.NEW, StudyItemState.LEARNING, StudyItemState.REVIEW),
-            queueRepository.requestedStates,
-        )
+        assertEquals(1, queueRepository.listActiveCalls)
     }
 
     @Test
@@ -160,10 +157,18 @@ class LoadNextStudySessionUseCaseTest {
     private class FakeStudyQueueRepository(
         private val itemsByState: Map<StudyItemState, List<StudyQueueItem>>,
     ) : StudyQueueRepository {
-        val requestedStates = mutableListOf<StudyItemState>()
+        var listActiveCalls = 0
+
+        override suspend fun listActive(): List<StudyQueueItem> {
+            listActiveCalls += 1
+            return listOf(
+                StudyItemState.NEW,
+                StudyItemState.LEARNING,
+                StudyItemState.REVIEW,
+            ).flatMap { itemsByState[it].orEmpty() }
+        }
 
         override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> {
-            requestedStates += state
             return itemsByState[state].orEmpty()
         }
 

@@ -13,6 +13,9 @@ interface StudyItemDao {
     @Query("SELECT * FROM study_items WHERE state = :state ORDER BY due_at ASC, kanji ASC")
     suspend fun listByState(state: String): List<StudyItemEntity>
 
+    @Query("SELECT * FROM study_items WHERE state IN (:states) ORDER BY due_at ASC, kanji ASC")
+    suspend fun listByStates(states: List<String>): List<StudyItemEntity>
+
     @Query("SELECT COUNT(*) FROM study_items WHERE state = :state AND due_at <= :nowMillis")
     suspend fun dueCount(state: String, nowMillis: Long): Int
 

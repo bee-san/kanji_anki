@@ -466,7 +466,8 @@ Current artifacts:
   - request options flowing into the session selector.
   - null session behavior when no item is due within the horizon.
 - `StudyQueueRepository` in `:domain` defines the read-side queue boundary.
-- `RoomStudyQueueRepository` in `:data` reads `study_items` through Room.
+- `RoomStudyQueueRepository` in `:data` reads active `study_items` through
+  Room and annotates similar-kanji availability from `similar_kanji_pairs`.
 - `StudyItemMappers` maps `StudyItemEntity` to `StudyQueueItem`, including
   rung/phase/state wire names and task-memory decode.
 - `StudyDashboardRepository` in `:domain` defines top and active read-side

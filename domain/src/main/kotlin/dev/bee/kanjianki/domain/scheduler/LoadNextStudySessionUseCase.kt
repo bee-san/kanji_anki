@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.domain.scheduler
 
 import dev.bee.kanjianki.domain.model.importing.NewCardSortMode
-import dev.bee.kanjianki.domain.model.study.StudyItemState
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 
@@ -12,7 +11,7 @@ class LoadNextStudySessionUseCase(
 ) {
     suspend operator fun invoke(request: LoadNextStudySessionRequest): StudySession? {
         val rows = studyDashboardRepository.listActive(request.dashboardLimit)
-        val items = activeStates.flatMap { studyQueueRepository.listByState(it) }
+        val items = studyQueueRepository.listActive()
         return selector.nextSession(
             NextSessionInput(
                 items = items,
@@ -23,14 +22,6 @@ class LoadNextStudySessionUseCase(
                 ladderSettings = request.ladderSettings,
                 newCardSortMode = request.newCardSortMode,
             ),
-        )
-    }
-
-    private companion object {
-        val activeStates = listOf(
-            StudyItemState.NEW,
-            StudyItemState.LEARNING,
-            StudyItemState.REVIEW,
         )
     }
 }
