@@ -174,7 +174,7 @@ jobs:
 
       - name: Build and analyze (full connected coverage)
         if: steps.coverage-mode.outputs.full == 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
