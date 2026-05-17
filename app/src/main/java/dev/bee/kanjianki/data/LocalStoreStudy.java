@@ -416,10 +416,10 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
                 getDoubleSetting("scheduler_good_multiplier", defaults.goodMultiplier),
                 getDoubleSetting("scheduler_easy_multiplier", defaults.easyMultiplier),
                 getLongSetting("scheduler_last_adjusted_at", defaults.lastAdjustedAtMillis),
-                getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount),
+                getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount)
+        ).withFrequencyRetention(
                 getIntSetting("scheduler_frequency_retention_enabled", defaults.frequencyRetentionEnabled ? 1 : 0) == 1,
-                getStringSetting("scheduler_frequency_retention_ranges", defaults.frequencyRetentionRanges)
-        );
+                getStringSetting("scheduler_frequency_retention_ranges", defaults.frequencyRetentionRanges));
     }
 
     public void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters) {

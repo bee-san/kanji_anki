@@ -232,37 +232,27 @@ public abstract class RecordsSchedulerModels extends RecordsStudyModels {
         ) {
             this(
                     targetRetention,
-                    againMultiplier,
-                    hardMultiplier,
-                    goodMultiplier,
-                    easyMultiplier,
-                    lastAdjustedAtMillis,
-                    lastAdjustmentReviewCount,
-                    DEFAULT_FREQUENCY_RETENTION_ENABLED,
-                    DEFAULT_FREQUENCY_RETENTION_RANGES
+                    new IntervalMultipliers(againMultiplier, hardMultiplier, goodMultiplier, easyMultiplier),
+                    new AdjustmentSnapshot(lastAdjustedAtMillis, lastAdjustmentReviewCount),
+                    FrequencyRetention.defaults()
             );
         }
 
-        public SchedulerParameters(
+        private SchedulerParameters(
                 double targetRetention,
-                double againMultiplier,
-                double hardMultiplier,
-                double goodMultiplier,
-                double easyMultiplier,
-                long lastAdjustedAtMillis,
-                int lastAdjustmentReviewCount,
-                boolean frequencyRetentionEnabled,
-                String frequencyRetentionRanges
+                IntervalMultipliers multipliers,
+                AdjustmentSnapshot adjustment,
+                FrequencyRetention retention
         ) {
             this.targetRetention = targetRetention;
-            this.againMultiplier = againMultiplier;
-            this.hardMultiplier = hardMultiplier;
-            this.goodMultiplier = goodMultiplier;
-            this.easyMultiplier = easyMultiplier;
-            this.lastAdjustedAtMillis = lastAdjustedAtMillis;
-            this.lastAdjustmentReviewCount = lastAdjustmentReviewCount;
-            this.frequencyRetentionEnabled = frequencyRetentionEnabled;
-            this.frequencyRetentionRanges = nullToEmpty(frequencyRetentionRanges).trim();
+            this.againMultiplier = multipliers.again;
+            this.hardMultiplier = multipliers.hard;
+            this.goodMultiplier = multipliers.good;
+            this.easyMultiplier = multipliers.easy;
+            this.lastAdjustedAtMillis = adjustment.adjustedAtMillis;
+            this.lastAdjustmentReviewCount = adjustment.reviewCount;
+            this.frequencyRetentionEnabled = retention.enabled;
+            this.frequencyRetentionRanges = nullToEmpty(retention.ranges).trim();
         }
 
         public static SchedulerParameters defaults() {
@@ -284,33 +274,86 @@ public abstract class RecordsSchedulerModels extends RecordsStudyModels {
         public SchedulerParameters withTargetRetention(double retention) {
             return new SchedulerParameters(
                     retention,
-                    againMultiplier,
-                    hardMultiplier,
-                    goodMultiplier,
-                    easyMultiplier,
-                    lastAdjustedAtMillis,
-                    lastAdjustmentReviewCount,
-                    frequencyRetentionEnabled,
-                    frequencyRetentionRanges
+                    multipliers(),
+                    adjustment(),
+                    frequencyRetention()
             );
         }
 
         public SchedulerParameters withAdjustment(double again, double hard, double good, double easy, long adjustedAtMillis, int reviewCount) {
             return new SchedulerParameters(
                     targetRetention,
-                    clamp(again, 0.25, 0.75),
-                    clamp(hard, 1.05, 1.80),
-                    clamp(good, 1.35, 3.20),
-                    clamp(easy, 2.00, 4.80),
-                    adjustedAtMillis,
-                    reviewCount,
-                    frequencyRetentionEnabled,
-                    frequencyRetentionRanges
+                    new IntervalMultipliers(
+                            clamp(again, 0.25, 0.75),
+                            clamp(hard, 1.05, 1.80),
+                            clamp(good, 1.35, 3.20),
+                            clamp(easy, 2.00, 4.80)),
+                    new AdjustmentSnapshot(adjustedAtMillis, reviewCount),
+                    frequencyRetention()
             );
+        }
+
+        public SchedulerParameters withFrequencyRetention(boolean enabled, String ranges) {
+            return new SchedulerParameters(
+                    targetRetention,
+                    multipliers(),
+                    adjustment(),
+                    new FrequencyRetention(enabled, ranges)
+            );
+        }
+
+        private IntervalMultipliers multipliers() {
+            return new IntervalMultipliers(againMultiplier, hardMultiplier, goodMultiplier, easyMultiplier);
+        }
+
+        private AdjustmentSnapshot adjustment() {
+            return new AdjustmentSnapshot(lastAdjustedAtMillis, lastAdjustmentReviewCount);
+        }
+
+        private FrequencyRetention frequencyRetention() {
+            return new FrequencyRetention(frequencyRetentionEnabled, frequencyRetentionRanges);
         }
 
         protected static double clamp(double value, double min, double max) {
             return Math.max(min, Math.min(max, value));
+        }
+
+        private static final class IntervalMultipliers {
+            final double again;
+            final double hard;
+            final double good;
+            final double easy;
+
+            IntervalMultipliers(double again, double hard, double good, double easy) {
+                this.again = again;
+                this.hard = hard;
+                this.good = good;
+                this.easy = easy;
+            }
+        }
+
+        private static final class AdjustmentSnapshot {
+            final long adjustedAtMillis;
+            final int reviewCount;
+
+            AdjustmentSnapshot(long adjustedAtMillis, int reviewCount) {
+                this.adjustedAtMillis = adjustedAtMillis;
+                this.reviewCount = reviewCount;
+            }
+        }
+
+        private static final class FrequencyRetention {
+            final boolean enabled;
+            final String ranges;
+
+            FrequencyRetention(boolean enabled, String ranges) {
+                this.enabled = enabled;
+                this.ranges = ranges;
+            }
+
+            static FrequencyRetention defaults() {
+                return new FrequencyRetention(DEFAULT_FREQUENCY_RETENTION_ENABLED, DEFAULT_FREQUENCY_RETENTION_RANGES);
+            }
         }
     }
 

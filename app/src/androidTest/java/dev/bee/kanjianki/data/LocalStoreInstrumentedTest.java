@@ -1452,18 +1452,8 @@ public final class LocalStoreInstrumentedTest {
 
         RecordsSchedulerModels.SchedulerParameters tuned = RecordsSchedulerModels.SchedulerParameters.defaults()
                 .withTargetRetention(0.92)
-                .withAdjustment(0.40, 1.10, 1.80, 2.80, 5000L, 30);
-        tuned = new RecordsSchedulerModels.SchedulerParameters(
-                tuned.targetRetention,
-                tuned.againMultiplier,
-                tuned.hardMultiplier,
-                tuned.goodMultiplier,
-                tuned.easyMultiplier,
-                tuned.lastAdjustedAtMillis,
-                tuned.lastAdjustmentReviewCount,
-                true,
-                "1-500=95%"
-        );
+                .withAdjustment(0.40, 1.10, 1.80, 2.80, 5000L, 30)
+                .withFrequencyRetention(true, "1-500=95%");
         store.saveSchedulerParameters(tuned);
         RecordsSchedulerModels.SchedulerParameters loaded = store.schedulerParameters();
         assertClose(0.92, loaded.targetRetention);

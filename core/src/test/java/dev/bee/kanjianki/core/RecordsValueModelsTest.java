@@ -223,10 +223,8 @@ public class RecordsValueModelsTest {
                 2.00,
                 3.10,
                 0L,
-                0,
-                true,
-                "1-500=95%\n501-2000=85%"
-        );
+                0
+        ).withFrequencyRetention(true, "1-500=95%\n501-2000=85%");
 
         assertEquals(0.95, parameters.targetRetentionForRank(200), 0.001);
         assertEquals(0.85, parameters.targetRetentionForRank(1000), 0.001);

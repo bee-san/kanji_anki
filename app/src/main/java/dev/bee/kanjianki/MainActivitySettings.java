@@ -1407,10 +1407,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     latest.goodMultiplier,
                     latest.easyMultiplier,
                     latest.lastAdjustedAtMillis,
-                    latest.lastAdjustmentReviewCount,
+                    latest.lastAdjustmentReviewCount
+            ).withFrequencyRetention(
                     rankRetentionEnabled.isChecked(),
-                    rangesText
-            ));
+                    rangesText));
             Toast.makeText(this, "FSRS retention saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
