@@ -776,6 +776,16 @@ Current artifacts:
   `RecordsSchedulerModels.ReviewResult`. It consumes a review token only after
   Room persistence succeeds, and rejects writes while Room study ownership is
   disabled.
+- `StudyKanjiDetailRepository` in `:domain` defines the per-kanji detail and
+  recovery-timeline read boundary.
+- `RoomStudyKanjiDetailRepository` joins Room inventory, dashboard row,
+  current/retired study item state, similar-kanji availability, local
+  suspension state, examples, and recent timeline events inside one
+  transaction.
+- `RoomLegacyKanjiTimelineBridge` can map the Room/domain timeline into the
+  existing `RecordsStudyModels.KanjiRecoveryTimeline` shape for the Java detail
+  screen. It is gated by `RoomStudyRuntimeOwnershipPolicy` and is staged only
+  while visible runtime reads still come from `LocalStore`.
 - `StudySessionTracker` can now complete an active task into a
   `StudyReviewTaskCompletion` snapshot without writing legacy SQLite. The
   existing legacy completion method delegates through that snapshot and still
@@ -871,6 +881,23 @@ The same `:app:testDebugUnitTest` command passed after adding
 `RoomLegacyStudyReadBridge`; tests cover Room/domain dashboard rows, examples,
 and study items mapping into legacy runtime records.
 
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :data:testDebugUnitTest \
+  --tests dev.bee.kanjianki.data.repository.RoomStudyKanjiDetailRepositoryTest \
+  --tests dev.bee.kanjianki.data.repository.RoomStudyRuntimeSnapshotRepositoryTest \
+  --tests dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepositoryTest \
+  --tests dev.bee.kanjianki.data.repository.RoomStudyReviewPersistenceRepositoryTest \
+  --tests dev.bee.kanjianki.data.repository.RoomStudyQueueRepositoryTest \
+  :app:testDebugUnitTest \
+  --tests dev.bee.kanjianki.RoomLegacyKanjiTimelineBridgeTest
+```
+
+Result: `BUILD SUCCESSFUL`; focused tests cover Room timeline detail joins,
+event ordering, blank/zero-limit behavior, legacy mapper output, gated policy
+rejection, and DAO fake updates after adding `latestForKanji` and
+`listLatestForKanji`.
+
 The same `:app:testDebugUnitTest` command passed after wiring Home and Study to
 load non-empty Room-backed legacy snapshots through the Hilt entry point and IO
 executor.
@@ -941,12 +968,14 @@ the source snapshot.
 
 The same full review found data-loss blockers before Room can become
 authoritative. `KaniRoomDatabaseFactory` only enables destructive Room reset
-through an explicit reset policy, and the app graph now chooses
-`KaniRoomDatabaseResetPolicy.CLEAN_REWRITE` instead of a compatibility migration
-from the interim v20 Room schema. Daily backup now backs up every configured app
-database that exists, currently `kanji_anki_simple.db` and `kanji_anki_room.db`,
-and copies any `-wal`/`-shm` sidecars after checkpointing. `ciFast` passed after
-both hardening commits.
+through an explicit reset policy. While legacy `LocalStore` still owns the
+visible runtime, the app graph uses
+`KaniRoomDatabaseResetPolicy.ROOM_SANDBOX_DURING_LEGACY_RUNTIME`; the destructive
+`CLEAN_REWRITE` policy is reserved for the explicit cutover that makes Room
+authoritative. Daily backup now backs up every configured app database that
+exists, currently `kanji_anki_simple.db` and `kanji_anki_room.db`, and copies
+any `-wal`/`-shm` sidecars after checkpointing. `ciFast` passed after both
+hardening commits.
 
 ## Current Persistence Facts For Room Migration
 
@@ -1074,3 +1103,8 @@ the visible Java runtime while Room study ownership is disabled:
   queries are normalized before hitting Room `kanji_inventory.search_text`, and
   local suspension state is joined from `local_kanji_suspensions`; the bridge is
   staged only and remains disabled until Room study reads are explicitly owned.
+- `StudyKanjiDetailRepository`, `RoomStudyKanjiDetailRepository`, and
+  `RoomLegacyKanjiTimelineBridge` provide gated Room-backed timeline/detail reads
+  for the existing detail surface. They preserve the legacy timeline record
+  shape while sourcing current item state from Room `study_items` and recent
+  recovery history from `kanji_timeline_events`.
