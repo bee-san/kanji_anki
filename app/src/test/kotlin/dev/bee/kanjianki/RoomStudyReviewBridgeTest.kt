@@ -108,8 +108,9 @@ class RoomStudyReviewBridgeTest {
         )
 
         assertFalse(result.persisted)
-        assertTrue(result.reviewResult.duplicate)
+        assertFalse(result.reviewResult.duplicate)
         assertEquals("not_persisted", result.reviewResult.appliedRating)
+        assertEquals("Review was not saved.", result.reviewResult.message)
         assertEquals(item, result.reviewResult.item)
         assertEquals(emptySet<String>(), consumed)
         assertEquals(1, repository.saved.size)

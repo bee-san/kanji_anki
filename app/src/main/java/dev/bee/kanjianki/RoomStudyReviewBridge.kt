@@ -48,7 +48,7 @@ class RoomStudyReviewBridge @Inject constructor(
                 reviewResult = RecordsSchedulerModels.ReviewResult(
                     item,
                     RATING_NOT_PERSISTED,
-                    true,
+                    false,
                     "Review was not saved.",
                 ),
                 persisted = false,

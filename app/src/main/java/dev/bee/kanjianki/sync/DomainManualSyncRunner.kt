@@ -7,6 +7,9 @@ import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanRequest
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudySettings
 import dev.bee.kanjianki.domain.sync.RunSourceMirrorSyncRequest
 import dev.bee.kanjianki.domain.sync.RunSourceMirrorSyncUseCase
 import dev.bee.kanjianki.domain.sync.SyncAlreadyRunningException
@@ -21,6 +24,7 @@ class DomainManualSyncRunner(
     private val runSourceMirrorSync: suspend (RunSourceMirrorSyncRequest) -> SyncRunId,
     private val syncRunReader: suspend (SyncRunId) -> SyncRun?,
     private val dashboardRowCounter: suspend () -> Int,
+    private val adaptiveSummaryReader: suspend (RecordsSyncModels.Settings) -> String = { "" },
 ) {
     constructor(
         requestFactory: LegacySyncRequestFactory,
@@ -32,6 +36,7 @@ class DomainManualSyncRunner(
         runSourceMirrorSync = { request -> runSourceMirrorSync(request) },
         syncRunReader = { id -> syncRuns.get(id) },
         dashboardRowCounter = { studyDashboard.listTop(DASHBOARD_ROW_COUNT_LIMIT).size },
+        adaptiveSummaryReader = { settings -> adaptiveSummaryFor(studyDashboard, settings) },
     )
 
     suspend fun run(
@@ -46,7 +51,7 @@ class DomainManualSyncRunner(
             val syncRunId = runSourceMirrorSync(request)
             val syncRun = syncRunReader(syncRunId)
                 ?: return ManualSyncEngine.SyncResult.failed("Sync status was not recorded.")
-            resultFor(syncRun)
+            resultFor(syncRun, settings)
         } catch (error: SyncAlreadyRunningException) {
             ManualSyncEngine.SyncResult.skipped(error.message ?: "Sync already running.")
         } catch (error: CancellationException) {
@@ -64,7 +69,10 @@ class DomainManualSyncRunner(
         run(settings, progress)
     }
 
-    private suspend fun resultFor(syncRun: SyncRun): ManualSyncEngine.SyncResult {
+    private suspend fun resultFor(
+        syncRun: SyncRun,
+        settings: RecordsSyncModels.Settings,
+    ): ManualSyncEngine.SyncResult {
         if (syncRun.status != SyncRunStatus.SUCCESS) {
             return ManualSyncEngine.SyncResult.failed(syncRun.errorMessage ?: "Sync failed.")
         }
@@ -72,7 +80,7 @@ class DomainManualSyncRunner(
             dashboardRowCount(),
             syncRun.suspendedKanjiImportedCount,
             syncRun.removalMessage.orEmpty(),
-            "",
+            adaptiveSummary(settings),
         )
     }
 
@@ -83,6 +91,15 @@ class DomainManualSyncRunner(
             throw error
         } catch (_: Exception) {
             0
+        }
+
+    private suspend fun adaptiveSummary(settings: RecordsSyncModels.Settings): String =
+        try {
+            adaptiveSummaryReader(settings).trim()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            ""
         }
 
     private class LegacyProgressAdapter(
@@ -118,5 +135,20 @@ class DomainManualSyncRunner(
 
     private companion object {
         const val DASHBOARD_ROW_COUNT_LIMIT = 100_000
+
+        suspend fun adaptiveSummaryFor(
+            studyDashboard: StudyDashboardRepository,
+            settings: RecordsSyncModels.Settings,
+        ): String =
+            AdaptiveStudyPlanner().plan(
+                AdaptiveStudyPlanRequest(
+                    rows = studyDashboard.listActive(DASHBOARD_ROW_COUNT_LIMIT),
+                    nowMillis = System.currentTimeMillis(),
+                    settings = AdaptiveStudySettings(
+                        matureDays = settings.matureDays,
+                        matureSupportThreshold = settings.matureSupportThreshold,
+                    ),
+                ),
+            ).status
     }
 }

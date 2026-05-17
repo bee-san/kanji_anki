@@ -51,6 +51,10 @@ class DomainManualSyncRunnerTest {
                 dashboardCounterCalls++
                 12
             },
+            adaptiveSummaryReader = { requestedSettings ->
+                assertEquals(settings, requestedSettings)
+                "Today's Pareto focus: 3 kanji."
+            },
         )
 
         val result = runner.run(settings) { progressEvents += it }
@@ -60,7 +64,7 @@ class DomainManualSyncRunnerTest {
         assertEquals(12, result.dashboardRows)
         assertEquals(4, result.importedSuspendedKanji)
         assertEquals("Archived 2 suspended cards.", result.message)
-        assertEquals("", result.adaptiveSummary)
+        assertEquals("Today's Pareto focus: 3 kanji.", result.adaptiveSummary)
         assertEquals(settings, factorySettings)
         assertEquals(1, dashboardCounterCalls)
         assertEquals(ImportSettings(), capturedRequest!!.importSettings)
@@ -133,6 +137,25 @@ class DomainManualSyncRunnerTest {
     }
 
     @Test
+    fun adaptiveSummaryFailureDoesNotTurnRecordedSuccessIntoFailedResult() = runBlocking {
+        val runner = runnerReturning(
+            syncRun = syncRun(
+                status = SyncRunStatus.SUCCESS,
+                suspendedKanjiImportedCount = 2,
+            ),
+            adaptiveSummaryReader = {
+                throw IllegalStateException("summary unavailable")
+            },
+        )
+
+        val result = runner.run(RecordsSyncModels.Settings.kikuDefaults())
+
+        assertTrue(result.success)
+        assertEquals("", result.adaptiveSummary)
+        assertEquals(2, result.importedSuspendedKanji)
+    }
+
+    @Test
     fun concurrentDomainSyncMapsToSkippedLegacyResult() = runBlocking {
         val runner = DomainManualSyncRunner(
             requestFactory = { RunSourceMirrorSyncRequest(importSettings = ImportSettings()) },
@@ -189,6 +212,7 @@ class DomainManualSyncRunnerTest {
     private fun runnerReturning(
         syncRun: SyncRun,
         dashboardRowCounter: suspend () -> Int = { 3 },
+        adaptiveSummaryReader: suspend (RecordsSyncModels.Settings) -> String = { "Adaptive status." },
         progressReporter: suspend (RunSourceMirrorSyncRequest) -> Unit = {},
     ): DomainManualSyncRunner =
         DomainManualSyncRunner(
@@ -199,6 +223,7 @@ class DomainManualSyncRunnerTest {
             },
             syncRunReader = { syncRun },
             dashboardRowCounter = dashboardRowCounter,
+            adaptiveSummaryReader = adaptiveSummaryReader,
         )
 
     private fun syncRun(
