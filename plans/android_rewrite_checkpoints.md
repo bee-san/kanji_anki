@@ -391,13 +391,23 @@ Current artifacts:
   - conditional use of the similar-kanji rung.
   - disabled-rung alignment to the nearest lower enabled rung on a tie.
   - rejecting settings where similar-kanji is the only enabled rung.
+- `StudyProgressCalculator` in `:domain` tracks immutable study-run progress
+  state and produces display snapshots for the Study top bar.
+- `StudyProgressCalculatorTest` covers:
+  - unique seen/completed task counting.
+  - target initialization from remaining count, then target count.
+  - stable session and similar-repair task keys.
+  - moved-forward and missed-kanji outcome counts.
+  - repair failures not marking already-moved kanji as missed.
+  - display clamping for done runs, active tasks, and continue-all sessions.
 
 Explicit gaps:
 
 - FSRS graduation remains in the Java scheduler/adapter path.
 - Ladder movement is not wired into the runtime review transition yet.
-- Study session selection, adaptive planner split, token guard, and progress
-  calculator are not ported yet.
+- Study progress is not wired into the runtime Study screen yet.
+- Study session selection, adaptive planner split, and token guard are not
+  ported yet.
 
 Verification commands:
 
