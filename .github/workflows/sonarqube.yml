@@ -172,13 +172,13 @@ jobs:
           set -euo pipefail
           TASKS=()
           if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :fsrs:test :fsrs-java:test :fsrs-java:jacocoTestReport )
+            TASKS+=( :fsrs:test :fsrs:jacocoTestReport :fsrs-java:test :fsrs-java:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :core:test :core:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.rewrite }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :domain:test :dictionary-core:test :writing-core:test :designsystem:compileDebugKotlin :data:testDebugUnitTest :ankidroid:testDebugUnitTest :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin )
+            TASKS+=( :domain:test :domain:jacocoTestReport :dictionary-core:test :dictionary-core:jacocoTestReport :writing-core:test :writing-core:jacocoTestReport :designsystem:compileDebugKotlin :data:testDebugUnitTest :data:jacocoDebugUnitTestReport :ankidroid:testDebugUnitTest :ankidroid:jacocoDebugUnitTestReport :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin )
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac )
@@ -207,14 +207,20 @@ jobs:
               :core:test \
               :core:jacocoTestReport \
               :fsrs:test \
+              :fsrs:jacocoTestReport \
               :fsrs-java:test \
               :fsrs-java:jacocoTestReport \
               :domain:test \
+              :domain:jacocoTestReport \
               :dictionary-core:test \
+              :dictionary-core:jacocoTestReport \
               :writing-core:test \
+              :writing-core:jacocoTestReport \
               :designsystem:compileDebugKotlin \
               :data:testDebugUnitTest \
+              :data:jacocoDebugUnitTestReport \
               :ankidroid:testDebugUnitTest \
+              :ankidroid:jacocoDebugUnitTestReport \
               :dictionary-android:compileDebugKotlin \
               :writing-android:compileDebugKotlin \
               :app:testDebugUnitTest \

@@ -119,16 +119,16 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
     }
 
     classDirectories.setFrom(
-        fileTree(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes").get().asFile) {
-            exclude(
-                "**/R.class",
-                "**/R$*.class",
-                "**/BuildConfig.*",
-                "**/Manifest*.*",
-            )
-        }
+        files(
+            fileTree(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes").get().asFile) {
+                exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*")
+            },
+            fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile) {
+                exclude("**/R.class", "**/R$*.class", "**/BuildConfig.*", "**/Manifest*.*")
+            },
+        )
     )
-    sourceDirectories.setFrom(files("src/main/java"))
+    sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
     executionData.setFrom(
         fileTree(layout.buildDirectory.get().asFile) {
             include(

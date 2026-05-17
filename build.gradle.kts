@@ -56,8 +56,14 @@ val maybeSonarMainBinaries = jvmModules.flatMap(::jvmMainBinaries) +
 val maybeSonarTestBinaries = jvmModules.flatMap(::jvmTestBinaries) +
     androidModules.flatMap(::androidTestBinaries)
 val maybeSonarCoveragePaths = buildList<String> {
+    add(rootPath("fsrs/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("data/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
+    add(rootPath("ankidroid/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
         add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
@@ -104,14 +110,20 @@ tasks.register<Exec>("testDictionaryAssets") {
 
 val fastCiTasks = listOf(
     ":fsrs:test",
+    ":fsrs:jacocoTestReport",
     ":domain:test",
+    ":domain:jacocoTestReport",
     ":dictionary-core:test",
+    ":dictionary-core:jacocoTestReport",
     ":writing-core:test",
+    ":writing-core:jacocoTestReport",
     ":designsystem:compileDebugKotlin",
     ":data:compileDebugKotlin",
     ":data:testDebugUnitTest",
+    ":data:jacocoDebugUnitTestReport",
     ":ankidroid:compileDebugKotlin",
     ":ankidroid:testDebugUnitTest",
+    ":ankidroid:jacocoDebugUnitTestReport",
     ":dictionary-android:compileDebugKotlin",
     ":writing-android:compileDebugKotlin",
     ":fsrs-java:test",

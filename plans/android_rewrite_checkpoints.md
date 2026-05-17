@@ -902,6 +902,9 @@ snapshot or legacy fallback before starting an active session.
 The same `ciFast` command passed after adding `:ankidroid:testDebugUnitTest`
 to the local and GitHub Android rewrite gates.
 
+The same `ciFast` command passed after adding JaCoCo XML reports for the new
+Kotlin and Android rewrite modules to the local and GitHub Sonar inputs.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:

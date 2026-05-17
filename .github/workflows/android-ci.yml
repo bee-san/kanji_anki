@@ -71,7 +71,7 @@ jobs:
         include:
           - id: jvm
             label: JVM tests and coverage
-            tasks: ':fsrs:test :domain:test :dictionary-core:test :writing-core:test :fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification'
+            tasks: ':fsrs:test :fsrs:jacocoTestReport :domain:test :domain:jacocoTestReport :dictionary-core:test :dictionary-core:jacocoTestReport :writing-core:test :writing-core:jacocoTestReport :fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification'
             reports: |
               core/build/reports/**
               dictionary-core/build/reports/**
@@ -87,7 +87,7 @@ jobs:
               writing-core/build/test-results/**
           - id: app-unit
             label: App and Android library unit tests
-            tasks: ':data:testDebugUnitTest :ankidroid:testDebugUnitTest :app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
+            tasks: ':data:testDebugUnitTest :data:jacocoDebugUnitTestReport :ankidroid:testDebugUnitTest :ankidroid:jacocoDebugUnitTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
             reports: |
               app/build/reports/tests/**
               app/build/reports/jacoco/**
