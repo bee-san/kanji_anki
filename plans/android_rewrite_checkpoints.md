@@ -390,10 +390,13 @@ Current artifacts:
   with `kani_archived`, keeps partial-note cases local, and `RunSourceMirrorSyncUseCase`
   stores the cleanup message after the local sync transaction is committed.
 - `SyncProgressListener`, `SyncProgressSnapshot`, and `SyncProgressStage` define
-  the domain sync progress surface using the legacy `SyncProgressPanel` stage
-  vocabulary. `AnkiDroidCollectionGateway` emits provider read/scan stages,
-  while `RunSourceMirrorSyncUseCase` emits local processing, queue-building,
-  and archive-cleanup stages.
+  an interim callback-based domain sync progress surface using the legacy
+  `SyncProgressPanel` stage vocabulary. `AnkiDroidCollectionGateway` emits
+  provider read/scan stages with the same known scan total shape as the legacy
+  provider reader, while `RunSourceMirrorSyncUseCase` emits local processing,
+  queue-building, and archive-cleanup stages.
+- Progress listener failures are ignored except coroutine cancellation, so UI
+  observer failures cannot turn a committed successful sync into a failed run.
 - `LegacySyncMappers`, `LegacySyncRequestFactory`, and
   `CoreSimilarKanjiIndexAdapter` in `:app` bridge current `LocalStore`,
   `SyncSettings`, adaptive settings, ladder settings, and the bundled
@@ -408,6 +411,8 @@ Explicit gaps:
 - Manual and background sync still use the legacy Java path. This is
   deliberate until Home/Study reads the same Room data that the new sync path
   writes; otherwise manual sync would appear invisible in the current UI.
+- Sync progress remains callback-only until the later ViewModel/WorkManager
+  surface adds persistent or flowing state.
 
 Verification commands:
 
@@ -538,6 +543,9 @@ The same focused command passed after adding the domain sync progress callback
 surface. Domain and AnkiDroid tests cover emitted processing, queue-building,
 archive-cleanup, provider read, and provider scan stages.
 
+The same focused command passed after hardening progress callbacks as
+best-effort observers and restoring known-total provider scan progress.
+
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew ciFast
@@ -548,6 +556,9 @@ request context, and app sync bridge/Hilt bindings.
 
 The same `ciFast` command passed after adding the domain sync progress callback
 surface.
+
+The same `ciFast` command passed after hardening progress callbacks and
+restoring known-total provider scan progress.
 
 ## Step 7 Scheduler Rewrite
 

@@ -375,6 +375,37 @@ class RunSourceMirrorSyncUseCaseTest {
         )
     }
 
+    @Test
+    fun progressListenerFailureDoesNotTurnSuccessfulSyncIntoFailedRun() = runBlocking {
+        val syncRuns = FakeSyncRunRepository()
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository(syncRuns = syncRuns)
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10)),
+                    cards = listOf(sourceCard(noteId = 10, suspended = true)),
+                ),
+            ),
+            syncRuns = syncRuns,
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10, 20),
+            archiveGateway = FakeArchiveGateway("cleanup done"),
+        )
+
+        val id = useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                progress = SyncProgressListener { throw IllegalStateException("detached UI") },
+            ),
+        )
+
+        assertEquals(SyncRunId(1), id)
+        assertEquals(SyncRunStatus.SUCCESS, syncRuns.inserted.single().status)
+        assertEquals("cleanup done", syncRuns.inserted.single().removalMessage)
+    }
+
     private fun importSelector(): ImportCandidateSelector =
         ImportCandidateSelector { kanji ->
             when (kanji) {

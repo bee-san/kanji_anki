@@ -25,6 +25,7 @@ import dev.bee.kanjianki.domain.sync.SuspendedCardArchiveSummary
 import dev.bee.kanjianki.domain.sync.SyncProgressListener
 import dev.bee.kanjianki.domain.sync.SyncProgressSnapshot
 import dev.bee.kanjianki.domain.sync.SyncProgressStage
+import dev.bee.kanjianki.domain.sync.reportSyncProgress
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -55,15 +56,15 @@ class AnkiDroidCollectionGateway(
             )
         }
         try {
-            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.FINDING_NOTE_TYPE))
+            progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.FINDING_NOTE_TYPE))
             val mapping = findConfiguredModel(target, settings)
-            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.READING_NOTES))
+            progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.READING_NOTES))
             val notes = queryNotes(target, mapping, settings).toMutableMap()
             val browserQueryNoteIds = queryBrowserQueryNoteIds(target, mapping, settings)
             if (browserQueryNoteIds.any { it !in notes.keys }) {
                 notes.putAll(queryNotesBySearch(target, mapping, settings, configuredBrowserQuerySearch(settings)))
             }
-            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.SCANNING_CARDS))
+            progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.SCANNING_CARDS))
             val cards = queryCardsByNote(target, settings, notes.keys, progress)
                 .filter { it.noteId.value in notes.keys }
                 .also { validateTemplateCards(it, settings) }
@@ -303,6 +304,9 @@ class AnkiDroidCollectionGateway(
     ): List<SourceCard> {
         val suspendedNoteIds = querySuspendedNoteIds(target, settings)
         val cards = mutableListOf<SourceCard>()
+        val total = noteIds.size
+        var scanned = 0
+        progress.reportSyncProgress(SyncProgressSnapshot.cardsScanned(scanned, total))
         var projectionIndex = 0
         val projections = listOf(CARD_COLUMNS_WITH_FSRS, CARD_COLUMNS_WITH_SCHEDULER, CARD_COLUMNS_MINIMAL)
         for (noteId in noteIds) {
@@ -310,7 +314,8 @@ class AnkiDroidCollectionGateway(
             while (projectionIndex < projections.size) {
                 try {
                     cards += queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex])
-                    progress.onSyncProgress(SyncProgressSnapshot.cardsScanned(cards.size))
+                    scanned++
+                    progress.reportSyncProgress(SyncProgressSnapshot.cardsScanned(scanned, total))
                     lastError = null
                     break
                 } catch (error: CancellationException) {

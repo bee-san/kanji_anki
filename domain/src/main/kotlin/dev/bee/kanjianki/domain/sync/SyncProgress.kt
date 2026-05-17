@@ -1,11 +1,23 @@
 package dev.bee.kanjianki.domain.sync
 
+import kotlin.coroutines.cancellation.CancellationException
+
 fun interface SyncProgressListener {
     fun onSyncProgress(progress: SyncProgressSnapshot)
 }
 
 object NoOpSyncProgressListener : SyncProgressListener {
     override fun onSyncProgress(progress: SyncProgressSnapshot) = Unit
+}
+
+fun SyncProgressListener.reportSyncProgress(progress: SyncProgressSnapshot) {
+    try {
+        onSyncProgress(progress)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        // Progress observers are UI/status side effects and must not change sync outcome.
+    }
 }
 
 data class SyncProgressSnapshot(

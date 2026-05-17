@@ -82,11 +82,13 @@ class AnkiDroidCollectionGatewayTest {
                 SyncProgressStage.READING_NOTES,
                 SyncProgressStage.SCANNING_CARDS,
                 SyncProgressStage.SCANNING_CARDS,
+                SyncProgressStage.SCANNING_CARDS,
             ),
             progressEvents.map { it.stage },
         )
         assertEquals(1, progressEvents.last().scannedCards)
-        assertFalse(progressEvents.last().totalKnown)
+        assertEquals(1, progressEvents.last().totalCards)
+        assertFalse(progressEvents[2].totalKnown)
     }
 
     @Test

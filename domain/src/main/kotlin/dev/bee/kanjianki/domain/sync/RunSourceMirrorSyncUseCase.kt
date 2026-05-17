@@ -52,11 +52,11 @@ class RunSourceMirrorSyncUseCase(
             val settings = request.importSettings
             val progress = request.progress
             val snapshot = gateway.readCollection(settings, progress)
-            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.PROCESSING_IMPORTED_CARDS))
+            progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.PROCESSING_IMPORTED_CARDS))
             val importCandidates = importCandidateSelector.select(snapshot, settings)
             val dashboardRows = dashboardBuilder.build(importCandidates, settings)
             val finishedAt = clock.nowMillis()
-            progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.BUILDING_PRACTICE_QUEUE))
+            progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.BUILDING_PRACTICE_QUEUE))
             val seededQueueItems = seedQueueItems(request, dashboardRows, finishedAt)
             val syncRunId = sourceMirrorSync.recordSuccessfulSnapshot(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
@@ -87,7 +87,7 @@ class RunSourceMirrorSyncUseCase(
         importCandidates: List<ImportedKanjiCandidate>,
         progress: SyncProgressListener,
     ) {
-        progress.onSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.ARCHIVING_IMPORTED_CARDS))
+        progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.ARCHIVING_IMPORTED_CARDS))
         val message = try {
             archiveGateway.archiveSelectedSuspendedCards(snapshot, importCandidates).message
         } catch (error: CancellationException) {
