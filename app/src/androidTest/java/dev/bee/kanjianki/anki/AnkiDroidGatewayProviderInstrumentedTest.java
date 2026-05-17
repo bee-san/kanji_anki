@@ -38,8 +38,8 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     private LocalStore store;
 
     @BeforeClass
-    public static void waitForPackageInstallToSettle() throws Exception {
-        Thread.sleep(1_000L);
+    public static void waitForPackageInstallToSettle() {
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
     @Before
@@ -71,9 +71,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(42, snapshot.cards.get(0).intervalDays);
         assertEquals(80, snapshot.cards.get(0).reps);
         assertEquals(3, snapshot.cards.get(0).lapses);
-        assertEquals(12.5, snapshot.cards.get(0).fsrsStability, 0.001);
-        assertEquals(7.0, snapshot.cards.get(0).fsrsDifficulty, 0.001);
-        assertEquals(0.42, snapshot.cards.get(0).fsrsRetrievability, 0.001);
+        assertClose(12.5, snapshot.cards.get(0).fsrsStability);
+        assertClose(7.0, snapshot.cards.get(0).fsrsDifficulty);
+        assertClose(0.42, snapshot.cards.get(0).fsrsRetrievability);
         assertTrue(snapshot.cards.get(1).suspended);
         assertEquals(0, providerInt("topLevelCardsQueries"));
         assertEquals(2, providerInt("perNoteCardsQueries"));
@@ -105,7 +105,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(FakeAnkiDroidProvider.AUTHORITY, status.authority);
         assertEquals("dev.bee.kanjianki.fake.READ_ANKI", status.permission);
         assertTrue(status.message.contains("Allow AnkiDroid access"));
-        assertPermissionFailure(() -> gateway.noteTypes());
+        assertPermissionFailure(gateway::noteTypes);
         assertPermissionFailure(() -> gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults()));
         assertEquals(0, providerInt("perNoteCardsQueries"));
     }
@@ -716,9 +716,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
         RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
-        assertEquals(12.5, snapshot.cards.get(0).fsrsStability, 0.001);
-        assertEquals(7.0, snapshot.cards.get(0).fsrsDifficulty, 0.001);
-        assertEquals(0.42, snapshot.cards.get(0).fsrsRetrievability, 0.001);
+        assertClose(12.5, snapshot.cards.get(0).fsrsStability);
+        assertClose(7.0, snapshot.cards.get(0).fsrsDifficulty);
+        assertClose(0.42, snapshot.cards.get(0).fsrsRetrievability);
     }
 
     private void resetProvider() {
@@ -902,5 +902,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     private interface ThrowingGatewayCall {
         void run() throws Exception;
+    }
+
+    private static void assertClose(double expected, Double actual) {
+        assertEquals(expected, actual.doubleValue(), 0.001);
     }
 }

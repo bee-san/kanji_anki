@@ -1477,10 +1477,10 @@ public final class MainActivityHelperInstrumentedTest {
                                 new RecognitionCandidate("劣", 0.3f)
                         ))
                 );
-                assertTrue(activity.candidates(new WritingRecognizer.RecognitionResult(Arrays.asList(
+                assertEquals(2, activity.candidates(new WritingRecognizer.RecognitionResult(Arrays.asList(
                         new WritingRecognizer.Candidate("裂", 0.9f),
                         new WritingRecognizer.Candidate("列", null)
-                ))).size() == 2);
+                ))).size());
                 assertTrue(activity.candidates(null).isEmpty());
 
                 RecordsStudyModels.StudyItem item = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L);

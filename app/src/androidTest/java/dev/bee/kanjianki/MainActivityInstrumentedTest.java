@@ -2019,7 +2019,7 @@ public final class MainActivityInstrumentedTest {
                 case TYPE_MEANING -> builder.typingMeaningMemory(dueTaskMemory);
                 case FONT_MEANING -> builder.fontMeaningMemory(dueTaskMemory);
                 case WORD_READING -> builder.wordReadingMemory(dueTaskMemory);
-                case KANJI_MEANING, SIMILAR_KANJI -> builder.kanjiMeaningMemory(dueTaskMemory);
+                case KANJI_MEANING, SIMILAR_KANJI, MEANING_KANJI -> builder.kanjiMeaningMemory(dueTaskMemory);
             }
             store.replaceStudyItems(Collections.singletonList(builder.build()));
         }

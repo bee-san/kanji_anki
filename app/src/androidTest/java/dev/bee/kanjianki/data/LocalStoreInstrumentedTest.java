@@ -978,7 +978,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(importSettings.importTaggedCardsEnabled());
         assertEquals(Arrays.asList("focus", "weak"), importSettings.importTags);
         assertTrue(importSettings.importWeakCards);
-        assertEquals(10.0, importSettings.importWeakFsrsDifficultyThreshold, 0.001);
+        assertClose(10.0, importSettings.importWeakFsrsDifficultyThreshold);
         assertEquals(1, importSettings.importWeakLapsesThreshold);
         assertEquals(1, importSettings.importMinMatchingCardsPerKanji);
     }
@@ -1194,10 +1194,10 @@ public final class LocalStoreInstrumentedTest {
         KanjiImpactAnalyzer.Row impact = report.rows.get(0);
         assertEquals("裂", impact.kanji);
         assertEquals(KanjiImpactAnalyzer.BUCKET_HELPED, impact.bucket);
-        assertEquals(7.2, impact.baselineDifficulty, 0.001);
-        assertEquals(5.8, impact.currentDifficulty, 0.001);
-        assertEquals(0.62, impact.baselineRetention, 0.001);
-        assertEquals(0.84, impact.currentRetention, 0.001);
+        assertClose(7.2, impact.baselineDifficulty);
+        assertClose(5.8, impact.currentDifficulty);
+        assertClose(0.62, impact.baselineRetention);
+        assertClose(0.84, impact.currentRetention);
     }
 
     @Test
@@ -1222,8 +1222,8 @@ public final class LocalStoreInstrumentedTest {
 
         assertEquals(1, stats.weakKanjiImproved.improvedCount);
         assertEquals("拉", stats.weakKanjiImproved.examples.get(0).kanji);
-        assertEquals(0.90, stats.weakKanjiImproved.averageBeforeWeakness, 0.001);
-        assertEquals(0.40, stats.weakKanjiImproved.averageAfterWeakness, 0.001);
+        assertClose(0.90, stats.weakKanjiImproved.averageBeforeWeakness);
+        assertClose(0.40, stats.weakKanjiImproved.averageAfterWeakness);
         assertEquals(1, stats.matureSupportGained.gainedSupportCount);
         assertEquals(2, stats.matureSupportGained.matureSupportGained);
         assertEquals(1, stats.matureSupportGained.firstSupportCount);
@@ -1282,8 +1282,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, impact.newCardCount);
         assertEquals(3, impact.currentCardCount);
         assertEquals(1, impact.reviewCount);
-        assertEquals(6.0, impact.baselineDifficulty, 0.001);
-        assertEquals(6.1, impact.currentDifficulty, 0.001);
+        assertClose(6.0, impact.baselineDifficulty);
+        assertClose(6.1, impact.currentDifficulty);
     }
 
     @Test
@@ -1335,10 +1335,10 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, impact.sameCardCount);
         assertEquals(1, impact.newCardCount);
         assertEquals(2, impact.currentCardCount);
-        assertEquals(6.0, impact.baselineDifficulty, 0.001);
-        assertEquals(5.0, impact.currentDifficulty, 0.001);
-        assertEquals(0.50, impact.baselineRetention, 0.001);
-        assertEquals(0.75, impact.currentRetention, 0.001);
+        assertClose(6.0, impact.baselineDifficulty);
+        assertClose(5.0, impact.currentDifficulty);
+        assertClose(0.50, impact.baselineRetention);
+        assertClose(0.75, impact.currentRetention);
     }
 
     @Test
@@ -1354,7 +1354,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, impact.reviewCount);
         assertEquals(1, impact.currentCardCount);
         assertEquals(0, impact.sameCardCount);
-        assertEquals(5.5, impact.baselineDifficulty, 0.001);
+        assertClose(5.5, impact.baselineDifficulty);
     }
 
     @Test
@@ -1466,9 +1466,9 @@ public final class LocalStoreInstrumentedTest {
         );
         store.saveSchedulerParameters(tuned);
         RecordsSchedulerModels.SchedulerParameters loaded = store.schedulerParameters();
-        assertEquals(0.92, loaded.targetRetention, 0.001);
-        assertEquals(0.40, loaded.againMultiplier, 0.001);
-        assertEquals(1.80, loaded.goodMultiplier, 0.001);
+        assertClose(0.92, loaded.targetRetention);
+        assertClose(0.40, loaded.againMultiplier);
+        assertClose(1.80, loaded.goodMultiplier);
         assertEquals(5000L, loaded.lastAdjustedAtMillis);
         assertEquals(30, loaded.lastAdjustmentReviewCount);
         assertTrue(loaded.frequencyRetentionEnabled);
@@ -2138,7 +2138,7 @@ public final class LocalStoreInstrumentedTest {
 
     private void assertDashboardRowFsrsStored() {
         assertEquals("拉", store.dashboardRows().get(0).kanji);
-        assertEquals(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability, 0.001);
+        assertClose(18.5, store.dashboardRows().get(0).examples.get(0).fsrsStability);
     }
 
     private void assertSuspendedImportStored() {
@@ -2514,9 +2514,9 @@ public final class LocalStoreInstrumentedTest {
         Cursor cursor = db.rawQuery("SELECT fsrs_stability, fsrs_difficulty, fsrs_retrievability FROM source_cards WHERE card_id=10", null);
         try {
             assertTrue(cursor.moveToFirst());
-            assertEquals(stability, cursor.getDouble(0), 0.001);
-            assertEquals(difficulty, cursor.getDouble(1), 0.001);
-            assertEquals(retrievability, cursor.getDouble(2), 0.001);
+            assertClose(stability, cursor.getDouble(0));
+            assertClose(difficulty, cursor.getDouble(1));
+            assertClose(retrievability, cursor.getDouble(2));
         } finally {
             cursor.close();
         }
@@ -2534,9 +2534,9 @@ public final class LocalStoreInstrumentedTest {
             assertEquals(mature, cursor.getInt(1));
             assertEquals(reps, cursor.getInt(2));
             assertEquals(lapses, cursor.getInt(3));
-            assertEquals(stability, cursor.getDouble(4), 0.001);
-            assertEquals(difficulty, cursor.getDouble(5), 0.001);
-            assertEquals(retrievability, cursor.getDouble(6), 0.001);
+            assertClose(stability, cursor.getDouble(4));
+            assertClose(difficulty, cursor.getDouble(5));
+            assertClose(retrievability, cursor.getDouble(6));
         } finally {
             cursor.close();
         }
@@ -2616,4 +2616,11 @@ public final class LocalStoreInstrumentedTest {
         }
     }
 
+    private static void assertClose(double expected, double actual) {
+        assertEquals(expected, actual, 0.001);
+    }
+
+    private static void assertClose(double expected, Double actual) {
+        assertEquals(expected, actual.doubleValue(), 0.001);
+    }
 }

@@ -301,9 +301,7 @@ public final class FsrsEngineFixtureTest {
             private char parseEscape() {
                 char escaped = text.charAt(index++);
                 switch (escaped) {
-                    case '"':
-                    case '\\':
-                    case '/':
+                    case '"', '\\', '/':
                         return escaped;
                     case 'b':
                         return '\b';

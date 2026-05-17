@@ -40,7 +40,7 @@ public final class SyncSettingsCoverageTest {
         assertEquals(defaults.importTags, settings.importTags);
         assertEquals(defaults.importTagsText(), settings.importTagsText());
         assertFalse(settings.importWeakCards);
-        assertEquals(defaults.importWeakFsrsDifficultyThreshold, settings.importWeakFsrsDifficultyThreshold, 0.001);
+        assertClose(defaults.importWeakFsrsDifficultyThreshold, settings.importWeakFsrsDifficultyThreshold);
         assertEquals(defaults.importWeakLapsesThreshold, settings.importWeakLapsesThreshold);
         assertEquals(defaults.importMinMatchingCardsPerKanji, settings.importMinMatchingCardsPerKanji);
         assertFalse(settings.browserQueryImportEnabled());
@@ -152,6 +152,10 @@ public final class SyncSettingsCoverageTest {
         Method method = AutoSyncRunner.Result.class.getDeclaredMethod(methodName, String.class);
         method.setAccessible(true);
         return (AutoSyncRunner.Result) method.invoke(null, message);
+    }
+
+    private static void assertClose(double expected, double actual) {
+        assertEquals(expected, actual, 0.001);
     }
 
     private static long millis(int year, int month, int day, int hour, int minute) {

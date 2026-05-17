@@ -21,12 +21,6 @@ public final class StudyStatsStore {
     private static final String COLUMN_KANJI = "kanji";
     private static final String COLUMN_RATING = "rating";
     private static final String COLUMN_REVIEWED_AT = "reviewed_at";
-    private static final String COLUMN_STATE = "state";
-    private static final String COLUMN_RUNG = "rung";
-    private static final String COLUMN_PHASE = "phase";
-    private static final String COLUMN_REAL_PASS_STREAK = "real_pass_streak";
-    private static final String COLUMN_REAL_AGAIN_STREAK = "real_again_streak";
-    private static final String COLUMN_MATURE_INTERVAL_DAYS = "mature_interval_days";
     private static final String RATING_AGAIN = "again";
     private static final String STATE_RETIRED = "retired";
     private final LocalStore store;
@@ -383,10 +377,6 @@ public final class StudyStatsStore {
 
     private static String string(Cursor cursor, String column) {
         return cursor.getString(cursor.getColumnIndexOrThrow(column));
-    }
-
-    private static int integer(Cursor cursor, String column) {
-        return cursor.getInt(cursor.getColumnIndexOrThrow(column));
     }
 
     private static long longValue(Cursor cursor, String column) {
