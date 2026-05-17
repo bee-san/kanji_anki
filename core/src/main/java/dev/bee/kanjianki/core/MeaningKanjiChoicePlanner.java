@@ -60,6 +60,12 @@ public final class MeaningKanjiChoicePlanner {
             List<RecordsImportModels.KanjiInventoryItem> inventory
     ) {
         Map<String, String> out = new LinkedHashMap<>();
+        addEligibleRows(out, rows);
+        addEligibleInventory(out, inventory);
+        return out;
+    }
+
+    private static void addEligibleRows(Map<String, String> out, List<RecordsImportModels.DashboardRow> rows) {
         if (rows != null) {
             for (RecordsImportModels.DashboardRow row : rows) {
                 if (row != null && row.kanji != null && !row.kanji.trim().isEmpty()) {
@@ -67,6 +73,12 @@ public final class MeaningKanjiChoicePlanner {
                 }
             }
         }
+    }
+
+    private static void addEligibleInventory(
+            Map<String, String> out,
+            List<RecordsImportModels.KanjiInventoryItem> inventory
+    ) {
         if (inventory != null) {
             for (RecordsImportModels.KanjiInventoryItem item : inventory) {
                 String kanji = item == null || item.kanji == null ? "" : item.kanji.trim();
@@ -75,7 +87,6 @@ public final class MeaningKanjiChoicePlanner {
                 }
             }
         }
-        return out;
     }
 
     private static String normalizeMeaning(String meaning) {

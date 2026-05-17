@@ -17,6 +17,15 @@ public final class SyncSettingsBehaviorTest {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         RecordsSyncModels.Settings settings = SyncSettings.fromStore(null);
 
+        assertDefaultFieldSettings(defaults, settings);
+        assertDefaultLearningSettings(defaults, settings);
+        assertDefaultImportSettings(defaults, settings);
+    }
+
+    private static void assertDefaultFieldSettings(
+            RecordsSyncModels.Settings defaults,
+            RecordsSyncModels.Settings settings
+    ) {
         assertEquals(defaults.modelName, settings.modelName);
         assertEquals(defaults.expressionField, settings.expressionField);
         assertEquals(defaults.readingField, settings.readingField);
@@ -24,6 +33,12 @@ public final class SyncSettingsBehaviorTest {
         assertEquals(defaults.sentenceField, settings.sentenceField);
         assertEquals(defaults.frequencyField, settings.frequencyField);
         assertEquals(defaults.frequencySortField, settings.frequencySortField);
+    }
+
+    private static void assertDefaultLearningSettings(
+            RecordsSyncModels.Settings defaults,
+            RecordsSyncModels.Settings settings
+    ) {
         assertEquals(defaults.suspendedRankMin, settings.suspendedRankMin);
         assertEquals(defaults.suspendedRankMax, settings.suspendedRankMax);
         assertEquals(defaults.writingTriggerMissDays, settings.writingTriggerMissDays);
@@ -31,6 +46,12 @@ public final class SyncSettingsBehaviorTest {
         assertEquals(defaults.realDueReviewsToMove, settings.realDueReviewsToMove);
         assertEquals(defaults.ladderPromotionIntervalDays, settings.ladderPromotionIntervalDays);
         assertEquals(defaults.ladderDemotionFailStreak, settings.ladderDemotionFailStreak);
+    }
+
+    private static void assertDefaultImportSettings(
+            RecordsSyncModels.Settings defaults,
+            RecordsSyncModels.Settings settings
+    ) {
         assertFalse(settings.importActiveCards);
         assertTrue(settings.importSuspendedCards);
         assertFalse(settings.importTaggedCardsEnabled());

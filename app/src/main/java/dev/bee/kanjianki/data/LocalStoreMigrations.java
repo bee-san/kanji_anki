@@ -10,6 +10,17 @@ final class LocalStoreMigrations {
 
     static void upgrade(SQLiteDatabase db, int oldVersion, int newVersion, LocalStoreMigrationHooks hooks) {
         int targetVersion = Math.min(newVersion, LocalStoreSchema.DB_VERSION);
+        upgradeThroughEight(db, oldVersion, targetVersion, hooks);
+        upgradeThroughFifteen(db, oldVersion, targetVersion, hooks);
+        upgradeThroughTwenty(db, oldVersion, targetVersion, hooks);
+    }
+
+    private static void upgradeThroughEight(
+            SQLiteDatabase db,
+            int oldVersion,
+            int targetVersion,
+            LocalStoreMigrationHooks hooks
+    ) {
         if (shouldRun(oldVersion, targetVersion, 2)) {
             hooks.createTimelineTables(db);
             hooks.backfillTimelineEvents(db);
@@ -49,6 +60,14 @@ final class LocalStoreMigrations {
             db.execSQL(LocalStoreBase.LEARNING_REPEATS_TABLE_SQL);
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_learning_repeats_due ON " + LocalStoreBase.TABLE_LEARNING_REPEATS + "(due_at)");
         }
+    }
+
+    private static void upgradeThroughFifteen(
+            SQLiteDatabase db,
+            int oldVersion,
+            int targetVersion,
+            LocalStoreMigrationHooks hooks
+    ) {
         if (shouldRun(oldVersion, targetVersion, 9)) {
             hooks.createKanjiInventoryTables(db);
             hooks.backfillKanjiInventory(db, System.currentTimeMillis(), RecordsSyncModels.Settings.kikuDefaults());
@@ -76,6 +95,14 @@ final class LocalStoreMigrations {
         if (shouldRun(oldVersion, targetVersion, 15)) {
             hooks.createStudyTaskLogTable(db);
         }
+    }
+
+    private static void upgradeThroughTwenty(
+            SQLiteDatabase db,
+            int oldVersion,
+            int targetVersion,
+            LocalStoreMigrationHooks hooks
+    ) {
         if (shouldRun(oldVersion, targetVersion, 16)) {
             hooks.rebuildStudyItemsForLadderScheduler(db);
         }
