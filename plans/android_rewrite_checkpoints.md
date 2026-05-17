@@ -1157,3 +1157,8 @@ the visible Java runtime while Room study ownership is disabled:
   sync request construction. This is read-only for now; local suspend/unsuspend
   writes remain owned by the existing gated bridge so queue cleanup semantics do
   not fork.
+- `RoomSyncRequestFactory` composes a `RunSourceMirrorSyncRequest` from Room
+  import settings, scheduler settings, local suspension reads, review stats,
+  studied-today evidence, and the bundled similar-kanji index. It is tested as
+  a staged factory and is not wired into the visible runtime until sync
+  settings ownership moves off `LocalStore`.
