@@ -14,7 +14,12 @@ import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
+import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
 import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlan
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanRequest
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudySettings
+import dev.bee.kanjianki.domain.scheduler.AdaptiveWorkloadPolicy
 import dev.bee.kanjianki.domain.scheduler.StudyLadderSettings
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedRequest
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
@@ -29,6 +34,7 @@ class RunSourceMirrorSyncUseCase(
     private val clock: AppClock,
     private val studyQueue: StudyQueueRepository? = null,
     private val queueSeeder: StudyQueueSeeder = StudyQueueSeeder(),
+    private val adaptiveStudyPlanner: AdaptiveStudyPlanner = AdaptiveStudyPlanner(),
 ) {
     suspend operator fun invoke(settings: ImportSettings): SyncRunId =
         invoke(RunSourceMirrorSyncRequest(importSettings = settings))
@@ -63,19 +69,46 @@ class RunSourceMirrorSyncUseCase(
         dashboardRows: List<StudyDashboardRow>,
         nowMillis: Long,
     ): List<StudyQueueItem>? {
-        val queueSettings = request.queueSeedSettings ?: return null
+        val queueContext = request.queueSeedContext ?: return null
         val repository = requireNotNull(studyQueue) {
-            "StudyQueueRepository is required when queueSeedSettings are supplied."
+            "StudyQueueRepository is required when queueSeedContext is supplied."
         }
+        val existingItems = repository.listAllForSeeding()
+        val seedingRows = dashboardRows.filterNot { it.kanji in queueContext.locallySuspendedKanji }
         return queueSeeder.seed(
             StudyQueueSeedRequest(
-                rows = dashboardRows,
-                existing = repository.listAllForSeeding(),
-                settings = queueSettings,
+                rows = seedingRows,
+                existing = existingItems,
+                settings = queueContext.settings,
                 nowMillis = nowMillis,
-                startOfDayMillis = request.startOfDayMillis,
-                adaptivePlan = request.adaptivePlan,
-                ladderSettings = request.ladderSettings,
+                startOfDayMillis = queueContext.startOfDayMillis,
+                adaptivePlan = adaptivePlan(request, queueContext, seedingRows, existingItems, nowMillis),
+                ladderSettings = queueContext.ladderSettings,
+            ),
+        )
+    }
+
+    private fun adaptivePlan(
+        request: RunSourceMirrorSyncRequest,
+        queueContext: SyncStudyQueueSeedContext,
+        seedingRows: List<StudyDashboardRow>,
+        existingItems: List<StudyQueueItem>,
+        nowMillis: Long,
+    ): AdaptiveStudyPlan? {
+        val adaptiveContext = queueContext.adaptiveContext ?: return null
+        return adaptiveStudyPlanner.plan(
+            AdaptiveStudyPlanRequest(
+                rows = seedingRows,
+                items = existingItems,
+                recentStats = adaptiveContext.recentStats,
+                currentStreakDays = adaptiveContext.currentStreakDays,
+                studiedToday = adaptiveContext.studiedToday,
+                workloadPolicy = adaptiveContext.workloadPolicy,
+                nowMillis = nowMillis,
+                settings = AdaptiveStudySettings(
+                    matureDays = request.importSettings.matureDays,
+                    matureSupportThreshold = request.importSettings.matureSupportThreshold,
+                ),
             ),
         )
     }
@@ -137,9 +170,26 @@ class RunSourceMirrorSyncUseCase(
 
 data class RunSourceMirrorSyncRequest(
     val importSettings: ImportSettings,
-    val queueSeedSettings: StudyQueueSeedSettings? = null,
-    val startOfDayMillis: Long = 0L,
-    val adaptivePlan: AdaptiveStudyPlan? = null,
-    val ladderSettings: StudyLadderSettings = StudyLadderSettings.defaults,
+    val queueSeedContext: SyncStudyQueueSeedContext? = null,
     val similarKanjiIndex: SimilarKanjiIndex? = null,
+)
+
+data class SyncStudyQueueSeedContext(
+    val settings: StudyQueueSeedSettings,
+    val startOfDayMillis: Long,
+    val ladderSettings: StudyLadderSettings = StudyLadderSettings.defaults,
+    val locallySuspendedKanji: Set<String> = emptySet(),
+    val adaptiveContext: SyncAdaptivePlanContext? = null,
+)
+
+data class SyncAdaptivePlanContext(
+    val recentStats: AdaptiveReviewStats = AdaptiveReviewStats(),
+    val currentStreakDays: Int = 0,
+    val studiedToday: Set<String> = emptySet(),
+    val workloadPolicy: AdaptiveWorkloadPolicy =
+        AdaptiveWorkloadPolicy.fromSettings(
+            AdaptiveStudyPlanner.DEFAULT_WORKLOAD_PERCENT,
+            AdaptiveStudyPlanner.DEFAULT_WORKLOAD_MODE,
+            AdaptiveStudyPlanner.DEFAULT_MAX_ITEMS,
+        ),
 )

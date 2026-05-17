@@ -22,6 +22,8 @@ import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
+import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
+import dev.bee.kanjianki.domain.scheduler.AdaptiveWorkloadPolicy
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -94,12 +96,14 @@ class RunSourceMirrorSyncUseCaseTest {
         val id = useCase(
             RunSourceMirrorSyncRequest(
                 importSettings = ImportSettings(),
-                queueSeedSettings = StudyQueueSeedSettings(
-                    activeQueueCap = 10,
-                    newPerDay = 10,
-                    matureSupportThreshold = 2,
+                queueSeedContext = SyncStudyQueueSeedContext(
+                    settings = StudyQueueSeedSettings(
+                        activeQueueCap = 10,
+                        newPerDay = 10,
+                        matureSupportThreshold = 2,
+                    ),
+                    startOfDayMillis = 50,
                 ),
-                startOfDayMillis = 50,
             ),
         )
 
@@ -109,6 +113,50 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(StudyItemState.NEW, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.state)
         assertEquals(150L, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.createdAtMillis)
         assertEquals(StudyItemState.RETIRED, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "火" }.state)
+    }
+
+    @Test
+    fun successfulReadComputesAdaptivePlanAfterDashboardRowsAndLocalSuspensions() = runBlocking {
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                CollectionSnapshot(
+                    notes = listOf(sourceNote(noteId = 10), sourceNote(noteId = 11)),
+                    cards = listOf(
+                        sourceCard(noteId = 10, suspended = false),
+                        sourceCard(cardId = 21, noteId = 11, suspended = true),
+                    ),
+                ),
+            ),
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(100, 150),
+            studyQueue = FakeStudyQueueRepository(),
+        )
+
+        useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                queueSeedContext = SyncStudyQueueSeedContext(
+                    settings = StudyQueueSeedSettings(
+                        activeQueueCap = 10,
+                        newPerDay = 10,
+                        matureSupportThreshold = 2,
+                    ),
+                    startOfDayMillis = 50,
+                    locallySuspendedKanji = setOf("本"),
+                    adaptiveContext = SyncAdaptivePlanContext(
+                        recentStats = AdaptiveReviewStats(total = 8, good = 8, writingRequired = 4),
+                        currentStreakDays = 5,
+                        workloadPolicy = AdaptiveWorkloadPolicy.manual(0),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf("日"), sourceMirrorSync.seededQueueItems!!.map { it.kanji })
     }
 
     @Test
@@ -190,10 +238,13 @@ class RunSourceMirrorSyncUseCaseTest {
         useCase(
             RunSourceMirrorSyncRequest(
                 importSettings = ImportSettings(),
-                queueSeedSettings = StudyQueueSeedSettings(
-                    activeQueueCap = 10,
-                    newPerDay = 10,
-                    matureSupportThreshold = 2,
+                queueSeedContext = SyncStudyQueueSeedContext(
+                    settings = StudyQueueSeedSettings(
+                        activeQueueCap = 10,
+                        newPerDay = 10,
+                        matureSupportThreshold = 2,
+                    ),
+                    startOfDayMillis = 0,
                 ),
             ),
         )
