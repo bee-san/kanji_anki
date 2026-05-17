@@ -1,14 +1,26 @@
 package dev.bee.kanjianki.data.repository
 
+import dev.bee.kanjianki.data.importing.ImportDecisionDao
+import dev.bee.kanjianki.data.importing.ImportDecisionEntity
+import dev.bee.kanjianki.data.importing.ImportRuleAuditDao
+import dev.bee.kanjianki.data.importing.ImportRuleAuditEntity
+import dev.bee.kanjianki.data.importing.SuspendedImportDao
+import dev.bee.kanjianki.data.importing.SuspendedImportEntity
+import dev.bee.kanjianki.data.importing.SuspendedSourceDao
+import dev.bee.kanjianki.data.importing.SuspendedSourceEntity
 import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceCardEntity
 import dev.bee.kanjianki.data.source.SourceNoteDao
 import dev.bee.kanjianki.data.source.SourceNoteEntity
 import dev.bee.kanjianki.data.sync.SyncRunDao
 import dev.bee.kanjianki.data.sync.SyncRunEntity
+import dev.bee.kanjianki.domain.importing.ImportSourceEvidence
+import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
+import dev.bee.kanjianki.domain.model.importing.ImportSettings
+import dev.bee.kanjianki.domain.model.importing.ImportSource
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.sync.SyncRun
@@ -26,11 +38,30 @@ class RoomSourceMirrorSyncRepositoryTest {
         val syncRuns = FakeSyncRunDao(generatedId = 42)
         val notes = FakeSourceNoteDao(existingIds = listOf(1, 99))
         val cards = FakeSourceCardDao(existingIds = listOf(10, 999))
+        val audits = FakeImportRuleAuditDao()
+        val decisions = FakeImportDecisionDao()
+        val suspendedImports = FakeSuspendedImportDao(
+            existing = mapOf(
+                "日" to SuspendedImportEntity(
+                    kanji = "日",
+                    jitenRank = 120,
+                    rankKnown = 1,
+                    cutoffUsed = 3000,
+                    firstImportedAt = 5,
+                    lastSeenSyncId = 3,
+                ),
+            ),
+        )
+        val suspendedSources = FakeSuspendedSourceDao()
         var transactions = 0
         val repository = RoomSourceMirrorSyncRepository(
             syncRuns = syncRuns,
             sourceNotes = notes,
             sourceCards = cards,
+            importRuleAudits = audits,
+            importDecisions = decisions,
+            suspendedImports = suspendedImports,
+            suspendedSources = suspendedSources,
             runInTransaction = { block ->
                 transactions++
                 block()
@@ -41,6 +72,21 @@ class RoomSourceMirrorSyncRepositoryTest {
             syncRun = successRun(),
             notes = listOf(sourceNote(1), sourceNote(2)),
             cards = listOf(sourceCard(10, noteId = 1), sourceCard(20, noteId = 2)),
+            importCandidates = listOf(
+                importCandidate(
+                    kanji = "日",
+                    sources = listOf(
+                        sourceEvidence(kanji = "日", cardId = 10, noteId = 1, sourceType = ImportSource.SUSPENDED),
+                        sourceEvidence(kanji = "日", cardId = 20, noteId = 2, sourceType = ImportSource.ACTIVE),
+                    ),
+                ),
+                importCandidate(
+                    kanji = "本",
+                    jitenRank = 200,
+                    sources = listOf(sourceEvidence(kanji = "本", cardId = 20, noteId = 2, sourceType = ImportSource.ACTIVE)),
+                ),
+            ),
+            settings = ImportSettings(importActiveCards = true),
         )
 
         assertEquals(SyncRunId(42), id)
@@ -55,6 +101,16 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(listOf(true, false), cards.upserted.map { it.suspended })
         assertEquals(listOf(false, true), cards.upserted.map { it.browserQueryMatched })
         assertEquals(listOf(42L, 42L), cards.upserted.map { it.lastSeenSyncId })
+        assertEquals(42L, audits.upserted.single().syncId)
+        assertEquals("active suspended", audits.upserted.single().enabledSources)
+        assertEquals(listOf("日", "本"), decisions.upserted.map { it.kanji })
+        assertEquals("multiple_import_rules", decisions.upserted.first { it.kanji == "日" }.reasonCode)
+        assertEquals("10 20", decisions.upserted.first { it.kanji == "日" }.sourceCardIds)
+        assertEquals(listOf("日"), suspendedImports.upserted.map { it.kanji })
+        assertEquals(5L, suspendedImports.upserted.single().firstImportedAt)
+        assertEquals(listOf("日"), suspendedSources.deletedForKanji)
+        assertEquals(listOf(10L), suspendedSources.upserted.map { it.cardId })
+        assertEquals(42L, suspendedSources.upserted.single().syncId)
     }
 
     private class FakeSyncRunDao(
@@ -137,6 +193,86 @@ class RoomSourceMirrorSyncRepositoryTest {
         }
     }
 
+    private class FakeImportRuleAuditDao : ImportRuleAuditDao {
+        val upserted = mutableListOf<ImportRuleAuditEntity>()
+
+        override suspend fun get(syncId: Long): ImportRuleAuditEntity? =
+            upserted.firstOrNull { it.syncId == syncId }
+
+        override suspend fun latest(): ImportRuleAuditEntity? =
+            upserted.maxByOrNull { it.syncId }
+
+        override suspend fun upsert(audit: ImportRuleAuditEntity) {
+            upserted.removeAll { it.syncId == audit.syncId }
+            upserted += audit
+        }
+    }
+
+    private class FakeImportDecisionDao : ImportDecisionDao {
+        val upserted = mutableListOf<ImportDecisionEntity>()
+
+        override suspend fun listForSync(syncId: Long): List<ImportDecisionEntity> =
+            upserted.filter { it.syncId == syncId }
+
+        override suspend fun listForKanji(kanji: String): List<ImportDecisionEntity> =
+            upserted.filter { it.kanji == kanji }.sortedByDescending { it.syncId }
+
+        override suspend fun upsertAll(decisions: List<ImportDecisionEntity>) {
+            for (decision in decisions) {
+                upserted.removeAll { it.syncId == decision.syncId && it.kanji == decision.kanji }
+                upserted += decision
+            }
+        }
+    }
+
+    private class FakeSuspendedImportDao(
+        private val existing: Map<String, SuspendedImportEntity> = emptyMap(),
+    ) : SuspendedImportDao {
+        val upserted = mutableListOf<SuspendedImportEntity>()
+
+        override fun observe(kanji: String): Flow<SuspendedImportEntity?> = emptyFlow()
+
+        override suspend fun get(kanji: String): SuspendedImportEntity? =
+            upserted.firstOrNull { it.kanji == kanji } ?: existing[kanji]
+
+        override suspend fun listRanked(): List<SuspendedImportEntity> =
+            (existing.values + upserted).sortedWith(compareBy<SuspendedImportEntity> { it.jitenRank ?: Int.MAX_VALUE }.thenBy { it.kanji })
+
+        override suspend fun upsert(entry: SuspendedImportEntity) {
+            upserted.removeAll { it.kanji == entry.kanji }
+            upserted += entry
+        }
+
+        override suspend fun upsertAll(entries: List<SuspendedImportEntity>) {
+            for (entry in entries) {
+                upsert(entry)
+            }
+        }
+    }
+
+    private class FakeSuspendedSourceDao : SuspendedSourceDao {
+        val deletedForKanji = mutableListOf<String>()
+        val upserted = mutableListOf<SuspendedSourceEntity>()
+
+        override suspend fun listForKanji(kanji: String): List<SuspendedSourceEntity> =
+            upserted.filter { it.kanji == kanji }.sortedBy { it.cardId }
+
+        override suspend fun listForSync(syncId: Long): List<SuspendedSourceEntity> =
+            upserted.filter { it.syncId == syncId }.sortedWith(compareBy<SuspendedSourceEntity> { it.kanji }.thenBy { it.cardId })
+
+        override suspend fun upsertAll(sources: List<SuspendedSourceEntity>) {
+            for (source in sources) {
+                upserted.removeAll { it.kanji == source.kanji && it.cardId == source.cardId }
+                upserted += source
+            }
+        }
+
+        override suspend fun deleteForKanji(kanji: String) {
+            deletedForKanji += kanji
+            upserted.removeAll { it.kanji == kanji }
+        }
+    }
+
     private fun successRun(): SyncRun = SyncRun(
         id = null,
         startedAt = 10,
@@ -151,6 +287,43 @@ class RoomSourceMirrorSyncRepositoryTest {
         errorCode = null,
         errorMessage = null,
         removalMessage = "",
+    )
+
+    private fun importCandidate(
+        kanji: String,
+        jitenRank: Int = 120,
+        sources: List<ImportSourceEvidence>,
+    ): ImportedKanjiCandidate = ImportedKanjiCandidate(
+        kanji = kanji,
+        jitenRank = jitenRank,
+        rankRangeMax = 3000,
+        sources = sources,
+    )
+
+    private fun sourceEvidence(
+        kanji: String,
+        cardId: Long,
+        noteId: Long,
+        sourceType: ImportSource,
+    ): ImportSourceEvidence = ImportSourceEvidence(
+        kanji = kanji,
+        cardId = CardId(cardId),
+        noteId = NoteId(noteId),
+        expression = "日本",
+        reading = "にほん",
+        meaning = "Japan",
+        sentence = "日本へ行く。",
+        sourceType = sourceType,
+        suspended = sourceType == ImportSource.SUSPENDED,
+        forcePractice = sourceType != ImportSource.ACTIVE,
+        mature = false,
+        lapses = 0,
+        intervalDays = 0,
+        reps = 0,
+        fsrsStability = null,
+        fsrsDifficulty = null,
+        fsrsRetrievability = null,
+        ruleTypes = setOf(sourceType),
     )
 
     private fun sourceNote(noteId: Long): SourceNote = SourceNote(

@@ -28,6 +28,8 @@ class RunSourceMirrorSyncUseCase(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
                 notes = snapshot.notes,
                 cards = snapshot.cards,
+                importCandidates = importCandidates,
+                settings = settings,
             )
         } catch (error: CollectionGatewayException) {
             val finishedAt = clock.nowMillis()

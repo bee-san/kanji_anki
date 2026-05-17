@@ -2,6 +2,7 @@ package dev.bee.kanjianki.domain.sync
 
 import dev.bee.kanjianki.domain.common.AppClock
 import dev.bee.kanjianki.domain.importing.ImportCandidateSelector
+import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
@@ -51,6 +52,7 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(1, sourceMirrorSync.syncRun.activeCardsCount)
         assertEquals(1, sourceMirrorSync.syncRun.suspendedCardsArchivedCount)
         assertEquals(2, sourceMirrorSync.syncRun.suspendedKanjiImportedCount)
+        assertEquals(listOf("日", "本"), sourceMirrorSync.importCandidates.map { it.kanji })
         assertEquals(SyncRunId(1), sourceMirrorSync.notes.single { it.noteId == NoteId(10) }.lastSeenSyncId)
         assertEquals(SyncRunId(1), sourceMirrorSync.cards.single { it.cardId == CardId(20) }.lastSeenSyncId)
     }
@@ -129,17 +131,21 @@ class RunSourceMirrorSyncUseCaseTest {
     private class FakeSourceMirrorSyncRepository : SourceMirrorSyncRepository {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
+        val importCandidates = mutableListOf<ImportedKanjiCandidate>()
         lateinit var syncRun: SyncRun
 
         override suspend fun recordSuccessfulSnapshot(
             syncRun: SyncRun,
             notes: List<SourceNote>,
             cards: List<SourceCard>,
+            importCandidates: List<ImportedKanjiCandidate>,
+            settings: ImportSettings,
         ): SyncRunId {
             val id = SyncRunId(1)
             this.syncRun = syncRun.copy(id = id)
             this.notes += notes.map { it.copy(lastSeenSyncId = id) }
             this.cards += cards.map { it.copy(lastSeenSyncId = id) }
+            this.importCandidates += importCandidates
             return id
         }
     }

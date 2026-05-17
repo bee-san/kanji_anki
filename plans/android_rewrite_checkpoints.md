@@ -342,6 +342,9 @@ Current artifacts:
 - `RunSourceMirrorSyncUseCase` now runs `ImportCandidateSelector` and derives
   suspended archive/import counts in `sync_runs` from selected suspended source
   evidence.
+- The same Room transaction now persists import rule audits, per-kanji import
+  decisions, current suspended imports, and current suspended source evidence
+  under the generated sync ID.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
@@ -351,8 +354,6 @@ Current artifacts:
 Explicit gaps:
 
 - No AnkiDroid module implementation yet.
-- Import candidate analysis is called, but selected import/audit rows are not
-  persisted by the Room transaction yet.
 - No suspended archive cleanup, dashboard rebuild, queue seeding, similar-kanji
   rebuild, or historical snapshot write in the new use case yet.
 - Manual and background sync still use the legacy Java path.
@@ -383,6 +384,15 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; sync use-case tests cover active-card counts and
 suspended source evidence counts after import candidate selection.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test :data:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; Room repository tests cover import audit rows,
+import decisions, first-import preservation, and suspended-source replacement
+inside the successful source-sync transaction.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
