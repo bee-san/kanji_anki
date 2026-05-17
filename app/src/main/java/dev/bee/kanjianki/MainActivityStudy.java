@@ -46,6 +46,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
@@ -83,11 +84,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivityStudy extends MainActivityStats {
+    private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
+    private final Random meaningChoiceRandom = new Random();
+
     View learningPanel(Records.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
@@ -263,7 +268,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
         card.addView(text("Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.", 17, STUDY_MUTED, false));
         LinearLayout summary = softInsetPanel();
-        summary.addView(text("Study now: " + studySessionTracker.completedCount() + " / " + Math.max(1, studySessionTracker.targetCount()), 20, STUDY_PLUM, true));
+        summary.addView(text(countText(studySessionTracker.movedForwardCount(), "kanji moved forward this session", "kanji moved forward this session"), 20, STUDY_PLUM, true));
+        summary.addView(text(countText(studySessionTracker.missedCount(), "missed and will come back", "missed and will come back"), 16, STUDY_MUTED, false));
+        summary.addView(text(countText(studySessionTracker.completedCount(), "task completed", "tasks completed"), 16, STUDY_MUTED, false));
         if (plan != null && !plan.status.isEmpty()) {
             summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         }
@@ -466,8 +473,125 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderWritingSession(session);
         } else if (BridgeScheduler.TASK_SIMILAR_KANJI.equals(session.taskType)) {
             renderSimilarKanjiSession(session);
+        } else if (BridgeScheduler.TASK_MEANING_KANJI.equals(session.taskType)) {
+            renderMeaningKanjiSession(session);
         } else {
             renderFlashcardSession(session);
+        }
+    }
+
+    void renderMeaningKanjiSession(Records.StudySession session) {
+        prepareStudyContent(activeStudyPlan, true);
+        activeSimilarWritingRepair = null;
+        activeAnalysis = null;
+        checkingWriting = false;
+        flashcardAnswerRevealed = false;
+        flashcardTouchTracking = false;
+        flashcardGestureArea = null;
+        typingAnswerInput = null;
+        drawingPad = null;
+        hintsUsed = 0;
+        setHintState(HintState.initial());
+        if (studyActionBar != null) {
+            studyActionBar.removeAllViews();
+            studyActionBar.setVisibility(View.GONE);
+        }
+
+        Records.MeaningKanjiChoiceCard choiceCard = meaningKanjiChoiceCardForSession(session);
+        if (choiceCard == null || choiceCard.choices.size() < 4) {
+            renderFlashcardSession(session);
+            return;
+        }
+
+        LinearLayout cardShell = softStudyCard();
+        cardShell.addView(modePill("Recall"));
+        cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
+        cardShell.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
+        cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
+        addStudyReasonLine(cardShell, session);
+
+        LinearLayout box = softInsetPanel();
+        box.addView(text("Which kanji means " + cleanLearnerText(choiceCard.primaryMeaning, session.prompt, 96) + "?", 22, STUDY_PLUM, true));
+        View answerPanel = flashcardAnswerPanel(session);
+        answerPanel.setVisibility(View.GONE);
+        box.addView(meaningKanjiGrid(choiceCard, answerPanel));
+        box.addView(answerPanel);
+        cardShell.addView(box);
+
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
+        cardLp.setMargins(0, dp(6), 0, dp(12));
+        content.addView(cardShell, cardLp);
+    }
+
+    Records.MeaningKanjiChoiceCard meaningKanjiChoiceCardForSession(Records.StudySession session) {
+        if (session == null || session.row == null) {
+            return null;
+        }
+        return meaningKanjiChoicePlanner.buildChoiceCard(
+                session.row,
+                store.activeDashboardRows(),
+                store.searchKanjiInventory(""),
+                meaningChoiceRandom
+        );
+    }
+
+    View meaningKanjiGrid(Records.MeaningKanjiChoiceCard card, View answerPanel) {
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout row = null;
+        for (int i = 0; i < card.choices.size(); i++) {
+            if (i % 2 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                grid.addView(row);
+            }
+            String glyph = card.choices.get(i);
+            Button button = studySecondaryButton(glyph);
+            button.setTextColor(STUDY_PLUM);
+            button.setTextSize(34);
+            button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
+            button.setOnClickListener(v -> showMeaningKanjiChoiceResult(card, glyph, grid, answerPanel));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
+            lp.setMargins(dp(4), dp(8), dp(4), 0);
+            if (row != null) {
+                row.addView(button, lp);
+            }
+        }
+        return grid;
+    }
+
+    void showMeaningKanjiChoiceResult(Records.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
+        boolean correct = card.isCorrect(selectedKanji);
+        disableChoiceButtons(grid);
+        answerPanel.setVisibility(View.VISIBLE);
+        if (studyActionBar == null) {
+            submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
+            return;
+        }
+        styleStudyActionBarShell();
+        studyActionBar.removeAllViews();
+        studyActionBar.setVisibility(View.VISIBLE);
+        String prompt = activeSession == null ? "" : activeSession.prompt;
+        String status = correct
+                ? "Correct. " + card.targetKanji + " means " + cleanLearnerText(card.primaryMeaning, prompt, 72) + "."
+                : "Answer: " + card.targetKanji + " · " + cleanLearnerText(card.primaryMeaning, prompt, 72);
+        resultStatus = text(status, 15, correct ? TEAL : CORAL, true);
+        studyActionBar.addView(resultStatus);
+        Button next = pinkPrimaryButton("Next");
+        next.setOnClickListener(v -> submitReview(correct ? RATING_GOOD : RATING_AGAIN, false));
+        studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, dp(62)));
+    }
+
+    void disableChoiceButtons(View view) {
+        if (view instanceof Button button) {
+            button.setEnabled(false);
+            return;
+        }
+        if (view instanceof ViewGroup group) {
+            for (int i = 0; i < group.getChildCount(); i++) {
+                disableChoiceButtons(group.getChildAt(i));
+            }
         }
     }
 
@@ -934,6 +1058,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (isTypingMeaningTask(session)) {
             return "Type the meaning";
         }
+        if (isMeaningKanjiTask(session)) {
+            return "Choose the kanji";
+        }
         return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
     }
 
@@ -946,6 +1073,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         if (isTypingMeaningTask(session)) {
             return "Type";
+        }
+        if (isMeaningKanjiTask(session)) {
+            return "Recall";
         }
         return "Recognise";
     }
@@ -1375,6 +1505,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         boolean passed = !RATING_AGAIN.equals(rating);
         completeActiveRepairStudyTask(similarRepairStudyTaskKey(repair), rating, now);
         boolean saved = store.finishSimilarWritingRepair(repair.id, repair.activeToken, passed, now);
+        if (saved) {
+            studySessionTracker.recordRepairOutcome(repair.repairKanji, passed);
+        }
         if (saved && passed) {
             markStudyTaskCompleted(similarRepairProgressKey(repair));
         }
@@ -1414,6 +1547,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     void saveAppliedReview(Records.ReviewRequest request, Records.ReviewResult result, long now) {
         store.saveStudyItem(result.item);
         store.saveReview(request, result.appliedRating, now, activeSession.item, result.item);
+        studySessionTracker.recordReviewOutcome(request.kanji, result.appliedRating, activeSession.item, result.item);
         if (!RATING_AGAIN.equals(result.appliedRating)) {
             markStudyRunPassed(request.kanji);
         }
@@ -1761,6 +1895,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         return session != null
                 && (TASK_TYPING_MEANING.equals(session.taskType)
                 || BridgeScheduler.TASK_TYPE_MEANING.equals(session.taskType));
+    }
+
+    boolean isMeaningKanjiTask(Records.StudySession session) {
+        return session != null && BridgeScheduler.TASK_MEANING_KANJI.equals(session.taskType);
     }
 
     boolean isWordReadingTask(Records.StudySession session) {

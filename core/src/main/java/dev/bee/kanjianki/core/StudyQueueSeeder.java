@@ -344,6 +344,7 @@ final class StudyQueueSeeder {
                 .answerSignature(signature)
                 .activeToken(null)
                 .typingMeaningMemory(Records.TaskMemory.initial())
+                .meaningKanjiMemory(Records.TaskMemory.initial())
                 .kanjiMeaningMemory(Records.TaskMemory.initial())
                 .fontMeaningMemory(Records.TaskMemory.initial())
                 .wordReadingMemory(Records.TaskMemory.initial())

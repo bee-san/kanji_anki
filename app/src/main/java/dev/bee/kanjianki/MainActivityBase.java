@@ -637,6 +637,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return switch (task) {
             case "targeted_flashcard" -> "Focused recall";
             case "kanji_meaning" -> "Kanji -> meaning";
+            case BridgeScheduler.TASK_MEANING_KANJI -> "Meaning -> kanji";
             case TASK_TYPING_MEANING, BridgeScheduler.TASK_TYPE_MEANING -> "Type the meaning";
             case TASK_FONT_MEANING -> "Font -> meaning";
             case TASK_WORD_READING -> "Word -> reading";

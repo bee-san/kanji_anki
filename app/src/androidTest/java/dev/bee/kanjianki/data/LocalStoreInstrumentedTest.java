@@ -836,6 +836,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("study_items", "mature_interval_days"));
         assertTrue(hasColumn("study_items", "answer_signature"));
         assertTrue(hasColumn("study_items", "typing_meaning_memory"));
+        assertTrue(hasColumn("study_items", "meaning_kanji_memory"));
         assertTrue(hasColumn("study_items", "kanji_meaning_memory"));
         assertTrue(hasColumn("study_items", "font_meaning_memory"));
         assertTrue(hasColumn("study_items", "word_reading_memory"));
@@ -1483,7 +1484,7 @@ public final class LocalStoreInstrumentedTest {
     public void testStudyLadderSettingsPersist() {
         Records.StudyLadderSettings settings = Records.StudyLadderSettings.defaults()
                 .withRungEnabled(Records.LadderRung.SIMILAR_KANJI, false)
-                .moveRung(Records.LadderRung.WORD_READING, -5);
+                .moveRung(Records.LadderRung.WORD_READING, -6);
 
         store.saveStudyLadderSettings(settings);
         Records.StudyLadderSettings loaded = store.studyLadderSettings();

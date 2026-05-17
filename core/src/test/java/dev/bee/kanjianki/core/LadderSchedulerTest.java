@@ -233,8 +233,8 @@ public class LadderSchedulerTest {
                 now
         );
 
-        // hasSimilarKanji=false by default, so KANJI_MEANING demotes to TYPE_MEANING (skipping SIMILAR_KANJI).
-        assertEquals(Records.LadderRung.TYPE_MEANING, demoting.item.rung);
+        // hasSimilarKanji=false by default, so KANJI_MEANING demotes to MEANING_KANJI.
+        assertEquals(Records.LadderRung.MEANING_KANJI, demoting.item.rung);
         assertEquals("Streak resets on demotion", 0, demoting.item.realAgainStreak);
     }
 
@@ -380,19 +380,18 @@ public class LadderSchedulerTest {
 
     @Test
     public void similarRungSkippedWhenUnavailable() {
-        // hasSimilarKanji = false: demote from KANJI_MEANING should skip SIMILAR_KANJI
-        // and land on TYPE_MEANING.
+        // hasSimilarKanji=false, so movement skips SIMILAR_KANJI but still lands on MEANING_KANJI.
         Records.LadderRung demoted = BridgeScheduler.demoteRung(
                 Records.LadderRung.KANJI_MEANING,
                 false
         );
-        assertEquals(Records.LadderRung.TYPE_MEANING, demoted);
+        assertEquals(Records.LadderRung.MEANING_KANJI, demoted);
 
         Records.LadderRung promoted = BridgeScheduler.promoteRung(
                 Records.LadderRung.TYPE_MEANING,
                 false
         );
-        assertEquals(Records.LadderRung.KANJI_MEANING, promoted);
+        assertEquals(Records.LadderRung.MEANING_KANJI, promoted);
     }
 
     @Test
@@ -470,6 +469,7 @@ public class LadderSchedulerTest {
         assertEquals(BridgeScheduler.TASK_WRITE_KANJI, Records.LadderRung.WRITE_KANJI.wireName());
         assertEquals(BridgeScheduler.TASK_TYPE_MEANING, Records.LadderRung.TYPE_MEANING.wireName());
         assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, Records.LadderRung.SIMILAR_KANJI.wireName());
+        assertEquals(BridgeScheduler.TASK_MEANING_KANJI, Records.LadderRung.MEANING_KANJI.wireName());
         assertEquals(BridgeScheduler.TASK_KANJI_MEANING, Records.LadderRung.KANJI_MEANING.wireName());
         assertEquals(BridgeScheduler.TASK_FONT_MEANING, Records.LadderRung.FONT_MEANING.wireName());
         assertEquals(BridgeScheduler.TASK_WORD_READING, Records.LadderRung.WORD_READING.wireName());
@@ -869,8 +869,8 @@ public class LadderSchedulerTest {
         Records.ReviewResult result = scheduler.applyReview(
                 item.withToken("ns"), passRequest("裂", "ns"), consumed, 1000L);
 
-        assertEquals("Promoted to KANJI_MEANING, skipping SIMILAR_KANJI",
-                Records.LadderRung.KANJI_MEANING, result.item.rung);
+        assertEquals("Promoted to MEANING_KANJI, skipping SIMILAR_KANJI",
+                Records.LadderRung.MEANING_KANJI, result.item.rung);
     }
 
     // ---- Custom ladder thresholds ----
@@ -921,8 +921,8 @@ public class LadderSchedulerTest {
         Records.ReviewResult r = scheduler.applyReview(
                 item.withToken("df4"), failRequest("裂", "df4"), consumed, now,
                 null, customSettings, (Records.LearningStepSettings) null);
-        assertEquals("Demoted to TYPE_MEANING after 5 fails with custom threshold",
-                Records.LadderRung.TYPE_MEANING, r.item.rung);
+        assertEquals("Demoted to MEANING_KANJI after 5 fails with custom threshold",
+                Records.LadderRung.MEANING_KANJI, r.item.rung);
     }
 
     private static BridgeScheduler schedulerWithReviewIntervalDays(long intervalDays) {

@@ -156,6 +156,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
         public final String activeToken;
         public final long createdAtMillis;
         public final TaskMemory typingMeaningMemory;
+        public final TaskMemory meaningKanjiMemory;
         public final TaskMemory kanjiMeaningMemory;
         public final TaskMemory fontMeaningMemory;
         public final TaskMemory wordReadingMemory;
@@ -198,6 +199,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
             this.activeToken = args.activeToken;
             this.createdAtMillis = args.createdAtMillis;
             this.typingMeaningMemory = Objects.requireNonNullElseGet(args.typingMeaningMemory, TaskMemory::initial);
+            this.meaningKanjiMemory = Objects.requireNonNullElseGet(args.meaningKanjiMemory, TaskMemory::initial);
             this.kanjiMeaningMemory = Objects.requireNonNullElseGet(args.kanjiMeaningMemory, TaskMemory::initial);
             this.fontMeaningMemory = Objects.requireNonNullElseGet(args.fontMeaningMemory, TaskMemory::initial);
             this.wordReadingMemory = Objects.requireNonNullElseGet(args.wordReadingMemory, TaskMemory::initial);
@@ -258,6 +260,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
             String activeToken;
             long createdAtMillis;
             TaskMemory typingMeaningMemory;
+            TaskMemory meaningKanjiMemory;
             TaskMemory kanjiMeaningMemory;
             TaskMemory fontMeaningMemory;
             TaskMemory wordReadingMemory;
@@ -271,7 +274,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
             TaskMemory similarKanjiMemory;
 
             static StudyItemArgs from(String state, long dueAtMillis, double stability, double difficulty, int totalReviews, Object[] rest) {
-                requireArgCount(CONTEXT_STUDY_ITEM, rest, 5, 9, 13, 17, 18, 25);
+                requireArgCount(CONTEXT_STUDY_ITEM, rest, 5, 9, 13, 17, 18, 19, 25, 26);
                 StudyItemArgs args = new StudyItemArgs();
                 args.lapses = intArg(rest, 0, CONTEXT_STUDY_ITEM);
                 args.learningStep = intArg(rest, 1, CONTEXT_STUDY_ITEM);
@@ -304,20 +307,22 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                 if (memoryStart >= 0) {
                     args.applyMemories(rest, memoryStart);
                 }
-                if (rest.length == 25) {
-                    args.rung = (LadderRung) arg(rest, 18, CONTEXT_STUDY_ITEM);
-                    args.phase = (SchedulerPhase) arg(rest, 19, CONTEXT_STUDY_ITEM);
-                    args.realPassStreak = intArg(rest, 20, CONTEXT_STUDY_ITEM);
-                    args.realAgainStreak = intArg(rest, 21, CONTEXT_STUDY_ITEM);
-                    args.lastRealReviewDueAtMillis = longArg(rest, 22, CONTEXT_STUDY_ITEM);
-                    args.hasSimilarKanji = booleanArg(rest, 23, CONTEXT_STUDY_ITEM);
-                    args.similarKanjiMemory = (TaskMemory) arg(rest, 24, CONTEXT_STUDY_ITEM);
+                if (rest.length == 25 || rest.length == 26) {
+                    int stateStart = rest.length == 25 ? 18 : 19;
+                    args.rung = (LadderRung) arg(rest, stateStart, CONTEXT_STUDY_ITEM);
+                    args.phase = (SchedulerPhase) arg(rest, stateStart + 1, CONTEXT_STUDY_ITEM);
+                    args.realPassStreak = intArg(rest, stateStart + 2, CONTEXT_STUDY_ITEM);
+                    args.realAgainStreak = intArg(rest, stateStart + 3, CONTEXT_STUDY_ITEM);
+                    args.lastRealReviewDueAtMillis = longArg(rest, stateStart + 4, CONTEXT_STUDY_ITEM);
+                    args.hasSimilarKanji = booleanArg(rest, stateStart + 5, CONTEXT_STUDY_ITEM);
+                    args.similarKanjiMemory = (TaskMemory) arg(rest, stateStart + 6, CONTEXT_STUDY_ITEM);
                 }
                 return args;
             }
 
             void seedMemories(String state, long dueAtMillis, double stability, double difficulty, int totalReviews) {
                 typingMeaningMemory = seedMemoryForStage(-1, this, state, dueAtMillis, stability, difficulty, totalReviews);
+                meaningKanjiMemory = TaskMemory.initial();
                 kanjiMeaningMemory = seedMemoryForStage(0, this, state, dueAtMillis, stability, difficulty, totalReviews);
                 fontMeaningMemory = seedMemoryForStage(1, this, state, dueAtMillis, stability, difficulty, totalReviews);
                 wordReadingMemory = seedMemoryForStage(2, this, state, dueAtMillis, stability, difficulty, totalReviews);
@@ -334,6 +339,14 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                     return;
                 }
                 typingMeaningMemory = (TaskMemory) arg(rest, start, CONTEXT_STUDY_ITEM);
+                if (rest.length == 19 || rest.length == 26) {
+                    meaningKanjiMemory = (TaskMemory) arg(rest, start + 1, CONTEXT_STUDY_ITEM);
+                    kanjiMeaningMemory = (TaskMemory) arg(rest, start + 2, CONTEXT_STUDY_ITEM);
+                    fontMeaningMemory = (TaskMemory) arg(rest, start + 3, CONTEXT_STUDY_ITEM);
+                    wordReadingMemory = (TaskMemory) arg(rest, start + 4, CONTEXT_STUDY_ITEM);
+                    writingRemediationMemory = (TaskMemory) arg(rest, start + 5, CONTEXT_STUDY_ITEM);
+                    return;
+                }
                 kanjiMeaningMemory = (TaskMemory) arg(rest, start + 1, CONTEXT_STUDY_ITEM);
                 fontMeaningMemory = (TaskMemory) arg(rest, start + 2, CONTEXT_STUDY_ITEM);
                 wordReadingMemory = (TaskMemory) arg(rest, start + 3, CONTEXT_STUDY_ITEM);
@@ -451,6 +464,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                 case BridgeScheduler.TASK_WRITING_REMEDIATION, BridgeScheduler.TASK_WRITE_KANJI -> writingRemediationMemory;
                 case BridgeScheduler.TASK_TYPING_MEANING, BridgeScheduler.TASK_TYPE_MEANING -> typingMeaningMemory;
                 case BridgeScheduler.TASK_SIMILAR_KANJI -> similarKanjiMemory;
+                case BridgeScheduler.TASK_MEANING_KANJI -> meaningKanjiMemory;
                 case BridgeScheduler.TASK_WORD_READING -> wordReadingMemory;
                 case BridgeScheduler.TASK_FONT_MEANING -> fontMeaningMemory;
                 default -> kanjiMeaningMemory;
@@ -468,6 +482,8 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                     return typingMeaningMemory;
                 case SIMILAR_KANJI:
                     return similarKanjiMemory;
+                case MEANING_KANJI:
+                    return meaningKanjiMemory;
                 case FONT_MEANING:
                     return fontMeaningMemory;
                 case WORD_READING:
@@ -488,6 +504,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                 case BridgeScheduler.TASK_TYPING_MEANING, BridgeScheduler.TASK_TYPE_MEANING ->
                         copyBuilder().typingMeaningMemory(memory).build();
                 case BridgeScheduler.TASK_SIMILAR_KANJI -> copyBuilder().similarKanjiMemory(memory).build();
+                case BridgeScheduler.TASK_MEANING_KANJI -> copyBuilder().meaningKanjiMemory(memory).build();
                 case BridgeScheduler.TASK_WORD_READING -> copyBuilder().wordReadingMemory(memory).build();
                 case BridgeScheduler.TASK_FONT_MEANING -> copyBuilder().fontMeaningMemory(memory).build();
                 default -> copyBuilder().kanjiMeaningMemory(memory).build();
@@ -538,6 +555,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
             String activeToken;
             long createdAtMillis;
             TaskMemory typingMeaningMemory;
+            TaskMemory meaningKanjiMemory;
             TaskMemory kanjiMeaningMemory;
             TaskMemory fontMeaningMemory;
             TaskMemory wordReadingMemory;
@@ -573,6 +591,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                 this.activeToken = src.activeToken;
                 this.createdAtMillis = src.createdAtMillis;
                 this.typingMeaningMemory = src.typingMeaningMemory;
+                this.meaningKanjiMemory = src.meaningKanjiMemory;
                 this.kanjiMeaningMemory = src.kanjiMeaningMemory;
                 this.fontMeaningMemory = src.fontMeaningMemory;
                 this.wordReadingMemory = src.wordReadingMemory;
@@ -605,6 +624,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
             public StudyItemBuilder activeToken(String value) { this.activeToken = value; return this; }
             public StudyItemBuilder createdAtMillis(long value) { this.createdAtMillis = value; return this; }
             public StudyItemBuilder typingMeaningMemory(TaskMemory value) { this.typingMeaningMemory = value; return this; }
+            public StudyItemBuilder meaningKanjiMemory(TaskMemory value) { this.meaningKanjiMemory = value; return this; }
             public StudyItemBuilder kanjiMeaningMemory(TaskMemory value) { this.kanjiMeaningMemory = value; return this; }
             public StudyItemBuilder fontMeaningMemory(TaskMemory value) { this.fontMeaningMemory = value; return this; }
             public StudyItemBuilder wordReadingMemory(TaskMemory value) { this.wordReadingMemory = value; return this; }
@@ -643,6 +663,7 @@ public abstract class RecordsStudyModels extends RecordsImportModels {
                         activeToken,
                         createdAtMillis,
                         typingMeaningMemory,
+                        meaningKanjiMemory,
                         kanjiMeaningMemory,
                         fontMeaningMemory,
                         wordReadingMemory,

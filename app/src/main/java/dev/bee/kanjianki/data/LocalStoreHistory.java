@@ -1322,6 +1322,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         values.put(COLUMN_MATURE_INTERVAL_DAYS, item.matureIntervalDays);
         values.put(COLUMN_ANSWER_SIGNATURE, item.answerSignature);
         values.put(COLUMN_TYPING_MEANING_MEMORY, item.typingMeaningMemory.encode());
+        values.put(COLUMN_MEANING_KANJI_MEMORY, item.meaningKanjiMemory.encode());
         values.put(COLUMN_KANJI_MEANING_MEMORY, item.kanjiMeaningMemory.encode());
         values.put(COLUMN_FONT_MEANING_MEMORY, item.fontMeaningMemory.encode());
         values.put(COLUMN_WORD_READING_MEMORY, item.wordReadingMemory.encode());
@@ -1386,6 +1387,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                 string(cursor, COLUMN_ACTIVE_TOKEN),
                 longValue(cursor, COLUMN_CREATED_AT),
                 Records.TaskMemory.decode(string(cursor, COLUMN_TYPING_MEANING_MEMORY), typingFallback),
+                Records.TaskMemory.decode(string(cursor, COLUMN_MEANING_KANJI_MEMORY), Records.TaskMemory.initial()),
                 Records.TaskMemory.decode(string(cursor, COLUMN_KANJI_MEANING_MEMORY), kanjiFallback),
                 Records.TaskMemory.decode(string(cursor, COLUMN_FONT_MEANING_MEMORY), fontFallback),
                 Records.TaskMemory.decode(string(cursor, COLUMN_WORD_READING_MEMORY), wordFallback),

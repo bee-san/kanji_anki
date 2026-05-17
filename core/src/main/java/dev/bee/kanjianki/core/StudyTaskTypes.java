@@ -8,6 +8,7 @@ public final class StudyTaskTypes {
     public static final String WRITE_KANJI = "write_kanji";
     public static final String TYPE_MEANING = "type_meaning";
     public static final String SIMILAR_KANJI = "similar_kanji";
+    public static final String MEANING_KANJI = "meaning_kanji";
     public static final String KANJI_MEANING = "kanji_meaning";
     public static final String FONT_MEANING = "font_meaning";
     public static final String WORD_READING = "word_reading";

@@ -106,6 +106,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Focused recall", activity.labelForTask("targeted_flashcard"));
                 assertEquals("Kanji -> meaning", activity.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
                 assertEquals("Type the meaning", activity.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
+                assertEquals("Meaning -> kanji", activity.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
                 assertEquals("Font -> meaning", activity.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
                 assertEquals("Word -> reading", activity.labelForTask(BridgeScheduler.TASK_WORD_READING));
                 assertEquals("Write kanji", activity.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
@@ -740,7 +741,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertNotNull(findButton(ladderOrder, "Restore default ladder"));
                 activity.toggleLadderRung(Records.LadderRung.SIMILAR_KANJI);
                 assertFalse(activity.studyLadderSettings().isEnabled(Records.LadderRung.SIMILAR_KANJI));
-                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(Records.LadderRung.WORD_READING, -5));
+                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(Records.LadderRung.WORD_READING, -6));
                 assertEquals(Records.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
 
                 LinearLayout newCardSort = activity.newCardSortSettingsPanel(activity.settings());

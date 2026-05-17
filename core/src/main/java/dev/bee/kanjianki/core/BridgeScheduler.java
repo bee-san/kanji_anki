@@ -25,6 +25,7 @@ public final class BridgeScheduler {
     public static final String TASK_WRITE_KANJI = StudyTaskTypes.WRITE_KANJI;
     public static final String TASK_TYPE_MEANING = StudyTaskTypes.TYPE_MEANING;
     public static final String TASK_SIMILAR_KANJI = StudyTaskTypes.SIMILAR_KANJI;
+    public static final String TASK_MEANING_KANJI = StudyTaskTypes.MEANING_KANJI;
     public static final String TASK_KANJI_MEANING = StudyTaskTypes.KANJI_MEANING;
     public static final String TASK_FONT_MEANING = StudyTaskTypes.FONT_MEANING;
     public static final String TASK_WORD_READING = StudyTaskTypes.WORD_READING;

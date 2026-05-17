@@ -762,6 +762,8 @@ abstract class MainActivityHome extends MainActivityBase {
                 return "type meaning";
             case SIMILAR_KANJI:
                 return "similar kanji";
+            case MEANING_KANJI:
+                return "meaning -> kanji";
             case FONT_MEANING:
                 return "font -> meaning";
             case WORD_READING:

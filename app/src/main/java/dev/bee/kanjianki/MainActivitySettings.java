@@ -1264,6 +1264,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             case WRITE_KANJI -> "Write kanji";
             case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
             case TYPE_MEANING -> "Type the meaning";
+            case MEANING_KANJI -> "Meaning -> kanji";
             case KANJI_MEANING -> "Kanji -> meaning";
             case FONT_MEANING -> "Font -> meaning";
             case WORD_READING -> "Word -> reading";

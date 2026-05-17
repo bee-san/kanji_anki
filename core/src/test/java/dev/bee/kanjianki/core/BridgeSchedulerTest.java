@@ -148,6 +148,15 @@ public class BridgeSchedulerTest {
                 Collections.singletonList(row("裂", 10)),
                 1000L
         );
+        Records.StudySession meaningKanji = scheduler.nextSession(
+                Collections.singletonList(itemAtRung("浅", Records.LadderRung.MEANING_KANJI)),
+                Collections.singletonList(row("浅", 10)),
+                1000L,
+                0L,
+                null,
+                Records.Settings.kikuDefaults(),
+                Records.StudyLadderSettings.defaults().withRungEnabled(Records.LadderRung.MEANING_KANJI, true)
+        );
         Records.StudySession font = scheduler.nextSession(
                 Collections.singletonList(itemAtRung("謎", Records.LadderRung.FONT_MEANING)),
                 Collections.singletonList(row("謎", 10)),
@@ -160,14 +169,17 @@ public class BridgeSchedulerTest {
         );
 
         assertNotNull(typing);
+        assertNotNull(meaningKanji);
         assertNotNull(kanji);
         assertNotNull(font);
         assertNotNull(word);
         assertEquals("type_meaning", typing.taskType);
+        assertEquals("meaning_kanji", meaningKanji.taskType);
         assertEquals("kanji_meaning", kanji.taskType);
         assertEquals("font_meaning", font.taskType);
         assertEquals("word_reading", word.taskType);
         assertFalse(typing.writingRequired);
+        assertFalse(meaningKanji.writingRequired);
         assertFalse(kanji.writingRequired);
         assertFalse(font.writingRequired);
         assertFalse(word.writingRequired);
@@ -1102,10 +1114,12 @@ public class BridgeSchedulerTest {
     @Test
     public void reseedResetsNonRetiredItemWhenAnswerSignatureChanges() {
         BridgeScheduler scheduler = new BridgeScheduler();
+        Records.TaskMemory oldMeaningMemory = new Records.TaskMemory("review", 5000L, 2.0, 4.5, 7, 1, 2, "good", 12);
         Records.StudyItem learned = reviewItem("裂", Records.LadderRung.FONT_MEANING, 5000L)
                 .copyBuilder()
                 .answerSignature("裂|old|old|old")
                 .activeToken("active")
+                .meaningKanjiMemory(oldMeaningMemory)
                 .realPassStreak(2)
                 .realAgainStreak(1)
                 .lastRealReviewDueAtMillis(123L)
@@ -1132,6 +1146,8 @@ public class BridgeSchedulerTest {
         assertEquals(Records.LadderRung.KANJI_MEANING, reset.rung);
         assertEquals(0, reset.realPassStreak);
         assertEquals(0, reset.lastRealReviewDueAtMillis);
+        assertEquals("new", reset.meaningKanjiMemory.state);
+        assertEquals(0, reset.meaningKanjiMemory.totalReviews);
     }
 
     @Test
@@ -1467,6 +1483,10 @@ public class BridgeSchedulerTest {
 
         assertFalse(without.contains(Records.LadderRung.SIMILAR_KANJI));
         assertTrue(with.contains(Records.LadderRung.SIMILAR_KANJI));
+        assertTrue(without.contains(Records.LadderRung.MEANING_KANJI));
+        assertTrue(with.contains(Records.LadderRung.MEANING_KANJI));
+        assertTrue(with.indexOf(Records.LadderRung.TYPE_MEANING) < with.indexOf(Records.LadderRung.MEANING_KANJI));
+        assertTrue(with.indexOf(Records.LadderRung.MEANING_KANJI) < with.indexOf(Records.LadderRung.KANJI_MEANING));
         assertEquals(Records.LadderRung.WRITE_KANJI, with.get(0));
         assertEquals(Records.LadderRung.WORD_READING, with.get(with.size() - 1));
     }
@@ -1505,8 +1525,43 @@ public class BridgeSchedulerTest {
         );
 
         assertNotNull(session);
-        assertEquals(Records.LadderRung.TYPE_MEANING, session.item.rung);
-        assertEquals(BridgeScheduler.TASK_TYPE_MEANING, session.taskType);
+        assertEquals(Records.LadderRung.MEANING_KANJI, session.item.rung);
+        assertEquals(BridgeScheduler.TASK_MEANING_KANJI, session.taskType);
+    }
+
+    @Test
+    public void mappedMeaningKanjiReviewInheritsExistingSchedulerMemory() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
+                .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
+        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 500L)
+                .copyBuilder()
+                .stability(2.5)
+                .difficulty(4.2)
+                .totalReviews(5)
+                .matureIntervalDays(12)
+                .build();
+        Records.StudySession session = scheduler.nextSession(
+                Collections.singletonList(item),
+                Collections.singletonList(row("裂", 20)),
+                1000L,
+                0L,
+                null,
+                Records.Settings.kikuDefaults(),
+                ladder
+        );
+
+        Records.ReviewResult result = scheduler.applyReview(
+                session.item.withToken("meaning-pass"),
+                new Records.ReviewRequest("裂", "meaning-pass", "good", false, false, false, 0),
+                new HashSet<>(),
+                1000L,
+                Records.SchedulerParameters.defaults(),
+                Records.Settings.kikuDefaults(),
+                ladder
+        );
+
+        assertEquals(6, result.item.meaningKanjiMemory.totalReviews);
     }
 
     @Test

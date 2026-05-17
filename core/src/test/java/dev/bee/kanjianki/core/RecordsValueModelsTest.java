@@ -449,6 +449,7 @@ public class RecordsValueModelsTest {
 
         assertEquals(fixture.writing, fixture.legacyMemories.memoryForTaskType(BridgeScheduler.TASK_WRITE_KANJI));
         assertEquals(fixture.typed, fixture.legacyMemories.withTaskMemory(BridgeScheduler.TASK_TYPE_MEANING, fixture.typed).typingMeaningMemory);
+        assertEquals(fixture.typed, fixture.legacyMemories.withTaskMemory(BridgeScheduler.TASK_MEANING_KANJI, fixture.typed).meaningKanjiMemory);
         assertEquals(fixture.font, fixture.legacyMemories.withTaskMemory(BridgeScheduler.TASK_FONT_MEANING, fixture.font).fontMeaningMemory);
         assertEquals(fixture.word, fixture.legacyMemories.withTaskMemory(BridgeScheduler.TASK_WORD_READING, fixture.word).wordReadingMemory);
         assertEquals(fixture.kanji, fixture.legacyMemories.withTaskMemory(null, fixture.kanji).kanjiMeaningMemory);
@@ -461,6 +462,7 @@ public class RecordsValueModelsTest {
         assertEquals(fixture.kanji, fixture.legacyMemories.memoryForRung(null));
         assertEquals(fixture.writing, fixture.legacyMemories.memoryForRung(Records.LadderRung.WRITE_KANJI));
         assertEquals(fixture.typed, fixture.legacyMemories.withTaskMemory(BridgeScheduler.TASK_TYPE_MEANING, fixture.typed).memoryForRung(Records.LadderRung.TYPE_MEANING));
+        assertEquals(Records.TaskMemory.initial().state, fixture.legacyMemories.memoryForRung(Records.LadderRung.MEANING_KANJI).state);
         assertEquals(fixture.kanji, fixture.legacyMemories.memoryForRung(Records.LadderRung.KANJI_MEANING));
         assertEquals(fixture.font, fixture.legacyMemories.memoryForRung(Records.LadderRung.FONT_MEANING));
         assertEquals(fixture.word, fixture.legacyMemories.memoryForRung(Records.LadderRung.WORD_READING));

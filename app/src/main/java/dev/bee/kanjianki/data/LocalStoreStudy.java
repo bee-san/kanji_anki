@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
@@ -80,6 +81,10 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         } finally {
             db.endTransaction();
         }
+    }
+
+    public KanjiImpactAnalyzer.Report kanjiImpactReport() {
+        return new KanjiImpactReportStore((LocalStore) this).report();
     }
 
     long insertReview(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt, Records.StudyItem beforeReview, Records.StudyItem afterReview) {

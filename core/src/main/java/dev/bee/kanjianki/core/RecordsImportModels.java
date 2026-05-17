@@ -417,6 +417,31 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
         }
     }
 
+    public static final class MeaningKanjiChoiceCard {
+        public final String targetKanji;
+        public final String primaryMeaning;
+        public final String reading;
+        public final List<String> choices;
+
+        public MeaningKanjiChoiceCard(String targetKanji, String primaryMeaning, String reading, List<String> choices) {
+            this.targetKanji = nullToEmpty(targetKanji).trim();
+            this.primaryMeaning = nullToEmpty(primaryMeaning).trim();
+            this.reading = nullToEmpty(reading).trim();
+            List<String> normalizedChoices = new ArrayList<>();
+            for (String choice : nullToEmptyList(choices)) {
+                String value = nullToEmpty(choice).trim();
+                if (!value.isEmpty()) {
+                    normalizedChoices.add(value);
+                }
+            }
+            this.choices = Collections.unmodifiableList(normalizedChoices);
+        }
+
+        public boolean isCorrect(String selectedKanji) {
+            return targetKanji.equals(nullToEmpty(selectedKanji).trim());
+        }
+    }
+
     public static final class SimilarKanjiWritingRepair {
         public final long id;
         public final String targetKanji;

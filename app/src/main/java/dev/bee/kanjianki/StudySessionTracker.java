@@ -2,6 +2,7 @@ package dev.bee.kanjianki;
 
 import android.os.SystemClock;
 
+import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
@@ -14,6 +15,8 @@ final class StudySessionTracker {
     private ActiveStudyTask activeTask;
     private final Set<String> completedTaskKeys = new HashSet<>();
     private final Set<String> seenTaskKeys = new HashSet<>();
+    private final Set<String> movedForwardKanji = new HashSet<>();
+    private final Set<String> missedKanji = new HashSet<>();
 
     int completedCount() {
         return completedCount;
@@ -23,11 +26,21 @@ final class StudySessionTracker {
         return targetCount;
     }
 
+    int movedForwardCount() {
+        return movedForwardKanji.size();
+    }
+
+    int missedCount() {
+        return missedKanji.size();
+    }
+
     void resetProgress() {
         completedCount = 0;
         targetCount = 0;
         completedTaskKeys.clear();
         seenTaskKeys.clear();
+        movedForwardKanji.clear();
+        missedKanji.clear();
     }
 
     void initializeTarget(Records.AdaptiveLoadPlan plan) {
@@ -129,6 +142,33 @@ final class StudySessionTracker {
         activeTask = null;
     }
 
+    void recordReviewOutcome(String kanji, String appliedRating, Records.StudyItem before, Records.StudyItem after) {
+        String safeKanji = safeKanji(kanji);
+        if (safeKanji.isEmpty()) {
+            return;
+        }
+        boolean moved = !BridgeScheduler.RATING_AGAIN.equals(appliedRating) || locallyImproved(before, after);
+        if (moved) {
+            movedForwardKanji.add(safeKanji);
+            missedKanji.remove(safeKanji);
+        } else {
+            missedKanji.add(safeKanji);
+        }
+    }
+
+    void recordRepairOutcome(String kanji, boolean passed) {
+        String safeKanji = safeKanji(kanji);
+        if (safeKanji.isEmpty()) {
+            return;
+        }
+        if (passed) {
+            movedForwardKanji.add(safeKanji);
+            missedKanji.remove(safeKanji);
+        } else if (!movedForwardKanji.contains(safeKanji)) {
+            missedKanji.add(safeKanji);
+        }
+    }
+
     void pauseActiveTask() {
         if (activeTask != null) {
             activeTask.pause(SystemClock.elapsedRealtime());
@@ -147,6 +187,18 @@ final class StudySessionTracker {
 
     private static boolean isEmpty(String key) {
         return key == null || key.isEmpty();
+    }
+
+    private static String safeKanji(String kanji) {
+        return kanji == null ? "" : kanji.trim();
+    }
+
+    private static boolean locallyImproved(Records.StudyItem before, Records.StudyItem after) {
+        if (before == null || after == null) {
+            return false;
+        }
+        return after.writingLevel > before.writingLevel
+                || after.realPassStreak > before.realPassStreak;
     }
 
     static final class ActiveStudyTask {

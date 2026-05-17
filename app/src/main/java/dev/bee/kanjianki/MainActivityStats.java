@@ -3,6 +3,7 @@ package dev.bee.kanjianki;
 import android.graphics.Color;
 import android.widget.LinearLayout;
 
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.StudyStatsStore;
 
@@ -34,6 +35,7 @@ abstract class MainActivityStats extends MainActivityGames {
                 supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
+        content.addView(notHelpingPanel(store.kanjiImpactReport()));
         content.addView(ladderHealthPanel(stats.ladderHealth));
         content.addView(studyTimePanel(studyTime));
     }
@@ -121,6 +123,60 @@ abstract class MainActivityStats extends MainActivityGames {
         return box;
     }
 
+    LinearLayout notHelpingPanel(KanjiImpactAnalyzer.Report report) {
+        List<KanjiImpactAnalyzer.Row> rows = notHelpingRows(report);
+        LinearLayout box = statPanel(
+                "Kani Not Helping Yet",
+                countText(rows.size(), "kanji with enough evidence", "kanji with enough evidence"),
+                notHelpingBody(report, rows),
+                CORAL
+        );
+        int maxRows = Math.min(5, rows.size());
+        for (int i = 0; i < maxRows; i++) {
+            KanjiImpactAnalyzer.Row row = rows.get(i);
+            box.addView(text(notHelpingRowText(row), 16, INK, true));
+        }
+        if (report != null && report.needsMoreCardsCount > 0) {
+            box.addView(text(countText(report.needsMoreCardsCount, "kanji still needs more Anki evidence", "kanji still need more Anki evidence") + ".", 15, MUTED, false));
+        }
+        return box;
+    }
+
+    List<KanjiImpactAnalyzer.Row> notHelpingRows(KanjiImpactAnalyzer.Report report) {
+        List<KanjiImpactAnalyzer.Row> rows = new ArrayList<>();
+        if (report == null) {
+            return rows;
+        }
+        for (KanjiImpactAnalyzer.Row row : report.rows) {
+            if (KanjiImpactAnalyzer.BUCKET_NOT_HELPING.equals(row.bucket)) {
+                rows.add(row);
+            }
+        }
+        return rows;
+    }
+
+    String notHelpingBody(KanjiImpactAnalyzer.Report report, List<KanjiImpactAnalyzer.Row> rows) {
+        if (report == null || report.empty()) {
+            return "No Kani impact evidence yet. Review in Kani, then sync AnkiDroid so this page can compare before and after.";
+        }
+        if (rows.isEmpty()) {
+            return "No sufficiently proven not-helping kanji right now. Sparse cases stay out of this list until Kani has enough reviews and synced Anki evidence.";
+        }
+        return "Only kanji with at least 3 Kani reviews, 2 current Anki cards, and same-card before/after evidence appear here.";
+    }
+
+    String notHelpingRowText(KanjiImpactAnalyzer.Row row) {
+        return row.kanji
+                + "  "
+                + row.reviewCount
+                + " Kani reviews · "
+                + row.sameCardCount
+                + " same-card checks · retention "
+                + formatSignedPercent(row.retentionDelta)
+                + " · difficulty "
+                + formatSignedDecimal(row.difficultyDelta);
+    }
+
     String ladderHealthBody(StudyStatsStore.LadderHealthMetric metric) {
         if (metric.totalActiveItems == 0) {
             return "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder.";
@@ -152,6 +208,7 @@ abstract class MainActivityStats extends MainActivityGames {
             case WRITE_KANJI -> "Write kanji";
             case TYPE_MEANING -> "Type meaning";
             case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
+            case MEANING_KANJI -> "Meaning kanji";
             case KANJI_MEANING -> "Kanji meaning";
             case FONT_MEANING -> "Font meaning";
             case WORD_READING -> "Word reading";
@@ -189,6 +246,14 @@ abstract class MainActivityStats extends MainActivityGames {
 
     String formatWeakness(double weakness) {
         return String.format(java.util.Locale.ROOT, "%.2f", weakness);
+    }
+
+    String formatSignedPercent(double value) {
+        return String.format(java.util.Locale.ROOT, "%+.0f%%", value * 100.0);
+    }
+
+    String formatSignedDecimal(double value) {
+        return String.format(java.util.Locale.ROOT, "%+.1f", value);
     }
 
     String formatStudyTime(long millis) {

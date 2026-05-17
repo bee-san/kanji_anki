@@ -56,6 +56,7 @@ public abstract class RecordsBase {
         WRITE_KANJI("write_kanji"),
         TYPE_MEANING("type_meaning"),
         SIMILAR_KANJI("similar_kanji"),
+        MEANING_KANJI("meaning_kanji"),
         KANJI_MEANING("kanji_meaning"),
         FONT_MEANING("font_meaning"),
         WORD_READING("word_reading");
@@ -114,12 +115,15 @@ public abstract class RecordsBase {
 
         public static StudyLadderSettings defaults() {
             List<LadderRung> order = defaultsOrder();
-            return new StudyLadderSettings(order, order, false);
+            return new StudyLadderSettings(order, defaultsEnabled(), false);
         }
 
         public static StudyLadderSettings fromStored(String orderValue, String enabledValue) {
             List<LadderRung> order = splitRungs(orderValue);
             List<LadderRung> enabled = splitRungs(enabledValue);
+            if (!order.contains(LadderRung.MEANING_KANJI) && hasAlwaysAvailableRung(enabled) && !enabled.contains(LadderRung.MEANING_KANJI)) {
+                enabled.add(LadderRung.MEANING_KANJI);
+            }
             if (order.isEmpty() && enabled.isEmpty()) {
                 return defaults();
             }
@@ -280,10 +284,38 @@ public abstract class RecordsBase {
             }
             for (LadderRung rung : defaultsOrder()) {
                 if (!out.contains(rung)) {
-                    out.add(rung);
+                    insertMissingRung(out, rung);
                 }
             }
             return out;
+        }
+
+        private static void insertMissingRung(List<LadderRung> out, LadderRung missing) {
+            List<LadderRung> defaults = defaultsOrder();
+            int defaultIndex = defaults.indexOf(missing);
+            int previousIndex = -1;
+            int nextIndex = -1;
+            for (int i = defaultIndex - 1; i >= 0; i--) {
+                previousIndex = out.indexOf(defaults.get(i));
+                if (previousIndex >= 0) {
+                    break;
+                }
+            }
+            for (int i = defaultIndex + 1; i < defaults.size(); i++) {
+                nextIndex = out.indexOf(defaults.get(i));
+                if (nextIndex >= 0) {
+                    break;
+                }
+            }
+            if (previousIndex >= 0 && nextIndex >= 0 && previousIndex < nextIndex) {
+                out.add(nextIndex, missing);
+            } else if (previousIndex >= 0) {
+                out.add(previousIndex + 1, missing);
+            } else if (nextIndex >= 0) {
+                out.add(nextIndex, missing);
+            } else {
+                out.add(missing);
+            }
         }
 
         private static List<LadderRung> normalizeEnabled(List<LadderRung> requested, List<LadderRung> order) {
@@ -314,10 +346,15 @@ public abstract class RecordsBase {
             out.add(LadderRung.WRITE_KANJI);
             out.add(LadderRung.SIMILAR_KANJI);
             out.add(LadderRung.TYPE_MEANING);
+            out.add(LadderRung.MEANING_KANJI);
             out.add(LadderRung.KANJI_MEANING);
             out.add(LadderRung.FONT_MEANING);
             out.add(LadderRung.WORD_READING);
             return out;
+        }
+
+        private static List<LadderRung> defaultsEnabled() {
+            return new ArrayList<>(defaultsOrder());
         }
 
         private static String joinRungs(List<LadderRung> rungs) {
@@ -369,6 +406,7 @@ public abstract class RecordsBase {
     protected static final String CONTEXT_DASHBOARD_ROW = "DashboardRow";
     protected static final String CONTEXT_KANJI_INVENTORY_ITEM = "KanjiInventoryItem";
     protected static final String CONTEXT_SIMILAR_KANJI_CHOICE_CARD = "SimilarKanjiChoiceCard";
+    protected static final String CONTEXT_MEANING_KANJI_CHOICE_CARD = "MeaningKanjiChoiceCard";
     protected static final String CONTEXT_SIMILAR_KANJI_WRITING_REPAIR = "SimilarKanjiWritingRepair";
     protected static final String CONTEXT_KANJI_TIMELINE_EVENT = "KanjiTimelineEvent";
     protected static final String CONTEXT_TASK_MEMORY = "TaskMemory";

@@ -80,6 +80,7 @@ public final class StudyStatsStoreTest {
                         item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 0),
                         item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 0, 0),
                         item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", Records.LadderRung.MEANING_KANJI, Records.SchedulerPhase.REVIEW, 0, 0),
                         item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 0, 0),
                         item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.REVIEW, 0, 0),
                         item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.REVIEW, 0, 0),
@@ -88,7 +89,7 @@ public final class StudyStatsStoreTest {
                 3
         );
 
-        assertEquals(6, stats.ladderHealth.totalActiveItems);
+        assertEquals(7, stats.ladderHealth.totalActiveItems);
         for (Records.LadderRung rung : Records.LadderRung.values()) {
             assertEquals(1, stats.ladderHealth.countFor(rung));
         }

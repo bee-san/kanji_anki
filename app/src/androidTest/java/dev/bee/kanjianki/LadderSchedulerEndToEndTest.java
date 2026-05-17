@@ -160,11 +160,11 @@ public final class LadderSchedulerEndToEndTest {
             store.saveStudyItem(current);
         }
 
-        // Verify demotion persisted (KANJI_MEANING -> TYPE_MEANING, skipping similar_kanji since hasSimilarKanji=false)
+        // Verify demotion persisted (KANJI_MEANING -> MEANING_KANJI).
         List<Records.StudyItem> reloaded = store.studyItems();
         assertEquals(1, reloaded.size());
         Records.StudyItem demoted = reloaded.get(0);
-        assertEquals(Records.LadderRung.TYPE_MEANING, demoted.rung);
+        assertEquals(Records.LadderRung.MEANING_KANJI, demoted.rung);
     }
 
     // ---- Similar kanji rung skipped when hasSimilarKanji is false ----
@@ -202,7 +202,7 @@ public final class LadderSchedulerEndToEndTest {
         // Seed with similar_kanji_pairs so hasSimilarKanji is true
         seedSyncWithSimilarPairs("裂", "烈");
         long dueAt = System.currentTimeMillis() - 1000L;
-        Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.TYPE_MEANING, dueAt)
+        Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.WRITE_KANJI, dueAt)
                 .copyBuilder().hasSimilarKanji(true).build();
         store.replaceStudyItems(Collections.singletonList(item));
 
@@ -493,7 +493,7 @@ public final class LadderSchedulerEndToEndTest {
     }
 
     @Test
-    public void demotionFromKanjiMeaningIncludesSimilarKanjiWhenAvailable() throws Exception {
+    public void demotionFromKanjiMeaningSkipsDisabledMeaningKanji() throws Exception {
         seedSyncWithSimilarPairs("裂", "烈");
         long dueAt = System.currentTimeMillis() - 1000L;
         Records.StudyItem item = reviewItemOnRung("裂", Records.LadderRung.KANJI_MEANING, dueAt)
@@ -519,9 +519,9 @@ public final class LadderSchedulerEndToEndTest {
             store.saveStudyItem(current);
         }
 
-        // With hasSimilarKanji=true, demotion should land on SIMILAR_KANJI (not TYPE_MEANING)
+        // MEANING_KANJI now sits between type and recognition, so KANJI_MEANING demotes there first.
         List<Records.StudyItem> reloaded = store.studyItems();
-        assertEquals(Records.LadderRung.SIMILAR_KANJI, reloaded.get(0).rung);
+        assertEquals(Records.LadderRung.MEANING_KANJI, reloaded.get(0).rung);
     }
 
     @Test

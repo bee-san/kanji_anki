@@ -129,7 +129,7 @@ public final class KanjiImpactAnalyzerTest {
         KanjiImpactAnalyzer.Report report = analyzer.analyze(Arrays.asList(
                 null,
                 history("", metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
-                history("拉", metric(2, 0, 0, 1.0, 4, 1, 5.0, 0.75), metric(2, 0, 0, 1.0, 4, 1, 5.0, 0.75), null, null, 2, 0, 1)
+                history("拉", metric(2, 0, 0, 1.0, 4, 1, 5.0, 0.75), metric(2, 0, 0, 1.0, 4, 1, 5.0, 0.75), null, null, 2, 0, 3)
         ));
 
         assertTrue(nullReport.empty());
@@ -161,6 +161,26 @@ public final class KanjiImpactAnalyzerTest {
         assertEquals(0.0, row.currentRetention, 0.001);
         assertEquals(0, row.currentCardCount);
     }
+
+    @Test
+    public void fewerThanThreeKaniReviewsNeedsMoreEvidence() {
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer().analyze(Collections.singletonList(
+                history(
+                        "浅",
+                        metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60),
+                        metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60),
+                        metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60),
+                        metric(2, 0, 0, 20.0, 10, 3, 6.0, 0.60),
+                        2,
+                        0,
+                        2
+                )
+        ));
+
+        assertEquals(1, report.needsMoreCardsCount);
+        assertEquals(KanjiImpactAnalyzer.BUCKET_NEEDS_MORE_CARDS, report.rows.get(0).bucket);
+    }
+
 
     @Test
     public void rowsSortByBucketRetentionDeltaThenKanji() {
@@ -198,9 +218,9 @@ public final class KanjiImpactAnalyzerTest {
                 history("少", metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(1, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
                 history("共", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 0, 0, 1),
                 history("基", null, metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
-                history("熟", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 1, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 1),
-                history("易", metric(2, 0, 0, 1.0, 1, 0, 6.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.6, 0.80), null, null, 1, 0, 1),
-                history("覚", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.90), null, null, 1, 0, 1)
+                history("熟", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 1, 1.0, 1, 0, 5.0, 0.80), null, null, 1, 0, 3),
+                history("易", metric(2, 0, 0, 1.0, 1, 0, 6.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.6, 0.80), null, null, 1, 0, 3),
+                history("覚", metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.80), metric(2, 0, 0, 1.0, 1, 0, 5.0, 0.90), null, null, 1, 0, 3)
         ));
 
         assertEquals(3, report.helpedCount);

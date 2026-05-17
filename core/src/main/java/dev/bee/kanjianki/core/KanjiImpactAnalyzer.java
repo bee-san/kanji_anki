@@ -14,6 +14,7 @@ public final class KanjiImpactAnalyzer {
 
     private static final double RETENTION_HELP_THRESHOLD = 0.08;
     private static final double DIFFICULTY_HELP_THRESHOLD = -0.30;
+    private static final int MIN_REVIEWS_TO_JUDGE = 3;
 
     public Report analyze(List<KanjiHistory> histories) {
         if (histories == null || histories.isEmpty()) {
@@ -66,7 +67,11 @@ public final class KanjiImpactAnalyzer {
     }
 
     private String bucketFor(KanjiHistory history, MetricSnapshot baseline, MetricSnapshot current) {
-        if (history.current == null || history.current.totalCards() < 2 || history.commonCards <= 0 || baseline == null) {
+        if (history.current == null
+                || history.current.totalCards() < 2
+                || history.commonCards <= 0
+                || history.reviewCount < MIN_REVIEWS_TO_JUDGE
+                || baseline == null) {
             return BUCKET_NEEDS_MORE_CARDS;
         }
         double retentionDelta = current.retentionScore() - baseline.retentionScore();

@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase;
 
 final class LocalStoreSchema {
     static final String DB_NAME = "kanji_anki_simple.db";
-    static final int DB_VERSION = 19;
+    static final int DB_VERSION = 20;
 
     private LocalStoreSchema() {
     }

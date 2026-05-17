@@ -86,6 +86,9 @@ final class LocalStoreMigrations {
             hooks.repairHistoricalSyncSnapshotsIfPossible(db);
         }
         if (shouldRun(oldVersion, targetVersion, 19)) {
+            hooks.addNullableColumn(db, LocalStoreBase.TABLE_STUDY_ITEMS, LocalStoreBase.COLUMN_MEANING_KANJI_MEMORY, LocalStoreBase.SQL_TEXT_NOT_NULL_DEFAULT_EMPTY);
+        }
+        if (shouldRun(oldVersion, targetVersion, 20)) {
             hooks.createImportAuditTables(db);
         }
     }

@@ -89,11 +89,13 @@ Default ladder order from lowest to highest rung:
 1. `write_kanji`
 2. `similar_kanji`
 3. `type_meaning`
-4. `kanji_meaning`
-5. `font_meaning`
-6. `word_reading`
+4. `meaning_kanji`
+5. `kanji_meaning`
+6. `font_meaning`
+7. `word_reading`
 
-Users can turn rungs off or move them in Settings. New cards start at
+`meaning_kanji` is present in the editable default order, but is off by default.
+Users can turn rungs on/off or move them in Settings. New cards start at
 `kanji_meaning`; if that rung is disabled, they start at the nearest enabled
 rung, preferring the lower/easier rung when the distance ties. The
 `similar_kanji` rung exists only when the app can produce valid similar-kanji
@@ -142,6 +144,7 @@ Study UI renders one current rung at a time. Rung rendering:
 - `write_kanji` → handwriting pad and writing evaluation.
 - `type_meaning` → typed answer box.
 - `similar_kanji` → multiple-choice selector from visually similar kanji.
+- `meaning_kanji` → multiple-choice selector from four local kanji.
 - `kanji_meaning` → standard recognition card.
 - `font_meaning` → recognition card with font variation.
 - `word_reading` → reading prompt.
