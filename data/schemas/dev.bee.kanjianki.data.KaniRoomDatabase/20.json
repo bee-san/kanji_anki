@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 20,
-    "identityHash": "f3c02ed92833e97373c14fa6b551e31d",
+    "identityHash": "1b547a278e563c0f7b8a5ff0a2b31338",
     "entities": [
       {
         "tableName": "settings",
@@ -33,11 +33,255 @@
             "key"
           ]
         }
+      },
+      {
+        "tableName": "source_notes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`note_id` INTEGER NOT NULL, `model_name` TEXT NOT NULL, `expression` TEXT NOT NULL, `reading` TEXT NOT NULL, `meaning` TEXT NOT NULL, `sentence` TEXT NOT NULL, `fields_json` TEXT NOT NULL, `tags` TEXT NOT NULL, `last_seen_sync_id` INTEGER NOT NULL, PRIMARY KEY(`note_id`))",
+        "fields": [
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modelName",
+            "columnName": "model_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expression",
+            "columnName": "expression",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reading",
+            "columnName": "reading",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "meaning",
+            "columnName": "meaning",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentence",
+            "columnName": "sentence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fieldsJson",
+            "columnName": "fields_json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenSyncId",
+            "columnName": "last_seen_sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "note_id"
+          ]
+        }
+      },
+      {
+        "tableName": "source_cards",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`card_id` INTEGER NOT NULL, `note_id` INTEGER NOT NULL, `deck_name` TEXT NOT NULL, `ord` INTEGER NOT NULL, `queue` INTEGER NOT NULL, `type` INTEGER NOT NULL, `due` INTEGER NOT NULL, `interval_days` INTEGER NOT NULL, `reps` INTEGER NOT NULL, `lapses` INTEGER NOT NULL, `fsrs_stability` REAL, `fsrs_difficulty` REAL, `fsrs_retrievability` REAL, `last_seen_sync_id` INTEGER NOT NULL, PRIMARY KEY(`card_id`))",
+        "fields": [
+          {
+            "fieldPath": "cardId",
+            "columnName": "card_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "noteId",
+            "columnName": "note_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deckName",
+            "columnName": "deck_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ord",
+            "columnName": "ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queue",
+            "columnName": "queue",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "due",
+            "columnName": "due",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "interval_days",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reps",
+            "columnName": "reps",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lapses",
+            "columnName": "lapses",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fsrsStability",
+            "columnName": "fsrs_stability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsDifficulty",
+            "columnName": "fsrs_difficulty",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "fsrsRetrievability",
+            "columnName": "fsrs_retrievability",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "lastSeenSyncId",
+            "columnName": "last_seen_sync_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "card_id"
+          ]
+        }
+      },
+      {
+        "tableName": "sync_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT, `started_at` INTEGER NOT NULL, `finished_at` INTEGER, `status` TEXT NOT NULL, `active_notes_count` INTEGER NOT NULL, `active_cards_count` INTEGER NOT NULL, `suspended_cards_archived_count` INTEGER NOT NULL, `suspended_kanji_imported_count` INTEGER NOT NULL, `deleted_notes_count` INTEGER NOT NULL, `deleted_cards_count` INTEGER NOT NULL, `error_code` TEXT, `error_message` TEXT, `removal_message` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finished_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeNotesCount",
+            "columnName": "active_notes_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeCardsCount",
+            "columnName": "active_cards_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedCardsArchivedCount",
+            "columnName": "suspended_cards_archived_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suspendedKanjiImportedCount",
+            "columnName": "suspended_kanji_imported_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedNotesCount",
+            "columnName": "deleted_notes_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedCardsCount",
+            "columnName": "deleted_cards_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "error_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "error_message",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "removalMessage",
+            "columnName": "removal_message",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f3c02ed92833e97373c14fa6b551e31d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1b547a278e563c0f7b8a5ff0a2b31338')"
     ]
   }
 }
