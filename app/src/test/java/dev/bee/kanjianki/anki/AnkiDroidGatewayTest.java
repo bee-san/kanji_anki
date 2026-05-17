@@ -249,26 +249,22 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void cardProgressReportingIsThrottledForLargeSyncs() throws Exception {
-        Object gateway = uninitializedGateway();
-
-        assertTrue(shouldReportCardProgress(gateway, 0, 500));
-        assertTrue(shouldReportCardProgress(gateway, 1, 500));
-        assertTrue(shouldReportCardProgress(gateway, 10, 500));
-        assertFalse(shouldReportCardProgress(gateway, 11, 500));
-        assertTrue(shouldReportCardProgress(gateway, 20, 500));
-        assertFalse(shouldReportCardProgress(gateway, 25, 500));
-        assertTrue(shouldReportCardProgress(gateway, 500, 500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(0, 500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(1, 500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(10, 500));
+        assertFalse(AnkiDroidCardReader.shouldReportCardProgress(11, 500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(20, 500));
+        assertFalse(AnkiDroidCardReader.shouldReportCardProgress(25, 500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(500, 500));
     }
 
     @Test
     public void cardProgressReportingUsesWiderStepsForVeryLargeSyncs() throws Exception {
-        Object gateway = uninitializedGateway();
-
-        assertTrue(shouldReportCardProgress(gateway, 10, 1500));
-        assertFalse(shouldReportCardProgress(gateway, 20, 1500));
-        assertTrue(shouldReportCardProgress(gateway, 50, 1500));
-        assertFalse(shouldReportCardProgress(gateway, 75, 1500));
-        assertTrue(shouldReportCardProgress(gateway, 1500, 1500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(10, 1500));
+        assertFalse(AnkiDroidCardReader.shouldReportCardProgress(20, 1500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(50, 1500));
+        assertFalse(AnkiDroidCardReader.shouldReportCardProgress(75, 1500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(1500, 1500));
     }
 
     @Test
@@ -439,7 +435,7 @@ public final class AnkiDroidGatewayTest {
     public void doubleValueTreatsNullStringAsMissingWhenCursorReportsValuePresent() throws Exception {
         Cursor cursor = cursorWithStringNullButNotSqlNull("fsrs_stability");
 
-        assertNull(invokePrivateStatic("doubleValue", new Class<?>[]{Cursor.class, String.class}, cursor, "fsrs_stability"));
+        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "doubleValue", new Class<?>[]{Cursor.class, String.class}, cursor, "fsrs_stability"));
     }
 
     @Test
@@ -456,11 +452,11 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void parseDoubleRejectsNullInvalidAndNonFiniteValues() throws Exception {
-        assertNull(invokePrivateStatic("parseDouble", new Class<?>[]{String.class}, new Object[]{null}));
-        assertNull(invokePrivateStatic("parseDouble", new Class<?>[]{String.class}, "bad"));
-        assertNull(invokePrivateStatic("parseDouble", new Class<?>[]{String.class}, repeat("9", 400)));
-        assertNull(invokePrivateStatic("parseDouble", new Class<?>[]{String.class}, "1e309"));
-        assertEquals(5.0, (Double) invokePrivateStatic("parseDouble", new Class<?>[]{String.class}, "+.5e1"), 0.0001);
+        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, new Object[]{null}));
+        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "bad"));
+        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, repeat("9", 400)));
+        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "1e309"));
+        assertEquals(5.0, (Double) invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "+.5e1"), 0.0001);
     }
 
     @Test
@@ -491,38 +487,21 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void cardProgressReportingCoversSmallTotalsAndBoundaryValues() throws Exception {
-        Object gateway = uninitializedGateway();
-
-        assertTrue(shouldReportCardProgress(gateway, -1, 500));
-        assertTrue(shouldReportCardProgress(gateway, 8, 100));
-        assertTrue(shouldReportCardProgress(gateway, 25, 100));
-        assertFalse(shouldReportCardProgress(gateway, 49, 1500));
-        assertTrue(shouldReportCardProgress(gateway, 100, 1500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(-1, 500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(8, 100));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(25, 100));
+        assertFalse(AnkiDroidCardReader.shouldReportCardProgress(49, 1500));
+        assertTrue(AnkiDroidCardReader.shouldReportCardProgress(100, 1500));
     }
 
     @Test
     public void cardProgressReporterOnlyEmitsThrottledScanEvents() throws Exception {
-        Object gateway = uninitializedGateway();
         List<SyncProgress> events = new java.util.ArrayList<>();
 
-        invokePrivateInstance(
-                gateway,
-                "reportCardProgressIfNeeded",
-                new Class<?>[]{SyncProgress.Listener.class, int.class, int.class},
-                (SyncProgress.Listener) events::add,
-                11,
-                500
-        );
+        AnkiDroidCardReader.reportCardProgressIfNeeded((SyncProgress.Listener) events::add, 11, 500);
         assertTrue(events.isEmpty());
 
-        invokePrivateInstance(
-                gateway,
-                "reportCardProgressIfNeeded",
-                new Class<?>[]{SyncProgress.Listener.class, int.class, int.class},
-                (SyncProgress.Listener) events::add,
-                20,
-                500
-        );
+        AnkiDroidCardReader.reportCardProgressIfNeeded((SyncProgress.Listener) events::add, 20, 500);
         assertEquals(1, events.size());
         assertEquals(SyncProgress.Stage.SCANNING_CARDS, events.get(0).stage);
         assertEquals(20, events.get(0).scannedCards);
@@ -531,26 +510,18 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void readCardsForNoteReturnsEmptyResultWhenStartProjectionIsExhausted() throws Exception {
-        Object gateway = uninitializedGateway();
-        Class<?> targetClass = Class.forName(AnkiDroidGateway.class.getName() + "$ProviderTarget");
+        AnkiDroidCardReader reader = new AnkiDroidCardReader(null);
 
-        Object result = invokePrivateInstance(
-                gateway,
-                "readCardsForNote",
-                new Class<?>[]{targetClass, long.class, Set.class, String[][].class, int.class},
-                null,
+        AnkiDroidCardReader.ProjectionReadResult result = reader.readCardsForNote(
+                "authority",
                 1L,
                 Collections.emptySet(),
                 new String[0][],
                 0
         );
 
-        Method cards = result.getClass().getDeclaredMethod("cards");
-        Method projectionIndex = result.getClass().getDeclaredMethod("projectionIndex");
-        cards.setAccessible(true);
-        projectionIndex.setAccessible(true);
-        assertTrue(((List<?>) cards.invoke(result)).isEmpty());
-        assertEquals(0, projectionIndex.invoke(result));
+        assertTrue(result.cards().isEmpty());
+        assertEquals(0, result.projectionIndex());
     }
 
     private static String repeat(String value, int count) {
@@ -566,11 +537,15 @@ public final class AnkiDroidGatewayTest {
     }
 
     private static Object fsrsFromCursor(Cursor cursor) throws Exception {
-        return invokePrivateStatic("fsrsMemoryState", new Class<?>[]{Cursor.class}, cursor);
+        return invokePrivateStatic(AnkiDroidCardReader.class, "fsrsMemoryState", new Class<?>[]{Cursor.class}, cursor);
     }
 
     private static Object invokePrivateStatic(String name, Class<?>[] parameterTypes, Object... args) throws Exception {
-        Method method = AnkiDroidGateway.class.getDeclaredMethod(name, parameterTypes);
+        return invokePrivateStatic(AnkiDroidGateway.class, name, parameterTypes, args);
+    }
+
+    private static Object invokePrivateStatic(Class<?> targetClass, String name, Class<?>[] parameterTypes, Object... args) throws Exception {
+        Method method = targetClass.getDeclaredMethod(name, parameterTypes);
         method.setAccessible(true);
         return method.invoke(null, args);
     }
@@ -579,12 +554,6 @@ public final class AnkiDroidGatewayTest {
         Method method = AnkiDroidGateway.class.getDeclaredMethod(name, parameterTypes);
         method.setAccessible(true);
         return method.invoke(target, args);
-    }
-
-    private static boolean shouldReportCardProgress(Object gateway, int scanned, int total) throws Exception {
-        Method method = AnkiDroidGateway.class.getDeclaredMethod("shouldReportCardProgress", int.class, int.class);
-        method.setAccessible(true);
-        return (Boolean) method.invoke(gateway, scanned, total);
     }
 
     private static Object uninitializedGateway() throws Exception {
