@@ -10,6 +10,9 @@ interface LocalKanjiSuspensionDao {
     @Query("SELECT * FROM local_kanji_suspensions ORDER BY kanji ASC")
     fun observeAll(): Flow<List<LocalKanjiSuspensionEntity>>
 
+    @Query("SELECT * FROM local_kanji_suspensions ORDER BY kanji ASC")
+    suspend fun listAll(): List<LocalKanjiSuspensionEntity>
+
     @Query("SELECT * FROM local_kanji_suspensions WHERE kanji = :kanji")
     suspend fun get(kanji: String): LocalKanjiSuspensionEntity?
 

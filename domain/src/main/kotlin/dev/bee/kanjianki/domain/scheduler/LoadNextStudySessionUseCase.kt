@@ -11,7 +11,7 @@ class LoadNextStudySessionUseCase(
     private val selector: StudySessionSelector = StudySessionSelector(),
 ) {
     suspend operator fun invoke(request: LoadNextStudySessionRequest): StudySession? {
-        val rows = studyDashboardRepository.listTop(request.dashboardLimit)
+        val rows = studyDashboardRepository.listActive(request.dashboardLimit)
         val items = activeStates.flatMap { studyQueueRepository.listByState(it) }
         return selector.nextSession(
             NextSessionInput(

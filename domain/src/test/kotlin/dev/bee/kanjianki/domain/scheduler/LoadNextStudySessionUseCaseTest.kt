@@ -47,7 +47,7 @@ class LoadNextStudySessionUseCaseTest {
         )
 
         assertEquals("裂", session?.item?.kanji)
-        assertEquals(12, dashboardRepository.lastListTopLimit)
+        assertEquals(12, dashboardRepository.lastListActiveLimit)
         assertEquals(
             listOf(StudyItemState.NEW, StudyItemState.LEARNING, StudyItemState.REVIEW),
             queueRepository.requestedStates,
@@ -176,12 +176,16 @@ class LoadNextStudySessionUseCaseTest {
     private class FakeStudyDashboardRepository(
         private val rows: List<StudyDashboardRow>,
     ) : StudyDashboardRepository {
-        var lastListTopLimit: Int? = null
+        var lastListActiveLimit: Int? = null
 
         override fun observeTop(limit: Int): Flow<List<StudyDashboardRow>> = flowOf(rows.take(limit))
 
-        override suspend fun listTop(limit: Int): List<StudyDashboardRow> {
-            lastListTopLimit = limit
+        override fun observeActive(limit: Int): Flow<List<StudyDashboardRow>> = flowOf(rows.take(limit))
+
+        override suspend fun listTop(limit: Int): List<StudyDashboardRow> = rows.take(limit)
+
+        override suspend fun listActive(limit: Int): List<StudyDashboardRow> {
+            lastListActiveLimit = limit
             return rows.take(limit)
         }
 
