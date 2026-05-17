@@ -1,10 +1,10 @@
 package dev.bee.kanjianki.core;
 
-public final class Records extends RecordsSchedulerModels {
+public final class Records {
     private Records() {
     }
 
-    protected static Object arg(Object[] args, int index, String context) {
+    static Object arg(Object[] args, int index, String context) {
         return RecordsBase.arg(args, index, context);
     }
 }

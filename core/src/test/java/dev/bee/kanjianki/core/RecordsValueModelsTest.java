@@ -38,8 +38,7 @@ public class RecordsValueModelsTest {
         assertEquals(0, Records.class.getConstructors().length);
 
         recordsConstructor.setAccessible(true);
-        Records reflectedRecords = recordsConstructor.newInstance();
-        assertTrue(reflectedRecords instanceof RecordsSchedulerModels);
+        recordsConstructor.newInstance();
 
         SplitProbe probe = new SplitProbe();
         assertTrue(probe instanceof RecordsBase);
