@@ -407,6 +407,13 @@ Current artifacts:
   - active-token mismatch rejection.
   - empty active tokens not blocking review.
   - null request tokens normalizing to the legacy empty token behavior.
+- `ReviewRatingResolver` in `:domain` isolates the request-to-applied-rating
+  policy for writing failures and manual overrides.
+- `ReviewRatingResolverTest` covers:
+  - write-kanji manual override resolving to `hard`.
+  - failed required writing resolving to `again`.
+  - normal requested rating preservation.
+  - clean unguided write-kanji pass detection.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
