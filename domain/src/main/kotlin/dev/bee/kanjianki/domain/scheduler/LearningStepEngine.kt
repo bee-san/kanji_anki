@@ -9,6 +9,9 @@ class LearningStepEngine {
             "LearningStepEngine only handles learning and relearning phases"
         }
         val steps = input.settings.stepsFor(input.phase)
+        if (steps.isEmpty()) {
+            return LearningStepResult.Graduate
+        }
         return when (input.rating) {
             StudyRating.AGAIN -> repeatAt(
                 phase = input.phase,
@@ -76,7 +79,6 @@ data class LearningStepSettings(
 ) {
     init {
         require(newStepsMinutes.isNotEmpty()) { "newStepsMinutes must not be empty" }
-        require(relearningStepsMinutes.isNotEmpty()) { "relearningStepsMinutes must not be empty" }
         require(newStepsMinutes.all { it > 0 }) { "newStepsMinutes must contain positive values" }
         require(relearningStepsMinutes.all { it > 0 }) {
             "relearningStepsMinutes must contain positive values"

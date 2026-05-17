@@ -377,6 +377,7 @@ Current artifacts:
   - `Hard` on later steps repeats the current step.
   - `Easy` graduates immediately.
   - relearning preserves the relearning phase until graduation.
+  - empty relearning steps graduate safely.
 - `LadderMovementEngine` in `:domain` handles the configurable study-rung
   movement rules around real due reviews.
 - `StudyLadderSettings` keeps rung order, enabled rungs, the promotion

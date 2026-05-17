@@ -111,6 +111,26 @@ class LearningStepEngineTest {
     }
 
     @Test
+    fun emptyRelearningStepsGraduateSafely() {
+        val settings = LearningStepSettings(
+            newStepsMinutes = listOf(1, 10),
+            relearningStepsMinutes = emptyList(),
+        )
+
+        assertEquals(
+            LearningStepResult.Graduate,
+            engine.apply(
+                input(
+                    phase = StudyPhase.RELEARNING,
+                    currentStepIndex = 0,
+                    rating = StudyRating.AGAIN,
+                    settings = settings,
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun reviewPhaseIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
             engine.apply(
@@ -127,11 +147,13 @@ class LearningStepEngineTest {
         phase: StudyPhase = StudyPhase.NEW_LEARNING,
         currentStepIndex: Int,
         rating: StudyRating,
+        settings: LearningStepSettings = LearningStepSettings.defaults,
     ): LearningStepInput = LearningStepInput(
         phase = phase,
         currentStepIndex = currentStepIndex,
         rating = rating,
         nowMillis = NOW,
+        settings = settings,
     )
 
     private companion object {
