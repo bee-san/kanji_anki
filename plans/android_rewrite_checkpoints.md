@@ -400,14 +400,21 @@ Current artifacts:
   - moved-forward and missed-kanji outcome counts.
   - repair failures not marking already-moved kanji as missed.
   - display clamping for done runs, active tasks, and continue-all sessions.
+- `ReviewTokenGuard` in `:domain` isolates duplicate-review protection.
+- `ReviewTokenGuardTest` covers:
+  - matching active tokens being accepted and consumed.
+  - consumed-token rejection taking precedence.
+  - active-token mismatch rejection.
+  - empty active tokens not blocking review.
+  - null request tokens normalizing to the legacy empty token behavior.
 
 Explicit gaps:
 
 - FSRS graduation remains in the Java scheduler/adapter path.
 - Ladder movement is not wired into the runtime review transition yet.
 - Study progress is not wired into the runtime Study screen yet.
-- Study session selection, adaptive planner split, and token guard are not
-  ported yet.
+- Review token guard is not wired into the runtime review transition yet.
+- Study session selection and adaptive planner split are not ported yet.
 
 Verification commands:
 
