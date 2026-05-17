@@ -768,13 +768,14 @@ Current artifacts:
   into the existing legacy record shapes. `RoomLegacyStudyReadBridge` reads
   active dashboard rows and study queue items from Room repositories and returns
   a legacy-compatible snapshot for the current Java/View Home and Study code.
-- `MainActivity` accesses `RoomLegacyStudyReadBridge` through a Hilt singleton
-  entry point because the legacy Java Activity is still a plain `Activity`, not
-  a `ComponentActivity`. Home renders the legacy snapshot immediately for
-  current installs, then asynchronously replaces it with a non-empty
-  Room-backed snapshot loaded on the existing IO executor. Study shows a
-  neutral loading state first so it renders exactly one active session from the
-  Room snapshot or the legacy fallback.
+- `RoomLegacyStudyReadBridge` can map a gated Room runtime snapshot back into
+  the existing legacy record shapes. It is not wired into `MainActivity` while
+  the app graph uses disabled Room study ownership.
+- `RoomStudyReviewBridge` can persist a normal Study review through
+  `ApplyStudyReviewUseCase` and map the result back to
+  `RecordsSchedulerModels.ReviewResult`. It consumes a review token only after
+  Room persistence succeeds, and rejects writes while Room study ownership is
+  disabled.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
   mapping with decoded task memory and dashboard row/example mapping.
 - `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
@@ -819,11 +820,11 @@ Explicit gaps:
   sessions through the legacy bridge.
 - Study progress is wired into the runtime Study screen through the legacy
   tracker bridge; the future Compose/ViewModel surface is not built yet.
-- Home and Study can render from the Room-backed legacy snapshot path, but they
-  still keep a legacy `LocalStore` fallback and secondary Study actions still
-  read/write through `LocalStore` until each interaction is moved to Room.
+- Home and Study still render from a legacy `LocalStore` snapshot. Room-backed
+  runtime reads remain gated until sync, Study reads, and Study writes move
+  together.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
-  write path.
+  write path; the Room bridge is present but not yet called by the UI.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
   until the detail screen is moved to the Room repository.
 - The legacy Java adaptive planner remains as a parity oracle and compatibility
@@ -954,10 +955,11 @@ Current app database:
 - Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
   It rejects ambiguous ownership and enables destructive Room reset only through
   an explicit reset policy. The app graph currently uses
-  `KaniRoomDatabaseResetPolicy.CLEAN_REWRITE` so interim Room versions reset
-  instead of requiring compatibility migrations; once Room becomes
-  authoritative, future schema changes need migrations or another deliberate
-  reset decision.
+  `KaniRoomDatabaseResetPolicy.ROOM_SANDBOX_DURING_LEGACY_RUNTIME`, so interim
+  Room versions can reset without touching the visible legacy runtime database.
+  `KaniRoomDatabaseResetPolicy.CLEAN_REWRITE` is reserved for the cutover that
+  makes Room authoritative; after that point, future schema changes need
+  migrations or another deliberate reset decision.
 - Existing-install reset owner:
   `data/src/main/java/dev/bee/kanjianki/data/KaniLocalDataResetCoordinator.kt`.
   Room open now preflights legacy Kani database families through this single
