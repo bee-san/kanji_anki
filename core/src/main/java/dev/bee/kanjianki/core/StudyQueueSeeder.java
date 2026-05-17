@@ -20,12 +20,8 @@ final class StudyQueueSeeder {
             RecordsBase.StudyLadderSettings ladder
     ) {
         return seedQueueInternal(new SeedQueueRequest(
-                rows,
-                rows,
-                existing,
-                settings,
-                nowMillis,
-                startOfDayMillis,
+                new SeedQueueSource(rows, rows, existing, settings),
+                new SeedQueueTiming(nowMillis, startOfDayMillis),
                 new SeedQueueLimits(settings.newPerDay, false),
                 StudyLadderRules.safeLadder(ladder)
         ));
@@ -48,12 +44,8 @@ final class StudyQueueSeeder {
                 ? plan.newAdmissionLimit
                 : Math.min(plan.newAdmissionLimit, settings.newPerDay);
         return seedQueueInternal(new SeedQueueRequest(
-                rows,
-                admissionRows,
-                existing,
-                settings,
-                nowMillis,
-                startOfDayMillis,
+                new SeedQueueSource(rows, admissionRows, existing, settings),
+                new SeedQueueTiming(nowMillis, startOfDayMillis),
                 new SeedQueueLimits(cappedAdmission, plan.allKanjiMode),
                 StudyLadderRules.safeLadder(ladder)
         ));
@@ -70,12 +62,8 @@ final class StudyQueueSeeder {
     ) {
         int requested = Math.max(0, requestedCount);
         SeedQueueRequest request = new SeedQueueRequest(
-                rows,
-                rows,
-                existing,
-                settings,
-                nowMillis,
-                startOfDayMillis,
+                new SeedQueueSource(rows, rows, existing, settings),
+                new SeedQueueTiming(nowMillis, startOfDayMillis),
                 new SeedQueueLimits(Integer.MAX_VALUE, true),
                 StudyLadderRules.safeLadder(ladder)
         );
@@ -537,6 +525,35 @@ final class StudyQueueSeeder {
         }
     }
 
+    private static final class SeedQueueSource {
+        final List<RecordsImportModels.DashboardRow> allRows;
+        final List<RecordsImportModels.DashboardRow> admissionRows;
+        final List<RecordsStudyModels.StudyItem> existing;
+        final RecordsSyncModels.Settings settings;
+
+        SeedQueueSource(
+                List<RecordsImportModels.DashboardRow> allRows,
+                List<RecordsImportModels.DashboardRow> admissionRows,
+                List<RecordsStudyModels.StudyItem> existing,
+                RecordsSyncModels.Settings settings
+        ) {
+            this.allRows = allRows;
+            this.admissionRows = admissionRows;
+            this.existing = existing;
+            this.settings = settings;
+        }
+    }
+
+    private static final class SeedQueueTiming {
+        final long nowMillis;
+        final long startOfDayMillis;
+
+        SeedQueueTiming(long nowMillis, long startOfDayMillis) {
+            this.nowMillis = nowMillis;
+            this.startOfDayMillis = startOfDayMillis;
+        }
+    }
+
     private static final class SeedQueueRequest {
         final List<RecordsImportModels.DashboardRow> allRows;
         final List<RecordsImportModels.DashboardRow> admissionRows;
@@ -548,21 +565,17 @@ final class StudyQueueSeeder {
         final RecordsBase.StudyLadderSettings ladder;
 
         SeedQueueRequest(
-                List<RecordsImportModels.DashboardRow> allRows,
-                List<RecordsImportModels.DashboardRow> admissionRows,
-                List<RecordsStudyModels.StudyItem> existing,
-                RecordsSyncModels.Settings settings,
-                long nowMillis,
-                long startOfDayMillis,
+                SeedQueueSource source,
+                SeedQueueTiming timing,
                 SeedQueueLimits limits,
                 RecordsBase.StudyLadderSettings ladder
         ) {
-            this.allRows = allRows;
-            this.admissionRows = sortedAdmissionRows(admissionRows, settings);
-            this.existing = existing;
-            this.settings = settings;
-            this.nowMillis = nowMillis;
-            this.startOfDayMillis = startOfDayMillis;
+            this.allRows = source.allRows;
+            this.admissionRows = sortedAdmissionRows(source.admissionRows, source.settings);
+            this.existing = source.existing;
+            this.settings = source.settings;
+            this.nowMillis = timing.nowMillis;
+            this.startOfDayMillis = timing.startOfDayMillis;
             this.limits = limits;
             this.ladder = StudyLadderRules.safeLadder(ladder);
         }
