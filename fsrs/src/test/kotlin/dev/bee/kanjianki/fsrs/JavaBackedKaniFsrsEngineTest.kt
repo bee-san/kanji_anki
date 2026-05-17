@@ -40,6 +40,18 @@ class JavaBackedKaniFsrsEngineTest {
     }
 
     @Test
+    fun nextDifficultyMatchesCurrentJavaEngine() {
+        val current = FsrsEngine.latestDefault()
+        val wrapper = JavaBackedKaniFsrsEngine(current)
+
+        assertEquals(
+            current.nextDifficulty(5.0, FsrsRating.HARD),
+            wrapper.nextDifficulty(5.0, FsrsReviewRating.HARD),
+            0.0,
+        )
+    }
+
+    @Test
     fun provenanceExposesPinnedSnapshot() {
         assertEquals(FsrsAlgorithmInfo.UPSTREAM_REPOSITORY, FsrsProvenance.upstreamRepository)
         assertEquals(FsrsAlgorithmInfo.UPSTREAM_RELEASE, FsrsProvenance.upstreamRelease)

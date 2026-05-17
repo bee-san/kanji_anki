@@ -38,6 +38,11 @@ interface KaniFsrsEngine {
 
     fun review(request: FsrsReviewRequest): FsrsReviewSchedule
 
+    fun nextDifficulty(
+        currentDifficulty: Double,
+        rating: FsrsReviewRating,
+    ): Double
+
     fun nextIntervalDays(
         stability: Double,
         desiredRetention: Double,
@@ -76,6 +81,11 @@ class JavaBackedKaniFsrsEngine(
             nextIntervalDays = output.nextIntervalDays(),
         )
     }
+
+    override fun nextDifficulty(
+        currentDifficulty: Double,
+        rating: FsrsReviewRating,
+    ): Double = delegate.nextDifficulty(currentDifficulty, rating.toJava())
 
     override fun nextIntervalDays(
         stability: Double,

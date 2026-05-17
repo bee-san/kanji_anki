@@ -110,6 +110,8 @@ Current artifact:
 - `:fsrs` depends on the existing `:fsrs-java` engine.
 - `JavaBackedKaniFsrsEngine` exposes the app-facing scheduler surface while
   keeping ladder/import policy outside FSRS.
+- The Kotlin FSRS wrapper exposes `nextDifficulty` so relearning graduation can
+  preserve the current Java review-transition semantics.
 - `:fsrs-java:test` remains required in rewrite gates because it owns the
   strongest generated oracle and pinned upstream fixture tests.
 
