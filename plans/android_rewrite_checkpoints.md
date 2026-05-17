@@ -284,6 +284,30 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL` after the domain/data slice.
 
+Additional schema guard:
+
+- `data/src/test/kotlin/dev/bee/kanjianki/data/KaniRoomSchemaParityTest.kt`
+  checks that the exported Room schema contains the current v20 user-data table
+  list and critical legacy defaults/indexes.
+- `ciFast` now includes `:data:testDebugUnitTest`.
+
+Verification commands:
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :data:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew ciFast
+```
+
+Result: `BUILD SUCCESSFUL`; the fast gate now runs `259` actionable tasks with
+the data schema parity test included.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:
