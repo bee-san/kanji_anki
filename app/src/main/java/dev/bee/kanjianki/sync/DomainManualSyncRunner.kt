@@ -69,12 +69,21 @@ class DomainManualSyncRunner(
             return ManualSyncEngine.SyncResult.failed(syncRun.errorMessage ?: "Sync failed.")
         }
         return ManualSyncEngine.SyncResult.success(
-            dashboardRowCounter().coerceAtLeast(0),
+            dashboardRowCount(),
             syncRun.suspendedKanjiImportedCount,
             syncRun.removalMessage.orEmpty(),
             "",
         )
     }
+
+    private suspend fun dashboardRowCount(): Int =
+        try {
+            dashboardRowCounter().coerceAtLeast(0)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            0
+        }
 
     private class LegacyProgressAdapter(
         private val listener: SyncProgress.Listener,

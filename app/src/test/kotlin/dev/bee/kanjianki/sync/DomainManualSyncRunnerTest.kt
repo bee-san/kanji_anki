@@ -113,6 +113,26 @@ class DomainManualSyncRunnerTest {
     }
 
     @Test
+    fun dashboardCountFailureDoesNotTurnRecordedSuccessIntoFailedResult() = runBlocking {
+        val runner = runnerReturning(
+            syncRun = syncRun(
+                status = SyncRunStatus.SUCCESS,
+                suspendedKanjiImportedCount = 2,
+            ),
+            dashboardRowCounter = {
+                throw IllegalStateException("dashboard unavailable")
+            },
+        )
+
+        val result = runner.run(RecordsSyncModels.Settings.kikuDefaults())
+
+        assertTrue(result.success)
+        assertFalse(result.skipped)
+        assertEquals(0, result.dashboardRows)
+        assertEquals(2, result.importedSuspendedKanji)
+    }
+
+    @Test
     fun concurrentDomainSyncMapsToSkippedLegacyResult() = runBlocking {
         val runner = DomainManualSyncRunner(
             requestFactory = { RunSourceMirrorSyncRequest(importSettings = ImportSettings()) },
