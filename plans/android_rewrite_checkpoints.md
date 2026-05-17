@@ -414,6 +414,13 @@ Current artifacts:
   - failed required writing resolving to `again`.
   - normal requested rating preservation.
   - clean unguided write-kanji pass detection.
+- `ReviewMemoryPolicy` in `:domain` isolates active task-memory selection and
+  elapsed-review-day calculation for FSRS inputs.
+- `ReviewMemoryPolicyTest` covers:
+  - persisted task memory taking precedence when it has reviews.
+  - legacy fallback to study item fields when task memory is empty.
+  - new items keeping initial task memory.
+  - elapsed day calculation from the previous scheduled interval.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
