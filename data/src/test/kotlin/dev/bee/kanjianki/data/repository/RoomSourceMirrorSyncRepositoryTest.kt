@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.data.repository
 
+import dev.bee.kanjianki.data.history.SyncCardSnapshotDao
+import dev.bee.kanjianki.data.history.SyncCardSnapshotEntity
+import dev.bee.kanjianki.data.history.SyncNoteSnapshotDao
+import dev.bee.kanjianki.data.history.SyncNoteSnapshotEntity
 import dev.bee.kanjianki.data.importing.ImportDecisionDao
 import dev.bee.kanjianki.data.importing.ImportDecisionEntity
 import dev.bee.kanjianki.data.importing.ImportRuleAuditDao
@@ -56,6 +60,8 @@ class RoomSourceMirrorSyncRepositoryTest {
             ),
         )
         val suspendedSources = FakeSuspendedSourceDao()
+        val syncNoteSnapshots = FakeSyncNoteSnapshotDao()
+        val syncCardSnapshots = FakeSyncCardSnapshotDao()
         var transactions = 0
         val repository = RoomSourceMirrorSyncRepository(
             syncRuns = syncRuns,
@@ -66,6 +72,8 @@ class RoomSourceMirrorSyncRepositoryTest {
             suspendedArchive = archive,
             suspendedImports = suspendedImports,
             suspendedSources = suspendedSources,
+            syncNoteSnapshots = syncNoteSnapshots,
+            syncCardSnapshots = syncCardSnapshots,
             runInTransaction = { block ->
                 transactions++
                 block()
@@ -119,6 +127,11 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals("Kiku", archive.upserted.single().modelName)
         assertEquals(20L, archive.upserted.single().archivedAt)
         assertEquals(42L, archive.upserted.single().archivedSyncId)
+        assertEquals(listOf(1L, 2L), syncNoteSnapshots.upserted.map { it.noteId })
+        assertEquals(listOf("日本", "日本"), syncNoteSnapshots.upserted.map { it.extractedKanji })
+        assertEquals(listOf(10L, 20L), syncCardSnapshots.upserted.map { it.cardId })
+        assertEquals(listOf(1, 0), syncCardSnapshots.upserted.map { it.suspended })
+        assertEquals(listOf(0, 0), syncCardSnapshots.upserted.map { it.mature })
     }
 
     private class FakeSyncRunDao(
@@ -304,6 +317,34 @@ class RoomSourceMirrorSyncRepositoryTest {
         override suspend fun deleteForKanji(kanji: String) {
             deletedForKanji += kanji
             upserted.removeAll { it.kanji == kanji }
+        }
+    }
+
+    private class FakeSyncNoteSnapshotDao : SyncNoteSnapshotDao {
+        val upserted = mutableListOf<SyncNoteSnapshotEntity>()
+
+        override suspend fun listForSync(syncId: Long): List<SyncNoteSnapshotEntity> =
+            upserted.filter { it.syncId == syncId }.sortedBy { it.noteId }
+
+        override suspend fun upsertAll(notes: List<SyncNoteSnapshotEntity>) {
+            for (note in notes) {
+                upserted.removeAll { it.syncId == note.syncId && it.noteId == note.noteId }
+                upserted += note
+            }
+        }
+    }
+
+    private class FakeSyncCardSnapshotDao : SyncCardSnapshotDao {
+        val upserted = mutableListOf<SyncCardSnapshotEntity>()
+
+        override suspend fun listForSync(syncId: Long): List<SyncCardSnapshotEntity> =
+            upserted.filter { it.syncId == syncId }.sortedBy { it.cardId }
+
+        override suspend fun upsertAll(cards: List<SyncCardSnapshotEntity>) {
+            for (card in cards) {
+                upserted.removeAll { it.syncId == card.syncId && it.cardId == card.cardId }
+                upserted += card
+            }
         }
     }
 

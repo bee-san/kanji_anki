@@ -348,6 +348,9 @@ Current artifacts:
 - Selected suspended source cards are archived locally inside that transaction
   using the source snapshot details; existing archive rows are preserved so
   first-archive metadata is not rewritten.
+- Historical note/card sync snapshots are appended inside the same transaction.
+  Kanji aggregate snapshots are still pending because the new path does not yet
+  rebuild dashboard rows.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
@@ -358,7 +361,8 @@ Explicit gaps:
 
 - No AnkiDroid module implementation yet.
 - No post-provider archive cleanup, dashboard rebuild, queue seeding,
-  similar-kanji rebuild, or historical snapshot write in the new use case yet.
+  similar-kanji rebuild, or historical kanji aggregate snapshot write in the
+  new use case yet.
 - Manual and background sync still use the legacy Java path.
 
 Verification commands:
@@ -404,6 +408,14 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; Room repository tests cover local suspended archive
 row creation from selected suspended source cards.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :data:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; Room repository tests cover historical note/card
+snapshot rows written with the generated sync ID.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

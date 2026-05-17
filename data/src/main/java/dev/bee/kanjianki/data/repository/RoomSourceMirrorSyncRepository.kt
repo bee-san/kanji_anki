@@ -2,6 +2,10 @@ package dev.bee.kanjianki.data.repository
 
 import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
+import dev.bee.kanjianki.data.history.SyncCardSnapshotDao
+import dev.bee.kanjianki.data.history.SyncCardSnapshotEntity
+import dev.bee.kanjianki.data.history.SyncNoteSnapshotDao
+import dev.bee.kanjianki.data.history.SyncNoteSnapshotEntity
 import dev.bee.kanjianki.data.importing.ImportDecisionDao
 import dev.bee.kanjianki.data.importing.ImportRuleAuditDao
 import dev.bee.kanjianki.data.importing.SuspendedArchiveDao
@@ -28,6 +32,8 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val suspendedArchive: SuspendedArchiveDao,
     private val suspendedImports: SuspendedImportDao,
     private val suspendedSources: SuspendedSourceDao,
+    private val syncNoteSnapshots: SyncNoteSnapshotDao,
+    private val syncCardSnapshots: SyncCardSnapshotDao,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
 ) : SourceMirrorSyncRepository {
     constructor(database: KaniRoomDatabase) : this(
@@ -39,6 +45,8 @@ class RoomSourceMirrorSyncRepository internal constructor(
         suspendedArchive = database.suspendedArchiveDao(),
         suspendedImports = database.suspendedImportDao(),
         suspendedSources = database.suspendedSourceDao(),
+        syncNoteSnapshots = database.syncNoteSnapshotDao(),
+        syncCardSnapshots = database.syncCardSnapshotDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
@@ -69,6 +77,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         sourceCards.upsertAll(cards.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
         recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
         recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
+        recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
         syncRunId
     }
 
@@ -151,4 +160,102 @@ class RoomSourceMirrorSyncRepository internal constructor(
             suspendedArchive.upsertAll(archiveRows)
         }
     }
+
+    private suspend fun recordHistoricalSnapshots(
+        syncRunId: SyncRunId,
+        startedAt: Long,
+        finishedAt: Long,
+        notes: List<SourceNote>,
+        cards: List<SourceCard>,
+        settings: ImportSettings,
+    ) {
+        val cardsByNoteId = cards.groupBy { it.noteId }
+        syncNoteSnapshots.upsertAll(
+            notes.map { note ->
+                note.toSyncNoteSnapshotEntity(syncRunId, finishedAt, cardsByNoteId[note.noteId].orEmpty())
+            },
+        )
+        val notesById = notes.associateBy { it.noteId }
+        syncCardSnapshots.upsertAll(
+            cards.map { card ->
+                card.toSyncCardSnapshotEntity(
+                    syncRunId = syncRunId,
+                    startedAt = startedAt,
+                    finishedAt = finishedAt,
+                    modelName = notesById[card.noteId]?.modelName.orEmpty(),
+                    matureDays = settings.matureDays,
+                )
+            },
+        )
+    }
+
+    private fun SourceNote.toSyncNoteSnapshotEntity(
+        syncRunId: SyncRunId,
+        finishedAt: Long,
+        cards: List<SourceCard>,
+    ): SyncNoteSnapshotEntity = SyncNoteSnapshotEntity(
+        syncId = syncRunId.value,
+        finishedAt = finishedAt,
+        noteId = noteId.value,
+        modelId = 0,
+        modelName = modelName,
+        deckIds = "",
+        deckNames = cards.mapTo(linkedSetOf()) { it.deckName }.joinToString(" "),
+        expression = expression,
+        reading = reading,
+        meaning = meaning,
+        sentence = sentence,
+        tags = tags,
+        fieldsJson = fieldsJson,
+        extractedKanji = extractKanji(expression).joinToString(""),
+    )
+
+    private fun SourceCard.toSyncCardSnapshotEntity(
+        syncRunId: SyncRunId,
+        startedAt: Long,
+        finishedAt: Long,
+        modelName: String,
+        matureDays: Int,
+    ): SyncCardSnapshotEntity = SyncCardSnapshotEntity(
+        syncId = syncRunId.value,
+        startedAt = startedAt,
+        finishedAt = finishedAt,
+        cardId = cardId.value,
+        noteId = noteId.value,
+        deckId = "",
+        deckName = deckName,
+        modelId = 0,
+        modelName = modelName,
+        ord = ord,
+        queue = queue,
+        type = type,
+        due = due,
+        intervalDays = intervalDays,
+        reps = reps,
+        lapses = lapses,
+        suspended = if (suspended) 1 else 0,
+        fsrsStability = fsrsStability,
+        fsrsDifficulty = fsrsDifficulty,
+        fsrsRetrievability = fsrsRetrievability,
+        mature = if (mature(matureDays)) 1 else 0,
+    )
+
+    private fun extractKanji(value: String): List<String> {
+        val out = linkedSetOf<String>()
+        var index = 0
+        while (index < value.length) {
+            val codePoint = value.codePointAt(index)
+            if (isKanji(codePoint)) {
+                out += String(Character.toChars(codePoint))
+            }
+            index += Character.charCount(codePoint)
+        }
+        return out.toList()
+    }
+
+    private fun isKanji(codePoint: Int): Boolean =
+        codePoint in 0x3400..0x4DBF ||
+            codePoint in 0x4E00..0x9FFF ||
+            codePoint in 0xF900..0xFAFF ||
+            codePoint in 0x20000..0x2EBEF
 }
