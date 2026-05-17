@@ -199,8 +199,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(all.allKanjiMode);
 
                 activity.activeSession = session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()));
-                activity.sessionProgressCompleted = 2;
-                activity.sessionProgressMax = 2;
+                activity.studySessionTracker.setTargetCount(2);
+                activity.markStudyTaskCompleted("topbar:one");
+                activity.markStudyTaskCompleted("topbar:two");
                 activity.continueAllKanjiSession = true;
                 assertTrue(activity.studyTopBar(all) instanceof StudyTopBarView);
                 Records.StudyItem clueItem = studyItem("?", Records.LadderRung.KANJI_MEANING, "review", now);
@@ -217,7 +218,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.writingRecognizer = cachedRecognizer;
                 assertTrue(activity.writingRecognizer() == cachedRecognizer);
 
-                MainActivityBase.ActiveStudyTask timing = new MainActivityBase.ActiveStudyTask(null, null, null, -10L);
+                StudySessionTracker.ActiveStudyTask timing = new StudySessionTracker.ActiveStudyTask(null, null, null, -10L);
                 timing.pause(50L);
                 timing.resume(60L);
                 timing.pause(90L);
@@ -1071,8 +1072,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertHasText(activity, "Today's focus done");
                 assertHasText(activity, "Today's focus: 0 items left / 3");
 
-                activity.sessionProgressCompleted = 2;
-                activity.sessionProgressMax = 3;
+                activity.studySessionTracker.setTargetCount(3);
+                activity.markStudyTaskCompleted("done:one");
+                activity.markStudyTaskCompleted("done:two");
                 activity.renderStudyRunDone(dueLater);
                 assertHasText(activity, "Study now: 2 / 3");
 
@@ -1098,16 +1100,17 @@ public final class MainActivityHelperInstrumentedTest {
                 EditText extraRequest = new EditText(activity);
                 extraRequest.setText("3");
                 assertTrue(activity.applyStudyMoreNewCardsRequest(extraRequest));
-                assertEquals(1, activity.sessionProgressMax);
+                assertEquals(1, activity.studySessionTracker.targetCount());
                 assertTrue(activity.studyMoreNewCardKanji.contains("新"));
 
                 activity.resetStudyRunProgress();
-                assertEquals(0, activity.sessionProgressCompleted);
-                assertEquals(0, activity.sessionProgressMax);
+                assertEquals(0, activity.studySessionTracker.completedCount());
+                assertEquals(0, activity.studySessionTracker.targetCount());
                 assertFalse(activity.studyRunAtHardCap());
                 activity.initializeSessionProgressTarget(dueLater);
-                assertEquals(2, activity.sessionProgressMax);
-                activity.sessionProgressCompleted = 2;
+                assertEquals(2, activity.studySessionTracker.targetCount());
+                activity.markStudyTaskCompleted("cap:one");
+                activity.markStudyTaskCompleted("cap:two");
                 assertTrue(activity.studyRunAtHardCap());
                 activity.continueAllKanjiSession = true;
                 assertFalse(activity.studyRunAtHardCap());
@@ -1120,31 +1123,31 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.sessionTaskKey(session).contains("session:kanji_meaning:裂"));
                 activity.registerStudyTaskShown("");
                 activity.registerStudyTaskShown("task:one");
-                assertEquals(1, activity.sessionProgressMax);
+                assertEquals(1, activity.studySessionTracker.targetCount());
                 activity.markStudyTaskCompleted("");
                 activity.markStudyTaskCompleted("task:one");
                 activity.markStudyTaskCompleted("task:one");
-                assertEquals(1, activity.sessionProgressCompleted);
+                assertEquals(1, activity.studySessionTracker.completedCount());
 
                 activity.activeSession = null;
                 activity.markStudyRunPassed("語");
-                assertEquals(2, activity.sessionProgressCompleted);
+                assertEquals(2, activity.studySessionTracker.completedCount());
                 activity.activeSession = session;
                 activity.markStudyRunPassed("");
-                assertEquals(3, activity.sessionProgressCompleted);
+                assertEquals(3, activity.studySessionTracker.completedCount());
 
-                activity.activeStudyTask = null;
+                activity.abandonActiveStudyTask();
                 activity.startActiveStudyTask("", "裂", BridgeScheduler.TASK_KANJI_MEANING, 1000L);
-                assertNull(activity.activeStudyTask);
+                assertFalse(activity.studySessionTracker.hasActiveTask());
                 activity.startActiveStudyTask("task:active", "裂", BridgeScheduler.TASK_KANJI_MEANING, 1000L);
-                assertTrue(activity.activeStudyTask != null);
+                assertTrue(activity.studySessionTracker.hasActiveTask());
                 activity.startActiveStudyTask("task:active", "裂", BridgeScheduler.TASK_KANJI_MEANING, 1000L);
                 activity.pauseActiveStudyTask();
                 activity.resumeActiveStudyTask();
                 activity.completeActiveStudyTask("wrong", "missed", 2000L);
-                assertTrue(activity.activeStudyTask != null);
+                assertTrue(activity.studySessionTracker.hasActiveTask());
                 activity.completeActiveStudyTask("task:active", "passed", 2000L);
-                assertNull(activity.activeStudyTask);
+                assertFalse(activity.studySessionTracker.hasActiveTask());
                 activity.abandonActiveStudyTask();
 
                 View grid = activity.similarKanjiGrid(Arrays.asList("裂", "列", "烈"), "裂");
@@ -1197,8 +1200,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(activity.continueAllKanjiSession);
                 assertHasText(activity, "Kani");
 
-                activity.sessionProgressCompleted = 1;
-                activity.sessionProgressMax = 2;
+                activity.resetStudyRunProgress();
+                activity.studySessionTracker.setTargetCount(2);
+                activity.markStudyTaskCompleted("continue:one");
                 activity.renderStudyRunDone(complete);
                 performButtonClick(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
@@ -1209,7 +1213,7 @@ public final class MainActivityHelperInstrumentedTest {
                 int available = activity.availableStudyMoreNewCards();
                 if (available > 0) {
                     assertTrue(activity.startStudyMoreNewCards(5));
-                    assertTrue(activity.sessionProgressMax <= 5);
+                    assertTrue(activity.studySessionTracker.targetCount() <= 5);
                     assertFalse(activity.studyMoreNewCardKanji.isEmpty());
                 }
 
