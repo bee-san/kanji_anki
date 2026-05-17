@@ -141,6 +141,20 @@ class RoomAutoSyncSettingsRepositoryTest {
         assertEquals("4000", dao.values.getValue("auto_sync_last_success_at").value)
     }
 
+    @Test
+    fun partialTimestampWritesPreserveRawValuesAndNormalizeOnRead() = runBlocking {
+        val dao = FakeSettingsDao()
+        val repository = RoomAutoSyncSettingsRepository(dao)
+
+        repository.markScheduled(nextRunAtMillis = -2_000L, updatedAtMillis = 100L)
+        repository.recordAttempt(attemptedAtMillis = -3_000L, success = true, updatedAtMillis = 200L)
+
+        assertEquals("-2000", dao.values.getValue("auto_sync_next_run_at").value)
+        assertEquals("-3000", dao.values.getValue("auto_sync_last_attempt_at").value)
+        assertEquals("-3000", dao.values.getValue("auto_sync_last_success_at").value)
+        assertEquals(AutoSyncSettings(), repository.get())
+    }
+
     private class FakeSettingsDao(
         vararg pairs: Pair<String, String>,
     ) : SettingsDao {

@@ -13,7 +13,6 @@ import dev.bee.kanjianki.data.KaniRoomDatabaseResetPolicy;
 import dev.bee.kanjianki.data.RoomStudyQueueMutationGate;
 import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy;
 import dev.bee.kanjianki.data.StudyQueueMutationGate;
-import dev.bee.kanjianki.data.repository.RoomAutoSyncSettingsRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
@@ -26,7 +25,6 @@ import dev.bee.kanjianki.data.repository.RoomStudyReviewStatsRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyRuntimeSnapshotRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyReviewPersistenceRepository;
 import dev.bee.kanjianki.data.repository.RoomSyncRunRepository;
-import dev.bee.kanjianki.domain.repository.AutoSyncSettingsRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
@@ -77,12 +75,6 @@ public final class KaniDataModule {
     @Singleton
     static SyncRunRepository provideSyncRunRepository(KaniRoomDatabase database) {
         return new RoomSyncRunRepository(database.syncRunDao());
-    }
-
-    @Provides
-    @Singleton
-    static AutoSyncSettingsRepository provideAutoSyncSettingsRepository(KaniRoomDatabase database) {
-        return new RoomAutoSyncSettingsRepository(database.settingsDao());
     }
 
     @Provides

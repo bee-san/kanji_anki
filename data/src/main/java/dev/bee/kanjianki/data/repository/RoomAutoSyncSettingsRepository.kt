@@ -91,7 +91,7 @@ class RoomAutoSyncSettingsRepository(
         settings.upsert(
             SettingEntity(
                 key = KEY_NEXT_RUN_AT,
-                value = nextRunAtMillis.coerceAtLeast(0L).toString(),
+                value = nextRunAtMillis.toString(),
                 updatedAt = updatedAtMillis,
             ),
         )
@@ -102,11 +102,10 @@ class RoomAutoSyncSettingsRepository(
         success: Boolean,
         updatedAtMillis: Long,
     ) {
-        val attemptedAt = attemptedAtMillis.coerceAtLeast(0L)
         val rows = buildList {
-            add(KEY_LAST_ATTEMPT_AT to attemptedAt.toString())
+            add(KEY_LAST_ATTEMPT_AT to attemptedAtMillis.toString())
             if (success) {
-                add(KEY_LAST_SUCCESS_AT to attemptedAt.toString())
+                add(KEY_LAST_SUCCESS_AT to attemptedAtMillis.toString())
             }
         }
         settings.upsertAll(
