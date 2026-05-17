@@ -15,6 +15,9 @@ fun interface StudyQueueSeedBuilder {
 }
 
 interface SourceMirrorSyncRepository {
+    suspend fun retainedSuspendedImportCandidates(settings: ImportSettings): List<ImportedKanjiCandidate> =
+        emptyList()
+
     suspend fun recordSuccessfulSnapshot(
         syncRun: SyncRun,
         notes: List<SourceNote>,

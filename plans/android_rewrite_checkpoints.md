@@ -1059,3 +1059,8 @@ the visible Java runtime while Room study ownership is disabled:
   result fields onto `RunSourceMirrorSyncUseCase` and Room sync repositories.
   `MainActivityHome` and `AutoSyncRunner` still use `ManualSyncEngine`; the
   domain runner is a tested bridge for the later explicit sync ownership move.
+- Room domain sync now rehydrates retained suspended imports from active
+  archive evidence before rebuilding dashboard rows and seeding the queue. The
+  current provider snapshot still owns sync counts, import audit rows, and
+  archive cleanup; retained archive evidence is analysis-only so second syncs do
+  not drop suspended-only practice candidates after AnkiDroid archive tagging.

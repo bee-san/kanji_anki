@@ -192,6 +192,49 @@ class RunSourceMirrorSyncUseCaseTest {
     }
 
     @Test
+    fun secondSyncRetainsArchivedSuspendedCandidatesForDashboardAndQueueSeeding() = runBlocking {
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = SequentialGateway(
+                listOf(
+                    CollectionSnapshot(
+                        notes = listOf(sourceNote(noteId = 10, expression = "日")),
+                        cards = listOf(sourceCard(noteId = 10, suspended = true)),
+                    ),
+                    CollectionSnapshot(
+                        notes = emptyList(),
+                        cards = emptyList(),
+                    ),
+                ),
+            ),
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(100, 150, 200, 250),
+        )
+        val request = RunSourceMirrorSyncRequest(
+            importSettings = ImportSettings(),
+            queueSeedContext = SyncStudyQueueSeedContext(
+                settings = StudyQueueSeedSettings(
+                    activeQueueCap = 10,
+                    newPerDay = 10,
+                    matureSupportThreshold = 2,
+                ),
+                startOfDayMillis = 0,
+            ),
+        )
+
+        useCase(request)
+        useCase(request)
+
+        assertEquals(listOf("日"), sourceMirrorSync.importCandidatesByCall[0].map { it.kanji })
+        assertEquals(emptyList<String>(), sourceMirrorSync.importCandidatesByCall[1].map { it.kanji })
+        assertEquals(listOf("日"), sourceMirrorSync.dashboardRowsByCall[1].map { it.kanji })
+        assertEquals(listOf("日"), sourceMirrorSync.seededQueueItemsByCall[1]!!.map { it.kanji })
+    }
+
+    @Test
     fun gatewayFailureWritesFailedSyncRunWithoutSourceSnapshot() = runBlocking {
         val gateway = FakeGateway(
             failure = CollectionGatewayException(
@@ -448,6 +491,15 @@ class RunSourceMirrorSyncUseCaseTest {
         }
     }
 
+    private class SequentialGateway(
+        private val snapshots: List<CollectionSnapshot>,
+    ) : CollectionGateway {
+        private var index = 0
+
+        override suspend fun readCollection(settings: ImportSettings): CollectionSnapshot =
+            snapshots[index++]
+    }
+
     private class FakeArchiveGateway(
         private val message: String,
     ) : SuspendedCardArchiveGateway {
@@ -498,11 +550,18 @@ class RunSourceMirrorSyncUseCaseTest {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
         val importCandidates = mutableListOf<ImportedKanjiCandidate>()
+        val importCandidatesByCall = mutableListOf<List<ImportedKanjiCandidate>>()
         val dashboardRows = mutableListOf<StudyDashboardRow>()
+        val dashboardRowsByCall = mutableListOf<List<StudyDashboardRow>>()
         var seededQueueItems: List<StudyQueueItem>? = null
+        val seededQueueItemsByCall = mutableListOf<List<StudyQueueItem>?>()
         var queueSeedBuilderCalls = 0
         var similarKanjiIndex: SimilarKanjiIndex? = null
         lateinit var syncRun: SyncRun
+        private var retainedCandidates: List<ImportedKanjiCandidate> = emptyList()
+
+        override suspend fun retainedSuspendedImportCandidates(settings: ImportSettings): List<ImportedKanjiCandidate> =
+            retainedCandidates.takeIf { settings.importSuspendedCards }.orEmpty()
 
         override suspend fun recordSuccessfulSnapshot(
             syncRun: SyncRun,
@@ -520,12 +579,23 @@ class RunSourceMirrorSyncUseCaseTest {
             this.notes += notes.map { it.copy(lastSeenSyncId = id) }
             this.cards += cards.map { it.copy(lastSeenSyncId = id) }
             this.importCandidates += importCandidates
+            this.importCandidatesByCall += importCandidates
             this.dashboardRows += dashboardRows
+            this.dashboardRowsByCall += dashboardRows
             this.seededQueueItems = queueSeedBuilder?.let {
                 queueSeedBuilderCalls++
                 it.seed(existingQueueItems)
             }
+            this.seededQueueItemsByCall += this.seededQueueItems
             this.similarKanjiIndex = similarKanjiIndex
+            this.retainedCandidates = importCandidates.mapNotNull { candidate ->
+                val suspendedSources = candidate.sources.filter { it.suspended }
+                if (suspendedSources.isEmpty()) {
+                    null
+                } else {
+                    candidate.copy(sources = suspendedSources)
+                }
+            }
             return id
         }
     }
@@ -569,10 +639,13 @@ class RunSourceMirrorSyncUseCaseTest {
         ): Int = 0
     }
 
-    private fun sourceNote(noteId: Long = 10): SourceNote = SourceNote(
+    private fun sourceNote(
+        noteId: Long = 10,
+        expression: String = "日本",
+    ): SourceNote = SourceNote(
         noteId = NoteId(noteId),
         modelName = "Kiku",
-        expression = "日本",
+        expression = expression,
         reading = "にほん",
         meaning = "Japan",
         sentence = "",

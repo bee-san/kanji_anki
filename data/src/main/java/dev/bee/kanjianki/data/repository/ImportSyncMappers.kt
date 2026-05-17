@@ -2,10 +2,13 @@ package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.importing.ImportDecisionEntity
 import dev.bee.kanjianki.data.importing.ImportRuleAuditEntity
+import dev.bee.kanjianki.data.importing.SuspendedArchiveEntity
 import dev.bee.kanjianki.data.importing.SuspendedImportEntity
 import dev.bee.kanjianki.data.importing.SuspendedSourceEntity
 import dev.bee.kanjianki.domain.importing.ImportSourceEvidence
 import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
+import dev.bee.kanjianki.domain.model.CardId
+import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.importing.ImportSource
@@ -102,6 +105,75 @@ private fun ImportSourceEvidence.toSuspendedSourceEntity(
     sentence = sentence,
     syncId = syncRunId.value,
 )
+
+internal fun SuspendedImportEntity.toRetainedImportCandidate(
+    sources: List<SuspendedSourceEntity>,
+    archiveRows: List<SuspendedArchiveEntity> = emptyList(),
+): ImportedKanjiCandidate? {
+    val rank = jitenRank ?: return null
+    val sourceEvidence = sources.map { it.toRetainedImportSourceEvidence() }
+    val sourceCardIds = sourceEvidence.mapTo(mutableSetOf()) { it.cardId.value }
+    val archiveEvidence = archiveRows
+        .filterNot { it.cardId in sourceCardIds }
+        .map { it.toRetainedImportSourceEvidence(kanji) }
+    val retainedSources = sourceEvidence + archiveEvidence
+    if (retainedSources.isEmpty()) {
+        return null
+    }
+    return ImportedKanjiCandidate(
+        kanji = kanji,
+        jitenRank = rank,
+        rankRangeMax = retainedRankRangeMax(rank),
+        sources = retainedSources,
+    )
+}
+
+private fun SuspendedImportEntity.retainedRankRangeMax(rank: Int): Int =
+    if (cutoffUsed in 1..20_000) cutoffUsed else rank
+
+private fun SuspendedSourceEntity.toRetainedImportSourceEvidence(): ImportSourceEvidence =
+    ImportSourceEvidence(
+        kanji = kanji,
+        cardId = CardId(cardId),
+        noteId = NoteId(noteId),
+        expression = expression,
+        reading = reading,
+        meaning = meaning,
+        sentence = sentence,
+        sourceType = ImportSource.SUSPENDED,
+        suspended = true,
+        forcePractice = true,
+        mature = false,
+        lapses = 0,
+        intervalDays = 0,
+        reps = 0,
+        fsrsStability = null,
+        fsrsDifficulty = null,
+        fsrsRetrievability = null,
+        ruleTypes = setOf(ImportSource.SUSPENDED),
+    )
+
+private fun SuspendedArchiveEntity.toRetainedImportSourceEvidence(kanji: String): ImportSourceEvidence =
+    ImportSourceEvidence(
+        kanji = kanji,
+        cardId = CardId(cardId),
+        noteId = NoteId(noteId),
+        expression = expression,
+        reading = reading,
+        meaning = meaning,
+        sentence = sentence,
+        sourceType = ImportSource.SUSPENDED,
+        suspended = true,
+        forcePractice = true,
+        mature = false,
+        lapses = 0,
+        intervalDays = 0,
+        reps = 0,
+        fsrsStability = null,
+        fsrsDifficulty = null,
+        fsrsRetrievability = null,
+        ruleTypes = setOf(ImportSource.SUSPENDED),
+    )
 
 private fun importReasonCode(ruleTypes: Set<ImportSource>): String = when {
     ruleTypes.size > 1 -> "multiple_import_rules"

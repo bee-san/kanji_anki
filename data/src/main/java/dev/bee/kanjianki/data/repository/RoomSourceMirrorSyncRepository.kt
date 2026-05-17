@@ -93,6 +93,34 @@ class RoomSourceMirrorSyncRepository internal constructor(
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
+    override suspend fun retainedSuspendedImportCandidates(settings: ImportSettings): List<ImportedKanjiCandidate> {
+        if (!settings.importSuspendedCards) {
+            return emptyList()
+        }
+        val activeArchiveRows = suspendedArchive.listActive()
+        if (activeArchiveRows.isEmpty()) {
+            return emptyList()
+        }
+        val activeArchivedCardIds = activeArchiveRows.mapTo(mutableSetOf()) { it.cardId }
+        return suspendedImports.listRanked().mapNotNull { imported ->
+            val rank = imported.jitenRank ?: return@mapNotNull null
+            if (rank !in settings.suspendedRankMin..settings.suspendedRankMax) {
+                return@mapNotNull null
+            }
+            val sources = suspendedSources.listForKanji(imported.kanji)
+                .filter { it.cardId in activeArchivedCardIds }
+            val archiveRows = if (sources.isEmpty()) {
+                activeArchiveRows.filter { it.containsKanji(imported.kanji) }
+            } else {
+                emptyList()
+            }
+            imported.toRetainedImportCandidate(sources, archiveRows)
+        }
+    }
+
+    private fun SuspendedArchiveEntity.containsKanji(kanji: String): Boolean =
+        expression.contains(kanji) || sentence.contains(kanji)
+
     override suspend fun recordSuccessfulSnapshot(
         syncRun: SyncRun,
         notes: List<SourceNote>,

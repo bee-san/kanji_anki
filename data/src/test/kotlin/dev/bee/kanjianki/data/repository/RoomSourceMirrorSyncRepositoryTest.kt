@@ -362,6 +362,82 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(listOf(7L), syncKanjiSnapshots.upserted.map { it.syncId }.distinct())
     }
 
+    @Test
+    fun retainedSuspendedImportCandidatesReadsOnlyActiveArchivedSourcesInCurrentRankRange() = runBlocking {
+        val archive = FakeSuspendedArchiveDao(
+            existing = mapOf(
+                10L to suspendedArchiveEntity(
+                    cardId = 10,
+                    restoredAt = null,
+                    expression = "日",
+                    sentence = "日を見る。",
+                ),
+                20L to suspendedArchiveEntity(cardId = 20, restoredAt = 500),
+            ),
+        )
+        val suspendedImports = FakeSuspendedImportDao(
+            existing = mapOf(
+                "日" to suspendedImportEntity("日", jitenRank = 120),
+                "本" to suspendedImportEntity("本", jitenRank = 200),
+                "外" to suspendedImportEntity("外", jitenRank = 50),
+            ),
+        )
+        val suspendedSources = FakeSuspendedSourceDao()
+        suspendedSources.upsertAll(
+            listOf(
+                suspendedSourceEntity(kanji = "日", cardId = 10, noteId = 1),
+                suspendedSourceEntity(kanji = "本", cardId = 20, noteId = 2),
+                suspendedSourceEntity(kanji = "外", cardId = 30, noteId = 3),
+            ),
+        )
+        val repository = repositoryForRetainedImports(
+            archive = archive,
+            suspendedImports = suspendedImports,
+            suspendedSources = suspendedSources,
+        )
+
+        val retained = repository.retainedSuspendedImportCandidates(
+            ImportSettings(suspendedRankMin = 100, suspendedRankMax = 3000),
+        )
+
+        assertEquals(listOf("日"), retained.map { it.kanji })
+        assertEquals(120, retained.single().jitenRank)
+        assertEquals(3000, retained.single().rankRangeMax)
+        val source = retained.single().sources.single()
+        assertEquals(CardId(10), source.cardId)
+        assertEquals(NoteId(1), source.noteId)
+        assertEquals(ImportSource.SUSPENDED, source.sourceType)
+        assertTrue(source.suspended)
+        assertTrue(source.forcePractice)
+        assertEquals(setOf(ImportSource.SUSPENDED), source.ruleTypes)
+    }
+
+    @Test
+    fun retainedSuspendedImportCandidatesFallsBackToArchiveWhenSourceRowsAreMissing() = runBlocking {
+        val repository = repositoryForRetainedImports(
+            archive = FakeSuspendedArchiveDao(
+                existing = mapOf(
+                    10L to suspendedArchiveEntity(cardId = 10, restoredAt = null),
+                ),
+            ),
+            suspendedImports = FakeSuspendedImportDao(
+                existing = mapOf(
+                    "日" to suspendedImportEntity("日", jitenRank = 120),
+                ),
+            ),
+            suspendedSources = FakeSuspendedSourceDao(),
+        )
+
+        val retained = repository.retainedSuspendedImportCandidates(ImportSettings())
+
+        assertEquals(listOf("日"), retained.map { it.kanji })
+        val source = retained.single().sources.single()
+        assertEquals(CardId(10), source.cardId)
+        assertEquals(NoteId(10), source.noteId)
+        assertEquals("日本", source.expression)
+        assertEquals("日本へ行く。", source.sentence)
+    }
+
     private class FakeSyncRunDao(
         private val generatedId: Long,
     ) : SyncRunDao {
@@ -820,6 +896,79 @@ class RoomSourceMirrorSyncRepositoryTest {
                 sentence = "日本へ行く。",
             ),
         ),
+    )
+
+    private fun repositoryForRetainedImports(
+        archive: SuspendedArchiveDao,
+        suspendedImports: SuspendedImportDao,
+        suspendedSources: SuspendedSourceDao,
+    ): RoomSourceMirrorSyncRepository = RoomSourceMirrorSyncRepository(
+        syncRuns = FakeSyncRunDao(generatedId = 1),
+        sourceNotes = FakeSourceNoteDao(existingIds = emptyList()),
+        sourceCards = FakeSourceCardDao(existingIds = emptyList()),
+        importRuleAudits = FakeImportRuleAuditDao(),
+        importDecisions = FakeImportDecisionDao(),
+        suspendedArchive = archive,
+        suspendedImports = suspendedImports,
+        suspendedSources = suspendedSources,
+        dashboardRows = FakeDashboardRowDao(),
+        kanjiExamples = FakeKanjiExampleDao(),
+        kanjiInventory = FakeKanjiInventoryDao(),
+        syncNoteSnapshots = FakeSyncNoteSnapshotDao(),
+        syncCardSnapshots = FakeSyncCardSnapshotDao(),
+        syncKanjiSnapshots = FakeSyncKanjiSnapshotDao(),
+        studyItems = FakeStudyItemDao(),
+        similarKanjiPairs = FakeSimilarKanjiPairDao(),
+        studyQueueMutationGate = RecordingStudyQueueMutationGate(mutableListOf()),
+        ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.DISABLED,
+        runInTransaction = { block -> block() },
+    )
+
+    private fun suspendedImportEntity(
+        kanji: String,
+        jitenRank: Int?,
+    ): SuspendedImportEntity = SuspendedImportEntity(
+        kanji = kanji,
+        jitenRank = jitenRank,
+        rankKnown = if (jitenRank == null) 0 else 1,
+        cutoffUsed = 3000,
+        firstImportedAt = 10,
+        lastSeenSyncId = 1,
+    )
+
+    private fun suspendedSourceEntity(
+        kanji: String,
+        cardId: Long,
+        noteId: Long,
+    ): SuspendedSourceEntity = SuspendedSourceEntity(
+        kanji = kanji,
+        cardId = cardId,
+        noteId = noteId,
+        expression = kanji,
+        reading = "にち",
+        meaning = "day",
+        sentence = "${kanji}を見る。",
+        syncId = 1,
+    )
+
+    private fun suspendedArchiveEntity(
+        cardId: Long,
+        restoredAt: Long?,
+        expression: String = "日本",
+        sentence: String = "日本へ行く。",
+    ): SuspendedArchiveEntity = SuspendedArchiveEntity(
+        cardId = cardId,
+        noteId = cardId,
+        deckName = "Mining",
+        modelName = "Kiku",
+        expression = expression,
+        reading = "にほん",
+        meaning = "Japan",
+        sentence = sentence,
+        fieldsJson = "{}",
+        archivedAt = 20,
+        archivedSyncId = 1,
+        restoredAt = restoredAt,
     )
 
     private fun sourceEvidence(

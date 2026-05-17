@@ -2,7 +2,9 @@ package dev.bee.kanjianki.domain.sync
 
 import dev.bee.kanjianki.domain.common.AppClock
 import dev.bee.kanjianki.domain.importing.ImportCandidateSelector
+import dev.bee.kanjianki.domain.importing.ImportSourceEvidence
 import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
+import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.similar.SimilarKanjiIndex
@@ -53,7 +55,10 @@ class RunSourceMirrorSyncUseCase(
             val snapshot = gateway.readCollection(settings, progress)
             progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.PROCESSING_IMPORTED_CARDS))
             val importCandidates = importCandidateSelector.select(snapshot, settings)
-            val dashboardRows = dashboardBuilder.build(importCandidates, settings)
+            val dashboardRows = dashboardBuilder.build(
+                dashboardImportCandidates(settings, importCandidates),
+                settings,
+            )
             val finishedAt = clock.nowMillis()
             progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.BUILDING_PRACTICE_QUEUE))
             val queueSeedBuilder = queueSeedBuilder(request, dashboardRows, finishedAt)
@@ -78,6 +83,34 @@ class RunSourceMirrorSyncUseCase(
             val finishedAt = clock.nowMillis()
             syncRuns.insert(unexpectedFailureRun(startedAt, finishedAt, error))
         }
+    }
+
+    private suspend fun dashboardImportCandidates(
+        settings: ImportSettings,
+        currentImportCandidates: List<ImportedKanjiCandidate>,
+    ): List<ImportedKanjiCandidate> {
+        if (!settings.importSuspendedCards) {
+            return currentImportCandidates
+        }
+        val retained = sourceMirrorSync.retainedSuspendedImportCandidates(settings)
+        if (retained.isEmpty()) {
+            return currentImportCandidates
+        }
+        return mergeImportCandidates(retained, currentImportCandidates)
+    }
+
+    private fun mergeImportCandidates(
+        first: List<ImportedKanjiCandidate>,
+        second: List<ImportedKanjiCandidate>,
+    ): List<ImportedKanjiCandidate> {
+        val byKanji = linkedMapOf<String, MutableImportCandidate>()
+        for (candidate in first + second) {
+            byKanji.getOrPut(candidate.kanji) {
+                MutableImportCandidate(candidate)
+            }.add(candidate)
+        }
+        return byKanji.values.map { it.build() }
+            .sortedWith(compareBy<ImportedKanjiCandidate> { it.jitenRank }.thenBy { it.kanji })
     }
 
     private suspend fun recordArchiveCleanup(
@@ -233,6 +266,34 @@ class RunSourceMirrorSyncUseCase(
         removalMessage = "",
     )
 
+}
+
+private class MutableImportCandidate(
+    candidate: ImportedKanjiCandidate,
+) {
+    private val kanji = candidate.kanji
+    private var jitenRank = candidate.jitenRank
+    private var rankRangeMax = candidate.rankRangeMax
+    private val sources = linkedMapOf<CardId, ImportSourceEvidence>()
+
+    init {
+        add(candidate)
+    }
+
+    fun add(candidate: ImportedKanjiCandidate) {
+        jitenRank = minOf(jitenRank, candidate.jitenRank)
+        rankRangeMax = maxOf(rankRangeMax, candidate.rankRangeMax)
+        for (source in candidate.sources) {
+            sources[source.cardId] = source
+        }
+    }
+
+    fun build(): ImportedKanjiCandidate = ImportedKanjiCandidate(
+        kanji = kanji,
+        jitenRank = jitenRank,
+        rankRangeMax = rankRangeMax,
+        sources = sources.values.toList(),
+    )
 }
 
 data class RunSourceMirrorSyncRequest(
