@@ -912,6 +912,12 @@ to the local and GitHub Android rewrite gates.
 The same `ciFast` command passed after adding JaCoCo XML reports for the new
 Kotlin and Android rewrite modules to the local and GitHub Sonar inputs.
 
+Review then found two Room historical-sync parity gaps and one manual Sonar
+fast-path gap. Room historical kanji snapshots now aggregate every source card
+by kanji before overlaying dashboard fields, note snapshots extract kanji from
+expression plus sentence, and default manual Sonar fast runs mark all module
+areas changed so every configured non-connected coverage XML is generated.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:

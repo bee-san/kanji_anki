@@ -77,7 +77,13 @@ jobs:
           REWRITE_CHANGED=false
           GRADLE_CHANGED=false
 
-          if [ -z "$CHANGED_FILES" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            APP_CHANGED=true
+            CORE_CHANGED=true
+            FSRS_CHANGED=true
+            REWRITE_CHANGED=true
+            GRADLE_CHANGED=true
+          elif [ -z "$CHANGED_FILES" ]; then
             GRADLE_CHANGED=false
           else
             while IFS= read -r FILE; do

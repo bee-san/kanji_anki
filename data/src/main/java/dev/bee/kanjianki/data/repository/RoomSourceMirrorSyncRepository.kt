@@ -106,7 +106,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
         recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
         recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
-        recordHistoricalKanjiSnapshots(syncRunId, finishedAt, dashboardRows)
+        recordHistoricalKanjiSnapshots(syncRunId, finishedAt, notes, cards, dashboardRows, settings)
         recordDashboardRows(finishedAt, dashboardRows)
         recordKanjiInventory(finishedAt, notes, cards, importCandidates, dashboardRows, settings)
         rebuildSimilarKanjiPairs(finishedAt, similarKanjiIndex)
@@ -315,56 +315,28 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private suspend fun recordHistoricalKanjiSnapshots(
         syncRunId: SyncRunId,
         finishedAt: Long,
+        notes: List<SourceNote>,
+        cards: List<SourceCard>,
         rows: List<StudyDashboardRow>,
+        settings: ImportSettings,
     ) {
-        if (rows.isEmpty()) {
-            return
+        val aggregates = linkedMapOf<String, HistoricalKanjiAggregate>()
+        val notesById = notes.associateBy { it.noteId }
+        for (card in cards) {
+            val note = notesById[card.noteId] ?: continue
+            for (kanji in extractKanji("${note.expression} ${note.sentence}")) {
+                aggregateFor(aggregates, kanji).add(card, settings.matureDays)
+            }
         }
-        syncKanjiSnapshots.upsertAll(
-            rows.map { row ->
-                row.toSyncKanjiSnapshotEntity(syncRunId, finishedAt)
-            },
-        )
-    }
-
-    private fun StudyDashboardRow.toSyncKanjiSnapshotEntity(
-        syncRunId: SyncRunId,
-        finishedAt: Long,
-    ): SyncKanjiSnapshotEntity = SyncKanjiSnapshotEntity(
-        syncId = syncRunId.value,
-        finishedAt = finishedAt,
-        kanji = kanji,
-        activeCards = activeExampleCount,
-        suspendedCards = suspendedExampleCount,
-        matureSupportCount = matureSupportCount,
-        averageIntervalDays = examples.averageOfOrZero { it.intervalDays.toDouble() },
-        totalLapses = examples.sumOf { it.lapses },
-        totalReps = examples.sumOf { it.reps },
-        fsrsStabilityAvg = examples.averageNonNull { it.fsrsStability },
-        fsrsDifficultyAvg = examples.averageNonNull { it.fsrsDifficulty },
-        fsrsRetrievabilityAvg = examples.averageNonNull { it.fsrsRetrievability },
-        weaknessScore = weaknessScore,
-        reasonCode = reasonCode,
-        activeExampleCount = activeExampleCount,
-        suspendedExampleCount = suspendedExampleCount,
-    )
-
-    private fun <T> List<T>.averageOfOrZero(selector: (T) -> Double): Double =
-        if (isEmpty()) {
-            0.0
-        } else {
-            sumOf(selector) / size
+        for (row in rows) {
+            aggregateFor(aggregates, row.kanji).overlay(row)
         }
-
-    private fun <T> List<T>.averageNonNull(selector: (T) -> Double?): Double? {
-        var count = 0
-        var total = 0.0
-        for (item in this) {
-            val value = selector(item) ?: continue
-            total += value
-            count++
+        val entities = aggregates.values
+            .filter { it.kanji.isNotEmpty() }
+            .map { it.toEntity(syncRunId, finishedAt) }
+        if (entities.isNotEmpty()) {
+            syncKanjiSnapshots.upsertAll(entities)
         }
-        return if (count == 0) null else total / count
     }
 
     private fun SourceNote.toSyncNoteSnapshotEntity(
@@ -385,7 +357,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         sentence = sentence,
         tags = tags,
         fieldsJson = fieldsJson,
-        extractedKanji = extractKanji(expression).joinToString(""),
+        extractedKanji = extractKanji("$expression $sentence").joinToString(""),
     )
 
     private fun SourceCard.toSyncCardSnapshotEntity(
@@ -436,4 +408,105 @@ class RoomSourceMirrorSyncRepository internal constructor(
             codePoint in 0x4E00..0x9FFF ||
             codePoint in 0xF900..0xFAFF ||
             codePoint in 0x20000..0x2EBEF
+
+    private fun aggregateFor(
+        aggregates: MutableMap<String, HistoricalKanjiAggregate>,
+        kanji: String,
+    ): HistoricalKanjiAggregate = aggregates.getOrPut(kanji) {
+        HistoricalKanjiAggregate(kanji)
+    }
+
+    private class HistoricalKanjiAggregate(
+        val kanji: String,
+    ) {
+        private var activeCards = 0
+        private var suspendedCards = 0
+        private var matureSupportCount = 0
+        private var totalLapses = 0
+        private var totalReps = 0
+        private var intervalCount = 0
+        private var intervalSum = 0.0
+        private var stabilityCount = 0
+        private var stabilitySum = 0.0
+        private var difficultyCount = 0
+        private var difficultySum = 0.0
+        private var retrievabilityCount = 0
+        private var retrievabilitySum = 0.0
+        private var weaknessScore = 0
+        private var reasonCode = ""
+        private var activeExampleCount = 0
+        private var suspendedExampleCount = 0
+
+        fun add(
+            card: SourceCard,
+            matureDays: Int,
+        ) {
+            if (card.suspended) {
+                suspendedCards++
+            } else {
+                activeCards++
+            }
+            if (card.mature(matureDays)) {
+                matureSupportCount++
+            }
+            totalLapses += card.lapses.coerceAtLeast(0)
+            totalReps += card.reps.coerceAtLeast(0)
+            intervalSum += card.intervalDays.coerceAtLeast(0).toDouble()
+            intervalCount++
+            card.fsrsStability?.let {
+                stabilitySum += it
+                stabilityCount++
+            }
+            card.fsrsDifficulty?.let {
+                difficultySum += it
+                difficultyCount++
+            }
+            card.fsrsRetrievability?.let {
+                retrievabilitySum += it
+                retrievabilityCount++
+            }
+        }
+
+        fun overlay(row: StudyDashboardRow) {
+            weaknessScore = row.weaknessScore
+            reasonCode = row.reasonCode
+            activeExampleCount = maxOf(activeExampleCount, row.activeExampleCount)
+            suspendedExampleCount = maxOf(suspendedExampleCount, row.suspendedExampleCount)
+            matureSupportCount = maxOf(matureSupportCount, row.matureSupportCount)
+        }
+
+        fun toEntity(
+            syncRunId: SyncRunId,
+            finishedAt: Long,
+        ): SyncKanjiSnapshotEntity = SyncKanjiSnapshotEntity(
+            syncId = syncRunId.value,
+            finishedAt = finishedAt,
+            kanji = kanji,
+            activeCards = activeCards,
+            suspendedCards = suspendedCards,
+            matureSupportCount = matureSupportCount,
+            averageIntervalDays = averageIntervalDays(),
+            totalLapses = totalLapses,
+            totalReps = totalReps,
+            fsrsStabilityAvg = average(stabilitySum, stabilityCount),
+            fsrsDifficultyAvg = average(difficultySum, difficultyCount),
+            fsrsRetrievabilityAvg = average(retrievabilitySum, retrievabilityCount),
+            weaknessScore = weaknessScore,
+            reasonCode = reasonCode,
+            activeExampleCount = activeExampleCount,
+            suspendedExampleCount = suspendedExampleCount,
+        )
+
+        private fun averageIntervalDays(): Double =
+            if (intervalCount == 0) {
+                0.0
+            } else {
+                intervalSum / intervalCount
+            }
+
+        private fun average(
+            total: Double,
+            count: Int,
+        ): Double? = if (count == 0) null else total / count
+    }
 }

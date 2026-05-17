@@ -138,8 +138,36 @@ class RoomSourceMirrorSyncRepositoryTest {
 
         val id = repository.recordSuccessfulSnapshot(
             syncRun = successRun(),
-            notes = listOf(sourceNote(1), sourceNote(2)),
-            cards = listOf(sourceCard(10, noteId = 1), sourceCard(20, noteId = 2)),
+            notes = listOf(
+                sourceNote(1),
+                sourceNote(2),
+                sourceNote(3, expression = "かな", sentence = "語だけをかなにする。"),
+            ),
+            cards = listOf(
+                sourceCard(
+                    cardId = 10,
+                    noteId = 1,
+                    intervalDays = 9,
+                    reps = 8,
+                    lapses = 2,
+                    suspended = true,
+                    fsrsStability = 4.0,
+                    fsrsDifficulty = 6.0,
+                    fsrsRetrievability = 0.75,
+                ),
+                sourceCard(20, noteId = 2),
+                sourceCard(
+                    cardId = 30,
+                    noteId = 3,
+                    intervalDays = 45,
+                    reps = 12,
+                    lapses = 1,
+                    suspended = false,
+                    fsrsStability = 10.0,
+                    fsrsDifficulty = 4.0,
+                    fsrsRetrievability = 0.8,
+                ),
+            ),
             importCandidates = listOf(
                 importCandidate(
                     kanji = "日",
@@ -172,12 +200,12 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(1, syncRuns.inserted.single().deletedCardsCount)
         assertTrue(cards.deletedAll)
         assertTrue(notes.deletedAll)
-        assertEquals(listOf(1L, 2L), notes.upserted.map { it.noteId })
-        assertEquals(listOf(42L, 42L), notes.upserted.map { it.lastSeenSyncId })
-        assertEquals(listOf(10L, 20L), cards.upserted.map { it.cardId })
-        assertEquals(listOf(true, false), cards.upserted.map { it.suspended })
-        assertEquals(listOf(false, true), cards.upserted.map { it.browserQueryMatched })
-        assertEquals(listOf(42L, 42L), cards.upserted.map { it.lastSeenSyncId })
+        assertEquals(listOf(1L, 2L, 3L), notes.upserted.map { it.noteId })
+        assertEquals(listOf(42L, 42L, 42L), notes.upserted.map { it.lastSeenSyncId })
+        assertEquals(listOf(10L, 20L, 30L), cards.upserted.map { it.cardId })
+        assertEquals(listOf(true, false, false), cards.upserted.map { it.suspended })
+        assertEquals(listOf(false, true, false), cards.upserted.map { it.browserQueryMatched })
+        assertEquals(listOf(42L, 42L, 42L), cards.upserted.map { it.lastSeenSyncId })
         assertEquals(42L, audits.upserted.single().syncId)
         assertEquals("active suspended", audits.upserted.single().enabledSources)
         assertEquals(listOf("日", "本"), decisions.upserted.map { it.kanji })
@@ -192,31 +220,45 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals("Kiku", archive.upserted.single().modelName)
         assertEquals(20L, archive.upserted.single().archivedAt)
         assertEquals(42L, archive.upserted.single().archivedSyncId)
-        assertEquals(listOf(1L, 2L), syncNoteSnapshots.upserted.map { it.noteId })
-        assertEquals(listOf("日本", "日本"), syncNoteSnapshots.upserted.map { it.extractedKanji })
-        assertEquals(listOf(10L, 20L), syncCardSnapshots.upserted.map { it.cardId })
-        assertEquals(listOf(1, 0), syncCardSnapshots.upserted.map { it.suspended })
-        assertEquals(listOf(0, 0), syncCardSnapshots.upserted.map { it.mature })
-        assertEquals(listOf("日"), syncKanjiSnapshots.upserted.map { it.kanji })
-        assertEquals(42L, syncKanjiSnapshots.upserted.single().syncId)
-        assertEquals(20L, syncKanjiSnapshots.upserted.single().finishedAt)
-        assertEquals(0, syncKanjiSnapshots.upserted.single().activeCards)
-        assertEquals(1, syncKanjiSnapshots.upserted.single().suspendedCards)
-        assertEquals(9.0, syncKanjiSnapshots.upserted.single().averageIntervalDays, 0.0)
-        assertEquals(2, syncKanjiSnapshots.upserted.single().totalLapses)
-        assertEquals(8, syncKanjiSnapshots.upserted.single().totalReps)
-        assertEquals(4.0, syncKanjiSnapshots.upserted.single().fsrsStabilityAvg!!, 0.0)
-        assertEquals(6.0, syncKanjiSnapshots.upserted.single().fsrsDifficultyAvg!!, 0.0)
-        assertEquals(0.75, syncKanjiSnapshots.upserted.single().fsrsRetrievabilityAvg!!, 0.0)
-        assertEquals(22, syncKanjiSnapshots.upserted.single().weaknessScore)
-        assertEquals("suspended_archive", syncKanjiSnapshots.upserted.single().reasonCode)
+        assertEquals(listOf(1L, 2L, 3L), syncNoteSnapshots.upserted.map { it.noteId })
+        assertEquals(listOf("日本", "日本", "語"), syncNoteSnapshots.upserted.map { it.extractedKanji })
+        assertEquals(listOf(10L, 20L, 30L), syncCardSnapshots.upserted.map { it.cardId })
+        assertEquals(listOf(1, 0, 0), syncCardSnapshots.upserted.map { it.suspended })
+        assertEquals(listOf(0, 0, 1), syncCardSnapshots.upserted.map { it.mature })
+        assertEquals(setOf("日", "本", "語"), syncKanjiSnapshots.upserted.map { it.kanji }.toSet())
+        val historicalDay = syncKanjiSnapshots.upserted.single { it.kanji == "日" }
+        assertEquals(42L, historicalDay.syncId)
+        assertEquals(20L, historicalDay.finishedAt)
+        assertEquals(1, historicalDay.activeCards)
+        assertEquals(1, historicalDay.suspendedCards)
+        assertEquals(4.5, historicalDay.averageIntervalDays, 0.0)
+        assertEquals(2, historicalDay.totalLapses)
+        assertEquals(8, historicalDay.totalReps)
+        assertEquals(4.0, historicalDay.fsrsStabilityAvg!!, 0.0)
+        assertEquals(6.0, historicalDay.fsrsDifficultyAvg!!, 0.0)
+        assertEquals(0.75, historicalDay.fsrsRetrievabilityAvg!!, 0.0)
+        assertEquals(22, historicalDay.weaknessScore)
+        assertEquals("suspended_archive", historicalDay.reasonCode)
+        val historicalBook = syncKanjiSnapshots.upserted.single { it.kanji == "本" }
+        assertEquals(1, historicalBook.activeCards)
+        assertEquals(1, historicalBook.suspendedCards)
+        assertEquals(0, historicalBook.weaknessScore)
+        assertEquals("", historicalBook.reasonCode)
+        val historicalSentenceOnly = syncKanjiSnapshots.upserted.single { it.kanji == "語" }
+        assertEquals(1, historicalSentenceOnly.activeCards)
+        assertEquals(0, historicalSentenceOnly.suspendedCards)
+        assertEquals(1, historicalSentenceOnly.matureSupportCount)
+        assertEquals(45.0, historicalSentenceOnly.averageIntervalDays, 0.0)
+        assertEquals(1, historicalSentenceOnly.totalLapses)
+        assertEquals(12, historicalSentenceOnly.totalReps)
+        assertEquals(10.0, historicalSentenceOnly.fsrsStabilityAvg!!, 0.0)
         assertTrue(dashboardRows.deletedAll)
         assertTrue(kanjiExamples.deletedAll)
         assertEquals(listOf("日"), dashboardRows.upserted.map { it.kanji })
         assertEquals(20L, dashboardRows.upserted.single().rebuiltAt)
         assertEquals(listOf(10L), kanjiExamples.upserted.map { it.cardId })
         assertEquals("日本へ行く。", kanjiExamples.upserted.single().sentence)
-        assertEquals(setOf("古", "日", "本"), kanjiInventory.upserted.map { it.kanji }.toSet())
+        assertEquals(setOf("古", "日", "本", "語"), kanjiInventory.upserted.map { it.kanji }.toSet())
         assertEquals(4L, kanjiInventory.upserted.single { it.kanji == "古" }.firstSeenAt)
         assertEquals(9, kanjiInventory.upserted.single { it.kanji == "古" }.sourceCount)
         assertEquals(20L, kanjiInventory.upserted.single { it.kanji == "日" }.lastSeenAt)
@@ -702,13 +744,17 @@ class RoomSourceMirrorSyncRepositoryTest {
         ruleTypes = setOf(sourceType),
     )
 
-    private fun sourceNote(noteId: Long): SourceNote = SourceNote(
+    private fun sourceNote(
+        noteId: Long,
+        expression: String = "日本",
+        sentence: String = "",
+    ): SourceNote = SourceNote(
         noteId = NoteId(noteId),
         modelName = "Kiku",
-        expression = "日本",
+        expression = expression,
         reading = "にほん",
         meaning = "Japan",
-        sentence = "",
+        sentence = sentence,
         fieldsJson = "{}",
         tags = "",
         lastSeenSyncId = SyncRunId(0),
@@ -717,6 +763,13 @@ class RoomSourceMirrorSyncRepositoryTest {
     private fun sourceCard(
         cardId: Long,
         noteId: Long,
+        intervalDays: Int = 0,
+        reps: Int = 0,
+        lapses: Int = 0,
+        suspended: Boolean = cardId == 10L,
+        fsrsStability: Double? = null,
+        fsrsDifficulty: Double? = null,
+        fsrsRetrievability: Double? = null,
     ): SourceCard = SourceCard(
         cardId = CardId(cardId),
         noteId = NoteId(noteId),
@@ -725,14 +778,14 @@ class RoomSourceMirrorSyncRepositoryTest {
         queue = if (cardId == 10L) -1 else 0,
         type = 2,
         due = 0,
-        intervalDays = 0,
-        reps = 0,
-        lapses = 0,
-        suspended = cardId == 10L,
+        intervalDays = intervalDays,
+        reps = reps,
+        lapses = lapses,
+        suspended = suspended,
         browserQueryMatched = cardId == 20L,
-        fsrsStability = null,
-        fsrsDifficulty = null,
-        fsrsRetrievability = null,
+        fsrsStability = fsrsStability,
+        fsrsDifficulty = fsrsDifficulty,
+        fsrsRetrievability = fsrsRetrievability,
         lastSeenSyncId = SyncRunId(0),
     )
 
