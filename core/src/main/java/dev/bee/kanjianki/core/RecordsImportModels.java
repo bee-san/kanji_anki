@@ -30,6 +30,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
         public final Double fsrsStability;
         public final Double fsrsDifficulty;
         public final Double fsrsRetrievability;
+        public final List<String> ruleTypes;
 
         public SuspendedSource(String kanji, long cardId, long noteId, String expression, String reading, String meaning, String sentence) {
             this(
@@ -72,6 +73,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             this.fsrsStability = sourceDetails.fsrsStability;
             this.fsrsDifficulty = sourceDetails.fsrsDifficulty;
             this.fsrsRetrievability = sourceDetails.fsrsRetrievability;
+            this.ruleTypes = Collections.unmodifiableList(normalizeRuleTypes(sourceDetails.ruleTypes, this.sourceType));
         }
 
         protected static String normalizeSourceType(String sourceType, boolean suspended) {
@@ -82,6 +84,20 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
                 return SOURCE_SUSPENDED;
             }
             return SOURCE_ACTIVE;
+        }
+
+        protected static List<String> normalizeRuleTypes(List<String> requested, String fallback) {
+            Set<String> out = new LinkedHashSet<>();
+            for (String rule : nullToEmptyList(requested)) {
+                String trimmed = rule == null ? "" : rule.trim();
+                if (!trimmed.isEmpty()) {
+                    out.add(trimmed);
+                }
+            }
+            if (out.isEmpty() && fallback != null && !fallback.trim().isEmpty()) {
+                out.add(fallback.trim());
+            }
+            return new ArrayList<>(out);
         }
     }
 
@@ -97,6 +113,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
         final Double fsrsStability;
         final Double fsrsDifficulty;
         final Double fsrsRetrievability;
+        final List<String> ruleTypes;
 
         SuspendedSourceDetails(Builder builder) {
             this.sentence = builder.sentence;
@@ -110,6 +127,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             this.fsrsStability = builder.fsrsStability;
             this.fsrsDifficulty = builder.fsrsDifficulty;
             this.fsrsRetrievability = builder.fsrsRetrievability;
+            this.ruleTypes = Collections.unmodifiableList(new ArrayList<>(nullToEmptyList(builder.ruleTypes)));
         }
 
         public static Builder builder(String sentence) {
@@ -128,6 +146,7 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
             Double fsrsStability;
             Double fsrsDifficulty;
             Double fsrsRetrievability;
+            List<String> ruleTypes = Collections.emptyList();
 
             Builder(String sentence) {
                 this.sentence = sentence;
@@ -164,6 +183,11 @@ public abstract class RecordsImportModels extends RecordsSyncModels {
                 this.fsrsStability = stability;
                 this.fsrsDifficulty = difficulty;
                 this.fsrsRetrievability = retrievability;
+                return this;
+            }
+
+            public Builder ruleTypes(List<String> ruleTypes) {
+                this.ruleTypes = new ArrayList<>(nullToEmptyList(ruleTypes));
                 return this;
             }
 

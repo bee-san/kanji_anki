@@ -115,6 +115,7 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(store.hasSuccessfulSyncSince(1500L));
         assertFalse(store.hasSuccessfulSyncSince(2500L));
         assertSuspendedImportStored();
+        assertImportAuditStored();
     }
 
     @Test
@@ -186,6 +187,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("sync_runs"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("suspended_imports"));
+        assertEquals(1, count("import_rule_audits"));
+        assertEquals(1, count("import_decisions"));
         assertEquals(1, count("sync_card_snapshots"));
 
         Records.DashboardRow malformedRow = new Records.DashboardRow(
@@ -224,6 +227,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("sync_runs"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("suspended_imports"));
+        assertEquals(1, count("import_rule_audits"));
+        assertEquals(1, count("import_decisions"));
         assertEquals(1, count("source_cards"));
         assertEquals(1, count("source_notes"));
         assertEquals(1, count("sync_card_snapshots"));
@@ -874,6 +879,9 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("sync_note_snapshots", "deck_ids"));
         assertTrue(hasColumn("sync_note_snapshots", "extracted_kanji"));
         assertTrue(hasColumn("sync_kanji_snapshots", "weakness_score"));
+        assertTrue(hasColumn("import_rule_audits", "settings_json"));
+        assertTrue(hasColumn("import_decisions", "reason_text"));
+        assertTrue(hasColumn("import_decisions", "rule_types"));
     }
 
     private void assertMigratedTimelineState() {
@@ -2123,6 +2131,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("suspended_archive"));
         assertEquals(1, count("suspended_imports"));
         assertEquals(1, count("suspended_sources"));
+        assertEquals(1, count("import_rule_audits"));
+        assertEquals(1, count("import_decisions"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("kanji_examples"));
         assertEquals(2, count("sync_card_snapshots"));
@@ -2140,6 +2150,15 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, storedImports.size());
         assertEquals("拉", storedImports.get(0).kanji);
         assertEquals(1, storedImports.get(0).sources.size());
+    }
+
+    private void assertImportAuditStored() {
+        assertScalarString("import_rule_audits", "enabled_sources", "sync_id=?", new String[]{"1"}, "suspended");
+        assertScalarString("import_rule_audits", "browser_query", "sync_id=?", new String[]{"1"}, "");
+        assertScalarString("import_decisions", "reason_code", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "suspended_import");
+        assertScalarString("import_decisions", "source_types", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "suspended");
+        assertScalarString("import_decisions", "rule_types", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "suspended");
+        assertScalarString("import_decisions", "source_card_ids", "sync_id=? AND kanji=?", new String[]{"1", "拉"}, "20");
     }
 
     private void assertInitialSimilarChoiceDue(Records.SimilarKanjiChoiceCard pull) {

@@ -85,6 +85,9 @@ final class LocalStoreMigrations {
         if (shouldRun(oldVersion, targetVersion, 18)) {
             hooks.repairHistoricalSyncSnapshotsIfPossible(db);
         }
+        if (shouldRun(oldVersion, targetVersion, 19)) {
+            hooks.createImportAuditTables(db);
+        }
     }
 
     private static boolean shouldRun(int oldVersion, int targetVersion, int migrationVersion) {

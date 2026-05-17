@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase;
 
 final class LocalStoreSchema {
     static final String DB_NAME = "kanji_anki_simple.db";
-    static final int DB_VERSION = 18;
+    static final int DB_VERSION = 19;
 
     private LocalStoreSchema() {
     }
@@ -19,6 +19,7 @@ final class LocalStoreSchema {
         db.execSQL(LocalStoreBase.SQL_CREATE_TABLE + LocalStoreBase.TABLE_SUSPENDED_SOURCES + " (kanji TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, sync_id INTEGER NOT NULL, PRIMARY KEY (kanji, card_id))");
         db.execSQL(LocalStoreBase.SQL_CREATE_TABLE + LocalStoreBase.TABLE_DASHBOARD_ROWS + " (kanji TEXT PRIMARY KEY, jiten_rank INTEGER, primary_meaning TEXT NOT NULL, reading TEXT NOT NULL, browser_search TEXT NOT NULL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, rebuilt_at INTEGER NOT NULL)");
         db.execSQL(LocalStoreBase.SQL_CREATE_TABLE + LocalStoreBase.TABLE_KANJI_EXAMPLES + " (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, source_type TEXT NOT NULL, card_id INTEGER NOT NULL, note_id INTEGER NOT NULL, expression TEXT NOT NULL, reading TEXT NOT NULL, meaning TEXT NOT NULL, sentence TEXT NOT NULL, mature INTEGER NOT NULL, lapses INTEGER NOT NULL, interval_days INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0, fsrs_stability REAL, fsrs_difficulty REAL, fsrs_retrievability REAL)");
+        hooks.createImportAuditTables(db);
         hooks.createKanjiInventoryTables(db);
         hooks.createSimilarKanjiTables(db);
         hooks.createSimilarKanjiPracticeTables(db);

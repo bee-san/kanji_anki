@@ -133,6 +133,7 @@ public final class KanjiImportSelector {
                         .mature(card.mature(settings.matureDays))
                         .reviewStats(card.lapses, card.intervalDays, card.reps)
                         .fsrs(card.fsrsStability, card.fsrsDifficulty, card.fsrsRetrievability)
+                        .ruleTypes(match.ruleTypes(card))
                         .build()
         );
     }
@@ -154,6 +155,26 @@ public final class KanjiImportSelector {
 
         private boolean forcePractice() {
             return suspended || tagged || weak || browserQuery;
+        }
+
+        private List<String> ruleTypes(Records.Card card) {
+            List<String> rules = new ArrayList<>();
+            if (active && !card.suspended) {
+                rules.add(Records.SOURCE_ACTIVE);
+            }
+            if (suspended) {
+                rules.add(Records.SOURCE_SUSPENDED);
+            }
+            if (tagged) {
+                rules.add(Records.SOURCE_TAGGED);
+            }
+            if (weak) {
+                rules.add(Records.SOURCE_WEAK);
+            }
+            if (browserQuery) {
+                rules.add(Records.SOURCE_BROWSER_QUERY);
+            }
+            return rules;
         }
     }
 }

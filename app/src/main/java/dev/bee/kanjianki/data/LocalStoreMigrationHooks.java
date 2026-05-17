@@ -75,6 +75,10 @@ final class LocalStoreMigrationHooks {
         store.createHistoricalSyncTables(db);
     }
 
+    void createImportAuditTables(SQLiteDatabase db) {
+        store.createImportAuditTables(db);
+    }
+
     void addRichReviewColumns(SQLiteDatabase db) {
         store.addRichReviewColumns(db);
     }

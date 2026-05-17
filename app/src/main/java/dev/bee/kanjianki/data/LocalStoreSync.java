@@ -49,9 +49,23 @@ abstract class LocalStoreSync extends LocalStoreInventory {
             String removalMessage,
             SimilarKanjiIndex similarIndex
     ) {
+        return saveSuccessfulSync(snapshot, imports, rows, settings, timing, removalMessage, similarIndex, imports);
+    }
+
+    public long saveSuccessfulSync(
+            Records.CollectionSnapshot snapshot,
+            List<Records.SuspendedImport> imports,
+            List<Records.DashboardRow> rows,
+            Records.Settings settings,
+            SyncTiming timing,
+            String removalMessage,
+            SimilarKanjiIndex similarIndex,
+            List<Records.SuspendedImport> auditImports
+    ) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
+            List<Records.SuspendedImport> decisionImports = auditImports == null ? imports : auditImports;
             Map<String, RowSnapshot> previousRows = rowSnapshots(db);
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
             Set<Long> selectedSuspendedCardIds = selectedSuspendedCardIds(imports);
@@ -76,6 +90,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
             saveSourceNotes(db, snapshot.notes, activeIndex, settings, syncId);
             saveSourceCardsAndArchive(db, snapshot.cards, notesById, selectedSuspendedCardIds, settings, timing.finishedAt, syncId);
             saveSuspendedImports(db, imports, timing.finishedAt, syncId);
+            saveImportAudit(db, decisionImports, settings, timing.finishedAt, syncId);
 
             saveRows(db, rows, timing.finishedAt);
             rebuildKanjiInventory(db, snapshot, imports, rows, timing.finishedAt, settings);
@@ -89,6 +104,76 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         } finally {
             db.endTransaction();
         }
+    }
+
+    void saveImportAudit(
+            SQLiteDatabase db,
+            List<Records.SuspendedImport> imports,
+            Records.Settings settings,
+            long finishedAt,
+            long syncId
+    ) {
+        saveImportRuleAudit(db, settings, finishedAt, syncId);
+        for (Records.SuspendedImport imported : imports) {
+            saveImportDecision(db, imported, settings, finishedAt, syncId);
+        }
+    }
+
+    void saveImportRuleAudit(SQLiteDatabase db, Records.Settings settings, long finishedAt, long syncId) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_SYNC_ID, syncId);
+        values.put(COLUMN_CREATED_AT, finishedAt);
+        values.put(COLUMN_MODEL_NAME, settings.modelName);
+        values.put(COLUMN_ENABLED_SOURCES, String.join(" ", enabledImportSources(settings)));
+        values.put("rank_min", settings.suspendedRankMin);
+        values.put("rank_max", settings.suspendedRankMax);
+        values.put("min_matching_cards", settings.importMinMatchingCardsPerKanji);
+        values.put("import_tags", settings.importTagsText());
+        values.put("weak_fsrs_difficulty", settings.importWeakFsrsDifficultyThreshold);
+        values.put("weak_lapses", settings.importWeakLapsesThreshold);
+        values.put("browser_query", settings.normalizedBrowserQuery());
+        values.put(COLUMN_SETTINGS_JSON, importSettingsJson(settings));
+        db.insertWithOnConflict(TABLE_IMPORT_RULE_AUDITS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    void saveImportDecision(
+            SQLiteDatabase db,
+            Records.SuspendedImport imported,
+            Records.Settings settings,
+            long finishedAt,
+            long syncId
+    ) {
+        Set<String> sourceTypes = new LinkedHashSet<>();
+        Set<String> ruleTypes = new LinkedHashSet<>();
+        Set<Long> cardIds = new LinkedHashSet<>();
+        Set<Long> noteIds = new LinkedHashSet<>();
+        for (Records.SuspendedSource source : imported.sources) {
+            sourceTypes.add(source.sourceType);
+            ruleTypes.addAll(source.ruleTypes);
+            cardIds.add(source.cardId);
+            noteIds.add(source.noteId);
+        }
+
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_SYNC_ID, syncId);
+        values.put(COLUMN_KANJI, imported.kanji);
+        values.put(COLUMN_DECISION, "imported");
+        values.put(COLUMN_REASON_CODE, importReasonCode(ruleTypes));
+        values.put(COLUMN_REASON_TEXT, importReasonText(imported, settings, ruleTypes, cardIds.size()));
+        if (imported.jitenRank != null) {
+            values.put(COLUMN_JITEN_RANK, imported.jitenRank);
+        }
+        values.put(COLUMN_RANK_KNOWN, imported.rankKnown ? 1 : 0);
+        values.put("rank_min", settings.suspendedRankMin);
+        values.put("rank_max", settings.suspendedRankMax);
+        values.put("min_matching_cards", settings.importMinMatchingCardsPerKanji);
+        values.put(COLUMN_SOURCE_COUNT, cardIds.size());
+        values.put(COLUMN_SOURCE_TYPES, String.join(" ", sourceTypes));
+        values.put(COLUMN_RULE_TYPES, String.join(" ", ruleTypes));
+        values.put(COLUMN_SOURCE_CARD_IDS, joinLongs(cardIds));
+        values.put(COLUMN_SOURCE_NOTE_IDS, joinLongs(noteIds));
+        values.put(COLUMN_CREATED_AT, finishedAt);
+        db.insertWithOnConflict(TABLE_IMPORT_DECISIONS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     void clearSyncMirrorTables(SQLiteDatabase db) {
@@ -228,6 +313,108 @@ abstract class LocalStoreSync extends LocalStoreInventory {
             sourceValues.put(COLUMN_SYNC_ID, syncId);
             db.insertWithOnConflict(TABLE_SUSPENDED_SOURCES, null, sourceValues, SQLiteDatabase.CONFLICT_REPLACE);
         }
+    }
+
+    private List<String> enabledImportSources(Records.Settings settings) {
+        List<String> sources = new ArrayList<>();
+        if (settings.importActiveCards) {
+            sources.add(Records.SOURCE_ACTIVE);
+        }
+        if (settings.importSuspendedCards) {
+            sources.add(Records.SOURCE_SUSPENDED);
+        }
+        if (settings.importTaggedCardsEnabled()) {
+            sources.add(Records.SOURCE_TAGGED);
+        }
+        if (settings.importWeakCards) {
+            sources.add(Records.SOURCE_WEAK);
+        }
+        if (settings.browserQueryImportEnabled()) {
+            sources.add(Records.SOURCE_BROWSER_QUERY);
+        }
+        return sources;
+    }
+
+    private String importReasonCode(Set<String> ruleTypes) {
+        if (ruleTypes.size() > 1) {
+            return "multiple_import_rules";
+        }
+        if (ruleTypes.contains(Records.SOURCE_BROWSER_QUERY)) {
+            return "browser_query_import";
+        }
+        if (ruleTypes.contains(Records.SOURCE_SUSPENDED)) {
+            return "suspended_import";
+        }
+        if (ruleTypes.contains(Records.SOURCE_TAGGED)) {
+            return "tagged_import";
+        }
+        if (ruleTypes.contains(Records.SOURCE_WEAK)) {
+            return "weak_card_import";
+        }
+        if (ruleTypes.contains(Records.SOURCE_ACTIVE)) {
+            return "active_import";
+        }
+        return "imported";
+    }
+
+    private String importReasonText(
+            Records.SuspendedImport imported,
+            Records.Settings settings,
+            Set<String> ruleTypes,
+            int sourceCount
+    ) {
+        String rank = imported.jitenRank == null ? "unknown" : Integer.toString(imported.jitenRank);
+        String rules = ruleTypes.isEmpty() ? "unknown rule" : String.join(" + ", ruleTypes);
+        return "Imported by " + rules
+                + "; " + sourceCount + " source card" + (sourceCount == 1 ? "" : "s")
+                + "; Jiten rank " + rank
+                + "; rank range " + settings.suspendedRankMin + "-" + settings.suspendedRankMax
+                + "; minimum matching cards " + settings.importMinMatchingCardsPerKanji + ".";
+    }
+
+    private String importSettingsJson(Records.Settings settings) {
+        return "{"
+                + "\"model_name\":" + TextUtil.jsonQuote(settings.modelName)
+                + ",\"import_active_cards\":" + settings.importActiveCards
+                + ",\"import_suspended_cards\":" + settings.importSuspendedCards
+                + ",\"import_tagged_cards\":" + settings.importTaggedCardsEnabled()
+                + ",\"import_tags\":" + jsonArray(settings.importTags)
+                + ",\"import_weak_cards\":" + settings.importWeakCards
+                + ",\"import_weak_fsrs_difficulty\":" + settings.importWeakFsrsDifficultyThreshold
+                + ",\"import_weak_lapses\":" + settings.importWeakLapsesThreshold
+                + ",\"import_browser_query_cards\":" + settings.importBrowserQueryCards
+                + ",\"import_browser_query\":" + TextUtil.jsonQuote(settings.normalizedBrowserQuery())
+                + ",\"rank_min\":" + settings.suspendedRankMin
+                + ",\"rank_max\":" + settings.suspendedRankMax
+                + ",\"min_matching_cards\":" + settings.importMinMatchingCardsPerKanji
+                + "}";
+    }
+
+    private String jsonArray(List<String> values) {
+        StringBuilder out = new StringBuilder("[");
+        boolean first = true;
+        for (String value : values) {
+            if (!first) {
+                out.append(',');
+            }
+            first = false;
+            out.append(TextUtil.jsonQuote(value));
+        }
+        out.append(']');
+        return out.toString();
+    }
+
+    private String joinLongs(Set<Long> values) {
+        StringBuilder out = new StringBuilder();
+        boolean first = true;
+        for (Long value : values) {
+            if (!first) {
+                out.append(' ');
+            }
+            first = false;
+            out.append(value);
+        }
+        return out.toString();
     }
 
     public void saveFailedSync(long startedAt, long finishedAt, String status, String errorCode, String errorMessage) {

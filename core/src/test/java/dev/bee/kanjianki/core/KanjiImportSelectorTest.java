@@ -77,6 +77,7 @@ public final class KanjiImportSelectorTest {
 
         assertEquals(Arrays.asList("裂", "謎"), kanjiList(imports));
         assertTrue(imports.get(0).sources.get(0).forcePractice);
+        assertEquals(Collections.singletonList(Records.SOURCE_TAGGED), imports.get(0).sources.get(0).ruleTypes);
     }
 
     @Test
@@ -91,6 +92,7 @@ public final class KanjiImportSelectorTest {
         List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
 
         assertEquals(Collections.singletonList("弱"), kanjiList(imports));
+        assertEquals(Collections.singletonList(Records.SOURCE_WEAK), imports.get(0).sources.get(0).ruleTypes);
     }
 
     @Test
@@ -210,6 +212,7 @@ public final class KanjiImportSelectorTest {
 
         assertEquals(Collections.singletonList("裂"), kanjiList(imports));
         assertEquals(Records.SOURCE_BROWSER_QUERY, imports.get(0).sources.get(0).sourceType);
+        assertEquals(Collections.singletonList(Records.SOURCE_BROWSER_QUERY), imports.get(0).sources.get(0).ruleTypes);
         assertTrue(imports.get(0).sources.get(0).forcePractice);
         assertFalse(imports.get(0).sources.get(0).suspended);
     }

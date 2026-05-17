@@ -39,6 +39,8 @@ public abstract class RecordsBase {
     public static final String LEARNING_REPEAT_REVIEW = "review";
     public static final String SOURCE_ACTIVE = "active";
     public static final String SOURCE_SUSPENDED = "suspended";
+    public static final String SOURCE_TAGGED = "tagged";
+    public static final String SOURCE_WEAK = "weak";
     public static final String SOURCE_BROWSER_QUERY = "browser_query";
     protected static final Logger LOGGER = Logger.getLogger(Records.class.getName());
     protected static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");

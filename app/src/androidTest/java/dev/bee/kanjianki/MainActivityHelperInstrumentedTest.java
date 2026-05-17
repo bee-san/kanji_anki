@@ -633,6 +633,24 @@ public final class MainActivityHelperInstrumentedTest {
                 Records.Settings ranked = activity.settings();
                 assertEquals(20, ranked.suspendedRankMin);
                 assertEquals(300, ranked.suspendedRankMax);
+
+                LinearLayout tagPresetPanel = activity.importFilterSettingsPanel(activity.settings());
+                performButtonClick(tagPresetPanel, "Leech tag");
+                Records.Settings leechPreset = activity.settings();
+                assertFalse(leechPreset.importActiveCards);
+                assertFalse(leechPreset.importSuspendedCards);
+                assertTrue(leechPreset.importTaggedCardsEnabled());
+                assertEquals(Collections.singletonList("leech"), leechPreset.importTags);
+                assertFalse(leechPreset.browserQueryImportEnabled());
+
+                LinearLayout deckPresetPanel = activity.importFilterSettingsPanel(activity.settings());
+                performButtonClick(deckPresetPanel, "Mining deck");
+                Records.Settings deckPreset = activity.settings();
+                assertFalse(deckPreset.importActiveCards);
+                assertFalse(deckPreset.importSuspendedCards);
+                assertFalse(deckPreset.importTaggedCardsEnabled());
+                assertTrue(deckPreset.browserQueryImportEnabled());
+                assertEquals("deck:Mining", deckPreset.importBrowserQuery);
             });
         }
     }

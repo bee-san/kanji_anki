@@ -34,6 +34,8 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String TABLE_SUSPENDED_ARCHIVE = "suspended_archive";
     static final String TABLE_SUSPENDED_IMPORTS = "suspended_imports";
     static final String TABLE_SUSPENDED_SOURCES = "suspended_sources";
+    static final String TABLE_IMPORT_RULE_AUDITS = "import_rule_audits";
+    static final String TABLE_IMPORT_DECISIONS = "import_decisions";
     static final String TABLE_DASHBOARD_ROWS = "dashboard_rows";
     static final String TABLE_KANJI_EXAMPLES = "kanji_examples";
     static final String TABLE_STUDY_ITEMS = "study_items";
@@ -82,7 +84,9 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String COLUMN_DECK_NAMES = "deck_names";
     static final String COLUMN_DEDUPE_KEY = "dedupe_key";
     static final String COLUMN_DETAIL = "detail";
+    static final String COLUMN_DECISION = "decision";
     static final String COLUMN_DUE_AT = "due_at";
+    static final String COLUMN_ENABLED_SOURCES = "enabled_sources";
     static final String COLUMN_ERROR_MESSAGE = "error_message";
     static final String COLUMN_EVENT_TYPE = "event_type";
     static final String COLUMN_EXPRESSION = "expression";
@@ -127,6 +131,10 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String COLUMN_REVIEWED_AT = "reviewed_at";
     static final String COLUMN_SENTENCE = "sentence";
     static final String COLUMN_SOURCE = "source";
+    static final String COLUMN_SOURCE_CARD_IDS = "source_card_ids";
+    static final String COLUMN_SOURCE_COUNT = "source_count";
+    static final String COLUMN_SOURCE_NOTE_IDS = "source_note_ids";
+    static final String COLUMN_SOURCE_TYPES = "source_types";
     static final String COLUMN_STATE = "state";
     static final String COLUMN_STATUS = "status";
     static final String COLUMN_STARTED_AT = "started_at";
@@ -145,6 +153,8 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String COLUMN_UPDATED_AT = "updated_at";
     static final String COLUMN_VALUE = "value";
     static final String COLUMN_WEAKNESS_SCORE = "weakness_score";
+    static final String COLUMN_RULE_TYPES = "rule_types";
+    static final String COLUMN_SETTINGS_JSON = "settings_json";
     static final String COLUMN_WORD_READING_MEMORY = "word_reading_memory";
     static final String COLUMN_WRONG_COUNT = "wrong_count";
     static final String COLUMN_WRITING_REMEDIATION_MEMORY = "writing_remediation_memory";
@@ -293,6 +303,12 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_note_snapshots_kanji ON " + TABLE_SYNC_NOTE_SNAPSHOTS + "(sync_id, extracted_kanji)");
         db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_SYNC_KANJI_SNAPSHOTS + " (sync_id INTEGER NOT NULL, finished_at INTEGER NOT NULL, kanji TEXT NOT NULL, active_cards INTEGER NOT NULL, suspended_cards INTEGER NOT NULL, mature_support_count INTEGER NOT NULL, average_interval_days REAL NOT NULL, total_lapses INTEGER NOT NULL, total_reps INTEGER NOT NULL, fsrs_stability_avg REAL, fsrs_difficulty_avg REAL, fsrs_retrievability_avg REAL, weakness_score INTEGER NOT NULL, reason_code TEXT NOT NULL, active_example_count INTEGER NOT NULL, suspended_example_count INTEGER NOT NULL, PRIMARY KEY (sync_id, kanji))");
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_sync_kanji_snapshots_kanji_sync ON " + TABLE_SYNC_KANJI_SNAPSHOTS + "(kanji, sync_id)");
+    }
+
+    void createImportAuditTables(SQLiteDatabase db) {
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_IMPORT_RULE_AUDITS + " (sync_id INTEGER PRIMARY KEY, created_at INTEGER NOT NULL, model_name TEXT NOT NULL, enabled_sources TEXT NOT NULL, rank_min INTEGER NOT NULL, rank_max INTEGER NOT NULL, min_matching_cards INTEGER NOT NULL, import_tags TEXT NOT NULL, weak_fsrs_difficulty REAL NOT NULL, weak_lapses INTEGER NOT NULL, browser_query TEXT NOT NULL, settings_json TEXT NOT NULL)");
+        db.execSQL(SQL_CREATE_TABLE_IF_NEEDED + TABLE_IMPORT_DECISIONS + " (sync_id INTEGER NOT NULL, kanji TEXT NOT NULL, decision TEXT NOT NULL, reason_code TEXT NOT NULL, reason_text TEXT NOT NULL, jiten_rank INTEGER, rank_known INTEGER NOT NULL, rank_min INTEGER NOT NULL, rank_max INTEGER NOT NULL, min_matching_cards INTEGER NOT NULL, source_count INTEGER NOT NULL, source_types TEXT NOT NULL, rule_types TEXT NOT NULL, source_card_ids TEXT NOT NULL, source_note_ids TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (sync_id, kanji))");
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_import_decisions_kanji_sync ON " + TABLE_IMPORT_DECISIONS + "(kanji, sync_id)");
     }
 
     void addHistoricalIdentityColumns(SQLiteDatabase db) {

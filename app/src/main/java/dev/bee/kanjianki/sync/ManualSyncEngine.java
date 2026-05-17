@@ -87,7 +87,8 @@ public final class ManualSyncEngine {
                     settings,
                     new LocalStore.SyncTiming(started, finished),
                     null,
-                    similarKanjiIndex
+                    similarKanjiIndex,
+                    selectedImports
             );
             AnkiDroidGateway.RemovalSummary removal = gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress);
             store.updateSyncRemovalMessage(syncId, removal.message);

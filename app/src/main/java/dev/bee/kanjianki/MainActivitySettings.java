@@ -88,6 +88,29 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivitySettings extends MainActivityStudy {
+    private static final ImportPreset[] IMPORT_PRESETS = new ImportPreset[]{
+            new ImportPreset("Suspended only", false, true, false, "", false, 7.0, 2, 1, false, ""),
+            new ImportPreset("Kani tag", false, false, true, "kani", false, 7.0, 2, 1, false, ""),
+            new ImportPreset("Leech tag", false, false, true, "leech", false, 7.0, 2, 1, false, ""),
+            new ImportPreset("Mining deck", false, false, false, "", false, 7.0, 2, 1, true, "deck:Mining"),
+            new ImportPreset("Recent fails", false, false, false, "", false, 7.0, 2, 1, true, "rated:30:1")
+    };
+
+    private record ImportPreset(
+            String label,
+            boolean activeCards,
+            boolean suspendedCards,
+            boolean taggedCards,
+            String tags,
+            boolean weakCards,
+            double weakDifficulty,
+            int weakLapses,
+            int minMatchingCards,
+            boolean browserQueryCards,
+            String browserQuery
+    ) {
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -456,6 +479,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(text("Import filters", 23, INK, true));
         box.addView(text(settingsImportSummary(current), 17, TEAL, true));
         box.addView(text("Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.", 15, MUTED, false));
+        addImportPresetButtons(box);
 
         CheckBox activeCards = importFilterCheckBox("Active cards", current.importActiveCards);
         CheckBox suspendedCards = importFilterCheckBox("Suspended cards", current.importSuspendedCards);
@@ -520,6 +544,33 @@ abstract class MainActivitySettings extends MainActivityStudy {
         });
         box.addView(save);
         return box;
+    }
+
+    void addImportPresetButtons(LinearLayout box) {
+        box.addView(text("Presets", 17, INK, true));
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        for (ImportPreset preset : IMPORT_PRESETS) {
+            Button button = secondaryButton(preset.label());
+            button.setOnClickListener(v -> applyImportPreset(preset));
+            grid.addView(button);
+        }
+        box.addView(grid);
+    }
+
+    void applyImportPreset(ImportPreset preset) {
+        store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, boolFlag(preset.activeCards()));
+        store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, boolFlag(preset.suspendedCards()));
+        store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, boolFlag(preset.taggedCards()));
+        store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, preset.tags());
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, boolFlag(preset.weakCards()));
+        store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, preset.weakDifficulty());
+        store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, preset.weakLapses());
+        store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, preset.minMatchingCards());
+        store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, boolFlag(preset.browserQueryCards()));
+        store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, preset.browserQuery());
+        Toast.makeText(this, "Import preset saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+        renderSettings();
     }
 
     static int boolFlag(boolean value) {
