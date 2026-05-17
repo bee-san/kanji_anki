@@ -407,6 +407,15 @@ Current artifacts:
   - active-token mismatch rejection.
   - empty active tokens not blocking review.
   - null request tokens normalizing to the legacy empty token behavior.
+- `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
+  encoding and task/rung memory routing.
+- `TaskMemoryTest` covers:
+  - initial task-memory defaults and study-field normalization.
+  - modern 11-part task-memory encode/decode.
+  - legacy 9-part and 10-part decode compatibility.
+  - fallback behavior for malformed memory strings.
+  - task-type aliases including `typing_meaning` and `writing_remediation`.
+  - memory reads by rung and writes by task type.
 
 Explicit gaps:
 
@@ -414,6 +423,8 @@ Explicit gaps:
 - Ladder movement is not wired into the runtime review transition yet.
 - Study progress is not wired into the runtime Study screen yet.
 - Review token guard is not wired into the runtime review transition yet.
+- Task memory updates and handoff are not wired into the runtime review
+  transition yet.
 - Study session selection and adaptive planner split are not ported yet.
 
 Verification commands:
