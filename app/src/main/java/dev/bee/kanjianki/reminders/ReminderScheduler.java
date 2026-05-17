@@ -18,6 +18,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.time.AppClock;
 
 import java.util.Calendar;
 import java.util.List;
@@ -41,7 +42,15 @@ public final class ReminderScheduler {
     }
 
     public static void schedule(Context context, LocalStore.ReminderSettings settings) {
-        schedule(settings, androidReminderServices(context), System.currentTimeMillis());
+        schedule(context, settings, AppClock.system());
+    }
+
+    public static void schedule(Context context, LocalStore.ReminderSettings settings, AppClock clock) {
+        schedule(settings, androidReminderServices(context), AppClock.orSystem(clock));
+    }
+
+    static void schedule(LocalStore.ReminderSettings settings, ReminderServices services, AppClock clock) {
+        schedule(settings, services, AppClock.orSystem(clock).nowMillis());
     }
 
     static void schedule(LocalStore.ReminderSettings settings, ReminderServices services, long nowMillis) {
@@ -86,11 +95,21 @@ public final class ReminderScheduler {
 
     @SuppressLint("MissingPermission")
     public static void showReminderNotification(Context context) {
-        showReminderNotification(context, androidReminderServices(context));
+        showReminderNotification(context, AppClock.system());
+    }
+
+    @SuppressLint("MissingPermission")
+    public static void showReminderNotification(Context context, AppClock clock) {
+        showReminderNotification(context, androidReminderServices(context), clock);
     }
 
     @SuppressLint("MissingPermission")
     static void showReminderNotification(Context context, ReminderServices services) {
+        showReminderNotification(context, services, AppClock.system());
+    }
+
+    @SuppressLint("MissingPermission")
+    static void showReminderNotification(Context context, ReminderServices services, AppClock clock) {
         if (!notificationsAllowed(services)) {
             return;
         }
@@ -99,7 +118,7 @@ public final class ReminderScheduler {
         if (manager == null) {
             return;
         }
-        ReminderCopy copy = reminderCopy(context);
+        ReminderCopy copy = reminderCopy(context, clock);
         Intent open = new Intent(context, MainActivity.class)
                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent contentIntent = PendingIntent.getActivity(
@@ -232,7 +251,11 @@ public final class ReminderScheduler {
     }
 
     static long nextTriggerMillis(LocalStore.ReminderSettings settings) {
-        return nextTriggerMillis(settings, System.currentTimeMillis());
+        return nextTriggerMillis(settings, AppClock.system());
+    }
+
+    static long nextTriggerMillis(LocalStore.ReminderSettings settings, AppClock clock) {
+        return nextTriggerMillis(settings, AppClock.orSystem(clock).nowMillis());
     }
 
     static long nextTriggerMillis(LocalStore.ReminderSettings settings, long nowMillis) {
@@ -250,10 +273,10 @@ public final class ReminderScheduler {
         return trigger;
     }
 
-    private static ReminderCopy reminderCopy(Context context) {
+    private static ReminderCopy reminderCopy(Context context, AppClock clock) {
         try (LocalStore store = new LocalStore(context)) {
             List<Records.DashboardRow> rows = store.activeDashboardRows();
-            long now = System.currentTimeMillis();
+            long now = AppClock.orSystem(clock).nowMillis();
             return reminderCopy(
                     rows,
                     store.studyItems(),

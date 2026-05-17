@@ -7,6 +7,7 @@ import android.content.Context;
 import android.util.Log;
 
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.time.AppClock;
 
 import java.util.Calendar;
 
@@ -26,11 +27,19 @@ public final class AutoSyncScheduler {
     }
 
     public static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings) {
-        schedule(context, store, settings, new AndroidSchedulerBackend(context));
+        schedule(context, store, settings, AppClock.system());
+    }
+
+    public static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, AppClock clock) {
+        schedule(context, store, settings, new AndroidSchedulerBackend(context), clock);
     }
 
     static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend) {
-        long now = System.currentTimeMillis();
+        schedule(context, store, settings, backend, AppClock.system());
+    }
+
+    static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend, AppClock clock) {
+        long now = AppClock.orSystem(clock).nowMillis();
         scheduleWithState(
                 settings,
                 now,

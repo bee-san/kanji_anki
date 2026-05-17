@@ -56,12 +56,13 @@ public final class AutoSyncRunnerInstrumentedTest {
 
     @Test
     public void disabledAutoSyncSkipsWithoutReadingProvider() {
-        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        long now = localDayStart(fixedNow()) + 60_000L;
         AutoSyncRunner.Result result = new AutoSyncRunner(
                 context,
                 store,
-                AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
-        ).run(now);
+                AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
+                () -> now
+        ).run();
 
         assertFalse(result.ran);
         assertEquals("Daily Anki sync is off.", result.message);
@@ -74,21 +75,22 @@ public final class AutoSyncRunnerInstrumentedTest {
 
     @Test
     public void dueAutoSyncRunsManualEngineAndRecordsAttempt() {
-        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        long now = localDayStart(fixedNow()) + 60_000L;
         store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
 
         AutoSyncRunner.Result result = new AutoSyncRunner(
                 context,
                 store,
-                AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
-        ).run(now);
+                AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
+                () -> now
+        ).run();
 
         assertTrue(result.ran);
         assertTrue(result.success);
         LocalStore.SyncStatus sync = store.latestSync();
         assertNotNull(sync);
         assertEquals("success", sync.status);
-        assertTrue(sync.finishedAt > 0L);
+        assertEquals(now, sync.finishedAt);
         LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
         assertEquals(now, auto.lastAttemptAt);
         assertEquals(now, auto.lastSuccessAt);
@@ -98,21 +100,24 @@ public final class AutoSyncRunnerInstrumentedTest {
 
     @Test
     public void autoSyncSkipsWhenSuccessfulSyncAlreadyHappenedToday() {
+        long now = localDayStart(fixedNow()) + 2L * 60L * 60L * 1000L;
         store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
         assertTrue(new ManualSyncEngine(
                 context,
                 store,
                 AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
-                SyncSettings.fromStore(store)
+                SyncSettings.fromStore(store),
+                SyncProgress.NONE,
+                () -> now
         ).run().success);
         resetProvider();
 
-        long now = localDayStart(System.currentTimeMillis()) + 2L * 60L * 60L * 1000L;
         AutoSyncRunner.Result result = new AutoSyncRunner(
                 context,
                 store,
-                AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
-        ).run(now);
+                AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
+                () -> now
+        ).run();
 
         assertFalse(result.ran);
         assertEquals("AnkiDroid already synced today.", result.message);
@@ -125,14 +130,15 @@ public final class AutoSyncRunnerInstrumentedTest {
 
     @Test
     public void autoSyncProviderReadinessFailureRecordsSyncFailure() {
-        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        long now = localDayStart(fixedNow()) + 60_000L;
         store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
 
         AutoSyncRunner.Result result = new AutoSyncRunner(
                 context,
                 store,
-                AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_auto_sync_provider")
-        ).run(now);
+                AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_auto_sync_provider"),
+                () -> now
+        ).run();
 
         assertTrue(result.ran);
         assertFalse(result.success);
@@ -148,14 +154,15 @@ public final class AutoSyncRunnerInstrumentedTest {
 
     @Test
     public void autoSyncManualEngineFailureRecordsFailedAttempt() {
-        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        long now = localDayStart(fixedNow()) + 60_000L;
         store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
 
         AutoSyncRunner.Result result = new AutoSyncRunner(
                 context,
                 store,
-                new RetryableGateway()
-        ).run(now);
+                new RetryableGateway(),
+                () -> now
+        ).run();
 
         assertTrue(result.ran);
         assertFalse(result.success);
@@ -166,19 +173,27 @@ public final class AutoSyncRunnerInstrumentedTest {
         LocalStore.SyncStatus sync = store.latestSync();
         assertNotNull(sync);
         assertEquals("retryable_error", sync.status);
+        assertEquals(now, sync.finishedAt);
         assertEquals("AnkiDroid returned no configured note cursor.", sync.errorMessage);
     }
 
     @Test
     public void autoSyncManualEngineSkippedDoesNotRecordAttempt() throws Exception {
-        long now = localDayStart(System.currentTimeMillis()) + 60_000L;
+        long now = localDayStart(fixedNow()) + 60_000L;
         store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L));
         BlockingGateway blockingGateway = new BlockingGateway(snapshot(), new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done"));
         AtomicReference<ManualSyncEngine.SyncResult> firstResult = new AtomicReference<>();
         AtomicReference<Throwable> threadFailure = new AtomicReference<>();
         Thread firstSync = new Thread(() -> {
             try {
-                firstResult.set(new ManualSyncEngine(context, store, blockingGateway, SyncSettings.fromStore(store)).run());
+                firstResult.set(new ManualSyncEngine(
+                        context,
+                        store,
+                        blockingGateway,
+                        SyncSettings.fromStore(store),
+                        SyncProgress.NONE,
+                        () -> now
+                ).run());
             } catch (Throwable error) {
                 threadFailure.set(error);
             }
@@ -190,8 +205,9 @@ public final class AutoSyncRunnerInstrumentedTest {
         AutoSyncRunner.Result result = new AutoSyncRunner(
                 context,
                 store,
-                new RetryableGateway()
-        ).run(now);
+                new RetryableGateway(),
+                () -> now
+        ).run();
 
         assertFalse(result.ran);
         assertFalse(result.success);
@@ -230,6 +246,13 @@ public final class AutoSyncRunnerInstrumentedTest {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private long fixedNow() {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(2026, Calendar.MAY, 15, 12, 0, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTimeInMillis();
     }

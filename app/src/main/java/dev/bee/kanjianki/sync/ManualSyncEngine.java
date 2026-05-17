@@ -14,6 +14,7 @@ import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.time.AppClock;
 
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -34,17 +35,23 @@ public final class ManualSyncEngine {
     private final CollectionGateway gateway;
     private final Records.Settings settings;
     private final SyncProgress.Listener progress;
+    private final AppClock clock;
 
     public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings) {
         this(context, store, gateway, settings, SyncProgress.NONE);
     }
 
     public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings, SyncProgress.Listener progress) {
+        this(context, store, gateway, settings, progress, AppClock.system());
+    }
+
+    ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings, SyncProgress.Listener progress, AppClock clock) {
         this.context = context.getApplicationContext();
         this.store = store;
         this.gateway = gateway;
         this.settings = settings;
         this.progress = progress == null ? SyncProgress.NONE : progress;
+        this.clock = AppClock.orSystem(clock);
     }
 
     public SyncResult run() {
@@ -59,7 +66,7 @@ public final class ManualSyncEngine {
     }
 
     private SyncResult runLocked() {
-        long started = System.currentTimeMillis();
+        long started = clock.nowMillis();
         try {
             Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
@@ -72,7 +79,7 @@ public final class ManualSyncEngine {
             List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(snapshot, analysisImports, ranks, settings);
             SimilarKanjiIndex similarKanjiIndex = loadSimilarKanjiIndex();
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
-            long finished = System.currentTimeMillis();
+            long finished = clock.nowMillis();
             long syncId = store.saveSuccessfulSync(
                     snapshot,
                     currentSuspendedImports,
@@ -105,7 +112,7 @@ public final class ManualSyncEngine {
             store.replaceStudyItems(seeded, syncId, finished, settings);
             return new SyncResult(true, false, rows.size(), currentSuspendedImports.size(), removal.message, plan.status);
         } catch (AnkiDroidGateway.SyncFailure error) {
-            long finished = System.currentTimeMillis();
+            long finished = clock.nowMillis();
             store.saveFailedSync(
                     started,
                     finished,
@@ -115,7 +122,7 @@ public final class ManualSyncEngine {
             );
             return new SyncResult(false, false, 0, 0, error.getMessage(), "");
         } catch (Throwable error) {
-            long finished = System.currentTimeMillis();
+            long finished = clock.nowMillis();
             store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.getMessage());
             return new SyncResult(false, false, 0, 0, error.getMessage(), "");
         }
