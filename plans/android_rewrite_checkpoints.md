@@ -362,6 +362,8 @@ Current artifacts:
   metadata where current evidence is lower.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
+- `RunSourceMirrorSyncUseCase` records unexpected non-provider exceptions from
+  the sync path as retryable sync runs while rethrowing coroutine cancellation.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
   source mirror snapshot using active, suspended, tagged, weak-card, and
   browser-query rules without depending on legacy record classes.
@@ -377,6 +379,9 @@ Current artifacts:
   classification, model/field validation, note/card reads, FSRS card columns,
   suspended-card marking, browser-query reads, archived-tag skipping, and
   unsupported-template rejection.
+- `AnkiDroidCollectionGateway` preserves coroutine cancellation through provider
+  fallback paths and maps browser-query provider exceptions to permanent
+  configuration failures, matching the legacy user-facing invalid-filter policy.
 - `LegacySyncMappers`, `LegacySyncRequestFactory`, and
   `CoreSimilarKanjiIndexAdapter` in `:app` bridge current `LocalStore`,
   `SyncSettings`, adaptive settings, ladder settings, and the bundled
@@ -394,9 +399,6 @@ Explicit gaps:
 - Manual and background sync still use the legacy Java path. This is
   deliberate until Home/Study reads the same Room data that the new sync path
   writes; otherwise manual sync would appear invisible in the current UI.
-- The new sync path has provider failure mapping, but non-provider failures
-  from request construction, dictionary rank loading, or repository writes
-  still need a failed sync-run policy before runtime switchover.
 - The domain sync path has no explicit concurrency guard yet.
 
 Verification commands:
@@ -494,6 +496,23 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 Result: `BUILD SUCCESSFUL`; app bridge tests cover legacy sync-settings
 mapping into domain import/queue settings, adaptive/ladder queue context
 construction, and core-to-domain similar-kanji pair adaptation.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test
+```
+
+Result: `BUILD SUCCESSFUL`; sync use-case tests cover unexpected repository
+failures as retryable sync runs and verify coroutine cancellation is rethrown.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :ankidroid:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; AnkiDroid gateway tests cover cancellation
+preservation and permanent configuration classification for invalid browser
+query provider failures.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
