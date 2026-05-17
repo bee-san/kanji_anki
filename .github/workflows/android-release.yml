@@ -102,6 +102,8 @@ jobs:
                 app/src/main/java/dev/bee/kanjianki/anki/*|\
                 app/src/main/java/dev/bee/kanjianki/sync/*|\
                 app/src/main/java/dev/bee/kanjianki/data/LocalStore*|\
+                data/src/main/java/dev/bee/kanjianki/data/sync/*|\
+                data/src/androidTest/kotlin/dev/bee/kanjianki/data/sync/*|\
                 app/src/androidTest/AndroidManifest.xml|\
                 app/src/androidTest/java/dev/bee/kanjianki/MainActivityInstrumentedTest.java|\
                 app/src/androidTest/java/dev/bee/kanjianki/anki/*|\
