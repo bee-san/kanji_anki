@@ -6,7 +6,7 @@ import java.util.TimeZone
 import kotlin.math.max
 
 class AutoSyncPolicy(
-    private val timeZone: TimeZone = TimeZone.getDefault(),
+    private val timeZoneProvider: () -> TimeZone = TimeZone::getDefault,
 ) {
     fun localDayStartMillis(nowMillis: Long): Long =
         calendarAt(nowMillis).apply {
@@ -42,7 +42,7 @@ class AutoSyncPolicy(
         minimumLatencyMillis + DEADLINE_WINDOW_MILLIS
 
     private fun calendarAt(nowMillis: Long): Calendar =
-        Calendar.getInstance(timeZone).apply {
+        Calendar.getInstance(timeZoneProvider()).apply {
             timeInMillis = nowMillis
         }
 

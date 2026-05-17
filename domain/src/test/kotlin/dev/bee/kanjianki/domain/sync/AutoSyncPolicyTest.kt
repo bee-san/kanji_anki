@@ -8,7 +8,7 @@ import java.util.TimeZone
 
 class AutoSyncPolicyTest {
     private val timeZone = TimeZone.getTimeZone("Europe/London")
-    private val policy = AutoSyncPolicy(timeZone)
+    private val policy = AutoSyncPolicy { timeZone }
 
     @Test
     fun localDayStartUsesLocalCalendarDay() {
@@ -44,6 +44,41 @@ class AutoSyncPolicyTest {
     }
 
     @Test
+    fun defaultTimeZoneIsResolvedAtCallTime() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val policy = AutoSyncPolicy()
+            val now = millis(TimeZone.getTimeZone("UTC"), 2026, Calendar.MAY, 15, 23, 30)
+
+            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"))
+
+            assertEquals(
+                millis(TimeZone.getTimeZone("Asia/Tokyo"), 2026, Calendar.MAY, 16, 0, 0),
+                policy.localDayStartMillis(now),
+            )
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun nextTriggerAdvancesByLocalDayAcrossDstBoundaries() {
+        val settings = AutoSyncSettings(configured = true, enabled = true, hour = 3, minute = 30)
+        val springForwardNow = millis(2026, Calendar.MARCH, 28, 4, 0)
+        val fallBackNow = millis(2026, Calendar.OCTOBER, 24, 4, 0)
+
+        assertEquals(
+            millis(2026, Calendar.MARCH, 29, 3, 30),
+            policy.nextTriggerMillis(settings, springForwardNow),
+        )
+        assertEquals(
+            millis(2026, Calendar.OCTOBER, 25, 3, 30),
+            policy.nextTriggerMillis(settings, fallBackNow),
+        )
+    }
+
+    @Test
     fun scheduleWindowPreservesLegacyMinimumLatencyAndDeadline() {
         val nearFutureDelay = policy.minimumLatencyMillis(
             triggerAtMillis = millis(2026, Calendar.MAY, 15, 8, 0) + 1_000L,
@@ -63,6 +98,15 @@ class AutoSyncPolicyTest {
     }
 
     private fun millis(
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+    ): Long = millis(timeZone, year, month, day, hour, minute)
+
+    private fun millis(
+        timeZone: TimeZone,
         year: Int,
         month: Int,
         day: Int,
