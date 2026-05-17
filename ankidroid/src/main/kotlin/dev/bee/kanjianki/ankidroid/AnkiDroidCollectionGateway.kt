@@ -18,6 +18,7 @@ import dev.bee.kanjianki.domain.sync.CollectionGateway
 import dev.bee.kanjianki.domain.sync.CollectionGatewayException
 import dev.bee.kanjianki.domain.sync.CollectionSnapshot
 import java.util.Locale
+import kotlin.coroutines.cancellation.CancellationException
 
 class AnkiDroidCollectionGateway(
     private val provider: AnkiDroidProviderClient,
@@ -59,6 +60,8 @@ class AnkiDroidCollectionGateway(
             return CollectionSnapshot(notes = notes.values.toList(), cards = cards)
         } catch (error: CollectionGatewayException) {
             throw error
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: OperationCanceledException) {
             throw CollectionGatewayException(
                 errorCode = SyncErrorCode.RETRYABLE,
@@ -73,7 +76,7 @@ class AnkiDroidCollectionGateway(
                 message = "AnkiDroid denied database access.",
                 cause = error,
             )
-        } catch (error: Throwable) {
+        } catch (error: Exception) {
             throw CollectionGatewayException(
                 errorCode = SyncErrorCode.RETRYABLE,
                 permanent = false,
@@ -135,7 +138,9 @@ class AnkiDroidCollectionGateway(
     ): Map<Long, SourceNote> {
         return try {
             queryNotesBySearch(target, mapping, settings, "note:\"${settings.noteMapping.noteTypeName}\"")
-        } catch (searchError: Throwable) {
+        } catch (searchError: CancellationException) {
+            throw searchError
+        } catch (searchError: Exception) {
             try {
                 queryNotesBySql(target, mapping, settings)
             } catch (sqlError: CollectionGatewayException) {
@@ -214,16 +219,33 @@ class AnkiDroidCollectionGateway(
             return emptySet()
         }
         val search = configuredBrowserQuerySearch(settings)
-        return provider.query(target.authority, listOf("notes"), projection = null, selection = search, selectionArgs = null)
-            .useRows(message = null) { cursor ->
-                buildSet {
-                    while (cursor.moveToNext()) {
-                        if (cursor.long(COLUMN_MODEL_ID, mapping.modelId) == mapping.modelId) {
-                            add(cursor.long(COLUMN_ID, 0))
+        return try {
+            provider.query(target.authority, listOf("notes"), projection = null, selection = search, selectionArgs = null)
+                .useRows(message = null) { cursor ->
+                    buildSet {
+                        while (cursor.moveToNext()) {
+                            if (cursor.long(COLUMN_MODEL_ID, mapping.modelId) == mapping.modelId) {
+                                add(cursor.long(COLUMN_ID, 0))
+                            }
                         }
                     }
                 }
-            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: OperationCanceledException) {
+            throw error
+        } catch (error: SecurityException) {
+            throw error
+        } catch (error: CollectionGatewayException) {
+            throw error
+        } catch (error: Exception) {
+            throw CollectionGatewayException(
+                errorCode = SyncErrorCode.PERMANENT_CONFIGURATION,
+                permanent = true,
+                message = "AnkiDroid could not run the browser query. Check the query in Import filters.",
+                cause = error,
+            )
+        }
     }
 
     private fun queryCardsByNote(
@@ -236,13 +258,15 @@ class AnkiDroidCollectionGateway(
         var projectionIndex = 0
         val projections = listOf(CARD_COLUMNS_WITH_FSRS, CARD_COLUMNS_WITH_SCHEDULER, CARD_COLUMNS_MINIMAL)
         for (noteId in noteIds) {
-            var lastError: Throwable? = null
+            var lastError: Exception? = null
             while (projectionIndex < projections.size) {
                 try {
                     cards += queryCardsForNote(target, noteId, suspendedNoteIds, projections[projectionIndex])
                     lastError = null
                     break
-                } catch (error: Throwable) {
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
                     lastError = error
                     projectionIndex++
                 }
@@ -317,7 +341,9 @@ class AnkiDroidCollectionGateway(
                     }
                 }
             }
-        } catch (_: Throwable) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
             emptySet()
         }
     }

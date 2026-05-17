@@ -6,8 +6,10 @@ import dev.bee.kanjianki.domain.sync.CollectionGatewayException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.coroutines.cancellation.CancellationException
 
 class AnkiDroidCollectionGatewayTest {
     @Test
@@ -82,6 +84,51 @@ class AnkiDroidCollectionGatewayTest {
 
         assertEquals(listOf(10L), snapshot.notes.map { it.noteId.value })
         assertEquals(listOf(10000L), snapshot.cards.map { it.cardId.value })
+    }
+
+    @Test
+    fun browserQueryProviderFailureIsPermanentConfiguration() = runBlocking {
+        val provider = FakeProviderClient()
+        provider.rows("models") {
+            row("_id" to "7", "name" to "Kiku", "field_names" to kikuFields())
+        }
+        provider.rows("notes", selection = """note:"Kiku"""") {
+            row("_id" to "10", "mid" to "7", "flds" to kikuValues("日本"), "tags" to "")
+        }
+        provider.failure(
+            "notes",
+            selection = """note:"Kiku" (bad query)""",
+            error = RuntimeException("invalid search"),
+        )
+
+        val error = runCatching {
+            AnkiDroidCollectionGateway(provider).readCollection(
+                ImportSettings(
+                    importBrowserQueryCards = true,
+                    importBrowserQuery = "bad query",
+                ),
+            )
+        }.exceptionOrNull() as CollectionGatewayException
+
+        assertTrue(error.permanent)
+        assertEquals(SyncErrorCode.PERMANENT_CONFIGURATION, error.errorCode)
+    }
+
+    @Test
+    fun coroutineCancellationIsRethrown() {
+        val provider = FakeProviderClient()
+        provider.rows("models") {
+            row("_id" to "7", "name" to "Kiku", "field_names" to kikuFields())
+        }
+        provider.failure("notes", selection = """note:"Kiku"""", CancellationException("cancelled"))
+
+        val error = assertThrows(CancellationException::class.java) {
+            runBlocking {
+                AnkiDroidCollectionGateway(provider).readCollection(ImportSettings())
+            }
+        }
+
+        assertEquals("cancelled", error.message)
     }
 
     @Test
