@@ -14,6 +14,9 @@ trap 'status=$?; if [ "${status}" -ne 0 ]; then dump_logcat; fi; exit "${status}
 ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --parallel -Dorg.gradle.parallel=true
 
 adb wait-for-device
+
+./gradlew :data:connectedDebugAndroidTest --parallel -Dorg.gradle.parallel=true
+
 adb install -r "${ankidroid_apk}"
 adb shell monkey -p com.ichi2.anki 1
 sleep 5
