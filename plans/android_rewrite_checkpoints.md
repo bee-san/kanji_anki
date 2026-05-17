@@ -339,6 +339,9 @@ Current artifacts:
 - `RoomSourceMirrorSyncRepository` inserts the successful sync-run summary,
   computes deleted source note/card counts, and replaces `source_notes` and
   `source_cards` with the generated sync ID inside one Room transaction.
+- `RunSourceMirrorSyncUseCase` now runs `ImportCandidateSelector` and derives
+  suspended archive/import counts in `sync_runs` from selected suspended source
+  evidence.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
@@ -348,9 +351,10 @@ Current artifacts:
 Explicit gaps:
 
 - No AnkiDroid module implementation yet.
-- Import candidate analysis exists, but the sync use case does not yet call it.
-- No suspended archive cleanup, dashboard rebuild, queue seeding,
-  similar-kanji rebuild, or historical snapshot write in the new use case yet.
+- Import candidate analysis is called, but selected import/audit rows are not
+  persisted by the Room transaction yet.
+- No suspended archive cleanup, dashboard rebuild, queue seeding, similar-kanji
+  rebuild, or historical snapshot write in the new use case yet.
 - Manual and background sync still use the legacy Java path.
 
 Verification commands:
@@ -371,6 +375,14 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 Result: `BUILD SUCCESSFUL`; source mirror sync repository tests cover the
 transactional replace path, generated sync IDs, deleted row counts, and
 preservation of suspended/browser-query source-card flags.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test
+```
+
+Result: `BUILD SUCCESSFUL`; sync use-case tests cover active-card counts and
+suspended source evidence counts after import candidate selection.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

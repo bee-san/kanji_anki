@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.domain.sync
 
 import dev.bee.kanjianki.domain.common.AppClock
+import dev.bee.kanjianki.domain.importing.ImportCandidateSelector
+import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.source.SourceCard
@@ -13,15 +15,17 @@ class RunSourceMirrorSyncUseCase(
     private val gateway: CollectionGateway,
     private val syncRuns: SyncRunRepository,
     private val sourceMirrorSync: SourceMirrorSyncRepository,
+    private val importCandidateSelector: ImportCandidateSelector,
     private val clock: AppClock,
 ) {
     suspend operator fun invoke(settings: ImportSettings): SyncRunId {
         val startedAt = clock.nowMillis()
         return try {
             val snapshot = gateway.readCollection(settings)
+            val importCandidates = importCandidateSelector.select(snapshot, settings)
             val finishedAt = clock.nowMillis()
             sourceMirrorSync.recordSuccessfulSnapshot(
-                syncRun = successRun(startedAt, finishedAt, snapshot),
+                syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
                 notes = snapshot.notes,
                 cards = snapshot.cards,
             )
@@ -35,6 +39,7 @@ class RunSourceMirrorSyncUseCase(
         startedAt: Long,
         finishedAt: Long,
         snapshot: CollectionSnapshot,
+        importCandidates: List<ImportedKanjiCandidate>,
     ): SyncRun = SyncRun(
         id = null,
         startedAt = startedAt,
@@ -42,14 +47,22 @@ class RunSourceMirrorSyncUseCase(
         status = SyncRunStatus.SUCCESS,
         activeNotesCount = snapshot.cards.filter(SourceCard::active).mapTo(mutableSetOf()) { it.noteId }.size,
         activeCardsCount = snapshot.cards.count(SourceCard::active),
-        suspendedCardsArchivedCount = 0,
-        suspendedKanjiImportedCount = 0,
+        suspendedCardsArchivedCount = importCandidates.suspendedCardIds().size,
+        suspendedKanjiImportedCount = importCandidates.count { it.hasSuspendedSource() },
         deletedNotesCount = 0,
         deletedCardsCount = 0,
         errorCode = null,
         errorMessage = null,
         removalMessage = "",
     )
+
+    private fun List<ImportedKanjiCandidate>.suspendedCardIds() =
+        flatMap { candidate ->
+            candidate.sources.filter { it.suspended }.map { it.cardId }
+        }.toSet()
+
+    private fun ImportedKanjiCandidate.hasSuspendedSource(): Boolean =
+        sources.any { it.suspended }
 
     private fun failureRun(
         startedAt: Long,

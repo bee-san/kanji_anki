@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.domain.sync
 
 import dev.bee.kanjianki.domain.common.AppClock
+import dev.bee.kanjianki.domain.importing.ImportCandidateSelector
 import dev.bee.kanjianki.domain.model.CardId
 import dev.bee.kanjianki.domain.model.NoteId
 import dev.bee.kanjianki.domain.model.SyncRunId
@@ -33,7 +34,13 @@ class RunSourceMirrorSyncUseCaseTest {
         )
         val syncRuns = FakeSyncRunRepository()
         val sourceMirrorSync = FakeSourceMirrorSyncRepository()
-        val useCase = RunSourceMirrorSyncUseCase(gateway, syncRuns, sourceMirrorSync, FakeClock(100, 150))
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway,
+            syncRuns,
+            sourceMirrorSync,
+            importSelector(),
+            FakeClock(100, 150),
+        )
 
         val id = useCase(ImportSettings())
 
@@ -42,6 +49,8 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(SyncRunStatus.SUCCESS, sourceMirrorSync.syncRun.status)
         assertEquals(1, sourceMirrorSync.syncRun.activeNotesCount)
         assertEquals(1, sourceMirrorSync.syncRun.activeCardsCount)
+        assertEquals(1, sourceMirrorSync.syncRun.suspendedCardsArchivedCount)
+        assertEquals(2, sourceMirrorSync.syncRun.suspendedKanjiImportedCount)
         assertEquals(SyncRunId(1), sourceMirrorSync.notes.single { it.noteId == NoteId(10) }.lastSeenSyncId)
         assertEquals(SyncRunId(1), sourceMirrorSync.cards.single { it.cardId == CardId(20) }.lastSeenSyncId)
     }
@@ -57,7 +66,13 @@ class RunSourceMirrorSyncUseCaseTest {
         )
         val syncRuns = FakeSyncRunRepository()
         val sourceMirrorSync = FakeSourceMirrorSyncRepository()
-        val useCase = RunSourceMirrorSyncUseCase(gateway, syncRuns, sourceMirrorSync, FakeClock(10, 20))
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway,
+            syncRuns,
+            sourceMirrorSync,
+            importSelector(),
+            FakeClock(10, 20),
+        )
 
         val id = useCase(ImportSettings())
 
@@ -67,6 +82,15 @@ class RunSourceMirrorSyncUseCaseTest {
         assertTrue(sourceMirrorSync.notes.isEmpty())
         assertTrue(sourceMirrorSync.cards.isEmpty())
     }
+
+    private fun importSelector(): ImportCandidateSelector =
+        ImportCandidateSelector { kanji ->
+            when (kanji) {
+                "日" -> 100
+                "本" -> 200
+                else -> null
+            }
+        }
 
     private class FakeGateway(
         private val snapshot: CollectionSnapshot? = null,
