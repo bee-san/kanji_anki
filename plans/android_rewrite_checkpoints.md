@@ -776,6 +776,12 @@ Current artifacts:
   `RecordsSchedulerModels.ReviewResult`. It consumes a review token only after
   Room persistence succeeds, and rejects writes while Room study ownership is
   disabled.
+- `StudySessionTracker` can now complete an active task into a
+  `StudyReviewTaskCompletion` snapshot without writing legacy SQLite. The
+  existing legacy completion method delegates through that snapshot and still
+  writes `study_task_log` through `LocalStore`, preserving the visible runtime
+  behavior while preparing Room review persistence to receive the same timing
+  payload.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
   mapping with decoded task memory and dashboard row/example mapping.
 - `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
@@ -824,7 +830,8 @@ Explicit gaps:
   runtime reads remain gated until sync, Study reads, and Study writes move
   together.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
-  write path; the Room bridge is present but not yet called by the UI.
+  write path; the Room bridge and task-completion snapshot are present but not
+  yet called by the UI.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
   until the detail screen is moved to the Room repository.
 - The legacy Java adaptive planner remains as a parity oracle and compatibility

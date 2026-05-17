@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.domain.repository.StudyReviewTaskCompletion;
 import dev.bee.kanjianki.domain.scheduler.StudyProgressSnapshot;
 
 import org.junit.Test;
@@ -14,6 +15,7 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public final class StudySessionTrackerTest {
@@ -176,6 +178,35 @@ public final class StudySessionTrackerTest {
 
         tracker.abandonActiveTask();
         assertFalse(tracker.hasActiveTask());
+    }
+
+    @Test
+    public void activeTaskSnapshotCompletesWithoutLegacyStoreWrite() {
+        StudySessionTracker tracker = new StudySessionTracker();
+
+        tracker.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, -5L, false);
+
+        StudyReviewTaskCompletion completion = tracker.completeActiveTaskSnapshot("task", true, 10L);
+
+        assertEquals("task", completion.getTaskKey());
+        assertEquals("裂", completion.getKanji());
+        assertEquals(BridgeScheduler.TASK_KANJI_MEANING, completion.getTaskType());
+        assertEquals(0L, completion.getStartedAtMillis());
+        assertEquals(0L, completion.getActiveElapsedMillis());
+        assertEquals(1, tracker.completedCount());
+        assertFalse(tracker.hasActiveTask());
+        assertNull(tracker.completeActiveTaskSnapshot("task", true, 11L));
+    }
+
+    @Test
+    public void activeTaskSnapshotRejectsMismatchedKeysWithoutChangingProgress() {
+        StudySessionTracker tracker = new StudySessionTracker();
+
+        tracker.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 50L, false);
+
+        assertNull(tracker.completeActiveTaskSnapshot("other", true, 10L));
+        assertTrue(tracker.hasActiveTask());
+        assertEquals(0, tracker.completedCount());
     }
 
     @Test

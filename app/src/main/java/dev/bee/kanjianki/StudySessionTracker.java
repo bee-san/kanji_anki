@@ -8,6 +8,7 @@ import android.os.SystemClock;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.domain.model.study.StudyRating;
+import dev.bee.kanjianki.domain.repository.StudyReviewTaskCompletion;
 import dev.bee.kanjianki.domain.scheduler.StudyProgressCalculator;
 import dev.bee.kanjianki.domain.scheduler.StudyProgressPlan;
 import dev.bee.kanjianki.domain.scheduler.StudyProgressSnapshot;
@@ -110,23 +111,42 @@ final class StudySessionTracker {
     }
 
     void completeActiveTask(LocalStore store, String key, String outcome, long answeredAt, boolean countProgress) {
-        if (activeTask == null || key == null || !key.equals(activeTask.taskKey)) {
+        StudyReviewTaskCompletion completion = completeActiveTaskSnapshot(key, countProgress);
+        if (completion == null) {
             return;
         }
-        activeTask.pause(SystemClock.elapsedRealtime());
         store.recordStudyTaskAnswered(
+                completion.getTaskKey(),
+                completion.getKanji(),
+                completion.getTaskType(),
+                completion.getStartedAtMillis(),
+                answeredAt,
+                completion.getActiveElapsedMillis(),
+                outcome
+        );
+    }
+
+    StudyReviewTaskCompletion completeActiveTaskSnapshot(String key, boolean countProgress) {
+        return completeActiveTaskSnapshot(key, countProgress, SystemClock.elapsedRealtime());
+    }
+
+    StudyReviewTaskCompletion completeActiveTaskSnapshot(String key, boolean countProgress, long nowElapsedMillis) {
+        if (activeTask == null || key == null || !key.equals(activeTask.taskKey)) {
+            return null;
+        }
+        activeTask.pause(nowElapsedMillis);
+        StudyReviewTaskCompletion completion = new StudyReviewTaskCompletion(
                 activeTask.taskKey,
                 activeTask.kanji,
                 activeTask.taskType,
                 activeTask.startedAtMillis,
-                answeredAt,
-                activeTask.activeElapsedMillis,
-                outcome
+                activeTask.activeElapsedMillis
         );
         if (countProgress) {
             markTaskCompleted(key);
         }
         activeTask = null;
+        return completion;
     }
 
     void recordReviewOutcome(String kanji, String appliedRating, RecordsStudyModels.StudyItem before, RecordsStudyModels.StudyItem after) {
