@@ -89,13 +89,35 @@ class RoomStudyQueueRepositoryTest {
             },
         )
 
-        val claimed = repository.claimActiveToken("裂", "裂|sig", "token-1")
+        val claimed = repository.claimActiveToken(item("裂", StudyItemState.REVIEW), "token-1")
 
         assertEquals(1, claimTransactions)
         assertEquals("token-1", claimed?.activeToken)
         assertTrue(claimed?.hasSimilarKanji == true)
         assertEquals("token-1", dao.items.single().activeToken)
         assertEquals(listOf("gate", "claimTransaction"), dao.events)
+    }
+
+    @Test
+    fun claimActiveTokenPersistsAlignedSelectedItemInsideTransaction() = runBlocking {
+        val dao = FakeStudyItemDao(listOf(entity("裂", "review", rung = "similar_kanji")))
+        val repository = RoomStudyQueueRepository(
+            studyItems = dao,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            runInTransaction = { block -> block() },
+            claimInTransaction = { block -> block() },
+        )
+
+        val claimed = repository.claimActiveToken(
+            item("裂", StudyItemState.REVIEW, rung = StudyRung.TYPE_MEANING),
+            "token-1",
+        )
+
+        assertEquals(StudyRung.TYPE_MEANING, claimed?.rung)
+        assertEquals("type_meaning", dao.items.single().rung)
+        assertEquals("token-1", dao.items.single().activeToken)
     }
 
     @Test
@@ -110,7 +132,7 @@ class RoomStudyQueueRepositoryTest {
             claimInTransaction = { block -> block() },
         )
 
-        val claimed = repository.claimActiveToken("裂", "裂|sig", "new-token")
+        val claimed = repository.claimActiveToken(item("裂", StudyItemState.REVIEW), "new-token")
 
         assertEquals("existing-token", claimed?.activeToken)
         assertEquals("existing-token", dao.items.single().activeToken)
@@ -129,7 +151,7 @@ class RoomStudyQueueRepositoryTest {
             claimInTransaction = { block -> block() },
         )
 
-        val claimed = repository.claimActiveToken("裂", "裂|sig", "token-1")
+        val claimed = repository.claimActiveToken(item("裂", StudyItemState.RETIRED), "token-1")
 
         assertNull(claimed)
         assertNull(dao.items.single().activeToken)
@@ -156,7 +178,7 @@ class RoomStudyQueueRepositoryTest {
         assertEquals(emptyList<StudyQueueItem>(), repository.listActive())
         assertEquals(emptyList<StudyQueueItem>(), repository.listAllForSeeding())
         assertEquals(0, repository.dueCount(StudyItemState.REVIEW, nowMillis = 20))
-        assertNull(repository.claimActiveToken("裂", "裂|sig", "token-1"))
+        assertNull(repository.claimActiveToken(item("裂", StudyItemState.REVIEW), "token-1"))
         assertEquals(false, repository.updateReviewedItem(item("裂", StudyItemState.REVIEW)))
         repository.replaceAllSeeded(listOf(item("浅", StudyItemState.NEW)))
 
@@ -242,6 +264,7 @@ class RoomStudyQueueRepositoryTest {
     private fun item(
         kanji: String,
         state: StudyItemState,
+        rung: StudyRung = StudyRung.KANJI_MEANING,
     ): StudyQueueItem = StudyQueueItem(
         kanji = kanji,
         state = state,
@@ -253,7 +276,7 @@ class RoomStudyQueueRepositoryTest {
         learningStep = 0,
         writingLevel = 0,
         answerSignature = "$kanji|sig",
-        rung = StudyRung.KANJI_MEANING,
+        rung = rung,
         phase = StudyPhase.NEW_LEARNING,
         createdAtMillis = 10,
     )
@@ -262,6 +285,7 @@ class RoomStudyQueueRepositoryTest {
         kanji: String,
         state: String,
         activeToken: String? = null,
+        rung: String = "kanji_meaning",
     ): StudyItemEntity = StudyItemEntity(
         kanji = kanji,
         state = state,
@@ -286,7 +310,7 @@ class RoomStudyQueueRepositoryTest {
         fontMeaningMemory = "",
         wordReadingMemory = "",
         writingRemediationMemory = "",
-        rung = "kanji_meaning",
+        rung = rung,
         phase = "new_learning",
         realPassStreak = 0,
         realAgainStreak = 0,

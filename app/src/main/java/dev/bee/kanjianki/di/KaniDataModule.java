@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 import dagger.hilt.components.SingletonComponent;
 import dev.bee.kanjianki.data.KaniRoomDatabase;
 import dev.bee.kanjianki.data.KaniRoomDatabaseFactory;
+import dev.bee.kanjianki.data.KaniRoomDatabaseResetPolicy;
 import dev.bee.kanjianki.data.RoomStudyQueueMutationGate;
 import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy;
 import dev.bee.kanjianki.data.StudyQueueMutationGate;
@@ -41,7 +42,7 @@ public final class KaniDataModule {
     @Provides
     @Singleton
     static KaniRoomDatabase provideKaniRoomDatabase(@ApplicationContext Context context) {
-        return new KaniRoomDatabaseFactory().create(context);
+        return new KaniRoomDatabaseFactory(KaniRoomDatabaseResetPolicy.CLEAN_REWRITE).create(context);
     }
 
     @Provides

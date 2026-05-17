@@ -231,10 +231,13 @@ class StudyQueueSeederTest {
         }
 
         override suspend fun claimActiveToken(
-            kanji: String,
-            answerSignature: String,
+            item: StudyQueueItem,
             token: String,
-        ): StudyQueueItem? = existing.firstOrNull { it.kanji == kanji && it.answerSignature == answerSignature }
+        ): StudyQueueItem? = existing.firstOrNull {
+            it.kanji == item.kanji && it.answerSignature == item.answerSignature
+        }?.let { current ->
+            item.copy(activeToken = current.activeToken?.takeIf { it.isNotEmpty() } ?: token)
+        }
 
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = false
 

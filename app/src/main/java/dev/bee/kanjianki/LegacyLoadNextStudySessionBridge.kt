@@ -86,12 +86,15 @@ class LegacyLoadNextStudySessionBridge(
         override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
 
         override suspend fun claimActiveToken(
-            kanji: String,
-            answerSignature: String,
+            item: StudyQueueItem,
             token: String,
-        ): StudyQueueItem? =
-            items.firstOrNull { it.kanji == kanji && it.answerSignature == answerSignature }
-                ?.let { item -> item.activeToken?.takeIf { it.isNotEmpty() }?.let { item } ?: item.copy(activeToken = token) }
+        ): StudyQueueItem? {
+            val current = items.firstOrNull {
+                it.kanji == item.kanji && it.answerSignature == item.answerSignature
+            } ?: return null
+            val claimedToken = current.activeToken?.takeIf { it.isNotEmpty() } ?: token
+            return item.copy(activeToken = claimedToken)
+        }
 
         override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = false
 

@@ -25,16 +25,16 @@ class LoadNextStudySessionUseCase(
             ),
         ) ?: return null
         val claimedItem = studyQueueRepository.claimActiveToken(
-            kanji = selected.item.kanji,
-            answerSignature = selected.item.answerSignature,
+            item = selected.item,
             token = selected.token,
         ) ?: return null
         val claimedToken = claimedItem.activeToken?.takeIf { it.isNotEmpty() } ?: return null
+        val effectiveItem = selected.item.copy(activeToken = claimedToken)
         return selected.copy(
-            item = claimedItem,
+            item = effectiveItem,
             token = claimedToken,
-            taskType = claimedItem.rung.wireName,
-            writingRequired = claimedItem.rung == StudyRung.WRITE_KANJI,
+            taskType = effectiveItem.rung.wireName,
+            writingRequired = effectiveItem.rung == StudyRung.WRITE_KANJI,
         )
     }
 }

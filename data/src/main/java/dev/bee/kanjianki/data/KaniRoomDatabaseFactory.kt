@@ -36,6 +36,13 @@ data class KaniRoomDatabaseResetPolicy(
         in legacyDatabaseNames -> KaniRoomDatabaseDisposition.LEGACY_LOCAL_STORE_DATABASE
         else -> KaniRoomDatabaseDisposition.UNKNOWN_DATABASE
     }
+
+    companion object {
+        @JvmField
+        val CLEAN_REWRITE: KaniRoomDatabaseResetPolicy = KaniRoomDatabaseResetPolicy(
+            allowDestructiveRoomReset = true,
+        )
+    }
 }
 
 enum class KaniRoomDatabaseDisposition {

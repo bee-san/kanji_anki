@@ -349,8 +349,16 @@ class AnkiDroidCollectionGateway(
                     while (cursor.moveToNext()) {
                         val ord = cursor.int(COLUMN_ORD, 0)
                         val suspendedFromSearch = noteId in suspendedNoteIds
-                        val queue = cursor.int(COLUMN_QUEUE, if (suspendedFromSearch) -1 else 0)
-                        val suspended = suspendedFromSearch || queue < 0
+                        val queueText = cursor.string(COLUMN_QUEUE)
+                        val cardQueue = queueText?.toIntOrNull()
+                        val queue = cardQueue ?: if (suspendedFromSearch) -1 else 0
+                        val typeText = cursor.string(COLUMN_TYPE)
+                        val cardType = typeText?.toIntOrNull()
+                        val suspended = when {
+                            cardQueue != null -> cardQueue < 0
+                            cardType != null -> cardType == 3
+                            else -> suspendedFromSearch
+                        }
                         val deckId = cursor.string(COLUMN_DECK_ID).orEmpty()
                         val fsrs = fsrsMemoryState(cursor)
                         add(
@@ -360,7 +368,7 @@ class AnkiDroidCollectionGateway(
                                 deckName = deckId,
                                 ord = ord,
                                 queue = queue,
-                                type = cursor.int(COLUMN_TYPE, if (suspended) 3 else 0),
+                                type = cardType ?: if (suspended) 3 else 0,
                                 due = cursor.int(COLUMN_DUE, 0),
                                 intervalDays = cursor.int(COLUMN_INTERVAL, 0),
                                 reps = cursor.int(COLUMN_REPS, 0),

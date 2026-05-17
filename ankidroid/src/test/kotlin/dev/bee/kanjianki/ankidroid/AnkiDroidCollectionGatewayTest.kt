@@ -113,6 +113,29 @@ class AnkiDroidCollectionGatewayTest {
     }
 
     @Test
+    fun readCollectionPrefersPerCardQueueOverSuspendedNoteSearch() = runBlocking {
+        val provider = FakeProviderClient()
+        provider.rows("models") {
+            row("_id" to "7", "name" to "Kiku", "field_names" to kikuFields())
+        }
+        provider.rows("notes", selection = """note:"Kiku"""") {
+            row("_id" to "10", "mid" to "7", "flds" to kikuValues("日本"), "tags" to "")
+        }
+        provider.rows("notes", selection = """note:"Kiku" is:suspended""") {
+            row("_id" to "10", "mid" to "7")
+        }
+        provider.rows("notes/10/cards") {
+            row("_id" to "100", "note_id" to "10", "ord" to "0", "queue" to "-1")
+            row("_id" to "101", "note_id" to "10", "ord" to "0", "queue" to "0")
+        }
+
+        val snapshot = AnkiDroidCollectionGateway(provider).readCollection(ImportSettings())
+
+        val suspendedByCardId = snapshot.cards.associate { it.cardId.value to it.suspended }
+        assertEquals(mapOf(100L to true, 101L to false), suspendedByCardId)
+    }
+
+    @Test
     fun browserQueryProviderFailureIsPermanentConfiguration() = runBlocking {
         val provider = FakeProviderClient()
         provider.rows("models") {

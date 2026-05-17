@@ -75,8 +75,7 @@ class RoomStudyQueueRepository internal constructor(
     }
 
     override suspend fun claimActiveToken(
-        kanji: String,
-        answerSignature: String,
+        item: StudyQueueItem,
         token: String,
     ): StudyQueueItem? {
         if (!ownershipPolicy.canReadStudyRuntimeFromRoom() || !ownershipPolicy.canWriteStudyRuntimeToRoom()) {
@@ -85,16 +84,13 @@ class RoomStudyQueueRepository internal constructor(
         val safeToken = token.takeIf { it.isNotEmpty() } ?: return null
         val claimed = studyQueueMutationGate.mutate {
             claimInTransaction {
-                val current = studyItems.get(kanji, answerSignature) ?: return@claimInTransaction null
+                val current = studyItems.get(item.kanji, item.answerSignature) ?: return@claimInTransaction null
                 if (current.state !in activeStateWireNames) {
                     return@claimInTransaction null
                 }
                 val existingToken = current.activeToken?.takeIf { it.isNotEmpty() }
-                val updated = if (existingToken == null) {
-                    current.copy(activeToken = safeToken)
-                } else {
-                    current
-                }
+                val aligned = item.copy(activeToken = existingToken ?: safeToken)
+                val updated = current.withReviewUpdate(aligned)
                 if (updated != current) {
                     studyItems.upsert(updated)
                 }

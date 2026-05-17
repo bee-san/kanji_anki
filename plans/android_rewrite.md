@@ -113,8 +113,10 @@ Preserve current settings behavior:
 - Users can edit note type and field mappings.
 - "Use Kiku" resets mappings to Kiku defaults.
 - The app can choose the note type from AnkiDroid.
-- Settings must survive app upgrades.
-- Old installs must retain their persisted settings unless a migration intentionally changes a key.
+- Settings must survive normal rewritten-app upgrades.
+- Legacy SQLite settings may reset to current domain defaults through the clean
+  rewrite reset path; do not keep the old key/value shape solely for backwards
+  compatibility.
 
 ### 2.4 Import Contract
 
@@ -301,7 +303,9 @@ Preserve current user-facing stats behavior unless a later product decision chan
 - Outcome stats and "Kani is helping / not helping / too few data points" style conclusions should be supported by local evidence.
 - Answered-task time should be available for answered task types.
 - Study task logs and review logs must remain rich enough for future Stats features.
-- Do not drop local evidence during migration just because the current UI only displays a subset.
+- Do not drop local evidence during normal rewritten-schema migrations just
+  because the current UI only displays a subset. Legacy SQLite evidence may be
+  reset when the clean rewrite path is safer than compatibility migration.
 
 ### 2.11 Dictionary And Assets Contract
 
@@ -755,14 +759,15 @@ Rules:
 - Migration must be idempotent where re-entry can happen.
 - Destructive reset must have clear preflight detection and a single ownership
   point; avoid scattered table drops.
-- A backup is optional for developer/debug builds and future UX polish, not a
+- A backup/status path is useful, but legacy local data preservation is not a
   blocker for the rewrite architecture.
 
 The legacy SQLite DB is `kanji_anki_simple.db`, current schema version observed
 as `20`. The rewrite Room DB is `kanji_anki_room.db`; this intentionally keeps
 Room from opening the legacy `SQLiteOpenHelper` file as if it were the new
 schema. Room database creation must go through a single factory/reset policy
-that uses destructive migration for Kani-owned local data.
+with an explicit reset owner for Kani-owned local data. Do not silently mix old
+SQLiteOpenHelper state with new Room state.
 
 ### 4.5 Dependency Injection
 
@@ -928,12 +933,14 @@ calculation and `study_items` replacement. Session token claims, direct queue
 updates, and review persistence must enter the same gate before their Room
 transaction.
 
-Room schema upgrades must not silently fall back to destructive migration once
-Room can own study history. Destructive Room resets are an explicit reset
-policy only; normal database creation requires migrations or a deliberate
-existing-install reset path. Daily backups must include both the legacy
-`kanji_anki_simple.db` and Room `kanji_anki_room.db` files, including any
-SQLite WAL/SHM sidecars that still exist after checkpointing.
+Room schema upgrades must not accidentally mix incompatible Room versions.
+During this clean rewrite phase, app database creation uses the explicit
+`KaniRoomDatabaseResetPolicy.CLEAN_REWRITE` destructive reset policy instead of
+a 20-to-21 compatibility migration. Once Room owns irreplaceable study history,
+future schema changes require either migrations or another deliberate reset
+policy decision. Daily backups must include both the legacy
+`kanji_anki_simple.db` and Room `kanji_anki_room.db` files, including any SQLite
+WAL/SHM sidecars that still exist after checkpointing.
 
 ### 5.2 Domain Model Families
 
@@ -2977,31 +2984,23 @@ Before tagging a release from the rewritten app:
 
 ## 14. Migration From Current App
 
-### 14.1 User Data Preservation
+### 14.1 Local Data Reset Policy
 
-Must preserve:
+Do not preserve legacy Kani SQLite state just to keep old installs
+backward-compatible. The rewrite may reset Kani-owned local data, including:
 
 - settings
-- sync runs
-- source mirror
-- suspended archive
-- suspended imports
-- dashboard rows
-- kanji examples
-- kanji inventory
-- similar-kanji pairs
-- similar-choice state
-- similar-writing repair state
-- study items
-- task memories
-- learning repeats
-- review logs
-- study task logs
-- timeline events
-- historical sync snapshots
-- stats evidence
+- sync runs and source mirrors
+- suspended/import/dashboard/inventory rows
+- similar-kanji task state
+- study items, task memories, learning repeats, and review/task logs
+- timeline, stats, and historical sync evidence
 - local kanji suspensions
 - update state if persisted
+
+The product contract is still preserved by rebuilding from AnkiDroid/source
+assets and current domain defaults. Kani must not corrupt or mutate AnkiDroid
+source data during a local reset.
 
 ### 14.2 Reset And Migration Safety Path
 

@@ -5,6 +5,7 @@ import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyItemState
 import dev.bee.kanjianki.domain.model.study.StudyPhase
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
+import dev.bee.kanjianki.domain.model.study.StudyRung
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import kotlinx.coroutines.flow.Flow
@@ -112,6 +113,26 @@ class LoadNextStudySessionUseCaseTest {
     }
 
     @Test
+    fun preservesSelectorAlignedRungAfterClaimingSessionToken() = runBlocking {
+        val dashboardRepository = FakeStudyDashboardRepository(rows = listOf(row("裂")))
+        val queueRepository = FakeStudyQueueRepository(
+            itemsByState = mapOf(
+                StudyItemState.REVIEW to listOf(
+                    item("裂", rung = StudyRung.SIMILAR_KANJI, hasSimilarKanji = false),
+                ),
+            ),
+        )
+
+        val session = useCase(queueRepository, dashboardRepository)(
+            LoadNextStudySessionRequest(nowMillis = 1_000L),
+        )
+
+        assertEquals(StudyRung.WRITE_KANJI, session?.item?.rung)
+        assertEquals(StudyRung.WRITE_KANJI.wireName, session?.taskType)
+        assertEquals(StudyRung.WRITE_KANJI, queueRepository.claimedItems.single().rung)
+    }
+
+    @Test
     fun returnsNullWhenRepositoriesHaveNoActiveDueSession() = runBlocking {
         val dashboardRepository = FakeStudyDashboardRepository(rows = listOf(row("裂")))
         val queueRepository = FakeStudyQueueRepository(
@@ -148,6 +169,8 @@ class LoadNextStudySessionUseCaseTest {
         phase: StudyPhase = StudyPhase.REVIEW,
         totalReviews: Int = 1,
         activeToken: String? = null,
+        rung: StudyRung = StudyRung.KANJI_MEANING,
+        hasSimilarKanji: Boolean = false,
     ): StudyQueueItem = StudyQueueItem(
         kanji = kanji,
         state = state,
@@ -158,7 +181,9 @@ class LoadNextStudySessionUseCaseTest {
         lapses = 0,
         learningStep = 0,
         writingLevel = 0,
+        rung = rung,
         phase = phase,
+        hasSimilarKanji = hasSimilarKanji,
         activeToken = activeToken,
     )
 
@@ -187,6 +212,7 @@ class LoadNextStudySessionUseCaseTest {
             .toMutableMap()
         var listActiveCalls = 0
         val claimedTokens = mutableListOf<Pair<String, String>>()
+        val claimedItems = mutableListOf<StudyQueueItem>()
 
         override suspend fun listActive(): List<StudyQueueItem> {
             listActiveCalls += 1
@@ -206,16 +232,16 @@ class LoadNextStudySessionUseCaseTest {
         override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
 
         override suspend fun claimActiveToken(
-            kanji: String,
-            answerSignature: String,
+            item: StudyQueueItem,
             token: String,
         ): StudyQueueItem? {
-            val key = kanji to answerSignature
+            val key = item.kanji to item.answerSignature
             val current = items[key] ?: return null
             val claimed = current.activeToken?.takeIf { it.isNotEmpty() }?.let { current }
-                ?: current.copy(activeToken = token)
+                ?: item.copy(activeToken = token)
             items[key] = claimed
-            claimedTokens += kanji to (claimed.activeToken ?: "")
+            claimedItems += claimed
+            claimedTokens += item.kanji to (claimed.activeToken ?: "")
             return claimed
         }
 

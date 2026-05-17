@@ -13,8 +13,7 @@ interface StudyQueueRepository {
     suspend fun replaceAllSeeded(items: List<StudyQueueItem>)
 
     suspend fun claimActiveToken(
-        kanji: String,
-        answerSignature: String,
+        item: StudyQueueItem,
         token: String,
     ): StudyQueueItem?
 

@@ -33,6 +33,21 @@ class KaniRoomDatabaseResetPolicyTest {
     }
 
     @Test
+    fun cleanRewritePolicyExplicitlyAllowsDestructiveRoomReset() {
+        val policy = KaniRoomDatabaseResetPolicy.CLEAN_REWRITE
+
+        assertEquals(true, policy.allowDestructiveRoomReset)
+        assertEquals(
+            KaniRoomDatabaseDisposition.CURRENT_ROOM_DATABASE,
+            policy.classify(KaniRoomDatabase.DATABASE_NAME),
+        )
+        assertEquals(
+            KaniRoomDatabaseDisposition.LEGACY_LOCAL_STORE_DATABASE,
+            policy.classify(KaniRoomDatabase.LEGACY_DATABASE_NAME),
+        )
+    }
+
+    @Test
     fun resetPolicyRejectsAmbiguousDatabaseOwnership() {
         assertThrows(IllegalArgumentException::class.java) {
             KaniRoomDatabaseResetPolicy(

@@ -36,6 +36,8 @@ Highest-risk characterization gaps before replacement:
 
 1. Clean Room/DataStore reset path for legacy DBs, with enough empty-state and
    first-sync coverage to prove the app rebuilds from AnkiDroid/source assets.
+   Legacy Kani SQLite state does not need backward-compatible migration unless a
+   specific table family is cheaper and safer to migrate than to rebuild.
 2. Auto-sync parity with manual sync under customized import filters, adaptive
    planner settings, and note mappings.
 3. Study above-fold and progress-truth coverage across every task type and
@@ -930,12 +932,13 @@ and builds replacement rows inside the same gated Room transaction that records
 the source snapshot.
 
 The same full review found data-loss blockers before Room can become
-authoritative. `KaniRoomDatabaseFactory` no longer enables destructive Room
-migration by default; destructive reset is explicit through
-`KaniRoomDatabaseResetPolicy.allowDestructiveRoomReset`. Daily backup now backs
-up every configured app database that exists, currently `kanji_anki_simple.db`
-and `kanji_anki_room.db`, and copies any `-wal`/`-shm` sidecars after
-checkpointing. `ciFast` passed after both hardening commits.
+authoritative. `KaniRoomDatabaseFactory` only enables destructive Room reset
+through an explicit reset policy, and the app graph now chooses
+`KaniRoomDatabaseResetPolicy.CLEAN_REWRITE` instead of a compatibility migration
+from the interim v20 Room schema. Daily backup now backs up every configured app
+database that exists, currently `kanji_anki_simple.db` and `kanji_anki_room.db`,
+and copies any `-wal`/`-shm` sidecars after checkpointing. `ciFast` passed after
+both hardening commits.
 
 ## Current Persistence Facts For Room Migration
 
@@ -949,10 +952,12 @@ Current app database:
   `app/src/main/java/dev/bee/kanjianki/data/LocalStoreBase.java`.
 - Schema constants: `app/src/main/java/dev/bee/kanjianki/data/LocalStoreSchema.java`.
 - Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
-  It rejects ambiguous ownership and does not enable destructive Room migration
-  by default. Destructive Room reset is an explicit reset-policy option only;
-  before Room becomes authoritative, future schema changes need migrations or a
-  deliberate existing-install reset path.
+  It rejects ambiguous ownership and enables destructive Room reset only through
+  an explicit reset policy. The app graph currently uses
+  `KaniRoomDatabaseResetPolicy.CLEAN_REWRITE` so interim Room versions reset
+  instead of requiring compatibility migrations; once Room becomes
+  authoritative, future schema changes need migrations or another deliberate
+  reset decision.
 - Source mirror parity: Room `source_cards` now stores explicit `suspended`
   and `browser_query_matched` flags. These are required for Room-owned import
   analysis to distinguish suspended, active, weak, tagged, and browser-query
