@@ -449,6 +449,15 @@ Current artifacts:
   - retrievability-risk sorting by lowest normalized retrievability.
   - Kani weakness sorting by weakness and suspended support count.
   - null-row fallback ordering.
+- `StudySessionSelector` in `:domain` produces the next due `StudySession`
+  from active queue items.
+- `StudySessionSelectorTest` covers:
+  - null sessions when no item is due within the study-ahead horizon.
+  - study-ahead pulling horizon-eligible items into a session.
+  - existing-token reuse and injectable token generation.
+  - task type, writing-required flag, and prompt projection.
+  - due-priority, due-time, new-card sort, weakness, and kanji tie-breaking.
+  - allowed-kanji and active-queue filtering.
 
 Explicit gaps:
 
@@ -458,7 +467,6 @@ Explicit gaps:
 - Review token guard is not wired into the runtime review transition yet.
 - Task memory updates and handoff are not wired into the runtime review
   transition yet.
-- Full `nextSession` selection is not ported yet.
 - Study session selection does not use `StudyActiveQueueSelector` or
   `StudyAheadPolicy` at runtime yet.
 - Study queue models are not wired to Room repository mappers yet.
