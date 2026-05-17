@@ -462,6 +462,16 @@ Current artifacts:
 - `LegacyStudyReviewBridgeTest` compares the bridge against `BridgeScheduler`
   for review pass promotion, review-fail demotion, new-learning repeat, and
   duplicate-token behavior.
+- `LegacyStudyMappers` centralizes the current `Records*` to domain study
+  mappings used by both legacy runtime bridges.
+- `LegacyStudySessionBridge` maps legacy `Records*` queue and dashboard rows
+  into the Kotlin `StudySessionSelector`, then maps the selected session back
+  to `RecordsSchedulerModels.StudySession` for the current Java/View Study UI.
+- `MainActivityStudy.nextActiveSession` now calculates normal Study sessions
+  through `LegacyStudySessionBridge` instead of `BridgeScheduler.nextSession`.
+- `LegacyStudySessionBridgeTest` compares the bridge against `BridgeScheduler`
+  for due-review token reuse, write/relearning priority, new-card sort mode,
+  and null-session behavior.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
@@ -545,6 +555,8 @@ Explicit gaps:
 
 - Kotlin review-transition calculation is wired into normal runtime Study
   reviews through the legacy bridge.
+- Kotlin session-selection calculation is wired into normal runtime Study
+  sessions through the legacy bridge.
 - Study progress is not wired into the runtime Study screen yet.
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
@@ -558,6 +570,13 @@ Verification commands:
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew :domain:test
+```
+
+Result: `BUILD SUCCESSFUL`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :app:testDebugUnitTest
 ```
 
 Result: `BUILD SUCCESSFUL`.

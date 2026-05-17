@@ -220,7 +220,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     RecordsSchedulerModels.StudySession nextActiveSession(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> seeded, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
         Set<String> focus = continueAllKanjiSession || plan.allKanjiMode ? null : new HashSet<>(plan.focusKanji);
-        return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus, settings(), studyLadderSettings());
+        return new LegacyStudySessionBridge().nextSession(seeded, rows, now, studyAheadMillis(), focus, settings(), studyLadderSettings());
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
