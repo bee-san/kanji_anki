@@ -12,6 +12,8 @@ import dev.bee.kanjianki.data.importing.SuspendedArchiveDao
 import dev.bee.kanjianki.data.importing.SuspendedArchiveEntity
 import dev.bee.kanjianki.data.importing.SuspendedImportDao
 import dev.bee.kanjianki.data.importing.SuspendedSourceDao
+import dev.bee.kanjianki.data.inventory.DashboardRowDao
+import dev.bee.kanjianki.data.inventory.KanjiExampleDao
 import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceNoteDao
 import dev.bee.kanjianki.data.sync.SyncRunDao
@@ -20,6 +22,7 @@ import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
+import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
 
@@ -32,6 +35,8 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val suspendedArchive: SuspendedArchiveDao,
     private val suspendedImports: SuspendedImportDao,
     private val suspendedSources: SuspendedSourceDao,
+    private val dashboardRows: DashboardRowDao,
+    private val kanjiExamples: KanjiExampleDao,
     private val syncNoteSnapshots: SyncNoteSnapshotDao,
     private val syncCardSnapshots: SyncCardSnapshotDao,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
@@ -45,6 +50,8 @@ class RoomSourceMirrorSyncRepository internal constructor(
         suspendedArchive = database.suspendedArchiveDao(),
         suspendedImports = database.suspendedImportDao(),
         suspendedSources = database.suspendedSourceDao(),
+        dashboardRows = database.dashboardRowDao(),
+        kanjiExamples = database.kanjiExampleDao(),
         syncNoteSnapshots = database.syncNoteSnapshotDao(),
         syncCardSnapshots = database.syncCardSnapshotDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
@@ -55,6 +62,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         notes: List<SourceNote>,
         cards: List<SourceCard>,
         importCandidates: List<ImportedKanjiCandidate>,
+        dashboardRows: List<StudyDashboardRow>,
         settings: ImportSettings,
     ): SyncRunId = runInTransaction {
         val finishedAt = requireNotNull(syncRun.finishedAt)
@@ -78,6 +86,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
         recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
         recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
+        recordDashboardRows(finishedAt, dashboardRows)
         syncRunId
     }
 
@@ -117,6 +126,19 @@ class RoomSourceMirrorSyncRepository internal constructor(
                 candidate.toSuspendedSourceEntities(syncRunId)
             },
         )
+    }
+
+    private suspend fun recordDashboardRows(
+        rebuiltAt: Long,
+        rows: List<StudyDashboardRow>,
+    ) {
+        this.dashboardRows.deleteAll()
+        kanjiExamples.deleteAll()
+        if (rows.isEmpty()) {
+            return
+        }
+        this.dashboardRows.upsertAll(rows.map { it.toEntity(rebuiltAt) })
+        kanjiExamples.upsertAll(rows.flatMap { it.toExampleEntities() })
     }
 
     private suspend fun recordSuspendedArchive(

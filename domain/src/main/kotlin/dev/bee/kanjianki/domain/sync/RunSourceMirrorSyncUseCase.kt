@@ -16,6 +16,7 @@ class RunSourceMirrorSyncUseCase(
     private val syncRuns: SyncRunRepository,
     private val sourceMirrorSync: SourceMirrorSyncRepository,
     private val importCandidateSelector: ImportCandidateSelector,
+    private val dashboardBuilder: SyncDashboardBuilder,
     private val clock: AppClock,
 ) {
     suspend operator fun invoke(settings: ImportSettings): SyncRunId {
@@ -23,12 +24,14 @@ class RunSourceMirrorSyncUseCase(
         return try {
             val snapshot = gateway.readCollection(settings)
             val importCandidates = importCandidateSelector.select(snapshot, settings)
+            val dashboardRows = dashboardBuilder.build(importCandidates, settings)
             val finishedAt = clock.nowMillis()
             sourceMirrorSync.recordSuccessfulSnapshot(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
                 notes = snapshot.notes,
                 cards = snapshot.cards,
                 importCandidates = importCandidates,
+                dashboardRows = dashboardRows,
                 settings = settings,
             )
         } catch (error: CollectionGatewayException) {

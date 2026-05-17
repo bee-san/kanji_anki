@@ -34,4 +34,43 @@ internal fun KanjiExampleEntity.toDomain(): StudyExample = StudyExample(
     intervalDays = intervalDays,
     reps = reps,
     fsrsStability = fsrsStability,
+    cardId = cardId,
+    noteId = noteId,
+    sentence = sentence,
 )
+
+internal fun StudyDashboardRow.toEntity(rebuiltAt: Long): DashboardRowEntity = DashboardRowEntity(
+    kanji = kanji,
+    jitenRank = jitenRank,
+    primaryMeaning = primaryMeaning,
+    reading = reading,
+    browserSearch = browserSearch,
+    weaknessScore = weaknessScore,
+    reasonCode = reasonCode,
+    reasonText = reasonText,
+    activeExampleCount = activeExampleCount,
+    suspendedExampleCount = suspendedExampleCount,
+    matureSupportCount = matureSupportCount,
+    rebuiltAt = rebuiltAt,
+)
+
+internal fun StudyDashboardRow.toExampleEntities(): List<KanjiExampleEntity> =
+    examples.map { example ->
+        KanjiExampleEntity(
+            kanji = kanji,
+            sourceType = example.sourceType,
+            cardId = example.cardId,
+            noteId = example.noteId,
+            expression = example.expression,
+            reading = example.reading,
+            meaning = example.meaning,
+            sentence = example.sentence,
+            mature = if (example.mature) 1 else 0,
+            lapses = example.lapses,
+            intervalDays = example.intervalDays,
+            reps = example.reps,
+            fsrsStability = example.fsrsStability,
+            fsrsDifficulty = example.fsrsDifficulty,
+            fsrsRetrievability = example.fsrsRetrievability,
+        )
+    }

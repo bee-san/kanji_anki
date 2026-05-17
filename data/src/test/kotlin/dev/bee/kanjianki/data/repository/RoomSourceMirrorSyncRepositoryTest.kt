@@ -14,6 +14,10 @@ import dev.bee.kanjianki.data.importing.SuspendedImportDao
 import dev.bee.kanjianki.data.importing.SuspendedImportEntity
 import dev.bee.kanjianki.data.importing.SuspendedSourceDao
 import dev.bee.kanjianki.data.importing.SuspendedSourceEntity
+import dev.bee.kanjianki.data.inventory.DashboardRowDao
+import dev.bee.kanjianki.data.inventory.DashboardRowEntity
+import dev.bee.kanjianki.data.inventory.KanjiExampleDao
+import dev.bee.kanjianki.data.inventory.KanjiExampleEntity
 import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceCardEntity
 import dev.bee.kanjianki.data.source.SourceNoteDao
@@ -29,6 +33,8 @@ import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.importing.ImportSource
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
+import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
+import dev.bee.kanjianki.domain.model.study.StudyExample
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import kotlinx.coroutines.flow.Flow
@@ -60,6 +66,8 @@ class RoomSourceMirrorSyncRepositoryTest {
             ),
         )
         val suspendedSources = FakeSuspendedSourceDao()
+        val dashboardRows = FakeDashboardRowDao()
+        val kanjiExamples = FakeKanjiExampleDao()
         val syncNoteSnapshots = FakeSyncNoteSnapshotDao()
         val syncCardSnapshots = FakeSyncCardSnapshotDao()
         var transactions = 0
@@ -72,6 +80,8 @@ class RoomSourceMirrorSyncRepositoryTest {
             suspendedArchive = archive,
             suspendedImports = suspendedImports,
             suspendedSources = suspendedSources,
+            dashboardRows = dashboardRows,
+            kanjiExamples = kanjiExamples,
             syncNoteSnapshots = syncNoteSnapshots,
             syncCardSnapshots = syncCardSnapshots,
             runInTransaction = { block ->
@@ -98,6 +108,7 @@ class RoomSourceMirrorSyncRepositoryTest {
                     sources = listOf(sourceEvidence(kanji = "本", cardId = 20, noteId = 2, sourceType = ImportSource.ACTIVE)),
                 ),
             ),
+            dashboardRows = listOf(dashboardRow("日")),
             settings = ImportSettings(importActiveCards = true),
         )
 
@@ -132,6 +143,12 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(listOf(10L, 20L), syncCardSnapshots.upserted.map { it.cardId })
         assertEquals(listOf(1, 0), syncCardSnapshots.upserted.map { it.suspended })
         assertEquals(listOf(0, 0), syncCardSnapshots.upserted.map { it.mature })
+        assertTrue(dashboardRows.deletedAll)
+        assertTrue(kanjiExamples.deletedAll)
+        assertEquals(listOf("日"), dashboardRows.upserted.map { it.kanji })
+        assertEquals(20L, dashboardRows.upserted.single().rebuiltAt)
+        assertEquals(listOf(10L), kanjiExamples.upserted.map { it.cardId })
+        assertEquals("日本へ行く。", kanjiExamples.upserted.single().sentence)
     }
 
     private class FakeSyncRunDao(
@@ -320,6 +337,55 @@ class RoomSourceMirrorSyncRepositoryTest {
         }
     }
 
+    private class FakeDashboardRowDao : DashboardRowDao {
+        val upserted = mutableListOf<DashboardRowEntity>()
+        var deletedAll = false
+
+        override fun observeTop(limit: Int): Flow<List<DashboardRowEntity>> = emptyFlow()
+
+        override suspend fun listTop(limit: Int): List<DashboardRowEntity> =
+            upserted.sortedWith(
+                compareByDescending<DashboardRowEntity> { it.weaknessScore }
+                    .thenByDescending { it.suspendedExampleCount }
+                    .thenBy { it.kanji },
+            ).take(limit)
+
+        override suspend fun get(kanji: String): DashboardRowEntity? =
+            upserted.firstOrNull { it.kanji == kanji }
+
+        override suspend fun upsertAll(rows: List<DashboardRowEntity>) {
+            for (row in rows) {
+                upserted.removeAll { it.kanji == row.kanji }
+                upserted += row
+            }
+        }
+
+        override suspend fun deleteAll() {
+            deletedAll = true
+            upserted.clear()
+        }
+    }
+
+    private class FakeKanjiExampleDao : KanjiExampleDao {
+        val upserted = mutableListOf<KanjiExampleEntity>()
+        var deletedAll = false
+
+        override suspend fun listForKanji(
+            kanji: String,
+            limit: Int,
+        ): List<KanjiExampleEntity> =
+            upserted.filter { it.kanji == kanji }.take(limit)
+
+        override suspend fun upsertAll(examples: List<KanjiExampleEntity>) {
+            upserted += examples
+        }
+
+        override suspend fun deleteAll() {
+            deletedAll = true
+            upserted.clear()
+        }
+    }
+
     private class FakeSyncNoteSnapshotDao : SyncNoteSnapshotDao {
         val upserted = mutableListOf<SyncNoteSnapshotEntity>()
 
@@ -373,6 +439,31 @@ class RoomSourceMirrorSyncRepositoryTest {
         jitenRank = jitenRank,
         rankRangeMax = 3000,
         sources = sources,
+    )
+
+    private fun dashboardRow(kanji: String): StudyDashboardRow = StudyDashboardRow(
+        kanji = kanji,
+        jitenRank = 120,
+        primaryMeaning = "Japan",
+        reading = "にほん",
+        browserSearch = "note:Kiku Expression:*$kanji*",
+        weaknessScore = 22,
+        reasonCode = "suspended_archive",
+        reasonText = "1 missed example made this a writing-practice target.",
+        activeExampleCount = 0,
+        suspendedExampleCount = 1,
+        matureSupportCount = 0,
+        examples = listOf(
+            StudyExample(
+                sourceType = "suspended",
+                expression = "日本",
+                reading = "にほん",
+                meaning = "Japan",
+                cardId = 10,
+                noteId = 1,
+                sentence = "日本へ行く。",
+            ),
+        ),
     )
 
     private fun sourceEvidence(

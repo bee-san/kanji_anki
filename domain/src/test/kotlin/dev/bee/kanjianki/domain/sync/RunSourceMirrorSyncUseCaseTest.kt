@@ -9,6 +9,7 @@ import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
+import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
@@ -40,6 +41,7 @@ class RunSourceMirrorSyncUseCaseTest {
             syncRuns,
             sourceMirrorSync,
             importSelector(),
+            dashboardBuilder(),
             FakeClock(100, 150),
         )
 
@@ -53,6 +55,7 @@ class RunSourceMirrorSyncUseCaseTest {
         assertEquals(1, sourceMirrorSync.syncRun.suspendedCardsArchivedCount)
         assertEquals(2, sourceMirrorSync.syncRun.suspendedKanjiImportedCount)
         assertEquals(listOf("日", "本"), sourceMirrorSync.importCandidates.map { it.kanji })
+        assertEquals(listOf("日", "本"), sourceMirrorSync.dashboardRows.map { it.kanji })
         assertEquals(SyncRunId(1), sourceMirrorSync.notes.single { it.noteId == NoteId(10) }.lastSeenSyncId)
         assertEquals(SyncRunId(1), sourceMirrorSync.cards.single { it.cardId == CardId(20) }.lastSeenSyncId)
     }
@@ -73,6 +76,7 @@ class RunSourceMirrorSyncUseCaseTest {
             syncRuns,
             sourceMirrorSync,
             importSelector(),
+            dashboardBuilder(),
             FakeClock(10, 20),
         )
 
@@ -87,6 +91,15 @@ class RunSourceMirrorSyncUseCaseTest {
 
     private fun importSelector(): ImportCandidateSelector =
         ImportCandidateSelector { kanji ->
+            when (kanji) {
+                "日" -> 100
+                "本" -> 200
+                else -> null
+            }
+        }
+
+    private fun dashboardBuilder(): SyncDashboardBuilder =
+        SyncDashboardBuilder { kanji ->
             when (kanji) {
                 "日" -> 100
                 "本" -> 200
@@ -132,6 +145,7 @@ class RunSourceMirrorSyncUseCaseTest {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
         val importCandidates = mutableListOf<ImportedKanjiCandidate>()
+        val dashboardRows = mutableListOf<StudyDashboardRow>()
         lateinit var syncRun: SyncRun
 
         override suspend fun recordSuccessfulSnapshot(
@@ -139,6 +153,7 @@ class RunSourceMirrorSyncUseCaseTest {
             notes: List<SourceNote>,
             cards: List<SourceCard>,
             importCandidates: List<ImportedKanjiCandidate>,
+            dashboardRows: List<StudyDashboardRow>,
             settings: ImportSettings,
         ): SyncRunId {
             val id = SyncRunId(1)
@@ -146,6 +161,7 @@ class RunSourceMirrorSyncUseCaseTest {
             this.notes += notes.map { it.copy(lastSeenSyncId = id) }
             this.cards += cards.map { it.copy(lastSeenSyncId = id) }
             this.importCandidates += importCandidates
+            this.dashboardRows += dashboardRows
             return id
         }
     }

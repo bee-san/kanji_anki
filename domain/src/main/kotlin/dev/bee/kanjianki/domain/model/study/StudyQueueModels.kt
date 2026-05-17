@@ -27,6 +27,9 @@ data class StudyExample @JvmOverloads constructor(
     val intervalDays: Int = 0,
     val reps: Int = 0,
     val fsrsStability: Double? = null,
+    val cardId: Long = 0,
+    val noteId: Long = 0,
+    val sentence: String = "",
 )
 
 data class StudyDashboardRow(

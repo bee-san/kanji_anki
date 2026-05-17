@@ -351,6 +351,10 @@ Current artifacts:
 - Historical note/card sync snapshots are appended inside the same transaction.
   Kanji aggregate snapshots are still pending because the new path does not yet
   rebuild dashboard rows.
+- `SyncDashboardBuilder` in `:domain` rebuilds dashboard rows from selected
+  import source evidence using the legacy weakness/reason weighting.
+- The Room source-sync transaction now replaces `dashboard_rows` and
+  `kanji_examples` from those rebuilt rows.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
@@ -360,7 +364,7 @@ Current artifacts:
 Explicit gaps:
 
 - No AnkiDroid module implementation yet.
-- No post-provider archive cleanup, dashboard rebuild, queue seeding,
+- No post-provider archive cleanup, kanji inventory rebuild, queue seeding,
   similar-kanji rebuild, or historical kanji aggregate snapshot write in the
   new use case yet.
 - Manual and background sync still use the legacy Java path.
@@ -416,6 +420,15 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`; Room repository tests cover historical note/card
 snapshot rows written with the generated sync ID.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test :data:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; sync dashboard tests cover suspended, active, FSRS,
+and sort behavior, while Room repository tests cover replacing dashboard rows
+and examples inside the source-sync transaction.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
