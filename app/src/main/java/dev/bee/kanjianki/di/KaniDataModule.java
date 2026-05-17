@@ -1,0 +1,83 @@
+package dev.bee.kanjianki.di;
+
+import android.content.Context;
+
+import dagger.Module;
+import dagger.Provides;
+import dagger.hilt.InstallIn;
+import dagger.hilt.android.qualifiers.ApplicationContext;
+import dagger.hilt.components.SingletonComponent;
+import dev.bee.kanjianki.data.KaniRoomDatabase;
+import dev.bee.kanjianki.data.KaniRoomDatabaseFactory;
+import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
+import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
+import dev.bee.kanjianki.data.repository.RoomStudyQueueRepository;
+import dev.bee.kanjianki.data.repository.RoomSyncRunRepository;
+import dev.bee.kanjianki.domain.repository.SourceMirrorRepository;
+import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
+import dev.bee.kanjianki.domain.repository.StudyQueueRepository;
+import dev.bee.kanjianki.domain.repository.SyncRunRepository;
+import dev.bee.kanjianki.domain.scheduler.ApplyStudyReviewUseCase;
+import dev.bee.kanjianki.domain.scheduler.LoadNextStudySessionUseCase;
+import dev.bee.kanjianki.domain.scheduler.StudyReviewTransitionEngine;
+import dev.bee.kanjianki.domain.scheduler.StudySessionSelector;
+import javax.inject.Singleton;
+
+@Module
+@InstallIn(SingletonComponent.class)
+public final class KaniDataModule {
+    private KaniDataModule() {
+    }
+
+    @Provides
+    @Singleton
+    static KaniRoomDatabase provideKaniRoomDatabase(@ApplicationContext Context context) {
+        return new KaniRoomDatabaseFactory().create(context);
+    }
+
+    @Provides
+    @Singleton
+    static SourceMirrorRepository provideSourceMirrorRepository(KaniRoomDatabase database) {
+        return new RoomSourceMirrorRepository(database);
+    }
+
+    @Provides
+    @Singleton
+    static SyncRunRepository provideSyncRunRepository(KaniRoomDatabase database) {
+        return new RoomSyncRunRepository(database.syncRunDao());
+    }
+
+    @Provides
+    @Singleton
+    static StudyQueueRepository provideStudyQueueRepository(KaniRoomDatabase database) {
+        return new RoomStudyQueueRepository(database);
+    }
+
+    @Provides
+    @Singleton
+    static StudyDashboardRepository provideStudyDashboardRepository(KaniRoomDatabase database) {
+        return new RoomStudyDashboardRepository(database, RoomStudyDashboardRepository.DEFAULT_EXAMPLE_LIMIT);
+    }
+
+    @Provides
+    static LoadNextStudySessionUseCase provideLoadNextStudySessionUseCase(
+            StudyQueueRepository studyQueueRepository,
+            StudyDashboardRepository studyDashboardRepository
+    ) {
+        return new LoadNextStudySessionUseCase(
+                studyQueueRepository,
+                studyDashboardRepository,
+                new StudySessionSelector()
+        );
+    }
+
+    @Provides
+    static ApplyStudyReviewUseCase provideApplyStudyReviewUseCase(
+            StudyQueueRepository studyQueueRepository
+    ) {
+        return new ApplyStudyReviewUseCase(
+                studyQueueRepository,
+                new StudyReviewTransitionEngine()
+        );
+    }
+}

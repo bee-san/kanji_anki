@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    alias(libs.plugins.hilt.android)
     jacoco
 }
 
@@ -148,7 +149,10 @@ dependencies {
     implementation(project(":writing-android"))
     implementation(libs.coroutines.core)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.hilt.android)
     implementation(libs.mlkit.digital.ink)
+    annotationProcessor(libs.hilt.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.test.core)
     androidTestImplementation(libs.test.runner)

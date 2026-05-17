@@ -90,9 +90,9 @@ class RoomStudyDashboardRepository internal constructor(
         return filterNot { suspendedKanji.contains(it.kanji) }
     }
 
-    private companion object {
+    companion object {
         const val DEFAULT_EXAMPLE_LIMIT = 8
 
-        fun normalizedKanji(kanji: String): String = kanji.trim()
+        private fun normalizedKanji(kanji: String): String = kanji.trim()
     }
 }

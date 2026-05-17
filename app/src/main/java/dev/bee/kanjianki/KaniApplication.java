@@ -5,6 +5,9 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.work.Configuration;
 
+import dagger.hilt.android.HiltAndroidApp;
+
+@HiltAndroidApp
 public final class KaniApplication extends Application implements Configuration.Provider {
     @NonNull
     @Override
