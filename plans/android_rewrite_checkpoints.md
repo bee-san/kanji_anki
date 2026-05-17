@@ -348,9 +348,8 @@ Current artifacts:
 - Selected suspended source cards are archived locally inside that transaction
   using the source snapshot details; existing archive rows are preserved so
   first-archive metadata is not rewritten.
-- Historical note/card sync snapshots are appended inside the same transaction.
-  Kanji aggregate snapshots are still pending because the new path does not yet
-  rebuild dashboard rows.
+- Historical note/card sync snapshots and per-kanji aggregate sync snapshots
+  are appended inside the same transaction.
 - `SyncDashboardBuilder` in `:domain` rebuilds dashboard rows from selected
   import source evidence using the legacy weakness/reason weighting.
 - The Room source-sync transaction now replaces `dashboard_rows` and
@@ -366,13 +365,39 @@ Current artifacts:
 - `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
   source mirror snapshot using active, suspended, tagged, weak-card, and
   browser-query rules without depending on legacy record classes.
+- `StudyQueueSeeder` can seed the Room `study_items` table during the same
+  successful source-sync transaction when a `SyncStudyQueueSeedContext` is
+  supplied. The sync use case computes the adaptive plan after dashboard-row
+  rebuilds, using legacy adaptive inputs passed through the request context.
+- `SimilarKanjiIndex` and `SimilarKanjiPair` in `:domain` define the similarity
+  boundary. `RoomSourceMirrorSyncRepository` rebuilds `similar_kanji_pairs`
+  from the full local inventory and preserves existing `first_seen_at` values.
+- `AnkiDroidCollectionGateway` in `:ankidroid` implements the read-only domain
+  provider boundary, including provider target selection, permission failure
+  classification, model/field validation, note/card reads, FSRS card columns,
+  suspended-card marking, browser-query reads, archived-tag skipping, and
+  unsupported-template rejection.
+- `LegacySyncMappers`, `LegacySyncRequestFactory`, and
+  `CoreSimilarKanjiIndexAdapter` in `:app` bridge current `LocalStore`,
+  `SyncSettings`, adaptive settings, ladder settings, and the bundled
+  `similar_kanji.tsv` resource into `RunSourceMirrorSyncRequest` without making
+  `:data` depend on legacy `:core` types.
+- `KaniSyncModule` binds the domain sync use case, AnkiDroid collection
+  gateway, rank lookup, import selector, dashboard builder, and domain clock in
+  the Hilt graph.
 
 Explicit gaps:
 
-- No AnkiDroid module implementation yet.
-- No post-provider archive cleanup, queue seeding, similar-kanji rebuild, or
-  historical kanji aggregate snapshot write in the new use case yet.
-- Manual and background sync still use the legacy Java path.
+- No post-provider archive cleanup equivalent to legacy
+  `removeArchivedSuspendedCards()` in the new domain path yet.
+- No progress callback surface for `SyncProgressPanel` yet.
+- Manual and background sync still use the legacy Java path. This is
+  deliberate until Home/Study reads the same Room data that the new sync path
+  writes; otherwise manual sync would appear invisible in the current UI.
+- The new sync path has provider failure mapping, but non-provider failures
+  from request construction, dictionary rank loading, or repository writes
+  still need a failed sync-run policy before runtime switchover.
+- The domain sync path has no explicit concurrency guard yet.
 
 Verification commands:
 
@@ -450,6 +475,33 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 ```
 
 Result: `BUILD SUCCESSFUL`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :ankidroid:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; read-only AnkiDroid provider tests cover
+note/card/browser-query mapping, archived-note skipping, `notes_v2` fallback,
+unsupported template ord rejection, missing permission classification, and FSRS
+column reads.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :app:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL`; app bridge tests cover legacy sync-settings
+mapping into domain import/queue settings, adaptive/ladder queue context
+construction, and core-to-domain similar-kanji pair adaptation.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew ciFast
+```
+
+Result: `BUILD SUCCESSFUL` after adding the AnkiDroid gateway, adaptive sync
+request context, and app sync bridge/Hilt bindings.
 
 ## Step 7 Scheduler Rewrite
 
