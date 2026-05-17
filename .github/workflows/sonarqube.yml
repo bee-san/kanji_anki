@@ -178,7 +178,7 @@ jobs:
             TASKS+=( :core:test :core:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.rewrite }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :domain:test :dictionary-core:test :writing-core:test :designsystem:compileDebugKotlin :data:compileDebugKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin )
+            TASKS+=( :domain:test :dictionary-core:test :writing-core:test :designsystem:compileDebugKotlin :data:testDebugUnitTest :ankidroid:testDebugUnitTest :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin )
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac )
@@ -213,8 +213,8 @@ jobs:
               :dictionary-core:test \
               :writing-core:test \
               :designsystem:compileDebugKotlin \
-              :data:compileDebugKotlin \
-              :ankidroid:compileDebugKotlin \
+              :data:testDebugUnitTest \
+              :ankidroid:testDebugUnitTest \
               :dictionary-android:compileDebugKotlin \
               :writing-android:compileDebugKotlin \
               :app:testDebugUnitTest \

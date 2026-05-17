@@ -899,6 +899,9 @@ Room-backed legacy snapshots through the Hilt entry point and IO executor.
 The same `ciFast` command passed after changing Study to wait for the Room
 snapshot or legacy fallback before starting an active session.
 
+The same `ciFast` command passed after adding `:ankidroid:testDebugUnitTest`
+to the local and GitHub Android rewrite gates.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:

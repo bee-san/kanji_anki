@@ -86,12 +86,16 @@ jobs:
               fsrs-java/build/test-results/**
               writing-core/build/test-results/**
           - id: app-unit
-            label: App unit tests and coverage
-            tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
+            label: App and Android library unit tests
+            tasks: ':data:testDebugUnitTest :ankidroid:testDebugUnitTest :app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
             reports: |
               app/build/reports/tests/**
               app/build/reports/jacoco/**
               app/build/test-results/**
+              ankidroid/build/reports/tests/**
+              ankidroid/build/test-results/**
+              data/build/reports/tests/**
+              data/build/test-results/**
           - id: app-static
             label: App lint and androidTest compile
             tasks: ':designsystem:compileDebugKotlin :data:compileDebugKotlin :ankidroid:compileDebugKotlin :dictionary-android:compileDebugKotlin :writing-android:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug'

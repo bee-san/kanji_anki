@@ -111,6 +111,7 @@ val fastCiTasks = listOf(
     ":data:compileDebugKotlin",
     ":data:testDebugUnitTest",
     ":ankidroid:compileDebugKotlin",
+    ":ankidroid:testDebugUnitTest",
     ":dictionary-android:compileDebugKotlin",
     ":writing-android:compileDebugKotlin",
     ":fsrs-java:test",
