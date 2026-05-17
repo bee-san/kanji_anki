@@ -43,6 +43,15 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/java/dev/bee/kanjianki/reminders/*.java",
     "app/src/main/java/dev/bee/kanjianki/sync/*.java",
 )
+val testSonarCoverageExclusions = listOf(
+    "**/src/test/**",
+    "**/src/androidTest/**",
+)
+val sonarCoverageExclusions = testSonarCoverageExclusions + if (sonarFullCoverage) {
+    emptyList()
+} else {
+    fastSonarCoverageExclusions
+}
 
 sonar {
     properties {
@@ -52,9 +61,7 @@ sonar {
         property("sonar.java.binaries", maybeSonarMainBinaries.joinToString(","))
         property("sonar.java.test.binaries", maybeSonarTestBinaries.joinToString(","))
         property("sonar.coverage.jacoco.xmlReportPaths", maybeSonarCoveragePaths.joinToString(","))
-        if (!sonarFullCoverage) {
-            property("sonar.coverage.exclusions", fastSonarCoverageExclusions.joinToString(","))
-        }
+        property("sonar.coverage.exclusions", sonarCoverageExclusions.joinToString(","))
     }
 }
 

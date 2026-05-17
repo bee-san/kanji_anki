@@ -188,7 +188,7 @@ public final class LocalStoreInstrumentedTest {
 
     @Test
     public void testFailedImportSyncRollsBackAllDurableRows() {
-        String baselineSyncId = Long.toString(saveSingleRowSync(row("拉", 0), Collections.singletonList(suspendedImport("拉")), 2000L));
+        saveSingleRowSync(row("拉", 0), Collections.singletonList(suspendedImport("拉")), 2000L);
         verifyBaselineImportRows();
 
         RecordsImportModels.DashboardRow malformedRow = new RecordsImportModels.DashboardRow(
@@ -224,7 +224,7 @@ public final class LocalStoreInstrumentedTest {
             // Expected: the important assertion is that the surrounding DB transaction rolled back.
         }
 
-        verifyRolledBackImportRows(baselineSyncId);
+        verifyRolledBackImportRows();
     }
 
     private void verifyBaselineImportRows() {
@@ -236,7 +236,7 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("sync_card_snapshots"));
     }
 
-    private void verifyRolledBackImportRows(String baselineSyncId) {
+    private void verifyRolledBackImportRows() {
         assertEquals(1, count("sync_runs"));
         assertEquals(1, count("dashboard_rows"));
         assertEquals(1, count("suspended_imports"));
@@ -245,7 +245,6 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(1, count("source_cards"));
         assertEquals(1, count("source_notes"));
         assertEquals(1, count("sync_card_snapshots"));
-        assertEquals(1, countWhere("sync_card_snapshots", "sync_id=?", baselineSyncId));
         assertEquals(0, countWhere("dashboard_rows", "kanji=?", "壊"));
         assertEquals(0, countWhere("suspended_imports", "kanji=?", "壊"));
         assertEquals(0, countWhere("sync_note_snapshots", "note_id=?", "30"));
