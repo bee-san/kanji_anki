@@ -1024,3 +1024,11 @@ Settings currently live in a string key/value table. Typed Room/DataStore
 settings may reset to current defaults or explicitly migrate selected keys from
 `app/src/main/java/dev/bee/kanjianki/sync/SyncSettings.java` and
 `app/src/main/java/dev/bee/kanjianki/data/LocalStoreStudy.java`.
+
+The first typed Room adapter is
+`data/src/main/java/dev/bee/kanjianki/data/repository/RoomImportSettingsRepository.kt`.
+Empty Room settings load current domain defaults, so a clean reset starts with
+suspended-only Kiku import behavior instead of legacy key/value state. Customized
+sync/import filters round-trip through typed `sync.*` keys in the Room settings
+table, and invalid persisted settings fall back to current defaults rather than
+carrying corrupt values into sync.

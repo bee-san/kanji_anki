@@ -15,4 +15,7 @@ interface SettingsDao {
 
     @Upsert
     suspend fun upsert(setting: SettingEntity)
+
+    @Upsert
+    suspend fun upsertAll(settings: List<SettingEntity>)
 }
