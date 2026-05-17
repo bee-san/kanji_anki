@@ -416,6 +416,12 @@ Current artifacts:
   - fallback behavior for malformed memory strings.
   - task-type aliases including `typing_meaning` and `writing_remediation`.
   - memory reads by rung and writes by task type.
+- `StudyAheadPolicy` in `:domain` isolates the study-ahead horizon clamp.
+- `StudyAheadPolicyTest` covers:
+  - negative and zero study-ahead windows clamping to zero.
+  - positive windows passing through.
+  - windows above one day clamping to one day.
+  - due-at-horizon inclusion and beyond-horizon exclusion.
 
 Explicit gaps:
 
@@ -425,7 +431,8 @@ Explicit gaps:
 - Review token guard is not wired into the runtime review transition yet.
 - Task memory updates and handoff are not wired into the runtime review
   transition yet.
-- Study session selection and adaptive planner split are not ported yet.
+- Study session selection does not use `StudyAheadPolicy` yet.
+- Adaptive planner split is not ported yet.
 
 Verification commands:
 
