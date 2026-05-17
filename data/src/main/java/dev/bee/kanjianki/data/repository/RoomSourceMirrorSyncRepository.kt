@@ -4,6 +4,8 @@ import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
 import dev.bee.kanjianki.data.history.SyncCardSnapshotDao
 import dev.bee.kanjianki.data.history.SyncCardSnapshotEntity
+import dev.bee.kanjianki.data.history.SyncKanjiSnapshotDao
+import dev.bee.kanjianki.data.history.SyncKanjiSnapshotEntity
 import dev.bee.kanjianki.data.history.SyncNoteSnapshotDao
 import dev.bee.kanjianki.data.history.SyncNoteSnapshotEntity
 import dev.bee.kanjianki.data.importing.ImportDecisionDao
@@ -42,6 +44,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val kanjiInventory: KanjiInventoryDao,
     private val syncNoteSnapshots: SyncNoteSnapshotDao,
     private val syncCardSnapshots: SyncCardSnapshotDao,
+    private val syncKanjiSnapshots: SyncKanjiSnapshotDao,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
 ) : SourceMirrorSyncRepository {
     constructor(database: KaniRoomDatabase) : this(
@@ -58,6 +61,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         kanjiInventory = database.kanjiInventoryDao(),
         syncNoteSnapshots = database.syncNoteSnapshotDao(),
         syncCardSnapshots = database.syncCardSnapshotDao(),
+        syncKanjiSnapshots = database.syncKanjiSnapshotDao(),
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
@@ -90,6 +94,7 @@ class RoomSourceMirrorSyncRepository internal constructor(
         recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
         recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
         recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
+        recordHistoricalKanjiSnapshots(syncRunId, finishedAt, dashboardRows)
         recordDashboardRows(finishedAt, dashboardRows)
         recordKanjiInventory(finishedAt, notes, cards, importCandidates, dashboardRows, settings)
         syncRunId
@@ -238,6 +243,61 @@ class RoomSourceMirrorSyncRepository internal constructor(
                 )
             },
         )
+    }
+
+    private suspend fun recordHistoricalKanjiSnapshots(
+        syncRunId: SyncRunId,
+        finishedAt: Long,
+        rows: List<StudyDashboardRow>,
+    ) {
+        if (rows.isEmpty()) {
+            return
+        }
+        syncKanjiSnapshots.upsertAll(
+            rows.map { row ->
+                row.toSyncKanjiSnapshotEntity(syncRunId, finishedAt)
+            },
+        )
+    }
+
+    private fun StudyDashboardRow.toSyncKanjiSnapshotEntity(
+        syncRunId: SyncRunId,
+        finishedAt: Long,
+    ): SyncKanjiSnapshotEntity = SyncKanjiSnapshotEntity(
+        syncId = syncRunId.value,
+        finishedAt = finishedAt,
+        kanji = kanji,
+        activeCards = activeExampleCount,
+        suspendedCards = suspendedExampleCount,
+        matureSupportCount = matureSupportCount,
+        averageIntervalDays = examples.averageOfOrZero { it.intervalDays.toDouble() },
+        totalLapses = examples.sumOf { it.lapses },
+        totalReps = examples.sumOf { it.reps },
+        fsrsStabilityAvg = examples.averageNonNull { it.fsrsStability },
+        fsrsDifficultyAvg = examples.averageNonNull { it.fsrsDifficulty },
+        fsrsRetrievabilityAvg = examples.averageNonNull { it.fsrsRetrievability },
+        weaknessScore = weaknessScore,
+        reasonCode = reasonCode,
+        activeExampleCount = activeExampleCount,
+        suspendedExampleCount = suspendedExampleCount,
+    )
+
+    private fun <T> List<T>.averageOfOrZero(selector: (T) -> Double): Double =
+        if (isEmpty()) {
+            0.0
+        } else {
+            sumOf(selector) / size
+        }
+
+    private fun <T> List<T>.averageNonNull(selector: (T) -> Double?): Double? {
+        var count = 0
+        var total = 0.0
+        for (item in this) {
+            val value = selector(item) ?: continue
+            total += value
+            count++
+        }
+        return if (count == 0) null else total / count
     }
 
     private fun SourceNote.toSyncNoteSnapshotEntity(

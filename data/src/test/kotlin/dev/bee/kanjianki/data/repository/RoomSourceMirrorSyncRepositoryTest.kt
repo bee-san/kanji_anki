@@ -2,6 +2,8 @@ package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.history.SyncCardSnapshotDao
 import dev.bee.kanjianki.data.history.SyncCardSnapshotEntity
+import dev.bee.kanjianki.data.history.SyncKanjiSnapshotDao
+import dev.bee.kanjianki.data.history.SyncKanjiSnapshotEntity
 import dev.bee.kanjianki.data.history.SyncNoteSnapshotDao
 import dev.bee.kanjianki.data.history.SyncNoteSnapshotEntity
 import dev.bee.kanjianki.data.importing.ImportDecisionDao
@@ -87,6 +89,7 @@ class RoomSourceMirrorSyncRepositoryTest {
         )
         val syncNoteSnapshots = FakeSyncNoteSnapshotDao()
         val syncCardSnapshots = FakeSyncCardSnapshotDao()
+        val syncKanjiSnapshots = FakeSyncKanjiSnapshotDao()
         var transactions = 0
         val repository = RoomSourceMirrorSyncRepository(
             syncRuns = syncRuns,
@@ -102,6 +105,7 @@ class RoomSourceMirrorSyncRepositoryTest {
             kanjiInventory = kanjiInventory,
             syncNoteSnapshots = syncNoteSnapshots,
             syncCardSnapshots = syncCardSnapshots,
+            syncKanjiSnapshots = syncKanjiSnapshots,
             runInTransaction = { block ->
                 transactions++
                 block()
@@ -161,6 +165,19 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(listOf(10L, 20L), syncCardSnapshots.upserted.map { it.cardId })
         assertEquals(listOf(1, 0), syncCardSnapshots.upserted.map { it.suspended })
         assertEquals(listOf(0, 0), syncCardSnapshots.upserted.map { it.mature })
+        assertEquals(listOf("日"), syncKanjiSnapshots.upserted.map { it.kanji })
+        assertEquals(42L, syncKanjiSnapshots.upserted.single().syncId)
+        assertEquals(20L, syncKanjiSnapshots.upserted.single().finishedAt)
+        assertEquals(0, syncKanjiSnapshots.upserted.single().activeCards)
+        assertEquals(1, syncKanjiSnapshots.upserted.single().suspendedCards)
+        assertEquals(9.0, syncKanjiSnapshots.upserted.single().averageIntervalDays, 0.0)
+        assertEquals(2, syncKanjiSnapshots.upserted.single().totalLapses)
+        assertEquals(8, syncKanjiSnapshots.upserted.single().totalReps)
+        assertEquals(4.0, syncKanjiSnapshots.upserted.single().fsrsStabilityAvg!!, 0.0)
+        assertEquals(6.0, syncKanjiSnapshots.upserted.single().fsrsDifficultyAvg!!, 0.0)
+        assertEquals(0.75, syncKanjiSnapshots.upserted.single().fsrsRetrievabilityAvg!!, 0.0)
+        assertEquals(22, syncKanjiSnapshots.upserted.single().weaknessScore)
+        assertEquals("suspended_archive", syncKanjiSnapshots.upserted.single().reasonCode)
         assertTrue(dashboardRows.deletedAll)
         assertTrue(kanjiExamples.deletedAll)
         assertEquals(listOf("日"), dashboardRows.upserted.map { it.kanji })
@@ -458,6 +475,26 @@ class RoomSourceMirrorSyncRepositoryTest {
         }
     }
 
+    private class FakeSyncKanjiSnapshotDao : SyncKanjiSnapshotDao {
+        val upserted = mutableListOf<SyncKanjiSnapshotEntity>()
+
+        override suspend fun listForKanji(kanji: String): List<SyncKanjiSnapshotEntity> =
+            upserted.filter { it.kanji == kanji }.sortedWith(
+                compareByDescending<SyncKanjiSnapshotEntity> { it.finishedAt }
+                    .thenByDescending { it.syncId },
+            )
+
+        override suspend fun listForSync(syncId: Long): List<SyncKanjiSnapshotEntity> =
+            upserted.filter { it.syncId == syncId }.sortedBy { it.kanji }
+
+        override suspend fun upsertAll(rows: List<SyncKanjiSnapshotEntity>) {
+            for (row in rows) {
+                upserted.removeAll { it.syncId == row.syncId && it.kanji == row.kanji }
+                upserted += row
+            }
+        }
+    }
+
     private fun successRun(): SyncRun = SyncRun(
         id = null,
         startedAt = 10,
@@ -503,6 +540,12 @@ class RoomSourceMirrorSyncRepositoryTest {
                 expression = "日本",
                 reading = "にほん",
                 meaning = "Japan",
+                fsrsDifficulty = 6.0,
+                fsrsRetrievability = 0.75,
+                lapses = 2,
+                intervalDays = 9,
+                reps = 8,
+                fsrsStability = 4.0,
                 cardId = 10,
                 noteId = 1,
                 sentence = "日本へ行く。",
