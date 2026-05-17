@@ -103,6 +103,18 @@ jobs:
           fi
           echo "full=$FULL_COVERAGE" >> "$GITHUB_OUTPUT"
 
+      - name: Compute Sonar project version
+        id: sonar-version
+        run: |
+          set -euo pipefail
+          release_tag="$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>/dev/null || true)"
+          if [ -n "${release_tag}" ]; then
+            version="${release_tag#v}"
+          else
+            version="${GITHUB_SHA}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
@@ -157,8 +169,8 @@ jobs:
           if [ ${#TASKS[@]} -eq 0 ]; then
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          ./gradlew :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
-          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ github.sha }}
+          ./gradlew :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
 
       - name: Build and analyze (full connected coverage)
         if: steps.coverage-mode.outputs.full == 'true'
@@ -187,10 +199,10 @@ jobs:
               --parallel \
               -Dorg.gradle.parallel=true \
               -PsonarFullCoverage=true \
-              -PsonarProjectVersion=${{ github.sha }}
+              -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
             test -f app/build/reports/coverage/androidTest/debug/connected/report.xml
             ./gradlew sonar \
               --parallel \
               -Dorg.gradle.parallel=true \
               -PsonarFullCoverage=true \
-              -PsonarProjectVersion=${{ github.sha }}
+              -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
