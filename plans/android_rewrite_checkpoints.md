@@ -551,14 +551,19 @@ Current artifacts:
   rung/phase/state wire names, real-review evidence fields, and task-memory
   decode, and maps reviewed domain items back onto existing Room rows.
 - `StudyDashboardRepository` in `:domain` defines top and active read-side
-  dashboard row boundaries.
+  dashboard row boundaries and local kanji suspension writes.
 - `RoomStudyDashboardRepository` in `:data` reads `dashboard_rows` and
   `kanji_examples` through Room with the legacy eight-example cap, and filters
   active reads through `local_kanji_suspensions`.
+- `RoomStudyDashboardRepository.setLocallySuspended` writes and clears
+  `local_kanji_suspensions`, normalizing blank input away and clamping negative
+  timestamps to zero.
 - `DashboardRowMappers` maps dashboard rows and examples to the scheduler
   domain models, including example FSRS difficulty and retrievability.
 - `RepositoryMappersTest` covers `StudyItemEntity` to `StudyQueueItem`
   mapping with decoded task memory and dashboard row/example mapping.
+- `RoomStudyDashboardRepositoryTest` covers local suspension writes filtering
+  active dashboard rows.
 
 Explicit gaps:
 
@@ -571,8 +576,8 @@ Explicit gaps:
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
   write path.
-- Study dashboard repository is read-only for now; local suspension writes
-  remain on the legacy path.
+- Runtime local suspension writes remain on the legacy Java `LocalStore` path
+  until the detail screen is moved to the Room repository.
 - Adaptive planner split is not ported yet.
 
 Verification commands:
@@ -580,6 +585,13 @@ Verification commands:
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
   ./gradlew :domain:test
+```
+
+Result: `BUILD SUCCESSFUL`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test :data:testDebugUnitTest
 ```
 
 Result: `BUILD SUCCESSFUL`.

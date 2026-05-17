@@ -183,20 +183,42 @@ class LoadNextStudySessionUseCaseTest {
     private class FakeStudyDashboardRepository(
         private val rows: List<StudyDashboardRow>,
     ) : StudyDashboardRepository {
+        private val locallySuspended = mutableSetOf<String>()
         var lastListActiveLimit: Int? = null
 
         override fun observeTop(limit: Int): Flow<List<StudyDashboardRow>> = flowOf(rows.take(limit))
 
-        override fun observeActive(limit: Int): Flow<List<StudyDashboardRow>> = flowOf(rows.take(limit))
+        override fun observeActive(limit: Int): Flow<List<StudyDashboardRow>> =
+            flowOf(rows.filterNot { locallySuspended.contains(it.kanji) }.take(limit))
 
         override suspend fun listTop(limit: Int): List<StudyDashboardRow> = rows.take(limit)
 
         override suspend fun listActive(limit: Int): List<StudyDashboardRow> {
             lastListActiveLimit = limit
-            return rows.take(limit)
+            return rows.filterNot { locallySuspended.contains(it.kanji) }.take(limit)
         }
 
         override suspend fun get(kanji: String): StudyDashboardRow? =
             rows.firstOrNull { it.kanji == kanji }
+
+        override suspend fun isLocallySuspended(kanji: String): Boolean =
+            locallySuspended.contains(kanji.trim())
+
+        override suspend fun setLocallySuspended(
+            kanji: String,
+            suspended: Boolean,
+            nowMillis: Long,
+        ): Boolean {
+            val safeKanji = kanji.trim()
+            if (safeKanji.isEmpty()) {
+                return false
+            }
+            if (suspended) {
+                locallySuspended.add(safeKanji)
+            } else {
+                locallySuspended.remove(safeKanji)
+            }
+            return true
+        }
     }
 }

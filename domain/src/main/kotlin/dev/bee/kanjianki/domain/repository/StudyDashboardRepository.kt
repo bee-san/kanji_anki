@@ -13,4 +13,12 @@ interface StudyDashboardRepository {
     suspend fun listActive(limit: Int): List<StudyDashboardRow>
 
     suspend fun get(kanji: String): StudyDashboardRow?
+
+    suspend fun isLocallySuspended(kanji: String): Boolean
+
+    suspend fun setLocallySuspended(
+        kanji: String,
+        suspended: Boolean,
+        nowMillis: Long,
+    ): Boolean
 }

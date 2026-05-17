@@ -1,7 +1,10 @@
 package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.KaniRoomDatabase
+import dev.bee.kanjianki.data.inventory.DashboardRowDao
 import dev.bee.kanjianki.data.inventory.DashboardRowEntity
+import dev.bee.kanjianki.data.inventory.KanjiExampleDao
+import dev.bee.kanjianki.data.inventory.LocalKanjiSuspensionDao
 import dev.bee.kanjianki.data.inventory.LocalKanjiSuspensionEntity
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
@@ -9,13 +12,21 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
-class RoomStudyDashboardRepository(
-    database: KaniRoomDatabase,
+class RoomStudyDashboardRepository internal constructor(
+    private val dashboardRows: DashboardRowDao,
+    private val kanjiExamples: KanjiExampleDao,
+    private val localSuspensions: LocalKanjiSuspensionDao,
     private val exampleLimit: Int = DEFAULT_EXAMPLE_LIMIT,
 ) : StudyDashboardRepository {
-    private val dashboardRows = database.dashboardRowDao()
-    private val kanjiExamples = database.kanjiExampleDao()
-    private val localSuspensions = database.localKanjiSuspensionDao()
+    constructor(
+        database: KaniRoomDatabase,
+        exampleLimit: Int = DEFAULT_EXAMPLE_LIMIT,
+    ) : this(
+        database.dashboardRowDao(),
+        database.kanjiExampleDao(),
+        database.localKanjiSuspensionDao(),
+        exampleLimit,
+    )
 
     init {
         require(exampleLimit > 0) { "exampleLimit must be positive" }
@@ -42,6 +53,33 @@ class RoomStudyDashboardRepository(
     override suspend fun get(kanji: String): StudyDashboardRow? =
         dashboardRows.get(kanji)?.toDomainWithExamples()
 
+    override suspend fun isLocallySuspended(kanji: String): Boolean {
+        val safeKanji = normalizedKanji(kanji)
+        return safeKanji.isNotEmpty() && localSuspensions.get(safeKanji) != null
+    }
+
+    override suspend fun setLocallySuspended(
+        kanji: String,
+        suspended: Boolean,
+        nowMillis: Long,
+    ): Boolean {
+        val safeKanji = normalizedKanji(kanji)
+        if (safeKanji.isEmpty()) {
+            return false
+        }
+        if (suspended) {
+            localSuspensions.upsert(
+                LocalKanjiSuspensionEntity(
+                    kanji = safeKanji,
+                    suspendedAt = nowMillis.coerceAtLeast(0L),
+                ),
+            )
+        } else {
+            localSuspensions.delete(safeKanji)
+        }
+        return true
+    }
+
     private suspend fun DashboardRowEntity.toDomainWithExamples(): StudyDashboardRow =
         toDomain(kanjiExamples.listForKanji(kanji, exampleLimit))
 
@@ -54,5 +92,7 @@ class RoomStudyDashboardRepository(
 
     private companion object {
         const val DEFAULT_EXAMPLE_LIMIT = 8
+
+        fun normalizedKanji(kanji: String): String = kanji.trim()
     }
 }
