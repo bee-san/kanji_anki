@@ -65,6 +65,8 @@ data class NoteTypeMapping(
 
 data class ImportSettings(
     val noteMapping: NoteTypeMapping = NoteTypeMapping.kikuDefault,
+    val matureDays: Int = 21,
+    val matureSupportThreshold: Int = 2,
     val importActiveCards: Boolean = false,
     val importSuspendedCards: Boolean = true,
     val importTaggedCards: Boolean = false,
@@ -80,6 +82,8 @@ data class ImportSettings(
     val newCardSortMode: NewCardSortMode = NewCardSortMode.default,
 ) {
     init {
+        require(matureDays in 1..3650) { "matureDays must be in 1..3650" }
+        require(matureSupportThreshold in 1..100) { "matureSupportThreshold must be in 1..100" }
         require(suspendedRankMin in 1..20_000) { "suspendedRankMin must be in 1..20000" }
         require(suspendedRankMax in 1..20_000) { "suspendedRankMax must be in 1..20000" }
         require(suspendedRankMin <= suspendedRankMax) {

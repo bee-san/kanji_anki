@@ -338,13 +338,16 @@ Current artifacts:
   summary, and writes source note/card rows with the generated sync ID.
 - `CollectionGatewayException` maps provider failures into permanent vs
   retryable sync-run status.
+- `ImportCandidateSelector` in `:domain` selects ranked kanji candidates from a
+  source mirror snapshot using active, suspended, tagged, weak-card, and
+  browser-query rules without depending on legacy record classes.
 
 Explicit gaps:
 
 - No AnkiDroid module implementation yet.
-- No import analysis, suspended archive cleanup, dashboard rebuild, queue
-  seeding, similar-kanji rebuild, or historical snapshot write in the new use
-  case yet.
+- Import candidate analysis exists, but the sync use case does not yet call it.
+- No suspended archive cleanup, dashboard rebuild, queue seeding,
+  similar-kanji rebuild, or historical snapshot write in the new use case yet.
 - Manual and background sync still use the legacy Java path.
 
 Verification commands:
