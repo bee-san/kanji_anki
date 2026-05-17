@@ -23,6 +23,9 @@ class RoomStudyDashboardRepository(
             rows.map { it.toDomainWithExamples() }
         }
 
+    override suspend fun listTop(limit: Int): List<StudyDashboardRow> =
+        dashboardRows.listTop(limit).map { it.toDomainWithExamples() }
+
     override suspend fun get(kanji: String): StudyDashboardRow? =
         dashboardRows.get(kanji)?.toDomainWithExamples()
 

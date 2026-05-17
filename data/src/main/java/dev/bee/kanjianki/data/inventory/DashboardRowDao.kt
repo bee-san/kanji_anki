@@ -10,6 +10,9 @@ interface DashboardRowDao {
     @Query("SELECT * FROM dashboard_rows ORDER BY weakness_score DESC, suspended_example_count DESC, kanji ASC LIMIT :limit")
     fun observeTop(limit: Int): Flow<List<DashboardRowEntity>>
 
+    @Query("SELECT * FROM dashboard_rows ORDER BY weakness_score DESC, suspended_example_count DESC, kanji ASC LIMIT :limit")
+    suspend fun listTop(limit: Int): List<DashboardRowEntity>
+
     @Query("SELECT * FROM dashboard_rows WHERE kanji = :kanji")
     suspend fun get(kanji: String): DashboardRowEntity?
 

@@ -458,6 +458,13 @@ Current artifacts:
   - task type, writing-required flag, and prompt projection.
   - due-priority, due-time, new-card sort, weakness, and kanji tie-breaking.
   - allowed-kanji and active-queue filtering.
+- `LoadNextStudySessionUseCase` in `:domain` composes read-side queue and
+  dashboard repositories into the session selector.
+- `LoadNextStudySessionUseCaseTest` covers:
+  - one-shot dashboard row loading with the legacy 120-row default.
+  - active state queue loading without retired items.
+  - request options flowing into the session selector.
+  - null session behavior when no item is due within the horizon.
 - `StudyQueueRepository` in `:domain` defines the read-side queue boundary.
 - `RoomStudyQueueRepository` in `:data` reads `study_items` through Room.
 - `StudyItemMappers` maps `StudyItemEntity` to `StudyQueueItem`, including
@@ -479,8 +486,7 @@ Explicit gaps:
 - Review token guard is not wired into the runtime review transition yet.
 - Task memory updates and handoff are not wired into the runtime review
   transition yet.
-- Study session selection does not use `StudyActiveQueueSelector` or
-  `StudyAheadPolicy` at runtime yet.
+- `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
 - Study queue repository is read-only for now; review-transition writes remain
   on the legacy path.
 - Study dashboard repository is read-only for now and does not apply locally
