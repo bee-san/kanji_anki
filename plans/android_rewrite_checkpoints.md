@@ -179,8 +179,20 @@ Current artifacts:
 - `SourceNoteEntity` and `SourceNoteDao`.
 - `SourceCardEntity` and `SourceCardDao`.
 - `SyncRunEntity` and `SyncRunDao`.
+- Suspended/import entities and DAOs:
+  - `SuspendedArchiveEntity`
+  - `SuspendedImportEntity`
+  - `SuspendedSourceEntity`
+  - `ImportRuleAuditEntity`
+  - `ImportDecisionEntity`
+- Inventory/dashboard entities and DAOs:
+  - `DashboardRowEntity`
+  - `KanjiExampleEntity`
+  - `KanjiInventoryEntity`
+  - `LocalKanjiSuspensionEntity`
 - `KaniRoomDatabase` now declares `settings`, `source_notes`, `source_cards`,
-  and `sync_runs`.
+  `sync_runs`, suspended/import tables, dashboard rows, kanji examples, kanji
+  inventory, and local kanji suspensions.
 - Room schema export updated at
   `data/schemas/dev.bee.kanjianki.data.KaniRoomDatabase/20.json`.
 
@@ -194,6 +206,10 @@ Compatibility notes:
   shape instead of inventing a new `NOT NULL` constraint.
 - `source_cards.due` is an integer to match the existing AnkiDroid/source-card
   mirror contract.
+- Legacy indexes already present on `kanji_examples(kanji)` and
+  `import_decisions(kanji, sync_id)` are declared in Room.
+- Legacy defaults on `kanji_examples.interval_days` and `kanji_examples.reps`
+  remain `0`.
 
 Verification command:
 
@@ -203,6 +219,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 ```
 
 Result: `BUILD SUCCESSFUL`; schema export regenerated from Room.
+
+The same command also passed after adding the suspended/import and
+inventory/dashboard table families.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
