@@ -36,6 +36,13 @@ CodeQL also has a scheduled weekly run. If you change either workflow, push it
 and watch the first GitHub Actions run to completion; local Gradle success
 alone is not enough to validate the service integration.
 
+For SonarCloud, keep the hard target on correctness and maintainability: the
+quality gate must pass, and code smells, bugs, vulnerabilities, and unreviewed
+security hotspots should be driven to zero. Treat 100% coverage as an
+optimization target only. Do not slow the normal CI path just to chase perfect
+coverage; prefer the fast deterministic coverage path by default and reserve
+full connected coverage for manual investigation or release-risk checks.
+
 The deterministic AnkiDroid fixture workflow runs nightly and through
 workflow-dispatch. The release workflow runs it only when the release diff
 touches provider, sync, local-store, live instrumentation, or fixture paths. It

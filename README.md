@@ -9,7 +9,10 @@
     <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kanji_anki/total?style=for-the-badge&logo=github&label=downloads">
   </a>
   <a href="https://github.com/bee-san/kanji_anki/actions/workflows/sonarqube.yml">
-    <img alt="Core class coverage 100%" src="https://img.shields.io/badge/core%20class%20coverage-100%25-brightgreen?style=for-the-badge&logo=gradle">
+    <img alt="SonarCloud quality gate" src="https://sonarcloud.io/api/project_badges/measure?project=bee-san_kanji_anki&metric=alert_status">
+  </a>
+  <a href="https://sonarcloud.io/summary/overall?id=bee-san_kanji_anki">
+    <img alt="SonarCloud code smells" src="https://sonarcloud.io/api/project_badges/measure?project=bee-san_kanji_anki&metric=code_smells">
   </a>
 </p>
 
