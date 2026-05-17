@@ -12,25 +12,25 @@ import static org.junit.Assert.assertTrue;
 public final class LearningStepSettingsTest {
     @Test
     public void parsesMinuteAndHourSteps() {
-        List<Integer> parsed = Records.LearningStepSettings.tryParseSteps("1m, 10m 1h");
+        List<Integer> parsed = RecordsSchedulerModels.LearningStepSettings.tryParseSteps("1m, 10m 1h");
 
         assertEquals(Arrays.asList(1, 10, 60), parsed);
-        assertEquals("1m, 10m, 1h", Records.LearningStepSettings.formatSteps(parsed));
+        assertEquals("1m, 10m, 1h", RecordsSchedulerModels.LearningStepSettings.formatSteps(parsed));
     }
 
     @Test
     public void rejectsInvalidSteps() {
-        assertTrue(Records.LearningStepSettings.tryParseSteps("").isEmpty());
-        assertTrue(Records.LearningStepSettings.tryParseSteps(null).isEmpty());
-        assertTrue(Records.LearningStepSettings.tryParseSteps("0m, 10m").isEmpty());
-        assertTrue(Records.LearningStepSettings.tryParseSteps("h").isEmpty());
-        assertTrue(Records.LearningStepSettings.tryParseSteps("999999999999999999999h").isEmpty());
-        assertTrue(Records.LearningStepSettings.tryParseSteps("soon").isEmpty());
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("").isEmpty());
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps(null).isEmpty());
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("0m, 10m").isEmpty());
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("h").isEmpty());
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("999999999999999999999h").isEmpty());
+        assertTrue(RecordsSchedulerModels.LearningStepSettings.tryParseSteps("soon").isEmpty());
     }
 
     @Test
     public void defaultsMatchAnkiStyleLearningAndRelearning() {
-        Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
 
         assertEquals(Arrays.asList(1, 10), defaults.newStepsMinutes);
         assertEquals(Arrays.asList(10), defaults.reviewStepsMinutes);
@@ -40,11 +40,11 @@ public final class LearningStepSettingsTest {
 
     @Test
     public void parseStepsFallsBackAndConstructorNormalizesInvalidLists() {
-        assertEquals(Arrays.asList(5, 15), Records.LearningStepSettings.parseSteps("bad", Arrays.asList(5, 15)));
-        assertEquals(Arrays.asList(1, 10), Records.LearningStepSettings.parseSteps("bad", null));
-        assertEquals(Arrays.asList(30), Records.LearningStepSettings.parseSteps("30m", Arrays.asList(5, 15)));
+        assertEquals(Arrays.asList(5, 15), RecordsSchedulerModels.LearningStepSettings.parseSteps("bad", Arrays.asList(5, 15)));
+        assertEquals(Arrays.asList(1, 10), RecordsSchedulerModels.LearningStepSettings.parseSteps("bad", null));
+        assertEquals(Arrays.asList(30), RecordsSchedulerModels.LearningStepSettings.parseSteps("30m", Arrays.asList(5, 15)));
 
-        Records.LearningStepSettings settings = new Records.LearningStepSettings(
+        RecordsSchedulerModels.LearningStepSettings settings = new RecordsSchedulerModels.LearningStepSettings(
                 Arrays.asList(3, null, 9),
                 Arrays.asList(-1, 7)
         );
@@ -55,7 +55,7 @@ public final class LearningStepSettingsTest {
 
     @Test
     public void syncSettingsNormalizeRankRangeAndWritingTrigger() {
-        Records.Settings legacy = new Records.Settings(
+        RecordsSyncModels.Settings legacy = new RecordsSyncModels.Settings(
                 "Custom",
                 "Mining",
                 "Front",
@@ -70,7 +70,7 @@ public final class LearningStepSettingsTest {
                 24,
                 3
         );
-        Records.Settings legacyWithTrigger = new Records.Settings(
+        RecordsSyncModels.Settings legacyWithTrigger = new RecordsSyncModels.Settings(
                 "Custom",
                 "Mining",
                 "Front",
@@ -86,7 +86,7 @@ public final class LearningStepSettingsTest {
                 3,
                 4
         );
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 "Custom",
                 "Mining",
                 "Front",
@@ -105,12 +105,12 @@ public final class LearningStepSettingsTest {
                 0
         );
 
-        assertEquals(Records.DEFAULT_SUSPENDED_RANK_MIN, legacy.suspendedRankMin);
+        assertEquals(RecordsBase.DEFAULT_SUSPENDED_RANK_MIN, legacy.suspendedRankMin);
         assertEquals(2500, legacy.suspendedRankMax);
-        assertEquals(Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS, legacy.writingTriggerMissDays);
-        assertEquals(Records.DEFAULT_RECOGNITION_PROMOTION_PASSES, legacy.recognitionPromotionPasses);
+        assertEquals(RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS, legacy.writingTriggerMissDays);
+        assertEquals(RecordsBase.DEFAULT_RECOGNITION_PROMOTION_PASSES, legacy.recognitionPromotionPasses);
         assertEquals(4, legacyWithTrigger.writingTriggerMissDays);
-        assertEquals(Records.DEFAULT_RECOGNITION_PROMOTION_PASSES, legacyWithTrigger.recognitionPromotionPasses);
+        assertEquals(RecordsBase.DEFAULT_RECOGNITION_PROMOTION_PASSES, legacyWithTrigger.recognitionPromotionPasses);
         assertEquals(100, settings.suspendedRankMin);
         assertEquals(3000, settings.suspendedRankMax);
         assertEquals(3000, settings.suspendedRankCutoff);
@@ -120,7 +120,7 @@ public final class LearningStepSettingsTest {
 
     @Test
     public void importFilterSettingsDefaultAndNormalizeInvalidValues() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
 
         assertFalse(defaults.importActiveCards);
         assertTrue(defaults.importSuspendedCards);
@@ -131,7 +131,7 @@ public final class LearningStepSettingsTest {
         assertEquals(2, defaults.importWeakLapsesThreshold);
         assertEquals(1, defaults.importMinMatchingCardsPerKanji);
 
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,
@@ -152,7 +152,7 @@ public final class LearningStepSettingsTest {
                 false,
                 false,
                 true,
-                Records.parseImportTags("focus, focus weak"),
+                RecordsBase.parseImportTags("focus, focus weak"),
                 true,
                 Double.NaN,
                 0,
@@ -164,7 +164,7 @@ public final class LearningStepSettingsTest {
         assertTrue(settings.importTaggedCardsEnabled());
         assertEquals(Arrays.asList("focus", "weak"), settings.importTags);
         assertTrue(settings.importWeakCards);
-        assertEquals(Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, settings.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY, settings.importWeakFsrsDifficultyThreshold, 0.001);
         assertEquals(1, settings.importWeakLapsesThreshold);
         assertEquals(1, settings.importMinMatchingCardsPerKanji);
     }

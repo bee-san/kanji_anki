@@ -1,5 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -26,7 +31,6 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
@@ -93,9 +97,9 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     ScrollView contentScroll;
     LinearLayout studyActionBar;
     int studyActionBarBottomInset;
-    Records.StudySession activeSession;
-    Records.SimilarKanjiWritingRepair activeSimilarWritingRepair;
-    Records.AdaptiveLoadPlan activeStudyPlan;
+    RecordsSchedulerModels.StudySession activeSession;
+    RecordsImportModels.SimilarKanjiWritingRepair activeSimilarWritingRepair;
+    RecordsSchedulerModels.AdaptiveLoadPlan activeStudyPlan;
     DrawingPadView drawingPad;
     TextView studyStatus;
     TextView resultStatus;
@@ -159,9 +163,9 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     abstract void abandonActiveStudyTask();
     abstract boolean handleFlashcardGesture(MotionEvent event);
     abstract String streakHeadline(StudyStatsStore.StudyStreak streak);
-    abstract void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan);
+    abstract void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan);
     abstract DictionaryLookup dictionaryLookup();
-    abstract Records.Example wordReadingExample(Records.DashboardRow row);
+    abstract RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row);
     abstract boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis);
     abstract void clearStudyModeOverrides();
     abstract Typeface fontResource(int fontRes, Typeface fallback);
@@ -345,7 +349,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return activeSession != null && activeSession.token.equals(token);
     }
 
-    String reviewToast(Records.ReviewResult result, StudyStatsStore.StudyStreak streak) {
+    String reviewToast(RecordsSchedulerModels.ReviewResult result, StudyStatsStore.StudyStreak streak) {
         if (result.duplicate) {
             return "Already saved.";
         }
@@ -396,8 +400,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return out;
     }
 
-    Records.DashboardRow findRow(List<Records.DashboardRow> rows, String kanji) {
-        for (Records.DashboardRow row : rows) {
+    RecordsImportModels.DashboardRow findRow(List<RecordsImportModels.DashboardRow> rows, String kanji) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             if (row.kanji.equals(kanji)) {
                 return row;
             }
@@ -405,8 +409,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return null;
     }
 
-    Records.StudyItem findStudyItem(List<Records.StudyItem> items, String kanji) {
-        for (Records.StudyItem item : items) {
+    RecordsStudyModels.StudyItem findStudyItem(List<RecordsStudyModels.StudyItem> items, String kanji) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if (item.kanji.equals(kanji)) {
                 return item;
             }
@@ -432,15 +436,15 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return strokeGuides.get(kanji);
     }
 
-    Records.Settings settings() {
+    RecordsSyncModels.Settings settings() {
         return SyncSettings.fromStore(store);
     }
 
-    Records.StudyLadderSettings studyLadderSettings() {
+    RecordsBase.StudyLadderSettings studyLadderSettings() {
         return store.studyLadderSettings();
     }
 
-    Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+    RecordsSchedulerModels.AdaptiveLoadPlan adaptivePlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         return new AdaptiveLoadPlanner().plan(
                 AdaptiveLoadPlanner.PlanRequest.builder(
                                 rows,
@@ -460,7 +464,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         );
     }
 
-    Records.AdaptiveLoadPlan studyPlanForMode(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+    RecordsSchedulerModels.AdaptiveLoadPlan studyPlanForMode(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         if (!studyMoreNewCardKanji.isEmpty()) {
             return studyMoreNewCardsPlan(rows, items, now);
         }
@@ -470,7 +474,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return adaptivePlan(rows, items, now);
     }
 
-    Records.AdaptiveLoadPlan studyMoreNewCardsPlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+    RecordsSchedulerModels.AdaptiveLoadPlan studyMoreNewCardsPlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         List<String> focus = new ArrayList<>();
         for (String kanji : studyMoreNewCardKanji) {
             if (findRow(rows, kanji) != null) {
@@ -479,12 +483,12 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         }
         int remaining = 0;
         for (String kanji : focus) {
-            Records.StudyItem item = findStudyItem(items, kanji);
+            RecordsStudyModels.StudyItem item = findStudyItem(items, kanji);
             if (itemDueForFocus(item, now)) {
                 remaining++;
             }
         }
-        return new Records.AdaptiveLoadPlan(
+        return new RecordsSchedulerModels.AdaptiveLoadPlan(
                 false,
                 100,
                 focus.size(),
@@ -496,20 +500,20 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         );
     }
 
-    Records.AdaptiveLoadPlan allCurrentProblemKanjiPlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+    RecordsSchedulerModels.AdaptiveLoadPlan allCurrentProblemKanjiPlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         List<String> focus = new ArrayList<>();
-        for (Records.DashboardRow row : rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             focus.add(row.kanji);
         }
         Set<String> studied = store.studiedKanjiSince(startOfDay(now));
         int remaining = 0;
         for (String kanji : focus) {
-            Records.StudyItem item = findStudyItem(items, kanji);
+            RecordsStudyModels.StudyItem item = findStudyItem(items, kanji);
             if (!studied.contains(kanji) || itemDueForFocus(item, now)) {
                 remaining++;
             }
         }
-        return new Records.AdaptiveLoadPlan(
+        return new RecordsSchedulerModels.AdaptiveLoadPlan(
                 false,
                 100,
                 focus.size(),
@@ -521,7 +525,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         );
     }
 
-    boolean itemDueForFocus(Records.StudyItem item, long now) {
+    boolean itemDueForFocus(RecordsStudyModels.StudyItem item, long now) {
         if (item == null || STATE_RETIRED.equals(item.state)) {
             return false;
         }
@@ -531,7 +535,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return item.totalReviews > 0 && item.dueAtMillis <= now;
     }
 
-    void prepareStudyContent(Records.AdaptiveLoadPlan plan, boolean fillViewport) {
+    void prepareStudyContent(RecordsSchedulerModels.AdaptiveLoadPlan plan, boolean fillViewport) {
         activeStudyPlan = plan;
         content.removeAllViews();
         if (contentScroll != null) {
@@ -540,7 +544,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         content.addView(studyTopBar(plan));
     }
 
-    View studyTopBar(Records.AdaptiveLoadPlan plan) {
+    View studyTopBar(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         initializeSessionProgressTarget(plan);
         int completed = studySessionTracker.completedCount();
         int target = studySessionTracker.targetCount();
@@ -580,11 +584,11 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return count + " " + (count == 1 ? singular : plural);
     }
 
-    String rowMeaning(Records.DashboardRow row) {
+    String rowMeaning(RecordsImportModels.DashboardRow row) {
         return cleanLearnerText(row.primaryMeaning, row.reasonCode, 72);
     }
 
-    String sessionClue(Records.StudySession session) {
+    String sessionClue(RecordsSchedulerModels.StudySession session) {
         String raw = session.row == null || session.row.primaryMeaning.isEmpty()
                 ? session.prompt
                 : session.row.primaryMeaning;
@@ -602,8 +606,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return cleanLearnerText(fallback, "Collection clue", maxChars);
     }
 
-    String wordPrompt(Records.StudySession session) {
-        Records.Example example = session == null ? null : wordReadingExample(session.row);
+    String wordPrompt(RecordsSchedulerModels.StudySession session) {
+        RecordsImportModels.Example example = session == null ? null : wordReadingExample(session.row);
         if (example != null && !example.expression.isEmpty()) {
             return example.expression;
         }
@@ -655,7 +659,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         };
     }
 
-    String adaptiveFocusText(Records.AdaptiveLoadPlan plan) {
+    String adaptiveFocusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         if (plan == null || plan.target <= 0) {
             return "Adaptive focus is waiting for sync";
         }
@@ -762,10 +766,10 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     static final class QueueEntry {
-        final Records.DashboardRow row;
-        final Records.StudyItem item;
+        final RecordsImportModels.DashboardRow row;
+        final RecordsStudyModels.StudyItem item;
 
-        QueueEntry(Records.DashboardRow row, Records.StudyItem item) {
+        QueueEntry(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item) {
             this.row = row;
             this.item = item;
         }

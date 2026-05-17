@@ -1,6 +1,7 @@
 package dev.bee.kanjianki;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -10,11 +11,11 @@ public final class TestRecords {
     private TestRecords() {
     }
 
-    public static Records.ReviewRequest review(String kanji, String token) {
-        return new Records.ReviewRequest(kanji, token, "good", true, true, false, 0);
+    public static RecordsSchedulerModels.ReviewRequest review(String kanji, String token) {
+        return new RecordsSchedulerModels.ReviewRequest(kanji, token, "good", true, true, false, 0);
     }
 
-    public static Records.Note kikuNote(
+    public static RecordsSyncModels.Note kikuNote(
             long id,
             String expression,
             String reading,
@@ -24,7 +25,7 @@ public final class TestRecords {
         return kikuNote(id, 0L, expression, reading, meaning, sentence);
     }
 
-    public static Records.Note sourceKikuNote(
+    public static RecordsSyncModels.Note sourceKikuNote(
             long id,
             String expression,
             String reading,
@@ -34,7 +35,7 @@ public final class TestRecords {
         return kikuNote(id, 1001L, expression, reading, meaning, sentence);
     }
 
-    public static Records.Note customMiningNote(
+    public static RecordsSyncModels.Note customMiningNote(
             long id,
             String expression,
             String reading,
@@ -48,7 +49,7 @@ public final class TestRecords {
         fields.put("Context", sentence);
         fields.put("Frequency", "1000");
         fields.put("Sort", "1000");
-        return new Records.Note(id, 2002L, "Custom Mining", fields, Collections.emptyList());
+        return new RecordsSyncModels.Note(id, 2002L, "Custom Mining", fields, Collections.emptyList());
     }
 
     public static CardBuilder kikuCard(long cardId, long noteId) {
@@ -63,7 +64,7 @@ public final class TestRecords {
         return new CardBuilder(cardId, noteId, deckId).deck(deckId, deckName);
     }
 
-    private static Records.Note kikuNote(
+    private static RecordsSyncModels.Note kikuNote(
             long id,
             long modelId,
             String expression,
@@ -78,7 +79,7 @@ public final class TestRecords {
         fields.put("Sentence", sentence);
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
-        return new Records.Note(id, modelId, "Kiku", fields, Collections.emptyList());
+        return new RecordsSyncModels.Note(id, modelId, "Kiku", fields, Collections.emptyList());
     }
 
     public static final class CardBuilder {
@@ -136,9 +137,9 @@ public final class TestRecords {
             return this;
         }
 
-        public Records.Card build() {
+        public RecordsSyncModels.Card build() {
             if (deckId.equals(deckName)) {
-                return new Records.Card(
+                return new RecordsSyncModels.Card(
                         cardId,
                         noteId,
                         ord,
@@ -155,7 +156,7 @@ public final class TestRecords {
                         fsrsRetrievability
                 );
             }
-            return new Records.Card(
+            return new RecordsSyncModels.Card(
                     cardId,
                     noteId,
                     ord,

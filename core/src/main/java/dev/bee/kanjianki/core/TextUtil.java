@@ -157,7 +157,7 @@ public final class TextUtil {
                 || (cp >= 0x20000 && cp <= 0x2EBEF);
     }
 
-    public static String browserSearchForKanji(String kanji, Records.Settings settings) {
+    public static String browserSearchForKanji(String kanji, RecordsSyncModels.Settings settings) {
         return String.format(
                 Locale.ROOT,
                 "note:%s %s:*%s*",

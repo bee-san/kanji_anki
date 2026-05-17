@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -7,7 +10,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
@@ -29,10 +31,10 @@ abstract class LocalStoreSync extends LocalStoreInventory {
     }
 
     public long saveSuccessfulSync(
-            Records.CollectionSnapshot snapshot,
-            List<Records.SuspendedImport> imports,
-            List<Records.DashboardRow> rows,
-            Records.Settings settings,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            List<RecordsImportModels.SuspendedImport> imports,
+            List<RecordsImportModels.DashboardRow> rows,
+            RecordsSyncModels.Settings settings,
             long startedAt,
             long finishedAt,
             String removalMessage
@@ -41,10 +43,10 @@ abstract class LocalStoreSync extends LocalStoreInventory {
     }
 
     public long saveSuccessfulSync(
-            Records.CollectionSnapshot snapshot,
-            List<Records.SuspendedImport> imports,
-            List<Records.DashboardRow> rows,
-            Records.Settings settings,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            List<RecordsImportModels.SuspendedImport> imports,
+            List<RecordsImportModels.DashboardRow> rows,
+            RecordsSyncModels.Settings settings,
             SyncTiming timing,
             String removalMessage,
             SimilarKanjiIndex similarIndex
@@ -53,19 +55,19 @@ abstract class LocalStoreSync extends LocalStoreInventory {
     }
 
     public long saveSuccessfulSync(
-            Records.CollectionSnapshot snapshot,
-            List<Records.SuspendedImport> imports,
-            List<Records.DashboardRow> rows,
-            Records.Settings settings,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            List<RecordsImportModels.SuspendedImport> imports,
+            List<RecordsImportModels.DashboardRow> rows,
+            RecordsSyncModels.Settings settings,
             SyncTiming timing,
             String removalMessage,
             SimilarKanjiIndex similarIndex,
-            List<Records.SuspendedImport> auditImports
+            List<RecordsImportModels.SuspendedImport> auditImports
     ) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            List<Records.SuspendedImport> decisionImports = auditImports == null ? imports : auditImports;
+            List<RecordsImportModels.SuspendedImport> decisionImports = auditImports == null ? imports : auditImports;
             Map<String, RowSnapshot> previousRows = rowSnapshots(db);
             ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
             Set<Long> selectedSuspendedCardIds = selectedSuspendedCardIds(imports);
@@ -84,7 +86,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
                     deletedNotes,
                     deletedCards
             ));
-            Map<Long, Records.Note> notesById = snapshot.notesById();
+            Map<Long, RecordsSyncModels.Note> notesById = snapshot.notesById();
             appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing);
             clearSyncMirrorTables(db);
             saveSourceNotes(db, snapshot.notes, activeIndex, settings, syncId);
@@ -108,18 +110,18 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     void saveImportAudit(
             SQLiteDatabase db,
-            List<Records.SuspendedImport> imports,
-            Records.Settings settings,
+            List<RecordsImportModels.SuspendedImport> imports,
+            RecordsSyncModels.Settings settings,
             long finishedAt,
             long syncId
     ) {
         saveImportRuleAudit(db, settings, finishedAt, syncId);
-        for (Records.SuspendedImport imported : imports) {
+        for (RecordsImportModels.SuspendedImport imported : imports) {
             saveImportDecision(db, imported, settings, finishedAt, syncId);
         }
     }
 
-    void saveImportRuleAudit(SQLiteDatabase db, Records.Settings settings, long finishedAt, long syncId) {
+    void saveImportRuleAudit(SQLiteDatabase db, RecordsSyncModels.Settings settings, long finishedAt, long syncId) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_SYNC_ID, syncId);
         values.put(COLUMN_CREATED_AT, finishedAt);
@@ -138,8 +140,8 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     void saveImportDecision(
             SQLiteDatabase db,
-            Records.SuspendedImport imported,
-            Records.Settings settings,
+            RecordsImportModels.SuspendedImport imported,
+            RecordsSyncModels.Settings settings,
             long finishedAt,
             long syncId
     ) {
@@ -147,7 +149,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         Set<String> ruleTypes = new LinkedHashSet<>();
         Set<Long> cardIds = new LinkedHashSet<>();
         Set<Long> noteIds = new LinkedHashSet<>();
-        for (Records.SuspendedSource source : imported.sources) {
+        for (RecordsImportModels.SuspendedSource source : imported.sources) {
             sourceTypes.add(source.sourceType);
             ruleTypes.addAll(source.ruleTypes);
             cardIds.add(source.cardId);
@@ -185,12 +187,12 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     void saveSourceNotes(
             SQLiteDatabase db,
-            List<Records.Note> notes,
+            List<RecordsSyncModels.Note> notes,
             ActiveCardIndex activeIndex,
-            Records.Settings settings,
+            RecordsSyncModels.Settings settings,
             long syncId
     ) {
-        for (Records.Note note : notes) {
+        for (RecordsSyncModels.Note note : notes) {
             if (!activeIndex.noteIds.contains(note.noteId)) {
                 continue;
             }
@@ -210,15 +212,15 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     void saveSourceCardsAndArchive(
             SQLiteDatabase db,
-            List<Records.Card> cards,
-            Map<Long, Records.Note> notesById,
+            List<RecordsSyncModels.Card> cards,
+            Map<Long, RecordsSyncModels.Note> notesById,
             Set<Long> selectedSuspendedCardIds,
-            Records.Settings settings,
+            RecordsSyncModels.Settings settings,
             long finishedAt,
             long syncId
     ) {
-        for (Records.Card card : cards) {
-            Records.Note note = notesById.get(card.noteId);
+        for (RecordsSyncModels.Card card : cards) {
+            RecordsSyncModels.Note note = notesById.get(card.noteId);
             if (note == null) {
                 continue;
             }
@@ -234,9 +236,9 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     void saveSuspendedArchiveCard(
             SQLiteDatabase db,
-            Records.Card card,
-            Records.Note note,
-            Records.Settings settings,
+            RecordsSyncModels.Card card,
+            RecordsSyncModels.Note note,
+            RecordsSyncModels.Settings settings,
             long finishedAt,
             long syncId
     ) {
@@ -255,7 +257,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         db.insertWithOnConflict(TABLE_SUSPENDED_ARCHIVE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
-    void saveSourceCard(SQLiteDatabase db, Records.Card card, long syncId) {
+    void saveSourceCard(SQLiteDatabase db, RecordsSyncModels.Card card, long syncId) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_CARD_ID, card.cardId);
         values.put(COLUMN_NOTE_ID, card.noteId);
@@ -276,18 +278,18 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     void saveSuspendedImports(
             SQLiteDatabase db,
-            List<Records.SuspendedImport> imports,
+            List<RecordsImportModels.SuspendedImport> imports,
             long finishedAt,
             long syncId
     ) {
-        for (Records.SuspendedImport imported : imports) {
+        for (RecordsImportModels.SuspendedImport imported : imports) {
             saveSuspendedImport(db, imported, finishedAt, syncId);
         }
     }
 
     void saveSuspendedImport(
             SQLiteDatabase db,
-            Records.SuspendedImport imported,
+            RecordsImportModels.SuspendedImport imported,
             long finishedAt,
             long syncId
     ) {
@@ -301,7 +303,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         values.put(COLUMN_FIRST_IMPORTED_AT, firstImportedAt(db, imported.kanji, finishedAt));
         values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
         db.insertWithOnConflict(TABLE_SUSPENDED_IMPORTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-        for (Records.SuspendedSource source : imported.sources) {
+        for (RecordsImportModels.SuspendedSource source : imported.sources) {
             ContentValues sourceValues = new ContentValues();
             sourceValues.put(COLUMN_KANJI, imported.kanji);
             sourceValues.put(COLUMN_CARD_ID, source.cardId);
@@ -315,22 +317,22 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         }
     }
 
-    private List<String> enabledImportSources(Records.Settings settings) {
+    private List<String> enabledImportSources(RecordsSyncModels.Settings settings) {
         List<String> sources = new ArrayList<>();
         if (settings.importActiveCards) {
-            sources.add(Records.SOURCE_ACTIVE);
+            sources.add(RecordsBase.SOURCE_ACTIVE);
         }
         if (settings.importSuspendedCards) {
-            sources.add(Records.SOURCE_SUSPENDED);
+            sources.add(RecordsBase.SOURCE_SUSPENDED);
         }
         if (settings.importTaggedCardsEnabled()) {
-            sources.add(Records.SOURCE_TAGGED);
+            sources.add(RecordsBase.SOURCE_TAGGED);
         }
         if (settings.importWeakCards) {
-            sources.add(Records.SOURCE_WEAK);
+            sources.add(RecordsBase.SOURCE_WEAK);
         }
         if (settings.browserQueryImportEnabled()) {
-            sources.add(Records.SOURCE_BROWSER_QUERY);
+            sources.add(RecordsBase.SOURCE_BROWSER_QUERY);
         }
         return sources;
     }
@@ -339,27 +341,27 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         if (ruleTypes.size() > 1) {
             return "multiple_import_rules";
         }
-        if (ruleTypes.contains(Records.SOURCE_BROWSER_QUERY)) {
+        if (ruleTypes.contains(RecordsBase.SOURCE_BROWSER_QUERY)) {
             return "browser_query_import";
         }
-        if (ruleTypes.contains(Records.SOURCE_SUSPENDED)) {
+        if (ruleTypes.contains(RecordsBase.SOURCE_SUSPENDED)) {
             return "suspended_import";
         }
-        if (ruleTypes.contains(Records.SOURCE_TAGGED)) {
+        if (ruleTypes.contains(RecordsBase.SOURCE_TAGGED)) {
             return "tagged_import";
         }
-        if (ruleTypes.contains(Records.SOURCE_WEAK)) {
+        if (ruleTypes.contains(RecordsBase.SOURCE_WEAK)) {
             return "weak_card_import";
         }
-        if (ruleTypes.contains(Records.SOURCE_ACTIVE)) {
+        if (ruleTypes.contains(RecordsBase.SOURCE_ACTIVE)) {
             return "active_import";
         }
         return "imported";
     }
 
     private String importReasonText(
-            Records.SuspendedImport imported,
-            Records.Settings settings,
+            RecordsImportModels.SuspendedImport imported,
+            RecordsSyncModels.Settings settings,
             Set<String> ruleTypes,
             int sourceCount
     ) {
@@ -372,7 +374,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
                 + "; minimum matching cards " + settings.importMinMatchingCardsPerKanji + ".";
     }
 
-    private String importSettingsJson(Records.Settings settings) {
+    private String importSettingsJson(RecordsSyncModels.Settings settings) {
         return "{"
                 + "\"model_name\":" + TextUtil.jsonQuote(settings.modelName)
                 + ",\"import_active_cards\":" + settings.importActiveCards

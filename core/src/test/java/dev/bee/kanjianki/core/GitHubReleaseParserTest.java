@@ -14,7 +14,7 @@ public class GitHubReleaseParserTest {
     public void parsesLatestReleaseAssets() {
         String json = "{\"tag_name\":\"v0.3.1\",\"html_url\":\"https://github.com/bee-san/kanji_anki/releases/tag/v0.3.1\",\"assets\":[{\"name\":\"kani-android-0.3.1.apk\",\"browser_download_url\":\"https://example/apk\"},{\"name\":\"kani-android-0.3.1.apk.sha256\",\"browser_download_url\":\"https://example/sha\"}]}";
 
-        Records.ReleaseInfo info = GitHubReleaseParser.parseLatest(json);
+        RecordsSchedulerModels.ReleaseInfo info = GitHubReleaseParser.parseLatest(json);
 
         assertEquals("v0.3.1", info.tagName);
         assertEquals("kani-android-0.3.1.apk", info.apkAsset().name);
@@ -47,7 +47,7 @@ public class GitHubReleaseParserTest {
                 + "}"
                 + "]}";
 
-        Records.ReleaseInfo info = GitHubReleaseParser.parseLatest(json);
+        RecordsSchedulerModels.ReleaseInfo info = GitHubReleaseParser.parseLatest(json);
 
         assertEquals("v0.3.2", info.tagName);
         assertEquals("https://github.com/bee-san/kanji_anki/releases/tag/v0.3.2", info.htmlUrl);
@@ -81,12 +81,12 @@ public class GitHubReleaseParserTest {
 
     @Test
     public void checksumAssetMustMatchApkName() {
-        Records.ReleaseInfo info = new Records.ReleaseInfo(
+        RecordsSchedulerModels.ReleaseInfo info = new RecordsSchedulerModels.ReleaseInfo(
                 "v0.3.3",
                 "https://example/release",
                 java.util.Arrays.asList(
-                        new Records.ReleaseAsset("kani-android-0.3.3.apk", "https://example/apk"),
-                        new Records.ReleaseAsset("other.apk.sha256", "https://example/sha")
+                        new RecordsSchedulerModels.ReleaseAsset("kani-android-0.3.3.apk", "https://example/apk"),
+                        new RecordsSchedulerModels.ReleaseAsset("other.apk.sha256", "https://example/sha")
                 )
         );
 
@@ -95,13 +95,13 @@ public class GitHubReleaseParserTest {
 
     @Test
     public void malformedReleaseJsonFallsBackToEmptyValues() {
-        Records.ReleaseInfo empty = GitHubReleaseParser.parseLatest(null);
+        RecordsSchedulerModels.ReleaseInfo empty = GitHubReleaseParser.parseLatest(null);
 
         assertEquals("", empty.tagName);
         assertEquals("", empty.htmlUrl);
         assertTrue(empty.assets.isEmpty());
 
-        Records.ReleaseInfo malformed = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo malformed = GitHubReleaseParser.parseLatest(
                 "{"
                         + "\"tag_name\":123,"
                         + "\"html_url\" false,"
@@ -117,7 +117,7 @@ public class GitHubReleaseParserTest {
 
     @Test
     public void parserHandlesEscapesBrokenUnicodeAndUnclosedStrings() {
-        Records.ReleaseInfo escaped = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo escaped = GitHubReleaseParser.parseLatest(
                 "{"
                         + "\"tag_name\":\"v0.4.0\","
                         + "\"html_url\":\"quote\\\" slash\\/ backslash\\\\ backspace\\b form\\f newline\\n return\\r tab\\t unicode\\"
@@ -133,7 +133,7 @@ public class GitHubReleaseParserTest {
         assertTrue(escaped.htmlUrl.contains("bad\\uZZZZ"));
         assertTrue(escaped.htmlUrl.contains("short\\u12"));
 
-        Records.ReleaseInfo unclosed = GitHubReleaseParser.parseLatest("{\"tag_name\":\"v0.4.1");
+        RecordsSchedulerModels.ReleaseInfo unclosed = GitHubReleaseParser.parseLatest("{\"tag_name\":\"v0.4.1");
 
         assertEquals("v0.4.1", unclosed.tagName);
         assertTrue(unclosed.assets.isEmpty());
@@ -141,7 +141,7 @@ public class GitHubReleaseParserTest {
 
     @Test
     public void parserSkipsNestedStringsWhileFindingKeysAndObjects() {
-        Records.ReleaseInfo info = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo info = GitHubReleaseParser.parseLatest(
                 "{"
                         + "\"assets\":["
                         + "{\"name\":\"first.apk\",\"browser_download_url\":\"https://example/first\",\"meta\":{\"note\":\"brace } in string\"}},"
@@ -159,38 +159,38 @@ public class GitHubReleaseParserTest {
 
     @Test
     public void parserHandlesMissingValuesUnclosedArraysAndUnknownEscapes() {
-        Records.ReleaseInfo missingValues = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo missingValues = GitHubReleaseParser.parseLatest(
                 "{\"tag_name\":   ,\"assets\":   }"
         );
-        Records.ReleaseInfo missingAtEnd = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo missingAtEnd = GitHubReleaseParser.parseLatest(
                 "{\"tag_name\":   "
         );
-        Records.ReleaseInfo missingArrayAtEnd = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo missingArrayAtEnd = GitHubReleaseParser.parseLatest(
                 "{\"assets\":   "
         );
-        Records.ReleaseInfo unclosedArray = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo unclosedArray = GitHubReleaseParser.parseLatest(
                 "{\"assets\":[{\"name\":\"dangling.apk\",\"browser_download_url\":\"https://example/dangling\"}"
         );
-        Records.ReleaseInfo nestedArray = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo nestedArray = GitHubReleaseParser.parseLatest(
                 "{\"assets\":[[],{\"name\":\"nested.apk\",\"browser_download_url\":\"https://example/nested\"}]}"
         );
-        Records.ReleaseInfo emptyAssets = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo emptyAssets = GitHubReleaseParser.parseLatest(
                 "{\"assets\":[]}"
         );
-        Records.ReleaseInfo skippedAssets = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo skippedAssets = GitHubReleaseParser.parseLatest(
                 "{"
                         + "\"tag_name\":\"v0.4.3\","
                         + "\"html_url\":\"unknown\\qescape\","
                         + "\"assets\":[{\"name\":\"missing-url\"},{\"browser_download_url\":\"missing-name\"}]"
                         + "}"
         );
-        Records.ReleaseInfo noColonBeforeEnd = GitHubReleaseParser.parseLatest("{\"tag_name\"   ");
-        Records.ReleaseInfo trailingBackslashAndShortUnicode = GitHubReleaseParser.parseLatest(
+        RecordsSchedulerModels.ReleaseInfo noColonBeforeEnd = GitHubReleaseParser.parseLatest("{\"tag_name\"   ");
+        RecordsSchedulerModels.ReleaseInfo trailingBackslashAndShortUnicode = GitHubReleaseParser.parseLatest(
                 "{\"html_url\":\"trail\\\\ short\\"
                         + "u\"}"
         );
-        Records.ReleaseInfo terminalBackslash = GitHubReleaseParser.parseLatest("{\"html_url\":\"trail" + "\\");
-        Records.ReleaseInfo strayObjectClose = GitHubReleaseParser.parseLatest("{\"assets\":[}]}");
+        RecordsSchedulerModels.ReleaseInfo terminalBackslash = GitHubReleaseParser.parseLatest("{\"html_url\":\"trail" + "\\");
+        RecordsSchedulerModels.ReleaseInfo strayObjectClose = GitHubReleaseParser.parseLatest("{\"assets\":[}]}");
 
         assertEquals("", missingValues.tagName);
         assertEquals("", missingAtEnd.tagName);

@@ -1,11 +1,11 @@
 package dev.bee.kanjianki.anki;
 
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentResolver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.sync.SyncProgress;
 
 import java.util.ArrayList;
@@ -81,9 +81,9 @@ final class AnkiDroidCardReader {
         this.resolver = resolver;
     }
 
-    List<Records.Card> queryCardsByNote(
+    List<RecordsSyncModels.Card> queryCardsByNote(
             String authority,
-            Records.Settings settings,
+            RecordsSyncModels.Settings settings,
             Set<Long> noteIds,
             SyncProgress.Listener progress
     ) throws AnkiDroidGateway.SyncFailure {
@@ -91,7 +91,7 @@ final class AnkiDroidCardReader {
         int scanned = 0;
         progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total));
         Set<Long> suspendedNoteIds = querySuspendedNoteIds(authority, settings);
-        List<Records.Card> cards = new ArrayList<>();
+        List<RecordsSyncModels.Card> cards = new ArrayList<>();
         String[][] projections = new String[][]{
                 CARD_COLUMNS_WITH_FSRS,
                 CARD_COLUMNS_WITH_SCHEDULER,
@@ -151,12 +151,12 @@ final class AnkiDroidCardReader {
         return scanned % (total <= 1000 ? 10 : 50) == 0;
     }
 
-    private List<Records.Card> queryCardsForNote(String authority, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws AnkiDroidGateway.SyncFailure {
+    private List<RecordsSyncModels.Card> queryCardsForNote(String authority, long noteId, Set<Long> suspendedNoteIds, String[] columns) throws AnkiDroidGateway.SyncFailure {
         Cursor cursor = resolver.query(uriFor(authority, URI_SEGMENT_NOTES, Long.toString(noteId), "cards"), columns, null, null, null);
         if (cursor == null) {
             throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no per-note card cursor.");
         }
-        List<Records.Card> cards = new ArrayList<>();
+        List<RecordsSyncModels.Card> cards = new ArrayList<>();
         try (Cursor cardCursor = cursor) {
             while (cardCursor.moveToNext()) {
                 int ord = intValue(cardCursor, COLUMN_ORD, 0);
@@ -165,7 +165,7 @@ final class AnkiDroidCardReader {
                 boolean suspended = suspendedFromSearch || queue < 0;
                 FsrsMemoryState fsrs = fsrsMemoryState(cardCursor);
                 String deckId = value(cardCursor, COLUMN_DECK_ID);
-                cards.add(new Records.Card(
+                cards.add(new RecordsSyncModels.Card(
                         longValue(cardCursor, COLUMN_ID, noteId * 1000L + ord),
                         longValue(cardCursor, COLUMN_NOTE_ID, noteId),
                         ord,
@@ -187,7 +187,7 @@ final class AnkiDroidCardReader {
         }
     }
 
-    private Set<Long> querySuspendedNoteIds(String authority, Records.Settings settings) {
+    private Set<Long> querySuspendedNoteIds(String authority, RecordsSyncModels.Settings settings) {
         Set<Long> ids = new LinkedHashSet<>();
         Cursor cursor;
         try {
@@ -304,7 +304,7 @@ final class AnkiDroidCardReader {
         return Double.isInfinite(parsed) ? null : parsed;
     }
 
-    record ProjectionReadResult(List<Records.Card> cards, int projectionIndex) {
+    record ProjectionReadResult(List<RecordsSyncModels.Card> cards, int projectionIndex) {
     }
 
     private static final class FsrsMemoryState {

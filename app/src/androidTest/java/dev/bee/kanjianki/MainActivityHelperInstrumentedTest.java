@@ -1,5 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -23,7 +28,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintState;
@@ -123,9 +127,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Study", activity.labelForTask("unexpected"));
                 assertEquals("android.permission.POST_NOTIFICATIONS", MainActivityBase.PERMISSION_POST_NOTIFICATIONS);
 
-                Records.AdaptiveLoadPlan waiting = new Records.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
-                Records.AdaptiveLoadPlan all = new Records.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
-                Records.AdaptiveLoadPlan focused = new Records.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
+                RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
+                RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
+                RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
                 assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(null));
                 assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(waiting));
                 assertEquals("Adaptive focus is set to all current problem kanji", activity.adaptiveFocusText(all));
@@ -173,27 +177,27 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.store.reminderSettings().enabled);
 
                 long now = System.currentTimeMillis();
-                Records.StudyItem retired = studyItem("退", Records.LadderRung.KANJI_MEANING, "retired", now);
-                Records.StudyItem learningDue = studyItem("学", Records.LadderRung.KANJI_MEANING, "learning", now - 1L);
-                Records.StudyItem learningFuture = studyItem("未", Records.LadderRung.KANJI_MEANING, "learning", now + 60_000L);
-                Records.StudyItem reviewDue = studyItem("復", Records.LadderRung.KANJI_MEANING, "review", now - 1L);
+                RecordsStudyModels.StudyItem retired = studyItem("退", RecordsBase.LadderRung.KANJI_MEANING, "retired", now);
+                RecordsStudyModels.StudyItem learningDue = studyItem("学", RecordsBase.LadderRung.KANJI_MEANING, "learning", now - 1L);
+                RecordsStudyModels.StudyItem learningFuture = studyItem("未", RecordsBase.LadderRung.KANJI_MEANING, "learning", now + 60_000L);
+                RecordsStudyModels.StudyItem reviewDue = studyItem("復", RecordsBase.LadderRung.KANJI_MEANING, "review", now - 1L);
                 assertFalse(activity.itemDueForFocus(null, now));
                 assertFalse(activity.itemDueForFocus(retired, now));
                 assertTrue(activity.itemDueForFocus(learningDue, now));
                 assertFalse(activity.itemDueForFocus(learningFuture, now));
-                assertFalse(activity.itemDueForFocus(studyItem("新", Records.LadderRung.KANJI_MEANING, "review", now).copyBuilder().totalReviews(0).build(), now));
+                assertFalse(activity.itemDueForFocus(studyItem("新", RecordsBase.LadderRung.KANJI_MEANING, "review", now).copyBuilder().totalReviews(0).build(), now));
                 assertTrue(activity.itemDueForFocus(reviewDue.copyBuilder().totalReviews(1).build(), now));
                 activity.studyMoreNewCardKanji.add("復");
-                Records.AdaptiveLoadPlan extraPlan = activity.studyMoreNewCardsPlan(
+                RecordsSchedulerModels.AdaptiveLoadPlan extraPlan = activity.studyMoreNewCardsPlan(
                         Collections.singletonList(row("復", "review", "フク", Collections.emptyList())),
                         Collections.singletonList(reviewDue.copyBuilder().totalReviews(1).build()),
                         now
                 );
                 assertEquals(1, extraPlan.remaining);
 
-                Records.AdaptiveLoadPlan all = activity.allCurrentProblemKanjiPlan(
+                RecordsSchedulerModels.AdaptiveLoadPlan all = activity.allCurrentProblemKanjiPlan(
                         Arrays.asList(row("裂", "split", "レツ", Collections.emptyList()), row("語", "language", "ゴ", Collections.emptyList())),
-                        Collections.singletonList(studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", now - 1L).copyBuilder().totalReviews(1).build()),
+                        Collections.singletonList(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", now - 1L).copyBuilder().totalReviews(1).build()),
                         now
                 );
                 assertEquals(2, all.target);
@@ -205,10 +209,10 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.markStudyTaskCompleted("topbar:two");
                 activity.continueAllKanjiSession = true;
                 assertTrue(activity.studyTopBar(all) instanceof StudyTopBarView);
-                Records.StudyItem clueItem = studyItem("?", Records.LadderRung.KANJI_MEANING, "review", now);
+                RecordsStudyModels.StudyItem clueItem = studyItem("?", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
                 assertEquals(
                         "Fallback prompt",
-                        activity.sessionClue(new Records.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
+                        activity.sessionClue(new RecordsSchedulerModels.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
                 );
                 assertEquals("Fallback", activity.canonicalKanjiMeaning("?", "fallback", 40));
                 FakeWritingRecognizer cachedRecognizer = new FakeWritingRecognizer(
@@ -260,10 +264,10 @@ public final class MainActivityHelperInstrumentedTest {
     public void studySessionHelpersPickExamplesPromptsTitlesAndTaskKinds() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.Example suspended = example("停止語", "テイシゴ", "suspended", MainActivityBase.SOURCE_SUSPENDED);
-                Records.Example active = example("活動語", "カツドウゴ", "active", MainActivityBase.SOURCE_ACTIVE);
-                Records.Example fallback = example("予備語", "ヨビゴ", "fallback", "other");
-                Records.DashboardRow row = row("語", "language", "ゴ", Arrays.asList(fallback, active, suspended));
+                RecordsImportModels.Example suspended = example("停止語", "テイシゴ", "suspended", MainActivityBase.SOURCE_SUSPENDED);
+                RecordsImportModels.Example active = example("活動語", "カツドウゴ", "active", MainActivityBase.SOURCE_ACTIVE);
+                RecordsImportModels.Example fallback = example("予備語", "ヨビゴ", "fallback", "other");
+                RecordsImportModels.DashboardRow row = row("語", "language", "ゴ", Arrays.asList(fallback, active, suspended));
 
                 assertEquals(active, activity.firstExample(row));
                 assertEquals(suspended, activity.wordReadingExample(row));
@@ -299,7 +303,7 @@ public final class MainActivityHelperInstrumentedTest {
     public void writingAnalysisHelpersExplainDiagnosisAndAllowedActions() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row("裂", "split", "レツ", Collections.emptyList()));
+                RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row("裂", "split", "レツ", Collections.emptyList()));
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(1);
                 StrokeDiagnosis diagnosis = StrokeDiagnosis.builder()
@@ -430,7 +434,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Auto Pareto: waiting for problem kanji", activity.autoWorkloadStatusText(null));
                 assertEquals(
                         "Auto Pareto: 2 items today",
-                        activity.autoWorkloadStatusText(new Records.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
+                        activity.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
                 );
                 assertEquals("Blocked: notifications off", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), true));
                 assertEquals("Daily around 21:05", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), false));
@@ -600,7 +604,7 @@ public final class MainActivityHelperInstrumentedTest {
                 inputs.get(4).setText("2");
                 performButtonClick(importPanel, "Save import filters");
 
-                Records.Settings saved = activity.settings();
+                RecordsSyncModels.Settings saved = activity.settings();
                 assertTrue(saved.importActiveCards);
                 assertFalse(saved.importSuspendedCards);
                 assertTrue(saved.importTaggedCardsEnabled());
@@ -631,13 +635,13 @@ public final class MainActivityHelperInstrumentedTest {
                 rankInputs.get(0).setText("300");
                 rankInputs.get(1).setText("20");
                 performButtonClick(frequencyPanel, "Save frequency range");
-                Records.Settings ranked = activity.settings();
+                RecordsSyncModels.Settings ranked = activity.settings();
                 assertEquals(20, ranked.suspendedRankMin);
                 assertEquals(300, ranked.suspendedRankMax);
 
                 LinearLayout tagPresetPanel = activity.importFilterSettingsPanel(activity.settings());
                 performButtonClick(tagPresetPanel, "Leech tag");
-                Records.Settings leechPreset = activity.settings();
+                RecordsSyncModels.Settings leechPreset = activity.settings();
                 assertFalse(leechPreset.importActiveCards);
                 assertFalse(leechPreset.importSuspendedCards);
                 assertTrue(leechPreset.importTaggedCardsEnabled());
@@ -646,7 +650,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 LinearLayout deckPresetPanel = activity.importFilterSettingsPanel(activity.settings());
                 performButtonClick(deckPresetPanel, "Mining deck");
-                Records.Settings deckPreset = activity.settings();
+                RecordsSyncModels.Settings deckPreset = activity.settings();
                 assertFalse(deckPreset.importActiveCards);
                 assertFalse(deckPreset.importSuspendedCards);
                 assertFalse(deckPreset.importTaggedCardsEnabled());
@@ -733,21 +737,21 @@ public final class MainActivityHelperInstrumentedTest {
                 performButtonClick(ladder, "Save ladder thresholds");
                 performButtonClick(ladder, "Use 21 and 3");
                 performButtonClick(ladder, "Save ladder thresholds");
-                Records.Settings updated = activity.settings();
-                assertEquals(Records.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, updated.ladderPromotionIntervalDays);
-                assertEquals(Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, updated.ladderDemotionFailStreak);
+                RecordsSyncModels.Settings updated = activity.settings();
+                assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, updated.ladderPromotionIntervalDays);
+                assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, updated.ladderDemotionFailStreak);
 
                 LinearLayout ladderOrder = activity.studyLadderSettingsPanel();
                 assertNotNull(findButton(ladderOrder, "Restore default ladder"));
-                activity.toggleLadderRung(Records.LadderRung.SIMILAR_KANJI);
-                assertFalse(activity.studyLadderSettings().isEnabled(Records.LadderRung.SIMILAR_KANJI));
-                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(Records.LadderRung.WORD_READING, -6));
-                assertEquals(Records.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
+                activity.toggleLadderRung(RecordsBase.LadderRung.SIMILAR_KANJI);
+                assertFalse(activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI));
+                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6));
+                assertEquals(RecordsBase.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
 
                 LinearLayout newCardSort = activity.newCardSortSettingsPanel(activity.settings());
                 performButtonClick(newCardSort, "Retrievability risk");
                 performButtonClick(newCardSort, "Save new card sort");
-                assertEquals(Records.NEW_CARD_SORT_RETRIEVABILITY_RISK, activity.settings().newCardSortMode);
+                assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, activity.settings().newCardSortMode);
 
                 LinearLayout retention = activity.retentionSettingsPanel();
                 SeekBar retentionSlider = seekBars(retention).get(0);
@@ -760,7 +764,7 @@ public final class MainActivityHelperInstrumentedTest {
                 checkBoxes(retention).get(0).setChecked(true);
                 editTexts(retention).get(0).setText("1-500=95%\n501-20000=85%");
                 performButtonClick(retention, "Save retention");
-                Records.SchedulerParameters savedRetention = activity.store.schedulerParameters();
+                RecordsSchedulerModels.SchedulerParameters savedRetention = activity.store.schedulerParameters();
                 assertTrue(savedRetention.frequencyRetentionEnabled);
                 assertEquals("1-500=95%\n501-20000=85%", savedRetention.frequencyRetentionRanges);
 
@@ -895,9 +899,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("", activity.sentenceCase(null));
                 assertEquals("Synced today", activity.sentenceCase("synced today"));
 
-                Records.AdaptiveLoadPlan waiting = new Records.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
-                Records.AdaptiveLoadPlan all = new Records.AdaptiveLoadPlan(100, 2, 2, Arrays.asList("裂", "語"), 0, true, "all");
-                Records.AdaptiveLoadPlan focused = new Records.AdaptiveLoadPlan(20, 4, 1, Arrays.asList("裂", "語"), 0, false, "focus");
+                RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
+                RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 2, 2, Arrays.asList("裂", "語"), 0, true, "all");
+                RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 4, 1, Arrays.asList("裂", "語"), 0, false, "focus");
                 assertEquals("Waiting", activity.focusHeadline(null));
                 assertEquals("Waiting", activity.focusHeadline(waiting));
                 assertEquals("All current", activity.focusHeadline(all));
@@ -926,9 +930,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(1, activity.stateRank("review"));
                 assertEquals(2, activity.stateRank("new"));
                 assertEquals(3, activity.stateRank("retired"));
-                assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
-                assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", Records.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
-                assertTrue(activity.rowColor(studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 2000L), 1000L) != MainActivityBase.CORAL);
+                assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
+                assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
+                assertTrue(activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L) != MainActivityBase.CORAL);
 
                 assertEquals("Needs focused kanji practice.", activity.queueCardBody(rowWithReason("裂", "", "", "", Collections.emptyList())));
                 assertEquals(
@@ -937,15 +941,15 @@ public final class MainActivityHelperInstrumentedTest {
                 );
                 assertEquals("custom evidence", activity.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", Collections.emptyList())));
 
-                assertEquals("write kanji", activity.recognitionStageLabel(studyItem("裂", Records.LadderRung.WRITE_KANJI, "review", 0L)));
-                assertEquals("type meaning", activity.recognitionStageLabel(studyItem("裂", Records.LadderRung.TYPE_MEANING, "review", 0L)));
-                assertEquals("similar kanji", activity.recognitionStageLabel(studyItem("裂", Records.LadderRung.SIMILAR_KANJI, "review", 0L)));
-                assertEquals("font -> meaning", activity.recognitionStageLabel(studyItem("裂", Records.LadderRung.FONT_MEANING, "review", 0L)));
-                assertEquals("word -> reading", activity.recognitionStageLabel(studyItem("裂", Records.LadderRung.WORD_READING, "review", 0L)));
-                assertEquals("kanji -> meaning", activity.recognitionStageLabel(studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L)));
+                assertEquals("write kanji", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L)));
+                assertEquals("type meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.TYPE_MEANING, "review", 0L)));
+                assertEquals("similar kanji", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.SIMILAR_KANJI, "review", 0L)));
+                assertEquals("font -> meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.FONT_MEANING, "review", 0L)));
+                assertEquals("word -> reading", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WORD_READING, "review", 0L)));
+                assertEquals("kanji -> meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)));
 
-                Records.Example active = example("活動語", "カツドウゴ", "active", MainActivityBase.SOURCE_ACTIVE);
-                Records.Example suspended = example("停止語", "テイシゴ", "suspended", MainActivityBase.SOURCE_SUSPENDED);
+                RecordsImportModels.Example active = example("活動語", "カツドウゴ", "active", MainActivityBase.SOURCE_ACTIVE);
+                RecordsImportModels.Example suspended = example("停止語", "テイシゴ", "suspended", MainActivityBase.SOURCE_SUSPENDED);
                 assertEquals("From 活動語 · missed 停止語", activity.sourceEvidenceText(row("語", "language", "ゴ", Arrays.asList(active, suspended))));
                 assertEquals("From 活動語", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(active))));
                 assertEquals("Missed 停止語", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(suspended))));
@@ -954,19 +958,19 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.renderFocusQueue();
                 assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
 
-                Records.KanjiInventoryItem inventory = new Records.KanjiInventoryItem("語", "language", "ゴ", "kanji:語", 2, 3, true, 1000L);
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.KanjiInventoryItem inventory = new RecordsImportModels.KanjiInventoryItem("語", "language", "ゴ", "kanji:語", 2, 3, true, 1000L);
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 assertEquals("裂", activity.detailDisplayKanji("fallback", row, inventory));
                 assertEquals("語", activity.detailDisplayKanji("fallback", null, inventory));
                 assertEquals("fallback", activity.detailDisplayKanji("fallback", null, null));
                 assertEquals("Historical recovery", activity.inventoryTitle(null));
-                assertEquals("Historical recovery", activity.inventoryTitle(new Records.KanjiInventoryItem("語", "", "", "", 0, 0, false, 0L)));
+                assertEquals("Historical recovery", activity.inventoryTitle(new RecordsImportModels.KanjiInventoryItem("語", "", "", "", 0, 0, false, 0L)));
                 assertEquals("language", activity.inventoryTitle(inventory));
 
-                Records.KanjiRecoveryTimeline activeTimeline = new Records.KanjiRecoveryTimeline(inventory, row, studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L), Collections.emptyList());
-                Records.KanjiRecoveryTimeline restingTimeline = new Records.KanjiRecoveryTimeline(inventory, row, studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), Collections.emptyList());
-                Records.KanjiRecoveryTimeline retiredTimeline = new Records.KanjiRecoveryTimeline(inventory, null, studyItem("裂", Records.LadderRung.KANJI_MEANING, "retired", 0L), Collections.emptyList());
-                Records.KanjiRecoveryTimeline noRowTimeline = new Records.KanjiRecoveryTimeline(inventory, null, null, Collections.emptyList());
+                RecordsStudyModels.KanjiRecoveryTimeline activeTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), Collections.emptyList());
+                RecordsStudyModels.KanjiRecoveryTimeline restingTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), Collections.emptyList());
+                RecordsStudyModels.KanjiRecoveryTimeline retiredTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "retired", 0L), Collections.emptyList());
+                RecordsStudyModels.KanjiRecoveryTimeline noRowTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, null, Collections.emptyList());
                 assertEquals("Active repair", activity.timelineStatusText(activeTimeline));
                 assertEquals("Resting until review", activity.timelineStatusText(restingTimeline));
                 assertEquals("Retired by Anki support", activity.timelineStatusText(retiredTimeline));
@@ -987,7 +991,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(containsText(activity.content, "ゴ"));
 
                 activity.content.removeAllViews();
-                activity.addDetailIdentity(null, new Records.KanjiInventoryItem("謎", "", "", "", 0, 0, false, 0L), false);
+                activity.addDetailIdentity(null, new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 0, false, 0L), false);
                 assertTrue(containsText(activity.content, "Historical recovery"));
                 assertFalse(containsText(activity.content, "ゴ"));
 
@@ -1078,8 +1082,8 @@ public final class MainActivityHelperInstrumentedTest {
     public void studyRenderAndProgressHelpersCoverTerminalStudyStates() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.AdaptiveLoadPlan dueLater = new Records.AdaptiveLoadPlan(20, 3, 2, Arrays.asList("裂", "語"), 0, false, "Two left");
-                Records.AdaptiveLoadPlan complete = new Records.AdaptiveLoadPlan(20, 3, 0, Arrays.asList("裂", "語"), 0, false, "Done");
+                RecordsSchedulerModels.AdaptiveLoadPlan dueLater = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 3, 2, Arrays.asList("裂", "語"), 0, false, "Two left");
+                RecordsSchedulerModels.AdaptiveLoadPlan complete = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 3, 0, Arrays.asList("裂", "語"), 0, false, "Done");
 
                 activity.renderEmptyStudyQueue();
                 assertHasText(activity, "Nothing to study yet");
@@ -1110,9 +1114,9 @@ public final class MainActivityHelperInstrumentedTest {
                 requested.setText("3");
                 assertEquals(3, activity.requestedStudyMoreNewCards(requested));
                 long now = System.currentTimeMillis();
-                Records.DashboardRow unavailable = row("余", "extra", "ヨ", Collections.emptyList());
+                RecordsImportModels.DashboardRow unavailable = row("余", "extra", "ヨ", Collections.emptyList());
                 seedRows(activity, Collections.singletonList(unavailable));
-                activity.store.saveStudyItem(studyItem("余", Records.LadderRung.KANJI_MEANING, "review", now));
+                activity.store.saveStudyItem(studyItem("余", RecordsBase.LadderRung.KANJI_MEANING, "review", now));
                 assertFalse(activity.startStudyMoreNewCards(2));
 
                 seedRows(activity, Collections.singletonList(row("新", "new", "シン", Collections.emptyList())));
@@ -1138,7 +1142,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.resetStudyRunProgress();
                 assertEquals("", activity.sessionTaskKey(null));
-                Records.StudySession session = session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()));
+                RecordsSchedulerModels.StudySession session = session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()));
                 assertTrue(activity.sessionTaskKey(session).contains("session:kanji_meaning:裂"));
                 activity.registerStudyTaskShown("");
                 activity.registerStudyTaskShown("task:one");
@@ -1171,11 +1175,11 @@ public final class MainActivityHelperInstrumentedTest {
 
                 View grid = activity.similarKanjiGrid(Arrays.asList("裂", "列", "烈"), "裂");
                 assertEquals(2, ((ViewGroup) grid).getChildCount());
-                Records.StudyItem targeted = activity.newTargetedStudyItem("謎", 1234L);
+                RecordsStudyModels.StudyItem targeted = activity.newTargetedStudyItem("謎", 1234L);
                 assertEquals("謎", targeted.kanji);
                 assertEquals("new", targeted.state);
                 assertEquals(1234L, targeted.dueAtMillis);
-                Records.StudyItem existingTarget = studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", now);
+                RecordsStudyModels.StudyItem existingTarget = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
                 assertTrue(existingTarget == activity.studyItemForTargetedKanji(Collections.singletonList(existingTarget), "裂", now));
                 assertEquals("new", activity.studyItemForTargetedKanji(Collections.emptyList(), "謎", 1234L).state);
                 assertEquals(activity.dp(300), activity.studyPadHeightForScreenDp(699));
@@ -1208,7 +1212,7 @@ public final class MainActivityHelperInstrumentedTest {
                         row("裂", "split", "レツ", Collections.emptyList()),
                         row("語", "language", "ゴ", Collections.emptyList())
                 ));
-                Records.AdaptiveLoadPlan complete = new Records.AdaptiveLoadPlan(20, 2, 0, Arrays.asList("裂", "語"), 0, false, "Done");
+                RecordsSchedulerModels.AdaptiveLoadPlan complete = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 2, 0, Arrays.asList("裂", "語"), 0, false, "Done");
 
                 activity.renderFocusDone(complete);
                 assertTrue(findButton(activity.content, "Study more new cards") != null);
@@ -1236,8 +1240,8 @@ public final class MainActivityHelperInstrumentedTest {
                     assertFalse(activity.studyMoreNewCardKanji.isEmpty());
                 }
 
-                Records.StudySession promptOnly = new Records.StudySession(
-                        studyItem("?", Records.LadderRung.KANJI_MEANING, "review", 0L),
+                RecordsSchedulerModels.StudySession promptOnly = new RecordsSchedulerModels.StudySession(
+                        studyItem("?", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L),
                         null,
                         "answer-token",
                         BridgeScheduler.TASK_KANJI_MEANING,
@@ -1263,12 +1267,12 @@ public final class MainActivityHelperInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(recognizer);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 assertNull(activity.firstExample(null));
                 assertNull(activity.wordReadingExample(null));
 
-                Records.StudySession promptOnly = new Records.StudySession(
-                        studyItem("?", Records.LadderRung.WRITE_KANJI, "review", 0L),
+                RecordsSchedulerModels.StudySession promptOnly = new RecordsSchedulerModels.StudySession(
+                        studyItem("?", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L),
                         null,
                         "prompt-token",
                         BridgeScheduler.TASK_WRITE_KANJI,
@@ -1284,7 +1288,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.flashcardGestureArea == activity.flashcardCard);
                 assertFalse(activity.flashcardAnswerRevealed);
 
-                Records.StudySession recall = session("裂", "blind_writing", row);
+                RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
                 activity.renderWritingSession(recall);
                 assertHasText(activity, "Prompt: Split, rend");
@@ -1319,8 +1323,8 @@ public final class MainActivityHelperInstrumentedTest {
     public void writingUnavailableAndAsyncTokenGuardsLeaveVisibleStateConsistent() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                Records.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(1);
                 activity.studyStatus = new TextView(activity);
@@ -1361,7 +1365,7 @@ public final class MainActivityHelperInstrumentedTest {
                         CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready")),
                         failedFuture(new RuntimeException("recognition failed"))
                 );
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "error-token");
                 activity.recognizeWriting(errorRecognizer, capturedWriting(), sample(), guide("裂"), "裂", "error-token");
             });
@@ -1382,7 +1386,7 @@ public final class MainActivityHelperInstrumentedTest {
         );
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 prepareWritingUi(activity, sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "invalid-capture"));
                 MainActivity.setWritingRecognizerForTests(staleStatusRecognizer);
                 activity.drawingPad = new DrawingPadView(activity);
@@ -1433,16 +1437,16 @@ public final class MainActivityHelperInstrumentedTest {
                 long now = System.currentTimeMillis();
                 for (int i = 0; i < 22; i++) {
                     activity.store.saveReview(
-                            new Records.ReviewRequest("調" + i, "tune-token-" + i, MainActivityBase.RATING_GOOD, false, false, false, 0),
+                            new RecordsSchedulerModels.ReviewRequest("調" + i, "tune-token-" + i, MainActivityBase.RATING_GOOD, false, false, false, 0),
                             MainActivityBase.RATING_GOOD,
                             now - (i * 1000L)
                     );
                 }
-                Records.SchedulerParameters before = Records.SchedulerParameters.defaults();
+                RecordsSchedulerModels.SchedulerParameters before = RecordsSchedulerModels.SchedulerParameters.defaults();
 
                 activity.tuneSchedulerIfNeeded(before, now);
 
-                Records.SchedulerParameters tuned = activity.store.schedulerParameters();
+                RecordsSchedulerModels.SchedulerParameters tuned = activity.store.schedulerParameters();
                 assertEquals(now, tuned.lastAdjustedAtMillis);
                 assertEquals(22, tuned.lastAdjustmentReviewCount);
                 assertTrue(tuned.goodMultiplier > before.goodMultiplier);
@@ -1454,9 +1458,9 @@ public final class MainActivityHelperInstrumentedTest {
     public void flashcardAndWritingUiStateHelpersCoverInteractiveBranches() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                Records.StudySession flashcard = session("裂", BridgeScheduler.TASK_KANJI_MEANING, row);
-                Records.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsSchedulerModels.StudySession flashcard = session("裂", BridgeScheduler.TASK_KANJI_MEANING, row);
+                RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.activeSession = flashcard;
 
                 assertTrue(activity.isActiveToken("tok"));
@@ -1477,11 +1481,11 @@ public final class MainActivityHelperInstrumentedTest {
                 ))).size() == 2);
                 assertTrue(activity.candidates(null).isEmpty());
 
-                Records.StudyItem item = studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L);
+                RecordsStudyModels.StudyItem item = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L);
                 StudyStatsStore.StudyStreak streak = new StudyStatsStore.StudyStreak(2, 2, true, 1, 1000L);
-                assertEquals("Already saved.", activity.reviewToast(new Records.ReviewResult(item, "duplicate", true, "dup"), streak));
-                assertTrue(activity.reviewToast(new Records.ReviewResult(item, MainActivityBase.RATING_AGAIN, false, "again"), streak).contains("2-day streak"));
-                assertEquals("Saved.", activity.reviewToast(new Records.ReviewResult(item, MainActivityBase.RATING_GOOD, false, "good"), null));
+                assertEquals("Already saved.", activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "dup"), streak));
+                assertTrue(activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, MainActivityBase.RATING_AGAIN, false, "again"), streak).contains("2-day streak"));
+                assertEquals("Saved.", activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, MainActivityBase.RATING_GOOD, false, "good"), null));
 
                 activity.studyActionBar = null;
                 activity.buildFlashcardActionBar(false);
@@ -1553,8 +1557,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.isTeachingTask(session("裂", "context_writing", row)));
                 assertTrue(activity.isTeachingTask(session("裂", "guided_writing", row)));
                 assertTrue(activity.isTeachingTask(session("裂", MainActivityBase.TASK_TARGETED_WRITING, row)));
-                assertFalse(activity.isTeachingTask(new Records.StudySession(
-                        studyItem("裂", Records.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().learningStep(3).build(),
+                assertFalse(activity.isTeachingTask(new RecordsSchedulerModels.StudySession(
+                        studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().learningStep(3).build(),
                         row,
                         "tok-target-done",
                         MainActivityBase.TASK_TARGETED_WRITING,
@@ -1562,16 +1566,16 @@ public final class MainActivityHelperInstrumentedTest {
                         "split"
                 )));
                 assertEquals(HintLevel.OUTLINE, activity.initialHintState(session("裂", MainActivityBase.TASK_TARGETED_WRITING, row)).level());
-                assertEquals(HintLevel.OUTLINE, activity.initialHintState(new Records.StudySession(
-                        studyItem("裂", Records.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().totalReviews(0).writingLevel(3).build(),
+                assertEquals(HintLevel.OUTLINE, activity.initialHintState(new RecordsSchedulerModels.StudySession(
+                        studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().totalReviews(0).writingLevel(3).build(),
                         row,
                         "tok-new",
                         BridgeScheduler.TASK_WRITE_KANJI,
                         true,
                         "split"
                 )).level());
-                assertEquals(HintLevel.BLIND, activity.initialHintState(new Records.StudySession(
-                        studyItem("裂", Records.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().learningStep(2).writingLevel(3).build(),
+                assertEquals(HintLevel.BLIND, activity.initialHintState(new RecordsSchedulerModels.StudySession(
+                        studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().learningStep(2).writingLevel(3).build(),
                         row,
                         "tok-mature",
                         BridgeScheduler.TASK_WRITE_KANJI,
@@ -1605,7 +1609,7 @@ public final class MainActivityHelperInstrumentedTest {
     public void flashcardGestureTrackingCoversTypingBoundsCancelAndOutsideRelease() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_TYPE_MEANING, row);
                 LinearLayout area = new LinearLayout(activity);
                 EditText input = new EditText(activity);
@@ -1644,31 +1648,31 @@ public final class MainActivityHelperInstrumentedTest {
     public void flashcardButtonsAndGesturesPersistPassFailOnlyAfterReveal() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                Records.StudySession failSession = sessionWithToken("裂", BridgeScheduler.TASK_KANJI_MEANING, row, "fail-token");
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsSchedulerModels.StudySession failSession = sessionWithToken("裂", BridgeScheduler.TASK_KANJI_MEANING, row, "fail-token");
                 activity.activeSession = failSession;
-                activity.activeStudyPlan = new Records.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
+                activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(failSession);
                 performButtonClick(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
                 assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
                 performButtonClick(activity.studyActionBar, "Fail");
-                Records.ReviewStats failStats = activity.store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats failStats = activity.store.reviewStatsSince(0L);
                 assertEquals(1, failStats.total);
                 assertEquals(1, failStats.again);
 
-                Records.StudySession passSession = sessionWithToken("語", BridgeScheduler.TASK_KANJI_MEANING, row("語", "language", "ゴ", Collections.emptyList()), "pass-token");
+                RecordsSchedulerModels.StudySession passSession = sessionWithToken("語", BridgeScheduler.TASK_KANJI_MEANING, row("語", "language", "ゴ", Collections.emptyList()), "pass-token");
                 activity.activeSession = passSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(passSession);
                 performButtonClick(activity.studyActionBar, "Reveal");
                 performButtonClick(activity.studyActionBar, MainActivityBase.LABEL_PASS);
-                Records.ReviewStats passStats = activity.store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats passStats = activity.store.reviewStatsSince(0L);
                 assertEquals(2, passStats.total);
                 assertEquals(1, passStats.good);
 
-                Records.StudySession gestureSession = sessionWithToken("提", BridgeScheduler.TASK_KANJI_MEANING, row("提", "carry", "テイ", Collections.emptyList()), "gesture-token");
+                RecordsSchedulerModels.StudySession gestureSession = sessionWithToken("提", BridgeScheduler.TASK_KANJI_MEANING, row("提", "carry", "テイ", Collections.emptyList()), "gesture-token");
                 activity.activeSession = gestureSession;
                 activity.studyActionBar = new LinearLayout(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
@@ -1691,7 +1695,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.flashcardTouchStartX = 380f;
                 activity.flashcardTouchStartY = 100f;
                 assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));
-                Records.ReviewStats gestureStats = activity.store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats gestureStats = activity.store.reviewStatsSince(0L);
                 assertEquals(3, gestureStats.total);
                 assertEquals(2, gestureStats.again);
             });
@@ -1702,19 +1706,19 @@ public final class MainActivityHelperInstrumentedTest {
     public void homeBrowseDetailStatsAndSyncControlsCoverNonEmptyBranches() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow activeRow = row("裂", "split", "レツ", Collections.singletonList(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE)));
+                RecordsImportModels.DashboardRow activeRow = row("裂", "split", "レツ", Collections.singletonList(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE)));
                 View passiveMetric = activity.metricCard(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
                 assertFalse(passiveMetric.isClickable());
                 assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
-                assertTrue(containsText(activity.browseKanjiRow(new Records.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)), "Meaning not stored yet"));
-                Records.StudyItem relearning = studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L)
+                assertTrue(containsText(activity.browseKanjiRow(new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)), "Meaning not stored yet"));
+                RecordsStudyModels.StudyItem relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                         .copyBuilder()
-                        .phase(Records.SchedulerPhase.RELEARNING)
+                        .phase(RecordsBase.SchedulerPhase.RELEARNING)
                         .build();
                 assertTrue(containsText(activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, relearning), 1000L), "relearning"));
-                Records.StudyItem learning = studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L)
+                RecordsStudyModels.StudyItem learning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                         .copyBuilder()
-                        .phase(Records.SchedulerPhase.NEW_LEARNING)
+                        .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                         .totalReviews(1)
                         .build();
                 assertTrue(containsText(activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, learning), 1000L), "learning"));
@@ -1736,17 +1740,17 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.renderRecentMistakes();
                 assertHasText(activity, "No recent mistakes yet");
-                activity.store.saveReview(new Records.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
+                activity.store.saveReview(new RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
                 activity.renderRecentMistakes();
                 assertContainsText(activity.content, "Rated again");
 
-                View emptyStatus = activity.timelineStatusCard(new Records.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
+                View emptyStatus = activity.timelineStatusCard(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
                 assertTrue(containsText(emptyStatus, "No active Anki evidence in the latest local sync."));
 
                 LinearLayout noEvidence = activity.statsVerdictPanel(StudyStatsStore.KaniOutcomeStats.empty());
                 assertTrue(containsText(noEvidence, "Kani is not currently working for you"));
                 StudyStatsStore.LadderHealthMetric ladderOnly = new StudyStatsStore.LadderHealthMetric(
-                        Collections.singletonMap(Records.LadderRung.KANJI_MEANING, 1),
+                        Collections.singletonMap(RecordsBase.LadderRung.KANJI_MEANING, 1),
                         1,
                         3,
                         0,
@@ -1763,7 +1767,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.ladderHealthBody(ladderOnly).contains("more than 21 days"));
                 assertTrue(containsText(activity.statsVerdictPanel(ladderStats), "Kani is not currently working for you"));
                 StudyStatsStore.LadderHealthMetric busyLadder = new StudyStatsStore.LadderHealthMetric(
-                        Collections.singletonMap(Records.LadderRung.KANJI_MEANING, 4),
+                        Collections.singletonMap(RecordsBase.LadderRung.KANJI_MEANING, 4),
                         4,
                         3,
                         1,
@@ -1800,7 +1804,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
                 assertTrue(activity.queuedEntries(
                         Collections.singletonList(activeRow),
-                        Collections.singletonList(studyItem("裂", Records.LadderRung.KANJI_MEANING, "review", 0L)),
+                        Collections.singletonList(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)),
                         System.currentTimeMillis()
                 ) != null);
 
@@ -1813,7 +1817,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.addOptionalSyncSummaryLines(summary, syncResult(true, false, 1, 0, "", ""));
                 assertEquals(0, summary.getChildCount());
                 activity.content.removeAllViews();
-                activity.addRecoveryTimeline(new Records.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
+                activity.addRecoveryTimeline(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
                 assertTrue(containsText(activity.content, "Timeline will fill in after the next sync or review."));
             });
         }
@@ -1823,8 +1827,8 @@ public final class MainActivityHelperInstrumentedTest {
     public void writingCallbacksResetResultStateAfterInkEditsAndCleanerRetry() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                Records.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(2);
                 activity.drawingPad = new DrawingPadView(activity);
@@ -1889,7 +1893,7 @@ public final class MainActivityHelperInstrumentedTest {
     public void writingResultActionsUseOutcomeSpecificLabels() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 prepareWritingUi(activity, session("裂", BridgeScheduler.TASK_WRITE_KANJI, row));
                 activity.writingModelStatusKnown = true;
                 activity.writingModelDownloaded = true;
@@ -1977,7 +1981,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("2 kanji", activity.browseResultHeading(2));
                 assertEquals("Showing first 300 matches", activity.browseResultHeading(300));
 
-                Records.DashboardRow row = new Records.DashboardRow(
+                RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
                         "裂",
                         1000,
                         "split",
@@ -2028,7 +2032,7 @@ public final class MainActivityHelperInstrumentedTest {
         MainActivity.setWritingRecognizerForTests(recognizer);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.studyStatus = new TextView(activity);
                 activity.downloadModelButton = new Button(activity);
                 activity.refreshWritingModelStatus();
@@ -2090,7 +2094,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.checkWriting();
 
-                Records.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(1);
                 activity.studyStatus = new TextView(activity);
@@ -2117,12 +2121,12 @@ public final class MainActivityHelperInstrumentedTest {
         return new WritingAnalysis(status, passed ? "good" : "again", passed, status.name(), Collections.emptyList(), order, HintLevel.BLIND, 0);
     }
 
-    private static Records.StudySession session(String kanji, String taskType, Records.DashboardRow row) {
+    private static RecordsSchedulerModels.StudySession session(String kanji, String taskType, RecordsImportModels.DashboardRow row) {
         return sessionWithToken(kanji, taskType, row, "tok");
     }
 
-    private static Records.StudySession sessionWithToken(String kanji, String taskType, Records.DashboardRow row, String token) {
-        Records.StudyItem item = new Records.StudyItem(
+    private static RecordsSchedulerModels.StudySession sessionWithToken(String kanji, String taskType, RecordsImportModels.DashboardRow row, String token) {
+        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem(
                 kanji,
                 "review",
                 0L,
@@ -2144,19 +2148,19 @@ public final class MainActivityHelperInstrumentedTest {
                 0L
         );
         String prompt = row == null ? "" : row.primaryMeaning;
-        return new Records.StudySession(item, row, token, taskType, BridgeScheduler.TASK_WRITE_KANJI.equals(taskType), prompt);
+        return new RecordsSchedulerModels.StudySession(item, row, token, taskType, BridgeScheduler.TASK_WRITE_KANJI.equals(taskType), prompt);
     }
 
-    private static Records.DashboardRow row(String kanji, String meaning, String reading, List<Records.Example> examples) {
-        return new Records.DashboardRow(kanji, 1000, meaning, reading, kanji, 10, "reason", "reason text", 1, 0, 0, examples);
+    private static RecordsImportModels.DashboardRow row(String kanji, String meaning, String reading, List<RecordsImportModels.Example> examples) {
+        return new RecordsImportModels.DashboardRow(kanji, 1000, meaning, reading, kanji, 10, "reason", "reason text", 1, 0, 0, examples);
     }
 
-    private static Records.DashboardRow rowWithReason(String kanji, String meaning, String reading, String reason, List<Records.Example> examples) {
-        return new Records.DashboardRow(kanji, 1000, meaning, reading, kanji, 10, "reason", reason, 1, 0, 0, examples);
+    private static RecordsImportModels.DashboardRow rowWithReason(String kanji, String meaning, String reading, String reason, List<RecordsImportModels.Example> examples) {
+        return new RecordsImportModels.DashboardRow(kanji, 1000, meaning, reading, kanji, 10, "reason", reason, 1, 0, 0, examples);
     }
 
-    private static Records.Example example(String expression, String reading, String meaning, String sourceType) {
-        return new Records.Example(sourceType, 1L, 2L, expression, reading, meaning, "", false, 0);
+    private static RecordsImportModels.Example example(String expression, String reading, String meaning, String sourceType) {
+        return new RecordsImportModels.Example(sourceType, 1L, 2L, expression, reading, meaning, "", false, 0);
     }
 
     private static StrokeGuide guide(String kanji) {
@@ -2190,7 +2194,7 @@ public final class MainActivityHelperInstrumentedTest {
         return future;
     }
 
-    private static Records.Settings settings(
+    private static RecordsSyncModels.Settings settings(
             boolean active,
             boolean suspended,
             boolean tagged,
@@ -2199,8 +2203,8 @@ public final class MainActivityHelperInstrumentedTest {
             boolean browser,
             String query
     ) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,
@@ -2231,8 +2235,8 @@ public final class MainActivityHelperInstrumentedTest {
         );
     }
 
-    private static Records.StudyItem studyItem(String kanji, Records.LadderRung rung, String state, long dueAtMillis) {
-        return new Records.StudyItem(
+    private static RecordsStudyModels.StudyItem studyItem(String kanji, RecordsBase.LadderRung rung, String state, long dueAtMillis) {
+        return new RecordsStudyModels.StudyItem(
                 kanji,
                 state,
                 dueAtMillis,
@@ -2255,8 +2259,8 @@ public final class MainActivityHelperInstrumentedTest {
         ).withRung(rung);
     }
 
-    private static Records.KanjiTimelineEvent event(String expression, String reading) {
-        return new Records.KanjiTimelineEvent(
+    private static RecordsImportModels.KanjiTimelineEvent event(String expression, String reading) {
+        return new RecordsImportModels.KanjiTimelineEvent(
                 1L,
                 "語",
                 1000L,
@@ -2306,20 +2310,20 @@ public final class MainActivityHelperInstrumentedTest {
         return box;
     }
 
-    private static void seedRows(MainActivity activity, List<Records.DashboardRow> rows) {
-        List<Records.Note> notes = new ArrayList<>();
-        List<Records.Card> cards = new ArrayList<>();
+    private static void seedRows(MainActivity activity, List<RecordsImportModels.DashboardRow> rows) {
+        List<RecordsSyncModels.Note> notes = new ArrayList<>();
+        List<RecordsSyncModels.Card> cards = new ArrayList<>();
         long id = 1L;
-        for (Records.DashboardRow row : rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             notes.add(note(id, row.kanji + "語", row.reading, row.primaryMeaning, row.kanji + "を見た。"));
-            cards.add(new Records.Card(100L + id, id, 0, "Kiku", 2, 2, 0, 1, 0, 0, false));
+            cards.add(new RecordsSyncModels.Card(100L + id, id, 0, "Kiku", 2, 2, 0, 1, 0, 0, false));
             id++;
         }
         activity.store.saveSuccessfulSync(
-                new Records.CollectionSnapshot(notes, cards),
+                new RecordsSyncModels.CollectionSnapshot(notes, cards),
                 Collections.emptyList(),
                 rows,
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 1000L,
                 2000L,
                 null
@@ -2334,7 +2338,7 @@ public final class MainActivityHelperInstrumentedTest {
         }
     }
 
-    private static Records.Note note(long id, String expression, String reading, String meaning, String sentence) {
+    private static RecordsSyncModels.Note note(long id, String expression, String reading, String meaning, String sentence) {
         java.util.Map<String, String> fields = new java.util.LinkedHashMap<>();
         fields.put("Expression", expression);
         fields.put("ExpressionReading", reading);
@@ -2342,7 +2346,7 @@ public final class MainActivityHelperInstrumentedTest {
         fields.put("Sentence", sentence);
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
-        return new Records.Note(id, 1001L, "Kiku", fields, Collections.emptyList());
+        return new RecordsSyncModels.Note(id, 1001L, "Kiku", fields, Collections.emptyList());
     }
 
     private static void addInk(DrawingPadView pad) {
@@ -2379,7 +2383,7 @@ public final class MainActivityHelperInstrumentedTest {
         }
     }
 
-    private static void prepareWritingUi(MainActivity activity, Records.StudySession session) {
+    private static void prepareWritingUi(MainActivity activity, RecordsSchedulerModels.StudySession session) {
         activity.activeSession = session;
         activity.currentHintState = HintState.fromWritingLevel(1);
         activity.studyStatus = new TextView(activity);

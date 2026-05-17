@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.anki;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -13,7 +15,6 @@ import android.util.Log;
 import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.RequiresApi;
 
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SyncValidator;
 import dev.bee.kanjianki.sync.SyncProgress;
 
@@ -88,12 +89,12 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     @Override
-    public Records.CollectionSnapshot readCollection(Records.Settings settings) throws SyncFailure {
+    public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) throws SyncFailure {
         return readCollection(settings, SyncProgress.NONE);
     }
 
     @Override
-    public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) throws SyncFailure {
+    public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings, SyncProgress.Listener progress) throws SyncFailure {
         SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
         ProviderTarget target = requireProvider();
         if (!hasPermission(target.permission)) {
@@ -103,14 +104,14 @@ public final class AnkiDroidGateway implements CollectionGateway {
             reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE));
             ModelMapping mapping = findConfiguredModel(target, settings);
             reporter.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
-            Map<Long, Records.Note> notes = queryNotes(target, mapping, settings);
+            Map<Long, RecordsSyncModels.Note> notes = queryNotes(target, mapping, settings);
             Set<Long> browserQueryNoteIds = queryBrowserQueryNoteIds(target, mapping, settings);
             mergeMissingBrowserQueryNotes(target, mapping, settings, notes, browserQueryNoteIds);
-            List<Records.Card> cards = cardReader.queryCardsByNote(target.authority, settings, notes.keySet(), reporter);
+            List<RecordsSyncModels.Card> cards = cardReader.queryCardsByNote(target.authority, settings, notes.keySet(), reporter);
             validateTemplateCards(cards, settings);
             cards = cardsWithNotes(cards, notes.keySet());
             cards = markBrowserQueryMatchedCards(cards, browserQueryNoteIds);
-            return new Records.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
+            return new RecordsSyncModels.CollectionSnapshot(new ArrayList<>(notes.values()), cards);
         } catch (SyncFailure error) {
             throw error;
         } catch (OperationCanceledException error) {
@@ -129,8 +130,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private void mergeMissingBrowserQueryNotes(
             ProviderTarget target,
             ModelMapping mapping,
-            Records.Settings settings,
-            Map<Long, Records.Note> notes,
+            RecordsSyncModels.Settings settings,
+            Map<Long, RecordsSyncModels.Note> notes,
             Set<Long> browserQueryNoteIds
     ) throws SyncFailure {
         for (Long noteId : browserQueryNoteIds) {
@@ -144,15 +145,15 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private void rereadBrowserQueryNotes(
             ProviderTarget target,
             ModelMapping mapping,
-            Records.Settings settings,
-            Map<Long, Records.Note> notes
+            RecordsSyncModels.Settings settings,
+            Map<Long, RecordsSyncModels.Note> notes
     ) throws SyncFailure {
         try {
-            Map<Long, Records.Note> extraNotes = queryNotesBySearch(
+            Map<Long, RecordsSyncModels.Note> extraNotes = queryNotesBySearch(
                     target, mapping, settings,
                     configuredBrowserQuerySearch(settings)
             );
-            for (Map.Entry<Long, Records.Note> entry : extraNotes.entrySet()) {
+            for (Map.Entry<Long, RecordsSyncModels.Note> entry : extraNotes.entrySet()) {
                 notes.putIfAbsent(entry.getKey(), entry.getValue());
             }
         } catch (Exception error) {
@@ -161,19 +162,19 @@ public final class AnkiDroidGateway implements CollectionGateway {
     }
 
     @Override
-    public RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+    public RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
         return removeArchivedSuspendedCards(snapshot, SyncProgress.NONE);
     }
 
     @Override
-    public RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+    public RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
         return removeArchivedSuspendedCards(snapshot, null, progress);
     }
 
     @Override
     public RemovalSummary removeArchivedSuspendedCards(
-            Records.CollectionSnapshot snapshot,
-            List<Records.SuspendedImport> selectedSuspendedImports,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            List<RecordsImportModels.SuspendedImport> selectedSuspendedImports,
             SyncProgress.Listener progress
     ) {
         SyncProgress.Listener reporter = progress == null ? SyncProgress.NONE : progress;
@@ -183,7 +184,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             return new RemovalSummary(0, 0, 0, "No provider removal attempted.");
         }
         SuspendedCardIndex suspendedIndex = SuspendedCardIndex.from(snapshot.cards, selectedSuspendedCardIds(selectedSuspendedImports));
-        List<Records.Card> suspendedCards = suspendedIndex.suspendedCards;
+        List<RecordsSyncModels.Card> suspendedCards = suspendedIndex.suspendedCards;
         if (suspendedCards.isEmpty()) {
             return new RemovalSummary(0, 0, 0, "No suspended cards needed provider cleanup.");
         }
@@ -204,13 +205,13 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return new RemovalSummary(suspendedCards.size(), 0, tagged, message);
     }
 
-    private Set<Long> selectedSuspendedCardIds(List<Records.SuspendedImport> imports) {
+    private Set<Long> selectedSuspendedCardIds(List<RecordsImportModels.SuspendedImport> imports) {
         if (imports == null) {
             return null;
         }
         Set<Long> ids = new LinkedHashSet<>();
-        for (Records.SuspendedImport imported : imports) {
-            for (Records.SuspendedSource source : imported.sources) {
+        for (RecordsImportModels.SuspendedImport imported : imports) {
+            for (RecordsImportModels.SuspendedSource source : imported.sources) {
                 if (source.suspended) {
                     ids.add(source.cardId);
                 }
@@ -298,7 +299,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED;
     }
 
-    private ModelMapping findConfiguredModel(ProviderTarget target, Records.Settings settings) throws SyncFailure {
+    private ModelMapping findConfiguredModel(ProviderTarget target, RecordsSyncModels.Settings settings) throws SyncFailure {
         for (NoteType noteType : queryNoteTypes(target)) {
             if (!noteType.name.equalsIgnoreCase(settings.modelName)) {
                 continue;
@@ -327,12 +328,12 @@ public final class AnkiDroidGateway implements CollectionGateway {
             }
         }
         noteTypes.sort(Comparator
-                .comparing((NoteType noteType) -> !noteType.name.equalsIgnoreCase(Records.Settings.kikuDefaults().modelName))
+                .comparing((NoteType noteType) -> !noteType.name.equalsIgnoreCase(RecordsSyncModels.Settings.kikuDefaults().modelName))
                 .thenComparing(noteType -> noteType.name.toLowerCase(Locale.ROOT)));
         return noteTypes;
     }
 
-    private Map<Long, Records.Note> queryNotes(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
+    private Map<Long, RecordsSyncModels.Note> queryNotes(ProviderTarget target, ModelMapping mapping, RecordsSyncModels.Settings settings) throws SyncFailure {
         Exception searchFailure = null;
         try {
             return queryNotesBySearch(target, mapping, settings, NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\"");
@@ -347,8 +348,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
         }
     }
 
-    private Map<Long, Records.Note> queryNotesBySearch(ProviderTarget target, ModelMapping mapping, Records.Settings settings, String search) throws SyncFailure {
-        Map<Long, Records.Note> notes = new LinkedHashMap<>();
+    private Map<Long, RecordsSyncModels.Note> queryNotesBySearch(ProviderTarget target, ModelMapping mapping, RecordsSyncModels.Settings settings, String search) throws SyncFailure {
+        Map<Long, RecordsSyncModels.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
                 uriFor(target.authority, URI_SEGMENT_NOTES),
                 null,
@@ -372,8 +373,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return notes;
     }
 
-    private Map<Long, Records.Note> queryNotesBySql(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
-        Map<Long, Records.Note> notes = new LinkedHashMap<>();
+    private Map<Long, RecordsSyncModels.Note> queryNotesBySql(ProviderTarget target, ModelMapping mapping, RecordsSyncModels.Settings settings) throws SyncFailure {
+        Map<Long, RecordsSyncModels.Note> notes = new LinkedHashMap<>();
         Cursor cursor = resolver.query(
                 uriFor(target.authority, "notes_v2"),
                 null,
@@ -392,12 +393,12 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return notes;
     }
 
-    private void addNoteFromCursor(Map<Long, Records.Note> notes, long noteId, Cursor cursor, ModelMapping mapping, Records.Settings settings) {
+    private void addNoteFromCursor(Map<Long, RecordsSyncModels.Note> notes, long noteId, Cursor cursor, ModelMapping mapping, RecordsSyncModels.Settings settings) {
         List<String> values = splitFields(value(cursor, COLUMN_FIELDS));
         Map<String, String> fieldMap = selectRequiredFields(mapping.fields, values, settings);
         List<String> tags = splitTags(value(cursor, COLUMN_TAGS));
         if (!isArchivedTagPresent(tags)) {
-            notes.put(noteId, new Records.Note(noteId, mapping.modelId, mapping.name, fieldMap, tags));
+            notes.put(noteId, new RecordsSyncModels.Note(noteId, mapping.modelId, mapping.name, fieldMap, tags));
         }
     }
 
@@ -405,7 +406,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG);
     }
 
-    static Map<String, String> selectRequiredFields(List<String> modelFields, List<String> values, Records.Settings settings) {
+    static Map<String, String> selectRequiredFields(List<String> modelFields, List<String> values, RecordsSyncModels.Settings settings) {
         Map<String, String> fieldMap = new LinkedHashMap<>();
         for (String field : settings.requiredFields()) {
             int index = modelFields.indexOf(field);
@@ -414,9 +415,9 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return fieldMap;
     }
 
-    private List<Records.Card> cardsWithNotes(List<Records.Card> cards, Set<Long> noteIds) {
-        List<Records.Card> out = new ArrayList<>();
-        for (Records.Card card : cards) {
+    private List<RecordsSyncModels.Card> cardsWithNotes(List<RecordsSyncModels.Card> cards, Set<Long> noteIds) {
+        List<RecordsSyncModels.Card> out = new ArrayList<>();
+        for (RecordsSyncModels.Card card : cards) {
             if (noteIds.contains(card.noteId)) {
                 out.add(card);
             }
@@ -424,15 +425,15 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return out;
     }
 
-    private void validateTemplateCards(List<Records.Card> cards, Records.Settings settings) throws SyncFailure {
-        for (Records.Card card : cards) {
+    private void validateTemplateCards(List<RecordsSyncModels.Card> cards, RecordsSyncModels.Settings settings) throws SyncFailure {
+        for (RecordsSyncModels.Card card : cards) {
             if (card.ord != 0) {
                 throw SyncFailure.permanent(settings.modelName + " has card template ord " + card.ord + ". This app supports only the first card template at ord 0.");
             }
         }
     }
 
-    private Set<Long> queryBrowserQueryNoteIds(ProviderTarget target, ModelMapping mapping, Records.Settings settings) throws SyncFailure {
+    private Set<Long> queryBrowserQueryNoteIds(ProviderTarget target, ModelMapping mapping, RecordsSyncModels.Settings settings) throws SyncFailure {
         if (!settings.browserQueryImportEnabled()) {
             return Collections.emptySet();
         }
@@ -464,16 +465,16 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return ids;
     }
 
-    private static String configuredBrowserQuerySearch(Records.Settings settings) {
+    private static String configuredBrowserQuerySearch(RecordsSyncModels.Settings settings) {
         return NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\" (" + settings.normalizedBrowserQuery() + ")";
     }
 
-    private static List<Records.Card> markBrowserQueryMatchedCards(List<Records.Card> cards, Set<Long> browserQueryNoteIds) {
+    private static List<RecordsSyncModels.Card> markBrowserQueryMatchedCards(List<RecordsSyncModels.Card> cards, Set<Long> browserQueryNoteIds) {
         if (browserQueryNoteIds.isEmpty()) {
             return cards;
         }
-        List<Records.Card> result = new ArrayList<>(cards.size());
-        for (Records.Card card : cards) {
+        List<RecordsSyncModels.Card> result = new ArrayList<>(cards.size());
+        for (RecordsSyncModels.Card card : cards) {
             if (browserQueryNoteIds.contains(card.noteId)) {
                 result.add(card.withBrowserQueryMatched(true));
             } else {
@@ -539,13 +540,13 @@ public final class AnkiDroidGateway implements CollectionGateway {
         private final Map<Long, Integer> cardsByNote;
         private final Map<Long, Integer> suspendedByNote;
         private final Map<Long, Integer> selectedSuspendedByNote;
-        private final List<Records.Card> suspendedCards;
+        private final List<RecordsSyncModels.Card> suspendedCards;
 
         private SuspendedCardIndex(
                 Map<Long, Integer> cardsByNote,
                 Map<Long, Integer> suspendedByNote,
                 Map<Long, Integer> selectedSuspendedByNote,
-                List<Records.Card> suspendedCards
+                List<RecordsSyncModels.Card> suspendedCards
         ) {
             this.cardsByNote = cardsByNote;
             this.suspendedByNote = suspendedByNote;
@@ -553,12 +554,12 @@ public final class AnkiDroidGateway implements CollectionGateway {
             this.suspendedCards = suspendedCards;
         }
 
-        private static SuspendedCardIndex from(List<Records.Card> cards, Set<Long> selectedSuspendedCardIds) {
+        private static SuspendedCardIndex from(List<RecordsSyncModels.Card> cards, Set<Long> selectedSuspendedCardIds) {
             Map<Long, Integer> cardsByNote = new LinkedHashMap<>();
             Map<Long, Integer> suspendedByNote = new LinkedHashMap<>();
             Map<Long, Integer> selectedSuspendedByNote = new LinkedHashMap<>();
-            List<Records.Card> suspendedCards = new ArrayList<>();
-            for (Records.Card card : cards) {
+            List<RecordsSyncModels.Card> suspendedCards = new ArrayList<>();
+            for (RecordsSyncModels.Card card : cards) {
                 cardsByNote.put(card.noteId, cardsByNote.getOrDefault(card.noteId, 0) + 1);
                 if (card.suspended) {
                     suspendedByNote.put(card.noteId, suspendedByNote.getOrDefault(card.noteId, 0) + 1);
@@ -573,7 +574,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
         private Set<Long> notesFullySuspended() {
             Set<Long> notes = new LinkedHashSet<>();
-            for (Records.Card card : suspendedCards) {
+            for (RecordsSyncModels.Card card : suspendedCards) {
                 if (cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))
                         && suspendedByNote.get(card.noteId).equals(selectedSuspendedByNote.get(card.noteId))) {
                     notes.add(card.noteId);
@@ -584,7 +585,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
         private int partiallySuspendedCardCount() {
             int failed = 0;
-            for (Records.Card card : suspendedCards) {
+            for (RecordsSyncModels.Card card : suspendedCards) {
                 if (!cardsByNote.get(card.noteId).equals(suspendedByNote.get(card.noteId))
                         || !suspendedByNote.get(card.noteId).equals(selectedSuspendedByNote.get(card.noteId))) {
                     failed++;

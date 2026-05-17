@@ -1,5 +1,9 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
@@ -48,7 +52,6 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -198,7 +201,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     void renderSettings(boolean preserveScroll) {
         int scrollY = preserveScroll && contentScroll != null ? contentScroll.getScrollY() : 0;
         base(NAV_SETTINGS_ROUTE);
-        Records.Settings current = settings();
+        RecordsSyncModels.Settings current = settings();
         content.addView(fullWidthHomeButton());
         content.addView(settingsHero(current, store.reminderSettings(), store.autoSyncSettings(), store.autoUpdateStatus()));
         addSpace(10);
@@ -263,7 +266,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     View settingsHero(
-            Records.Settings current,
+            RecordsSyncModels.Settings current,
             LocalStore.ReminderSettings reminder,
             LocalStore.AutoSyncSettings autoSync,
             LocalStore.AutoUpdateStatus autoUpdate
@@ -366,7 +369,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return autoUpdate.enabled ? "Automatic checks on" : "Manual checks";
     }
 
-    String settingsImportSummary(Records.Settings settings) {
+    String settingsImportSummary(RecordsSyncModels.Settings settings) {
         List<String> sources = new ArrayList<>();
         if (settings.importActiveCards) {
             sources.add(SOURCE_ACTIVE);
@@ -389,7 +392,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return String.join(" + ", sources) + "; " + matchingCardsSummary(settings);
     }
 
-    String matchingCardsSummary(Records.Settings settings) {
+    String matchingCardsSummary(RecordsSyncModels.Settings settings) {
         int count = settings.importMinMatchingCardsPerKanji;
         return count + (count == 1 ? " matching card per kanji" : " matching cards per kanji");
     }
@@ -474,7 +477,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return box;
     }
 
-    LinearLayout importFilterSettingsPanel(Records.Settings current) {
+    LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         LinearLayout box = settingsPanelBox();
         box.addView(text("Import filters", 23, INK, true));
         box.addView(text(settingsImportSummary(current), 17, TEAL, true));
@@ -515,7 +518,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            List<String> parsedTags = Records.parseImportTags(tags.getText().toString());
+            List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
             String queryText = browserQueryInput.getText().toString().trim();
             if (browserQueryCards.isChecked() && queryText.isEmpty()) {
                 Toast.makeText(this, "Enter an Anki browser query or turn off Browser query.", Toast.LENGTH_SHORT).show();
@@ -642,7 +645,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return column;
     }
 
-    LinearLayout frequencyRangeSettingsPanel(Records.Settings current) {
+    LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         LinearLayout box = settingsPanelBox();
         final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
         box.addView(text("Frequency range", 23, INK, true));
@@ -738,8 +741,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         content.addView(back);
     }
 
-    LinearLayout noteTypeSettingsPanel(Records.Settings current) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+    LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Note type & clue fields", 23, INK, true));
         box.addView(text("Using " + current.modelName, 17, TEAL, true));
@@ -814,8 +817,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
     EditText noteTypeInput(String value) {
         EditText input = new EditText(this);
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        input.setText(value == null || value.trim().isEmpty() ? Records.Settings.kikuDefaults().modelName : value.trim());
-        input.setHint(Records.Settings.kikuDefaults().modelName);
+        input.setText(value == null || value.trim().isEmpty() ? RecordsSyncModels.Settings.kikuDefaults().modelName : value.trim());
+        input.setHint(RecordsSyncModels.Settings.kikuDefaults().modelName);
         input.setTextSize(20);
         input.setSingleLine(true);
         input.setSelectAllOnFocus(true);
@@ -928,7 +931,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank);
     }
 
-    LinearLayout newCardSortSettingsPanel(Records.Settings current) {
+    LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
         final String[] selected = new String[]{current.newCardSortMode};
         LinearLayout box = settingsPanelBox();
         box.addView(text("New card sort", 23, INK, true));
@@ -936,10 +939,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(status);
         box.addView(text("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", 15, MUTED, false));
 
-        addSortModeButton(box, "Frequency", Records.NEW_CARD_SORT_FREQUENCY, selected, status);
-        addSortModeButton(box, "Anki difficulty", Records.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
-        addSortModeButton(box, "Retrievability risk", Records.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
-        addSortModeButton(box, "Kani weakness", Records.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
+        addSortModeButton(box, "Frequency", RecordsBase.NEW_CARD_SORT_FREQUENCY, selected, status);
+        addSortModeButton(box, "Anki difficulty", RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
+        addSortModeButton(box, "Retrievability risk", RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
+        addSortModeButton(box, "Kani weakness", RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
 
         Button save = primaryButton("Save new card sort", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
@@ -965,10 +968,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String newCardSortLabel(String mode) {
-        return switch (Records.Settings.normalizeNewCardSortMode(mode)) {
-            case Records.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty";
-            case Records.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk";
-            case Records.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness";
+        return switch (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
+            case RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty";
+            case RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk";
+            case RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness";
             default -> "Frequency";
         };
     }
@@ -984,8 +987,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         if (autoMode) {
             long now = System.currentTimeMillis();
-            List<Records.DashboardRow> rows = store.activeDashboardRows();
-            Records.AdaptiveLoadPlan plan = rows.isEmpty()
+            List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+            RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty()
                     ? null
                     : adaptivePlan(rows, store.studyItems(), now);
             box.addView(text(autoWorkloadStatusText(plan), 17, TEAL, true));
@@ -1096,7 +1099,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout learningStepsSettingsPanel() {
-        Records.LearningStepSettings current = store.learningStepSettings();
+        RecordsSchedulerModels.LearningStepSettings current = store.learningStepSettings();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Learning steps", 23, INK, true));
         box.addView(text("New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.", 15, MUTED, false));
@@ -1112,14 +1115,14 @@ abstract class MainActivitySettings extends MainActivityStudy {
         presets.setOrientation(LinearLayout.HORIZONTAL);
         Button ankiDefault = secondaryButton("Anki default");
         ankiDefault.setOnClickListener(v -> {
-            Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
+            RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
             newSteps.setText(defaults.newStepsText());
             reviewSteps.setText(defaults.reviewStepsText());
         });
         presets.addView(ankiDefault, new LinearLayout.LayoutParams(0, dp(54), 1));
         Button sameSteps = secondaryButton("Both 1m 10m");
         sameSteps.setOnClickListener(v -> {
-            Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
+            RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
             newSteps.setText(defaults.newStepsText());
             reviewSteps.setText(defaults.newStepsText());
         });
@@ -1128,13 +1131,13 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save learning steps", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            List<Integer> parsedNew = Records.LearningStepSettings.tryParseSteps(newSteps.getText().toString());
-            List<Integer> parsedReview = Records.LearningStepSettings.tryParseSteps(reviewSteps.getText().toString());
+            List<Integer> parsedNew = RecordsSchedulerModels.LearningStepSettings.tryParseSteps(newSteps.getText().toString());
+            List<Integer> parsedReview = RecordsSchedulerModels.LearningStepSettings.tryParseSteps(reviewSteps.getText().toString());
             if (parsedNew.isEmpty() || parsedReview.isEmpty()) {
                 Toast.makeText(this, "Use steps like 1m, 10m, or 1h.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.saveLearningStepSettings(new Records.LearningStepSettings(parsedNew, parsedReview));
+            store.saveLearningStepSettings(new RecordsSchedulerModels.LearningStepSettings(parsedNew, parsedReview));
             Toast.makeText(this, "Learning steps saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1189,14 +1192,14 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout studyLadderSettingsPanel() {
-        Records.StudyLadderSettings ladder = studyLadderSettings();
+        RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Study ladder", 23, INK, true));
         box.addView(text("Turn rungs off or move them up and down. At least one always-available rung stays on.", 15, MUTED, false));
 
-        List<Records.LadderRung> rungs = ladder.orderedRungs;
+        List<RecordsBase.LadderRung> rungs = ladder.orderedRungs;
         for (int i = 0; i < rungs.size(); i++) {
-            Records.LadderRung rung = rungs.get(i);
+            RecordsBase.LadderRung rung = rungs.get(i);
             LinearLayout row = softInsetPanel();
             row.addView(text(ladderRungLabel(rung), 19, STUDY_PLUM, true));
             row.addView(text(ladderRungSubtitle(ladder, rung), 13, MUTED, false));
@@ -1232,7 +1235,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button reset = secondaryButton("Restore default ladder");
         reset.setOnClickListener(v -> {
-            store.saveStudyLadderSettings(Records.StudyLadderSettings.defaults());
+            store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
             Toast.makeText(this, "Study ladder restored.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1240,10 +1243,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return box;
     }
 
-    void toggleLadderRung(Records.LadderRung rung) {
-        Records.StudyLadderSettings current = studyLadderSettings();
+    void toggleLadderRung(RecordsBase.LadderRung rung) {
+        RecordsBase.StudyLadderSettings current = studyLadderSettings();
         boolean wasEnabled = current.isEnabled(rung);
-        Records.StudyLadderSettings next = current.withRungEnabled(rung, !wasEnabled);
+        RecordsBase.StudyLadderSettings next = current.withRungEnabled(rung, !wasEnabled);
         if (wasEnabled && next.enabledText().equals(current.enabledText())) {
             Toast.makeText(this, "Keep at least one always-available rung on.", Toast.LENGTH_SHORT).show();
             return;
@@ -1253,13 +1256,13 @@ abstract class MainActivitySettings extends MainActivityStudy {
         renderSettings();
     }
 
-    String ladderRungSubtitle(Records.StudyLadderSettings ladder, Records.LadderRung rung) {
+    String ladderRungSubtitle(RecordsBase.StudyLadderSettings ladder, RecordsBase.LadderRung rung) {
         String status = ladder.isEnabled(rung) ? "Enabled" : "Disabled";
-        String kind = rung == Records.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";
+        String kind = rung == RecordsBase.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";
         return status + " " + kind + " rung";
     }
 
-    String ladderRungLabel(Records.LadderRung rung) {
+    String ladderRungLabel(RecordsBase.LadderRung rung) {
         return switch (rung) {
             case WRITE_KANJI -> "Write kanji";
             case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
@@ -1272,7 +1275,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout ladderThresholdSettingsPanel() {
-        Records.Settings current = settings();
+        RecordsSyncModels.Settings current = settings();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Ladder thresholds", 23, INK, true));
         box.addView(text("Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.", 15, MUTED, false));
@@ -1286,8 +1289,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button defaults = secondaryButton("Use 21 and 3");
         defaults.setOnClickListener(v -> {
-            promotionDays.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
-            failStreak.setText(String.format(Locale.ROOT, "%d", Records.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
+            promotionDays.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
+            failStreak.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
         });
         box.addView(defaults);
 
@@ -1332,7 +1335,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout retentionSettingsPanel() {
-        Records.SchedulerParameters current = store.schedulerParameters();
+        RecordsSchedulerModels.SchedulerParameters current = store.schedulerParameters();
         final int[] selected = new int[]{retentionPercent(current.targetRetention)};
         LinearLayout box = settingsPanelBox();
         box.addView(text("FSRS retention", 23, INK, true));
@@ -1396,8 +1399,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     return;
                 }
             }
-            Records.SchedulerParameters latest = store.schedulerParameters();
-            store.saveSchedulerParameters(new Records.SchedulerParameters(
+            RecordsSchedulerModels.SchedulerParameters latest = store.schedulerParameters();
+            store.saveSchedulerParameters(new RecordsSchedulerModels.SchedulerParameters(
                     selected[0] / 100.0,
                     latest.againMultiplier,
                     latest.hardMultiplier,
@@ -1575,7 +1578,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return "Maximum: " + countText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems), "item", "items");
     }
 
-    String autoWorkloadStatusText(Records.AdaptiveLoadPlan plan) {
+    String autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         if (plan == null || plan.target <= 0) {
             return "Auto Pareto: waiting for problem kanji";
         }

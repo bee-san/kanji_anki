@@ -12,7 +12,7 @@ public final class SuspendedKanjiImporter {
     private final int maxRank;
 
     public SuspendedKanjiImporter(JitenKanjiRanks ranks, int cutoff) {
-        this(ranks, Records.DEFAULT_SUSPENDED_RANK_MIN, cutoff);
+        this(ranks, RecordsBase.DEFAULT_SUSPENDED_RANK_MIN, cutoff);
     }
 
     public SuspendedKanjiImporter(JitenKanjiRanks ranks, int minRank, int maxRank) {
@@ -28,20 +28,20 @@ public final class SuspendedKanjiImporter {
         this.maxRank = normalizedMax;
     }
 
-    public List<Records.SuspendedImport> importFrom(Records.CollectionSnapshot snapshot, Records.Settings settings) {
-        Map<Long, Records.Note> notesById = snapshot.notesById();
-        Map<String, List<Records.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
-        for (Records.Card card : snapshot.cards) {
-            Records.Note note = notesById.get(card.noteId);
+    public List<RecordsImportModels.SuspendedImport> importFrom(RecordsSyncModels.CollectionSnapshot snapshot, RecordsSyncModels.Settings settings) {
+        Map<Long, RecordsSyncModels.Note> notesById = snapshot.notesById();
+        Map<String, List<RecordsImportModels.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
+        for (RecordsSyncModels.Card card : snapshot.cards) {
+            RecordsSyncModels.Note note = notesById.get(card.noteId);
             if (card.suspended && note != null) {
                 addSuspendedSources(sourcesByKanji, card, note, settings);
             }
         }
 
-        List<Records.SuspendedImport> results = new ArrayList<>();
-        for (Map.Entry<String, List<Records.SuspendedSource>> entry : sourcesByKanji.entrySet()) {
+        List<RecordsImportModels.SuspendedImport> results = new ArrayList<>();
+        for (Map.Entry<String, List<RecordsImportModels.SuspendedSource>> entry : sourcesByKanji.entrySet()) {
             Integer rank = ranks.rankOf(entry.getKey());
-            results.add(new Records.SuspendedImport(
+            results.add(new RecordsImportModels.SuspendedImport(
                     entry.getKey(),
                     rank,
                     true,
@@ -50,23 +50,23 @@ public final class SuspendedKanjiImporter {
             ));
         }
         results.sort(Comparator
-                .comparingInt((Records.SuspendedImport item) -> item.jitenRank)
+                .comparingInt((RecordsImportModels.SuspendedImport item) -> item.jitenRank)
                 .thenComparing(item -> item.kanji));
         return results;
     }
 
     private void addSuspendedSources(
-            Map<String, List<Records.SuspendedSource>> sourcesByKanji,
-            Records.Card card,
-            Records.Note note,
-            Records.Settings settings
+            Map<String, List<RecordsImportModels.SuspendedSource>> sourcesByKanji,
+            RecordsSyncModels.Card card,
+            RecordsSyncModels.Note note,
+            RecordsSyncModels.Settings settings
     ) {
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
         for (String kanji : TextUtil.extractKanji(expression)) {
             Integer rank = ranks.rankOf(kanji);
             if (rank != null && rank >= minRank && rank <= maxRank) {
                 sourcesByKanji.computeIfAbsent(kanji, ignored -> new ArrayList<>())
-                        .add(new Records.SuspendedSource(
+                        .add(new RecordsImportModels.SuspendedSource(
                                 kanji,
                                 card.cardId,
                                 note.noteId,

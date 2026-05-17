@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.sync;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -8,7 +12,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
@@ -54,7 +57,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void successfulSyncArchivesSuspendedCardsBuildsRowsAndSeedsStudy() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                 context,
                 store,
@@ -64,19 +67,19 @@ public final class ManualSyncEngineInstrumentedTest {
 
         assertTrue(result.success);
         assertEquals("cleanup done", result.message);
-        List<Records.DashboardRow> rows = store.dashboardRows();
-        List<Records.StudyItem> items = store.studyItems();
+        List<RecordsImportModels.DashboardRow> rows = store.dashboardRows();
+        List<RecordsStudyModels.StudyItem> items = store.studyItems();
         assertFalse(rows.isEmpty());
         assertFalse(store.suspendedImports().isEmpty());
         assertFalse(items.isEmpty());
         assertEquals("success", store.latestSync().status);
 
-        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
-        for (Records.DashboardRow row : rows) {
+        Map<String, RecordsImportModels.DashboardRow> rowByKanji = new HashMap<>();
+        for (RecordsImportModels.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
         }
         boolean activeStudyItem = false;
-        for (Records.StudyItem item : items) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if ("retired".equals(item.state)) {
                 continue;
             }
@@ -89,7 +92,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void nullProgressListenerUsesNoopProgressAndStillSyncs() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                 context,
@@ -105,7 +108,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void successfulSyncUsesAdaptiveWorkloadForNewAdmissions() {
-        Records.Settings settings = importSettings(true, false, false, "", false, 1);
+        RecordsSyncModels.Settings settings = importSettings(true, false, false, "", false, 1);
         store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
         store.saveAdaptiveLoadWorkPercent(0);
 
@@ -123,14 +126,14 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void importFiltersCanCreateRowsFromTaggedActiveCardsWithoutArchivingExcludedSuspendedCards() {
-        Records.Settings settings = importSettings(false, false, true, "focus", false, 1);
-        Records.Note taggedActive = note(1L, "裂ける", "さける", "split", "裂ける音。", "focus");
-        Records.Note excludedSuspended = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Settings settings = importSettings(false, false, true, "focus", false, 1);
+        RecordsSyncModels.Note taggedActive = note(1L, "裂ける", "さける", "split", "裂ける音。", "focus");
+        RecordsSyncModels.Note excludedSuspended = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Arrays.asList(taggedActive, excludedSuspended),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 12, 0, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true)
+                        new RecordsSyncModels.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 12, 0, false),
+                        new RecordsSyncModels.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true)
                 )
         );
         RecordingGateway gateway = new RecordingGateway(snapshot, new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done"));
@@ -141,14 +144,14 @@ public final class ManualSyncEngineInstrumentedTest {
         assertTrue(store.suspendedImports().isEmpty());
         assertEquals(0, store.latestSync().suspendedCards);
         assertTrue(gateway.selectedSuspendedImports.isEmpty());
-        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.dashboardRows();
         assertEquals(1, rows.size());
         assertEquals("裂", rows.get(0).kanji);
     }
 
     @Test
     public void failedSyncPersistsConfigError() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                 context,
                 store,
@@ -165,7 +168,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void retryableSyncFailurePersistsRetryableError() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                 context,
                 store,
@@ -182,7 +185,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void unexpectedRuntimeExceptionPersistsRetryableError() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
                 context,
                 store,
@@ -199,7 +202,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void concurrentManualSyncSkipsWithoutRecordingSync() throws Exception {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         BlockingGateway blockingGateway = new BlockingGateway(
                 snapshot(settings),
                 new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")
@@ -238,7 +241,7 @@ public final class ManualSyncEngineInstrumentedTest {
 
     @Test
     public void manualSyncReceivesOrderedProgressEvents() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         List<String> events = new ArrayList<>();
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(
@@ -262,31 +265,31 @@ public final class ManualSyncEngineInstrumentedTest {
         ), events);
     }
 
-    private Records.CollectionSnapshot snapshot(Records.Settings settings) {
-        Records.Note active = note(1L, "確認", "かくにん", "confirmation", "確認した。");
-        Records.Note suspended = note(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
-        Records.Card activeCard = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, settings.matureDays + 5, 12, 0, false);
-        Records.Card suspendedCard = new Records.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true);
-        return new Records.CollectionSnapshot(Arrays.asList(active, suspended), Arrays.asList(activeCard, suspendedCard));
+    private RecordsSyncModels.CollectionSnapshot snapshot(RecordsSyncModels.Settings settings) {
+        RecordsSyncModels.Note active = note(1L, "確認", "かくにん", "confirmation", "確認した。");
+        RecordsSyncModels.Note suspended = note(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
+        RecordsSyncModels.Card activeCard = new RecordsSyncModels.Card(10L, 1L, 0, "Kiku", 2, 2, 0, settings.matureDays + 5, 12, 0, false);
+        RecordsSyncModels.Card suspendedCard = new RecordsSyncModels.Card(20L, 2L, 0, "Kiku", -1, 0, 0, 0, 0, 0, true);
+        return new RecordsSyncModels.CollectionSnapshot(Arrays.asList(active, suspended), Arrays.asList(activeCard, suspendedCard));
     }
 
-    private Records.CollectionSnapshot manyProblemSnapshot() {
-        Records.Note first = note(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
-        Records.Note second = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
-        Records.Note third = note(3L, "裂ける", "さける", "split", "裂ける音。");
-        return new Records.CollectionSnapshot(
+    private RecordsSyncModels.CollectionSnapshot manyProblemSnapshot() {
+        RecordsSyncModels.Note first = note(1L, "拉麺", "らーめん", "ramen", "拉麺を食べた。");
+        RecordsSyncModels.Note second = note(2L, "謎", "なぞ", "mystery", "謎を見た。");
+        RecordsSyncModels.Note third = note(3L, "裂ける", "さける", "split", "裂ける音。");
+        return new RecordsSyncModels.CollectionSnapshot(
                 Arrays.asList(first, second, third),
                 Arrays.asList(
-                        new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 12, 2, false),
-                        new Records.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 12, 1, false),
-                        new Records.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 3, 12, 0, false)
+                        new RecordsSyncModels.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 3, 12, 2, false),
+                        new RecordsSyncModels.Card(20L, 2L, 0, "Kiku", 2, 2, 0, 3, 12, 1, false),
+                        new RecordsSyncModels.Card(30L, 3L, 0, "Kiku", 2, 2, 0, 3, 12, 0, false)
                 )
         );
     }
 
-    private int activeStudyItemCount(List<Records.StudyItem> items) {
+    private int activeStudyItemCount(List<RecordsStudyModels.StudyItem> items) {
         int count = 0;
-        for (Records.StudyItem item : items) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if (!"retired".equals(item.state)) {
                 count++;
             }
@@ -294,8 +297,8 @@ public final class ManualSyncEngineInstrumentedTest {
         return count;
     }
 
-    private boolean hasSuspendedEvidence(List<Records.DashboardRow> rows) {
-        for (Records.DashboardRow row : rows) {
+    private boolean hasSuspendedEvidence(List<RecordsImportModels.DashboardRow> rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             if (row.suspendedExampleCount > 0) {
                 return true;
             }
@@ -303,7 +306,7 @@ public final class ManualSyncEngineInstrumentedTest {
         return false;
     }
 
-    private Records.Note note(long id, String expression, String reading, String meaning, String sentence, String... tags) {
+    private RecordsSyncModels.Note note(long id, String expression, String reading, String meaning, String sentence, String... tags) {
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("Expression", expression);
         fields.put("ExpressionReading", reading);
@@ -311,10 +314,10 @@ public final class ManualSyncEngineInstrumentedTest {
         fields.put("Sentence", sentence);
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
-        return new Records.Note(id, "Kiku", fields, Arrays.asList(tags));
+        return new RecordsSyncModels.Note(id, "Kiku", fields, Arrays.asList(tags));
     }
 
-    private Records.Settings importSettings(
+    private RecordsSyncModels.Settings importSettings(
             boolean active,
             boolean suspended,
             boolean tagged,
@@ -322,8 +325,8 @@ public final class ManualSyncEngineInstrumentedTest {
             boolean weak,
             int minMatching
     ) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,
@@ -344,7 +347,7 @@ public final class ManualSyncEngineInstrumentedTest {
                 active,
                 suspended,
                 tagged,
-                Records.parseImportTags(tags),
+                RecordsBase.parseImportTags(tags),
                 weak,
                 defaults.importWeakFsrsDifficultyThreshold,
                 defaults.importWeakLapsesThreshold,
@@ -353,74 +356,74 @@ public final class ManualSyncEngineInstrumentedTest {
     }
 
     private static final class FakeGateway implements CollectionGateway {
-        private final Records.CollectionSnapshot snapshot;
+        private final RecordsSyncModels.CollectionSnapshot snapshot;
         private final AnkiDroidGateway.RemovalSummary removal;
 
-        private FakeGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+        private FakeGateway(RecordsSyncModels.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
             this.snapshot = snapshot;
             this.removal = removal;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) {
             return snapshot;
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return removal;
         }
     }
 
     private static final class FailingGateway implements CollectionGateway {
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) throws AnkiDroidGateway.SyncFailure {
             throw AnkiDroidGateway.SyncFailure.permanent("Kiku note type was not found in AnkiDroid.");
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
         }
     }
 
     private static final class RetryableGateway implements CollectionGateway {
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) throws AnkiDroidGateway.SyncFailure {
             throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
         }
     }
 
     private static final class RuntimeFailingGateway implements CollectionGateway {
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) {
             throw new IllegalStateException("sync crashed");
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
         }
     }
 
     private static final class BlockingGateway implements CollectionGateway {
-        private final Records.CollectionSnapshot snapshot;
+        private final RecordsSyncModels.CollectionSnapshot snapshot;
         private final AnkiDroidGateway.RemovalSummary removal;
         private final CountDownLatch started = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
 
-        private BlockingGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+        private BlockingGateway(RecordsSyncModels.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
             this.snapshot = snapshot;
             this.removal = removal;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) throws AnkiDroidGateway.SyncFailure {
             started.countDown();
             try {
                 if (!release.await(10L, TimeUnit.SECONDS)) {
@@ -434,7 +437,7 @@ public final class ManualSyncEngineInstrumentedTest {
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return removal;
         }
 
@@ -448,21 +451,21 @@ public final class ManualSyncEngineInstrumentedTest {
     }
 
     private static final class ProgressGateway implements CollectionGateway {
-        private final Records.CollectionSnapshot snapshot;
+        private final RecordsSyncModels.CollectionSnapshot snapshot;
         private final AnkiDroidGateway.RemovalSummary removal;
 
-        private ProgressGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+        private ProgressGateway(RecordsSyncModels.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
             this.snapshot = snapshot;
             this.removal = removal;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) {
             return snapshot;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings, SyncProgress.Listener progress) {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE));
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             progress.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size()));
@@ -473,41 +476,41 @@ public final class ManualSyncEngineInstrumentedTest {
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return removal;
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
             return removal;
         }
     }
 
     private static final class RecordingGateway implements CollectionGateway {
-        private final Records.CollectionSnapshot snapshot;
+        private final RecordsSyncModels.CollectionSnapshot snapshot;
         private final AnkiDroidGateway.RemovalSummary removal;
-        private List<Records.SuspendedImport> selectedSuspendedImports = Collections.emptyList();
+        private List<RecordsImportModels.SuspendedImport> selectedSuspendedImports = Collections.emptyList();
 
-        private RecordingGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+        private RecordingGateway(RecordsSyncModels.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
             this.snapshot = snapshot;
             this.removal = removal;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) {
             return snapshot;
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return removal;
         }
 
         @Override
         public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(
-                Records.CollectionSnapshot snapshot,
-                List<Records.SuspendedImport> selectedSuspendedImports,
+                RecordsSyncModels.CollectionSnapshot snapshot,
+                List<RecordsImportModels.SuspendedImport> selectedSuspendedImports,
                 SyncProgress.Listener progress
         ) {
             this.selectedSuspendedImports = selectedSuspendedImports;

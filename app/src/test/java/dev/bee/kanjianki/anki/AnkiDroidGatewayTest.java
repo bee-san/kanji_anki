@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.anki;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.sync.SyncProgress;
 
 import org.junit.Test;
@@ -26,7 +27,7 @@ import static org.junit.Assert.assertTrue;
 public final class AnkiDroidGatewayTest {
     @Test
     public void selectRequiredFieldsDropsBulkyUnusedKikuFields() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         String largeGlossary = repeat("media-glossary-entry", 4000);
 
         Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
@@ -69,7 +70,7 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void selectRequiredFieldsSkipsBlankOptionalCustomMappings() {
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 "Custom Japanese",
                 "Mining",
                 "Front",
@@ -84,7 +85,7 @@ public final class AnkiDroidGatewayTest {
                 3000,
                 24,
                 3,
-                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
         );
 
         Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
@@ -102,7 +103,7 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void fieldMappingPreservesEmptyAnkiFieldSlots() {
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 "Custom Japanese",
                 "Mining",
                 "Front",
@@ -117,7 +118,7 @@ public final class AnkiDroidGatewayTest {
                 3000,
                 24,
                 3,
-                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
         );
 
         Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
@@ -293,8 +294,8 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void browserQuerySearchKeepsConfiguredModelBoundary() throws Exception {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,
@@ -326,7 +327,7 @@ public final class AnkiDroidGatewayTest {
 
         String search = (String) invokePrivateStatic(
                 "configuredBrowserQuerySearch",
-                new Class<?>[]{Records.Settings.class},
+                new Class<?>[]{RecordsSyncModels.Settings.class},
                 settings
         );
 
@@ -335,11 +336,11 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void browserQueryMatchedCardsOnlyCopiesMatchingNotes() throws Exception {
-        Records.Card matched = card(10L, 1L);
-        Records.Card unchanged = card(20L, 2L);
+        RecordsSyncModels.Card matched = card(10L, 1L);
+        RecordsSyncModels.Card unchanged = card(20L, 2L);
 
         @SuppressWarnings("unchecked")
-        List<Records.Card> cards = (List<Records.Card>) invokePrivateStatic(
+        List<RecordsSyncModels.Card> cards = (List<RecordsSyncModels.Card>) invokePrivateStatic(
                 "markBrowserQueryMatchedCards",
                 new Class<?>[]{List.class, Set.class},
                 Arrays.asList(matched, unchanged),
@@ -353,7 +354,7 @@ public final class AnkiDroidGatewayTest {
 
     @Test
     public void selectRequiredFieldsUsesEmptyStringsForMissingAndShortFieldRows() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
 
         Map<String, String> fields = AnkiDroidGateway.selectRequiredFields(
                 Arrays.asList("Expression", "ExpressionReading"),
@@ -370,11 +371,11 @@ public final class AnkiDroidGatewayTest {
     @Test
     public void cardsWithNotesFiltersCardsWhoseNotesWereSkipped() throws Exception {
         Object gateway = uninitializedGateway();
-        Records.Card kept = card(10L, 1L);
-        Records.Card orphan = card(20L, 2L);
+        RecordsSyncModels.Card kept = card(10L, 1L);
+        RecordsSyncModels.Card orphan = card(20L, 2L);
 
         @SuppressWarnings("unchecked")
-        List<Records.Card> cards = (List<Records.Card>) invokePrivateInstance(
+        List<RecordsSyncModels.Card> cards = (List<RecordsSyncModels.Card>) invokePrivateInstance(
                 gateway,
                 "cardsWithNotes",
                 new Class<?>[]{List.class, Set.class},
@@ -532,8 +533,8 @@ public final class AnkiDroidGatewayTest {
         return builder.toString();
     }
 
-    private static Records.Card card(long cardId, long noteId) {
-        return new Records.Card(cardId, noteId, 0, "deck", 0, 0, 0, 0, 0, 0, false);
+    private static RecordsSyncModels.Card card(long cardId, long noteId) {
+        return new RecordsSyncModels.Card(cardId, noteId, 0, "deck", 0, 0, 0, 0, 0, 0, false);
     }
 
     private static Object fsrsFromCursor(Cursor cursor) throws Exception {

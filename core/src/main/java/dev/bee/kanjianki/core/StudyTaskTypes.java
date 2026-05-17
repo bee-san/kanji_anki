@@ -20,7 +20,7 @@ public final class StudyTaskTypes {
     private StudyTaskTypes() {
     }
 
-    public static String forRung(Records.LadderRung rung) {
+    public static String forRung(RecordsBase.LadderRung rung) {
         return rung.wireName();
     }
 }

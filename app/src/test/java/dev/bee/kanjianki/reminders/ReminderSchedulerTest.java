@@ -1,10 +1,12 @@
 package dev.bee.kanjianki.reminders;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
 import android.content.Context;
 
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.Records;
 
 import org.junit.Test;
 
@@ -186,7 +188,7 @@ public final class ReminderSchedulerTest {
         ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(
                 Collections.emptyList(),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
@@ -205,8 +207,8 @@ public final class ReminderSchedulerTest {
 
         ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(
                 Collections.singletonList(row("裂", 80)),
-                Collections.singletonList(new Records.StudyItem("裂", "review", now - 1L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                Collections.singletonList(new RecordsStudyModels.StudyItem("裂", "review", now - 1L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
@@ -259,8 +261,8 @@ public final class ReminderSchedulerTest {
         return calendar.getTimeInMillis();
     }
 
-    private static Records.DashboardRow row(String kanji, int score) {
-        return new Records.DashboardRow(
+    private static RecordsImportModels.DashboardRow row(String kanji, int score) {
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 900,
                 "meaning",

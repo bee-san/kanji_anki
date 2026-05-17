@@ -10,19 +10,19 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 public final class SimilarKanjiChoicePlanner {
-    public List<Records.SimilarKanjiChoiceCard> buildCandidates(
-            List<Records.KanjiInventoryItem> inventory,
-            List<Records.SimilarKanjiPair> pairs
+    public List<RecordsImportModels.SimilarKanjiChoiceCard> buildCandidates(
+            List<RecordsImportModels.KanjiInventoryItem> inventory,
+            List<RecordsImportModels.SimilarKanjiPair> pairs
     ) {
-        Map<String, Records.KanjiInventoryItem> inventoryByKanji = inventoryByKanji(inventory);
+        Map<String, RecordsImportModels.KanjiInventoryItem> inventoryByKanji = inventoryByKanji(inventory);
         if (inventoryByKanji.size() < 2) {
             return Collections.emptyList();
         }
 
         Map<String, Set<String>> directNeighbors = directNeighbors(pairs, inventoryByKanji);
-        List<Records.SimilarKanjiChoiceCard> out = new ArrayList<>();
-        for (Records.KanjiInventoryItem target : inventoryByKanji.values()) {
-            Records.SimilarKanjiChoiceCard card = choiceCard(target, directNeighbors);
+        List<RecordsImportModels.SimilarKanjiChoiceCard> out = new ArrayList<>();
+        for (RecordsImportModels.KanjiInventoryItem target : inventoryByKanji.values()) {
+            RecordsImportModels.SimilarKanjiChoiceCard card = choiceCard(target, directNeighbors);
             if (card != null) {
                 out.add(card);
             }
@@ -30,10 +30,10 @@ public final class SimilarKanjiChoicePlanner {
         return out;
     }
 
-    private static Map<String, Records.KanjiInventoryItem> inventoryByKanji(List<Records.KanjiInventoryItem> inventory) {
-        Map<String, Records.KanjiInventoryItem> inventoryByKanji = new TreeMap<>();
+    private static Map<String, RecordsImportModels.KanjiInventoryItem> inventoryByKanji(List<RecordsImportModels.KanjiInventoryItem> inventory) {
+        Map<String, RecordsImportModels.KanjiInventoryItem> inventoryByKanji = new TreeMap<>();
         if (inventory != null) {
-            for (Records.KanjiInventoryItem item : inventory) {
+            for (RecordsImportModels.KanjiInventoryItem item : inventory) {
                 if (item != null && !item.kanji.isEmpty()) {
                     inventoryByKanji.put(item.kanji, item);
                 }
@@ -43,12 +43,12 @@ public final class SimilarKanjiChoicePlanner {
     }
 
     private static Map<String, Set<String>> directNeighbors(
-            List<Records.SimilarKanjiPair> pairs,
-            Map<String, Records.KanjiInventoryItem> inventoryByKanji
+            List<RecordsImportModels.SimilarKanjiPair> pairs,
+            Map<String, RecordsImportModels.KanjiInventoryItem> inventoryByKanji
     ) {
         Map<String, Set<String>> directNeighbors = new TreeMap<>();
         if (pairs != null) {
-            for (Records.SimilarKanjiPair pair : pairs) {
+            for (RecordsImportModels.SimilarKanjiPair pair : pairs) {
                 if (validPair(pair, inventoryByKanji)) {
                     directNeighbors.computeIfAbsent(pair.kanjiA, ignored -> new TreeSet<>()).add(pair.kanjiB);
                     directNeighbors.computeIfAbsent(pair.kanjiB, ignored -> new TreeSet<>()).add(pair.kanjiA);
@@ -58,7 +58,7 @@ public final class SimilarKanjiChoicePlanner {
         return directNeighbors;
     }
 
-    private static boolean validPair(Records.SimilarKanjiPair pair, Map<String, Records.KanjiInventoryItem> inventoryByKanji) {
+    private static boolean validPair(RecordsImportModels.SimilarKanjiPair pair, Map<String, RecordsImportModels.KanjiInventoryItem> inventoryByKanji) {
         return pair != null
                 && !pair.kanjiA.isEmpty()
                 && !pair.kanjiB.isEmpty()
@@ -67,8 +67,8 @@ public final class SimilarKanjiChoicePlanner {
                 && inventoryByKanji.containsKey(pair.kanjiB);
     }
 
-    private static Records.SimilarKanjiChoiceCard choiceCard(
-            Records.KanjiInventoryItem target,
+    private static RecordsImportModels.SimilarKanjiChoiceCard choiceCard(
+            RecordsImportModels.KanjiInventoryItem target,
             Map<String, Set<String>> directNeighbors
     ) {
         String meaning = target.primaryMeaning.trim();
@@ -80,7 +80,7 @@ public final class SimilarKanjiChoicePlanner {
         choices.add(target.kanji);
         choices.addAll(neighbors);
         List<String> choiceList = new ArrayList<>(choices);
-        return new Records.SimilarKanjiChoiceCard(
+        return new RecordsImportModels.SimilarKanjiChoiceCard(
                 target.kanji,
                 meaning,
                 choiceList,
@@ -88,24 +88,24 @@ public final class SimilarKanjiChoicePlanner {
         );
     }
 
-    public Records.SimilarKanjiChoiceResult evaluateSelection(
-            Records.SimilarKanjiChoiceCard card,
+    public RecordsImportModels.SimilarKanjiChoiceResult evaluateSelection(
+            RecordsImportModels.SimilarKanjiChoiceCard card,
             String selectedKanji
     ) {
         if (card == null) {
-            return new Records.SimilarKanjiChoiceResult(null, selectedKanji, false, Collections.emptyList());
+            return new RecordsImportModels.SimilarKanjiChoiceResult(null, selectedKanji, false, Collections.emptyList());
         }
         String selected = selectedKanji == null ? "" : selectedKanji.trim();
         boolean correct = card.targetKanji.equals(selected);
         if (correct) {
-            return new Records.SimilarKanjiChoiceResult(card, selected, true, Collections.emptyList());
+            return new RecordsImportModels.SimilarKanjiChoiceResult(card, selected, true, Collections.emptyList());
         }
         LinkedHashSet<String> repairs = new LinkedHashSet<>();
         repairs.add(card.targetKanji);
         if (card.choices.contains(selected)) {
             repairs.add(selected);
         }
-        return new Records.SimilarKanjiChoiceResult(card, selected, false, new ArrayList<>(repairs));
+        return new RecordsImportModels.SimilarKanjiChoiceResult(card, selected, false, new ArrayList<>(repairs));
     }
 
     public static String choiceSignature(List<String> choices) {

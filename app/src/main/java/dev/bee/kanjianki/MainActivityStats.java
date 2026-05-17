@@ -1,10 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
 import android.graphics.Color;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.StudyStatsStore;
 
 import java.util.ArrayList;
@@ -197,13 +197,13 @@ abstract class MainActivityStats extends MainActivityGames {
 
     List<String> ladderDistributionRows(StudyStatsStore.LadderHealthMetric metric) {
         List<String> rows = new ArrayList<>();
-        for (Records.LadderRung rung : Records.LadderRung.values()) {
+        for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
             rows.add(ladderRungLabel(rung) + ": " + metric.countFor(rung));
         }
         return rows;
     }
 
-    String ladderRungLabel(Records.LadderRung rung) {
+    String ladderRungLabel(RecordsBase.LadderRung rung) {
         return switch (rung) {
             case WRITE_KANJI -> "Write kanji";
             case TYPE_MEANING -> "Type meaning";

@@ -1,12 +1,13 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import static dev.bee.kanjianki.data.LocalStoreBase.*;
 
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
@@ -24,10 +25,10 @@ final class HistoricalSyncStore {
 
     void appendHistoricalSyncSnapshots(
             SQLiteDatabase db,
-            Records.CollectionSnapshot snapshot,
-            Map<Long, Records.Note> notesById,
-            List<Records.DashboardRow> rows,
-            Records.Settings settings,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            Map<Long, RecordsSyncModels.Note> notesById,
+            List<RecordsImportModels.DashboardRow> rows,
+            RecordsSyncModels.Settings settings,
             long syncId,
             SyncTiming timing
     ) {
@@ -36,8 +37,8 @@ final class HistoricalSyncStore {
         Map<Long, LinkedHashSet<String>> deckNamesByNote = deckNamesByNote(snapshot.cards);
         Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
 
-        for (Records.Card card : snapshot.cards) {
-            Records.Note note = notesById.get(card.noteId);
+        for (RecordsSyncModels.Card card : snapshot.cards) {
+            RecordsSyncModels.Note note = notesById.get(card.noteId);
             if (note == null) {
                 continue;
             }
@@ -70,7 +71,7 @@ final class HistoricalSyncStore {
             }
         }
 
-        for (Records.Note note : snapshot.notes) {
+        for (RecordsSyncModels.Note note : snapshot.notes) {
             LinkedHashSet<String> deckIds = deckIdsByNote.get(note.noteId);
             LinkedHashSet<String> decks = deckNamesByNote.get(note.noteId);
             if (decks == null || decks.isEmpty()) {
@@ -110,7 +111,7 @@ final class HistoricalSyncStore {
         if (sync == null) {
             return;
         }
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         Map<Long, HistoricalNoteSnapshot> notes = currentSourceNotes(db);
         if (notes.isEmpty()) {
             return;
@@ -243,17 +244,17 @@ final class HistoricalSyncStore {
         }
     }
 
-    Map<Long, LinkedHashSet<String>> deckNamesByNote(List<Records.Card> cards) {
+    Map<Long, LinkedHashSet<String>> deckNamesByNote(List<RecordsSyncModels.Card> cards) {
         Map<Long, LinkedHashSet<String>> out = new LinkedHashMap<>();
-        for (Records.Card card : cards) {
+        for (RecordsSyncModels.Card card : cards) {
             linkedSetFor(out, card.noteId).add(card.deckName);
         }
         return out;
     }
 
-    Map<Long, LinkedHashSet<String>> deckIdsByNote(List<Records.Card> cards) {
+    Map<Long, LinkedHashSet<String>> deckIdsByNote(List<RecordsSyncModels.Card> cards) {
         Map<Long, LinkedHashSet<String>> out = new LinkedHashMap<>();
-        for (Records.Card card : cards) {
+        for (RecordsSyncModels.Card card : cards) {
             linkedSetFor(out, card.noteId).add(card.deckId);
         }
         return out;
@@ -268,7 +269,7 @@ final class HistoricalSyncStore {
         return values;
     }
 
-    List<String> extractedKanji(Records.Note note, Records.Settings settings) {
+    List<String> extractedKanji(RecordsSyncModels.Note note, RecordsSyncModels.Settings settings) {
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
         String sentence = TextUtil.normalizeJapanese(note.sentence(settings));
         return TextUtil.extractKanji(expression + " " + sentence);
@@ -283,8 +284,8 @@ final class HistoricalSyncStore {
         return aggregate;
     }
 
-    void overlayDashboardRows(Map<String, HistoricalKanjiAggregate> aggregates, List<Records.DashboardRow> rows) {
-        for (Records.DashboardRow row : rows) {
+    void overlayDashboardRows(Map<String, HistoricalKanjiAggregate> aggregates, List<RecordsImportModels.DashboardRow> rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             HistoricalKanjiAggregate aggregate = aggregateFor(aggregates, row.kanji);
             aggregate.weaknessScore = row.weaknessScore;
             aggregate.reasonCode = row.reasonCode;
@@ -378,12 +379,12 @@ final class HistoricalSyncStore {
         return notes;
     }
 
-    List<Records.DashboardRow> currentDashboardRows(SQLiteDatabase db) {
-        List<Records.DashboardRow> rows = new ArrayList<>();
+    List<RecordsImportModels.DashboardRow> currentDashboardRows(SQLiteDatabase db) {
+        List<RecordsImportModels.DashboardRow> rows = new ArrayList<>();
         Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, new String[]{COLUMN_KANJI}, null, null, null, null, ORDER_KANJI_ASC);
         try {
             while (cursor.moveToNext()) {
-                Records.DashboardRow row = localStore.readDashboardRow(db, string(cursor, COLUMN_KANJI));
+                RecordsImportModels.DashboardRow row = localStore.readDashboardRow(db, string(cursor, COLUMN_KANJI));
                 if (row != null) {
                     rows.add(row);
                 }

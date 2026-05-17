@@ -1,6 +1,6 @@
 package dev.bee.kanjianki;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.study.StudyRating;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingRatingMapper;
@@ -12,7 +12,7 @@ final class StudyReviewRequests {
     }
 
     static MappedReview from(
-            Records.StudySession session,
+            RecordsSchedulerModels.StudySession session,
             WritingAnalysis analysis,
             int hintsUsed,
             String rating,
@@ -22,7 +22,7 @@ final class StudyReviewRequests {
         StudyRating mappedRating = RATING_MAPPER.applyRequestedRating(requestedRating, session.writingRequired, analysis, override);
         boolean passed = !session.writingRequired || (analysis != null && analysis.writingPassed);
         boolean cleanWriting = analysis != null && analysis.status == WritingAnalysis.Status.PASS;
-        Records.ReviewRequest request = new Records.ReviewRequest(
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest(
                 session.item.kanji,
                 session.token,
                 mappedRating.code(),
@@ -39,15 +39,15 @@ final class StudyReviewRequests {
     }
 
     static final class MappedReview {
-        private final Records.ReviewRequest request;
+        private final RecordsSchedulerModels.ReviewRequest request;
         private final String ratingCode;
 
-        private MappedReview(Records.ReviewRequest request, String ratingCode) {
+        private MappedReview(RecordsSchedulerModels.ReviewRequest request, String ratingCode) {
             this.request = request;
             this.ratingCode = ratingCode;
         }
 
-        Records.ReviewRequest request() {
+        RecordsSchedulerModels.ReviewRequest request() {
             return request;
         }
 

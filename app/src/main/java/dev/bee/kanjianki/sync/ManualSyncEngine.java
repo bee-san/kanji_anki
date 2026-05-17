@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.sync;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 
 import dev.bee.kanjianki.R;
@@ -10,7 +14,6 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
 import dev.bee.kanjianki.core.KanjiImportSelector;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
@@ -33,19 +36,19 @@ public final class ManualSyncEngine {
     private final Context context;
     private final LocalStore store;
     private final CollectionGateway gateway;
-    private final Records.Settings settings;
+    private final RecordsSyncModels.Settings settings;
     private final SyncProgress.Listener progress;
     private final AppClock clock;
 
-    public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings) {
+    public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, RecordsSyncModels.Settings settings) {
         this(context, store, gateway, settings, SyncProgress.NONE);
     }
 
-    public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings, SyncProgress.Listener progress) {
+    public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, RecordsSyncModels.Settings settings, SyncProgress.Listener progress) {
         this(context, store, gateway, settings, progress, AppClock.system());
     }
 
-    ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, Records.Settings settings, SyncProgress.Listener progress, AppClock clock) {
+    ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, RecordsSyncModels.Settings settings, SyncProgress.Listener progress, AppClock clock) {
         this.context = context.getApplicationContext();
         this.store = store;
         this.gateway = gateway;
@@ -68,15 +71,15 @@ public final class ManualSyncEngine {
     private SyncResult runLocked() {
         long started = clock.nowMillis();
         try {
-            Records.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
+            RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(settings, progress);
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
             JitenKanjiRanks ranks = loadRanks();
-            List<Records.SuspendedImport> selectedImports = new KanjiImportSelector(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
+            List<RecordsImportModels.SuspendedImport> selectedImports = new KanjiImportSelector(ranks, settings.suspendedRankMin, settings.suspendedRankMax)
                     .importFrom(snapshot, settings);
-            List<Records.SuspendedImport> currentSuspendedImports = suspendedImportsOnly(selectedImports);
-            List<Records.SuspendedImport> storedSuspendedImports = settings.importSuspendedCards ? store.suspendedImports() : Collections.emptyList();
-            List<Records.SuspendedImport> analysisImports = mergeSuspendedImports(storedSuspendedImports, selectedImports);
-            List<Records.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(snapshot, analysisImports, ranks, settings);
+            List<RecordsImportModels.SuspendedImport> currentSuspendedImports = suspendedImportsOnly(selectedImports);
+            List<RecordsImportModels.SuspendedImport> storedSuspendedImports = settings.importSuspendedCards ? store.suspendedImports() : Collections.emptyList();
+            List<RecordsImportModels.SuspendedImport> analysisImports = mergeSuspendedImports(storedSuspendedImports, selectedImports);
+            List<RecordsImportModels.DashboardRow> rows = new KanjiAnalyzer().rebuildSelectedSources(snapshot, analysisImports, ranks, settings);
             SimilarKanjiIndex similarKanjiIndex = loadSimilarKanjiIndex();
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
             long finished = clock.nowMillis();
@@ -94,10 +97,10 @@ public final class ManualSyncEngine {
             store.updateSyncRemovalMessage(syncId, removal.message);
 
             BridgeScheduler scheduler = new BridgeScheduler();
-            List<Records.StudyItem> currentItems = store.studyItems();
-            List<Records.DashboardRow> activeRows = activeRows(rows, store.locallySuspendedKanji());
-            Records.AdaptiveLoadPlan plan = adaptivePlan(activeRows, currentItems, finished);
-            List<Records.StudyItem> seeded = scheduler.seedQueue(
+            List<RecordsStudyModels.StudyItem> currentItems = store.studyItems();
+            List<RecordsImportModels.DashboardRow> activeRows = activeRows(rows, store.locallySuspendedKanji());
+            RecordsSchedulerModels.AdaptiveLoadPlan plan = adaptivePlan(activeRows, currentItems, finished);
+            List<RecordsStudyModels.StudyItem> seeded = scheduler.seedQueue(
                     activeRows,
                     currentItems,
                     settings,
@@ -129,12 +132,12 @@ public final class ManualSyncEngine {
         }
     }
 
-    private List<Records.DashboardRow> activeRows(List<Records.DashboardRow> rows, Set<String> suspendedKanji) {
+    private List<RecordsImportModels.DashboardRow> activeRows(List<RecordsImportModels.DashboardRow> rows, Set<String> suspendedKanji) {
         if (suspendedKanji.isEmpty()) {
             return rows;
         }
-        List<Records.DashboardRow> out = new ArrayList<>();
-        for (Records.DashboardRow row : rows) {
+        List<RecordsImportModels.DashboardRow> out = new ArrayList<>();
+        for (RecordsImportModels.DashboardRow row : rows) {
             if (!suspendedKanji.contains(row.kanji)) {
                 out.add(row);
             }
@@ -142,7 +145,7 @@ public final class ManualSyncEngine {
         return out;
     }
 
-    private Records.AdaptiveLoadPlan adaptivePlan(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long nowMillis) {
+    private RecordsSchedulerModels.AdaptiveLoadPlan adaptivePlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long nowMillis) {
         AdaptiveLoadPlanner planner = new AdaptiveLoadPlanner();
         long dayStart = startOfDay(nowMillis);
         Set<String> studiedToday = store.studiedKanjiSince(dayStart);
@@ -185,28 +188,28 @@ public final class ManualSyncEngine {
         return cal.getTimeInMillis();
     }
 
-    private List<Records.SuspendedImport> mergeSuspendedImports(List<Records.SuspendedImport> stored, List<Records.SuspendedImport> current) {
+    private List<RecordsImportModels.SuspendedImport> mergeSuspendedImports(List<RecordsImportModels.SuspendedImport> stored, List<RecordsImportModels.SuspendedImport> current) {
         Map<String, MutableImport> byKanji = new LinkedHashMap<>();
         addImports(byKanji, stored);
         addImports(byKanji, current);
-        List<Records.SuspendedImport> out = new ArrayList<>();
+        List<RecordsImportModels.SuspendedImport> out = new ArrayList<>();
         for (MutableImport item : byKanji.values()) {
             out.add(item.build());
         }
         return out;
     }
 
-    private List<Records.SuspendedImport> suspendedImportsOnly(List<Records.SuspendedImport> imports) {
-        List<Records.SuspendedImport> out = new ArrayList<>();
-        for (Records.SuspendedImport imported : imports) {
-            List<Records.SuspendedSource> suspendedSources = new ArrayList<>();
-            for (Records.SuspendedSource source : imported.sources) {
+    private List<RecordsImportModels.SuspendedImport> suspendedImportsOnly(List<RecordsImportModels.SuspendedImport> imports) {
+        List<RecordsImportModels.SuspendedImport> out = new ArrayList<>();
+        for (RecordsImportModels.SuspendedImport imported : imports) {
+            List<RecordsImportModels.SuspendedSource> suspendedSources = new ArrayList<>();
+            for (RecordsImportModels.SuspendedSource source : imported.sources) {
                 if (source.suspended) {
                     suspendedSources.add(source);
                 }
             }
             if (!suspendedSources.isEmpty()) {
-                out.add(new Records.SuspendedImport(
+                out.add(new RecordsImportModels.SuspendedImport(
                         imported.kanji,
                         imported.jitenRank,
                         imported.rankKnown,
@@ -218,8 +221,8 @@ public final class ManualSyncEngine {
         return out;
     }
 
-    private void addImports(Map<String, MutableImport> byKanji, List<Records.SuspendedImport> imports) {
-        for (Records.SuspendedImport imported : imports) {
+    private void addImports(Map<String, MutableImport> byKanji, List<RecordsImportModels.SuspendedImport> imports) {
+        for (RecordsImportModels.SuspendedImport imported : imports) {
             if (!importInFrequencyRange(imported)) {
                 continue;
             }
@@ -228,7 +231,7 @@ public final class ManualSyncEngine {
         }
     }
 
-    private boolean importInFrequencyRange(Records.SuspendedImport imported) {
+    private boolean importInFrequencyRange(RecordsImportModels.SuspendedImport imported) {
         return imported.jitenRank != null
                 && imported.jitenRank >= settings.suspendedRankMin
                 && imported.jitenRank <= settings.suspendedRankMax;
@@ -239,28 +242,28 @@ public final class ManualSyncEngine {
         private Integer rank;
         private boolean rankKnown;
         private int cutoffUsed;
-        private final Map<Long, Records.SuspendedSource> sources = new LinkedHashMap<>();
+        private final Map<Long, RecordsImportModels.SuspendedSource> sources = new LinkedHashMap<>();
 
-        private MutableImport(Records.SuspendedImport imported) {
+        private MutableImport(RecordsImportModels.SuspendedImport imported) {
             this.kanji = imported.kanji;
             this.rank = imported.jitenRank;
             this.rankKnown = imported.rankKnown;
             this.cutoffUsed = imported.cutoffUsed;
         }
 
-        private void add(Records.SuspendedImport imported) {
+        private void add(RecordsImportModels.SuspendedImport imported) {
             if (rank == null && imported.jitenRank != null) {
                 rank = imported.jitenRank;
                 rankKnown = true;
             }
             cutoffUsed = Math.max(cutoffUsed, imported.cutoffUsed);
-            for (Records.SuspendedSource source : imported.sources) {
+            for (RecordsImportModels.SuspendedSource source : imported.sources) {
                 sources.put(source.cardId, source);
             }
         }
 
-        private Records.SuspendedImport build() {
-            return new Records.SuspendedImport(kanji, rank, rankKnown, cutoffUsed, new ArrayList<>(sources.values()));
+        private RecordsImportModels.SuspendedImport build() {
+            return new RecordsImportModels.SuspendedImport(kanji, rank, rankKnown, cutoffUsed, new ArrayList<>(sources.values()));
         }
     }
 

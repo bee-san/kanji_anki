@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.sync;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 
 import org.junit.Test;
 
@@ -22,11 +24,11 @@ import static org.junit.Assert.assertTrue;
 public final class ManualSyncEngineBranchTest {
     @Test
     public void activeRowsReturnsOriginalWhenNothingIsSuspendedAndFiltersLocalSuspensions() throws Exception {
-        ManualSyncEngine engine = engineWithSettings(Records.Settings.kikuDefaults());
-        List<Records.DashboardRow> rows = Arrays.asList(row("拉"), row("裂"));
+        ManualSyncEngine engine = engineWithSettings(RecordsSyncModels.Settings.kikuDefaults());
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("拉"), row("裂"));
 
         @SuppressWarnings("unchecked")
-        List<Records.DashboardRow> unchanged = (List<Records.DashboardRow>) invoke(
+        List<RecordsImportModels.DashboardRow> unchanged = (List<RecordsImportModels.DashboardRow>) invoke(
                 engine,
                 "activeRows",
                 new Class<?>[]{List.class, Set.class},
@@ -34,7 +36,7 @@ public final class ManualSyncEngineBranchTest {
                 Collections.emptySet()
         );
         @SuppressWarnings("unchecked")
-        List<Records.DashboardRow> filtered = (List<Records.DashboardRow>) invoke(
+        List<RecordsImportModels.DashboardRow> filtered = (List<RecordsImportModels.DashboardRow>) invoke(
                 engine,
                 "activeRows",
                 new Class<?>[]{List.class, Set.class},
@@ -49,7 +51,7 @@ public final class ManualSyncEngineBranchTest {
 
     @Test
     public void importRangeChecksRejectUnknownAndOutOfRangeRanks() throws Exception {
-        ManualSyncEngine engine = engineWithSettings(Records.Settings.kikuDefaults());
+        ManualSyncEngine engine = engineWithSettings(RecordsSyncModels.Settings.kikuDefaults());
 
         assertFalse(importInFrequencyRange(engine, suspendedImport("謎", null, 1L)));
         assertFalse(importInFrequencyRange(engine, suspendedImport("謎", 99, 2L)));
@@ -59,7 +61,7 @@ public final class ManualSyncEngineBranchTest {
 
     @Test
     public void addImportsSkipsOutOfRangeEntriesAndKeepsInRangeEntries() throws Exception {
-        ManualSyncEngine engine = engineWithSettings(Records.Settings.kikuDefaults());
+        ManualSyncEngine engine = engineWithSettings(RecordsSyncModels.Settings.kikuDefaults());
         Map<String, Object> byKanji = new LinkedHashMap<>();
 
         invoke(
@@ -80,8 +82,8 @@ public final class ManualSyncEngineBranchTest {
 
     @Test
     public void suspendedImportsOnlyDropsActiveSourcesAndEmptyImports() throws Exception {
-        ManualSyncEngine engine = engineWithSettings(Records.Settings.kikuDefaults());
-        Records.SuspendedImport mixed = new Records.SuspendedImport(
+        ManualSyncEngine engine = engineWithSettings(RecordsSyncModels.Settings.kikuDefaults());
+        RecordsImportModels.SuspendedImport mixed = new RecordsImportModels.SuspendedImport(
                 "箱",
                 2500,
                 true,
@@ -91,7 +93,7 @@ public final class ManualSyncEngineBranchTest {
                         activeSource("箱", 2L)
                 )
         );
-        Records.SuspendedImport activeOnly = new Records.SuspendedImport(
+        RecordsImportModels.SuspendedImport activeOnly = new RecordsImportModels.SuspendedImport(
                 "認",
                 200,
                 true,
@@ -100,7 +102,7 @@ public final class ManualSyncEngineBranchTest {
         );
 
         @SuppressWarnings("unchecked")
-        List<Records.SuspendedImport> filtered = (List<Records.SuspendedImport>) invoke(
+        List<RecordsImportModels.SuspendedImport> filtered = (List<RecordsImportModels.SuspendedImport>) invoke(
                 engine,
                 "suspendedImportsOnly",
                 new Class<?>[]{List.class},
@@ -116,17 +118,17 @@ public final class ManualSyncEngineBranchTest {
     @Test
     public void mutableImportTakesFirstKnownRankAndLargestCutoff() throws Exception {
         Class<?> mutableClass = Class.forName(ManualSyncEngine.class.getName() + "$MutableImport");
-        Constructor<?> constructor = mutableClass.getDeclaredConstructor(Records.SuspendedImport.class);
+        Constructor<?> constructor = mutableClass.getDeclaredConstructor(RecordsImportModels.SuspendedImport.class);
         constructor.setAccessible(true);
         Object mutable = constructor.newInstance(suspendedImport("箱", null, 1L, 1200));
-        Method add = mutableClass.getDeclaredMethod("add", Records.SuspendedImport.class);
+        Method add = mutableClass.getDeclaredMethod("add", RecordsImportModels.SuspendedImport.class);
         add.setAccessible(true);
         Method build = mutableClass.getDeclaredMethod("build");
         build.setAccessible(true);
 
         add.invoke(mutable, suspendedImport("箱", null, 1L, 1200));
         add.invoke(mutable, suspendedImport("箱", 2500, 2L, 3000));
-        Records.SuspendedImport built = (Records.SuspendedImport) build.invoke(mutable);
+        RecordsImportModels.SuspendedImport built = (RecordsImportModels.SuspendedImport) build.invoke(mutable);
 
         assertEquals(Integer.valueOf(2500), built.jitenRank);
         assertTrue(built.rankKnown);
@@ -137,17 +139,17 @@ public final class ManualSyncEngineBranchTest {
     @Test
     public void mutableImportKeepsInitialKnownRankWhenLaterSourcesAlsoHaveRanks() throws Exception {
         Class<?> mutableClass = Class.forName(ManualSyncEngine.class.getName() + "$MutableImport");
-        Constructor<?> constructor = mutableClass.getDeclaredConstructor(Records.SuspendedImport.class);
+        Constructor<?> constructor = mutableClass.getDeclaredConstructor(RecordsImportModels.SuspendedImport.class);
         constructor.setAccessible(true);
         Object mutable = constructor.newInstance(suspendedImport("箱", 1800, 1L, 1200));
-        Method add = mutableClass.getDeclaredMethod("add", Records.SuspendedImport.class);
+        Method add = mutableClass.getDeclaredMethod("add", RecordsImportModels.SuspendedImport.class);
         add.setAccessible(true);
         Method build = mutableClass.getDeclaredMethod("build");
         build.setAccessible(true);
 
         add.invoke(mutable, suspendedImport("箱", 1800, 1L, 1200));
         add.invoke(mutable, suspendedImport("箱", 2500, 2L, 3000));
-        Records.SuspendedImport built = (Records.SuspendedImport) build.invoke(mutable);
+        RecordsImportModels.SuspendedImport built = (RecordsImportModels.SuspendedImport) build.invoke(mutable);
 
         assertEquals(Integer.valueOf(1800), built.jitenRank);
         assertTrue(built.rankKnown);
@@ -205,16 +207,16 @@ public final class ManualSyncEngineBranchTest {
         assertEquals("3 due, 1 new", result.adaptiveSummary);
     }
 
-    private static boolean importInFrequencyRange(ManualSyncEngine engine, Records.SuspendedImport imported) throws Exception {
+    private static boolean importInFrequencyRange(ManualSyncEngine engine, RecordsImportModels.SuspendedImport imported) throws Exception {
         return (Boolean) invoke(
                 engine,
                 "importInFrequencyRange",
-                new Class<?>[]{Records.SuspendedImport.class},
+                new Class<?>[]{RecordsImportModels.SuspendedImport.class},
                 imported
         );
     }
 
-    private static ManualSyncEngine engineWithSettings(Records.Settings settings) throws Exception {
+    private static ManualSyncEngine engineWithSettings(RecordsSyncModels.Settings settings) throws Exception {
         ManualSyncEngine engine = (ManualSyncEngine) allocate(ManualSyncEngine.class);
         Field settingsField = ManualSyncEngine.class.getDeclaredField("settings");
         settingsField.setAccessible(true);
@@ -237,8 +239,8 @@ public final class ManualSyncEngineBranchTest {
         return allocateInstance.invoke(unsafe, targetClass);
     }
 
-    private static Records.DashboardRow row(String kanji) {
-        return new Records.DashboardRow(
+    private static RecordsImportModels.DashboardRow row(String kanji) {
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 100,
                 "meaning",
@@ -254,39 +256,39 @@ public final class ManualSyncEngineBranchTest {
         );
     }
 
-    private static Records.SuspendedImport suspendedImport(String kanji, Integer rank, long cardId) {
+    private static RecordsImportModels.SuspendedImport suspendedImport(String kanji, Integer rank, long cardId) {
         return suspendedImport(kanji, rank, cardId, 3000);
     }
 
-    private static Records.SuspendedImport suspendedImport(String kanji, Integer rank, long cardId, int cutoff) {
-        return new Records.SuspendedImport(
+    private static RecordsImportModels.SuspendedImport suspendedImport(String kanji, Integer rank, long cardId, int cutoff) {
+        return new RecordsImportModels.SuspendedImport(
                 kanji,
                 rank,
                 rank != null,
                 cutoff,
-                Collections.singletonList(new Records.SuspendedSource(
+                Collections.singletonList(new RecordsImportModels.SuspendedSource(
                         kanji,
                         cardId,
                         cardId,
                         kanji,
                         "かな",
                         "meaning",
-                        Records.SuspendedSourceDetails.builder(kanji + "を見た。").build()
+                        RecordsImportModels.SuspendedSourceDetails.builder(kanji + "を見た。").build()
                 ))
         );
     }
 
-    private static Records.SuspendedSource activeSource(String kanji, long cardId) {
-        return new Records.SuspendedSource(
+    private static RecordsImportModels.SuspendedSource activeSource(String kanji, long cardId) {
+        return new RecordsImportModels.SuspendedSource(
                 kanji,
                 cardId,
                 cardId,
                 kanji,
                 "かな",
                 "meaning",
-                Records.SuspendedSourceDetails.builder(kanji + "を見た。")
+                RecordsImportModels.SuspendedSourceDetails.builder(kanji + "を見た。")
                         .suspended(false)
-                        .sourceType(Records.SOURCE_ACTIVE)
+                        .sourceType(RecordsBase.SOURCE_ACTIVE)
                         .build()
         );
     }

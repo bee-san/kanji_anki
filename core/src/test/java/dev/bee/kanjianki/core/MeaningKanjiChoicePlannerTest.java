@@ -16,7 +16,7 @@ import static org.junit.Assert.assertTrue;
 public final class MeaningKanjiChoicePlannerTest {
     @Test
     public void buildsFourLocalKanjiChoicesIncludingTarget() {
-        Records.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
+        RecordsImportModels.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
                 row("裂", "split"),
                 Arrays.asList(row("裂", "split"), row("提", "present"), row("浅", "shallow")),
                 Arrays.asList(inventory("腕"), inventory("謎")),
@@ -33,7 +33,7 @@ public final class MeaningKanjiChoicePlannerTest {
 
     @Test
     public void returnsNullWhenFewerThanFourLocalKanjiExist() {
-        Records.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
+        RecordsImportModels.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
                 row("裂", "split"),
                 Arrays.asList(row("裂", "split"), row("提", "present"), row("浅", "shallow")),
                 Collections.singletonList(inventory("浅")),
@@ -45,7 +45,7 @@ public final class MeaningKanjiChoicePlannerTest {
 
     @Test
     public void trimsChoicesAndSkipsNullInventoryKanji() {
-        Records.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
+        RecordsImportModels.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
                 row(" 裂 ", " split "),
                 Arrays.asList(row("裂", "split"), row("提", "present"), row("浅", "shallow")),
                 Arrays.asList(null, inventory(null), inventory(" 腕 ", "arm")),
@@ -62,7 +62,7 @@ public final class MeaningKanjiChoicePlannerTest {
 
     @Test
     public void excludesDecoysWithSamePrimaryMeaning() {
-        Records.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
+        RecordsImportModels.MeaningKanjiChoiceCard card = new MeaningKanjiChoicePlanner().buildChoiceCard(
                 row("裂", "split"),
                 Arrays.asList(row("裂", "split"), row("割", " split "), row("提", "present"), row("浅", "shallow")),
                 Arrays.asList(inventory("腕", "arm"), inventory("謎", "mystery")),
@@ -74,15 +74,15 @@ public final class MeaningKanjiChoicePlannerTest {
         assertEquals(4, card.choices.size());
     }
 
-    private static Records.DashboardRow row(String kanji, String meaning) {
-        return new Records.DashboardRow(kanji, 100, meaning, "reading", "search", 10, "reason", "reason text", 1, 0, 0, new ArrayList<>());
+    private static RecordsImportModels.DashboardRow row(String kanji, String meaning) {
+        return new RecordsImportModels.DashboardRow(kanji, 100, meaning, "reading", "search", 10, "reason", "reason text", 1, 0, 0, new ArrayList<>());
     }
 
-    private static Records.KanjiInventoryItem inventory(String kanji) {
+    private static RecordsImportModels.KanjiInventoryItem inventory(String kanji) {
         return inventory(kanji, "meaning");
     }
 
-    private static Records.KanjiInventoryItem inventory(String kanji, String meaning) {
-        return new Records.KanjiInventoryItem(kanji, meaning, "reading", "search", 1, 1, false, 0L);
+    private static RecordsImportModels.KanjiInventoryItem inventory(String kanji, String meaning) {
+        return new RecordsImportModels.KanjiInventoryItem(kanji, meaning, "reading", "search", 1, 1, false, 0L);
     }
 }

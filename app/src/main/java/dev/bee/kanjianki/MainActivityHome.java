@@ -1,5 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -47,7 +52,6 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -98,9 +102,9 @@ abstract class MainActivityHome extends MainActivityBase {
         long now = System.currentTimeMillis();
         LocalStore.SyncStatus sync = store.latestSync();
         StudyStatsStore.StudyStreak streak = store.studyStreak(now);
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
-        List<Records.StudyItem> homeItems = studyQueue(rows, now, false);
-        Records.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, now, false);
+        RecordsSchedulerModels.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
         AnkiDroidGateway.ProviderStatus provider = gateway.status();
 
@@ -159,7 +163,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return header;
     }
 
-    View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, Records.AdaptiveLoadPlan plan) {
+    View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         LinearLayout row = new EqualHeightRow(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBaselineAligned(false);
@@ -338,7 +342,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
     }
 
-    String focusHeadline(Records.AdaptiveLoadPlan plan) {
+    String focusHeadline(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         if (plan == null || plan.target <= 0) {
             return "Waiting";
         }
@@ -412,9 +416,9 @@ abstract class MainActivityHome extends MainActivityBase {
     void renderFocusQueue() {
         base("home");
         long now = System.currentTimeMillis();
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
-        List<Records.StudyItem> items = studyQueue(rows, now, false);
-        Records.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsStudyModels.StudyItem> items = studyQueue(rows, now, false);
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
 
         content.addView(homeSectionHeader("Focus queue", "Home", this::renderHome));
@@ -444,13 +448,13 @@ abstract class MainActivityHome extends MainActivityBase {
             emptyState("No recent mistakes yet", "Missed and hard reviews will show here after you study.");
             return;
         }
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         for (StudyStatsStore.RecentMistake mistake : mistakes) {
             content.addView(recentMistakeRow(mistake, findRow(rows, mistake.kanji)));
         }
     }
 
-    View recentMistakeRow(StudyStatsStore.RecentMistake mistake, Records.DashboardRow row) {
+    View recentMistakeRow(StudyStatsStore.RecentMistake mistake, RecordsImportModels.DashboardRow row) {
         LinearLayout box = panelBox(Color.WHITE, PINK_STROKE);
         box.setOnClickListener(v -> renderDetail(mistake.kanji));
         LinearLayout top = new LinearLayout(this);
@@ -499,7 +503,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void confirmSync() {
-        Records.Settings current = settings();
+        RecordsSyncModels.Settings current = settings();
         new AlertDialog.Builder(this)
                 .setTitle("Sync AnkiDroid?")
                 .setMessage("Kani imports suspended " + current.modelName + " cards by default, keeps them safe locally, and only uses active cards when that import filter is enabled.")
@@ -553,9 +557,9 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(text("Sync complete", 34, INK, true));
         LinearLayout summary = band(TEAL);
         long now = System.currentTimeMillis();
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
-        List<Records.StudyItem> items = store.studyItems();
-        Records.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsStudyModels.StudyItem> items = store.studyItems();
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
         List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
         summary.addView(text(countText(entries.size(), "kanji ready to study", "kanji ready to study"), 24, Color.WHITE, true));
         summary.addView(text(countText(result.dashboardRows, "candidate found from Anki", "candidates found from Anki") + ". " + adaptiveFocusText(plan) + ".", 16, Color.WHITE, false));
@@ -606,7 +610,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return value;
     }
 
-    List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist) {
+    List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist) {
         return studyQueue(rows, now, persist, null);
     }
 
@@ -614,26 +618,26 @@ abstract class MainActivityHome extends MainActivityBase {
         return store.studyAheadMinutes() * 60_000L;
     }
 
-    List<Records.StudyItem> studyQueue(List<Records.DashboardRow> rows, long now, boolean persist, Records.AdaptiveLoadPlan plan) {
-        List<Records.StudyItem> currentItems = store.studyItems();
+    List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
+        List<RecordsStudyModels.StudyItem> currentItems = store.studyItems();
         if (!persist) {
             return currentItems;
         }
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.AdaptiveLoadPlan effectivePlan = plan == null ? adaptivePlan(rows, currentItems, now) : plan;
-        List<Records.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan, studyLadderSettings());
+        RecordsSchedulerModels.AdaptiveLoadPlan effectivePlan = plan == null ? adaptivePlan(rows, currentItems, now) : plan;
+        List<RecordsStudyModels.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan, studyLadderSettings());
         seeded = store.annotateSimilarKanjiAvailability(seeded);
         store.replaceStudyItems(seeded);
         return seeded;
     }
 
-    List<QueueEntry> queuedEntries(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+    List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         return queuedEntries(rows, items, now, null);
     }
 
-    List<QueueEntry> queuedEntries(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now, Records.AdaptiveLoadPlan plan) {
-        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
-        for (Records.DashboardRow row : rows) {
+    List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
+        Map<String, RecordsImportModels.DashboardRow> rowByKanji = new HashMap<>();
+        for (RecordsImportModels.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
         }
         Map<String, Integer> focusOrder = new HashMap<>();
@@ -644,8 +648,8 @@ abstract class MainActivityHome extends MainActivityBase {
         }
         List<QueueEntry> entries = new ArrayList<>();
         BridgeScheduler scheduler = new BridgeScheduler();
-        for (Records.StudyItem item : scheduler.activeQueueItems(items, rows, now, studyAheadMillis(), null, studyLadderSettings())) {
-            Records.DashboardRow row = rowByKanji.get(item.kanji);
+        for (RecordsStudyModels.StudyItem item : scheduler.activeQueueItems(items, rows, now, studyAheadMillis(), null, studyLadderSettings())) {
+            RecordsImportModels.DashboardRow row = rowByKanji.get(item.kanji);
             if (row != null) {
                 entries.add(new QueueEntry(row, item));
             }
@@ -673,7 +677,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return 3;
     }
 
-    int rowColor(Records.StudyItem item, long now) {
+    int rowColor(RecordsStudyModels.StudyItem item, long now) {
         if (item.dueAtMillis <= now) {
             return CORAL;
         }
@@ -684,8 +688,8 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     View queueRowView(QueueEntry entry, long now) {
-        Records.DashboardRow row = entry.row;
-        Records.StudyItem item = entry.item;
+        RecordsImportModels.DashboardRow row = entry.row;
+        RecordsStudyModels.StudyItem item = entry.item;
         LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
         box.setPadding(dp(12), dp(12), dp(12), dp(12));
         box.setOnClickListener(v -> renderDetail(row.kanji));
@@ -706,16 +710,16 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
         chips.addView(chip(recognitionStageLabel(item), BLUE));
-        if (item.phase == Records.SchedulerPhase.RELEARNING) {
+        if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
             chips.addView(chip("relearning", CORAL));
-        } else if (item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
+        } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
             chips.addView(chip(STATE_LEARNING, TEAL));
         }
         box.addView(chips);
         return box;
     }
 
-    String queueCardBody(Records.DashboardRow row) {
+    String queueCardBody(RecordsImportModels.DashboardRow row) {
         if (row.reasonText == null || row.reasonText.isEmpty()) {
             return "Needs focused kanji practice.";
         }
@@ -726,7 +730,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return row.reasonText;
     }
 
-    String focusReasonLine(Records.DashboardRow row, Records.StudyItem item, long now) {
+    String focusReasonLine(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item, long now) {
         List<String> parts = new ArrayList<>();
         if (row.weaknessScore > 0) {
             parts.add("weakness " + row.weaknessScore);
@@ -754,7 +758,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return kanji;
     }
 
-    String recognitionStageLabel(Records.StudyItem item) {
+    String recognitionStageLabel(RecordsStudyModels.StudyItem item) {
         switch (item.rung) {
             case WRITE_KANJI:
                 return "write kanji";
@@ -774,10 +778,10 @@ abstract class MainActivityHome extends MainActivityBase {
         }
     }
 
-    String sourceEvidenceText(Records.DashboardRow row) {
+    String sourceEvidenceText(RecordsImportModels.DashboardRow row) {
         String active = "";
         String suspended = "";
-        for (Records.Example example : row.examples) {
+        for (RecordsImportModels.Example example : row.examples) {
             if (active.isEmpty() && SOURCE_ACTIVE.equals(example.sourceType)) {
                 active = example.expression;
             } else if (suspended.isEmpty() && SOURCE_SUSPENDED.equals(example.sourceType)) {
@@ -819,18 +823,18 @@ abstract class MainActivityHome extends MainActivityBase {
         submit.setOnClickListener(v -> renderBrowseKanji(search.getText().toString()));
         content.addView(submit);
 
-        List<Records.KanjiInventoryItem> items = store.searchKanjiInventory(query);
+        List<RecordsImportModels.KanjiInventoryItem> items = store.searchKanjiInventory(query);
         content.addView(sectionTitle(browseResultHeading(items.size())));
         if (items.isEmpty()) {
             emptyState("No local kanji found", "Sync AnkiDroid first, or try a different search.");
             return;
         }
-        for (Records.KanjiInventoryItem item : items) {
+        for (RecordsImportModels.KanjiInventoryItem item : items) {
             content.addView(browseKanjiRow(item));
         }
     }
 
-    View browseKanjiRow(Records.KanjiInventoryItem item) {
+    View browseKanjiRow(RecordsImportModels.KanjiInventoryItem item) {
         LinearLayout box = panelBox(Color.WHITE, item.suspended ? CORAL : TEAL);
         box.setOnClickListener(v -> renderDetail(item.kanji, true));
         LinearLayout top = new LinearLayout(this);
@@ -872,9 +876,9 @@ abstract class MainActivityHome extends MainActivityBase {
 
     void renderDetail(String kanji, boolean fromBrowse, String browseQuery) {
         base("home");
-        Records.KanjiRecoveryTimeline timeline = store.timelineForKanji(kanji);
-        Records.DashboardRow row = timeline.currentRow;
-        Records.KanjiInventoryItem inventory = timeline.inventoryItem;
+        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji(kanji);
+        RecordsImportModels.DashboardRow row = timeline.currentRow;
+        RecordsImportModels.KanjiInventoryItem inventory = timeline.inventoryItem;
         if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
             content.addView(fullWidthHomeButton());
             emptyState("Kanji not found", "This row may have disappeared after a sync.");
@@ -897,7 +901,7 @@ abstract class MainActivityHome extends MainActivityBase {
         }
     }
 
-    String detailDisplayKanji(String fallback, Records.DashboardRow row, Records.KanjiInventoryItem inventory) {
+    String detailDisplayKanji(String fallback, RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
         if (row != null) {
             return row.kanji;
         }
@@ -918,7 +922,7 @@ abstract class MainActivityHome extends MainActivityBase {
         }
     }
 
-    void addDetailIdentity(Records.DashboardRow row, Records.KanjiInventoryItem inventory, boolean suspended) {
+    void addDetailIdentity(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, boolean suspended) {
         if (suspended) {
             LinearLayout chips = new LinearLayout(this);
             chips.setOrientation(LinearLayout.HORIZONTAL);
@@ -938,14 +942,14 @@ abstract class MainActivityHome extends MainActivityBase {
         }
     }
 
-    String inventoryTitle(Records.KanjiInventoryItem inventory) {
+    String inventoryTitle(RecordsImportModels.KanjiInventoryItem inventory) {
         if (inventory == null || inventory.primaryMeaning.isEmpty()) {
             return "Historical recovery";
         }
         return inventory.primaryMeaning;
     }
 
-    LinearLayout detailReasonPanel(Records.DashboardRow row, Records.KanjiInventoryItem inventory) {
+    LinearLayout detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
         LinearLayout why = band(BLUE);
         why.addView(text("Why it is here", 22, Color.WHITE, true));
         if (row == null) {
@@ -963,7 +967,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return why;
     }
 
-    void addDetailActions(Records.DashboardRow row, Records.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
+    void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
         if (row != null && !suspended) {
             Button practice = primaryButton("Review this now", CORAL);
             practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
@@ -984,7 +988,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(suspend);
     }
 
-    String detailBrowserSearch(Records.DashboardRow row, Records.KanjiInventoryItem inventory) {
+    String detailBrowserSearch(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
         if (inventory != null && !inventory.browserSearch.isEmpty()) {
             return inventory.browserSearch;
         }
@@ -994,15 +998,15 @@ abstract class MainActivityHome extends MainActivityBase {
         return "";
     }
 
-    void addDetailExamples(Records.DashboardRow row) {
+    void addDetailExamples(RecordsImportModels.DashboardRow row) {
         addSpace(12);
         content.addView(sectionTitle("Examples"));
-        for (Records.Example example : row.examples) {
+        for (RecordsImportModels.Example example : row.examples) {
             content.addView(exampleView(example));
         }
     }
 
-    View localInventoryPanel(Records.KanjiInventoryItem inventory) {
+    View localInventoryPanel(RecordsImportModels.KanjiInventoryItem inventory) {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
         box.addView(text("Local inventory", 19, INK, true));
         box.addView(text(countText(inventory.sourceCount, "source note/card", "source notes/cards") + " · " + countText(inventory.exampleCount, "stored example", "stored examples"), 15, MUTED, false));
@@ -1024,23 +1028,23 @@ abstract class MainActivityHome extends MainActivityBase {
         Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
     }
 
-    void addRecoveryTimeline(Records.KanjiRecoveryTimeline timeline) {
+    void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
         content.addView(sectionTitle("Recovery timeline"));
         content.addView(timelineStatusCard(timeline));
         if (timeline.events.isEmpty()) {
             content.addView(text("Timeline will fill in after the next sync or review.", 15, MUTED, false));
             return;
         }
-        for (Records.KanjiTimelineEvent event : timeline.events) {
+        for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
             content.addView(timelineEventView(event));
         }
     }
 
-    View timelineStatusCard(Records.KanjiRecoveryTimeline timeline) {
+    View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
         int color = timelineStatusColor(timeline);
         LinearLayout box = panelBox(Color.WHITE, color);
         box.addView(text(timelineStatusText(timeline), 20, INK, true));
-        Records.DashboardRow row = timeline.currentRow;
+        RecordsImportModels.DashboardRow row = timeline.currentRow;
         if (row != null) {
             box.addView(text(String.format(Locale.ROOT, "Mature support %d / target %d", row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
         } else {
@@ -1049,8 +1053,8 @@ abstract class MainActivityHome extends MainActivityBase {
         return box;
     }
 
-    String timelineStatusText(Records.KanjiRecoveryTimeline timeline) {
-        Records.StudyItem item = timeline.currentStudyItem;
+    String timelineStatusText(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
+        RecordsStudyModels.StudyItem item = timeline.currentStudyItem;
         if (item != null && STATE_RETIRED.equals(item.state)) {
             return "Retired by Anki support";
         }
@@ -1063,8 +1067,8 @@ abstract class MainActivityHome extends MainActivityBase {
         return "Active repair";
     }
 
-    int timelineStatusColor(Records.KanjiRecoveryTimeline timeline) {
-        Records.StudyItem item = timeline.currentStudyItem;
+    int timelineStatusColor(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
+        RecordsStudyModels.StudyItem item = timeline.currentStudyItem;
         if (item != null && STATE_RETIRED.equals(item.state)) {
             return TEAL;
         }
@@ -1074,7 +1078,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return CORAL;
     }
 
-    View timelineEventView(Records.KanjiTimelineEvent event) {
+    View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
         LinearLayout box = panelBox(Color.WHITE, timelineEventColor(event.eventType));
         box.addView(text(timelineDate(event.occurredAtMillis), 13, MUTED, false));
         box.addView(text(event.title, 18, INK, true));
@@ -1102,7 +1106,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return UiDateText.timelineDate(occurredAt);
     }
 
-    String timelineSourceLine(Records.KanjiTimelineEvent event) {
+    String timelineSourceLine(RecordsImportModels.KanjiTimelineEvent event) {
         if (event.sourceExpression.isEmpty()) {
             return "";
         }
@@ -1112,7 +1116,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return "Source: " + event.sourceExpression + "  " + event.sourceReading;
     }
 
-    View exampleView(Records.Example example) {
+    View exampleView(RecordsImportModels.Example example) {
         int color = SOURCE_SUSPENDED.equals(example.sourceType) ? CORAL : TEAL;
         LinearLayout box = panelBox(Color.WHITE, color);
         box.addView(chip(example.sourceType.toUpperCase(Locale.ROOT), color));

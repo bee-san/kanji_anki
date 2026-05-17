@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -7,7 +9,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.core.DictionaryLookup;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.StudyCue;
 import dev.bee.kanjianki.core.SuspendedKanjiImporter;
 
@@ -90,13 +91,13 @@ public final class DictionaryStoreInstrumentedTest {
     @Test
     public void jitenRankFilteringUsesDictionaryStoreRanks() throws Exception {
         DictionaryStore store = DictionaryStore.open(context);
-        Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Collections.singletonList(note(1L, "人")),
-                Collections.singletonList(new Records.Card(10L, 1L, 0, "Mining", -1, 0, 0, 0, 0, 0, true))
+                Collections.singletonList(new RecordsSyncModels.Card(10L, 1L, 0, "Mining", -1, 0, 0, 0, 0, 0, true))
         );
 
-        List<Records.SuspendedImport> imports = new SuspendedKanjiImporter(store.jitenRanks(), 1, 1)
+        List<RecordsImportModels.SuspendedImport> imports = new SuspendedKanjiImporter(store.jitenRanks(), 1, 1)
                 .importFrom(snapshot, settings);
 
         assertEquals(1, imports.size());
@@ -579,8 +580,8 @@ public final class DictionaryStoreInstrumentedTest {
         }
     }
 
-    private Records.Note note(long id, String expression) {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+    private RecordsSyncModels.Note note(long id, String expression) {
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put(settings.expressionField, expression);
         fields.put(settings.readingField, "ひと");
@@ -588,7 +589,7 @@ public final class DictionaryStoreInstrumentedTest {
         fields.put(settings.sentenceField, expression + "を見た。");
         fields.put(settings.frequencyField, "1");
         fields.put(settings.frequencySortField, "1");
-        return new Records.Note(id, settings.modelName, fields, Arrays.asList("tag"));
+        return new RecordsSyncModels.Note(id, settings.modelName, fields, Arrays.asList("tag"));
     }
 
     private File packageDir(String name) {

@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 public class BridgeSchedulerTest {
     @Test
     public void seedsQueueWithDailyNewAndActiveCaps() {
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 "Kiku",
                 "Mining",
                 "Expression",
@@ -40,24 +40,24 @@ public class BridgeSchedulerTest {
                 2,
                 1
         );
-        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 20), row("謎", 19), row("示", 18));
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("裂", 20), row("謎", 19), row("示", 18));
 
-        List<Records.StudyItem> items = new BridgeScheduler().seedQueue(rows, Collections.emptyList(), settings, 1000L, 0L);
+        List<RecordsStudyModels.StudyItem> items = new BridgeScheduler().seedQueue(rows, Collections.emptyList(), settings, 1000L, 0L);
 
         assertEquals(1, items.size());
         assertEquals("裂", items.get(0).kanji);
-        assertEquals(Records.LadderRung.KANJI_MEANING, items.get(0).rung);
-        assertEquals(Records.SchedulerPhase.NEW_LEARNING, items.get(0).phase);
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, items.get(0).rung);
+        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, items.get(0).phase);
     }
 
     @Test
     public void writingFailureOnWriteKanjiRungMapsToAgain() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
-                .withRungAndPhase(Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW);
-        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "good", true, false, false, 0);
+        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
+                .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW);
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", true, false, false, 0);
 
-        Records.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
 
         assertEquals("again", result.appliedRating);
     }
@@ -65,11 +65,11 @@ public class BridgeSchedulerTest {
     @Test
     public void manualOverrideAllowsWritingRatingOnWriteKanjiRung() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
-                .withRungAndPhase(Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW);
-        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "good", true, false, true, 0);
+        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
+                .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW);
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", true, false, true, 0);
 
-        Records.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
 
         // Manual override on the write rung is mapped to Hard by the scheduler
         // so the learner keeps progress but does not auto-pass.
@@ -81,10 +81,10 @@ public class BridgeSchedulerTest {
     @Test
     public void writingHelpOnlyChangesAfterWritingReviews() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0);
-        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "easy", false, false, false, 0);
+        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0);
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("裂", "token-1", "easy", false, false, false, 0);
 
-        Records.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(item, request, new HashSet<>(), 1000L);
 
         assertEquals("easy", result.appliedRating);
         assertEquals(2, result.item.writingLevel);
@@ -93,24 +93,24 @@ public class BridgeSchedulerTest {
     @Test
     public void cleanWritingAdvancesHintAssistedAndMessyWritingHold() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem template = new Records.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 1, "clean", 0)
-                .withRungAndPhase(Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW);
+        RecordsStudyModels.StudyItem template = new RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 1, "clean", 0)
+                .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW);
 
-        Records.ReviewResult clean = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult clean = scheduler.applyReview(
                 template,
-                new Records.ReviewRequest("裂", "clean", "hard", true, true, true, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "clean", "hard", true, true, true, false, 0),
                 new HashSet<>(),
                 1000L
         );
-        Records.ReviewResult hinted = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult hinted = scheduler.applyReview(
                 template.withToken("hinted"),
-                new Records.ReviewRequest("裂", "hinted", "good", true, true, true, false, 1),
+                new RecordsSchedulerModels.ReviewRequest("裂", "hinted", "good", true, true, true, false, 1),
                 new HashSet<>(),
                 1000L
         );
-        Records.ReviewResult messy = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult messy = scheduler.applyReview(
                 template.withToken("messy"),
-                new Records.ReviewRequest("裂", "messy", "hard", true, true, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "messy", "hard", true, true, false, false, 0),
                 new HashSet<>(),
                 1000L
         );
@@ -123,12 +123,12 @@ public class BridgeSchedulerTest {
     @Test
     public void duplicateTokenDoesNotAdvanceTwice() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = item("裂").withToken("token-1");
+        RecordsStudyModels.StudyItem item = item("裂").withToken("token-1");
         HashSet<String> consumed = new HashSet<>();
-        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "easy", false, false, false, 0);
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("裂", "token-1", "easy", false, false, false, 0);
 
-        Records.ReviewResult first = scheduler.applyReview(item, request, consumed, 1000L);
-        Records.ReviewResult second = scheduler.applyReview(first.item.withToken("token-1"), request, consumed, 2000L);
+        RecordsSchedulerModels.ReviewResult first = scheduler.applyReview(item, request, consumed, 1000L);
+        RecordsSchedulerModels.ReviewResult second = scheduler.applyReview(first.item.withToken("token-1"), request, consumed, 2000L);
 
         assertFalse(first.duplicate);
         assertTrue(second.duplicate);
@@ -138,32 +138,32 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionRotatesTaskShapeForEachRung() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudySession typing = scheduler.nextSession(
-                Collections.singletonList(itemAtRung("拉", Records.LadderRung.TYPE_MEANING)),
+        RecordsSchedulerModels.StudySession typing = scheduler.nextSession(
+                Collections.singletonList(itemAtRung("拉", RecordsBase.LadderRung.TYPE_MEANING)),
                 Collections.singletonList(row("拉", 10)),
                 1000L
         );
-        Records.StudySession kanji = scheduler.nextSession(
-                Collections.singletonList(itemAtRung("裂", Records.LadderRung.KANJI_MEANING)),
+        RecordsSchedulerModels.StudySession kanji = scheduler.nextSession(
+                Collections.singletonList(itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING)),
                 Collections.singletonList(row("裂", 10)),
                 1000L
         );
-        Records.StudySession meaningKanji = scheduler.nextSession(
-                Collections.singletonList(itemAtRung("浅", Records.LadderRung.MEANING_KANJI)),
+        RecordsSchedulerModels.StudySession meaningKanji = scheduler.nextSession(
+                Collections.singletonList(itemAtRung("浅", RecordsBase.LadderRung.MEANING_KANJI)),
                 Collections.singletonList(row("浅", 10)),
                 1000L,
                 0L,
                 null,
-                Records.Settings.kikuDefaults(),
-                Records.StudyLadderSettings.defaults().withRungEnabled(Records.LadderRung.MEANING_KANJI, true)
+                RecordsSyncModels.Settings.kikuDefaults(),
+                RecordsBase.StudyLadderSettings.defaults().withRungEnabled(RecordsBase.LadderRung.MEANING_KANJI, true)
         );
-        Records.StudySession font = scheduler.nextSession(
-                Collections.singletonList(itemAtRung("謎", Records.LadderRung.FONT_MEANING)),
+        RecordsSchedulerModels.StudySession font = scheduler.nextSession(
+                Collections.singletonList(itemAtRung("謎", RecordsBase.LadderRung.FONT_MEANING)),
                 Collections.singletonList(row("謎", 10)),
                 1000L
         );
-        Records.StudySession word = scheduler.nextSession(
-                Collections.singletonList(itemAtRung("示", Records.LadderRung.WORD_READING)),
+        RecordsSchedulerModels.StudySession word = scheduler.nextSession(
+                Collections.singletonList(itemAtRung("示", RecordsBase.LadderRung.WORD_READING)),
                 Collections.singletonList(row("示", 10)),
                 1000L
         );
@@ -188,13 +188,13 @@ public class BridgeSchedulerTest {
     @Test
     public void writeKanjiRungRoutesToWritingTask() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem pending = itemAtRung("裂", Records.LadderRung.WRITE_KANJI)
+        RecordsStudyModels.StudyItem pending = itemAtRung("裂", RecordsBase.LadderRung.WRITE_KANJI)
                 .copyBuilder()
                 .writingRemediationPending(true)
-                .phase(Records.SchedulerPhase.RELEARNING)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Collections.singletonList(pending),
                 Collections.singletonList(row("裂", 10)),
                 1000L
@@ -208,8 +208,8 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionPrioritizesDueReviewsBeforeNewCards() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem newProblem = itemAtRung("裂", Records.LadderRung.KANJI_MEANING);
-        Records.StudyItem dueReview = itemAtRung("謎", Records.LadderRung.KANJI_MEANING)
+        RecordsStudyModels.StudyItem newProblem = itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING);
+        RecordsStudyModels.StudyItem dueReview = itemAtRung("謎", RecordsBase.LadderRung.KANJI_MEANING)
                 .copyBuilder()
                 .state("review")
                 .dueAtMillis(500L)
@@ -217,10 +217,10 @@ public class BridgeSchedulerTest {
                 .difficulty(4.8)
                 .totalReviews(2)
                 .learningStep(2)
-                .phase(Records.SchedulerPhase.REVIEW)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .build();
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Arrays.asList(newProblem, dueReview),
                 Arrays.asList(row("裂", 30), row("謎", 20)),
                 1000L
@@ -235,16 +235,16 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionTreatsRelearningAndWriteRungAsUrgentBeforeReviews() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem review = itemAtRung("謎", Records.LadderRung.KANJI_MEANING)
+        RecordsStudyModels.StudyItem review = itemAtRung("謎", RecordsBase.LadderRung.KANJI_MEANING)
                 .copyBuilder()
                 .state("review")
                 .stability(2.0)
                 .difficulty(4.0)
                 .totalReviews(4)
                 .learningStep(2)
-                .phase(Records.SchedulerPhase.REVIEW)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .build();
-        Records.StudyItem relearning = itemAtRung("習", Records.LadderRung.KANJI_MEANING)
+        RecordsStudyModels.StudyItem relearning = itemAtRung("習", RecordsBase.LadderRung.KANJI_MEANING)
                 .copyBuilder()
                 .dueAtMillis(500L)
                 .stability(0.9)
@@ -252,9 +252,9 @@ public class BridgeSchedulerTest {
                 .totalReviews(2)
                 .lapses(1)
                 .learningStep(1)
-                .phase(Records.SchedulerPhase.RELEARNING)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
-        Records.StudyItem writeRung = itemAtRung("裂", Records.LadderRung.WRITE_KANJI)
+        RecordsStudyModels.StudyItem writeRung = itemAtRung("裂", RecordsBase.LadderRung.WRITE_KANJI)
                 .copyBuilder()
                 .state("review")
                 .stability(1.0)
@@ -264,15 +264,15 @@ public class BridgeSchedulerTest {
                 .learningStep(2)
                 .writingLevel(1)
                 .writingRemediationPending(true)
-                .phase(Records.SchedulerPhase.REVIEW)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .build();
 
-        Records.StudySession writeSession = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession writeSession = scheduler.nextSession(
                 Arrays.asList(review, relearning, writeRung),
                 Arrays.asList(row("謎", 100), row("習", 10), row("裂", 1)),
                 1000L
         );
-        Records.StudySession relearningSession = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession relearningSession = scheduler.nextSession(
                 Arrays.asList(review, relearning),
                 Arrays.asList(row("謎", 100), row("習", 10)),
                 1000L
@@ -289,17 +289,17 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionUsesWeaknessAndKanjiTieBreakersForSamePriorityDueItems() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem lowerWeakness = reviewItem("謎", Records.LadderRung.KANJI_MEANING, 0L);
-        Records.StudyItem higherWeakness = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
-        Records.StudyItem firstKanji = reviewItem("亜", Records.LadderRung.KANJI_MEANING, 0L);
-        Records.StudyItem laterKanji = reviewItem("唖", Records.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem lowerWeakness = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem higherWeakness = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem firstKanji = reviewItem("亜", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem laterKanji = reviewItem("唖", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        Records.StudySession weaknessSession = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession weaknessSession = scheduler.nextSession(
                 Arrays.asList(lowerWeakness, higherWeakness),
                 Arrays.asList(row("謎", 10), row("裂", 80)),
                 1000L
         );
-        Records.StudySession kanjiSession = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession kanjiSession = scheduler.nextSession(
                 Arrays.asList(laterKanji, firstKanji),
                 Arrays.asList(row("唖", 20), row("亜", 20)),
                 1000L
@@ -314,7 +314,7 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueRetiresItemsMissingFromDashboardRows() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 "Kiku",
                 "Mining",
                 "Expression",
@@ -329,9 +329,9 @@ public class BridgeSchedulerTest {
                 1,
                 2
         );
-        Records.StudyItem stale = item("古");
+        RecordsStudyModels.StudyItem stale = item("古");
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(row("裂", 30)),
                 Collections.singletonList(stale),
                 settings,
@@ -346,17 +346,17 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueRetiresReviewedItemsWithEnoughMatureSupport() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem reviewed = reviewItem("裂", Records.LadderRung.FONT_MEANING, 0L)
+        RecordsStudyModels.StudyItem reviewed = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
                 .copyBuilder()
                 .totalReviews(3)
                 .stability(1.5)
                 .build();
-        Records.DashboardRow covered = new Records.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, new ArrayList<>());
+        RecordsImportModels.DashboardRow covered = new RecordsImportModels.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, new ArrayList<>());
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(covered),
                 Collections.singletonList(reviewed),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 1000L,
                 0L
         );
@@ -367,13 +367,13 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueKeepsUnreviewedItemsEvenWithEnoughMatureSupport() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem unreviewed = item("裂");
-        Records.DashboardRow covered = new Records.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, new ArrayList<>());
+        RecordsStudyModels.StudyItem unreviewed = item("裂");
+        RecordsImportModels.DashboardRow covered = new RecordsImportModels.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, new ArrayList<>());
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(covered),
                 Collections.singletonList(unreviewed),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 1000L,
                 0L
         );
@@ -384,44 +384,44 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueReopensRetiredItemsWhenWeakEvidenceReturns() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem retired = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem retired = item("裂").copyBuilder()
                 .state("retired")
                 .stability(1.5)
                 .difficulty(4.0)
                 .totalReviews(3)
                 .learningStep(2)
                 .writingLevel(2)
-                .rung(Records.LadderRung.WORD_READING)
-                .phase(Records.SchedulerPhase.REVIEW)
+                .rung(RecordsBase.LadderRung.WORD_READING)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .build();
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(row("裂", 30)),
                 Collections.singletonList(retired),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 1000L,
                 0L
         );
 
-        Records.StudyItem reopened = findItem(items, "裂");
+        RecordsStudyModels.StudyItem reopened = findItem(items, "裂");
         assertEquals("new", reopened.state);
         assertEquals(0, reopened.totalReviews);
         assertEquals(1000L, reopened.createdAtMillis);
-        assertEquals(Records.LadderRung.KANJI_MEANING, reopened.rung);
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, reopened.rung);
     }
 
     @Test
     public void retiredItemsStayRetiredWhenAdmissionRoomIsFull() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem active = item("謎").copyBuilder()
+        RecordsStudyModels.StudyItem active = item("謎").copyBuilder()
                 .createdAtMillis(0L)
                 .build();
-        Records.StudyItem retired = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem retired = item("裂").copyBuilder()
                 .state("retired")
                 .totalReviews(3)
                 .build();
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Arrays.asList(row("謎", 20), row("裂", 30)),
                 Arrays.asList(active, retired),
                 settingsWithQueue(1, 3),
@@ -435,7 +435,7 @@ public class BridgeSchedulerTest {
     @Test
     public void seedExtraNewCardsAddsRequestedCardsBeyondDailyNewCap() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem active = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem active = item("裂").copyBuilder()
                 .createdAtMillis(1000L)
                 .build();
 
@@ -461,8 +461,8 @@ public class BridgeSchedulerTest {
     @Test
     public void seedExtraNewCardsClampsToRemainingCandidatesAndReopensRetiredItems() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem active = item("謎");
-        Records.StudyItem retired = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem active = item("謎");
+        RecordsStudyModels.StudyItem retired = item("裂").copyBuilder()
                 .state("retired")
                 .totalReviews(3)
                 .build();
@@ -507,7 +507,7 @@ public class BridgeSchedulerTest {
     @Test
     public void seedExtraNewCardsHonorsConfiguredNewCardSortMode() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        List<Records.DashboardRow> rows = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
                 rankedRow("低", 300, 40, example("低", 3.0, 0.60)),
                 rankedRow("難", 100, 20, example("難", 8.0, 0.90)),
                 rankedRow("弱", 200, 80, example("弱", null, 45.0))
@@ -516,7 +516,7 @@ public class BridgeSchedulerTest {
         assertEquals(Arrays.asList("難", "弱", "低"), scheduler.seedExtraNewCards(
                 rows,
                 Collections.emptyList(),
-                settingsWithSortMode(Records.NEW_CARD_SORT_FREQUENCY),
+                settingsWithSortMode(RecordsBase.NEW_CARD_SORT_FREQUENCY),
                 2000L,
                 0L,
                 3
@@ -524,7 +524,7 @@ public class BridgeSchedulerTest {
         assertEquals(Arrays.asList("難", "低", "弱"), scheduler.seedExtraNewCards(
                 rows,
                 Collections.emptyList(),
-                settingsWithSortMode(Records.NEW_CARD_SORT_FSRS_DIFFICULTY),
+                settingsWithSortMode(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
                 2000L,
                 0L,
                 3
@@ -532,7 +532,7 @@ public class BridgeSchedulerTest {
         assertEquals(Arrays.asList("弱", "低", "難"), scheduler.seedExtraNewCards(
                 rows,
                 Collections.emptyList(),
-                settingsWithSortMode(Records.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                settingsWithSortMode(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
                 2000L,
                 0L,
                 3
@@ -540,7 +540,7 @@ public class BridgeSchedulerTest {
         assertEquals(Arrays.asList("弱", "低", "難"), scheduler.seedExtraNewCards(
                 rows,
                 Collections.emptyList(),
-                settingsWithSortMode(Records.NEW_CARD_SORT_KANI_WEAKNESS),
+                settingsWithSortMode(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
                 2000L,
                 0L,
                 3
@@ -550,8 +550,8 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionUsesNewCardSortOnlyForUnseenNewCards() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.Settings difficultySort = settingsWithSortMode(Records.NEW_CARD_SORT_FSRS_DIFFICULTY);
-        List<Records.DashboardRow> rows = Arrays.asList(
+        RecordsSyncModels.Settings difficultySort = settingsWithSortMode(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY);
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
                 rankedRow("低", 300, 90, example("低", 3.0, 0.60)),
                 rankedRow("難", 100, 10, example("難", 8.0, 0.90))
         );
@@ -564,7 +564,7 @@ public class BridgeSchedulerTest {
                 2
         );
 
-        Records.StudySession session = scheduler.nextSession(result.items, rows, 2000L, 0L, null, difficultySort);
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(result.items, rows, 2000L, 0L, null, difficultySort);
 
         assertNotNull(session);
         assertEquals("難", session.item.kanji);
@@ -573,51 +573,51 @@ public class BridgeSchedulerTest {
     @Test
     public void matureHigherRungSuppressesLowerRecognitionSiblings() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem word = matureReview("裂", Records.LadderRung.WORD_READING);
-        Records.StudyItem font = reviewItem("裂", Records.LadderRung.FONT_MEANING, 0L);
-        Records.StudyItem kanji = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem word = matureReview("裂", RecordsBase.LadderRung.WORD_READING);
+        RecordsStudyModels.StudyItem font = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L);
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(kanji, word, font));
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(kanji, word, font));
 
-        Records.StudyItem updatedKanji = findItemAtRung(result, Records.LadderRung.KANJI_MEANING);
-        Records.StudyItem updatedFont = findItemAtRung(result, Records.LadderRung.FONT_MEANING);
-        assertEquals(Records.LadderRung.WORD_READING.wireName(), updatedKanji.suppressedByTaskType);
-        assertEquals(Records.LadderRung.WORD_READING.wireName(), updatedFont.suppressedByTaskType);
+        RecordsStudyModels.StudyItem updatedKanji = findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING);
+        RecordsStudyModels.StudyItem updatedFont = findItemAtRung(result, RecordsBase.LadderRung.FONT_MEANING);
+        assertEquals(RecordsBase.LadderRung.WORD_READING.wireName(), updatedKanji.suppressedByTaskType);
+        assertEquals(RecordsBase.LadderRung.WORD_READING.wireName(), updatedFont.suppressedByTaskType);
         assertTrue(updatedKanji.suppressedAtMillis > 0L);
         assertTrue(updatedFont.suppressedAtMillis > 0L);
-        assertTrue(findItemAtRung(result, Records.LadderRung.WORD_READING).suppressedByTaskType.isEmpty());
+        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.WORD_READING).suppressedByTaskType.isEmpty());
     }
 
     @Test
     public void fontMeaningOnlySuppressesKanjiMeaningSibling() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem font = matureReview("裂", Records.LadderRung.FONT_MEANING);
-        Records.StudyItem kanji = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
-        Records.StudyItem typeMeaning = reviewItem("裂", Records.LadderRung.TYPE_MEANING, 0L);
+        RecordsStudyModels.StudyItem font = matureReview("裂", RecordsBase.LadderRung.FONT_MEANING);
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem typeMeaning = reviewItem("裂", RecordsBase.LadderRung.TYPE_MEANING, 0L);
 
-        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(font, kanji, typeMeaning));
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(font, kanji, typeMeaning));
 
-        assertEquals(Records.LadderRung.FONT_MEANING.wireName(), findItemAtRung(result, Records.LadderRung.KANJI_MEANING).suppressedByTaskType);
-        assertTrue(findItemAtRung(result, Records.LadderRung.TYPE_MEANING).suppressedByTaskType.isEmpty());
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING).suppressedByTaskType);
+        assertTrue(findItemAtRung(result, RecordsBase.LadderRung.TYPE_MEANING).suppressedByTaskType.isEmpty());
     }
 
     @Test
     public void suppressionClearsWhenDominatingSiblingIsNoLongerMature() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem staleSuppressed = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.StudyItem staleSuppressed = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
-                .suppressedByTaskType(Records.LadderRung.FONT_MEANING.wireName())
+                .suppressedByTaskType(RecordsBase.LadderRung.FONT_MEANING.wireName())
                 .suppressedAtMillis(123L)
                 .build();
-        Records.StudyItem youngFont = reviewItem("裂", Records.LadderRung.FONT_MEANING, 0L)
+        RecordsStudyModels.StudyItem youngFont = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
                 .copyBuilder()
                 .matureIntervalDays(20)
                 .totalReviews(10)
                 .build();
 
-        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(staleSuppressed, youngFont));
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(staleSuppressed, youngFont));
 
-        Records.StudyItem updated = findItemAtRung(result, Records.LadderRung.KANJI_MEANING);
+        RecordsStudyModels.StudyItem updated = findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING);
         assertTrue(updated.suppressedByTaskType.isEmpty());
         assertEquals(0L, updated.suppressedAtMillis);
     }
@@ -625,35 +625,35 @@ public class BridgeSchedulerTest {
     @Test
     public void suppressionIgnoresRetiredAndLearningSiblingsAndKeepsCurrentSuppressionWhenStillValid() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem retired = matureReview("裂", Records.LadderRung.WORD_READING)
+        RecordsStudyModels.StudyItem retired = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
                 .copyBuilder()
                 .state("retired")
                 .build();
-        Records.StudyItem learning = matureReview("裂", Records.LadderRung.FONT_MEANING)
+        RecordsStudyModels.StudyItem learning = matureReview("裂", RecordsBase.LadderRung.FONT_MEANING)
                 .copyBuilder()
                 .state("new")
-                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .build();
-        Records.StudyItem suppressed = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.StudyItem suppressed = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
-                .suppressedByTaskType(Records.LadderRung.FONT_MEANING.wireName())
+                .suppressedByTaskType(RecordsBase.LadderRung.FONT_MEANING.wireName())
                 .suppressedAtMillis(456L)
                 .build();
-        Records.StudyItem matureFont = matureReview("裂", Records.LadderRung.FONT_MEANING);
+        RecordsStudyModels.StudyItem matureFont = matureReview("裂", RecordsBase.LadderRung.FONT_MEANING);
 
-        List<Records.StudyItem> result = scheduler.applySuppression(Arrays.asList(retired, learning, suppressed, matureFont));
+        List<RecordsStudyModels.StudyItem> result = scheduler.applySuppression(Arrays.asList(retired, learning, suppressed, matureFont));
 
-        assertSame(retired, findItemAtRung(result, Records.LadderRung.WORD_READING));
-        Records.StudyItem updated = findItemAtRung(result, Records.LadderRung.KANJI_MEANING);
+        assertSame(retired, findItemAtRung(result, RecordsBase.LadderRung.WORD_READING));
+        RecordsStudyModels.StudyItem updated = findItemAtRung(result, RecordsBase.LadderRung.KANJI_MEANING);
         assertSame(suppressed, updated);
-        assertEquals(Records.LadderRung.FONT_MEANING.wireName(), updated.suppressedByTaskType);
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING.wireName(), updated.suppressedByTaskType);
         assertEquals(456L, updated.suppressedAtMillis);
     }
 
     @Test
     public void adaptivePlanLimitsNewAdmissionsToFocusSet() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.AdaptiveLoadPlan plan = new Records.AdaptiveLoadPlan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = new RecordsSchedulerModels.AdaptiveLoadPlan(
                 20,
                 1,
                 1,
@@ -663,10 +663,10 @@ public class BridgeSchedulerTest {
                 "focus"
         );
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Arrays.asList(row("裂", 50), row("謎", 10)),
                 Collections.emptyList(),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 1000L,
                 0L,
                 plan
@@ -679,7 +679,7 @@ public class BridgeSchedulerTest {
     @Test
     public void adaptiveFocusIgnoresMissingRowsAndRetiresAmbiguousLegacyFamily() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.AdaptiveLoadPlan plan = new Records.AdaptiveLoadPlan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = new RecordsSchedulerModels.AdaptiveLoadPlan(
                 20,
                 2,
                 2,
@@ -688,20 +688,20 @@ public class BridgeSchedulerTest {
                 false,
                 "focus"
         );
-        Records.DashboardRow firstFamily = rowWithExamples(
+        RecordsImportModels.DashboardRow firstFamily = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("active", 1L, 1L, "古い", "ふるい", "old", "", false, 0)
+                new RecordsImportModels.Example("active", 1L, 1L, "古い", "ふるい", "old", "", false, 0)
         );
-        Records.DashboardRow secondFamily = rowWithExamples(
+        RecordsImportModels.DashboardRow secondFamily = rowWithExamples(
                 "裂",
                 25,
-                new Records.Example("active", 2L, 2L, "新しい", "あたらしい", "new", "", false, 0)
+                new RecordsImportModels.Example("active", 2L, 2L, "新しい", "あたらしい", "new", "", false, 0)
         );
-        Records.StudyItem ambiguousLegacy = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.StudyItem ambiguousLegacy = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withAnswerSignature("裂|stale|stale|stale");
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Arrays.asList(firstFamily, secondFamily),
                 Collections.singletonList(ambiguousLegacy),
                 settingsWithQueue(10, 2),
@@ -717,7 +717,7 @@ public class BridgeSchedulerTest {
     @Test
     public void allKanjiAdaptivePlanAdmitsEveryCandidate() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.AdaptiveLoadPlan plan = new Records.AdaptiveLoadPlan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = new RecordsSchedulerModels.AdaptiveLoadPlan(
                 100,
                 3,
                 3,
@@ -727,10 +727,10 @@ public class BridgeSchedulerTest {
                 "all"
         );
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Arrays.asList(row("裂", 50), row("謎", 10), row("示", 5)),
                 Collections.emptyList(),
-                new Records.Settings(
+                new RecordsSyncModels.Settings(
                         "Kiku",
                         "Mining",
                         "Expression",
@@ -756,10 +756,10 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionSkipsItemsWithoutCurrentDashboardRows() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem stale = item("古");
-        Records.StudyItem current = item("裂").copyBuilder().dueAtMillis(500L).build();
+        RecordsStudyModels.StudyItem stale = item("古");
+        RecordsStudyModels.StudyItem current = item("裂").copyBuilder().dueAtMillis(500L).build();
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Arrays.asList(stale, current),
                 Collections.singletonList(row("裂", 30)),
                 1000L
@@ -772,7 +772,7 @@ public class BridgeSchedulerTest {
     @Test
     public void reseedPreservesExistingProgressForSameKanji() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem learned = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem learned = item("裂").copyBuilder()
                 .state("learning")
                 .dueAtMillis(1234L)
                 .stability(1.2)
@@ -783,32 +783,32 @@ public class BridgeSchedulerTest {
                 .writingLevel(2)
                 .activeToken("active")
                 .createdAtMillis(55L)
-                .phase(Records.SchedulerPhase.RELEARNING)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(row("裂", 30)),
                 Collections.singletonList(learned),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 2000L,
                 0L
         );
 
-        Records.StudyItem item = findItem(items, "裂");
+        RecordsStudyModels.StudyItem item = findItem(items, "裂");
         assertEquals("learning", item.state);
         assertEquals(1234L, item.dueAtMillis);
         assertEquals(2, item.totalReviews);
         assertEquals(1, item.lapses);
         assertEquals(2, item.writingLevel);
         assertEquals("active", item.activeToken);
-        assertEquals(Records.SchedulerPhase.RELEARNING, item.phase);
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, item.phase);
     }
 
     @Test
     public void latestFsrsUsesLastReviewElapsedDaysForOnTimeReviews() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long dueAt = 30L * BridgeScheduler.DAY;
-        Records.TaskMemory taskMemory = new Records.TaskMemory(
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
                 "review",
                 dueAt,
                 5.0,
@@ -819,7 +819,7 @@ public class BridgeSchedulerTest {
                 "good",
                 7
         );
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
                 .copyBuilder()
                 .stability(5.0)
                 .difficulty(6.0)
@@ -829,9 +829,9 @@ public class BridgeSchedulerTest {
                 .build()
                 .withToken("latest");
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 item,
-                new Records.ReviewRequest("裂", "latest", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "latest", "good", false, false, false, 0),
                 new HashSet<>(),
                 dueAt
         );
@@ -846,7 +846,7 @@ public class BridgeSchedulerTest {
     public void relearningGraduationPreservesPostLapseStability() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long dueAt = 30L * BridgeScheduler.DAY;
-        Records.TaskMemory taskMemory = new Records.TaskMemory(
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
                 "review",
                 dueAt,
                 5.0,
@@ -857,7 +857,7 @@ public class BridgeSchedulerTest {
                 "good",
                 7
         );
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
                 .copyBuilder()
                 .stability(5.0)
                 .difficulty(6.0)
@@ -867,22 +867,22 @@ public class BridgeSchedulerTest {
                 .build();
         HashSet<String> consumed = new HashSet<>();
 
-        Records.ReviewResult lapsed = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult lapsed = scheduler.applyReview(
                 item.withToken("lapse"),
-                new Records.ReviewRequest("裂", "lapse", "again", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "lapse", "again", false, false, false, 0),
                 consumed,
                 dueAt
         );
         double postLapseStability = lapsed.item.stability;
 
-        Records.ReviewResult graduated = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult graduated = scheduler.applyReview(
                 lapsed.item.withToken("graduate"),
-                new Records.ReviewRequest("裂", "graduate", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "graduate", "good", false, false, false, 0),
                 consumed,
                 lapsed.item.dueAtMillis
         );
 
-        assertEquals(Records.SchedulerPhase.REVIEW, graduated.item.phase);
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, graduated.item.phase);
         assertEquals(postLapseStability, graduated.item.stability, 0.0);
         assertEquals(postLapseStability, graduated.item.kanjiMeaningMemory.stability, 0.0);
     }
@@ -891,7 +891,7 @@ public class BridgeSchedulerTest {
     public void activeRungInitialMemoryFallsBackToItemFsrsState() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long dueAt = 30L * BridgeScheduler.DAY;
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.FONT_MEANING, dueAt)
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, dueAt)
                 .copyBuilder()
                 .stability(5.0)
                 .difficulty(6.0)
@@ -900,9 +900,9 @@ public class BridgeSchedulerTest {
                 .build()
                 .withToken("fallback");
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 item,
-                new Records.ReviewRequest("裂", "fallback", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "fallback", "good", false, false, false, 0),
                 new HashSet<>(),
                 dueAt
         );
@@ -917,7 +917,7 @@ public class BridgeSchedulerTest {
         BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
         HashSet<String> consumed = new HashSet<>();
         long dueAt = 30L * BridgeScheduler.DAY;
-        Records.TaskMemory taskMemory = new Records.TaskMemory(
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
                 "review",
                 dueAt,
                 5.0,
@@ -928,7 +928,7 @@ public class BridgeSchedulerTest {
                 "good",
                 7
         );
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueAt)
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
                 .copyBuilder()
                 .stability(5.0)
                 .difficulty(6.0)
@@ -937,15 +937,15 @@ public class BridgeSchedulerTest {
                 .kanjiMeaningMemory(taskMemory)
                 .build();
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 item.withToken("promote"),
-                new Records.ReviewRequest("裂", "promote", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "promote", "good", false, false, false, 0),
                 consumed,
                 item.dueAtMillis
         );
         item = result.item;
 
-        assertEquals(Records.LadderRung.FONT_MEANING, item.rung);
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, item.rung);
         assertEquals(item.dueAtMillis, item.fontMeaningMemory.dueAtMillis);
         assertEquals(item.matureIntervalDays, item.fontMeaningMemory.matureIntervalDays);
         assertEquals(item.totalReviews, item.fontMeaningMemory.totalReviews);
@@ -954,8 +954,8 @@ public class BridgeSchedulerTest {
     @Test
     public void customParametersAffectReviewInterval() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.TaskMemory matureMemory = new Records.TaskMemory("review", 0L, 10.0, 5.0, 5, 0, 0, "good", 10);
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.TaskMemory matureMemory = new RecordsStudyModels.TaskMemory("review", 0L, 10.0, 5.0, 5, 0, 0, "good", 10);
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
                 .stability(10.0)
                 .difficulty(5.0)
@@ -964,12 +964,12 @@ public class BridgeSchedulerTest {
                 .kanjiMeaningMemory(matureMemory)
                 .build()
                 .withToken("token-1");
-        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-1", "good", false, false, false, 0);
-        Records.SchedulerParameters highRetention = new Records.SchedulerParameters(0.95, 0.45, 1.2, 1.4, 2.2, 0, 0);
-        Records.SchedulerParameters lowRetention = new Records.SchedulerParameters(0.80, 0.45, 1.2, 2.8, 4.2, 0, 0);
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", false, false, false, 0);
+        RecordsSchedulerModels.SchedulerParameters highRetention = new RecordsSchedulerModels.SchedulerParameters(0.95, 0.45, 1.2, 1.4, 2.2, 0, 0);
+        RecordsSchedulerModels.SchedulerParameters lowRetention = new RecordsSchedulerModels.SchedulerParameters(0.80, 0.45, 1.2, 2.8, 4.2, 0, 0);
 
-        Records.ReviewResult highResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, highRetention);
-        Records.ReviewResult lowResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, lowRetention);
+        RecordsSchedulerModels.ReviewResult highResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, highRetention);
+        RecordsSchedulerModels.ReviewResult lowResult = scheduler.applyReview(item, request, new HashSet<>(), 1000L, lowRetention);
 
         assertTrue(lowResult.item.dueAtMillis > highResult.item.dueAtMillis);
     }
@@ -977,17 +977,17 @@ public class BridgeSchedulerTest {
     @Test
     public void allowedKanjiFilterExcludesSuspendedKanjiFromActiveReview() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem suspended = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
-        Records.StudyItem active = reviewItem("提", Records.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem suspended = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem active = reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, 0L);
         Set<String> allowed = new HashSet<>(Collections.singletonList("提"));
 
-        List<Records.StudyItem> activeItems = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> activeItems = scheduler.activeQueueItems(
                 Arrays.asList(suspended, active),
                 Arrays.asList(row("裂", 30), row("提", 20)),
                 1000L,
                 allowed
         );
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Arrays.asList(suspended, active),
                 Arrays.asList(row("裂", 30), row("提", 20)),
                 1000L,
@@ -1004,13 +1004,13 @@ public class BridgeSchedulerTest {
     public void nullAdaptivePlanUsesDefaultSeedingPath() {
         BridgeScheduler scheduler = new BridgeScheduler();
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(row("裂", 30)),
                 Collections.emptyList(),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 1000L,
                 0L,
-                (Records.AdaptiveLoadPlan) null
+                (RecordsSchedulerModels.AdaptiveLoadPlan) null
         );
 
         assertEquals(1, items.size());
@@ -1020,24 +1020,24 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueAlignsLegacyEmptySignatureToSuspendedExample() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem legacy = new Records.StudyItem("裂", "review", 1234L, 2.0, 4.0, 2, 0, 2, 1, null, 55L)
+        RecordsStudyModels.StudyItem legacy = new RecordsStudyModels.StudyItem("裂", "review", 1234L, 2.0, 4.0, 2, 0, 2, 1, null, 55L)
                 .withAnswerSignature("");
-        Records.DashboardRow row = rowWithExamples(
+        RecordsImportModels.DashboardRow row = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("active", 1L, 1L, "破裂", "はれつ", "burst", "", false, 0),
-                new Records.Example("suspended", 2L, 2L, "裂ける", "さける", "split", "", true, 0)
+                new RecordsImportModels.Example("active", 1L, 1L, "破裂", "はれつ", "burst", "", false, 0),
+                new RecordsImportModels.Example("suspended", 2L, 2L, "裂ける", "さける", "split", "", true, 0)
         );
 
-        List<Records.StudyItem> items = scheduler.seedQueue(
+        List<RecordsStudyModels.StudyItem> items = scheduler.seedQueue(
                 Collections.singletonList(row),
                 Collections.singletonList(legacy),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 5000L,
                 0L
         );
 
-        Records.StudyItem aligned = findItem(items, "裂");
+        RecordsStudyModels.StudyItem aligned = findItem(items, "裂");
         assertEquals("review", aligned.state);
         assertEquals(1234L, aligned.dueAtMillis);
         assertEquals("裂|裂ける|さける|split", aligned.answerSignature);
@@ -1046,18 +1046,18 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueKeepsMatchingAnswerSignatureProgress() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem current = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 1234L)
+        RecordsStudyModels.StudyItem current = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1234L)
                 .withAnswerSignature("裂|裂ける|さける|split");
-        Records.DashboardRow row = rowWithExamples(
+        RecordsImportModels.DashboardRow row = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("suspended", 2L, 2L, "裂ける", "さける", "split", "", true, 0)
+                new RecordsImportModels.Example("suspended", 2L, 2L, "裂ける", "さける", "split", "", true, 0)
         );
 
-        Records.StudyItem aligned = findItem(scheduler.seedQueue(
+        RecordsStudyModels.StudyItem aligned = findItem(scheduler.seedQueue(
                 Collections.singletonList(row),
                 Collections.singletonList(current),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 5000L,
                 0L
         ), "裂");
@@ -1069,18 +1069,18 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueUsesFirstExampleFallbackAndNormalizesSignatureParts() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem legacy = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 1234L)
+        RecordsStudyModels.StudyItem legacy = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1234L)
                 .withAnswerSignature("");
-        Records.DashboardRow row = rowWithExamples(
+        RecordsImportModels.DashboardRow row = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("other", 1L, 1L, "  split   apart  ", null, " main   meaning ", "", false, 0)
+                new RecordsImportModels.Example("other", 1L, 1L, "  split   apart  ", null, " main   meaning ", "", false, 0)
         );
 
-        Records.StudyItem aligned = findItem(scheduler.seedQueue(
+        RecordsStudyModels.StudyItem aligned = findItem(scheduler.seedQueue(
                 Collections.singletonList(row),
                 Collections.singletonList(legacy),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 5000L,
                 0L
         ), "裂");
@@ -1091,19 +1091,19 @@ public class BridgeSchedulerTest {
     @Test
     public void seedQueueKeepsFirstActiveExampleWhenNoSuspendedExampleExists() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem legacy = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 1234L)
+        RecordsStudyModels.StudyItem legacy = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1234L)
                 .withAnswerSignature("");
-        Records.DashboardRow row = rowWithExamples(
+        RecordsImportModels.DashboardRow row = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("active", 1L, 1L, "first", "one", "meaning one", "", false, 0),
-                new Records.Example("active", 2L, 2L, "second", "two", "meaning two", "", false, 0)
+                new RecordsImportModels.Example("active", 1L, 1L, "first", "one", "meaning one", "", false, 0),
+                new RecordsImportModels.Example("active", 2L, 2L, "second", "two", "meaning two", "", false, 0)
         );
 
-        Records.StudyItem aligned = findItem(scheduler.seedQueue(
+        RecordsStudyModels.StudyItem aligned = findItem(scheduler.seedQueue(
                 Collections.singletonList(row),
                 Collections.singletonList(legacy),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 5000L,
                 0L
         ), "裂");
@@ -1114,8 +1114,8 @@ public class BridgeSchedulerTest {
     @Test
     public void reseedResetsNonRetiredItemWhenAnswerSignatureChanges() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.TaskMemory oldMeaningMemory = new Records.TaskMemory("review", 5000L, 2.0, 4.5, 7, 1, 2, "good", 12);
-        Records.StudyItem learned = reviewItem("裂", Records.LadderRung.FONT_MEANING, 5000L)
+        RecordsStudyModels.TaskMemory oldMeaningMemory = new RecordsStudyModels.TaskMemory("review", 5000L, 2.0, 4.5, 7, 1, 2, "good", 12);
+        RecordsStudyModels.StudyItem learned = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 5000L)
                 .copyBuilder()
                 .answerSignature("裂|old|old|old")
                 .activeToken("active")
@@ -1124,16 +1124,16 @@ public class BridgeSchedulerTest {
                 .realAgainStreak(1)
                 .lastRealReviewDueAtMillis(123L)
                 .build();
-        Records.DashboardRow changed = rowWithExamples(
+        RecordsImportModels.DashboardRow changed = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("active", 1L, 1L, "新しい", "あたらしい", "new", "", false, 0)
+                new RecordsImportModels.Example("active", 1L, 1L, "新しい", "あたらしい", "new", "", false, 0)
         );
 
-        Records.StudyItem reset = findItem(scheduler.seedQueue(
+        RecordsStudyModels.StudyItem reset = findItem(scheduler.seedQueue(
                 Collections.singletonList(changed),
                 Collections.singletonList(learned),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 2000L,
                 0L
         ), "裂");
@@ -1143,7 +1143,7 @@ public class BridgeSchedulerTest {
         assertEquals(0, reset.totalReviews);
         assertNull(reset.activeToken);
         assertEquals("裂|新しい|あたらしい|new", reset.answerSignature);
-        assertEquals(Records.LadderRung.KANJI_MEANING, reset.rung);
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, reset.rung);
         assertEquals(0, reset.realPassStreak);
         assertEquals(0, reset.lastRealReviewDueAtMillis);
         assertEquals("new", reset.meaningKanjiMemory.state);
@@ -1153,21 +1153,21 @@ public class BridgeSchedulerTest {
     @Test
     public void reseedRetiredItemOnlyUpdatesChangedAnswerSignature() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem retired = reviewItem("裂", Records.LadderRung.WORD_READING, 5000L)
+        RecordsStudyModels.StudyItem retired = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 5000L)
                 .copyBuilder()
                 .state("retired")
                 .answerSignature("裂|old|old|old")
                 .build();
-        Records.DashboardRow changed = rowWithExamples(
+        RecordsImportModels.DashboardRow changed = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("active", 1L, 1L, "新しい", "あたらしい", "new", "", false, 0)
+                new RecordsImportModels.Example("active", 1L, 1L, "新しい", "あたらしい", "new", "", false, 0)
         );
 
-        Records.StudyItem updated = findItem(scheduler.seedQueue(
+        RecordsStudyModels.StudyItem updated = findItem(scheduler.seedQueue(
                 Collections.singletonList(changed),
                 Collections.singletonList(retired),
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 2000L,
                 0L
         ), "裂");
@@ -1180,34 +1180,34 @@ public class BridgeSchedulerTest {
     @Test
     public void activeQueueGroupsByFamilyAndPrefersHigherRung() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem kanji = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L).withAnswerSignature("裂|expr|read|meaning");
-        Records.StudyItem word = reviewItem("裂", Records.LadderRung.WORD_READING, 5000L).withAnswerSignature("裂|expr|read|meaning");
-        Records.StudyItem legacyEmptySignature = reviewItem("謎", Records.LadderRung.KANJI_MEANING, 0L).withAnswerSignature("");
+        RecordsStudyModels.StudyItem kanji = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withAnswerSignature("裂|expr|read|meaning");
+        RecordsStudyModels.StudyItem word = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 5000L).withAnswerSignature("裂|expr|read|meaning");
+        RecordsStudyModels.StudyItem legacyEmptySignature = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L).withAnswerSignature("");
 
-        List<Records.StudyItem> active = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> active = scheduler.activeQueueItems(
                 Arrays.asList(kanji, word, legacyEmptySignature),
-                Arrays.asList(rowWithExamples("裂", 30, new Records.Example("active", 1L, 1L, "expr", "read", "meaning", "", false, 0)), row("謎", 20)),
+                Arrays.asList(rowWithExamples("裂", 30, new RecordsImportModels.Example("active", 1L, 1L, "expr", "read", "meaning", "", false, 0)), row("謎", 20)),
                 1000L,
                 null
         );
 
         assertEquals(2, active.size());
         assertEquals("謎", findItem(active, "謎").kanji);
-        assertEquals(Records.LadderRung.WORD_READING, findItem(active, "裂").rung);
+        assertEquals(RecordsBase.LadderRung.WORD_READING, findItem(active, "裂").rung);
     }
 
     @Test
     public void activeQueueRejectsChangedNonEmptyAnswerSignature() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem staleFamily = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.StudyItem staleFamily = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withAnswerSignature("裂|old|read|meaning");
-        Records.DashboardRow currentRow = rowWithExamples(
+        RecordsImportModels.DashboardRow currentRow = rowWithExamples(
                 "裂",
                 30,
-                new Records.Example("active", 1L, 1L, "new", "read", "meaning", "", false, 0)
+                new RecordsImportModels.Example("active", 1L, 1L, "new", "read", "meaning", "", false, 0)
         );
 
-        List<Records.StudyItem> active = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> active = scheduler.activeQueueItems(
                 Collections.singletonList(staleFamily),
                 Collections.singletonList(currentRow),
                 1000L,
@@ -1220,13 +1220,13 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionReusesActiveTokenAndGeneratesForEmptyToken() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudySession reused = scheduler.nextSession(
-                Collections.singletonList(reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L).withToken("kept")),
+        RecordsSchedulerModels.StudySession reused = scheduler.nextSession(
+                Collections.singletonList(reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withToken("kept")),
                 Collections.singletonList(row("裂", 30)),
                 1000L
         );
-        Records.StudySession generated = scheduler.nextSession(
-                Collections.singletonList(reviewItem("謎", Records.LadderRung.KANJI_MEANING, 0L).withToken("")),
+        RecordsSchedulerModels.StudySession generated = scheduler.nextSession(
+                Collections.singletonList(reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L).withToken("")),
                 Collections.singletonList(row("謎", 30)),
                 1000L
         );
@@ -1238,7 +1238,7 @@ public class BridgeSchedulerTest {
     @Test
     public void nextSessionReturnsNullWhenNothingDueOrAllowed() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem future = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 2000L);
+        RecordsStudyModels.StudyItem future = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 2000L);
 
         assertNull(scheduler.nextSession(Collections.singletonList(future), Collections.singletonList(row("裂", 30)), 1000L));
         assertNull(scheduler.nextSession(
@@ -1252,19 +1252,19 @@ public class BridgeSchedulerTest {
     @Test
     public void tokenMismatchAndNullReviewInputsStaySafe() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem active = item("裂").withToken("expected");
+        RecordsStudyModels.StudyItem active = item("裂").withToken("expected");
 
-        Records.ReviewResult duplicate = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult duplicate = scheduler.applyReview(
                 active,
-                new Records.ReviewRequest("裂", "actual", "easy", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "actual", "easy", false, false, false, 0),
                 new HashSet<>(),
                 1000L,
                 null,
                 null
         );
-        Records.ReviewResult normalized = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult normalized = scheduler.applyReview(
                 item("提"),
-                new Records.ReviewRequest("提", "token", null, false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("提", "token", null, false, false, false, 0),
                 new HashSet<>(),
                 1000L,
                 null,
@@ -1275,9 +1275,9 @@ public class BridgeSchedulerTest {
         assertEquals("again", normalized.appliedRating);
         assertEquals("learning", normalized.item.state);
 
-        Records.ReviewResult emptyToken = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult emptyToken = scheduler.applyReview(
                 item("空").withToken(""),
-                new Records.ReviewRequest("空", "token", "easy", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("空", "token", "easy", false, false, false, 0),
                 new HashSet<>(),
                 1000L
         );
@@ -1287,11 +1287,11 @@ public class BridgeSchedulerTest {
     @Test
     public void invalidRatingDefaultsToAgainAndResetsLearningStep() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem item = item("裂").copyBuilder().learningStep(1).build();
+        RecordsStudyModels.StudyItem item = item("裂").copyBuilder().learningStep(1).build();
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 item.withToken("bad-rating"),
-                new Records.ReviewRequest("裂", "bad-rating", "perfect", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "bad-rating", "perfect", false, false, false, 0),
                 new HashSet<>(),
                 1000L
         );
@@ -1304,77 +1304,77 @@ public class BridgeSchedulerTest {
     @Test
     public void relearningGoodCanAdvanceWithoutGraduating() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem relearning = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.StudyItem relearning = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
                 .state("learning")
-                .phase(Records.SchedulerPhase.RELEARNING)
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .learningStep(0)
                 .activeToken("relearn")
                 .build();
-        Records.LearningStepSettings steps = new Records.LearningStepSettings(
-                Records.LearningStepSettings.defaultNewSteps(),
+        RecordsSchedulerModels.LearningStepSettings steps = new RecordsSchedulerModels.LearningStepSettings(
+                RecordsSchedulerModels.LearningStepSettings.defaultNewSteps(),
                 Arrays.asList(5, 20)
         );
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 relearning,
-                new Records.ReviewRequest("裂", "relearn", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "relearn", "good", false, false, false, 0),
                 new HashSet<>(),
                 1000L,
-                Records.SchedulerParameters.defaults(),
-                Records.Settings.kikuDefaults(),
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 steps
         );
 
-        assertEquals(Records.SchedulerPhase.RELEARNING, result.item.phase);
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, result.item.phase);
         assertEquals(1, result.item.learningStep);
     }
 
     @Test
     public void learningHardRepeatsLaterStep() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem learning = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem learning = item("裂").copyBuilder()
                 .state("learning")
-                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .learningStep(1)
                 .activeToken("hard")
                 .build()
                 .withTaskMemory(
                         BridgeScheduler.TASK_KANJI_MEANING,
-                        new Records.TaskMemory("learning", 0L, 0.4, 5.0, 1, 0, 1, "", 0)
+                        new RecordsStudyModels.TaskMemory("learning", 0L, 0.4, 5.0, 1, 0, 1, "", 0)
                 );
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 learning,
-                new Records.ReviewRequest("裂", "hard", "hard", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "hard", "hard", false, false, false, 0),
                 new HashSet<>(),
                 1000L
         );
 
         assertEquals(1, result.item.learningStep);
-        assertEquals(Records.SchedulerPhase.NEW_LEARNING, result.item.phase);
+        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, result.item.phase);
     }
 
     @Test
     public void learningHardOnSingleStepUsesAgainDelay() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem learning = item("裂").copyBuilder()
+        RecordsStudyModels.StudyItem learning = item("裂").copyBuilder()
                 .state("learning")
-                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .activeToken("hard")
                 .build();
-        Records.LearningStepSettings steps = new Records.LearningStepSettings(
+        RecordsSchedulerModels.LearningStepSettings steps = new RecordsSchedulerModels.LearningStepSettings(
                 Collections.singletonList(5),
-                Records.LearningStepSettings.defaultReviewSteps()
+                RecordsSchedulerModels.LearningStepSettings.defaultReviewSteps()
         );
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 learning,
-                new Records.ReviewRequest("裂", "hard", "hard", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "hard", "hard", false, false, false, 0),
                 new HashSet<>(),
                 1000L,
-                Records.SchedulerParameters.defaults(),
-                Records.Settings.kikuDefaults(),
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 steps
         );
 
@@ -1385,12 +1385,12 @@ public class BridgeSchedulerTest {
     @Test
     public void futureReviewAgainDoesNotCountAsRealDueFailure() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem future = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 5000L)
+        RecordsStudyModels.StudyItem future = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 5000L)
                 .withToken("future");
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 future,
-                new Records.ReviewRequest("裂", "future", "again", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "future", "again", false, false, false, 0),
                 new HashSet<>(),
                 1000L
         );
@@ -1402,15 +1402,15 @@ public class BridgeSchedulerTest {
     @Test
     public void practicedLearningCardsSortBeforeDueReviews() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem practicedLearning = item("学").copyBuilder()
+        RecordsStudyModels.StudyItem practicedLearning = item("学").copyBuilder()
                 .state("learning")
                 .dueAtMillis(0L)
                 .totalReviews(1)
-                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .build();
-        Records.StudyItem review = reviewItem("復", Records.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem review = reviewItem("復", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Arrays.asList(review, practicedLearning),
                 Arrays.asList(row("復", 100), row("学", 1)),
                 1000L
@@ -1423,11 +1423,11 @@ public class BridgeSchedulerTest {
     @Test
     public void activeQueueFiltersRetiredAndMissingRows() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem retired = item("古").copyBuilder().state("retired").build();
-        Records.StudyItem missing = item("消");
-        Records.StudyItem fontRung = itemAtRung("裂", Records.LadderRung.FONT_MEANING);
+        RecordsStudyModels.StudyItem retired = item("古").copyBuilder().state("retired").build();
+        RecordsStudyModels.StudyItem missing = item("消");
+        RecordsStudyModels.StudyItem fontRung = itemAtRung("裂", RecordsBase.LadderRung.FONT_MEANING);
 
-        List<Records.StudyItem> active = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> active = scheduler.activeQueueItems(
                 Arrays.asList(retired, missing, fontRung),
                 Collections.singletonList(row("裂", 30)),
                 1000L,
@@ -1441,18 +1441,18 @@ public class BridgeSchedulerTest {
     @Test
     public void activeFamilyItemPrefersDueStatusThenEarlierDueTimeWithinRank() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem due = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 1000L).withToken("due");
-        Records.StudyItem future = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 5000L).withToken("future");
-        Records.StudyItem earlierFuture = reviewItem("謎", Records.LadderRung.KANJI_MEANING, 3000L).withToken("early");
-        Records.StudyItem laterFuture = reviewItem("謎", Records.LadderRung.KANJI_MEANING, 5000L).withToken("late");
+        RecordsStudyModels.StudyItem due = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1000L).withToken("due");
+        RecordsStudyModels.StudyItem future = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 5000L).withToken("future");
+        RecordsStudyModels.StudyItem earlierFuture = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 3000L).withToken("early");
+        RecordsStudyModels.StudyItem laterFuture = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 5000L).withToken("late");
 
-        List<Records.StudyItem> activeDue = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> activeDue = scheduler.activeQueueItems(
                 Arrays.asList(future, due),
                 Collections.singletonList(row("裂", 30)),
                 2000L,
                 null
         );
-        List<Records.StudyItem> activeFuture = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> activeFuture = scheduler.activeQueueItems(
                 Arrays.asList(laterFuture, earlierFuture),
                 Collections.singletonList(row("謎", 30)),
                 1000L,
@@ -1464,7 +1464,7 @@ public class BridgeSchedulerTest {
         assertEquals(1, activeFuture.size());
         assertEquals("early", activeFuture.get(0).activeToken);
 
-        List<Records.StudyItem> alreadyBest = scheduler.activeQueueItems(
+        List<RecordsStudyModels.StudyItem> alreadyBest = scheduler.activeQueueItems(
                 Arrays.asList(due, future),
                 Collections.singletonList(row("裂", 30)),
                 2000L,
@@ -1475,89 +1475,89 @@ public class BridgeSchedulerTest {
 
     @Test
     public void rungsForItemSkipsSimilarOnlyWhenUnavailable() {
-        Records.StudyItem withoutSimilar = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
-        Records.StudyItem withSimilar = withoutSimilar.withHasSimilarKanji(true);
+        RecordsStudyModels.StudyItem withoutSimilar = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem withSimilar = withoutSimilar.withHasSimilarKanji(true);
 
-        List<Records.LadderRung> without = BridgeScheduler.rungsForItem(withoutSimilar);
-        List<Records.LadderRung> with = BridgeScheduler.rungsForItem(withSimilar);
+        List<RecordsBase.LadderRung> without = BridgeScheduler.rungsForItem(withoutSimilar);
+        List<RecordsBase.LadderRung> with = BridgeScheduler.rungsForItem(withSimilar);
 
-        assertFalse(without.contains(Records.LadderRung.SIMILAR_KANJI));
-        assertTrue(with.contains(Records.LadderRung.SIMILAR_KANJI));
-        assertTrue(without.contains(Records.LadderRung.MEANING_KANJI));
-        assertTrue(with.contains(Records.LadderRung.MEANING_KANJI));
-        assertTrue(with.indexOf(Records.LadderRung.TYPE_MEANING) < with.indexOf(Records.LadderRung.MEANING_KANJI));
-        assertTrue(with.indexOf(Records.LadderRung.MEANING_KANJI) < with.indexOf(Records.LadderRung.KANJI_MEANING));
-        assertEquals(Records.LadderRung.WRITE_KANJI, with.get(0));
-        assertEquals(Records.LadderRung.WORD_READING, with.get(with.size() - 1));
+        assertFalse(without.contains(RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertTrue(with.contains(RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertTrue(without.contains(RecordsBase.LadderRung.MEANING_KANJI));
+        assertTrue(with.contains(RecordsBase.LadderRung.MEANING_KANJI));
+        assertTrue(with.indexOf(RecordsBase.LadderRung.TYPE_MEANING) < with.indexOf(RecordsBase.LadderRung.MEANING_KANJI));
+        assertTrue(with.indexOf(RecordsBase.LadderRung.MEANING_KANJI) < with.indexOf(RecordsBase.LadderRung.KANJI_MEANING));
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, with.get(0));
+        assertEquals(RecordsBase.LadderRung.WORD_READING, with.get(with.size() - 1));
     }
 
     @Test
     public void rungsForItemHonorsDisabledConfiguredRungs() {
-        Records.StudyItem withSimilar = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsStudyModels.StudyItem withSimilar = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withHasSimilarKanji(true);
-        Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
-                .withRungEnabled(Records.LadderRung.SIMILAR_KANJI, false)
-                .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false)
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
 
-        List<Records.LadderRung> rungs = BridgeScheduler.rungsForItem(withSimilar, ladder);
+        List<RecordsBase.LadderRung> rungs = BridgeScheduler.rungsForItem(withSimilar, ladder);
 
-        assertFalse(rungs.contains(Records.LadderRung.SIMILAR_KANJI));
-        assertFalse(rungs.contains(Records.LadderRung.KANJI_MEANING));
-        assertEquals(Records.LadderRung.WRITE_KANJI, rungs.get(0));
+        assertFalse(rungs.contains(RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertFalse(rungs.contains(RecordsBase.LadderRung.KANJI_MEANING));
+        assertEquals(RecordsBase.LadderRung.WRITE_KANJI, rungs.get(0));
     }
 
     @Test
     public void nextSessionMapsDisabledCurrentRungToNearestEnabledRung() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
-                .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L)
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withHasSimilarKanji(true);
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Collections.singletonList(item),
                 Collections.singletonList(row("裂", 20)),
                 0L,
                 0L,
                 null,
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 ladder
         );
 
         assertNotNull(session);
-        assertEquals(Records.LadderRung.MEANING_KANJI, session.item.rung);
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, session.item.rung);
         assertEquals(BridgeScheduler.TASK_MEANING_KANJI, session.taskType);
     }
 
     @Test
     public void mappedMeaningKanjiReviewInheritsExistingSchedulerMemory() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyLadderSettings ladder = Records.StudyLadderSettings.defaults()
-                .withRungEnabled(Records.LadderRung.KANJI_MEANING, false);
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 500L)
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
                 .copyBuilder()
                 .stability(2.5)
                 .difficulty(4.2)
                 .totalReviews(5)
                 .matureIntervalDays(12)
                 .build();
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Collections.singletonList(item),
                 Collections.singletonList(row("裂", 20)),
                 1000L,
                 0L,
                 null,
-                Records.Settings.kikuDefaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 ladder
         );
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 session.item.withToken("meaning-pass"),
-                new Records.ReviewRequest("裂", "meaning-pass", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "meaning-pass", "good", false, false, false, 0),
                 new HashSet<>(),
                 1000L,
-                Records.SchedulerParameters.defaults(),
-                Records.Settings.kikuDefaults(),
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 ladder
         );
 
@@ -1568,38 +1568,38 @@ public class BridgeSchedulerTest {
     public void customLadderOrderControlsPromotion() {
         BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
         HashSet<String> consumed = new HashSet<>();
-        Records.StudyLadderSettings ladder = new Records.StudyLadderSettings(
+        RecordsBase.StudyLadderSettings ladder = new RecordsBase.StudyLadderSettings(
                 Arrays.asList(
-                        Records.LadderRung.WRITE_KANJI,
-                        Records.LadderRung.KANJI_MEANING,
-                        Records.LadderRung.WORD_READING,
-                        Records.LadderRung.FONT_MEANING,
-                        Records.LadderRung.TYPE_MEANING,
-                        Records.LadderRung.SIMILAR_KANJI
+                        RecordsBase.LadderRung.WRITE_KANJI,
+                        RecordsBase.LadderRung.KANJI_MEANING,
+                        RecordsBase.LadderRung.WORD_READING,
+                        RecordsBase.LadderRung.FONT_MEANING,
+                        RecordsBase.LadderRung.TYPE_MEANING,
+                        RecordsBase.LadderRung.SIMILAR_KANJI
                 ),
                 Arrays.asList(
-                        Records.LadderRung.WRITE_KANJI,
-                        Records.LadderRung.KANJI_MEANING,
-                        Records.LadderRung.WORD_READING,
-                        Records.LadderRung.FONT_MEANING,
-                        Records.LadderRung.TYPE_MEANING,
-                        Records.LadderRung.SIMILAR_KANJI
+                        RecordsBase.LadderRung.WRITE_KANJI,
+                        RecordsBase.LadderRung.KANJI_MEANING,
+                        RecordsBase.LadderRung.WORD_READING,
+                        RecordsBase.LadderRung.FONT_MEANING,
+                        RecordsBase.LadderRung.TYPE_MEANING,
+                        RecordsBase.LadderRung.SIMILAR_KANJI
                 )
         );
-        Records.StudyItem item = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L);
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
-        Records.ReviewResult result = scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 item.withToken("custom-order"),
-                new Records.ReviewRequest("裂", "custom-order", "good", false, false, false, 0),
+                new RecordsSchedulerModels.ReviewRequest("裂", "custom-order", "good", false, false, false, 0),
                 consumed,
                 item.dueAtMillis,
-                Records.SchedulerParameters.defaults(),
-                Records.Settings.kikuDefaults(),
+                RecordsSchedulerModels.SchedulerParameters.defaults(),
+                RecordsSyncModels.Settings.kikuDefaults(),
                 ladder
         );
         item = result.item;
 
-        assertEquals(Records.LadderRung.WORD_READING, item.rung);
+        assertEquals(RecordsBase.LadderRung.WORD_READING, item.rung);
     }
 
     @Test
@@ -1610,17 +1610,17 @@ public class BridgeSchedulerTest {
         assertEquals(2, tokens.size());
         assertEquals(1, scheduler.dueCount(
                 Arrays.asList(
-                        reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L),
-                        reviewItem("提", Records.LadderRung.KANJI_MEANING, 0L).copyBuilder().state("retired").build(),
-                        reviewItem("謎", Records.LadderRung.KANJI_MEANING, 2000L)
+                        reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L),
+                        reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, 0L).copyBuilder().state("retired").build(),
+                        reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 2000L)
                 ),
                 1000L
         ));
         assertEquals(1, scheduler.dueCount(
                 Arrays.asList(
-                        reviewItem("裂", Records.LadderRung.KANJI_MEANING, 0L),
-                        reviewItem("提", Records.LadderRung.KANJI_MEANING, 0L).copyBuilder().state("retired").build(),
-                        reviewItem("謎", Records.LadderRung.KANJI_MEANING, 2000L)
+                        reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L),
+                        reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, 0L).copyBuilder().state("retired").build(),
+                        reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 2000L)
                 ),
                 Arrays.asList(row("裂", 30), row("提", 20), row("謎", 10)),
                 1000L
@@ -1630,12 +1630,12 @@ public class BridgeSchedulerTest {
     @Test
     public void studyAheadZeroMinutesMatchesBaselineActiveQueue() {
         BridgeScheduler scheduler = new BridgeScheduler();
-        Records.StudyItem dueNow = reviewItem("裂", Records.LadderRung.KANJI_MEANING, 1000L);
-        Records.StudyItem inFiveMin = reviewItem("謎", Records.LadderRung.KANJI_MEANING, 1000L + 5L * 60_000L);
-        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20));
+        RecordsStudyModels.StudyItem dueNow = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1000L);
+        RecordsStudyModels.StudyItem inFiveMin = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 1000L + 5L * 60_000L);
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20));
 
-        List<Records.StudyItem> baseline = scheduler.activeQueueItems(Arrays.asList(dueNow, inFiveMin), rows, 1000L, null);
-        List<Records.StudyItem> zeroAhead = scheduler.activeQueueItems(Arrays.asList(dueNow, inFiveMin), rows, 1000L, 0L, null);
+        List<RecordsStudyModels.StudyItem> baseline = scheduler.activeQueueItems(Arrays.asList(dueNow, inFiveMin), rows, 1000L, null);
+        List<RecordsStudyModels.StudyItem> zeroAhead = scheduler.activeQueueItems(Arrays.asList(dueNow, inFiveMin), rows, 1000L, 0L, null);
 
         assertEquals(baseline.size(), zeroAhead.size());
         assertNotNull(scheduler.nextSession(Arrays.asList(dueNow, inFiveMin), rows, 1000L, 0L, null));
@@ -1646,13 +1646,13 @@ public class BridgeSchedulerTest {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
         long dueIn10Min = now + 10L * 60_000L;
-        Records.StudyItem ahead = reviewItem("謎", Records.LadderRung.KANJI_MEANING, dueIn10Min);
-        List<Records.DashboardRow> rows = Collections.singletonList(row("謎", 20));
+        RecordsStudyModels.StudyItem ahead = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn10Min);
+        List<RecordsImportModels.DashboardRow> rows = Collections.singletonList(row("謎", 20));
 
-        Records.StudySession none = scheduler.nextSession(Collections.singletonList(ahead), rows, now);
+        RecordsSchedulerModels.StudySession none = scheduler.nextSession(Collections.singletonList(ahead), rows, now);
         assertNull(none);
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Collections.singletonList(ahead), rows, now, 15L * 60_000L, null
         );
         assertNotNull(session);
@@ -1664,10 +1664,10 @@ public class BridgeSchedulerTest {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
         long dueIn30Min = now + 30L * 60_000L;
-        Records.StudyItem beyond = reviewItem("謎", Records.LadderRung.KANJI_MEANING, dueIn30Min);
-        List<Records.DashboardRow> rows = Collections.singletonList(row("謎", 20));
+        RecordsStudyModels.StudyItem beyond = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn30Min);
+        List<RecordsImportModels.DashboardRow> rows = Collections.singletonList(row("謎", 20));
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Collections.singletonList(beyond), rows, now, 15L * 60_000L, null
         );
         assertNull(session);
@@ -1677,11 +1677,11 @@ public class BridgeSchedulerTest {
     public void studyAheadDueCountIncludesHorizonEligibleItems() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
-        Records.StudyItem dueNow = reviewItem("裂", Records.LadderRung.KANJI_MEANING, now);
-        Records.StudyItem dueIn5 = reviewItem("謎", Records.LadderRung.KANJI_MEANING, now + 5L * 60_000L);
-        Records.StudyItem dueIn30 = reviewItem("提", Records.LadderRung.KANJI_MEANING, now + 30L * 60_000L);
-        List<Records.StudyItem> items = Arrays.asList(dueNow, dueIn5, dueIn30);
-        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20), row("提", 10));
+        RecordsStudyModels.StudyItem dueNow = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, now);
+        RecordsStudyModels.StudyItem dueIn5 = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, now + 5L * 60_000L);
+        RecordsStudyModels.StudyItem dueIn30 = reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, now + 30L * 60_000L);
+        List<RecordsStudyModels.StudyItem> items = Arrays.asList(dueNow, dueIn5, dueIn30);
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20), row("提", 10));
 
         assertEquals(1, scheduler.dueCount(items, rows, now));
         assertEquals(2, scheduler.dueCount(items, rows, now, 15L * 60_000L));
@@ -1694,21 +1694,21 @@ public class BridgeSchedulerTest {
         long now = 1_000_000L;
         long dueIn1Hour = now + 60L * 60_000L;
         long dueIn25Hours = now + 25L * 60L * 60_000L;
-        Records.StudyItem nearItem = reviewItem("謎", Records.LadderRung.KANJI_MEANING, dueIn1Hour);
-        Records.StudyItem farItem = reviewItem("提", Records.LadderRung.KANJI_MEANING, dueIn25Hours);
-        List<Records.DashboardRow> rows = Arrays.asList(row("謎", 20), row("提", 10));
+        RecordsStudyModels.StudyItem nearItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn1Hour);
+        RecordsStudyModels.StudyItem farItem = reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, dueIn25Hours);
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("謎", 20), row("提", 10));
 
-        Records.StudySession negative = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession negative = scheduler.nextSession(
                 Collections.singletonList(nearItem), rows, now, -5L * 60_000L, null
         );
         assertNull(negative);
 
-        Records.StudySession farBeyondDay = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession farBeyondDay = scheduler.nextSession(
                 Collections.singletonList(farItem), rows, now, 48L * 60L * 60_000L, null
         );
         assertNull(farBeyondDay);
 
-        Records.StudySession withinDay = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession withinDay = scheduler.nextSession(
                 Collections.singletonList(nearItem), rows, now, 48L * 60L * 60_000L, null
         );
         assertNotNull(withinDay);
@@ -1719,11 +1719,11 @@ public class BridgeSchedulerTest {
     public void studyAheadPrefersTrulyDueOverHorizonEligibleAtSameRung() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
-        Records.StudyItem dueNow = reviewItem("裂", Records.LadderRung.KANJI_MEANING, now).withToken("now");
-        Records.StudyItem dueIn5 = reviewItem("謎", Records.LadderRung.KANJI_MEANING, now + 5L * 60_000L).withToken("ahead");
-        List<Records.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20));
+        RecordsStudyModels.StudyItem dueNow = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, now).withToken("now");
+        RecordsStudyModels.StudyItem dueIn5 = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, now + 5L * 60_000L).withToken("ahead");
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(row("裂", 30), row("謎", 20));
 
-        Records.StudySession session = scheduler.nextSession(
+        RecordsSchedulerModels.StudySession session = scheduler.nextSession(
                 Arrays.asList(dueIn5, dueNow), rows, now, 15L * 60_000L, null
         );
         assertNotNull(session);
@@ -1735,29 +1735,29 @@ public class BridgeSchedulerTest {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
         long dueIn5Min = now + 5L * 60_000L;
-        Records.StudyItem reviewItem = reviewItem("裂", Records.LadderRung.KANJI_MEANING, dueIn5Min)
+        RecordsStudyModels.StudyItem reviewItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueIn5Min)
                 .copyBuilder()
                 .activeToken("token-ahead")
                 .build();
-        Records.ReviewRequest request = new Records.ReviewRequest("裂", "token-ahead", "again", false, false, false, 0);
+        RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest("裂", "token-ahead", "again", false, false, false, 0);
 
-        Records.ReviewResult result = scheduler.applyReview(reviewItem, request, new HashSet<>(), now);
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(reviewItem, request, new HashSet<>(), now);
 
-        long expectedNextDue = now + Records.LearningStepSettings.defaults().reviewStepsMinutes.get(0) * 60_000L;
+        long expectedNextDue = now + RecordsSchedulerModels.LearningStepSettings.defaults().reviewStepsMinutes.get(0) * 60_000L;
         assertEquals(expectedNextDue, result.item.dueAtMillis);
     }
 
     // --- Test factories ---
 
-    private Records.StudyItem item(String kanji) {
-        return new Records.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0);
+    private RecordsStudyModels.StudyItem item(String kanji) {
+        return new RecordsStudyModels.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0);
     }
 
-    private Records.StudyItem itemAtRung(String kanji, Records.LadderRung rung) {
-        return item(kanji).withRungAndPhase(rung, Records.SchedulerPhase.NEW_LEARNING);
+    private RecordsStudyModels.StudyItem itemAtRung(String kanji, RecordsBase.LadderRung rung) {
+        return item(kanji).withRungAndPhase(rung, RecordsBase.SchedulerPhase.NEW_LEARNING);
     }
 
-    private Records.StudyItem reviewItem(String kanji, Records.LadderRung rung, long dueAtMillis) {
+    private RecordsStudyModels.StudyItem reviewItem(String kanji, RecordsBase.LadderRung rung, long dueAtMillis) {
         return item(kanji).copyBuilder()
                 .state("review")
                 .dueAtMillis(dueAtMillis)
@@ -1768,20 +1768,20 @@ public class BridgeSchedulerTest {
                 .learningStep(2)
                 .writingLevel(1)
                 .rung(rung)
-                .phase(Records.SchedulerPhase.REVIEW)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .build();
     }
 
-    private Records.StudyItem matureReview(String kanji, Records.LadderRung rung) {
+    private RecordsStudyModels.StudyItem matureReview(String kanji, RecordsBase.LadderRung rung) {
         return reviewItem(kanji, rung, 0L).copyBuilder()
                 .matureIntervalDays(21)
                 .totalReviews(12)
-                .phase(Records.SchedulerPhase.REVIEW)
+                .phase(RecordsBase.SchedulerPhase.REVIEW)
                 .build();
     }
 
-    private Records.StudyItem findItemAtRung(List<Records.StudyItem> items, Records.LadderRung rung) {
-        for (Records.StudyItem item : items) {
+    private RecordsStudyModels.StudyItem findItemAtRung(List<RecordsStudyModels.StudyItem> items, RecordsBase.LadderRung rung) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if (item.rung == rung) {
                 return item;
             }
@@ -1789,8 +1789,8 @@ public class BridgeSchedulerTest {
         throw new AssertionError("Missing study item at rung " + rung);
     }
 
-    private Records.StudyItem findItem(List<Records.StudyItem> items, String kanji) {
-        for (Records.StudyItem item : items) {
+    private RecordsStudyModels.StudyItem findItem(List<RecordsStudyModels.StudyItem> items, String kanji) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if (item.kanji.equals(kanji)) {
                 return item;
             }
@@ -1798,8 +1798,8 @@ public class BridgeSchedulerTest {
         throw new AssertionError("Missing study item for " + kanji);
     }
 
-    private String ambiguousLegacyState(List<Records.StudyItem> items) {
-        for (Records.StudyItem item : items) {
+    private String ambiguousLegacyState(List<RecordsStudyModels.StudyItem> items) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if ("裂|stale|stale|stale".equals(item.answerSignature)) {
                 return item.state;
             }
@@ -1807,25 +1807,25 @@ public class BridgeSchedulerTest {
         throw new AssertionError("Missing ambiguous legacy item");
     }
 
-    private Records.DashboardRow row(String kanji, int score) {
-        return new Records.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, new ArrayList<>());
+    private RecordsImportModels.DashboardRow row(String kanji, int score) {
+        return new RecordsImportModels.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, new ArrayList<>());
     }
 
-    private Records.DashboardRow rowWithExamples(String kanji, int score, Records.Example... examples) {
-        ArrayList<Records.Example> list = new ArrayList<>();
+    private RecordsImportModels.DashboardRow rowWithExamples(String kanji, int score, RecordsImportModels.Example... examples) {
+        ArrayList<RecordsImportModels.Example> list = new ArrayList<>();
         Collections.addAll(list, examples);
-        return new Records.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, list);
+        return new RecordsImportModels.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, list);
     }
 
-    private Records.DashboardRow rankedRow(String kanji, Integer rank, int score, Records.Example... examples) {
-        ArrayList<Records.Example> list = new ArrayList<>();
+    private RecordsImportModels.DashboardRow rankedRow(String kanji, Integer rank, int score, RecordsImportModels.Example... examples) {
+        ArrayList<RecordsImportModels.Example> list = new ArrayList<>();
         Collections.addAll(list, examples);
-        return new Records.DashboardRow(kanji, rank, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, list);
+        return new RecordsImportModels.DashboardRow(kanji, rank, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, list);
     }
 
-    private Records.Example example(String kanji, Double difficulty, Double retrievability) {
+    private RecordsImportModels.Example example(String kanji, Double difficulty, Double retrievability) {
         long id = kanji.codePointAt(0);
-        return new Records.Example(
+        return new RecordsImportModels.Example(
                 "active",
                 id,
                 id + 1L,
@@ -1877,9 +1877,9 @@ public class BridgeSchedulerTest {
         }
     }
 
-    private Records.Settings settingsWithQueue(int activeQueueCap, int newPerDay) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings settingsWithQueue(int activeQueueCap, int newPerDay) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,
@@ -1900,9 +1900,9 @@ public class BridgeSchedulerTest {
         );
     }
 
-    private Records.Settings settingsWithSortMode(String mode) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings settingsWithSortMode(String mode) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,

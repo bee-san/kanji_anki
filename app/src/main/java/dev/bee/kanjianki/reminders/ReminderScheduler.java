@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.reminders;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -16,7 +20,6 @@ import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.time.AppClock;
 
@@ -275,7 +278,7 @@ public final class ReminderScheduler {
 
     private static ReminderCopy reminderCopy(Context context, AppClock clock) {
         try (LocalStore store = new LocalStore(context)) {
-            List<Records.DashboardRow> rows = store.activeDashboardRows();
+            List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
             long now = AppClock.orSystem(clock).nowMillis();
             return reminderCopy(
                     rows,
@@ -292,9 +295,9 @@ public final class ReminderScheduler {
     }
 
     static ReminderCopy reminderCopy(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            RecordsSchedulerModels.ReviewStats recentStats,
             int currentStreakDays,
             Set<String> studiedToday,
             int workloadPercent,
@@ -304,7 +307,7 @@ public final class ReminderScheduler {
         if (rows.isEmpty()) {
             return new ReminderCopy("Sync Kani", "Sync AnkiDroid to find the kanji your reviews keep exposing.");
         }
-        Records.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = new AdaptiveLoadPlanner().plan(
                 AdaptiveLoadPlanner.PlanRequest.builder(
                                 rows,
                                 items,
@@ -314,7 +317,7 @@ public final class ReminderScheduler {
                                 AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(workloadPercent, workloadMode, maxItems),
                                 now
                         )
-                        .settings(Records.Settings.kikuDefaults())
+                        .settings(RecordsSyncModels.Settings.kikuDefaults())
                         .build()
         );
         return reminderCopyFor(plan.remaining, currentDueCount(rows, items, now));
@@ -336,7 +339,7 @@ public final class ReminderScheduler {
         return new ReminderCopy("Check Kani", "Your queue can rest today. Open Kani if you want an extra problem kanji rep.");
     }
 
-    private static int currentDueCount(List<Records.DashboardRow> rows, List<Records.StudyItem> items, long now) {
+    private static int currentDueCount(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         return new BridgeScheduler().dueCount(items, rows, now);
     }
 

@@ -1,5 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.Manifest;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -358,7 +363,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save import filters");
             waitForText(scenario, "Import filters");
             try (LocalStore store = new LocalStore(context)) {
-                Records.Settings saved = SyncSettings.fromStore(store);
+                RecordsSyncModels.Settings saved = SyncSettings.fromStore(store);
                 assertFalse(saved.importActiveCards);
                 assertFalse(saved.importSuspendedCards);
                 assertFalse(saved.importTaggedCards);
@@ -371,7 +376,7 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testNoteTypeSettingsValidateCustomSaveAndReset() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
@@ -400,7 +405,7 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Save note type");
             waitForText(scenario, "Using Custom Mining");
-            assertNoteTypeSettings(new Records.Settings(
+            assertNoteTypeSettings(new RecordsSyncModels.Settings(
                     "Custom Mining",
                     defaults.templateName,
                     "Word",
@@ -514,7 +519,7 @@ public final class MainActivityInstrumentedTest {
         long now = System.currentTimeMillis();
         try (LocalStore store = new LocalStore(context)) {
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
+                    new RecordsSyncModels.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
                     Collections.emptyList(),
                     Arrays.asList(
                             statsDashboardRow("痛", 82, 1),
@@ -522,7 +527,7 @@ public final class MainActivityInstrumentedTest {
                             statsDashboardRow("疲", 69, 0),
                             statsDashboardRow("平", 74, 1)
                     ),
-                    Records.Settings.kikuDefaults(),
+                    RecordsSyncModels.Settings.kikuDefaults(),
                     now - 30_000L,
                     now - 20_000L,
                     null
@@ -532,7 +537,7 @@ public final class MainActivityInstrumentedTest {
             store.saveReview(review("疲", "stats-tired"), "good", now - 13_000L);
             store.saveReview(review("平", "stats-flat"), "good", now - 12_000L);
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
+                    new RecordsSyncModels.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
                     Collections.emptyList(),
                     Arrays.asList(
                             statsDashboardRow("痛", 46, 3),
@@ -540,7 +545,7 @@ public final class MainActivityInstrumentedTest {
                             statsDashboardRow("疲", 44, 1),
                             statsDashboardRow("平", 50, 1)
                     ),
-                    Records.Settings.kikuDefaults(),
+                    RecordsSyncModels.Settings.kikuDefaults(),
                     now - 5_000L,
                     now,
                     null
@@ -601,10 +606,10 @@ public final class MainActivityInstrumentedTest {
         long now = System.currentTimeMillis();
         try (LocalStore store = new LocalStore(context)) {
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
+                    new RecordsSyncModels.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
                     Collections.emptyList(),
                     Collections.singletonList(statsDashboardRow("裂", 80, 0)),
-                    Records.Settings.kikuDefaults(),
+                    RecordsSyncModels.Settings.kikuDefaults(),
                     now - 20_000L,
                     now - 10_000L,
                     null
@@ -628,8 +633,8 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private static Records.DashboardRow statsDashboardRow(String kanji, int weaknessScore, int matureSupportCount) {
-        return new Records.DashboardRow(
+    private static RecordsImportModels.DashboardRow statsDashboardRow(String kanji, int weaknessScore, int matureSupportCount) {
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 null,
                 "",
@@ -701,13 +706,13 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testHomeQueuePreviewShowsActivePracticeKanjiNotEveryCandidate() {
-        Records.DashboardRow active = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
-        Records.DashboardRow retired = dashboardRow("謎", "mystery unused", "なぞ", "Already covered by known cards");
+        RecordsImportModels.DashboardRow active = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
+        RecordsImportModels.DashboardRow retired = dashboardRow("謎", "mystery unused", "なぞ", "Already covered by known cards");
         seedDashboard(Arrays.asList(active, retired));
         try (LocalStore store = new LocalStore(context)) {
             store.replaceStudyItems(Arrays.asList(
-                    new Records.StudyItem("拉", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L),
-                    new Records.StudyItem("謎", "retired", 0L, 0.4, 5.0, 1, 0, 2, 3, null, 0L)
+                    new RecordsStudyModels.StudyItem("拉", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L),
+                    new RecordsStudyModels.StudyItem("謎", "retired", 0L, 0.4, 5.0, 1, 0, 2, 3, null, 0L)
             ));
         }
 
@@ -788,7 +793,7 @@ public final class MainActivityInstrumentedTest {
             });
 
             try (LocalStore store = new LocalStore(context)) {
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertEquals("拉", items.get(0).kanji);
             }
@@ -890,13 +895,13 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testHomeQueuePreviewOrderMatchesReviewFirstStudySelection() {
-        Records.DashboardRow newRow = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
-        Records.DashboardRow reviewRow = dashboardRow("謎", "mystery radical gap", "なぞ", MISSED_IN_MATURE_CARDS);
+        RecordsImportModels.DashboardRow newRow = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
+        RecordsImportModels.DashboardRow reviewRow = dashboardRow("謎", "mystery radical gap", "なぞ", MISSED_IN_MATURE_CARDS);
         seedDashboard(Arrays.asList(newRow, reviewRow));
         try (LocalStore store = new LocalStore(context)) {
             store.replaceStudyItems(Arrays.asList(
-                    new Records.StudyItem("拉", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L),
-                    new Records.StudyItem("謎", "review", 500L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
+                    new RecordsStudyModels.StudyItem("拉", "new", 0L, 0.4, 5.0, 0, 0, 0, 0, null, 0L),
+                    new RecordsStudyModels.StudyItem("謎", "review", 500L, 1.8, 4.8, 2, 0, 2, 3, null, 0L)
             ));
         }
 
@@ -921,7 +926,7 @@ public final class MainActivityInstrumentedTest {
         seedDashboardRowsOnly(Collections.singletonList(dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS)));
         try (LocalStore store = new LocalStore(context)) {
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "review", now + 86_400_000L, 1.2, 4.8, 1, 0, 1, 0, null, now - 86_400_000L)
+                    new RecordsStudyModels.StudyItem("拉", "review", now + 86_400_000L, 1.2, 4.8, 1, 0, 1, 0, null, now - 86_400_000L)
             ));
         }
 
@@ -935,7 +940,7 @@ public final class MainActivityInstrumentedTest {
             });
             try (LocalStore store = new LocalStore(context)) {
                 assertEquals(0, store.reviewStatsSince(0L).total);
-                Records.StudyItem item = onlyStudyItem(store);
+                RecordsStudyModels.StudyItem item = onlyStudyItem(store);
                 assertEquals("拉", item.kanji);
                 assertTrue(item.dueAtMillis > now);
             }
@@ -1305,7 +1310,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Pass");
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats reviewStats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats reviewStats = store.reviewStatsSince(0L);
                 assertEquals(1, reviewStats.total);
                 assertEquals(1, reviewStats.good);
                 StudyStatsStore.StudyTaskTimeStats timeStats = store.studyTaskTimeStats(System.currentTimeMillis());
@@ -1324,11 +1329,11 @@ public final class MainActivityInstrumentedTest {
         try (LocalStore setup = new LocalStore(context)) {
             long now = System.currentTimeMillis();
             // Create a study item in NEW_LEARNING phase, step 0, due in the past.
-            Records.StudyItem item = new Records.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
+            RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
                     .withAnswerSignature("拉|拉致|らち|archive example");
             item = item.copyBuilder()
-                    .rung(Records.LadderRung.KANJI_MEANING)
-                    .phase(Records.SchedulerPhase.NEW_LEARNING)
+                    .rung(RecordsBase.LadderRung.KANJI_MEANING)
+                    .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                     .build();
             setup.saveStudyItem(item);
         }
@@ -1342,15 +1347,15 @@ public final class MainActivityInstrumentedTest {
 
             try (LocalStore store = new LocalStore(context)) {
                 // The learning step answer is logged but the card stays in learning.
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertFalse(items.isEmpty());
-                Records.StudyItem updated = items.stream()
+                RecordsStudyModels.StudyItem updated = items.stream()
                         .filter(i -> "拉".equals(i.kanji))
                         .findFirst()
                         .orElse(null);
                 assertNotNull(updated);
                 // After Good on step 0, advances to step 1 (or graduates if only 1 step).
-                assertTrue(updated.learningStep >= 1 || updated.phase == Records.SchedulerPhase.REVIEW);
+                assertTrue(updated.learningStep >= 1 || updated.phase == RecordsBase.SchedulerPhase.REVIEW);
             }
         }
     }
@@ -1366,11 +1371,11 @@ public final class MainActivityInstrumentedTest {
         try (LocalStore setup = new LocalStore(context)) {
             long now = System.currentTimeMillis();
             // Create a study item in NEW_LEARNING phase, due in the past.
-            Records.StudyItem item = new Records.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
+            RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem("拉", "learning", now - 1_000L, 0.4, 5.0, 1, 0, 0, 0, null, now)
                     .withAnswerSignature("拉|拉致|らち|archive example");
             item = item.copyBuilder()
-                    .rung(Records.LadderRung.KANJI_MEANING)
-                    .phase(Records.SchedulerPhase.NEW_LEARNING)
+                    .rung(RecordsBase.LadderRung.KANJI_MEANING)
+                    .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                     .build();
             setup.saveStudyItem(item);
         }
@@ -1394,11 +1399,11 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Fail");
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.again);
                 assertEquals(0, stats.writingRequired);
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertFalse(items.get(0).writingRemediationPending);
                 assertEquals(0, items.get(0).recognitionStage);
@@ -1480,15 +1485,15 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, PASS_AFTER_WRITING);
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(0, stats.good);
                 assertEquals(1, stats.hard);
                 assertEquals(1, stats.writingRequired);
                 assertEquals(0, stats.writingFailed);
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
-                Records.StudyItem item = items.get(0);
+                RecordsStudyModels.StudyItem item = items.get(0);
                 assertEquals("拉", item.kanji);
                 assertEquals("learning", item.state);
                 assertEquals(4, item.totalReviews);
@@ -1512,10 +1517,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, PASS_AFTER_WRITING);
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.hard);
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertEquals(2, items.get(0).writingLevel);
             }
@@ -1540,10 +1545,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save hard");
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.hard);
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertEquals(2, items.get(0).writingLevel);
             }
@@ -1567,12 +1572,12 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Fail");
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.again);
                 assertEquals(1, stats.writingRequired);
                 assertEquals(1, stats.writingFailed);
-                List<Records.StudyItem> items = store.studyItems();
+                List<RecordsStudyModels.StudyItem> items = store.studyItems();
                 assertEquals(1, items.size());
                 assertEquals("learning", items.get(0).state);
                 assertEquals(1, items.get(0).writingLevel);
@@ -1621,7 +1626,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Mark right anyway");
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.hard);
                 assertEquals(1, stats.writingRequired);
@@ -1647,7 +1652,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Mark right anyway");
 
             try (LocalStore store = new LocalStore(context)) {
-                Records.ReviewStats stats = store.reviewStatsSince(0L);
+                RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.hard);
                 assertEquals(1, stats.writingRequired);
@@ -1690,10 +1695,10 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testManualSyncShowsLiveCardProgress() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note first = kikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
-        Records.Note second = kikuNote(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsSyncModels.Note first = kikuNote(1L, "確認", "かくにん", "confirmation", "確認した。");
+        RecordsSyncModels.Note second = kikuNote(2L, "笥箱", "しはこ", "rare box", "笥箱を見た。");
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Arrays.asList(first, second),
                 Arrays.asList(
                         kikuCard(10L, 1L).history(settings.matureDays + 5, 12, 0).build(),
@@ -1739,8 +1744,8 @@ public final class MainActivityInstrumentedTest {
 
     @Test
     public void testLastSyncHeadlineInvitesAndStartsManualSync() throws Exception {
-        Records.Note note = kikuNote(2L, "同期", "どうき", "sync", "同期する。");
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Note note = kikuNote(2L, "同期", "どうき", "sync", "同期する。");
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Collections.singletonList(note),
                 Collections.singletonList(kikuCard(20L, 2L).suspended().build())
         );
@@ -1867,11 +1872,11 @@ public final class MainActivityInstrumentedTest {
         seedDueWritingItem(dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS), writingLevel);
     }
 
-    private void seedDueWritingItem(Records.DashboardRow row, int writingLevel) {
+    private void seedDueWritingItem(RecordsImportModels.DashboardRow row, int writingLevel) {
         seedDashboard(Collections.singletonList(row));
         try (LocalStore store = new LocalStore(context)) {
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem(
+                    new RecordsStudyModels.StudyItem(
                             row.kanji,
                             "learning",
                             0L,
@@ -1892,22 +1897,22 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private void seedDashboard(List<Records.DashboardRow> rows) {
+    private void seedDashboard(List<RecordsImportModels.DashboardRow> rows) {
         seedDashboardRowsOnly(rows);
         try (LocalStore store = new LocalStore(context)) {
             long now = System.currentTimeMillis();
-            ArrayList<Records.StudyItem> items = new ArrayList<>();
-            for (Records.DashboardRow row : rows) {
-                items.add(new Records.StudyItem(row.kanji, "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now));
+            ArrayList<RecordsStudyModels.StudyItem> items = new ArrayList<>();
+            for (RecordsImportModels.DashboardRow row : rows) {
+                items.add(new RecordsStudyModels.StudyItem(row.kanji, "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now));
             }
             store.replaceStudyItems(items);
         }
     }
 
     private void seedSimilarChoiceDashboard() throws Exception {
-        Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.DashboardRow row = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsImportModels.DashboardRow row = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Arrays.asList(
                         kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。"),
                         kikuNote(2L, "提案", "ていあん", "carry radical gap", "提案を見た。")
@@ -1930,17 +1935,17 @@ public final class MainActivityInstrumentedTest {
                     index
             );
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now)
-                            .withRungAndPhase(Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.NEW_LEARNING)
+                    new RecordsStudyModels.StudyItem("拉", "new", now, 0.4, 5.0, 0, 0, 0, 0, null, now)
+                            .withRungAndPhase(RecordsBase.LadderRung.SIMILAR_KANJI, RecordsBase.SchedulerPhase.NEW_LEARNING)
                             .withHasSimilarKanji(true)
             ));
         }
     }
 
     private void seedFocusCompleteWithInventorySimilarChoice() throws Exception {
-        Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.DashboardRow activeRow = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsImportModels.DashboardRow activeRow = dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS);
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Arrays.asList(
                         kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。"),
                         kikuNote(2L, "提案", "ていあん", "carry radical gap", "提案を見た。"),
@@ -1965,7 +1970,7 @@ public final class MainActivityInstrumentedTest {
                     index
             );
             store.replaceStudyItems(Collections.singletonList(
-                    new Records.StudyItem("拉", "review", now + 86_400_000L, 2.0, 4.0, 1, 0, 2, 0, null, now - 86_400_000L)
+                    new RecordsStudyModels.StudyItem("拉", "review", now + 86_400_000L, 2.0, 4.0, 1, 0, 2, 0, null, now - 86_400_000L)
             ));
             store.saveReview(review("拉", "focus-complete"), "good", now);
         }
@@ -1990,23 +1995,23 @@ public final class MainActivityInstrumentedTest {
 
     private void forceStudyItemDue(String kanji, int recognitionStage, boolean writingRemediationPending) {
         try (LocalStore store = new LocalStore(context)) {
-            Records.StudyItem item = null;
-            for (Records.StudyItem candidate : store.studyItems()) {
+            RecordsStudyModels.StudyItem item = null;
+            for (RecordsStudyModels.StudyItem candidate : store.studyItems()) {
                 if (kanji.equals(candidate.kanji)) {
                     item = candidate;
                     break;
                 }
             }
             assertNotNull(item);
-            Records.LadderRung rung = rungForLegacyStage(recognitionStage, writingRemediationPending);
-            Records.TaskMemory dueTaskMemory = item.memoryForRung(rung).withDueAtMillis(0L);
-            Records.StudyItem.StudyItemBuilder builder = item.copyBuilder()
+            RecordsBase.LadderRung rung = rungForLegacyStage(recognitionStage, writingRemediationPending);
+            RecordsStudyModels.TaskMemory dueTaskMemory = item.memoryForRung(rung).withDueAtMillis(0L);
+            RecordsStudyModels.StudyItem.StudyItemBuilder builder = item.copyBuilder()
                     .state("review")
                     .dueAtMillis(0L)
                     .recognitionStage(recognitionStage)
                     .writingRemediationPending(writingRemediationPending)
                     .rung(rung)
-                    .phase(Records.SchedulerPhase.REVIEW)
+                    .phase(RecordsBase.SchedulerPhase.REVIEW)
                     .answerSignature("")
                     .activeToken(null);
             switch (rung) {
@@ -2020,19 +2025,19 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private static Records.LadderRung rungForLegacyStage(int recognitionStage, boolean writingRemediationPending) {
+    private static RecordsBase.LadderRung rungForLegacyStage(int recognitionStage, boolean writingRemediationPending) {
         if (writingRemediationPending) {
-            return Records.LadderRung.WRITE_KANJI;
+            return RecordsBase.LadderRung.WRITE_KANJI;
         }
         return switch (Math.max(-1, Math.min(2, recognitionStage))) {
-            case -1 -> Records.LadderRung.TYPE_MEANING;
-            case 1 -> Records.LadderRung.FONT_MEANING;
-            case 2 -> Records.LadderRung.WORD_READING;
-            default -> Records.LadderRung.KANJI_MEANING;
+            case -1 -> RecordsBase.LadderRung.TYPE_MEANING;
+            case 1 -> RecordsBase.LadderRung.FONT_MEANING;
+            case 2 -> RecordsBase.LadderRung.WORD_READING;
+            default -> RecordsBase.LadderRung.KANJI_MEANING;
         };
     }
 
-    private void seedDashboardRowsOnly(List<Records.DashboardRow> rows) {
+    private void seedDashboardRowsOnly(List<RecordsImportModels.DashboardRow> rows) {
         saveSyncFinishedAt(2000L, rows);
     }
 
@@ -2040,13 +2045,13 @@ public final class MainActivityInstrumentedTest {
         saveSyncFinishedAt(finishedAt, Collections.singletonList(dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS)));
     }
 
-    private void saveSyncFinishedAt(long finishedAt, List<Records.DashboardRow> rows) {
-        Records.Settings settings = Records.Settings.kikuDefaults();
-        Records.Note note = kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。");
-        Records.Card card = kikuCard(10L, 1L).build();
+    private void saveSyncFinishedAt(long finishedAt, List<RecordsImportModels.DashboardRow> rows) {
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsSyncModels.Note note = kikuNote(1L, "拉麺", "らーめん", RAMEN_RADICAL_GAP, "拉麺を食べた。");
+        RecordsSyncModels.Card card = kikuCard(10L, 1L).build();
         try (LocalStore store = new LocalStore(context)) {
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
+                    new RecordsSyncModels.CollectionSnapshot(Collections.singletonList(note), Collections.singletonList(card)),
                     Collections.emptyList(),
                     rows,
                     settings,
@@ -2057,14 +2062,14 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private Records.DashboardRow dashboardRow(String kanji, String meaning, String reading, String reasonText) {
+    private RecordsImportModels.DashboardRow dashboardRow(String kanji, String meaning, String reading, String reasonText) {
         return dashboardRow(kanji, meaning, reading, reasonText, 0);
     }
 
-    private Records.DashboardRow dashboardRow(String kanji, String meaning, String reading, String reasonText, int matureSupportCount) {
-        Records.Example active = new Records.Example("active", 10L, 1L, kanji.equals("拉") ? "拉麺" : kanji + "語", kanji.equals("拉") ? "らーめん" : reading, meaning, kanji + "を見た。", false, 1);
-        Records.Example suspended = new Records.Example("suspended", 20L, 2L, kanji.equals("拉") ? "拉致" : kanji + "例", kanji.equals("拉") ? "らち" : reading, "archive example", kanji + "を練習した。", false, 0);
-        return new Records.DashboardRow(
+    private RecordsImportModels.DashboardRow dashboardRow(String kanji, String meaning, String reading, String reasonText, int matureSupportCount) {
+        RecordsImportModels.Example active = new RecordsImportModels.Example("active", 10L, 1L, kanji.equals("拉") ? "拉麺" : kanji + "語", kanji.equals("拉") ? "らーめん" : reading, meaning, kanji + "を見た。", false, 1);
+        RecordsImportModels.Example suspended = new RecordsImportModels.Example("suspended", 20L, 2L, kanji.equals("拉") ? "拉致" : kanji + "例", kanji.equals("拉") ? "らち" : reading, "archive example", kanji + "を練習した。", false, 0);
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 3401,
                 meaning,
@@ -2081,10 +2086,10 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static final class HoldingProgressGateway implements CollectionGateway {
-        private final Records.CollectionSnapshot snapshot;
+        private final RecordsSyncModels.CollectionSnapshot snapshot;
         private final CompletableFuture<Void> released = new CompletableFuture<>();
 
-        private HoldingProgressGateway(Records.CollectionSnapshot snapshot) {
+        private HoldingProgressGateway(RecordsSyncModels.CollectionSnapshot snapshot) {
             this.snapshot = snapshot;
         }
 
@@ -2093,12 +2098,12 @@ public final class MainActivityInstrumentedTest {
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) {
             return snapshot;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings, SyncProgress.Listener progress) {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings, SyncProgress.Listener progress) {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE));
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES));
             progress.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size()));
@@ -2113,12 +2118,12 @@ public final class MainActivityInstrumentedTest {
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done");
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot, SyncProgress.Listener progress) {
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
             return removeArchivedSuspendedCards(snapshot);
         }
@@ -2358,8 +2363,8 @@ public final class MainActivityInstrumentedTest {
 
     private void assertDefaultImportSettingsStillStored() {
         try (LocalStore store = new LocalStore(context)) {
-            Records.Settings saved = SyncSettings.fromStore(store);
-            Records.Settings defaults = Records.Settings.kikuDefaults();
+            RecordsSyncModels.Settings saved = SyncSettings.fromStore(store);
+            RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
             assertEquals(defaults.importActiveCards, saved.importActiveCards);
             assertEquals(defaults.importSuspendedCards, saved.importSuspendedCards);
             assertEquals(defaults.importTaggedCards, saved.importTaggedCards);
@@ -2395,13 +2400,13 @@ public final class MainActivityInstrumentedTest {
 
     private void assertFailedRecognitionReviewStored() {
         try (LocalStore store = new LocalStore(context)) {
-            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
             assertEquals(1, stats.total);
             assertEquals(1, stats.again);
             assertEquals(0, stats.writingRequired);
-            List<Records.StudyItem> items = store.studyItems();
+            List<RecordsStudyModels.StudyItem> items = store.studyItems();
             assertEquals(1, items.size());
-            Records.StudyItem item = items.get(0);
+            RecordsStudyModels.StudyItem item = items.get(0);
             assertEquals(1, item.kanjiMeaningMemory.totalReviews);
             assertEquals("again", item.kanjiMeaningMemory.lastRating);
             assertEquals(0, item.consecutiveFailedRecognitionDays);
@@ -2412,11 +2417,11 @@ public final class MainActivityInstrumentedTest {
 
     private void assertKnownAnswerRecognitionReviewStored() {
         try (LocalStore store = new LocalStore(context)) {
-            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
             assertEquals(1, stats.total);
             assertEquals(1, stats.good);
             assertEquals(0, stats.writingRequired);
-            Records.StudyItem item = onlyStudyItem(store);
+            RecordsStudyModels.StudyItem item = onlyStudyItem(store);
             assertEquals("拉", item.kanji);
             assertEquals("learning", item.state);
             assertEquals(1, item.totalReviews);
@@ -2431,13 +2436,13 @@ public final class MainActivityInstrumentedTest {
 
     private void assertWordReadingReviewStored() {
         try (LocalStore store = new LocalStore(context)) {
-            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
             assertEquals(1, stats.total);
             assertEquals(1, stats.good);
             assertEquals(0, stats.writingRequired);
-            Records.StudyItem item = onlyStudyItem(store);
+            RecordsStudyModels.StudyItem item = onlyStudyItem(store);
             assertEquals("拉", item.kanji);
-            assertEquals(Records.LadderRung.WORD_READING, item.rung);
+            assertEquals(RecordsBase.LadderRung.WORD_READING, item.rung);
             assertEquals(1, item.wordReadingMemory.totalReviews);
             assertEquals("good", item.wordReadingMemory.lastRating);
             assertLatestLoggedTaskTypes(store, BridgeScheduler.TASK_WORD_READING);
@@ -2451,7 +2456,7 @@ public final class MainActivityInstrumentedTest {
 
     private void assertSimilarChoiceReviewStored(String expectedRating) {
         try (LocalStore store = new LocalStore(context)) {
-            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
             assertEquals(1, stats.total);
             if ("again".equals(expectedRating)) {
                 assertEquals(1, stats.again);
@@ -2459,19 +2464,19 @@ public final class MainActivityInstrumentedTest {
                 assertEquals(1, stats.good);
             }
             assertEquals("again".equals(expectedRating) ? 2 : 0, countSimilarRepairs(store));
-            Records.StudyItem item = onlyStudyItem(store);
+            RecordsStudyModels.StudyItem item = onlyStudyItem(store);
             assertEquals(1, item.similarKanjiMemory.totalReviews);
         }
     }
 
     private void assertCorrectTypingMeaningReviewStored() {
         try (LocalStore store = new LocalStore(context)) {
-            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
             assertEquals(2, stats.total);
             assertEquals(1, stats.good);
-            Records.StudyItem item = onlyStudyItem(store);
+            RecordsStudyModels.StudyItem item = onlyStudyItem(store);
             assertEquals(-1, item.recognitionStage);
-            assertEquals(Records.LadderRung.TYPE_MEANING, item.rung);
+            assertEquals(RecordsBase.LadderRung.TYPE_MEANING, item.rung);
             assertEquals(1, item.typingMeaningMemory.totalReviews);
             assertEquals("good", item.typingMeaningMemory.lastRating);
             assertLatestLoggedTaskTypes(store, BridgeScheduler.TASK_TYPE_MEANING);
@@ -2480,10 +2485,10 @@ public final class MainActivityInstrumentedTest {
 
     private void assertWrongTypingMeaningReviewStored() {
         try (LocalStore store = new LocalStore(context)) {
-            Records.ReviewStats stats = store.reviewStatsSince(0L);
+            RecordsSchedulerModels.ReviewStats stats = store.reviewStatsSince(0L);
             assertEquals(3, stats.total);
             assertEquals(2, stats.again);
-            Records.StudyItem item = onlyStudyItem(store);
+            RecordsStudyModels.StudyItem item = onlyStudyItem(store);
             assertEquals(-1, item.recognitionStage);
             assertFalse(item.writingRemediationPending);
             assertEquals(1, item.consecutiveFailedRecognitionDays);
@@ -2509,8 +2514,8 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private static Records.StudyItem onlyStudyItem(LocalStore store) {
-        List<Records.StudyItem> items = store.studyItems();
+    private static RecordsStudyModels.StudyItem onlyStudyItem(LocalStore store) {
+        List<RecordsStudyModels.StudyItem> items = store.studyItems();
         assertEquals(1, items.size());
         return items.get(0);
     }
@@ -2569,9 +2574,9 @@ public final class MainActivityInstrumentedTest {
         return input;
     }
 
-    private void assertNoteTypeSettings(Records.Settings expected) {
+    private void assertNoteTypeSettings(RecordsSyncModels.Settings expected) {
         try (LocalStore store = new LocalStore(context)) {
-            Records.Settings actual = SyncSettings.fromStore(store);
+            RecordsSyncModels.Settings actual = SyncSettings.fromStore(store);
             assertEquals(expected.modelName, actual.modelName);
             assertEquals(expected.expressionField, actual.expressionField);
             assertEquals(expected.readingField, actual.readingField);

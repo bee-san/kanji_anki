@@ -10,7 +10,7 @@ public final class SyncValidator {
     private SyncValidator() {
     }
 
-    public static List<String> validateModelFields(String actualModelName, List<String> actualFields, Records.Settings settings) {
+    public static List<String> validateModelFields(String actualModelName, List<String> actualFields, RecordsSyncModels.Settings settings) {
         List<String> errors = new ArrayList<>();
         if (actualModelName == null || !actualModelName.equalsIgnoreCase(settings.modelName)) {
             errors.add("Expected note type " + settings.modelName + " but found " + actualModelName + ".");

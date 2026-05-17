@@ -1,5 +1,10 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -7,7 +12,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
@@ -112,7 +116,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                     row.rebuiltAt == 0L ? System.currentTimeMillis() : row.rebuiltAt,
                     "weak_support_seen",
                     "Weak support seen",
-                    supportDetail("Anki evidence still needs repair", row.matureSupportCount, Records.Settings.kikuDefaults().matureSupportThreshold),
+                    supportDetail("Anki evidence still needs repair", row.matureSupportCount, RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold),
                     row.source.expression,
                     row.source.reading,
                     "",
@@ -173,7 +177,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                     "Retired by Anki support",
                     mature == null
                             ? "Kani had already retired this repair before timeline tracking was added."
-                            : supportDetail("Mature Anki support met the target", mature, Records.Settings.kikuDefaults().matureSupportThreshold),
+                            : supportDetail("Mature Anki support met the target", mature, RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold),
                     source.expression,
                     source.reading,
                     "",
@@ -192,7 +196,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         Cursor reviews = db.query(TABLE_REVIEW_LOG, null, null, null, null, null, "reviewed_at ASC, id ASC");
         try {
             while (reviews.moveToNext()) {
-                Records.ReviewRequest request = new Records.ReviewRequest(
+                RecordsSchedulerModels.ReviewRequest request = new RecordsSchedulerModels.ReviewRequest(
                         string(reviews, COLUMN_KANJI),
                         string(reviews, COLUMN_TOKEN),
                         string(reviews, COLUMN_RATING),
@@ -215,14 +219,14 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     void appendSyncTimelineEvents(
             SQLiteDatabase db,
             Map<String, RowSnapshot> previousRows,
-            List<Records.SuspendedImport> imports,
-            List<Records.DashboardRow> rows,
+            List<RecordsImportModels.SuspendedImport> imports,
+            List<RecordsImportModels.DashboardRow> rows,
             long syncId,
             long occurredAt,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
-        int target = settings == null ? Records.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
-        for (Records.SuspendedImport imported : imports) {
+        int target = settings == null ? RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
+        for (RecordsImportModels.SuspendedImport imported : imports) {
             SourceSnapshot source = sourceFromImport(imported);
             insertTimelineEvent(
                     db,
@@ -244,7 +248,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             );
         }
 
-        for (Records.DashboardRow row : rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             RowSnapshot previous = previousRows.get(row.kanji);
             SourceSnapshot source = sourceForRow(row);
             insertTimelineEvent(
@@ -329,13 +333,13 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     void appendStudyStateTimelineEvents(
             SQLiteDatabase db,
             Map<String, StudySnapshot> previousItems,
-            List<Records.StudyItem> currentItems,
+            List<RecordsStudyModels.StudyItem> currentItems,
             long syncId,
             long occurredAt,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
-        int target = settings == null ? Records.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
-        for (Records.StudyItem item : currentItems) {
+        int target = settings == null ? RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
+        for (RecordsStudyModels.StudyItem item : currentItems) {
             StudySnapshot previous = previousItems.get(studyFamilyKey(item.kanji, item.answerSignature));
             if (previous != null) {
                 appendStudyStateTimelineEvent(db, item, previous, syncId, occurredAt, target);
@@ -345,7 +349,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void appendStudyStateTimelineEvent(
             SQLiteDatabase db,
-            Records.StudyItem item,
+            RecordsStudyModels.StudyItem item,
             StudySnapshot previous,
             long syncId,
             long occurredAt,
@@ -378,7 +382,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         );
     }
 
-    boolean stateRetirementChanged(Records.StudyItem item, StudySnapshot previous) {
+    boolean stateRetirementChanged(RecordsStudyModels.StudyItem item, StudySnapshot previous) {
         return STATE_RETIRED.equals(item.state) != STATE_RETIRED.equals(previous.state);
     }
 
@@ -393,7 +397,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                 : supportDetail("Mature Anki support fell below target", mature, target);
     }
 
-    void appendReviewTimelineEvent(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt, String dedupeKey) {
+    void appendReviewTimelineEvent(SQLiteDatabase db, RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt, String dedupeKey) {
         String eventType;
         String title;
         if (request.manualOverride) {
@@ -428,7 +432,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         );
     }
 
-    String reviewDetail(Records.ReviewRequest request, String appliedRating) {
+    String reviewDetail(RecordsSchedulerModels.ReviewRequest request, String appliedRating) {
         if (request.manualOverride) {
             return "Saved as " + appliedRating + " after manual confirmation.";
         }
@@ -449,12 +453,12 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return prefix + ": mature support " + matureSupportCount + " / target " + target + ".";
     }
 
-    void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, Records.Settings settings) {
+    void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings) {
         rebuildKanjiInventory(db, null, suspendedImportsFromDb(db), dashboardRowsFromDb(db), nowMillis, settings);
     }
 
-    List<Records.DashboardRow> dashboardRowsFromDb(SQLiteDatabase db) {
-        List<Records.DashboardRow> rows = new ArrayList<>();
+    List<RecordsImportModels.DashboardRow> dashboardRowsFromDb(SQLiteDatabase db) {
+        List<RecordsImportModels.DashboardRow> rows = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, ORDER_KANJI_ASC)) {
             while (cursor.moveToNext()) {
                 rows.add(readDashboardRow(db, cursor));
@@ -463,7 +467,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return rows;
     }
 
-    List<Records.SuspendedImport> suspendedImportsFromDb(SQLiteDatabase db) {
+    List<RecordsImportModels.SuspendedImport> suspendedImportsFromDb(SQLiteDatabase db) {
         Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();
         try (Cursor cursor = db.query(TABLE_SUSPENDED_IMPORTS, null, null, null, null, null, "jiten_rank ASC, kanji ASC")) {
             while (cursor.moveToNext()) {
@@ -480,7 +484,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             while (sources.moveToNext()) {
                 MutableSuspendedImport imported = imports.get(string(sources, COLUMN_KANJI));
                 if (imported != null) {
-                    imported.sources.add(new Records.SuspendedSource(
+                    imported.sources.add(new RecordsImportModels.SuspendedSource(
                             imported.kanji,
                             longValue(sources, COLUMN_CARD_ID),
                             longValue(sources, COLUMN_NOTE_ID),
@@ -492,7 +496,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                 }
             }
         }
-        List<Records.SuspendedImport> out = new ArrayList<>();
+        List<RecordsImportModels.SuspendedImport> out = new ArrayList<>();
         for (MutableSuspendedImport imported : imports.values()) {
             out.add(imported.build());
         }
@@ -501,11 +505,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void rebuildKanjiInventory(
             SQLiteDatabase db,
-            Records.CollectionSnapshot snapshot,
-            List<Records.SuspendedImport> imports,
-            List<Records.DashboardRow> rows,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            List<RecordsImportModels.SuspendedImport> imports,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
         Map<String, MutableKanjiInventoryItem> inventory = new LinkedHashMap<>();
         addSnapshotInventory(inventory, snapshot, settings);
@@ -519,14 +523,14 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void addSnapshotInventory(
             Map<String, MutableKanjiInventoryItem> inventory,
-            Records.CollectionSnapshot snapshot,
-            Records.Settings settings
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            RecordsSyncModels.Settings settings
     ) {
         if (snapshot == null) {
             return;
         }
         ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
-        for (Records.Note note : snapshot.notes) {
+        for (RecordsSyncModels.Note note : snapshot.notes) {
             if (activeIndex.noteIds.contains(note.noteId)) {
                 addInventoryTextForNote(inventory, note, settings);
             }
@@ -535,8 +539,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void addInventoryTextForNote(
             Map<String, MutableKanjiInventoryItem> inventory,
-            Records.Note note,
-            Records.Settings settings
+            RecordsSyncModels.Note note,
+            RecordsSyncModels.Settings settings
     ) {
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
         String reading = TextUtil.normalizeJapanese(note.reading(settings));
@@ -545,21 +549,21 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         addInventoryText(inventory, TextUtil.extractKanji(expression + " " + sentence), meaning, reading, expression, sentence);
     }
 
-    void addImportedInventory(Map<String, MutableKanjiInventoryItem> inventory, List<Records.SuspendedImport> imports) {
-        for (Records.SuspendedImport imported : imports) {
+    void addImportedInventory(Map<String, MutableKanjiInventoryItem> inventory, List<RecordsImportModels.SuspendedImport> imports) {
+        for (RecordsImportModels.SuspendedImport imported : imports) {
             MutableKanjiInventoryItem item = inventoryItem(inventory, imported.kanji);
-            for (Records.SuspendedSource source : imported.sources) {
+            for (RecordsImportModels.SuspendedSource source : imported.sources) {
                 item.add(source.meaning, source.reading, source.expression, source.sentence);
             }
         }
     }
 
-    void addDashboardInventory(Map<String, MutableKanjiInventoryItem> inventory, List<Records.DashboardRow> rows) {
-        for (Records.DashboardRow row : rows) {
+    void addDashboardInventory(Map<String, MutableKanjiInventoryItem> inventory, List<RecordsImportModels.DashboardRow> rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             MutableKanjiInventoryItem item = inventoryItem(inventory, row.kanji);
             item.add(row.primaryMeaning, row.reading, row.reasonText, row.browserSearch);
             item.browserSearch = row.browserSearch;
-            for (Records.Example example : row.examples) {
+            for (RecordsImportModels.Example example : row.examples) {
                 item.exampleCount++;
                 item.add(example.meaning, example.reading, example.expression, example.sentence);
             }
@@ -578,13 +582,13 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             SQLiteDatabase db,
             Map<String, MutableKanjiInventoryItem> inventory,
             long nowMillis,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
         for (MutableKanjiInventoryItem item : inventory.values()) {
             if (item.kanji.isEmpty()) {
                 continue;
             }
-            Records.KanjiInventoryItem previous = readInventoryItem(db, item.kanji);
+            RecordsImportModels.KanjiInventoryItem previous = readInventoryItem(db, item.kanji);
             ContentValues values = new ContentValues();
             values.put(COLUMN_KANJI, item.kanji);
             values.put(COLUMN_PRIMARY_MEANING, firstNonEmpty(item.primaryMeaning, previous == null ? "" : previous.primaryMeaning));
@@ -618,12 +622,12 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         createSimilarKanjiPracticeTables(db);
         Map<String, SimilarChoiceSnapshot> previous = similarChoiceSnapshots(db);
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
-        List<Records.SimilarKanjiChoiceCard> candidates = planner.buildCandidates(
+        List<RecordsImportModels.SimilarKanjiChoiceCard> candidates = planner.buildCandidates(
                 allInventoryItems(db),
                 allSimilarPairs(db)
         );
         Set<String> currentKeys = new HashSet<>();
-        for (Records.SimilarKanjiChoiceCard card : candidates) {
+        for (RecordsImportModels.SimilarKanjiChoiceCard card : candidates) {
             String key = similarChoiceKey(card.targetKanji, card.choiceSignature);
             currentKeys.add(key);
             upsertSimilarKanjiChoiceState(db, card, previous.get(key), nowMillis);
@@ -633,7 +637,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void upsertSimilarKanjiChoiceState(
             SQLiteDatabase db,
-            Records.SimilarKanjiChoiceCard card,
+            RecordsImportModels.SimilarKanjiChoiceCard card,
             SimilarChoiceSnapshot old,
             long nowMillis
     ) {
@@ -697,8 +701,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return out;
     }
 
-    Records.SimilarKanjiPair readSimilarPair(Cursor cursor) {
-        return new Records.SimilarKanjiPair(
+    RecordsImportModels.SimilarKanjiPair readSimilarPair(Cursor cursor) {
+        return new RecordsImportModels.SimilarKanjiPair(
                 string(cursor, COLUMN_KANJI_A),
                 string(cursor, COLUMN_KANJI_B),
                 string(cursor, COLUMN_SOURCE),
@@ -707,8 +711,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         );
     }
 
-    List<Records.SimilarKanjiPair> allSimilarPairs(SQLiteDatabase db) {
-        List<Records.SimilarKanjiPair> out = new ArrayList<>();
+    List<RecordsImportModels.SimilarKanjiPair> allSimilarPairs(SQLiteDatabase db) {
+        List<RecordsImportModels.SimilarKanjiPair> out = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, ORDER_SIMILAR_PAIR)) {
             while (cursor.moveToNext()) {
                 out.add(readSimilarPair(cursor));
@@ -717,8 +721,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return out;
     }
 
-    List<Records.KanjiInventoryItem> allInventoryItems(SQLiteDatabase db) {
-        List<Records.KanjiInventoryItem> out = new ArrayList<>();
+    List<RecordsImportModels.KanjiInventoryItem> allInventoryItems(SQLiteDatabase db) {
+        List<RecordsImportModels.KanjiInventoryItem> out = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, null, null, null, null, ORDER_KANJI_ASC)) {
             while (cursor.moveToNext()) {
                 out.add(readInventoryItem(db, cursor));
@@ -749,7 +753,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return out;
     }
 
-    Records.SimilarKanjiChoiceCard similarChoiceCard(SQLiteDatabase db, String targetKanji, String choiceSignature) {
+    RecordsImportModels.SimilarKanjiChoiceCard similarChoiceCard(SQLiteDatabase db, String targetKanji, String choiceSignature) {
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_CHOICE_STATE,
                 null,
@@ -764,8 +768,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    Records.SimilarKanjiChoiceCard readSimilarChoiceCard(Cursor cursor) {
-        return new Records.SimilarKanjiChoiceCard(
+    RecordsImportModels.SimilarKanjiChoiceCard readSimilarChoiceCard(Cursor cursor) {
+        return new RecordsImportModels.SimilarKanjiChoiceCard(
                 string(cursor, COLUMN_TARGET_KANJI),
                 string(cursor, COLUMN_PRIMARY_MEANING),
                 deserializeChoices(string(cursor, COLUMN_CHOICES)),
@@ -795,7 +799,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void enqueueSimilarWritingRepair(
             SQLiteDatabase db,
-            Records.SimilarKanjiChoiceCard card,
+            RecordsImportModels.SimilarKanjiChoiceCard card,
             String repairKanji,
             String wrongSelection,
             long nowMillis
@@ -834,7 +838,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         db.insert(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, null, values);
     }
 
-    Records.SimilarKanjiWritingRepair similarWritingRepair(SQLiteDatabase db, long repairId) {
+    RecordsImportModels.SimilarKanjiWritingRepair similarWritingRepair(SQLiteDatabase db, long repairId) {
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
                 null,
@@ -849,8 +853,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    Records.SimilarKanjiWritingRepair readSimilarWritingRepair(Cursor cursor) {
-        return new Records.SimilarKanjiWritingRepair(
+    RecordsImportModels.SimilarKanjiWritingRepair readSimilarWritingRepair(Cursor cursor) {
+        return new RecordsImportModels.SimilarKanjiWritingRepair(
                 longValue(cursor, "id"),
                 string(cursor, COLUMN_TARGET_KANJI),
                 string(cursor, "repair_kanji"),
@@ -900,7 +904,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return item;
     }
 
-    Records.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, String kanji) {
+    RecordsImportModels.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             return cursor.moveToFirst() ? readInventoryItem(db, cursor) : null;
@@ -909,9 +913,9 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    Records.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, Cursor cursor) {
+    RecordsImportModels.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, Cursor cursor) {
         String kanji = string(cursor, COLUMN_KANJI);
-        return new Records.KanjiInventoryItem(
+        return new RecordsImportModels.KanjiInventoryItem(
                 kanji,
                 string(cursor, COLUMN_PRIMARY_MEANING),
                 string(cursor, "readings"),
@@ -962,7 +966,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return targetKanji + SIMILAR_CHOICE_KEY_DELIMITER + (choiceSignature == null ? "" : choiceSignature);
     }
 
-    Records.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
+    RecordsImportModels.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
             if (!cursor.moveToFirst()) {
@@ -974,9 +978,9 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    Records.DashboardRow readDashboardRow(SQLiteDatabase db, Cursor cursor) {
+    RecordsImportModels.DashboardRow readDashboardRow(SQLiteDatabase db, Cursor cursor) {
         String kanji = string(cursor, COLUMN_KANJI);
-        return new Records.DashboardRow(
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 nullableInt(cursor, COLUMN_JITEN_RANK),
                 string(cursor, COLUMN_PRIMARY_MEANING),
@@ -992,13 +996,13 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         );
     }
 
-    Records.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
+    RecordsStudyModels.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query(TABLE_STUDY_ITEMS, null, WHERE_KANJI, new String[]{kanji}, null, null, "state='retired' ASC, due_at ASC", "1");
         try {
             if (!cursor.moveToFirst()) {
                 return null;
             }
-            Records.StudyItem item = readStudyItem(cursor);
+            RecordsStudyModels.StudyItem item = readStudyItem(cursor);
             boolean hasSimilar = kanjiHasSimilarNeighbor(db, kanji);
             return hasSimilar != item.hasSimilarKanji ? item.withHasSimilarKanji(hasSimilar) : item;
         } finally {
@@ -1016,8 +1020,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    Records.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
-        return new Records.KanjiTimelineEvent(
+    RecordsImportModels.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
+        return new RecordsImportModels.KanjiTimelineEvent(
                 longValue(cursor, "id"),
                 string(cursor, COLUMN_KANJI),
                 longValue(cursor, COLUMN_OCCURRED_AT),
@@ -1176,17 +1180,17 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    SourceSnapshot sourceFromImport(Records.SuspendedImport imported) {
+    SourceSnapshot sourceFromImport(RecordsImportModels.SuspendedImport imported) {
         if (imported.sources.isEmpty()) {
             return SourceSnapshot.EMPTY;
         }
-        Records.SuspendedSource source = imported.sources.get(0);
+        RecordsImportModels.SuspendedSource source = imported.sources.get(0);
         return new SourceSnapshot(source.expression, source.reading);
     }
 
-    SourceSnapshot sourceForRow(Records.DashboardRow row) {
-        Records.Example fallback = null;
-        for (Records.Example example : row.examples) {
+    SourceSnapshot sourceForRow(RecordsImportModels.DashboardRow row) {
+        RecordsImportModels.Example fallback = null;
+        for (RecordsImportModels.Example example : row.examples) {
             if ("active".equals(example.sourceType)) {
                 return new SourceSnapshot(example.expression, example.reading);
             }
@@ -1214,8 +1218,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return db.insert(TABLE_SYNC_RUNS, null, values);
     }
 
-    void saveRows(SQLiteDatabase db, List<Records.DashboardRow> rows, long rebuiltAt) {
-        for (Records.DashboardRow row : rows) {
+    void saveRows(SQLiteDatabase db, List<RecordsImportModels.DashboardRow> rows, long rebuiltAt) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             ContentValues values = new ContentValues();
             values.put(COLUMN_KANJI, row.kanji);
             if (row.jitenRank != null) {
@@ -1232,7 +1236,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             values.put(COLUMN_MATURE_SUPPORT_COUNT, row.matureSupportCount);
             values.put("rebuilt_at", rebuiltAt);
             db.insertWithOnConflict(TABLE_DASHBOARD_ROWS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-            for (Records.Example example : row.examples) {
+            for (RecordsImportModels.Example example : row.examples) {
                 ContentValues ex = new ContentValues();
                 ex.put(COLUMN_KANJI, row.kanji);
                 ex.put("source_type", example.sourceType);
@@ -1256,10 +1260,10 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void appendHistoricalSyncSnapshots(
             SQLiteDatabase db,
-            Records.CollectionSnapshot snapshot,
-            Map<Long, Records.Note> notesById,
-            List<Records.DashboardRow> rows,
-            Records.Settings settings,
+            RecordsSyncModels.CollectionSnapshot snapshot,
+            Map<Long, RecordsSyncModels.Note> notesById,
+            List<RecordsImportModels.DashboardRow> rows,
+            RecordsSyncModels.Settings settings,
             long syncId,
             SyncTiming timing
     ) {
@@ -1274,12 +1278,12 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         historicalSyncStore.insertHistoricalKanjiAggregates(db, syncId, finishedAt, aggregates);
     }
 
-    List<Records.Example> examplesForKanji(SQLiteDatabase db, String kanji) {
-        List<Records.Example> examples = new ArrayList<>();
+    List<RecordsImportModels.Example> examplesForKanji(SQLiteDatabase db, String kanji) {
+        List<RecordsImportModels.Example> examples = new ArrayList<>();
         Cursor cursor = db.query(TABLE_KANJI_EXAMPLES, null, WHERE_KANJI, new String[]{kanji}, null, null, "source_type DESC, id ASC", "8");
         try {
             while (cursor.moveToNext()) {
-                examples.add(new Records.Example(
+                examples.add(new RecordsImportModels.Example(
                         string(cursor, "source_type"),
                         longValue(cursor, COLUMN_CARD_ID),
                         longValue(cursor, COLUMN_NOTE_ID),
@@ -1302,7 +1306,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return examples;
     }
 
-    void upsertStudyItem(SQLiteDatabase db, Records.StudyItem item) {
+    void upsertStudyItem(SQLiteDatabase db, RecordsStudyModels.StudyItem item) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_KANJI, item.kanji);
         values.put(COLUMN_STATE, item.state);
@@ -1327,8 +1331,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         values.put(COLUMN_FONT_MEANING_MEMORY, item.fontMeaningMemory.encode());
         values.put(COLUMN_WORD_READING_MEMORY, item.wordReadingMemory.encode());
         values.put(COLUMN_WRITING_REMEDIATION_MEMORY, item.writingRemediationMemory.encode());
-        values.put(COLUMN_RUNG, item.rung == null ? Records.LadderRung.KANJI_MEANING.wireName() : item.rung.wireName());
-        values.put(COLUMN_PHASE, item.phase == null ? Records.SchedulerPhase.NEW_LEARNING.wireName() : item.phase.wireName());
+        values.put(COLUMN_RUNG, item.rung == null ? RecordsBase.LadderRung.KANJI_MEANING.wireName() : item.rung.wireName());
+        values.put(COLUMN_PHASE, item.phase == null ? RecordsBase.SchedulerPhase.NEW_LEARNING.wireName() : item.phase.wireName());
         values.put(COLUMN_REAL_PASS_STREAK, item.realPassStreak);
         values.put(COLUMN_REAL_AGAIN_STREAK, item.realAgainStreak);
         values.put(COLUMN_LAST_REAL_REVIEW_DUE_AT, item.lastRealReviewDueAtMillis);
@@ -1338,7 +1342,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         db.insertWithOnConflict(TABLE_STUDY_ITEMS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
-    Records.StudyItem readStudyItem(Cursor cursor) {
+    RecordsStudyModels.StudyItem readStudyItem(Cursor cursor) {
         String state = string(cursor, COLUMN_STATE);
         long dueAt = longValue(cursor, COLUMN_DUE_AT);
         double stability = cursor.getDouble(cursor.getColumnIndexOrThrow("stability"));
@@ -1350,23 +1354,23 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         boolean writingRemediationPending = integer(cursor, COLUMN_WRITING_REMEDIATION_PENDING) == 1;
         int matureIntervalDays = integer(cursor, COLUMN_MATURE_INTERVAL_DAYS);
         StudyMemoryFields memoryFields = new StudyMemoryFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays);
-        Records.TaskMemory typingFallback = taskMemoryFallback(-1, recognitionStage, memoryFields);
-        Records.TaskMemory kanjiFallback = taskMemoryFallback(0, recognitionStage, memoryFields);
-        Records.TaskMemory fontFallback = taskMemoryFallback(1, recognitionStage, memoryFields);
-        Records.TaskMemory wordFallback = taskMemoryFallback(2, recognitionStage, memoryFields);
-        Records.TaskMemory writingFallback = writingRemediationPending
-                ? Records.TaskMemory.fromStudyFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
-                : Records.TaskMemory.initial();
-        Records.LadderRung rung = Records.LadderRung.fromWireName(string(cursor, COLUMN_RUNG));
-        Records.SchedulerPhase phase = Records.SchedulerPhase.fromWireName(string(cursor, COLUMN_PHASE));
+        RecordsStudyModels.TaskMemory typingFallback = taskMemoryFallback(-1, recognitionStage, memoryFields);
+        RecordsStudyModels.TaskMemory kanjiFallback = taskMemoryFallback(0, recognitionStage, memoryFields);
+        RecordsStudyModels.TaskMemory fontFallback = taskMemoryFallback(1, recognitionStage, memoryFields);
+        RecordsStudyModels.TaskMemory wordFallback = taskMemoryFallback(2, recognitionStage, memoryFields);
+        RecordsStudyModels.TaskMemory writingFallback = writingRemediationPending
+                ? RecordsStudyModels.TaskMemory.fromStudyFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
+                : RecordsStudyModels.TaskMemory.initial();
+        RecordsBase.LadderRung rung = RecordsBase.LadderRung.fromWireName(string(cursor, COLUMN_RUNG));
+        RecordsBase.SchedulerPhase phase = RecordsBase.SchedulerPhase.fromWireName(string(cursor, COLUMN_PHASE));
         int realPassStreak = integer(cursor, COLUMN_REAL_PASS_STREAK);
         int realAgainStreak = integer(cursor, COLUMN_REAL_AGAIN_STREAK);
         long lastRealReviewDueAtMillis = longValue(cursor, COLUMN_LAST_REAL_REVIEW_DUE_AT);
-        Records.TaskMemory similarKanjiMemory = Records.TaskMemory.decode(
+        RecordsStudyModels.TaskMemory similarKanjiMemory = RecordsStudyModels.TaskMemory.decode(
                 string(cursor, COLUMN_SIMILAR_KANJI_MEMORY),
-                Records.TaskMemory.initial()
+                RecordsStudyModels.TaskMemory.initial()
         );
-        return new Records.StudyItem(
+        return new RecordsStudyModels.StudyItem(
                 string(cursor, COLUMN_KANJI),
                 state,
                 dueAt,
@@ -1386,12 +1390,12 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                 string(cursor, COLUMN_ANSWER_SIGNATURE),
                 string(cursor, COLUMN_ACTIVE_TOKEN),
                 longValue(cursor, COLUMN_CREATED_AT),
-                Records.TaskMemory.decode(string(cursor, COLUMN_TYPING_MEANING_MEMORY), typingFallback),
-                Records.TaskMemory.decode(string(cursor, COLUMN_MEANING_KANJI_MEMORY), Records.TaskMemory.initial()),
-                Records.TaskMemory.decode(string(cursor, COLUMN_KANJI_MEANING_MEMORY), kanjiFallback),
-                Records.TaskMemory.decode(string(cursor, COLUMN_FONT_MEANING_MEMORY), fontFallback),
-                Records.TaskMemory.decode(string(cursor, COLUMN_WORD_READING_MEMORY), wordFallback),
-                Records.TaskMemory.decode(string(cursor, COLUMN_WRITING_REMEDIATION_MEMORY), writingFallback),
+                RecordsStudyModels.TaskMemory.decode(string(cursor, COLUMN_TYPING_MEANING_MEMORY), typingFallback),
+                RecordsStudyModels.TaskMemory.decode(string(cursor, COLUMN_MEANING_KANJI_MEMORY), RecordsStudyModels.TaskMemory.initial()),
+                RecordsStudyModels.TaskMemory.decode(string(cursor, COLUMN_KANJI_MEANING_MEMORY), kanjiFallback),
+                RecordsStudyModels.TaskMemory.decode(string(cursor, COLUMN_FONT_MEANING_MEMORY), fontFallback),
+                RecordsStudyModels.TaskMemory.decode(string(cursor, COLUMN_WORD_READING_MEMORY), wordFallback),
+                RecordsStudyModels.TaskMemory.decode(string(cursor, COLUMN_WRITING_REMEDIATION_MEMORY), writingFallback),
                 rung,
                 phase,
                 realPassStreak,
@@ -1402,8 +1406,8 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         );
     }
 
-    Records.LearningRepeat readLearningRepeat(Cursor cursor) {
-        return new Records.LearningRepeat(
+    RecordsSchedulerModels.LearningRepeat readLearningRepeat(Cursor cursor) {
+        return new RecordsSchedulerModels.LearningRepeat(
                 string(cursor, COLUMN_KANJI),
                 string(cursor, COLUMN_ANSWER_SIGNATURE),
                 string(cursor, COLUMN_TASK_TYPE),
@@ -1416,13 +1420,13 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         );
     }
 
-    Records.TaskMemory taskMemoryFallback(
+    RecordsStudyModels.TaskMemory taskMemoryFallback(
             int memoryStage,
             int recognitionStage,
             StudyMemoryFields fields
     ) {
         if (Math.max(-1, Math.min(2, recognitionStage)) == memoryStage) {
-            return Records.TaskMemory.fromStudyFields(
+            return RecordsStudyModels.TaskMemory.fromStudyFields(
                     fields.state(),
                     fields.dueAtMillis(),
                     fields.stability(),
@@ -1433,7 +1437,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                     fields.matureIntervalDays()
             );
         }
-        return Records.TaskMemory.initial();
+        return RecordsStudyModels.TaskMemory.initial();
     }
 
     long firstImportedAt(SQLiteDatabase db, String kanji, long fallback) {
@@ -1445,10 +1449,10 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    Set<Long> selectedSuspendedCardIds(List<Records.SuspendedImport> imports) {
+    Set<Long> selectedSuspendedCardIds(List<RecordsImportModels.SuspendedImport> imports) {
         Set<Long> ids = new HashSet<>();
-        for (Records.SuspendedImport imported : imports) {
-            for (Records.SuspendedSource source : imported.sources) {
+        for (RecordsImportModels.SuspendedImport imported : imports) {
+            for (RecordsImportModels.SuspendedSource source : imported.sources) {
                 if (source.suspended) {
                     ids.add(source.cardId);
                 }
@@ -1457,11 +1461,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return ids;
     }
 
-    ActiveCardIndex activeCardIndex(List<Records.Card> cards) {
+    ActiveCardIndex activeCardIndex(List<RecordsSyncModels.Card> cards) {
         Set<Long> noteIds = new HashSet<>();
         Set<Long> cardIds = new HashSet<>();
         int activeCardCount = 0;
-        for (Records.Card card : cards) {
+        for (RecordsSyncModels.Card card : cards) {
             if (!card.suspended) {
                 activeCardCount++;
                 noteIds.add(card.noteId);

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.sync;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.data.LocalStore;
 
 public final class SyncSettings {
@@ -34,8 +35,8 @@ public final class SyncSettings {
     private SyncSettings() {
     }
 
-    public static Records.Settings fromStore(LocalStore store) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+    public static RecordsSyncModels.Settings fromStore(LocalStore store) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         repairOldDefaultImportSettings(store);
         String modelName = store == null
                 ? defaults.modelName
@@ -96,7 +97,7 @@ public final class SyncSettings {
         String newCardSortMode = store == null
                 ? defaults.newCardSortMode
                 : store.getStringSetting(NEW_CARD_SORT_MODE_SETTING_KEY, defaults.newCardSortMode);
-        return new Records.Settings(
+        return new RecordsSyncModels.Settings(
                 modelName,
                 defaults.templateName,
                 expressionField,
@@ -117,14 +118,14 @@ public final class SyncSettings {
                 importActiveCards,
                 importSuspendedCards,
                 importTaggedCards,
-                Records.parseImportTags(importTags),
+                RecordsBase.parseImportTags(importTags),
                 importWeakCards,
                 importWeakFsrsDifficulty,
                 importWeakLapses,
                 importMinMatchingCards,
                 importBrowserQueryCards,
                 importBrowserQuery,
-                Records.Settings.normalizeNewCardSortMode(newCardSortMode),
+                RecordsSyncModels.Settings.normalizeNewCardSortMode(newCardSortMode),
                 ladderPromotionIntervalDays,
                 ladderDemotionFailStreak
         );
@@ -158,17 +159,17 @@ public final class SyncSettings {
                 && doubleSettingMatchesOrAbsent(
                         store,
                         IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY,
-                        Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY
+                        RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY
                 )
                 && intSettingMatchesOrAbsent(
                         store,
                         IMPORT_WEAK_LAPSES_SETTING_KEY,
-                        Records.DEFAULT_IMPORT_WEAK_LAPSES
+                        RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES
                 )
                 && intSettingMatchesOrAbsent(
                         store,
                         IMPORT_MIN_MATCHING_CARDS_SETTING_KEY,
-                        Records.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
+                        RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
                 );
     }
 
@@ -187,7 +188,7 @@ public final class SyncSettings {
 
     private static boolean importTagsEmptyOrAbsent(LocalStore store) {
         String value = store.getStringSetting(IMPORT_TAGS_SETTING_KEY, null);
-        return value == null || Records.parseImportTags(value).isEmpty();
+        return value == null || RecordsBase.parseImportTags(value).isEmpty();
     }
 
     private static boolean doubleSettingMatchesOrAbsent(LocalStore store, String key, double expected) {

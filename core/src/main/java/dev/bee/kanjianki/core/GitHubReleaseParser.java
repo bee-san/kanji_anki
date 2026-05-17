@@ -20,20 +20,20 @@ public final class GitHubReleaseParser {
     private GitHubReleaseParser() {
     }
 
-    public static Records.ReleaseInfo parseLatest(String json) {
+    public static RecordsSchedulerModels.ReleaseInfo parseLatest(String json) {
         String safeJson = json == null ? "" : json;
         String tag = stringValue(safeJson, KEY_TAG_NAME);
         String html = stringValue(safeJson, KEY_HTML_URL);
-        List<Records.ReleaseAsset> assets = new ArrayList<>();
+        List<RecordsSchedulerModels.ReleaseAsset> assets = new ArrayList<>();
         String assetsJson = arrayValue(safeJson, KEY_ASSETS);
         for (String assetJson : objectValues(assetsJson)) {
             String name = stringValue(assetJson, KEY_NAME);
             String url = stringValue(assetJson, KEY_BROWSER_DOWNLOAD_URL);
             if (!name.isEmpty() && !url.isEmpty()) {
-                assets.add(new Records.ReleaseAsset(name, url));
+                assets.add(new RecordsSchedulerModels.ReleaseAsset(name, url));
             }
         }
-        return new Records.ReleaseInfo(tag, html, assets);
+        return new RecordsSchedulerModels.ReleaseInfo(tag, html, assets);
     }
 
     public static boolean isNewerSemver(String currentVersion, String tagName) {

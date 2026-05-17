@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.update;
 
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -14,7 +15,6 @@ import android.util.Log;
 
 import dev.bee.kanjianki.BuildConfig;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.io.BufferedInputStream;
@@ -51,7 +51,7 @@ public final class GitHubUpdater {
         try {
             String api = API_BASE + BuildConfig.RELEASE_OWNER + "/" + BuildConfig.RELEASE_REPO + "/releases/latest";
             String json = client.getText(api);
-            Records.ReleaseInfo latest = GitHubReleaseParser.parseLatest(json);
+            RecordsSchedulerModels.ReleaseInfo latest = GitHubReleaseParser.parseLatest(json);
             if (!GitHubReleaseParser.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName)) {
                 return recordResult(
                         checkedAt,

@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
@@ -9,7 +10,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import dev.bee.kanjianki.core.KanjiGameEngine;
-import dev.bee.kanjianki.core.Records;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -297,21 +297,21 @@ abstract class MainActivityGames extends MainActivityHome {
     }
 
     private GameData gameData() {
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
-        List<Records.KanjiInventoryItem> inventory = store.searchKanjiInventory("");
-        List<Records.SimilarKanjiPair> pairs = store.allLocalSimilarPairs();
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.KanjiInventoryItem> inventory = store.searchKanjiInventory("");
+        List<RecordsImportModels.SimilarKanjiPair> pairs = store.allLocalSimilarPairs();
         return new GameData(rows, inventory, pairs);
     }
 
     private static final class GameData {
-        final List<Records.DashboardRow> rows;
-        final List<Records.KanjiInventoryItem> inventory;
-        final List<Records.SimilarKanjiPair> pairs;
+        final List<RecordsImportModels.DashboardRow> rows;
+        final List<RecordsImportModels.KanjiInventoryItem> inventory;
+        final List<RecordsImportModels.SimilarKanjiPair> pairs;
 
         GameData(
-                List<Records.DashboardRow> rows,
-                List<Records.KanjiInventoryItem> inventory,
-                List<Records.SimilarKanjiPair> pairs
+                List<RecordsImportModels.DashboardRow> rows,
+                List<RecordsImportModels.KanjiInventoryItem> inventory,
+                List<RecordsImportModels.SimilarKanjiPair> pairs
         ) {
             this.rows = rows == null ? new ArrayList<>() : rows;
             this.inventory = inventory == null ? new ArrayList<>() : inventory;

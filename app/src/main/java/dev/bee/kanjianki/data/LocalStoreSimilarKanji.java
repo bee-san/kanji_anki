@@ -1,11 +1,11 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 
@@ -34,9 +34,9 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         }
     }
 
-    public List<Records.SimilarKanjiPair> allLocalSimilarPairs() {
+    public List<RecordsImportModels.SimilarKanjiPair> allLocalSimilarPairs() {
         SQLiteDatabase db = getReadableDatabase();
-        List<Records.SimilarKanjiPair> out = new ArrayList<>();
+        List<RecordsImportModels.SimilarKanjiPair> out = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, ORDER_SIMILAR_PAIR)) {
             while (cursor.moveToNext()) {
                 out.add(readSimilarPair(cursor));
@@ -45,13 +45,13 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         return out;
     }
 
-    public List<Records.SimilarKanjiPair> similarPairsForKanji(String kanji) {
+    public List<RecordsImportModels.SimilarKanjiPair> similarPairsForKanji(String kanji) {
         String normalized = normalizeSingleKanji(kanji);
         if (normalized.isEmpty()) {
             return Collections.emptyList();
         }
         SQLiteDatabase db = getReadableDatabase();
-        List<Records.SimilarKanjiPair> out = new ArrayList<>();
+        List<RecordsImportModels.SimilarKanjiPair> out = new ArrayList<>();
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_PAIRS,
                 null,
@@ -89,9 +89,9 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         }
     }
 
-    public List<Records.SimilarKanjiChoiceCard> allSimilarChoiceCards() {
+    public List<RecordsImportModels.SimilarKanjiChoiceCard> allSimilarChoiceCards() {
         SQLiteDatabase db = getReadableDatabase();
-        List<Records.SimilarKanjiChoiceCard> out = new ArrayList<>();
+        List<RecordsImportModels.SimilarKanjiChoiceCard> out = new ArrayList<>();
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_CHOICE_STATE,
                 null,
@@ -108,7 +108,7 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         return out;
     }
 
-    public Records.SimilarKanjiChoiceCard dueSimilarChoiceForActiveTarget(String kanji, long nowMillis) {
+    public RecordsImportModels.SimilarKanjiChoiceCard dueSimilarChoiceForActiveTarget(String kanji, long nowMillis) {
         String target = normalizeSingleKanji(kanji);
         if (target.isEmpty()) {
             return null;
@@ -127,12 +127,12 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
             if (!cursor.moveToFirst()) {
                 return null;
             }
-            Records.SimilarKanjiChoiceCard card = readSimilarChoiceCard(cursor);
+            RecordsImportModels.SimilarKanjiChoiceCard card = readSimilarChoiceCard(cursor);
             return hasPendingSimilarRepairs(db, card.targetKanji, card.choiceSignature) ? null : card;
         }
     }
 
-    public Records.SimilarKanjiChoiceCard nextDueInventorySimilarChoice(Set<String> activeTargets, long nowMillis) {
+    public RecordsImportModels.SimilarKanjiChoiceCard nextDueInventorySimilarChoice(Set<String> activeTargets, long nowMillis) {
         SQLiteDatabase db = getReadableDatabase();
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_CHOICE_STATE,
@@ -144,7 +144,7 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
                 "due_at ASC, last_reviewed_at ASC, target_kanji ASC"
         )) {
             while (cursor.moveToNext()) {
-                Records.SimilarKanjiChoiceCard card = readSimilarChoiceCard(cursor);
+                RecordsImportModels.SimilarKanjiChoiceCard card = readSimilarChoiceCard(cursor);
                 if (activeTargets != null && activeTargets.contains(card.targetKanji)) {
                     continue;
                 }
@@ -194,32 +194,32 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         }
     }
 
-    public Records.SimilarKanjiChoiceResult submitSimilarChoice(
-            Records.SimilarKanjiChoiceCard submitted,
+    public RecordsImportModels.SimilarKanjiChoiceResult submitSimilarChoice(
+            RecordsImportModels.SimilarKanjiChoiceCard submitted,
             String selectedKanji,
             long nowMillis
     ) {
         return submitSimilarChoice(submitted, selectedKanji, nowMillis, true);
     }
 
-    public Records.SimilarKanjiChoiceResult submitSimilarChoice(
-            Records.SimilarKanjiChoiceCard submitted,
+    public RecordsImportModels.SimilarKanjiChoiceResult submitSimilarChoice(
+            RecordsImportModels.SimilarKanjiChoiceCard submitted,
             String selectedKanji,
             long nowMillis,
             boolean enqueueRepairs
     ) {
         if (submitted == null) {
-            return new Records.SimilarKanjiChoiceResult(null, selectedKanji, false, Collections.emptyList());
+            return new RecordsImportModels.SimilarKanjiChoiceResult(null, selectedKanji, false, Collections.emptyList());
         }
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            Records.SimilarKanjiChoiceCard card = similarChoiceCard(db, submitted.targetKanji, submitted.choiceSignature);
+            RecordsImportModels.SimilarKanjiChoiceCard card = similarChoiceCard(db, submitted.targetKanji, submitted.choiceSignature);
             if (card == null) {
                 card = submitted;
             }
             SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
-            Records.SimilarKanjiChoiceResult result = planner.evaluateSelection(card, normalizeSingleKanji(selectedKanji));
+            RecordsImportModels.SimilarKanjiChoiceResult result = planner.evaluateSelection(card, normalizeSingleKanji(selectedKanji));
 
             ContentValues values = new ContentValues();
             values.put(COLUMN_LAST_REVIEWED_AT, nowMillis);
@@ -258,14 +258,14 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         }
     }
 
-    public Records.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis) {
-        List<Records.SimilarKanjiWritingRepair> repairs = dueSimilarWritingRepairs(nowMillis);
+    public RecordsImportModels.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis) {
+        List<RecordsImportModels.SimilarKanjiWritingRepair> repairs = dueSimilarWritingRepairs(nowMillis);
         return repairs.isEmpty() ? null : repairs.get(0);
     }
 
-    public List<Records.SimilarKanjiWritingRepair> dueSimilarWritingRepairs(long nowMillis) {
+    public List<RecordsImportModels.SimilarKanjiWritingRepair> dueSimilarWritingRepairs(long nowMillis) {
         SQLiteDatabase db = getReadableDatabase();
-        List<Records.SimilarKanjiWritingRepair> out = new ArrayList<>();
+        List<RecordsImportModels.SimilarKanjiWritingRepair> out = new ArrayList<>();
         try (Cursor cursor = db.query(
                 TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
                 null,
@@ -283,7 +283,7 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         return out;
     }
 
-    public void saveSimilarWritingRepair(Records.SimilarKanjiWritingRepair repair) {
+    public void saveSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         if (repair == null || repair.id <= 0L) {
             return;
         }
@@ -302,7 +302,7 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            Records.SimilarKanjiWritingRepair current = similarWritingRepair(db, repairId);
+            RecordsImportModels.SimilarKanjiWritingRepair current = similarWritingRepair(db, repairId);
             if (current == null || !STATUS_PENDING.equals(current.status)) {
                 return false;
             }

@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.sync;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.Test;
@@ -17,8 +17,8 @@ import static org.junit.Assert.assertTrue;
 public final class SyncSettingsCoverageTest {
     @Test
     public void fromStoreWithNullUsesKikuDefaultsAndSuspendedOnlyImports() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        Records.Settings settings = SyncSettings.fromStore(null);
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = SyncSettings.fromStore(null);
 
         assertEquals(defaults.modelName, settings.modelName);
         assertEquals(defaults.expressionField, settings.expressionField);

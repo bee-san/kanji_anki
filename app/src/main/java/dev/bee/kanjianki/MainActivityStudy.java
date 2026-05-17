@@ -1,5 +1,9 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -47,7 +51,6 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.TextUtil;
@@ -93,7 +96,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
     private final Random meaningChoiceRandom = new Random();
 
-    View learningPanel(Records.StudySession session) {
+    View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
 
@@ -118,11 +121,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         return box;
     }
 
-    Records.Example firstExample(Records.DashboardRow row) {
+    RecordsImportModels.Example firstExample(RecordsImportModels.DashboardRow row) {
         if (row == null || row.examples.isEmpty()) {
             return null;
         }
-        for (Records.Example example : row.examples) {
+        for (RecordsImportModels.Example example : row.examples) {
             if (SOURCE_ACTIVE.equals(example.sourceType)) {
                 return example;
             }
@@ -130,12 +133,12 @@ abstract class MainActivityStudy extends MainActivityStats {
         return row.examples.get(0);
     }
 
-    Records.Example wordReadingExample(Records.DashboardRow row) {
+    RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row) {
         if (row == null || row.examples.isEmpty()) {
             return null;
         }
-        Records.Example active = null;
-        for (Records.Example example : row.examples) {
+        RecordsImportModels.Example active = null;
+        for (RecordsImportModels.Example example : row.examples) {
             if (SOURCE_SUSPENDED.equals(example.sourceType)) {
                 return example;
             }
@@ -146,7 +149,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return active == null ? row.examples.get(0) : active;
     }
 
-    Records.Example exampleForSession(Records.StudySession session) {
+    RecordsImportModels.Example exampleForSession(RecordsSchedulerModels.StudySession session) {
         if (isWordReadingTask(session)) {
             return wordReadingExample(session.row);
         }
@@ -155,13 +158,13 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void renderStudy() {
         base(NAV_STUDY);
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
-        Records.StudyLadderSettings ladder = studyLadderSettings();
+        RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
         activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
         initializeSessionProgressTarget(activeStudyPlan);
         includeDueSimilarWritingRepairs(now, ladder);
-        Records.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
+        RecordsImportModels.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
         if (repair != null) {
             renderSimilarWritingRepair(repair, activeStudyPlan, now);
             return;
@@ -174,10 +177,10 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderEmptyStudyQueue();
             return;
         }
-        List<Records.StudyItem> beforeSeed = store.studyItems();
-        Records.AdaptiveLoadPlan plan = studyPlanForMode(rows, beforeSeed, now);
-        List<Records.StudyItem> seeded = studyQueue(rows, now, true, plan);
-        Records.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
+        List<RecordsStudyModels.StudyItem> beforeSeed = store.studyItems();
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = studyPlanForMode(rows, beforeSeed, now);
+        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true, plan);
+        RecordsSchedulerModels.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
         activeStudyPlan = seededPlan;
         initializeSessionProgressTarget(seededPlan);
         includeDueSimilarWritingRepairs(now, ladder);
@@ -213,12 +216,12 @@ abstract class MainActivityStudy extends MainActivityStats {
         content.addView(card);
     }
 
-    Records.StudySession nextActiveSession(List<Records.DashboardRow> rows, List<Records.StudyItem> seeded, Records.AdaptiveLoadPlan plan, long now) {
+    RecordsSchedulerModels.StudySession nextActiveSession(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> seeded, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
         Set<String> focus = continueAllKanjiSession || plan.allKanjiMode ? null : new HashSet<>(plan.focusKanji);
         return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus, settings(), studyLadderSettings());
     }
 
-    void renderNoStudySession(Records.AdaptiveLoadPlan seededPlan) {
+    void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
         if (!continueAllKanjiSession && seededPlan.focusComplete()) {
             renderFocusDone(seededPlan);
             return;
@@ -234,7 +237,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         content.addView(card);
     }
 
-    void renderFocusDone(Records.AdaptiveLoadPlan plan) {
+    void renderFocusDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         prepareStudyContent(plan, false);
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
@@ -261,7 +264,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         content.addView(card);
     }
 
-    void renderStudyRunDone(Records.AdaptiveLoadPlan plan) {
+    void renderStudyRunDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         prepareStudyContent(plan, false);
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
@@ -304,7 +307,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     int availableStudyMoreNewCards() {
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         if (rows.isEmpty()) {
             return 0;
         }
@@ -364,7 +367,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean startStudyMoreNewCards(int requestedCount) {
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         if (rows.isEmpty()) {
             Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
             return false;
@@ -383,7 +386,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
             return false;
         }
-        List<Records.StudyItem> seeded = store.annotateSimilarKanjiAvailability(result.items);
+        List<RecordsStudyModels.StudyItem> seeded = store.annotateSimilarKanjiAvailability(result.items);
         store.replaceStudyItems(seeded);
         studyMoreNewCardKanji.clear();
         studyMoreNewCardKanji.addAll(result.admittedKanji);
@@ -408,10 +411,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         resetStudyRunProgress();
         base(NAV_STUDY);
         activeSimilarWritingRepair = null;
-        List<Records.DashboardRow> rows = store.activeDashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         long now = System.currentTimeMillis();
         activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
-        Records.DashboardRow row = findRow(rows, kanji);
+        RecordsImportModels.DashboardRow row = findRow(rows, kanji);
         if (row == null) {
             prepareStudyContent(activeStudyPlan, false);
             LinearLayout card = softStudyCard();
@@ -422,18 +425,18 @@ abstract class MainActivityStudy extends MainActivityStats {
             content.addView(card);
             return;
         }
-        List<Records.StudyItem> seeded = studyQueue(rows, now, true);
+        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true);
         activeStudyPlan = adaptivePlan(rows, seeded, now);
-        Records.StudyItem item = studyItemForTargetedKanji(seeded, kanji, now);
+        RecordsStudyModels.StudyItem item = studyItemForTargetedKanji(seeded, kanji, now);
         String token = StudyTokenFactory.studyItem(item.kanji, item.activeToken);
         item = item.withRung(studyLadderSettings().effectiveRung(item.rung, item.hasSimilarKanji));
         String taskType = rungTaskType(item);
-        activeSession = new Records.StudySession(
+        activeSession = new RecordsSchedulerModels.StudySession(
                 item.withToken(token),
                 row,
                 token,
                 taskType,
-                item.rung == Records.LadderRung.WRITE_KANJI,
+                item.rung == RecordsBase.LadderRung.WRITE_KANJI,
                 row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
         );
         store.saveStudyItem(activeSession.item);
@@ -443,13 +446,13 @@ abstract class MainActivityStudy extends MainActivityStats {
         renderSession(activeSession);
     }
 
-    Records.StudyItem studyItemForTargetedKanji(List<Records.StudyItem> seeded, String kanji, long now) {
-        Records.StudyItem item = findStudyItem(seeded, kanji);
+    RecordsStudyModels.StudyItem studyItemForTargetedKanji(List<RecordsStudyModels.StudyItem> seeded, String kanji, long now) {
+        RecordsStudyModels.StudyItem item = findStudyItem(seeded, kanji);
         return item == null ? newTargetedStudyItem(kanji, now) : item;
     }
 
-    Records.StudyItem newTargetedStudyItem(String kanji, long now) {
-        return new Records.StudyItem(
+    RecordsStudyModels.StudyItem newTargetedStudyItem(String kanji, long now) {
+        return new RecordsStudyModels.StudyItem(
                 kanji,
                 "new",
                 now,
@@ -464,11 +467,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         ).withRung(studyLadderSettings().startingRung(false));
     }
 
-    String rungTaskType(Records.StudyItem item) {
+    String rungTaskType(RecordsStudyModels.StudyItem item) {
         return studyLadderSettings().effectiveRung(item.rung, item.hasSimilarKanji).wireName();
     }
 
-    void renderSession(Records.StudySession session) {
+    void renderSession(RecordsSchedulerModels.StudySession session) {
         if (session.writingRequired) {
             renderWritingSession(session);
         } else if (BridgeScheduler.TASK_SIMILAR_KANJI.equals(session.taskType)) {
@@ -480,7 +483,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void renderMeaningKanjiSession(Records.StudySession session) {
+    void renderMeaningKanjiSession(RecordsSchedulerModels.StudySession session) {
         prepareStudyContent(activeStudyPlan, true);
         activeSimilarWritingRepair = null;
         activeAnalysis = null;
@@ -497,7 +500,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             studyActionBar.setVisibility(View.GONE);
         }
 
-        Records.MeaningKanjiChoiceCard choiceCard = meaningKanjiChoiceCardForSession(session);
+        RecordsImportModels.MeaningKanjiChoiceCard choiceCard = meaningKanjiChoiceCardForSession(session);
         if (choiceCard == null || choiceCard.choices.size() < 4) {
             renderFlashcardSession(session);
             return;
@@ -523,7 +526,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         content.addView(cardShell, cardLp);
     }
 
-    Records.MeaningKanjiChoiceCard meaningKanjiChoiceCardForSession(Records.StudySession session) {
+    RecordsImportModels.MeaningKanjiChoiceCard meaningKanjiChoiceCardForSession(RecordsSchedulerModels.StudySession session) {
         if (session == null || session.row == null) {
             return null;
         }
@@ -535,7 +538,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         );
     }
 
-    View meaningKanjiGrid(Records.MeaningKanjiChoiceCard card, View answerPanel) {
+    View meaningKanjiGrid(RecordsImportModels.MeaningKanjiChoiceCard card, View answerPanel) {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
@@ -561,7 +564,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return grid;
     }
 
-    void showMeaningKanjiChoiceResult(Records.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
+    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
         boolean correct = card.isCorrect(selectedKanji);
         disableChoiceButtons(grid);
         answerPanel.setVisibility(View.VISIBLE);
@@ -595,7 +598,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void renderSimilarKanjiSession(Records.StudySession session) {
+    void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {
         prepareStudyContent(activeStudyPlan, true);
         activeSimilarWritingRepair = null;
         activeAnalysis = null;
@@ -611,7 +614,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             studyActionBar.setVisibility(View.GONE);
         }
 
-        Records.SimilarKanjiChoiceCard choiceCard = similarChoiceCardForSession(session);
+        RecordsImportModels.SimilarKanjiChoiceCard choiceCard = similarChoiceCardForSession(session);
         List<String> choices = new ArrayList<>(choiceCard.choices);
         if (choices.size() < 2) {
             // Not enough similar kanji to show a choice — fall back to
@@ -637,15 +640,15 @@ abstract class MainActivityStudy extends MainActivityStats {
         content.addView(cardShell, cardLp);
     }
 
-    Records.SimilarKanjiChoiceCard similarChoiceCardForSession(Records.StudySession session) {
+    RecordsImportModels.SimilarKanjiChoiceCard similarChoiceCardForSession(RecordsSchedulerModels.StudySession session) {
         long now = System.currentTimeMillis();
-        Records.SimilarKanjiChoiceCard stored = store.dueSimilarChoiceForActiveTarget(session.item.kanji, now);
+        RecordsImportModels.SimilarKanjiChoiceCard stored = store.dueSimilarChoiceForActiveTarget(session.item.kanji, now);
         if (stored != null) {
             return stored;
         }
         List<String> choices = buildSimilarKanjiChoices(session.item.kanji);
         String meaning = session.row == null ? "" : rowMeaning(session.row);
-        return new Records.SimilarKanjiChoiceCard(
+        return new RecordsImportModels.SimilarKanjiChoiceCard(
                 session.item.kanji,
                 meaning,
                 choices,
@@ -654,10 +657,10 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     List<String> buildSimilarKanjiChoices(String targetKanji) {
-        List<Records.SimilarKanjiPair> pairs = store.similarPairsForKanji(targetKanji);
+        List<RecordsImportModels.SimilarKanjiPair> pairs = store.similarPairsForKanji(targetKanji);
         Set<String> choices = new LinkedHashSet<>();
         choices.add(targetKanji);
-        for (Records.SimilarKanjiPair pair : pairs) {
+        for (RecordsImportModels.SimilarKanjiPair pair : pairs) {
             String other = pair.kanjiA.equals(targetKanji) ? pair.kanjiB : pair.kanjiA;
             choices.add(other);
             if (choices.size() >= 4) {
@@ -667,7 +670,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return new ArrayList<>(choices);
     }
 
-    View similarKanjiGrid(List<String> choices, Records.SimilarKanjiChoiceCard card) {
+    View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
@@ -705,7 +708,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     View similarKanjiGrid(List<String> choices, String correctKanji) {
         return similarKanjiGrid(
                 choices,
-                new Records.SimilarKanjiChoiceCard(
+                new RecordsImportModels.SimilarKanjiChoiceCard(
                         correctKanji,
                         "",
                         choices,
@@ -714,7 +717,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         );
     }
 
-    void renderFlashcardSession(Records.StudySession session) {
+    void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
         prepareStudyContent(activeStudyPlan, true);
         activeSimilarWritingRepair = null;
         activeAnalysis = null;
@@ -742,7 +745,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         buildFlashcardActionBar(false);
     }
 
-    LinearLayout recognitionHeroCard(Records.StudySession session) {
+    LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(18), dp(18), dp(18), dp(18));
@@ -795,7 +798,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return card;
     }
 
-    String heroQuestion(Records.StudySession session) {
+    String heroQuestion(RecordsSchedulerModels.StudySession session) {
         if (isWordReadingTask(session)) {
             return "What is the reading?";
         }
@@ -827,7 +830,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return pill;
     }
 
-    View heroKanjiPanel(Records.StudySession session) {
+    View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {
         FrameLayout panel = new FrameLayout(this);
         panel.setBackground(panel(STUDY_HERO_PANEL, STUDY_BORDER, dp(28)));
         panel.setPadding(dp(10), dp(10), dp(10), dp(10));
@@ -857,7 +860,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return StudyFontVariants.random(this);
     }
 
-    void renderWritingSession(Records.StudySession session) {
+    void renderWritingSession(RecordsSchedulerModels.StudySession session) {
         prepareStudyContent(activeStudyPlan, false);
         activeAnalysis = null;
         checkingWriting = false;
@@ -916,14 +919,14 @@ abstract class MainActivityStudy extends MainActivityStats {
         refreshWritingModelStatus();
     }
 
-    void addStudyReasonLine(LinearLayout card, Records.StudySession session) {
+    void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
         String reason = studyReasonLine(session);
         if (!reason.isEmpty()) {
             card.addView(text(reason, 14, STUDY_MUTED, false));
         }
     }
 
-    String studyReasonLine(Records.StudySession session) {
+    String studyReasonLine(RecordsSchedulerModels.StudySession session) {
         if (activeSimilarWritingRepair != null) {
             return "Why: similar-kanji miss · writing repair · practice-only";
         }
@@ -933,13 +936,13 @@ abstract class MainActivityStudy extends MainActivityStats {
         return focusReasonLine(session.row, session.item, System.currentTimeMillis());
     }
 
-    void renderSimilarWritingRepair(Records.SimilarKanjiWritingRepair repair, Records.AdaptiveLoadPlan plan, long now) {
+    void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
         String token = StudyTokenFactory.studyItem("repair-" + repair.id, repair.activeToken);
-        Records.SimilarKanjiWritingRepair activeRepair = repair.withToken(token, now);
+        RecordsImportModels.SimilarKanjiWritingRepair activeRepair = repair.withToken(token, now);
         store.saveSimilarWritingRepair(activeRepair);
         activeSimilarWritingRepair = activeRepair;
-        Records.StudyItem item = newTargetedStudyItem(activeRepair.repairKanji, now);
-        activeSession = new Records.StudySession(
+        RecordsStudyModels.StudyItem item = newTargetedStudyItem(activeRepair.repairKanji, now);
+        activeSession = new RecordsSchedulerModels.StudySession(
                 item.withToken(token),
                 null,
                 token,
@@ -954,7 +957,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         renderWritingSession(activeSession);
     }
 
-    String similarRepairPrompt(Records.SimilarKanjiWritingRepair repair) {
+    String similarRepairPrompt(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         StringBuilder prompt = new StringBuilder("Repair the shape mix-up");
         if (!repair.promptMeaning.isEmpty()) {
             prompt.append(" for ").append(repair.promptMeaning);
@@ -987,22 +990,22 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void initializeSessionProgressTarget(Records.AdaptiveLoadPlan plan) {
+    void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         studySessionTracker.initializeTarget(plan);
     }
 
-    Records.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis, Records.StudyLadderSettings ladder) {
-        if (!ladder.isEnabled(Records.LadderRung.WRITE_KANJI)) {
+    RecordsImportModels.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis, RecordsBase.StudyLadderSettings ladder) {
+        if (!ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
             return null;
         }
         return store.nextDueSimilarWritingRepair(nowMillis);
     }
 
-    void includeDueSimilarWritingRepairs(long nowMillis, Records.StudyLadderSettings ladder) {
-        if (!ladder.isEnabled(Records.LadderRung.WRITE_KANJI)) {
+    void includeDueSimilarWritingRepairs(long nowMillis, RecordsBase.StudyLadderSettings ladder) {
+        if (!ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
             return;
         }
-        for (Records.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
+        for (RecordsImportModels.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
             studySessionTracker.includePendingTask(similarRepairProgressKey(repair));
         }
     }
@@ -1019,15 +1022,15 @@ abstract class MainActivityStudy extends MainActivityStats {
         studySessionTracker.markTaskCompleted(key);
     }
 
-    String sessionTaskKey(Records.StudySession session) {
+    String sessionTaskKey(RecordsSchedulerModels.StudySession session) {
         return StudySessionTracker.sessionTaskKey(session);
     }
 
-    String similarRepairProgressKey(Records.SimilarKanjiWritingRepair repair) {
+    String similarRepairProgressKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         return StudySessionTracker.similarRepairProgressKey(repair);
     }
 
-    String similarRepairStudyTaskKey(Records.SimilarKanjiWritingRepair repair) {
+    String similarRepairStudyTaskKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         return StudySessionTracker.similarRepairStudyTaskKey(repair);
     }
 
@@ -1051,7 +1054,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         studySessionTracker.abandonActiveTask();
     }
 
-    String flashcardTitle(Records.StudySession session) {
+    String flashcardTitle(RecordsSchedulerModels.StudySession session) {
         if (isWordReadingTask(session)) {
             return "Read this word";
         }
@@ -1064,7 +1067,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
     }
 
-    String studyModeLabel(Records.StudySession session) {
+    String studyModeLabel(RecordsSchedulerModels.StudySession session) {
         if (session != null && session.writingRequired) {
             return LABEL_PRACTICE;
         }
@@ -1103,7 +1106,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    View flashcardAnswerPanel(Records.StudySession session) {
+    View flashcardAnswerPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Answer", 19, STUDY_PLUM, true));
 
@@ -1127,7 +1130,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return box;
     }
 
-    void addStudyCueLines(LinearLayout details, Records.StudySession session) {
+    void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
         List<String> lines = StudyCueTexts.answerLines(
                 dictionaryLookup(),
                 session,
@@ -1207,11 +1210,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         buildFlashcardActionBar(true);
     }
 
-    String collectionMeaningForSession(Records.StudySession session) {
+    String collectionMeaningForSession(RecordsSchedulerModels.StudySession session) {
         if (session == null || session.row == null) {
             return "";
         }
-        Records.Example example = exampleForSession(session);
+        RecordsImportModels.Example example = exampleForSession(session);
         if (example != null && !example.meaning.isEmpty()) {
             return example.meaning;
         }
@@ -1397,7 +1400,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (checkingWriting) {
             return;
         }
-        Records.StudySession session = activeSession;
+        RecordsSchedulerModels.StudySession session = activeSession;
         String token = session.token;
         String target = session.item.kanji;
         CapturedWriting captured;
@@ -1436,13 +1439,13 @@ abstract class MainActivityStudy extends MainActivityStats {
         });
     }
 
-    void submitSimilarKanjiChoice(Records.SimilarKanjiChoiceCard card, String selectedKanji) {
+    void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
         long now = System.currentTimeMillis();
-        Records.SimilarKanjiChoiceResult result = store.submitSimilarChoice(
+        RecordsImportModels.SimilarKanjiChoiceResult result = store.submitSimilarChoice(
                 card,
                 selectedKanji,
                 now,
-                studyLadderSettings().isEnabled(Records.LadderRung.WRITE_KANJI)
+                studyLadderSettings().isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
         );
         submitReview(result.correct ? RATING_GOOD : RATING_AGAIN, false);
     }
@@ -1492,12 +1495,12 @@ abstract class MainActivityStudy extends MainActivityStats {
                 rating,
                 override
         );
-        Records.ReviewRequest request = mappedReview.request();
+        RecordsSchedulerModels.ReviewRequest request = mappedReview.request();
         submitNormalReview(request);
     }
 
     void submitSimilarWritingRepair(String rating) {
-        Records.SimilarKanjiWritingRepair repair = activeSimilarWritingRepair;
+        RecordsImportModels.SimilarKanjiWritingRepair repair = activeSimilarWritingRepair;
         if (repair == null) {
             return;
         }
@@ -1524,15 +1527,15 @@ abstract class MainActivityStudy extends MainActivityStats {
         studySessionTracker.completeActiveTask(store, key, outcome, answeredAt, false);
     }
 
-    void submitNormalReview(Records.ReviewRequest request) {
+    void submitNormalReview(RecordsSchedulerModels.ReviewRequest request) {
         BridgeScheduler scheduler = new BridgeScheduler();
         Set<String> consumed = new HashSet<>(store.consumedTokens());
         long now = System.currentTimeMillis();
-        Records.SchedulerParameters parameters = store.schedulerParameters();
-        Records.SchedulerParameters effectiveParameters = parameters.withTargetRetention(
+        RecordsSchedulerModels.SchedulerParameters parameters = store.schedulerParameters();
+        RecordsSchedulerModels.SchedulerParameters effectiveParameters = parameters.withTargetRetention(
                 parameters.targetRetentionForRank(activeSession.row.jitenRank)
         );
-        Records.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, effectiveParameters, settings(), studyLadderSettings());
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, effectiveParameters, settings(), studyLadderSettings());
         completeActiveStudyTask(sessionTaskKey(activeSession), result.appliedRating, now);
         StudyStatsStore.StudyStreak streak = null;
         if (!result.duplicate) {
@@ -1544,7 +1547,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         renderStudy();
     }
 
-    void saveAppliedReview(Records.ReviewRequest request, Records.ReviewResult result, long now) {
+    void saveAppliedReview(RecordsSchedulerModels.ReviewRequest request, RecordsSchedulerModels.ReviewResult result, long now) {
         store.saveStudyItem(result.item);
         store.saveReview(request, result.appliedRating, now, activeSession.item, result.item);
         studySessionTracker.recordReviewOutcome(request.kanji, result.appliedRating, activeSession.item, result.item);
@@ -1553,14 +1556,14 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void tuneSchedulerIfNeeded(Records.SchedulerParameters parameters, long now) {
-        Records.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
+    void tuneSchedulerIfNeeded(RecordsSchedulerModels.SchedulerParameters parameters, long now) {
+        RecordsSchedulerModels.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
         if (tuned.lastAdjustedAtMillis != parameters.lastAdjustedAtMillis || tuned.lastAdjustmentReviewCount != parameters.lastAdjustmentReviewCount) {
             store.saveSchedulerParameters(tuned);
         }
     }
 
-    HintState initialHintState(Records.StudySession session) {
+    HintState initialHintState(RecordsSchedulerModels.StudySession session) {
         int stored = Math.max(0, Math.min(3, session.item.writingLevel));
         if (TASK_TARGETED_WRITING.equals(session.taskType)
                 || session.item.totalReviews == 0
@@ -1726,7 +1729,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         return true;
     }
 
-    boolean isTeachingTask(Records.StudySession session) {
+    boolean isTeachingTask(RecordsSchedulerModels.StudySession session) {
         if (session == null) {
             return false;
         }
@@ -1880,28 +1883,28 @@ abstract class MainActivityStudy extends MainActivityStats {
         return "Stroke " + entry.strokeNumber + ": " + label;
     }
 
-    boolean isRecallTask(Records.StudySession session) {
+    boolean isRecallTask(RecordsSchedulerModels.StudySession session) {
         if (session == null) {
             return false;
         }
         return "blind_writing".equals(session.taskType) || "sampled_handwriting".equals(session.taskType);
     }
 
-    boolean isFontRecognitionTask(Records.StudySession session) {
+    boolean isFontRecognitionTask(RecordsSchedulerModels.StudySession session) {
         return session != null && (TASK_FONT_MEANING.equals(session.taskType) || "font_recognition".equals(session.taskType));
     }
 
-    boolean isTypingMeaningTask(Records.StudySession session) {
+    boolean isTypingMeaningTask(RecordsSchedulerModels.StudySession session) {
         return session != null
                 && (TASK_TYPING_MEANING.equals(session.taskType)
                 || BridgeScheduler.TASK_TYPE_MEANING.equals(session.taskType));
     }
 
-    boolean isMeaningKanjiTask(Records.StudySession session) {
+    boolean isMeaningKanjiTask(RecordsSchedulerModels.StudySession session) {
         return session != null && BridgeScheduler.TASK_MEANING_KANJI.equals(session.taskType);
     }
 
-    boolean isWordReadingTask(Records.StudySession session) {
+    boolean isWordReadingTask(RecordsSchedulerModels.StudySession session) {
         return session != null && TASK_WORD_READING.equals(session.taskType);
     }
 

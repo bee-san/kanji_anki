@@ -50,238 +50,238 @@ public final class BridgeScheduler {
         this.suppressionPolicy = new SiblingSuppressionPolicy();
     }
 
-    public List<Records.StudyItem> seedQueue(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+    public List<RecordsStudyModels.StudyItem> seedQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis
     ) {
-        return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, Records.StudyLadderSettings.defaults());
+        return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public List<Records.StudyItem> seedQueue(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+    public List<RecordsStudyModels.StudyItem> seedQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return queueSeeder.seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, ladder);
     }
 
-    public List<Records.StudyItem> seedQueue(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+    public List<RecordsStudyModels.StudyItem> seedQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
-            Records.AdaptiveLoadPlan plan
+            RecordsSchedulerModels.AdaptiveLoadPlan plan
     ) {
-        return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, plan, Records.StudyLadderSettings.defaults());
+        return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, plan, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public List<Records.StudyItem> seedQueue(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+    public List<RecordsStudyModels.StudyItem> seedQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
-            Records.AdaptiveLoadPlan plan,
-            Records.StudyLadderSettings ladder
+            RecordsSchedulerModels.AdaptiveLoadPlan plan,
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return queueSeeder.seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, plan, ladder);
     }
 
     public ExtraNewCardsResult seedExtraNewCards(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
             int requestedCount
     ) {
-        return seedExtraNewCards(rows, existing, settings, nowMillis, startOfDayMillis, requestedCount, Records.StudyLadderSettings.defaults());
+        return seedExtraNewCards(rows, existing, settings, nowMillis, startOfDayMillis, requestedCount, RecordsBase.StudyLadderSettings.defaults());
     }
 
     public ExtraNewCardsResult seedExtraNewCards(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
             int requestedCount,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return queueSeeder.seedExtraNewCards(rows, existing, settings, nowMillis, startOfDayMillis, requestedCount, ladder);
     }
 
-    public Records.StudySession nextSession(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis) {
+    public RecordsSchedulerModels.StudySession nextSession(List<RecordsStudyModels.StudyItem> items, List<RecordsImportModels.DashboardRow> rows, long nowMillis) {
         return nextSession(items, rows, nowMillis, null);
     }
 
-    public Records.StudySession nextSession(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public RecordsSchedulerModels.StudySession nextSession(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             Set<String> allowedKanji
     ) {
         return nextSession(items, rows, nowMillis, 0L, allowedKanji);
     }
 
-    public Records.StudySession nextSession(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public RecordsSchedulerModels.StudySession nextSession(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji
     ) {
-        return nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, Records.Settings.kikuDefaults());
+        return nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, RecordsSyncModels.Settings.kikuDefaults());
     }
 
-    public Records.StudySession nextSession(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public RecordsSchedulerModels.StudySession nextSession(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
-        return nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, settings, Records.StudyLadderSettings.defaults());
+        return nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, settings, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public Records.StudySession nextSession(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public RecordsSchedulerModels.StudySession nextSession(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji,
-            Records.Settings settings,
-            Records.StudyLadderSettings ladder
+            RecordsSyncModels.Settings settings,
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return sessionSelector.nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, settings, ladder);
     }
 
-    public Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    public RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, Records.SchedulerParameters.defaults(), Records.Settings.kikuDefaults());
+        return applyReview(item, request, consumedTokens, nowMillis, RecordsSchedulerModels.SchedulerParameters.defaults(), RecordsSyncModels.Settings.kikuDefaults());
     }
 
-    public Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    public RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis,
-            Records.SchedulerParameters parameters
+            RecordsSchedulerModels.SchedulerParameters parameters
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, Records.Settings.kikuDefaults());
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, RecordsSyncModels.Settings.kikuDefaults());
     }
 
-    public Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    public RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis,
-            Records.SchedulerParameters parameters,
-            Records.Settings settings
+            RecordsSchedulerModels.SchedulerParameters parameters,
+            RecordsSyncModels.Settings settings
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, Records.LearningStepSettings.defaults());
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, RecordsSchedulerModels.LearningStepSettings.defaults());
     }
 
-    public Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    public RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis,
-            Records.SchedulerParameters parameters,
-            Records.Settings settings,
-            Records.StudyLadderSettings ladder
+            RecordsSchedulerModels.SchedulerParameters parameters,
+            RecordsSyncModels.Settings settings,
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, Records.LearningStepSettings.defaults(), ladder);
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, RecordsSchedulerModels.LearningStepSettings.defaults(), ladder);
     }
 
-    public Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    public RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis,
-            Records.SchedulerParameters parameters,
-            Records.Settings settings,
-            Records.LearningStepSettings learningSettings
+            RecordsSchedulerModels.SchedulerParameters parameters,
+            RecordsSyncModels.Settings settings,
+            RecordsSchedulerModels.LearningStepSettings learningSettings
     ) {
-        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, learningSettings, Records.StudyLadderSettings.defaults());
+        return applyReview(item, request, consumedTokens, nowMillis, parameters, settings, learningSettings, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    public RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis,
-            Records.SchedulerParameters parameters,
-            Records.Settings settings,
-            Records.LearningStepSettings learningSettings,
-            Records.StudyLadderSettings ladder
+            RecordsSchedulerModels.SchedulerParameters parameters,
+            RecordsSyncModels.Settings settings,
+            RecordsSchedulerModels.LearningStepSettings learningSettings,
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return transitionEngine.applyReview(item, request, consumedTokens, nowMillis, parameters, settings, learningSettings, ladder);
     }
 
-    public int dueCount(List<Records.StudyItem> items, long nowMillis) {
+    public int dueCount(List<RecordsStudyModels.StudyItem> items, long nowMillis) {
         return dueCount(items, nowMillis, 0L);
     }
 
-    public int dueCount(List<Records.StudyItem> items, long nowMillis, long studyAheadMillis) {
+    public int dueCount(List<RecordsStudyModels.StudyItem> items, long nowMillis, long studyAheadMillis) {
         return sessionSelector.dueCount(items, nowMillis, studyAheadMillis);
     }
 
-    public int dueCount(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis) {
+    public int dueCount(List<RecordsStudyModels.StudyItem> items, List<RecordsImportModels.DashboardRow> rows, long nowMillis) {
         return dueCount(items, rows, nowMillis, 0L);
     }
 
-    public int dueCount(List<Records.StudyItem> items, List<Records.DashboardRow> rows, long nowMillis, long studyAheadMillis) {
-        return dueCount(items, rows, nowMillis, studyAheadMillis, Records.StudyLadderSettings.defaults());
+    public int dueCount(List<RecordsStudyModels.StudyItem> items, List<RecordsImportModels.DashboardRow> rows, long nowMillis, long studyAheadMillis) {
+        return dueCount(items, rows, nowMillis, studyAheadMillis, RecordsBase.StudyLadderSettings.defaults());
     }
 
     public int dueCount(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return sessionSelector.dueCount(items, rows, nowMillis, studyAheadMillis, ladder);
     }
 
-    public List<Records.StudyItem> activeQueueItems(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public List<RecordsStudyModels.StudyItem> activeQueueItems(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             Set<String> allowedKanji
     ) {
         return activeQueueItems(items, rows, nowMillis, 0L, allowedKanji);
     }
 
-    public List<Records.StudyItem> activeQueueItems(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public List<RecordsStudyModels.StudyItem> activeQueueItems(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji
     ) {
-        return activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, Records.StudyLadderSettings.defaults());
+        return activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public List<Records.StudyItem> activeQueueItems(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    public List<RecordsStudyModels.StudyItem> activeQueueItems(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return sessionSelector.activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, ladder);
     }
@@ -295,50 +295,50 @@ public final class BridgeScheduler {
         return new HashSet<>(tokens);
     }
 
-    public List<Records.StudyItem> applySuppression(List<Records.StudyItem> items) {
+    public List<RecordsStudyModels.StudyItem> applySuppression(List<RecordsStudyModels.StudyItem> items) {
         return suppressionPolicy.apply(items);
     }
 
-    static Records.LadderRung promoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
+    static RecordsBase.LadderRung promoteRung(RecordsBase.LadderRung current, boolean hasSimilarKanji) {
         return StudyLadderRules.promoteRung(current, hasSimilarKanji);
     }
 
-    static Records.LadderRung promoteRung(
-            Records.LadderRung current,
+    static RecordsBase.LadderRung promoteRung(
+            RecordsBase.LadderRung current,
             boolean hasSimilarKanji,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return StudyLadderRules.promoteRung(current, hasSimilarKanji, ladder);
     }
 
-    static Records.LadderRung demoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
+    static RecordsBase.LadderRung demoteRung(RecordsBase.LadderRung current, boolean hasSimilarKanji) {
         return StudyLadderRules.demoteRung(current, hasSimilarKanji);
     }
 
-    static Records.LadderRung demoteRung(
-            Records.LadderRung current,
+    static RecordsBase.LadderRung demoteRung(
+            RecordsBase.LadderRung current,
             boolean hasSimilarKanji,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return StudyLadderRules.demoteRung(current, hasSimilarKanji, ladder);
     }
 
-    static List<Records.LadderRung> rungsForItem(Records.StudyItem item) {
+    static List<RecordsBase.LadderRung> rungsForItem(RecordsStudyModels.StudyItem item) {
         return StudyLadderRules.rungsForItem(item);
     }
 
-    static List<Records.LadderRung> rungsForItem(Records.StudyItem item, Records.StudyLadderSettings ladder) {
+    static List<RecordsBase.LadderRung> rungsForItem(RecordsStudyModels.StudyItem item, RecordsBase.StudyLadderSettings ladder) {
         return StudyLadderRules.rungsForItem(item, ladder);
     }
 
     public static final class ExtraNewCardsResult {
-        public final List<Records.StudyItem> items;
+        public final List<RecordsStudyModels.StudyItem> items;
         public final List<String> admittedKanji;
         public final int availableCount;
         public final int admittedCount;
 
         ExtraNewCardsResult(
-                List<Records.StudyItem> items,
+                List<RecordsStudyModels.StudyItem> items,
                 List<String> admittedKanji,
                 int availableCount
         ) {

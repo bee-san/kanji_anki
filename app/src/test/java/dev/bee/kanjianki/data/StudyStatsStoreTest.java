@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.data;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsBase;
 
 import org.junit.Test;
 
@@ -25,7 +25,7 @@ public final class StudyStatsStoreTest {
         assertEquals(0, stats.matureSupportGained.matureSupportGained);
         assertEquals(0, stats.matureSupportGained.firstSupportCount);
         assertEquals(0, stats.ladderHealth.totalActiveItems);
-        for (Records.LadderRung rung : Records.LadderRung.values()) {
+        for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
             assertEquals(0, stats.ladderHealth.countFor(rung));
         }
     }
@@ -77,20 +77,20 @@ public final class StudyStatsStoreTest {
         StudyStatsStore.KaniOutcomeStats stats = StudyStatsStore.calculateKaniOutcomeStats(
                 Collections.emptyList(),
                 Arrays.asList(
-                        item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("review", Records.LadderRung.MEANING_KANJI, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.REVIEW, 0, 0),
-                        item("retired", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 3, 3)
+                        item("review", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", RecordsBase.LadderRung.TYPE_MEANING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", RecordsBase.LadderRung.SIMILAR_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", RecordsBase.LadderRung.MEANING_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", RecordsBase.LadderRung.FONT_MEANING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("review", RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.REVIEW, 0, 0),
+                        item("retired", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 3, 3)
                 ),
                 3
         );
 
         assertEquals(7, stats.ladderHealth.totalActiveItems);
-        for (Records.LadderRung rung : Records.LadderRung.values()) {
+        for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
             assertEquals(1, stats.ladderHealth.countFor(rung));
         }
     }
@@ -100,12 +100,12 @@ public final class StudyStatsStoreTest {
         StudyStatsStore.KaniOutcomeStats stats = StudyStatsStore.calculateKaniOutcomeStats(
                 Collections.emptyList(),
                 Arrays.asList(
-                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 9, 0, 22),
-                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.REVIEW, 9, 0, 21),
-                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 0, 1),
-                        item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 3),
-                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.NEW_LEARNING, 5, 5, 40),
-                        item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.RELEARNING, 0, 5, 40)
+                        item("review", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW, 9, 0, 22),
+                        item("review", RecordsBase.LadderRung.FONT_MEANING, RecordsBase.SchedulerPhase.REVIEW, 9, 0, 21),
+                        item("review", RecordsBase.LadderRung.TYPE_MEANING, RecordsBase.SchedulerPhase.REVIEW, 0, 1),
+                        item("review", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 3),
+                        item("review", RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.NEW_LEARNING, 5, 5, 40),
+                        item("review", RecordsBase.LadderRung.SIMILAR_KANJI, RecordsBase.SchedulerPhase.RELEARNING, 0, 5, 40)
                 ),
                 21,
                 3
@@ -132,8 +132,8 @@ public final class StudyStatsStoreTest {
 
     private static StudyStatsStore.LadderItemEvidence item(
             String state,
-            Records.LadderRung rung,
-            Records.SchedulerPhase phase,
+            RecordsBase.LadderRung rung,
+            RecordsBase.SchedulerPhase phase,
             int realPassStreak,
             int realAgainStreak
     ) {
@@ -142,8 +142,8 @@ public final class StudyStatsStoreTest {
 
     private static StudyStatsStore.LadderItemEvidence item(
             String state,
-            Records.LadderRung rung,
-            Records.SchedulerPhase phase,
+            RecordsBase.LadderRung rung,
+            RecordsBase.SchedulerPhase phase,
             int realPassStreak,
             int realAgainStreak,
             int matureIntervalDays

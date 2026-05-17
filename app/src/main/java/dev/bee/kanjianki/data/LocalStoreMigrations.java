@@ -1,8 +1,8 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.database.sqlite.SQLiteDatabase;
 
-import dev.bee.kanjianki.core.Records;
 
 final class LocalStoreMigrations {
     private LocalStoreMigrations() {
@@ -51,7 +51,7 @@ final class LocalStoreMigrations {
         }
         if (shouldRun(oldVersion, targetVersion, 9)) {
             hooks.createKanjiInventoryTables(db);
-            hooks.backfillKanjiInventory(db, System.currentTimeMillis(), Records.Settings.kikuDefaults());
+            hooks.backfillKanjiInventory(db, System.currentTimeMillis(), RecordsSyncModels.Settings.kikuDefaults());
         }
         if (shouldRun(oldVersion, targetVersion, 10)) {
             hooks.createSimilarKanjiTables(db);

@@ -12,10 +12,10 @@ import java.util.Random;
 public final class MeaningKanjiChoicePlanner {
     private static final int CHOICE_COUNT = 4;
 
-    public Records.MeaningKanjiChoiceCard buildChoiceCard(
-            Records.DashboardRow target,
-            List<Records.DashboardRow> rows,
-            List<Records.KanjiInventoryItem> inventory,
+    public RecordsImportModels.MeaningKanjiChoiceCard buildChoiceCard(
+            RecordsImportModels.DashboardRow target,
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsImportModels.KanjiInventoryItem> inventory,
             Random random
     ) {
         if (target == null || target.kanji == null || target.kanji.trim().isEmpty()) {
@@ -52,23 +52,23 @@ public final class MeaningKanjiChoicePlanner {
             return null;
         }
         Collections.shuffle(choices, rng);
-        return new Records.MeaningKanjiChoiceCard(targetKanji, meaning, target.reading, choices);
+        return new RecordsImportModels.MeaningKanjiChoiceCard(targetKanji, meaning, target.reading, choices);
     }
 
     private static Map<String, String> eligibleKanji(
-            List<Records.DashboardRow> rows,
-            List<Records.KanjiInventoryItem> inventory
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsImportModels.KanjiInventoryItem> inventory
     ) {
         Map<String, String> out = new LinkedHashMap<>();
         if (rows != null) {
-            for (Records.DashboardRow row : rows) {
+            for (RecordsImportModels.DashboardRow row : rows) {
                 if (row != null && row.kanji != null && !row.kanji.trim().isEmpty()) {
                     out.put(row.kanji.trim(), normalizeMeaning(row.primaryMeaning));
                 }
             }
         }
         if (inventory != null) {
-            for (Records.KanjiInventoryItem item : inventory) {
+            for (RecordsImportModels.KanjiInventoryItem item : inventory) {
                 String kanji = item == null || item.kanji == null ? "" : item.kanji.trim();
                 if (!kanji.isEmpty()) {
                     out.put(kanji, normalizeMeaning(item.primaryMeaning));

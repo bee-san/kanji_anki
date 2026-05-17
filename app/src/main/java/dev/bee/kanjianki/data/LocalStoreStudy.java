@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -8,7 +12,6 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
@@ -32,17 +35,17 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         super(context);
     }
 
-    public void replaceStudyItems(List<Records.StudyItem> items) {
+    public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
         replaceStudyItems(items, null, 0L, null);
     }
 
-    public void replaceStudyItems(List<Records.StudyItem> items, Long syncId, long occurredAt, Records.Settings settings) {
+    public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items, Long syncId, long occurredAt, RecordsSyncModels.Settings settings) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
             Map<String, StudySnapshot> previous = syncId == null ? Collections.emptyMap() : studySnapshots(db);
             db.delete(TABLE_STUDY_ITEMS, null, null);
-            for (Records.StudyItem item : items) {
+            for (RecordsStudyModels.StudyItem item : items) {
                 upsertStudyItem(db, item);
             }
             if (syncId != null) {
@@ -54,7 +57,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         }
     }
 
-    public void saveStudyItem(Records.StudyItem item) {
+    public void saveStudyItem(RecordsStudyModels.StudyItem item) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -65,11 +68,11 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         }
     }
 
-    public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt) {
+    public void saveReview(RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt) {
         saveReview(request, appliedRating, reviewedAt, null, null);
     }
 
-    public void saveReview(Records.ReviewRequest request, String appliedRating, long reviewedAt, Records.StudyItem beforeReview, Records.StudyItem afterReview) {
+    public void saveReview(RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt, RecordsStudyModels.StudyItem beforeReview, RecordsStudyModels.StudyItem afterReview) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -87,7 +90,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         return new KanjiImpactReportStore((LocalStore) this).report();
     }
 
-    long insertReview(SQLiteDatabase db, Records.ReviewRequest request, String appliedRating, long reviewedAt, Records.StudyItem beforeReview, Records.StudyItem afterReview) {
+    long insertReview(SQLiteDatabase db, RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt, RecordsStudyModels.StudyItem beforeReview, RecordsStudyModels.StudyItem afterReview) {
         ContentValues values = new ContentValues();
         values.put(COLUMN_KANJI, request.kanji);
         values.put(COLUMN_TOKEN, request.token);
@@ -108,14 +111,14 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         return db.insertWithOnConflict(TABLE_REVIEW_LOG, null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
-    String taskMemoryText(Records.StudyItem item, String taskType) {
+    String taskMemoryText(RecordsStudyModels.StudyItem item, String taskType) {
         if (item == null || taskType == null || taskType.isEmpty()) {
             return "";
         }
         return item.memoryForTaskType(taskType).encode();
     }
 
-    String studyItemSchedulerJson(Records.StudyItem item) {
+    String studyItemSchedulerJson(RecordsStudyModels.StudyItem item) {
         if (item == null) {
             return "";
         }
@@ -228,15 +231,15 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         putIntSetting(SETTING_STUDY_AHEAD_MINUTES, clampStudyAheadMinutes(minutes));
     }
 
-    public Records.StudyLadderSettings studyLadderSettings() {
-        return Records.StudyLadderSettings.fromStored(
+    public RecordsBase.StudyLadderSettings studyLadderSettings() {
+        return RecordsBase.StudyLadderSettings.fromStored(
                 getStringSetting(KEY_STUDY_LADDER_ORDER, ""),
                 getStringSetting(KEY_STUDY_LADDER_ENABLED, "")
         );
     }
 
-    public void saveStudyLadderSettings(Records.StudyLadderSettings settings) {
-        Records.StudyLadderSettings normalized = settings == null ? Records.StudyLadderSettings.defaults() : settings;
+    public void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings) {
+        RecordsBase.StudyLadderSettings normalized = settings == null ? RecordsBase.StudyLadderSettings.defaults() : settings;
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -404,9 +407,9 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         }
     }
 
-    public Records.SchedulerParameters schedulerParameters() {
-        Records.SchedulerParameters defaults = Records.SchedulerParameters.defaults();
-        return new Records.SchedulerParameters(
+    public RecordsSchedulerModels.SchedulerParameters schedulerParameters() {
+        RecordsSchedulerModels.SchedulerParameters defaults = RecordsSchedulerModels.SchedulerParameters.defaults();
+        return new RecordsSchedulerModels.SchedulerParameters(
                 getDoubleSetting("scheduler_target_retention", defaults.targetRetention),
                 getDoubleSetting("scheduler_again_multiplier", defaults.againMultiplier),
                 getDoubleSetting("scheduler_hard_multiplier", defaults.hardMultiplier),
@@ -419,7 +422,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         );
     }
 
-    public void saveSchedulerParameters(Records.SchedulerParameters parameters) {
+    public void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters) {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -438,21 +441,21 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         }
     }
 
-    public Records.LearningStepSettings learningStepSettings() {
-        Records.LearningStepSettings defaults = Records.LearningStepSettings.defaults();
-        List<Integer> newSteps = Records.LearningStepSettings.parseSteps(
+    public RecordsSchedulerModels.LearningStepSettings learningStepSettings() {
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
+        List<Integer> newSteps = RecordsSchedulerModels.LearningStepSettings.parseSteps(
                 getStringSetting("new_learning_steps_minutes", defaults.newStepsText()),
                 defaults.newStepsMinutes
         );
-        List<Integer> reviewSteps = Records.LearningStepSettings.parseSteps(
+        List<Integer> reviewSteps = RecordsSchedulerModels.LearningStepSettings.parseSteps(
                 getStringSetting("review_relearning_steps_minutes", defaults.reviewStepsText()),
                 defaults.reviewStepsMinutes
         );
-        return new Records.LearningStepSettings(newSteps, reviewSteps);
+        return new RecordsSchedulerModels.LearningStepSettings(newSteps, reviewSteps);
     }
 
-    public void saveLearningStepSettings(Records.LearningStepSettings settings) {
-        Records.LearningStepSettings normalized = settings == null ? Records.LearningStepSettings.defaults() : settings;
+    public void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings) {
+        RecordsSchedulerModels.LearningStepSettings normalized = settings == null ? RecordsSchedulerModels.LearningStepSettings.defaults() : settings;
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
@@ -464,7 +467,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         }
     }
 
-    public void saveLearningRepeat(Records.LearningRepeat repeat) {
+    public void saveLearningRepeat(RecordsSchedulerModels.LearningRepeat repeat) {
         if (repeat == null || repeat.kanji.isEmpty() || repeat.taskType.isEmpty()) {
             return;
         }
@@ -481,11 +484,11 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         getWritableDatabase().insertWithOnConflict(TABLE_LEARNING_REPEATS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
-    public void enqueueLearningRepeat(Records.StudyItem item, String taskType, String repeatType, int stepIndex, long dueAtMillis, long nowMillis) {
+    public void enqueueLearningRepeat(RecordsStudyModels.StudyItem item, String taskType, String repeatType, int stepIndex, long dueAtMillis, long nowMillis) {
         if (item == null || taskType == null || taskType.isEmpty()) {
             return;
         }
-        saveLearningRepeat(new Records.LearningRepeat(
+        saveLearningRepeat(new RecordsSchedulerModels.LearningRepeat(
                 item.kanji,
                 item.answerSignature,
                 taskType,
@@ -498,7 +501,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         ));
     }
 
-    public void clearLearningRepeat(Records.LearningRepeat repeat) {
+    public void clearLearningRepeat(RecordsSchedulerModels.LearningRepeat repeat) {
         if (repeat == null) {
             return;
         }
@@ -509,8 +512,8 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         );
     }
 
-    public List<Records.LearningRepeat> dueLearningRepeats(long nowMillis) {
-        List<Records.LearningRepeat> repeats = new ArrayList<>();
+    public List<RecordsSchedulerModels.LearningRepeat> dueLearningRepeats(long nowMillis) {
+        List<RecordsSchedulerModels.LearningRepeat> repeats = new ArrayList<>();
         Cursor cursor = getReadableDatabase().query(
                 TABLE_LEARNING_REPEATS,
                 null,
@@ -530,7 +533,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         return repeats;
     }
 
-    public Records.ReviewStats reviewStatsSince(long sinceMillis) {
+    public RecordsSchedulerModels.ReviewStats reviewStatsSince(long sinceMillis) {
         Cursor cursor = getReadableDatabase().rawQuery(
                 "SELECT "
                         + "COUNT(*) AS total, "
@@ -545,7 +548,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         );
         try {
             cursor.moveToFirst();
-            return new Records.ReviewStats(
+            return new RecordsSchedulerModels.ReviewStats(
                     cursor.getInt(0),
                     cursor.getInt(1),
                     cursor.getInt(2),

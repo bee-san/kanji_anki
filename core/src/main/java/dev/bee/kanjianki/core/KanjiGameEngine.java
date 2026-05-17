@@ -65,9 +65,9 @@ public final class KanjiGameEngine {
     }
 
     public List<GameMode> availableModes(
-            List<Records.DashboardRow> rows,
-            List<Records.KanjiInventoryItem> inventory,
-            List<Records.SimilarKanjiPair> pairs
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsImportModels.KanjiInventoryItem> inventory,
+            List<RecordsImportModels.SimilarKanjiPair> pairs
     ) {
         List<GameMode> out = new ArrayList<>();
         for (GameMode mode : GameMode.values()) {
@@ -80,9 +80,9 @@ public final class KanjiGameEngine {
 
     public GameQuestion nextQuestion(
             GameMode mode,
-            List<Records.DashboardRow> rows,
-            List<Records.KanjiInventoryItem> inventory,
-            List<Records.SimilarKanjiPair> pairs,
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsImportModels.KanjiInventoryItem> inventory,
+            List<RecordsImportModels.SimilarKanjiPair> pairs,
             Random random
     ) {
         GameMode safeMode = mode == null ? GameMode.MEANING_POP : mode;
@@ -139,7 +139,7 @@ public final class KanjiGameEngine {
 
     private static GameQuestion confusableQuestion(
             List<GameCandidate> candidates,
-            List<Records.SimilarKanjiPair> pairs,
+            List<RecordsImportModels.SimilarKanjiPair> pairs,
             Random random
     ) {
         Map<String, List<String>> neighbors = neighborMap(pairs);
@@ -181,12 +181,12 @@ public final class KanjiGameEngine {
     }
 
     private static List<GameCandidate> candidates(
-            List<Records.DashboardRow> rows,
-            List<Records.KanjiInventoryItem> inventory
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsImportModels.KanjiInventoryItem> inventory
     ) {
         LinkedHashMap<String, GameCandidate> byKanji = new LinkedHashMap<>();
         if (rows != null) {
-            for (Records.DashboardRow row : rows) {
+            for (RecordsImportModels.DashboardRow row : rows) {
                 GameCandidate candidate = GameCandidate.fromRow(row);
                 if (candidate.hasAnyAnswer()) {
                     byKanji.put(candidate.kanji, candidate);
@@ -194,7 +194,7 @@ public final class KanjiGameEngine {
             }
         }
         if (inventory != null) {
-            for (Records.KanjiInventoryItem item : inventory) {
+            for (RecordsImportModels.KanjiInventoryItem item : inventory) {
                 GameCandidate candidate = GameCandidate.fromInventory(item);
                 if (candidate.hasAnyAnswer() && !byKanji.containsKey(candidate.kanji)) {
                     byKanji.put(candidate.kanji, candidate);
@@ -260,12 +260,12 @@ public final class KanjiGameEngine {
         return new ArrayList<>(byKey.values());
     }
 
-    private static Map<String, List<String>> neighborMap(List<Records.SimilarKanjiPair> pairs) {
+    private static Map<String, List<String>> neighborMap(List<RecordsImportModels.SimilarKanjiPair> pairs) {
         Map<String, List<String>> out = new HashMap<>();
         if (pairs == null) {
             return out;
         }
-        for (Records.SimilarKanjiPair pair : pairs) {
+        for (RecordsImportModels.SimilarKanjiPair pair : pairs) {
             if (pair == null) {
                 continue;
             }
@@ -342,14 +342,14 @@ public final class KanjiGameEngine {
             this.fromDashboard = fromDashboard;
         }
 
-        static GameCandidate fromRow(Records.DashboardRow row) {
+        static GameCandidate fromRow(RecordsImportModels.DashboardRow row) {
             if (row == null) {
                 return new GameCandidate("", "", "", "", true);
             }
             String exampleMeaning = "";
             String exampleReading = "";
             String expression = "";
-            for (Records.Example example : row.examples) {
+            for (RecordsImportModels.Example example : row.examples) {
                 if (exampleMeaning.isEmpty()) {
                     exampleMeaning = example.meaning;
                 }
@@ -369,7 +369,7 @@ public final class KanjiGameEngine {
             );
         }
 
-        static GameCandidate fromInventory(Records.KanjiInventoryItem item) {
+        static GameCandidate fromInventory(RecordsImportModels.KanjiInventoryItem item) {
             if (item == null) {
                 return new GameCandidate("", "", "", "", false);
             }

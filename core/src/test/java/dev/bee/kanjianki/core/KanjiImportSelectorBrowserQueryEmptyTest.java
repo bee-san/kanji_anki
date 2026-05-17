@@ -34,33 +34,33 @@ public final class KanjiImportSelectorBrowserQueryEmptyTest {
 
     @Test
     public void importsRemainEmpty() throws Exception {
-        Records.Settings settings = settingsWithBrowserQuery(browserQueryCards, browserQuery);
+        RecordsSyncModels.Settings settings = settingsWithBrowserQuery(browserQueryCards, browserQuery);
         JitenKanjiRanks ranks = JitenKanjiRanks.parseCsv(new StringReader(rankCsv));
-        Records.Card queryMatched = card(10, 1, false).withBrowserQueryMatched(true);
-        Records.CollectionSnapshot snapshot = new Records.CollectionSnapshot(
+        RecordsSyncModels.Card queryMatched = card(10, 1, false).withBrowserQueryMatched(true);
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
                 Collections.singletonList(note(1, "裂ける", "さける")),
                 Collections.singletonList(queryMatched)
         );
 
-        List<Records.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
+        List<RecordsImportModels.SuspendedImport> imports = new KanjiImportSelector(ranks, 100, 3000).importFrom(snapshot, settings);
 
         assertTrue(description, imports.isEmpty());
     }
 
-    private static Records.Note note(long id, String expression, String reading) {
+    private static RecordsSyncModels.Note note(long id, String expression, String reading) {
         Map<String, String> fields = new LinkedHashMap<>();
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         fields.put(defaults.expressionField, expression);
         fields.put(defaults.readingField, reading);
         fields.put(defaults.meaningField, "meaning");
         fields.put(defaults.sentenceField, expression + " sentence");
         fields.put(defaults.frequencyField, "9999");
         fields.put(defaults.frequencySortField, "9999");
-        return new Records.Note(id, "Kiku", fields, Collections.emptyList());
+        return new RecordsSyncModels.Note(id, "Kiku", fields, Collections.emptyList());
     }
 
-    private static Records.Card card(long cardId, long noteId, boolean suspended) {
-        return new Records.Card(
+    private static RecordsSyncModels.Card card(long cardId, long noteId, boolean suspended) {
+        return new RecordsSyncModels.Card(
                 cardId,
                 noteId,
                 0,
@@ -78,9 +78,9 @@ public final class KanjiImportSelectorBrowserQueryEmptyTest {
         );
     }
 
-    private static Records.Settings settingsWithBrowserQuery(boolean browserQueryCards, String browserQuery) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private static RecordsSyncModels.Settings settingsWithBrowserQuery(boolean browserQueryCards, String browserQuery) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,

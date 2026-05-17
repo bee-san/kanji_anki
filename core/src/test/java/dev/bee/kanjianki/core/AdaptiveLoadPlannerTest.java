@@ -15,10 +15,10 @@ import static org.junit.Assert.assertTrue;
 public class AdaptiveLoadPlannerTest {
     @Test
     public void defaultWorkloadProducesSmallParetoTarget() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(10),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 20,
@@ -34,10 +34,10 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void veryLowWorkloadProducesOneKanji() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(5),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 0, 8, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 0, 8, 0, 4, 0),
                 5,
                 Collections.emptySet(),
                 0,
@@ -51,10 +51,10 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void allKanjiModeAdmitsAllCurrentCandidates() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(8),
                 Collections.emptyList(),
-                new Records.ReviewStats(2, 0, 0, 2, 0, 2, 0),
+                new RecordsSchedulerModels.ReviewStats(2, 0, 0, 2, 0, 2, 0),
                 2,
                 Collections.emptySet(),
                 100,
@@ -69,16 +69,16 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void emptyManualAllKanjiModeKeepsAllKanjiFlag() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Collections.emptyList(),
                 Collections.emptyList(),
-                new Records.ReviewStats(2, 0, 0, 2, 0, 2, 0),
+                new RecordsSchedulerModels.ReviewStats(2, 0, 0, 2, 0, 2, 0),
                 0,
                 Collections.emptySet(),
                 100,
                 AdaptiveLoadPlanner.WorkloadMode.MANUAL,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertFalse(plan.autoMode);
@@ -88,19 +88,19 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void highMissAndWritingFailureLowerTarget() {
-        Records.AdaptiveLoadPlan steady = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan steady = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(10, 0, 0, 9, 1, 8, 0),
+                new RecordsSchedulerModels.ReviewStats(10, 0, 0, 9, 1, 8, 0),
                 5,
                 Collections.emptySet(),
                 50,
                 1000L
         );
-        Records.AdaptiveLoadPlan rough = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan rough = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(10, 5, 2, 3, 0, 8, 4),
+                new RecordsSchedulerModels.ReviewStats(10, 5, 2, 3, 0, 8, 4),
                 5,
                 Collections.emptySet(),
                 50,
@@ -112,19 +112,19 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void stableStreakWithLowMissesRaisesTargetSlightly() {
-        Records.AdaptiveLoadPlan noStreak = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan noStreak = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                new RecordsSchedulerModels.ReviewStats(10, 0, 1, 8, 1, 8, 0),
                 0,
                 Collections.emptySet(),
                 50,
                 1000L
         );
-        Records.AdaptiveLoadPlan streak = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan streak = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                new RecordsSchedulerModels.ReviewStats(10, 0, 1, 8, 1, 8, 0),
                 4,
                 Collections.emptySet(),
                 50,
@@ -136,28 +136,28 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void steadyStreakBoostRequiresLowHardAndWritingRates() {
-        Records.AdaptiveLoadPlan boosted = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan boosted = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(4, 0, 0, 4, 0, 4, 0),
                 4,
                 Collections.emptySet(),
                 50,
                 1000L
         );
-        Records.AdaptiveLoadPlan hardBlocked = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan hardBlocked = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(4, 0, 2, 2, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(4, 0, 2, 2, 0, 4, 0),
                 4,
                 Collections.emptySet(),
                 50,
                 1000L
         );
-        Records.AdaptiveLoadPlan writingBlocked = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan writingBlocked = plan(
                 rows(20),
                 Collections.emptyList(),
-                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 1),
+                new RecordsSchedulerModels.ReviewStats(4, 0, 0, 4, 0, 4, 1),
                 4,
                 Collections.emptySet(),
                 50,
@@ -171,16 +171,16 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void overduePressurePreventsNewAdmissions() {
-        List<Records.StudyItem> due = Arrays.asList(
+        List<RecordsStudyModels.StudyItem> due = Arrays.asList(
                 reviewed("字0", 0L),
                 reviewed("字1", 0L),
                 reviewed("字2", 0L)
         );
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(10),
                 due,
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 20,
@@ -195,20 +195,20 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void learningItemsCountAsRecoveryOnlyWhenDue() {
-        List<Records.StudyItem> items = Arrays.asList(
+        List<RecordsStudyModels.StudyItem> items = Arrays.asList(
                 item("学", "learning", 999L, 0, 0),
                 item("済", "retired", 0L, 10, 0),
                 item("待", "review", 2000L, 10, 0)
         );
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("学", 10, null, null, null, 3, 1),
                         row("済", 9, null, null, null, 3, 1),
                         row("待", 8, null, null, null, 3, 1)
                 ),
                 items,
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 0,
                 Collections.singleton("済"),
                 20,
@@ -221,13 +221,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void fsrsLowRetrievabilityOutranksOtherwiseSimilarKanji() {
-        Records.DashboardRow weakFsrs = row("弱", 10, 0.30, 7.0, 3.0, 10, 2);
-        Records.DashboardRow ordinary = row("普", 10, 0.95, 4.0, 30.0, 10, 2);
+        RecordsImportModels.DashboardRow weakFsrs = row("弱", 10, 0.30, 7.0, 3.0, 10, 2);
+        RecordsImportModels.DashboardRow ordinary = row("普", 10, 0.95, 4.0, 30.0, 10, 2);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(ordinary, weakFsrs),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 0,
@@ -239,13 +239,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void missingFsrsDataFallsBackToIntervalRepsAndLapses() {
-        Records.DashboardRow shakyMature = row("揺", 10, null, null, null, 10, 1);
-        Records.DashboardRow betterSupported = row("支", 10, null, null, null, 40, 12);
+        RecordsImportModels.DashboardRow shakyMature = row("揺", 10, null, null, null, 10, 1);
+        RecordsImportModels.DashboardRow betterSupported = row("支", 10, null, null, null, 40, 12);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(betterSupported, shakyMature),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 0,
@@ -260,19 +260,19 @@ public class AdaptiveLoadPlannerTest {
         HashSet<String> studied = new HashSet<>();
         studied.add("字0");
 
-        Records.AdaptiveLoadPlan complete = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan complete = plan(
                 rows(1),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 studied,
                 0,
                 1000L
         );
-        Records.AdaptiveLoadPlan dueAgain = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan dueAgain = plan(
                 rows(1),
                 Collections.singletonList(reviewed("字0", 0L)),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 studied,
                 0,
@@ -295,12 +295,12 @@ public class AdaptiveLoadPlannerTest {
         studied.add("字0");
 
         // Card in learning state with due time in the future (relearning step)
-        Records.StudyItem learningFutureDue = item("字0", "learning", now + 60_000L, 1, 1);
+        RecordsStudyModels.StudyItem learningFutureDue = item("字0", "learning", now + 60_000L, 1, 1);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(1),
                 Collections.singletonList(learningFutureDue),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 studied,
                 0,
@@ -313,7 +313,7 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadUsesFirstMajorParetoDropOff() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("強", 42, null, null, null, 3, 1),
                         row("重", 38, null, null, null, 3, 1),
@@ -321,13 +321,13 @@ public class AdaptiveLoadPlannerTest {
                         row("薄", 8, null, null, null, 3, 1)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertTrue(plan.autoMode);
@@ -338,20 +338,20 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadReportsDropOffWhileWaitingForHistory() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("強", 42, null, null, null, 3, 1),
                         row("重", 38, null, null, null, 3, 1),
                         row("軽", 10, null, null, null, 3, 1)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertTrue(plan.status.contains("drop-off"));
@@ -360,7 +360,7 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadOrdersDropOffByCompositePriorityScore() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("査", 1, 0.75, null, null, 3, 1),
                         row("濃", 100, null, null, null, 3, 1),
@@ -368,13 +368,13 @@ public class AdaptiveLoadPlannerTest {
                         row("薄", 10, null, null, null, 3, 1)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertEquals(2, plan.target);
@@ -383,7 +383,7 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadFallsBackToSmallParetoFocusWhenCurveIsFlat() {
-        List<Records.DashboardRow> flat = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> flat = Arrays.asList(
                 row("字0", 40, null, null, null, 3, 1),
                 row("字1", 38, null, null, null, 3, 1),
                 row("字2", 36, null, null, null, 3, 1),
@@ -392,16 +392,16 @@ public class AdaptiveLoadPlannerTest {
                 row("字5", 30, null, null, null, 3, 1)
         );
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 flat,
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertEquals(AdaptiveLoadPlanner.targetCeiling(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT), plan.target);
@@ -410,13 +410,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadFallsBackWhenPriorityScoresAreZero() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("穏", 0, null, null, null, 45, 12),
                         row("静", 0, null, null, null, 45, 12)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
@@ -431,12 +431,12 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadIncludesDueRecoveryBeforeNewAdmissions() {
-        List<Records.StudyItem> due = Arrays.asList(
+        List<RecordsStudyModels.StudyItem> due = Arrays.asList(
                 reviewed("復", 0L),
                 reviewed("習", 0L)
         );
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("復", 9, null, null, null, 3, 1),
                         row("習", 8, null, null, null, 3, 1),
@@ -445,13 +445,13 @@ public class AdaptiveLoadPlannerTest {
                         row("軽", 10, null, null, null, 3, 1)
                 ),
                 due,
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertTrue(plan.focusKanji.contains("復"));
@@ -461,33 +461,33 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadStillShrinksWhenRecentReviewsAreRough() {
-        List<Records.DashboardRow> steep = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> steep = Arrays.asList(
                 row("強", 42, null, null, null, 3, 1),
                 row("重", 38, null, null, null, 3, 1),
                 row("固", 36, null, null, null, 3, 1),
                 row("軽", 10, null, null, null, 3, 1)
         );
-        Records.AdaptiveLoadPlan steady = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan steady = plan(
                 steep,
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
-        Records.AdaptiveLoadPlan rough = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan rough = plan(
                 steep,
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 4, 2, 2, 0, 6, 3),
+                new RecordsSchedulerModels.ReviewStats(8, 4, 2, 2, 0, 6, 3),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertTrue(rough.target < steady.target);
@@ -495,16 +495,16 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void manualModeStillHonorsAllKanjiOverride() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(8),
                 Collections.emptyList(),
-                new Records.ReviewStats(2, 0, 0, 2, 0, 2, 0),
+                new RecordsSchedulerModels.ReviewStats(2, 0, 0, 2, 0, 2, 0),
                 2,
                 Collections.emptySet(),
                 100,
                 AdaptiveLoadPlanner.WorkloadMode.MANUAL,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertFalse(plan.autoMode);
@@ -514,28 +514,28 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void manualModeStatusCoversNoHistoryRecoveryAndFullRange() {
-        Records.AdaptiveLoadPlan noHistory = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan noHistory = plan(
                 rows(4),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 20,
                 1000L
         );
-        Records.AdaptiveLoadPlan recovery = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan recovery = plan(
                 rows(2),
                 Arrays.asList(reviewed("字0", 0L), reviewed("字1", 0L)),
-                new Records.ReviewStats(6, 0, 0, 6, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(6, 0, 0, 6, 0, 4, 0),
                 0,
                 Collections.emptySet(),
                 5,
                 1000L
         );
-        Records.AdaptiveLoadPlan fullRange = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan fullRange = plan(
                 rows(4),
                 Collections.emptyList(),
-                new Records.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                new RecordsSchedulerModels.ReviewStats(10, 0, 1, 8, 1, 8, 0),
                 5,
                 Collections.emptySet(),
                 5,
@@ -549,7 +549,7 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void nullInputsAndModeHelpersFallBackSafely() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 null,
                 null,
                 null,
@@ -587,32 +587,32 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoModeCoversRecoveryAndSteadyStreakStatusBranches() {
-        List<Records.DashboardRow> steep = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> steep = Arrays.asList(
                 row("強", 42, null, null, null, 3, 1),
                 row("重", 38, null, null, null, 3, 1),
                 row("軽", 10, null, null, null, 3, 1)
         );
-        Records.AdaptiveLoadPlan recoveryOnly = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan recoveryOnly = plan(
                 steep,
                 Arrays.asList(reviewed("強", 0L), reviewed("重", 0L), reviewed("軽", 0L)),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
-        Records.AdaptiveLoadPlan steady = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan steady = plan(
                 steep,
                 Collections.emptyList(),
-                new Records.ReviewStats(10, 0, 1, 8, 1, 8, 0),
+                new RecordsSchedulerModels.ReviewStats(10, 0, 1, 8, 1, 8, 0),
                 5,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertTrue(recoveryOnly.status.contains("Due recovery"));
@@ -621,17 +621,17 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoWorkloadRespectsMaxItems() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(12),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 5,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertEquals(5, plan.target);
@@ -641,7 +641,7 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void dueRecoveryIsCappedByMaxItems() {
-        List<Records.StudyItem> due = Arrays.asList(
+        List<RecordsStudyModels.StudyItem> due = Arrays.asList(
                 reviewed("字0", 0L),
                 reviewed("字1", 0L),
                 reviewed("字2", 0L),
@@ -650,17 +650,17 @@ public class AdaptiveLoadPlannerTest {
                 reviewed("字5", 0L)
         );
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(8),
                 due,
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
                 AdaptiveLoadPlanner.WorkloadMode.AUTO,
                 5,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertEquals(5, plan.target);
@@ -671,17 +671,17 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void manualAllKanjiModeIsLimitedByMaxItems() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(8),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 100,
                 AdaptiveLoadPlanner.WorkloadMode.MANUAL,
                 5,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertFalse(plan.allKanjiMode);
@@ -692,17 +692,17 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void manualAllKanjiModeWithMaxAboveRowsStaysUncapped() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 rows(4),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 100,
                 AdaptiveLoadPlanner.WorkloadMode.MANUAL,
                 20,
                 1000L,
-                Records.Settings.kikuDefaults()
+                RecordsSyncModels.Settings.kikuDefaults()
         );
 
         assertTrue(plan.allKanjiMode);
@@ -712,14 +712,14 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void fsrsRiskCoversInvalidPercentAndMatureStabilityBranches() {
-        Records.DashboardRow percentRisk = row("百", 10, 75.0, 6.0, 2.0, 10, 5);
-        Records.DashboardRow invalidRisk = row("無", 50, 101.0, null, null, 3, 1);
-        Records.DashboardRow protectedMature = row("熟", 45, 0.95, 4.0, 50.0, 50, 10);
+        RecordsImportModels.DashboardRow percentRisk = row("百", 10, 75.0, 6.0, 2.0, 10, 5);
+        RecordsImportModels.DashboardRow invalidRisk = row("無", 50, 101.0, null, null, 3, 1);
+        RecordsImportModels.DashboardRow protectedMature = row("熟", 45, 0.95, 4.0, 50.0, 50, 10);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(invalidRisk, protectedMature, percentRisk),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 0,
@@ -731,11 +731,11 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void typedPlanRequestBuilderShapesPolicyAndSettings() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AdaptiveLoadPlanner.PlanRequest request = AdaptiveLoadPlanner.PlanRequest.builder(
                         rows(2),
                         Collections.emptyList(),
-                        new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                        new RecordsSchedulerModels.ReviewStats(4, 0, 0, 4, 0, 4, 0),
                         0,
                         Collections.emptySet(),
                         AdaptiveLoadPlanner.WorkloadPolicy.of(AdaptiveLoadPlanner.WorkloadMode.MANUAL, 20, 1),
@@ -744,12 +744,12 @@ public class AdaptiveLoadPlannerTest {
                 .settings(settings)
                 .build();
 
-        Records.AdaptiveLoadPlan manual = plan(request);
-        Records.AdaptiveLoadPlan fromSettings = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan manual = plan(request);
+        RecordsSchedulerModels.AdaptiveLoadPlan fromSettings = plan(
                 AdaptiveLoadPlanner.PlanRequest.builder(
                                 rows(2),
                                 Collections.emptyList(),
-                                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                                new RecordsSchedulerModels.ReviewStats(4, 0, 0, 4, 0, 4, 0),
                                 0,
                                 Collections.emptySet(),
                                 AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(20, AdaptiveLoadPlanner.MODE_AUTO, 1),
@@ -767,7 +767,7 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void nullPlanRequestFallsBackToEmptyDefaultPlan() {
-        Records.AdaptiveLoadPlan plan = plan((AdaptiveLoadPlanner.PlanRequest) null);
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan((AdaptiveLoadPlanner.PlanRequest) null);
 
         assertFalse(plan.autoMode);
         assertEquals(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT, plan.workloadPercent);
@@ -777,33 +777,33 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void targetAdjustmentCoversModerateMissesHardRateAndFutureLearning() {
-        Records.StudyItem futureLearning = item("字0", "learning", 5000L, 0, 0);
-        Records.StudyItem dueUnreviewedReview = item("字1", "review", 0L, 0, 0);
+        RecordsStudyModels.StudyItem futureLearning = item("字0", "learning", 5000L, 0, 0);
+        RecordsStudyModels.StudyItem dueUnreviewedReview = item("字1", "review", 0L, 0, 0);
         HashSet<String> studied = new HashSet<>();
         studied.add("字0");
 
-        Records.AdaptiveLoadPlan moderateMisses = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan moderateMisses = plan(
                 rows(10),
                 Collections.singletonList(futureLearning),
-                new Records.ReviewStats(4, 1, 0, 3, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(4, 1, 0, 3, 0, 4, 0),
                 0,
                 studied,
                 20,
                 1000L
         );
-        Records.AdaptiveLoadPlan hardHeavy = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan hardHeavy = plan(
                 rows(10),
                 Collections.emptyList(),
-                new Records.ReviewStats(4, 0, 2, 2, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(4, 0, 2, 2, 0, 4, 0),
                 0,
                 Collections.emptySet(),
                 20,
                 1000L
         );
-        Records.AdaptiveLoadPlan unreviewedReview = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan unreviewedReview = plan(
                 rows(10),
                 Collections.singletonList(dueUnreviewedReview),
-                new Records.ReviewStats(4, 0, 0, 4, 0, 4, 0),
+                new RecordsSchedulerModels.ReviewStats(4, 0, 0, 4, 0, 4, 0),
                 0,
                 Collections.emptySet(),
                 20,
@@ -820,13 +820,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoNoHistoryWithoutDropUsesSmallStartStatus() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("穏", 0, null, null, null, 45, 12),
                         row("静", 0, null, null, null, 45, 12)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 20,
@@ -840,13 +840,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void fsrsRiskCoversNegativeRetrievabilityAndIntervalFallback() {
-        Records.DashboardRow intervalFallback = row("間", 10, null, null, null, 3, 9);
-        Records.DashboardRow negativeRetrievability = row("負", 50, -0.1, null, null, 30, 9);
+        RecordsImportModels.DashboardRow intervalFallback = row("間", 10, null, null, null, 3, 9);
+        RecordsImportModels.DashboardRow negativeRetrievability = row("負", 50, -0.1, null, null, 30, 9);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(negativeRetrievability, intervalFallback),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 0,
@@ -858,13 +858,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void fsrsRiskDoesNotProtectImmatureHighStabilityExamples() {
-        Records.DashboardRow immatureHighStability = row("未", 10, 0.95, null, 50.0, 3, 9);
-        Records.DashboardRow protectedMature = row("熟", 10, 0.95, null, 50.0, 50, 9);
+        RecordsImportModels.DashboardRow immatureHighStability = row("未", 10, 0.95, null, 50.0, 3, 9);
+        RecordsImportModels.DashboardRow protectedMature = row("熟", 10, 0.95, null, 50.0, 50, 9);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(protectedMature, immatureHighStability),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 0,
@@ -876,14 +876,14 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoParetoRequiresAbsoluteDropAsWellAsRelativeDrop() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("十", 10, null, null, null, 3, 1),
                         row("七", 7, null, null, null, 3, 1),
                         row("一", 1, null, null, null, 3, 1)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
@@ -897,13 +897,13 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void fsrsRiskProtectsOnlyVeryStableMatureExamples() {
-        Records.DashboardRow matureWithoutProtection = row("並", 10, 0.95, 10.0, 30.0, 50, 9);
-        Records.DashboardRow protectedMature = row("熟", 10, 0.95, 10.0, 90.0, 90, 9);
+        RecordsImportModels.DashboardRow matureWithoutProtection = row("並", 10, 0.95, 10.0, 30.0, 50, 9);
+        RecordsImportModels.DashboardRow protectedMature = row("熟", 10, 0.95, 10.0, 90.0, 90, 9);
 
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(protectedMature, matureWithoutProtection),
                 Collections.emptyList(),
-                new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
                 0,
                 Collections.emptySet(),
                 0,
@@ -916,14 +916,14 @@ public class AdaptiveLoadPlannerTest {
 
     @Test
     public void autoParetoScanContinuesAcrossZeroPriorityTail() {
-        Records.AdaptiveLoadPlan plan = plan(
+        RecordsSchedulerModels.AdaptiveLoadPlan plan = plan(
                 Arrays.asList(
                         row("十", 10, null, null, null, 3, 1),
                         row("零", 0, null, null, null, 45, 12),
                         row("空", 0, null, null, null, 45, 12)
                 ),
                 Collections.emptyList(),
-                new Records.ReviewStats(8, 0, 1, 7, 0, 6, 0),
+                new RecordsSchedulerModels.ReviewStats(8, 0, 1, 7, 0, 6, 0),
                 1,
                 Collections.emptySet(),
                 20,
@@ -939,60 +939,60 @@ public class AdaptiveLoadPlannerTest {
         return new AdaptiveLoadPlanner();
     }
 
-    private Records.AdaptiveLoadPlan plan(AdaptiveLoadPlanner.PlanRequest request) {
+    private RecordsSchedulerModels.AdaptiveLoadPlan plan(AdaptiveLoadPlanner.PlanRequest request) {
         return planner().plan(request);
     }
 
-    private Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
+    private RecordsSchedulerModels.AdaptiveLoadPlan plan(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            RecordsSchedulerModels.ReviewStats recentStats,
             int currentStreakDays,
             java.util.Set<String> studiedToday,
             int workloadPercent,
             long nowMillis
     ) {
-        return plan(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, nowMillis, Records.Settings.kikuDefaults());
+        return plan(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, nowMillis, RecordsSyncModels.Settings.kikuDefaults());
     }
 
-    private Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
+    private RecordsSchedulerModels.AdaptiveLoadPlan plan(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            RecordsSchedulerModels.ReviewStats recentStats,
             int currentStreakDays,
             java.util.Set<String> studiedToday,
             int workloadPercent,
             long nowMillis,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
         return plan(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, AdaptiveLoadPlanner.WorkloadMode.MANUAL, nowMillis, settings);
     }
 
-    private Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
+    private RecordsSchedulerModels.AdaptiveLoadPlan plan(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            RecordsSchedulerModels.ReviewStats recentStats,
             int currentStreakDays,
             java.util.Set<String> studiedToday,
             int workloadPercent,
             AdaptiveLoadPlanner.WorkloadMode workloadMode,
             long nowMillis,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
         return plan(rows, items, recentStats, currentStreakDays, studiedToday, workloadPercent, workloadMode, Integer.MAX_VALUE, nowMillis, settings);
     }
 
-    private Records.AdaptiveLoadPlan plan(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> items,
-            Records.ReviewStats recentStats,
+    private RecordsSchedulerModels.AdaptiveLoadPlan plan(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            RecordsSchedulerModels.ReviewStats recentStats,
             int currentStreakDays,
             java.util.Set<String> studiedToday,
             int workloadPercent,
             AdaptiveLoadPlanner.WorkloadMode workloadMode,
             int maxItems,
             long nowMillis,
-            Records.Settings settings
+            RecordsSyncModels.Settings settings
     ) {
         return planner().plan(
                 AdaptiveLoadPlanner.PlanRequest.builder(
@@ -1009,15 +1009,15 @@ public class AdaptiveLoadPlannerTest {
         );
     }
 
-    private List<Records.DashboardRow> rows(int count) {
-        List<Records.DashboardRow> rows = new ArrayList<>();
+    private List<RecordsImportModels.DashboardRow> rows(int count) {
+        List<RecordsImportModels.DashboardRow> rows = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             rows.add(row("字" + i, 20 - i, null, null, null, 3, 1));
         }
         return rows;
     }
 
-    private Records.DashboardRow row(
+    private RecordsImportModels.DashboardRow row(
             String kanji,
             int weakness,
             Double retrievability,
@@ -1026,7 +1026,7 @@ public class AdaptiveLoadPlannerTest {
             int intervalDays,
             int reps
     ) {
-        Records.Example example = new Records.Example(
+        RecordsImportModels.Example example = new RecordsImportModels.Example(
                 "active",
                 kanji.charAt(0),
                 kanji.charAt(0),
@@ -1034,7 +1034,7 @@ public class AdaptiveLoadPlannerTest {
                 "よみ",
                 "meaning",
                 kanji + "を見た。",
-                intervalDays >= Records.Settings.kikuDefaults().matureDays,
+                intervalDays >= RecordsSyncModels.Settings.kikuDefaults().matureDays,
                 0,
                 intervalDays,
                 reps,
@@ -1042,7 +1042,7 @@ public class AdaptiveLoadPlannerTest {
                 difficulty,
                 retrievability
         );
-        return new Records.DashboardRow(
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 900,
                 "meaning",
@@ -1053,22 +1053,22 @@ public class AdaptiveLoadPlannerTest {
                 "reason",
                 1,
                 0,
-                intervalDays >= Records.Settings.kikuDefaults().matureDays ? 1 : 0,
+                intervalDays >= RecordsSyncModels.Settings.kikuDefaults().matureDays ? 1 : 0,
                 Collections.singletonList(example)
         );
     }
 
-    private Records.StudyItem reviewed(String kanji, long dueAt) {
-        return new Records.StudyItem(kanji, "review", dueAt, 1.0, 5.0, 2, 0, 2, 1, null, 0L);
+    private RecordsStudyModels.StudyItem reviewed(String kanji, long dueAt) {
+        return new RecordsStudyModels.StudyItem(kanji, "review", dueAt, 1.0, 5.0, 2, 0, 2, 1, null, 0L);
     }
 
-    private Records.StudyItem item(String kanji, String state, long dueAt, int totalReviews, int lapses) {
-        return new Records.StudyItem(kanji, state, dueAt, 1.0, 5.0, totalReviews, lapses, 0, 1, null, 0L);
+    private RecordsStudyModels.StudyItem item(String kanji, String state, long dueAt, int totalReviews, int lapses) {
+        return new RecordsStudyModels.StudyItem(kanji, state, dueAt, 1.0, 5.0, totalReviews, lapses, 0, 1, null, 0L);
     }
 
-    private Records.Settings settingsWithMatureSupport(int matureSupportThreshold) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings settingsWithMatureSupport(int matureSupportThreshold) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,

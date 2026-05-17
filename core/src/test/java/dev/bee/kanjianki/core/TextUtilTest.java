@@ -81,12 +81,12 @@ public class TextUtilTest {
 
     @Test
     public void browserSearchUsesKikuExpressionField() {
-        assertEquals("note:Kiku Expression:*裂*", TextUtil.browserSearchForKanji("裂", Records.Settings.kikuDefaults()));
+        assertEquals("note:Kiku Expression:*裂*", TextUtil.browserSearchForKanji("裂", RecordsSyncModels.Settings.kikuDefaults()));
     }
 
     @Test
     public void browserSearchQuotesCustomNoteTypeAndFieldNames() {
-        Records.Settings custom = new Records.Settings(
+        RecordsSyncModels.Settings custom = new RecordsSyncModels.Settings(
                 "Custom Japanese",
                 "Mining",
                 "Japanese Field",
@@ -101,7 +101,7 @@ public class TextUtilTest {
                 3000,
                 24,
                 3,
-                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
         );
 
         assertEquals(
@@ -119,13 +119,13 @@ public class TextUtilTest {
 
     @Test
     public void browserSearchHandlesNullKanjiAndEscapedSearchText() {
-        assertEquals("note:Kiku Expression:**", TextUtil.browserSearchForKanji(null, Records.Settings.kikuDefaults()));
-        assertEquals("note:Kiku Expression:*a\\\\\\\"b*", TextUtil.browserSearchForKanji("a\\\"b", Records.Settings.kikuDefaults()));
+        assertEquals("note:Kiku Expression:**", TextUtil.browserSearchForKanji(null, RecordsSyncModels.Settings.kikuDefaults()));
+        assertEquals("note:Kiku Expression:*a\\\\\\\"b*", TextUtil.browserSearchForKanji("a\\\"b", RecordsSyncModels.Settings.kikuDefaults()));
     }
 
     @Test
     public void browserSearchQuotesNullCustomNoteTypeAndField() {
-        Records.Settings custom = new Records.Settings(
+        RecordsSyncModels.Settings custom = new RecordsSyncModels.Settings(
                 null,
                 "Mining",
                 null,
@@ -140,7 +140,7 @@ public class TextUtilTest {
                 3000,
                 24,
                 3,
-                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
         );
 
         assertEquals("note:\"\" \"\":*裂*", TextUtil.browserSearchForKanji("裂", custom));

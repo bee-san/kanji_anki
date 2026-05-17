@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.sync;
 
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 import android.net.Uri;
 
@@ -9,7 +10,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
@@ -270,7 +270,7 @@ public final class AutoSyncRunnerInstrumentedTest {
         return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
     }
 
-    private Records.CollectionSnapshot snapshot() {
+    private RecordsSyncModels.CollectionSnapshot snapshot() {
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("Expression", "確認");
         fields.put("ExpressionReading", "かくにん");
@@ -278,36 +278,36 @@ public final class AutoSyncRunnerInstrumentedTest {
         fields.put("Sentence", "確認した。");
         fields.put("Frequency", "1000");
         fields.put("FreqSort", "1000");
-        Records.Note note = new Records.Note(1L, "Kiku", fields, Collections.emptyList());
-        Records.Card card = new Records.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 12, 0, false);
-        return new Records.CollectionSnapshot(Arrays.asList(note), Arrays.asList(card));
+        RecordsSyncModels.Note note = new RecordsSyncModels.Note(1L, "Kiku", fields, Collections.emptyList());
+        RecordsSyncModels.Card card = new RecordsSyncModels.Card(10L, 1L, 0, "Kiku", 2, 2, 0, 30, 12, 0, false);
+        return new RecordsSyncModels.CollectionSnapshot(Arrays.asList(note), Arrays.asList(card));
     }
 
     private static final class RetryableGateway implements CollectionGateway {
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) throws AnkiDroidGateway.SyncFailure {
             throw AnkiDroidGateway.SyncFailure.retryable("AnkiDroid returned no configured note cursor.");
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return new AnkiDroidGateway.RemovalSummary(0, 0, 0, "");
         }
     }
 
     private static final class BlockingGateway implements CollectionGateway {
-        private final Records.CollectionSnapshot snapshot;
+        private final RecordsSyncModels.CollectionSnapshot snapshot;
         private final AnkiDroidGateway.RemovalSummary removal;
         private final CountDownLatch started = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
 
-        private BlockingGateway(Records.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
+        private BlockingGateway(RecordsSyncModels.CollectionSnapshot snapshot, AnkiDroidGateway.RemovalSummary removal) {
             this.snapshot = snapshot;
             this.removal = removal;
         }
 
         @Override
-        public Records.CollectionSnapshot readCollection(Records.Settings settings) throws AnkiDroidGateway.SyncFailure {
+        public RecordsSyncModels.CollectionSnapshot readCollection(RecordsSyncModels.Settings settings) throws AnkiDroidGateway.SyncFailure {
             started.countDown();
             try {
                 if (!release.await(10L, TimeUnit.SECONDS)) {
@@ -321,7 +321,7 @@ public final class AutoSyncRunnerInstrumentedTest {
         }
 
         @Override
-        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(Records.CollectionSnapshot snapshot) {
+        public AnkiDroidGateway.RemovalSummary removeArchivedSuspendedCards(RecordsSyncModels.CollectionSnapshot snapshot) {
             return removal;
         }
 

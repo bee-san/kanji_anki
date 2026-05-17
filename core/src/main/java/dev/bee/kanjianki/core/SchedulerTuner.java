@@ -4,13 +4,13 @@ public final class SchedulerTuner {
     public static final long MONTH_MILLIS = 30L * 86_400_000L;
     private static final int MIN_REVIEWS = 20;
 
-    public Records.SchedulerParameters maybeTune(
-            Records.SchedulerParameters current,
-            Records.ReviewStats stats,
+    public RecordsSchedulerModels.SchedulerParameters maybeTune(
+            RecordsSchedulerModels.SchedulerParameters current,
+            RecordsSchedulerModels.ReviewStats stats,
             long nowMillis
     ) {
         if (current == null) {
-            current = Records.SchedulerParameters.defaults();
+            current = RecordsSchedulerModels.SchedulerParameters.defaults();
         }
         if (stats == null || stats.total < MIN_REVIEWS) {
             return current;

@@ -21,11 +21,11 @@ public final class AdaptiveLoadPlanner {
     public static final int MAX_MAX_ITEMS = 20;
     private static final int AUTO_PARETO_CAP = 20;
 
-    public Records.AdaptiveLoadPlan plan(PlanRequest request) {
+    public RecordsSchedulerModels.AdaptiveLoadPlan plan(PlanRequest request) {
         return planInternal(PlanInputs.from(request));
     }
 
-    private Records.AdaptiveLoadPlan planInternal(PlanInputs inputs) {
+    private RecordsSchedulerModels.AdaptiveLoadPlan planInternal(PlanInputs inputs) {
         List<Candidate> candidates = candidatesFor(inputs);
         if (candidates.isEmpty()) {
             return emptyPlan(inputs);
@@ -40,7 +40,7 @@ public final class AdaptiveLoadPlanner {
         int cappedRecoveryDue = Math.min(recoveryDue, inputs.itemCap);
         List<String> focusKanji = focusKanji(candidates, Math.min(inputs.itemCap, Math.max(targetPlan.adjustedTarget, cappedRecoveryDue)));
         int remaining = remainingCount(focusKanji, inputs.itemByKanji, inputs.studiedToday, inputs.nowMillis);
-        return new Records.AdaptiveLoadPlan(
+        return new RecordsSchedulerModels.AdaptiveLoadPlan(
                 inputs.autoMode,
                 inputs.workloadPercent,
                 focusKanji.size(),
@@ -54,15 +54,15 @@ public final class AdaptiveLoadPlanner {
 
     private static List<Candidate> candidatesFor(PlanInputs inputs) {
         List<Candidate> candidates = new ArrayList<>();
-        for (Records.DashboardRow row : inputs.rows) {
+        for (RecordsImportModels.DashboardRow row : inputs.rows) {
             candidates.add(new Candidate(row, inputs.itemByKanji.get(row.kanji), inputs.nowMillis, inputs.settings));
         }
         candidates.sort(inputs.autoMode ? AUTO_CANDIDATE_ORDER : CANDIDATE_ORDER);
         return candidates;
     }
 
-    private static Records.AdaptiveLoadPlan emptyPlan(PlanInputs inputs) {
-        return new Records.AdaptiveLoadPlan(
+    private static RecordsSchedulerModels.AdaptiveLoadPlan emptyPlan(PlanInputs inputs) {
+        return new RecordsSchedulerModels.AdaptiveLoadPlan(
                 inputs.autoMode,
                 inputs.workloadPercent,
                 0,
@@ -74,7 +74,7 @@ public final class AdaptiveLoadPlanner {
         );
     }
 
-    private static Records.AdaptiveLoadPlan allKanjiPlan(List<Candidate> candidates, PlanInputs inputs) {
+    private static RecordsSchedulerModels.AdaptiveLoadPlan allKanjiPlan(List<Candidate> candidates, PlanInputs inputs) {
         List<String> focus = kanjiList(candidates);
         boolean allIncluded = true;
         if (inputs.itemCap != Integer.MAX_VALUE && focus.size() > inputs.itemCap) {
@@ -82,7 +82,7 @@ public final class AdaptiveLoadPlanner {
             allIncluded = false;
         }
         int remaining = remainingCount(focus, inputs.itemByKanji, inputs.studiedToday, inputs.nowMillis);
-        return new Records.AdaptiveLoadPlan(
+        return new RecordsSchedulerModels.AdaptiveLoadPlan(
                 false,
                 inputs.workloadPercent,
                 focus.size(),
@@ -201,14 +201,14 @@ public final class AdaptiveLoadPlanner {
     }
 
     public static final class PlanRequest {
-        private final List<Records.DashboardRow> rows;
-        private final List<Records.StudyItem> items;
-        private final Records.ReviewStats recentStats;
+        private final List<RecordsImportModels.DashboardRow> rows;
+        private final List<RecordsStudyModels.StudyItem> items;
+        private final RecordsSchedulerModels.ReviewStats recentStats;
         private final int currentStreakDays;
         private final Set<String> studiedToday;
         private final WorkloadPolicy workloadPolicy;
         private final long nowMillis;
-        private final Records.Settings settings;
+        private final RecordsSyncModels.Settings settings;
 
         private PlanRequest(Builder builder) {
             this.rows = builder.rows;
@@ -222,9 +222,9 @@ public final class AdaptiveLoadPlanner {
         }
 
         public static Builder builder(
-                List<Records.DashboardRow> rows,
-                List<Records.StudyItem> items,
-                Records.ReviewStats recentStats,
+                List<RecordsImportModels.DashboardRow> rows,
+                List<RecordsStudyModels.StudyItem> items,
+                RecordsSchedulerModels.ReviewStats recentStats,
                 int currentStreakDays,
                 Set<String> studiedToday,
                 WorkloadPolicy workloadPolicy,
@@ -234,19 +234,19 @@ public final class AdaptiveLoadPlanner {
         }
 
         public static final class Builder {
-            private final List<Records.DashboardRow> rows;
-            private final List<Records.StudyItem> items;
-            private final Records.ReviewStats recentStats;
+            private final List<RecordsImportModels.DashboardRow> rows;
+            private final List<RecordsStudyModels.StudyItem> items;
+            private final RecordsSchedulerModels.ReviewStats recentStats;
             private final int currentStreakDays;
             private final Set<String> studiedToday;
             private WorkloadPolicy workloadPolicy;
             private long nowMillis;
-            private Records.Settings settings = Records.Settings.kikuDefaults();
+            private RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
 
             private Builder(
-                    List<Records.DashboardRow> rows,
-                    List<Records.StudyItem> items,
-                    Records.ReviewStats recentStats,
+                    List<RecordsImportModels.DashboardRow> rows,
+                    List<RecordsStudyModels.StudyItem> items,
+                    RecordsSchedulerModels.ReviewStats recentStats,
                     int currentStreakDays,
                     Set<String> studiedToday,
                     WorkloadPolicy workloadPolicy,
@@ -271,7 +271,7 @@ public final class AdaptiveLoadPlanner {
                 return this;
             }
 
-            public Builder settings(Records.Settings settings) {
+            public Builder settings(RecordsSyncModels.Settings settings) {
                 this.settings = settings;
                 return this;
             }
@@ -283,30 +283,30 @@ public final class AdaptiveLoadPlanner {
     }
 
     private static final class PlanInputs {
-        private final List<Records.DashboardRow> rows;
-        private final Records.ReviewStats stats;
+        private final List<RecordsImportModels.DashboardRow> rows;
+        private final RecordsSchedulerModels.ReviewStats stats;
         private final Set<String> studiedToday;
         private final int currentStreakDays;
         private final int workloadPercent;
         private final boolean autoMode;
         private final int itemCap;
         private final long nowMillis;
-        private final Records.Settings settings;
-        private final Map<String, Records.StudyItem> itemByKanji;
+        private final RecordsSyncModels.Settings settings;
+        private final Map<String, RecordsStudyModels.StudyItem> itemByKanji;
 
         private PlanInputs(PlanRequest request) {
             WorkloadPolicy policy = request.workloadPolicy == null
                     ? WorkloadPolicy.manual(DEFAULT_WORKLOAD_PERCENT)
                     : request.workloadPolicy;
             this.rows = request.rows == null ? Collections.emptyList() : request.rows;
-            this.stats = request.recentStats == null ? new Records.ReviewStats(0, 0, 0, 0, 0, 0, 0) : request.recentStats;
+            this.stats = request.recentStats == null ? new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0) : request.recentStats;
             this.studiedToday = request.studiedToday == null ? Collections.emptySet() : request.studiedToday;
             this.currentStreakDays = request.currentStreakDays;
             this.workloadPercent = policy.workloadPercent();
             this.autoMode = policy.mode().isAuto();
             this.itemCap = policy.maxItems();
             this.nowMillis = request.nowMillis;
-            this.settings = request.settings == null ? Records.Settings.kikuDefaults() : request.settings;
+            this.settings = request.settings == null ? RecordsSyncModels.Settings.kikuDefaults() : request.settings;
             this.itemByKanji = itemIndex(request.items);
         }
 
@@ -316,9 +316,9 @@ public final class AdaptiveLoadPlanner {
                     : request);
         }
 
-        private static Map<String, Records.StudyItem> itemIndex(List<Records.StudyItem> items) {
-            Map<String, Records.StudyItem> itemByKanji = new HashMap<>();
-            for (Records.StudyItem item : items == null ? Collections.<Records.StudyItem>emptyList() : items) {
+        private static Map<String, RecordsStudyModels.StudyItem> itemIndex(List<RecordsStudyModels.StudyItem> items) {
+            Map<String, RecordsStudyModels.StudyItem> itemByKanji = new HashMap<>();
+            for (RecordsStudyModels.StudyItem item : items == null ? Collections.<RecordsStudyModels.StudyItem>emptyList() : items) {
                 itemByKanji.put(item.kanji, item);
             }
             return itemByKanji;
@@ -386,19 +386,19 @@ public final class AdaptiveLoadPlanner {
         return "All kanji";
     }
 
-    private static int adjustedTarget(int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
+    private static int adjustedTarget(int ceiling, RecordsSchedulerModels.ReviewStats stats, int currentStreakDays, int recoveryDue) {
         int target = stats.total == 0
                 ? Math.min(3, ceiling)
                 : Math.max(1, Math.round(ceiling * 0.65f));
         return adjustedTargetFromBase(target, ceiling, stats, currentStreakDays, recoveryDue);
     }
 
-    private static int adjustedAutoTarget(int autoTarget, int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
+    private static int adjustedAutoTarget(int autoTarget, int ceiling, RecordsSchedulerModels.ReviewStats stats, int currentStreakDays, int recoveryDue) {
         int target = stats.total == 0 ? Math.min(3, autoTarget) : autoTarget;
         return adjustedTargetFromBase(target, ceiling, stats, currentStreakDays, recoveryDue);
     }
 
-    private static int adjustedTargetFromBase(int target, int ceiling, Records.ReviewStats stats, int currentStreakDays, int recoveryDue) {
+    private static int adjustedTargetFromBase(int target, int ceiling, RecordsSchedulerModels.ReviewStats stats, int currentStreakDays, int recoveryDue) {
         double missRate = stats.total == 0 ? 0.0 : stats.again / (double) stats.total;
         double hardRate = stats.total == 0 ? 0.0 : stats.hard / (double) stats.total;
         double writingFailureRate = stats.writingFailureRate();
@@ -468,13 +468,13 @@ public final class AdaptiveLoadPlanner {
 
     private static int remainingCount(
             List<String> focusKanji,
-            Map<String, Records.StudyItem> itemByKanji,
+            Map<String, RecordsStudyModels.StudyItem> itemByKanji,
             Set<String> studiedToday,
             long nowMillis
     ) {
         int remaining = 0;
         for (String kanji : focusKanji) {
-            Records.StudyItem item = itemByKanji.get(kanji);
+            RecordsStudyModels.StudyItem item = itemByKanji.get(kanji);
             if (!studiedToday.contains(kanji) || recoveryDue(item, nowMillis)) {
                 remaining++;
             }
@@ -490,7 +490,7 @@ public final class AdaptiveLoadPlanner {
         return out;
     }
 
-    private static String statusFor(int workloadPercent, int target, int ceiling, Records.ReviewStats stats, int recoveryDue) {
+    private static String statusFor(int workloadPercent, int target, int ceiling, RecordsSchedulerModels.ReviewStats stats, int recoveryDue) {
         if (workloadPercent <= 0) {
             return "Very little work today: one focused kanji unless recovery is already due.";
         }
@@ -506,7 +506,7 @@ public final class AdaptiveLoadPlanner {
         return "Adaptive focus is set from recent misses, hard ratings, and writing results.";
     }
 
-    private static String autoStatusFor(int target, AutoTarget autoTarget, Records.ReviewStats stats, int recoveryDue) {
+    private static String autoStatusFor(int target, AutoTarget autoTarget, RecordsSchedulerModels.ReviewStats stats, int recoveryDue) {
         if (recoveryDue >= target) {
             return "Due recovery fills today's auto Pareto focus, so new kanji wait.";
         }
@@ -527,7 +527,7 @@ public final class AdaptiveLoadPlanner {
         return "Auto Pareto uses today's problem-kanji drop-off.";
     }
 
-    private static boolean recoveryDue(Records.StudyItem item, long nowMillis) {
+    private static boolean recoveryDue(RecordsStudyModels.StudyItem item, long nowMillis) {
         if (item == null || "retired".equals(item.state)) {
             return false;
         }
@@ -556,7 +556,7 @@ public final class AdaptiveLoadPlanner {
             .thenComparing(CANDIDATE_ORDER);
 
     private static final class Candidate {
-        private final Records.DashboardRow row;
+        private final RecordsImportModels.DashboardRow row;
         private final boolean recoveryDue;
         private final double fsrsRisk;
         private final int suspendedCount;
@@ -564,7 +564,7 @@ public final class AdaptiveLoadPlanner {
         private final int supportDeficit;
         private final double priorityScore;
 
-        private Candidate(Records.DashboardRow row, Records.StudyItem item, long nowMillis, Records.Settings settings) {
+        private Candidate(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item, long nowMillis, RecordsSyncModels.Settings settings) {
             this.row = row;
             this.recoveryDue = recoveryDue(item, nowMillis);
             this.fsrsRisk = fsrsRisk(row, settings);
@@ -578,17 +578,17 @@ public final class AdaptiveLoadPlanner {
                     + supportDeficit * 4.0;
         }
 
-        private static int lapseScore(Records.DashboardRow row, Records.StudyItem item) {
+        private static int lapseScore(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item) {
             int score = item == null ? 0 : item.lapses * 3 + Math.max(0, 3 - item.writingLevel);
-            for (Records.Example example : row.examples) {
+            for (RecordsImportModels.Example example : row.examples) {
                 score += example.lapses;
             }
             return score;
         }
 
-        private static double fsrsRisk(Records.DashboardRow row, Records.Settings settings) {
+        private static double fsrsRisk(RecordsImportModels.DashboardRow row, RecordsSyncModels.Settings settings) {
             double best = 0.0;
-            for (Records.Example example : row.examples) {
+            for (RecordsImportModels.Example example : row.examples) {
                 double risk = 0.0;
                 Double retrievability = normalizedRetrievability(example.fsrsRetrievability);
                 if (retrievability != null) {

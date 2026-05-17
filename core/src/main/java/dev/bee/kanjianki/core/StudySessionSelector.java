@@ -9,23 +9,23 @@ import java.util.Set;
 import java.util.UUID;
 
 final class StudySessionSelector {
-    Records.StudySession nextSession(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    RecordsSchedulerModels.StudySession nextSession(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji,
-            Records.Settings settings,
-            Records.StudyLadderSettings ladder
+            RecordsSyncModels.Settings settings,
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        Records.StudyLadderSettings safeLadder = StudyLadderRules.safeLadder(ladder);
+        RecordsBase.StudyLadderSettings safeLadder = StudyLadderRules.safeLadder(ladder);
         long horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis);
-        Map<String, Records.DashboardRow> rowByKanji = new HashMap<>();
-        for (Records.DashboardRow row : rows) {
+        Map<String, RecordsImportModels.DashboardRow> rowByKanji = new HashMap<>();
+        for (RecordsImportModels.DashboardRow row : rows) {
             rowByKanji.put(row.kanji, row);
         }
-        Records.StudyItem best = null;
-        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
+        RecordsStudyModels.StudyItem best = null;
+        for (RecordsStudyModels.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)) {
             if (item.dueAtMillis > horizon) {
                 continue;
             }
@@ -36,20 +36,20 @@ final class StudySessionSelector {
         if (best == null) {
             return null;
         }
-        Records.DashboardRow row = rowByKanji.get(best.kanji);
+        RecordsImportModels.DashboardRow row = rowByKanji.get(best.kanji);
         String token = best.activeToken == null || best.activeToken.isEmpty()
                 ? best.kanji + "-" + UUID.randomUUID()
                 : best.activeToken;
         String taskType = StudyTaskTypes.forRung(best.rung);
-        boolean writingRequired = best.rung == Records.LadderRung.WRITE_KANJI;
+        boolean writingRequired = best.rung == RecordsBase.LadderRung.WRITE_KANJI;
         String prompt = row.reasonText;
-        return new Records.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
+        return new RecordsSchedulerModels.StudySession(best.withToken(token), row, token, taskType, writingRequired, prompt);
     }
 
-    int dueCount(List<Records.StudyItem> items, long nowMillis, long studyAheadMillis) {
+    int dueCount(List<RecordsStudyModels.StudyItem> items, long nowMillis, long studyAheadMillis) {
         long horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis);
         int count = 0;
-        for (Records.StudyItem item : items) {
+        for (RecordsStudyModels.StudyItem item : items) {
             if (!StudyLadderRules.STATE_RETIRED.equals(item.state) && item.dueAtMillis <= horizon) {
                 count++;
             }
@@ -58,15 +58,15 @@ final class StudySessionSelector {
     }
 
     int dueCount(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         long horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis);
         int count = 0;
-        for (Records.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
+        for (RecordsStudyModels.StudyItem item : activeQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
             if (item.dueAtMillis <= horizon) {
                 count++;
             }
@@ -74,38 +74,38 @@ final class StudySessionSelector {
         return count;
     }
 
-    List<Records.StudyItem> activeQueueItems(
-            List<Records.StudyItem> items,
-            List<Records.DashboardRow> rows,
+    List<RecordsStudyModels.StudyItem> activeQueueItems(
+            List<RecordsStudyModels.StudyItem> items,
+            List<RecordsImportModels.DashboardRow> rows,
             long nowMillis,
             long studyAheadMillis,
             Set<String> allowedKanji,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        Records.StudyLadderSettings safeLadder = StudyLadderRules.safeLadder(ladder);
+        RecordsBase.StudyLadderSettings safeLadder = StudyLadderRules.safeLadder(ladder);
         long horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis);
         Set<String> currentRows = new HashSet<>();
         Set<String> currentFamilies = new HashSet<>();
-        for (Records.DashboardRow row : rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             currentRows.add(row.kanji);
             currentFamilies.add(StudyQueueSeeder.rowFamilyKey(row));
         }
-        Map<String, List<Records.StudyItem>> byFamily = new HashMap<>();
-        for (Records.StudyItem item : items) {
-            Records.StudyItem effective = StudyLadderRules.alignRungToLadder(item, safeLadder);
+        Map<String, List<RecordsStudyModels.StudyItem>> byFamily = new HashMap<>();
+        for (RecordsStudyModels.StudyItem item : items) {
+            RecordsStudyModels.StudyItem effective = StudyLadderRules.alignRungToLadder(item, safeLadder);
             if (isActiveQueueCandidate(effective, currentRows, currentFamilies, allowedKanji)) {
                 addFamilyItem(byFamily, effective);
             }
         }
-        List<Records.StudyItem> out = new ArrayList<>();
-        for (List<Records.StudyItem> family : byFamily.values()) {
+        List<RecordsStudyModels.StudyItem> out = new ArrayList<>();
+        for (List<RecordsStudyModels.StudyItem> family : byFamily.values()) {
             out.add(activeFamilyItem(family, horizon, safeLadder));
         }
         return out;
     }
 
     private boolean isActiveQueueCandidate(
-            Records.StudyItem item,
+            RecordsStudyModels.StudyItem item,
             Set<String> currentRows,
             Set<String> currentFamilies,
             Set<String> allowedKanji
@@ -117,7 +117,7 @@ final class StudySessionSelector {
     }
 
     private boolean hasCurrentQueueRow(
-            Records.StudyItem item,
+            RecordsStudyModels.StudyItem item,
             Set<String> currentRows,
             Set<String> currentFamilies
     ) {
@@ -125,16 +125,16 @@ final class StudySessionSelector {
                 || (item.answerSignature.isEmpty() && currentRows.contains(item.kanji));
     }
 
-    private void addFamilyItem(Map<String, List<Records.StudyItem>> byFamily, Records.StudyItem item) {
+    private void addFamilyItem(Map<String, List<RecordsStudyModels.StudyItem>> byFamily, RecordsStudyModels.StudyItem item) {
         String itemFamilyKey = StudyQueueSeeder.familyKey(item);
         byFamily.computeIfAbsent(itemFamilyKey, ignored -> new ArrayList<>()).add(item);
     }
 
     private static int compareDueItems(
-            Records.StudyItem left,
-            Records.StudyItem right,
-            Map<String, Records.DashboardRow> rowByKanji,
-            Records.Settings settings
+            RecordsStudyModels.StudyItem left,
+            RecordsStudyModels.StudyItem right,
+            Map<String, RecordsImportModels.DashboardRow> rowByKanji,
+            RecordsSyncModels.Settings settings
     ) {
         int priority = Integer.compare(duePriority(left), duePriority(right));
         if (priority != 0) {
@@ -161,32 +161,32 @@ final class StudySessionSelector {
         return left.kanji.compareTo(right.kanji);
     }
 
-    private static boolean isUnseenNewItem(Records.StudyItem item) {
-        return item.phase == Records.SchedulerPhase.NEW_LEARNING && item.totalReviews == 0;
+    private static boolean isUnseenNewItem(RecordsStudyModels.StudyItem item) {
+        return item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews == 0;
     }
 
-    private static int duePriority(Records.StudyItem item) {
-        if (item.rung == Records.LadderRung.WRITE_KANJI || item.phase == Records.SchedulerPhase.RELEARNING) {
+    private static int duePriority(RecordsStudyModels.StudyItem item) {
+        if (item.rung == RecordsBase.LadderRung.WRITE_KANJI || item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
             return 0;
         }
-        if (item.phase == Records.SchedulerPhase.NEW_LEARNING) {
+        if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING) {
             return item.totalReviews > 0 ? 0 : 2;
         }
         return 1;
     }
 
-    private static int rowWeakness(Records.StudyItem item, Map<String, Records.DashboardRow> rowByKanji) {
-        Records.DashboardRow row = rowByKanji.get(item.kanji);
+    private static int rowWeakness(RecordsStudyModels.StudyItem item, Map<String, RecordsImportModels.DashboardRow> rowByKanji) {
+        RecordsImportModels.DashboardRow row = rowByKanji.get(item.kanji);
         return row == null ? 0 : row.weaknessScore;
     }
 
-    private static Records.StudyItem activeFamilyItem(
-            List<Records.StudyItem> family,
+    private static RecordsStudyModels.StudyItem activeFamilyItem(
+            List<RecordsStudyModels.StudyItem> family,
             long nowMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        Records.StudyItem best = null;
-        for (Records.StudyItem item : family) {
+        RecordsStudyModels.StudyItem best = null;
+        for (RecordsStudyModels.StudyItem item : family) {
             if (best == null || compareFamilyActivity(item, best, nowMillis, ladder) < 0) {
                 best = item;
             }
@@ -195,12 +195,12 @@ final class StudySessionSelector {
     }
 
     private static int compareFamilyActivity(
-            Records.StudyItem left,
-            Records.StudyItem right,
+            RecordsStudyModels.StudyItem left,
+            RecordsStudyModels.StudyItem right,
             long nowMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        Records.StudyLadderSettings safeLadder = StudyLadderRules.safeLadder(ladder);
+        RecordsBase.StudyLadderSettings safeLadder = StudyLadderRules.safeLadder(ladder);
         int rank = Integer.compare(-safeLadder.rankForRung(left.rung), -safeLadder.rankForRung(right.rung));
         if (rank != 0) {
             return rank;

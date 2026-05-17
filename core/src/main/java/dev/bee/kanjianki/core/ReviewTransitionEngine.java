@@ -11,21 +11,21 @@ final class ReviewTransitionEngine {
         this.fsrsAdapter = Objects.requireNonNull(fsrsAdapter);
     }
 
-    Records.ReviewResult applyReview(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    RecordsSchedulerModels.ReviewResult applyReview(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens,
             long nowMillis,
-            Records.SchedulerParameters parameters,
-            Records.Settings settings,
-            Records.LearningStepSettings learningSettings,
-            Records.StudyLadderSettings ladder
+            RecordsSchedulerModels.SchedulerParameters parameters,
+            RecordsSyncModels.Settings settings,
+            RecordsSchedulerModels.LearningStepSettings learningSettings,
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        Records.SchedulerParameters resolvedParameters = parameters == null ? Records.SchedulerParameters.defaults() : parameters;
-        Records.Settings resolvedSettings = settings == null ? Records.Settings.kikuDefaults() : settings;
-        Records.LearningStepSettings resolvedSteps = learningSettings == null ? Records.LearningStepSettings.defaults() : learningSettings;
-        Records.StudyLadderSettings resolvedLadder = StudyLadderRules.safeLadder(ladder);
-        Records.ReviewResult duplicate = duplicateReviewResult(item, request, consumedTokens);
+        RecordsSchedulerModels.SchedulerParameters resolvedParameters = parameters == null ? RecordsSchedulerModels.SchedulerParameters.defaults() : parameters;
+        RecordsSyncModels.Settings resolvedSettings = settings == null ? RecordsSyncModels.Settings.kikuDefaults() : settings;
+        RecordsSchedulerModels.LearningStepSettings resolvedSteps = learningSettings == null ? RecordsSchedulerModels.LearningStepSettings.defaults() : learningSettings;
+        RecordsBase.StudyLadderSettings resolvedLadder = StudyLadderRules.safeLadder(ladder);
+        RecordsSchedulerModels.ReviewResult duplicate = duplicateReviewResult(item, request, consumedTokens);
         if (duplicate != null) {
             return duplicate;
         }
@@ -34,19 +34,19 @@ final class ReviewTransitionEngine {
         ReviewState state = ReviewState.from(context);
         applyLadderTransition(context, state);
         updateWritingLevel(context, state);
-        return new Records.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.");
+        return new RecordsSchedulerModels.ReviewResult(updatedStudyItem(context, state), context.rating, false, "Review applied.");
     }
 
-    private Records.ReviewResult duplicateReviewResult(
-            Records.StudyItem item,
-            Records.ReviewRequest request,
+    private RecordsSchedulerModels.ReviewResult duplicateReviewResult(
+            RecordsStudyModels.StudyItem item,
+            RecordsSchedulerModels.ReviewRequest request,
             Set<String> consumedTokens
     ) {
         if (consumedTokens.contains(request.token)) {
-            return new Records.ReviewResult(item, "duplicate", true, "Review token already consumed.");
+            return new RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "Review token already consumed.");
         }
         if (item.activeToken != null && !item.activeToken.isEmpty() && !item.activeToken.equals(request.token)) {
-            return new Records.ReviewResult(item, "duplicate", true, "Review token does not match the active session.");
+            return new RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "Review token does not match the active session.");
         }
         return null;
     }
@@ -74,7 +74,7 @@ final class ReviewTransitionEngine {
             case StudyRatings.AGAIN:
                 state.stepIndex = 0;
                 state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps.get(0));
-                state.phase = isNewLearning ? Records.SchedulerPhase.NEW_LEARNING : Records.SchedulerPhase.RELEARNING;
+                state.phase = isNewLearning ? RecordsBase.SchedulerPhase.NEW_LEARNING : RecordsBase.SchedulerPhase.RELEARNING;
                 state.schedulerState = StudyLadderRules.STATE_LEARNING;
                 break;
             case StudyRatings.HARD:
@@ -100,7 +100,7 @@ final class ReviewTransitionEngine {
             state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps.get(safeIdx));
         }
         state.stepIndex = idx;
-        state.phase = isNewLearning ? Records.SchedulerPhase.NEW_LEARNING : Records.SchedulerPhase.RELEARNING;
+        state.phase = isNewLearning ? RecordsBase.SchedulerPhase.NEW_LEARNING : RecordsBase.SchedulerPhase.RELEARNING;
         state.schedulerState = StudyLadderRules.STATE_LEARNING;
     }
 
@@ -112,7 +112,7 @@ final class ReviewTransitionEngine {
         }
         state.stepIndex = nextIdx;
         state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps.get(nextIdx));
-        state.phase = isNewLearning ? Records.SchedulerPhase.NEW_LEARNING : Records.SchedulerPhase.RELEARNING;
+        state.phase = isNewLearning ? RecordsBase.SchedulerPhase.NEW_LEARNING : RecordsBase.SchedulerPhase.RELEARNING;
         state.schedulerState = StudyLadderRules.STATE_LEARNING;
     }
 
@@ -129,7 +129,7 @@ final class ReviewTransitionEngine {
         state.difficulty = result.difficulty;
         state.scheduledIntervalDays = result.intervalDays();
         state.due = context.nowMillis + result.intervalMillis;
-        state.phase = Records.SchedulerPhase.REVIEW;
+        state.phase = RecordsBase.SchedulerPhase.REVIEW;
         state.schedulerState = StudyLadderRules.STATE_REVIEW;
     }
 
@@ -165,7 +165,7 @@ final class ReviewTransitionEngine {
         state.difficulty = result.difficulty;
 
         List<Integer> relearning = context.learningSettings.reviewStepsMinutes;
-        state.phase = Records.SchedulerPhase.RELEARNING;
+        state.phase = RecordsBase.SchedulerPhase.RELEARNING;
         state.stepIndex = 0;
         state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(relearning.get(0));
         state.schedulerState = StudyLadderRules.STATE_LEARNING;
@@ -195,7 +195,7 @@ final class ReviewTransitionEngine {
         state.difficulty = result.difficulty;
         state.scheduledIntervalDays = result.intervalDays();
         state.due = context.nowMillis + result.intervalMillis;
-        state.phase = Records.SchedulerPhase.REVIEW;
+        state.phase = RecordsBase.SchedulerPhase.REVIEW;
         state.schedulerState = StudyLadderRules.STATE_REVIEW;
         state.stepIndex = 0;
 
@@ -225,7 +225,7 @@ final class ReviewTransitionEngine {
     }
 
     private void updateWritingLevel(ReviewContext context, ReviewState state) {
-        if (context.rung != Records.LadderRung.WRITE_KANJI) {
+        if (context.rung != RecordsBase.LadderRung.WRITE_KANJI) {
             return;
         }
         if (context.failedWriting) {
@@ -235,8 +235,8 @@ final class ReviewTransitionEngine {
         }
     }
 
-    private Records.StudyItem updatedStudyItem(ReviewContext context, ReviewState state) {
-        Records.TaskMemory updatedMemory = new Records.TaskMemory(
+    private RecordsStudyModels.StudyItem updatedStudyItem(ReviewContext context, ReviewState state) {
+        RecordsStudyModels.TaskMemory updatedMemory = new RecordsStudyModels.TaskMemory(
                 state.schedulerState,
                 state.due,
                 round(state.stability),
@@ -249,7 +249,7 @@ final class ReviewTransitionEngine {
                 taskMemoryConsecutivePasses(context, state),
                 taskMemoryLastPassedDueAt(context, state)
         );
-        Records.StudyItem base = context.item.copyBuilder()
+        RecordsStudyModels.StudyItem base = context.item.copyBuilder()
                 .state(state.schedulerState)
                 .dueAtMillis(state.due)
                 .stability(round(state.stability))
@@ -259,7 +259,7 @@ final class ReviewTransitionEngine {
                 .learningStep(state.stepIndex)
                 .writingLevel(state.writingLevel)
                 .recognitionStage(StudyLadderRules.rungToLegacyStage(state.rung))
-                .writingRemediationPending(state.rung == Records.LadderRung.WRITE_KANJI)
+                .writingRemediationPending(state.rung == RecordsBase.LadderRung.WRITE_KANJI)
                 .consecutiveFailedRecognitionDays(state.realAgainStreak)
                 .lastFailedRecognitionDayMillis(state.lastRealReviewDueAtMillis)
                 .matureIntervalDays(state.scheduledIntervalDays)
@@ -270,7 +270,7 @@ final class ReviewTransitionEngine {
                 .lastRealReviewDueAtMillis(state.lastRealReviewDueAtMillis)
                 .activeToken(null)
                 .build();
-        Records.StudyItem updated = base.withTaskMemory(context.reviewedTaskType, updatedMemory);
+        RecordsStudyModels.StudyItem updated = base.withTaskMemory(context.reviewedTaskType, updatedMemory);
         String activeTaskType = state.rung.wireName();
         if (!activeTaskType.equals(context.reviewedTaskType)) {
             updated = updated.withTaskMemory(activeTaskType, updatedMemory);
@@ -290,19 +290,19 @@ final class ReviewTransitionEngine {
         return Math.round(value * 100.0) / 100.0;
     }
 
-    private static int elapsedReviewDays(Records.TaskMemory memory, long nowMillis) {
+    private static int elapsedReviewDays(RecordsStudyModels.TaskMemory memory, long nowMillis) {
         long previousIntervalMillis = Math.max(0L, memory.matureIntervalDays) * StudyLadderRules.DAY;
         long lastReviewAtMillis = Math.max(0L, memory.dueAtMillis - previousIntervalMillis);
         long elapsedMillis = Math.max(0L, nowMillis - lastReviewAtMillis);
         return (int) Math.min(Integer.MAX_VALUE, elapsedMillis / StudyLadderRules.DAY);
     }
 
-    private static Records.TaskMemory activeTaskMemory(Records.StudyItem item, Records.LadderRung rung) {
-        Records.TaskMemory memory = item.memoryForRung(rung);
+    private static RecordsStudyModels.TaskMemory activeTaskMemory(RecordsStudyModels.StudyItem item, RecordsBase.LadderRung rung) {
+        RecordsStudyModels.TaskMemory memory = item.memoryForRung(rung);
         if (memory.totalReviews > 0 || item.totalReviews <= 0) {
             return memory;
         }
-        return Records.TaskMemory.fromStudyFields(
+        return RecordsStudyModels.TaskMemory.fromStudyFields(
                 item.state,
                 item.dueAtMillis,
                 item.stability,
@@ -315,15 +315,15 @@ final class ReviewTransitionEngine {
     }
 
     private static final class ReviewContext {
-        Records.StudyItem item;
-        Records.ReviewRequest request;
-        Records.SchedulerParameters parameters;
-        Records.Settings settings;
-        Records.LearningStepSettings learningSettings;
-        Records.StudyLadderSettings ladder;
-        Records.TaskMemory previousTaskMemory;
-        Records.LadderRung rung;
-        Records.SchedulerPhase phase;
+        RecordsStudyModels.StudyItem item;
+        RecordsSchedulerModels.ReviewRequest request;
+        RecordsSchedulerModels.SchedulerParameters parameters;
+        RecordsSyncModels.Settings settings;
+        RecordsSchedulerModels.LearningStepSettings learningSettings;
+        RecordsBase.StudyLadderSettings ladder;
+        RecordsStudyModels.TaskMemory previousTaskMemory;
+        RecordsBase.LadderRung rung;
+        RecordsBase.SchedulerPhase phase;
         long nowMillis;
         int elapsedReviewDays;
         String rating;
@@ -332,12 +332,12 @@ final class ReviewTransitionEngine {
         boolean failedWriting;
 
         static ReviewContext from(
-                Records.StudyItem item,
-                Records.ReviewRequest request,
-                Records.SchedulerParameters parameters,
-                Records.Settings settings,
-                Records.LearningStepSettings learningSettings,
-                Records.StudyLadderSettings ladder,
+                RecordsStudyModels.StudyItem item,
+                RecordsSchedulerModels.ReviewRequest request,
+                RecordsSchedulerModels.SchedulerParameters parameters,
+                RecordsSyncModels.Settings settings,
+                RecordsSchedulerModels.LearningStepSettings learningSettings,
+                RecordsBase.StudyLadderSettings ladder,
                 long nowMillis
         ) {
             ReviewContext context = new ReviewContext();
@@ -354,7 +354,7 @@ final class ReviewTransitionEngine {
             context.previousTaskMemory = activeTaskMemory(item, context.rung);
             context.elapsedReviewDays = elapsedReviewDays(context.previousTaskMemory, nowMillis);
             context.rating = resolveRating(request, context.rung);
-            boolean writingRung = context.rung == Records.LadderRung.WRITE_KANJI;
+            boolean writingRung = context.rung == RecordsBase.LadderRung.WRITE_KANJI;
             boolean writingReviewCanMoveHelp = writingRung && request.writingRequired && !request.manualOverride;
             context.cleanWritingPass = writingReviewCanMoveHelp
                     && request.writingPassed
@@ -364,8 +364,8 @@ final class ReviewTransitionEngine {
             return context;
         }
 
-        private static String resolveRating(Records.ReviewRequest request, Records.LadderRung rung) {
-            if (rung == Records.LadderRung.WRITE_KANJI) {
+        private static String resolveRating(RecordsSchedulerModels.ReviewRequest request, RecordsBase.LadderRung rung) {
+            if (rung == RecordsBase.LadderRung.WRITE_KANJI) {
                 if (request.manualOverride) {
                     return StudyRatings.HARD;
                 }
@@ -391,8 +391,8 @@ final class ReviewTransitionEngine {
         int realAgainStreak;
         long lastRealReviewDueAtMillis;
         long due;
-        Records.LadderRung rung;
-        Records.SchedulerPhase phase;
+        RecordsBase.LadderRung rung;
+        RecordsBase.SchedulerPhase phase;
         double stability;
         double difficulty;
         String schedulerState;

@@ -1,11 +1,12 @@
 package dev.bee.kanjianki.sync;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
@@ -34,9 +35,9 @@ public final class SyncSettingsInstrumentedTest {
 
     @Test
     public void fromNullStoreUsesDefaultFallbackBranches() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
 
-        Records.Settings settings = SyncSettings.fromStore(null);
+        RecordsSyncModels.Settings settings = SyncSettings.fromStore(null);
 
         assertEquals(defaults.modelName, settings.modelName);
         assertEquals(defaults.expressionField, settings.expressionField);
@@ -51,8 +52,8 @@ public final class SyncSettingsInstrumentedTest {
 
     @Test
     public void fromStoreTrimsStoredFieldsAndKeepsRequiredExpressionFallback() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        Records.Settings settings = settingsFromStore(store -> {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = settingsFromStore(store -> {
             store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, "  Custom Japanese  ");
             store.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, "   ");
             store.putStringSetting(SyncSettings.READING_FIELD_SETTING_KEY, "  Kana  ");
@@ -74,7 +75,7 @@ public final class SyncSettingsInstrumentedTest {
             store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, 2);
             store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, 1);
             store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, "tag:kani");
-            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, Records.NEW_CARD_SORT_RETRIEVABILITY_RISK);
+            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK);
         });
 
         assertEquals("Custom Japanese", settings.modelName);
@@ -99,16 +100,16 @@ public final class SyncSettingsInstrumentedTest {
         assertEquals(2, settings.importMinMatchingCardsPerKanji);
         assertTrue(settings.importBrowserQueryCards);
         assertEquals("tag:kani", settings.importBrowserQuery);
-        assertEquals(Records.NEW_CARD_SORT_RETRIEVABILITY_RISK, settings.newCardSortMode);
+        assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, settings.newCardSortMode);
     }
 
     @Test
     public void fromStoreFallsBackFromUnknownNewCardSortMode() {
-        Records.Settings settings = settingsFromStore(store ->
+        RecordsSyncModels.Settings settings = settingsFromStore(store ->
                 store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, "fastest")
         );
 
-        assertEquals(Records.DEFAULT_NEW_CARD_SORT_MODE, settings.newCardSortMode);
+        assertEquals(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE, settings.newCardSortMode);
     }
 
     @Test
@@ -120,15 +121,15 @@ public final class SyncSettingsInstrumentedTest {
         assertOldDefaultRepair(store -> store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, 0));
         assertOldDefaultRepair(store -> store.putDoubleSetting(
                 SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY,
-                Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY
+                RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY
         ));
         assertOldDefaultRepair(store -> store.putIntSetting(
                 SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY,
-                Records.DEFAULT_IMPORT_WEAK_LAPSES
+                RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES
         ));
         assertOldDefaultRepair(store -> store.putIntSetting(
                 SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY,
-                Records.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
+                RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
         ));
     }
 
@@ -141,15 +142,15 @@ public final class SyncSettingsInstrumentedTest {
         assertNoOldDefaultRepair(store -> store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, 1));
         assertNoOldDefaultRepair(store -> store.putDoubleSetting(
                 SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY,
-                Records.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY + 0.5
+                RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY + 0.5
         ));
         assertNoOldDefaultRepair(store -> store.putIntSetting(
                 SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY,
-                Records.DEFAULT_IMPORT_WEAK_LAPSES + 1
+                RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES + 1
         ));
         assertNoOldDefaultRepair(store -> store.putIntSetting(
                 SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY,
-                Records.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI + 1
+                RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI + 1
         ));
     }
 
@@ -158,7 +159,7 @@ public final class SyncSettingsInstrumentedTest {
         try (LocalStore store = freshStore()) {
             store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, "tag:kani");
 
-            Records.Settings settings = SyncSettings.fromStore(store);
+            RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
 
             assertEquals("tag:kani", settings.importBrowserQuery);
             assertEquals(-99, store.getIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, -99));
@@ -170,7 +171,7 @@ public final class SyncSettingsInstrumentedTest {
         try (LocalStore store = freshStore()) {
             mutation.apply(store);
 
-            Records.Settings settings = SyncSettings.fromStore(store);
+            RecordsSyncModels.Settings settings = SyncSettings.fromStore(store);
 
             assertFalse(settings.importActiveCards);
             assertTrue(settings.importSuspendedCards);
@@ -191,7 +192,7 @@ public final class SyncSettingsInstrumentedTest {
         }
     }
 
-    private Records.Settings settingsFromStore(StoreMutation mutation) {
+    private RecordsSyncModels.Settings settingsFromStore(StoreMutation mutation) {
         try (LocalStore store = freshStore()) {
             mutation.apply(store);
             return SyncSettings.fromStore(store);

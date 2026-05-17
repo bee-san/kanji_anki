@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -7,7 +10,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
@@ -220,7 +222,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     abstract void createTimelineTables(SQLiteDatabase db);
     abstract void backfillTimelineEvents(SQLiteDatabase db);
     abstract void addNullableColumn(SQLiteDatabase db, String table, String column, String type);
-    abstract void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, Records.Settings settings);
+    abstract void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings);
     abstract void rebuildSimilarKanjiChoiceStates(SQLiteDatabase db, long nowMillis);
     abstract void backfillLatestHistoricalSync(SQLiteDatabase db);
 
@@ -356,7 +358,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         final Integer rank;
         final boolean rankKnown;
         final int cutoff;
-        final List<Records.SuspendedSource> sources = new ArrayList<>();
+        final List<RecordsImportModels.SuspendedSource> sources = new ArrayList<>();
 
         MutableSuspendedImport(String kanji, Integer rank, boolean rankKnown, int cutoff) {
             this.kanji = kanji;
@@ -365,8 +367,8 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
             this.cutoff = cutoff;
         }
 
-        Records.SuspendedImport build() {
-            return new Records.SuspendedImport(kanji, rank, rankKnown, cutoff, sources);
+        RecordsImportModels.SuspendedImport build() {
+            return new RecordsImportModels.SuspendedImport(kanji, rank, rankKnown, cutoff, sources);
         }
     }
 
@@ -478,7 +480,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     }
 
     record HistoricalBackfillContext(
-            Records.Settings settings,
+            RecordsSyncModels.Settings settings,
             Map<Long, LinkedHashSet<String>> deckIdsByNote,
             Map<Long, LinkedHashSet<String>> deckNamesByNote,
             Map<String, HistoricalKanjiAggregate> aggregates
@@ -509,7 +511,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
             this.kanji = kanji == null ? "" : kanji;
         }
 
-        void add(Records.Card card, int matureDays) {
+        void add(RecordsSyncModels.Card card, int matureDays) {
             add(new CardMetrics(
                     card.intervalDays,
                     card.reps,
@@ -643,7 +645,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
             return hidden == 0 ? text : text + " +" + hidden + " more";
         }
 
-        String searchText(Records.KanjiInventoryItem previous) {
+        String searchText(RecordsImportModels.KanjiInventoryItem previous) {
             if (previous != null) {
                 addSearch(previous.primaryMeaning);
                 addSearch(previous.readings);
@@ -693,7 +695,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         return kanji + SIMILAR_KEY_DELIMITER + (answerSignature == null ? "" : answerSignature);
     }
 
-    static String studyTimelineKey(Records.StudyItem item) {
+    static String studyTimelineKey(RecordsStudyModels.StudyItem item) {
         return item.kanji + ":" + Integer.toHexString((item.answerSignature == null ? "" : item.answerSignature).hashCode());
     }
 

@@ -1,7 +1,8 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.DictionaryLookup;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.StudyCue;
 import dev.bee.kanjianki.core.StudyCueFormatter;
 
@@ -13,8 +14,8 @@ final class StudyCueTexts {
 
     static List<String> answerLines(
             DictionaryLookup dictionaryLookup,
-            Records.StudySession session,
-            Records.Example example,
+            RecordsSchedulerModels.StudySession session,
+            RecordsImportModels.Example example,
             boolean wordReadingTask
     ) {
         return StudyCueFormatter.answerLines(studyCue(dictionaryLookup, session, example, wordReadingTask));
@@ -30,8 +31,8 @@ final class StudyCueTexts {
 
     private static StudyCue studyCue(
             DictionaryLookup dictionaryLookup,
-            Records.StudySession session,
-            Records.Example example,
+            RecordsSchedulerModels.StudySession session,
+            RecordsImportModels.Example example,
             boolean wordReadingTask
     ) {
         if (session == null || session.row == null) {
@@ -54,7 +55,7 @@ final class StudyCueTexts {
         );
     }
 
-    private static StudyCue wordReadingCue(Records.StudySession session, Records.Example example) {
+    private static StudyCue wordReadingCue(RecordsSchedulerModels.StudySession session, RecordsImportModels.Example example) {
         String sourceExpression = example == null ? "" : example.expression;
         String sourceReading = example == null ? session.row.reading : example.reading;
         String cueReading = firstNonEmpty(sourceReading, session.row.reading);

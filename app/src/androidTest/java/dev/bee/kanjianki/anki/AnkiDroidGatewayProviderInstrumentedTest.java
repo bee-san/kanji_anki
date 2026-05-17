@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.anki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
@@ -8,7 +11,6 @@ import android.os.Bundle;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
 import dev.bee.kanjianki.sync.SyncProgress;
@@ -61,7 +63,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     public void readsKikuCollectionWhenTopLevelCardsUriIsUnsupported() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
@@ -104,7 +106,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals("dev.bee.kanjianki.fake.READ_ANKI", status.permission);
         assertTrue(status.message.contains("Allow AnkiDroid access"));
         assertPermissionFailure(() -> gateway.noteTypes());
-        assertPermissionFailure(() -> gateway.readCollection(Records.Settings.kikuDefaults()));
+        assertPermissionFailure(() -> gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults()));
         assertEquals(0, providerInt("perNoteCardsQueries"));
     }
 
@@ -156,7 +158,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         context.getContentResolver().call(providerUri(), "operationCanceledProviderFailure", null, null);
 
         try {
-            gateway.readCollection(Records.Settings.kikuDefaults(), null);
+            gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults(), null);
             fail("Expected timeout failure");
         } catch (AnkiDroidGateway.SyncFailure error) {
             assertFalse(error.permanentFailure);
@@ -170,7 +172,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         context.getContentResolver().call(providerUri(), "securityProviderFailure", null, null);
 
         try {
-            gateway.readCollection(Records.Settings.kikuDefaults());
+            gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
             fail("Expected security failure");
         } catch (AnkiDroidGateway.SyncFailure error) {
             assertTrue(error.permanentFailure);
@@ -217,9 +219,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void readsCustomNoteTypeWithMappedFields() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.Settings settings = customMappedSettings();
+        RecordsSyncModels.Settings settings = customMappedSettings();
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(settings);
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
@@ -232,7 +234,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     @Test
     public void manualSyncWorksAgainstFakeAnkiDroidProviderContract() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
@@ -240,7 +242,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.success);
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
-        List<Records.SuspendedImport> imports = store.suspendedImports();
+        List<RecordsImportModels.SuspendedImport> imports = store.suspendedImports();
         assertEquals(1, imports.size());
         assertEquals("箱", imports.get(0).kanji);
         assertTrue(result.message.contains("tagged in AnkiDroid"));
@@ -251,7 +253,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     @Test
     public void manualSyncUsesCardQueueWhenAnkiDroidRejectsSuspendedSearch() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "failSuspendedSearch", null, null);
 
@@ -260,7 +262,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertTrue(result.success);
         assertEquals("success", store.latestSync().status);
         assertFalse(store.dashboardRows().isEmpty());
-        List<Records.SuspendedImport> imports = store.suspendedImports();
+        List<RecordsImportModels.SuspendedImport> imports = store.suspendedImports();
         assertEquals(1, imports.size());
         assertEquals("箱", imports.get(0).kanji);
         assertEquals(0, providerInt("topLevelCardsQueries"));
@@ -271,7 +273,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void providerCleanupLeavesExcludedSuspendedCardsUntagged() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
                 snapshot,
@@ -285,7 +287,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     @Test
     public void providerCleanupNoopsForMissingProviderAndEmptySnapshotOverloads() {
-        Records.CollectionSnapshot empty = new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList());
+        RecordsSyncModels.CollectionSnapshot empty = new RecordsSyncModels.CollectionSnapshot(Collections.emptyList(), Collections.emptyList());
         AnkiDroidGateway missingProvider = AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_fake_anki");
 
         AnkiDroidGateway.RemovalSummary missingSummary = missingProvider.removeArchivedSuspendedCards(
@@ -303,7 +305,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     @Test
     public void manualSyncFallsBackWhenPerNoteSchedulerProjectionIsUnsupported() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "rejectSchedulerProjection", null, null);
 
@@ -320,7 +322,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     @Test
     public void manualSyncFallsBackWhenPerNoteSchedulerCursorThrowsUnknownQueue() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "deferSchedulerProjectionFailure", null, null);
 
@@ -337,7 +339,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
 
     @Test
     public void manualSyncFallsBackWhenFsrsColumnsAreUnsupported() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "rejectFsrsProjection", null, null);
 
@@ -356,11 +358,11 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "failConfiguredSearch", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
-        assertEquals("確認", snapshot.notes.get(0).expression(Records.Settings.kikuDefaults()));
+        assertEquals("確認", snapshot.notes.get(0).expression(RecordsSyncModels.Settings.kikuDefaults()));
         assertEquals(2, providerInt("perNoteCardsQueries"));
     }
 
@@ -369,7 +371,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "nullConfiguredSearchCursor", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
@@ -380,7 +382,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "configuredSearchIncludesWrongModel", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
@@ -394,7 +396,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         context.getContentResolver().call(providerUri(), "nullSqlNotesCursor", null, null);
 
         try {
-            gateway.readCollection(Records.Settings.kikuDefaults());
+            gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
             fail("Expected notes_v2 null failure");
         } catch (AnkiDroidGateway.SyncFailure error) {
             assertFalse(error.permanentFailure);
@@ -409,7 +411,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "pretagSuspendedArchived", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(1, snapshot.notes.size());
         assertEquals(1, snapshot.cards.size());
@@ -421,7 +423,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "nullSuspendedSearchCursor", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(2, snapshot.cards.size());
         assertTrue(snapshot.cards.get(1).suspended);
@@ -430,14 +432,14 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void browserQueryMarksMatchingActiveCardForImport() {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.Settings settings = browserQueryOnlySettings();
+        RecordsSyncModels.Settings settings = browserQueryOnlySettings();
         context.getContentResolver().call(providerUri(), "browserQueryMatchesActive", null, null);
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
 
         assertTrue(result.message, result.success);
         assertTrue("Browser-query active cards should not be archived as suspended imports.", store.suspendedImports().isEmpty());
-        List<Records.DashboardRow> rows = store.dashboardRows();
+        List<RecordsImportModels.DashboardRow> rows = store.dashboardRows();
         assertFalse(rows.isEmpty());
         assertEquals("認", rows.get(0).kanji);
         assertEquals(1, rows.get(0).activeExampleCount);
@@ -450,7 +452,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "nullBrowserQueryCursor", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
 
         assertEquals(2, snapshot.cards.size());
         assertFalse(snapshot.cards.get(0).browserQueryMatched);
@@ -462,7 +464,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "browserQueryWrongModel", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
 
         assertEquals(2, snapshot.cards.size());
         assertFalse(snapshot.cards.get(0).browserQueryMatched);
@@ -471,7 +473,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void browserQueryRereadsMissingMatchedNoteBeforeManualImport() {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.Settings settings = browserQueryOnlySettings();
+        RecordsSyncModels.Settings settings = browserQueryOnlySettings();
         context.getContentResolver().call(providerUri(), "browserQueryMatchesMissingNote", null, null);
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
@@ -481,7 +483,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(2, providerInt("browserQueryQueries"));
         assertEquals(3, providerInt("perNoteCardsQueries"));
         assertTrue(store.suspendedImports().isEmpty());
-        Records.DashboardRow row = rowFor(store.dashboardRows(), "認");
+        RecordsImportModels.DashboardRow row = rowFor(store.dashboardRows(), "認");
         assertEquals(1, row.activeExampleCount);
         assertEquals(0, row.suspendedExampleCount);
         assertFalse(store.studyItems().isEmpty());
@@ -493,7 +495,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         context.getContentResolver().call(providerUri(), "browserQueryMatchesMissingNote", null, null);
         context.getContentResolver().call(providerUri(), "failBrowserQueryReread", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(browserQueryOnlySettings());
 
         assertEquals(2, snapshot.notes.size());
         assertEquals(2, snapshot.cards.size());
@@ -503,7 +505,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void browserQueryPermanentErrorIsRecordedAsConfigFailure() {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.Settings settings = browserQueryOnlySettings();
+        RecordsSyncModels.Settings settings = browserQueryOnlySettings();
         context.getContentResolver().call(providerUri(), "failBrowserQuery", null, null);
 
         ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, settings).run();
@@ -519,7 +521,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "permanentProviderFailure", null, null);
 
-        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run();
 
         assertFalse(result.success);
         assertTrue(result.message.contains("model metadata cursor failed"));
@@ -532,7 +534,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "retryableProviderFailure", null, null);
 
-        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run();
 
         assertFalse(result.success);
         assertTrue(result.message.contains("AnkiDroid provider read failed: database locked"));
@@ -545,7 +547,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "rejectAllCardProjections", null, null);
 
-        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run();
 
         assertFalse(result.success);
         assertTrue(result.message.contains("AnkiDroid card projection failed"));
@@ -558,7 +560,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "nullCardCursor", null, null);
 
-        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, Records.Settings.kikuDefaults()).run();
+        ManualSyncEngine.SyncResult result = new ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run();
 
         assertFalse(result.success);
         assertTrue(result.message.contains("AnkiDroid returned no per-note card cursor"));
@@ -571,7 +573,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         context.getContentResolver().call(providerUri(), "secondTemplateCard", null, null);
 
         try {
-            gateway.readCollection(Records.Settings.kikuDefaults());
+            gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
             fail("Expected second-template card rejection");
         } catch (AnkiDroidGateway.SyncFailure error) {
             assertTrue(error.permanentFailure);
@@ -583,7 +585,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void providerCleanupPreservesAlreadyArchivedSuspendedNoteTag() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
         context.getContentResolver().call(providerUri(), "pretagSuspendedArchived", null, null);
 
         AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
@@ -600,7 +602,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void providerCleanupUsesAllSuspendedCardsWhenNoSelectionIsSupplied() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(snapshot, (SyncProgress.Listener) null);
 
@@ -612,7 +614,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void providerCleanupCanTagWhenExistingNoteTagsCursorIsNull() throws Exception {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
         context.getContentResolver().call(providerUri(), "nullNoteCursor", null, null);
 
         AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
@@ -631,7 +633,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "failSuspendedSearch", null, null);
         context.getContentResolver().call(providerUri(), "partiallySuspendedNote", null, null);
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         AnkiDroidGateway.RemovalSummary summary = gateway.removeArchivedSuspendedCards(
                 snapshot,
@@ -648,7 +650,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
     @Test
     public void providerCleanupReportsPartialTagWhenSelectedSuspendedCardsAreMixed() {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
-        Records.CollectionSnapshot snapshot = snapshotWithCards(
+        RecordsSyncModels.CollectionSnapshot snapshot = snapshotWithCards(
                 card(10L, 1L, true),
                 card(11L, 1L, true),
                 card(20L, 2L, true)
@@ -658,7 +660,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
                 snapshot,
                 Arrays.asList(
                         suspendedImportFor("箱", 20L, 2L, true),
-                        new Records.SuspendedImport(
+                        new RecordsImportModels.SuspendedImport(
                                 "確",
                                 100,
                                 true,
@@ -699,7 +701,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "unparseableFsrsData", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(2, snapshot.cards.size());
         assertNull(snapshot.cards.get(0).fsrsStability);
@@ -712,7 +714,7 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         AnkiDroidGateway gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY);
         context.getContentResolver().call(providerUri(), "dataOnlyFsrs", null, null);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(Records.Settings.kikuDefaults());
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults());
 
         assertEquals(12.5, snapshot.cards.get(0).fsrsStability, 0.001);
         assertEquals(7.0, snapshot.cards.get(0).fsrsDifficulty, 0.001);
@@ -753,8 +755,8 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         }
     }
 
-    private Records.DashboardRow rowFor(List<Records.DashboardRow> rows, String kanji) {
-        for (Records.DashboardRow row : rows) {
+    private RecordsImportModels.DashboardRow rowFor(List<RecordsImportModels.DashboardRow> rows, String kanji) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             if (kanji.equals(row.kanji)) {
                 return row;
             }
@@ -767,23 +769,23 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         return Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY);
     }
 
-    private Records.SuspendedImport suspendedImportFor(long cardId, long noteId, boolean suspended) {
+    private RecordsImportModels.SuspendedImport suspendedImportFor(long cardId, long noteId, boolean suspended) {
         return suspendedImportFor("箱", cardId, noteId, suspended);
     }
 
-    private Records.SuspendedImport suspendedImportFor(String kanji, long cardId, long noteId, boolean suspended) {
-        return new Records.SuspendedImport(kanji, 2500, true, 3000, Collections.singletonList(
+    private RecordsImportModels.SuspendedImport suspendedImportFor(String kanji, long cardId, long noteId, boolean suspended) {
+        return new RecordsImportModels.SuspendedImport(kanji, 2500, true, 3000, Collections.singletonList(
                 suspendedSource(kanji, cardId, noteId, suspended)
         ));
     }
 
-    private Records.SuspendedSource suspendedSource(String kanji, long cardId, long noteId, boolean suspended) {
-        Records.SuspendedSourceDetails.Builder details = Records.SuspendedSourceDetails
+    private RecordsImportModels.SuspendedSource suspendedSource(String kanji, long cardId, long noteId, boolean suspended) {
+        RecordsImportModels.SuspendedSourceDetails.Builder details = RecordsImportModels.SuspendedSourceDetails
                 .builder(kanji + "を見た。")
                 .suspended(suspended)
                 .forcePractice(suspended)
-                .sourceType(suspended ? Records.SOURCE_SUSPENDED : Records.SOURCE_ACTIVE);
-        return new Records.SuspendedSource(
+                .sourceType(suspended ? RecordsBase.SOURCE_SUSPENDED : RecordsBase.SOURCE_ACTIVE);
+        return new RecordsImportModels.SuspendedSource(
                 kanji,
                 cardId,
                 noteId,
@@ -794,17 +796,17 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         );
     }
 
-    private Records.CollectionSnapshot snapshotWithCards(Records.Card... cards) {
-        return new Records.CollectionSnapshot(Collections.emptyList(), Arrays.asList(cards));
+    private RecordsSyncModels.CollectionSnapshot snapshotWithCards(RecordsSyncModels.Card... cards) {
+        return new RecordsSyncModels.CollectionSnapshot(Collections.emptyList(), Arrays.asList(cards));
     }
 
-    private Records.Card card(long cardId, long noteId, boolean suspended) {
-        return new Records.Card(cardId, noteId, 0, "Mining", suspended ? -1 : 2, 2, 0, 0, 0, 0, suspended);
+    private RecordsSyncModels.Card card(long cardId, long noteId, boolean suspended) {
+        return new RecordsSyncModels.Card(cardId, noteId, 0, "Mining", suspended ? -1 : 2, 2, 0, 0, 0, 0, suspended);
     }
 
-    private Records.Settings customMappedSettings() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings customMappedSettings() {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 "Custom Japanese",
                 defaults.templateName,
                 "Front",
@@ -823,9 +825,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         );
     }
 
-    private Records.Settings settingsWithModel(String modelName) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings settingsWithModel(String modelName) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 modelName,
                 defaults.templateName,
                 defaults.expressionField,
@@ -844,9 +846,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         );
     }
 
-    private Records.Settings settingsWithExpressionField(String expressionField) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings settingsWithExpressionField(String expressionField) {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 expressionField,
@@ -865,9 +867,9 @@ public final class AnkiDroidGatewayProviderInstrumentedTest {
         );
     }
 
-    private Records.Settings browserQueryOnlySettings() {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
-        return new Records.Settings(
+    private RecordsSyncModels.Settings browserQueryOnlySettings() {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+        return new RecordsSyncModels.Settings(
                 defaults.modelName,
                 defaults.templateName,
                 defaults.expressionField,

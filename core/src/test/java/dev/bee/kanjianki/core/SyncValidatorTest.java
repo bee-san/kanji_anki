@@ -10,7 +10,7 @@ import static org.junit.Assert.assertTrue;
 public class SyncValidatorTest {
     @Test
     public void validatesKikuRequiredFields() {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
 
         assertTrue(SyncValidator.validateModelFields("Kiku", settings.requiredFields(), settings).isEmpty());
         assertEquals(1, SyncValidator.validateModelFields("Other", settings.requiredFields(), settings).size());
@@ -21,7 +21,7 @@ public class SyncValidatorTest {
 
     @Test
     public void ignoresBlankOptionalCustomFields() {
-        Records.Settings settings = new Records.Settings(
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
                 "Custom Japanese",
                 "Mining",
                 "Front",
@@ -36,7 +36,7 @@ public class SyncValidatorTest {
                 3000,
                 24,
                 3,
-                Records.DEFAULT_WRITING_TRIGGER_MISS_DAYS
+                RecordsBase.DEFAULT_WRITING_TRIGGER_MISS_DAYS
         );
 
         assertEquals(Arrays.asList("Front", "Back"), settings.requiredFields());

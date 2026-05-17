@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.os.Handler;
@@ -7,7 +8,6 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
-import dev.bee.kanjianki.core.Records;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,7 +70,7 @@ final class NoteTypeFieldMappings {
     }
 
     static void applyFieldGuesses(List<String> fields, FieldInputs inputs) {
-        Records.Settings defaults = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         String expression = firstMatchingField(fields, defaults.expressionField, "Front", "Japanese", "Word", "Vocabulary", "Term");
         String meaning = firstMatchingField(fields, defaults.meaningField, "Meaning", "Back", "Definition", "Glossary");
         if (expression.trim().isEmpty() && !fields.isEmpty()) {

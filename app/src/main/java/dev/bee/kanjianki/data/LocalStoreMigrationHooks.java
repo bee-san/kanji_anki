@@ -1,8 +1,8 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.database.sqlite.SQLiteDatabase;
 
-import dev.bee.kanjianki.core.Records;
 
 final class LocalStoreMigrationHooks {
     private final LocalStoreBase store;
@@ -23,7 +23,7 @@ final class LocalStoreMigrationHooks {
         store.addNullableColumn(db, table, column, type);
     }
 
-    void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, Records.Settings settings) {
+    void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings) {
         store.backfillKanjiInventory(db, nowMillis, settings);
     }
 

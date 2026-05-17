@@ -1,9 +1,11 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
 import android.os.SystemClock;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import java.util.HashSet;
@@ -43,7 +45,7 @@ final class StudySessionTracker {
         missedKanji.clear();
     }
 
-    void initializeTarget(Records.AdaptiveLoadPlan plan) {
+    void initializeTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         if (targetCount <= 0 && plan != null) {
             targetCount = Math.max(0, plan.remaining > 0 ? plan.remaining : plan.target);
         }
@@ -87,18 +89,18 @@ final class StudySessionTracker {
         }
     }
 
-    static String sessionTaskKey(Records.StudySession session) {
+    static String sessionTaskKey(RecordsSchedulerModels.StudySession session) {
         if (session == null) {
             return "";
         }
         return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token;
     }
 
-    static String similarRepairProgressKey(Records.SimilarKanjiWritingRepair repair) {
+    static String similarRepairProgressKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         return repair == null ? "" : "repair:" + repair.id;
     }
 
-    static String similarRepairStudyTaskKey(Records.SimilarKanjiWritingRepair repair) {
+    static String similarRepairStudyTaskKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         if (repair == null) {
             return "";
         }
@@ -142,7 +144,7 @@ final class StudySessionTracker {
         activeTask = null;
     }
 
-    void recordReviewOutcome(String kanji, String appliedRating, Records.StudyItem before, Records.StudyItem after) {
+    void recordReviewOutcome(String kanji, String appliedRating, RecordsStudyModels.StudyItem before, RecordsStudyModels.StudyItem after) {
         String safeKanji = safeKanji(kanji);
         if (safeKanji.isEmpty()) {
             return;
@@ -193,7 +195,7 @@ final class StudySessionTracker {
         return kanji == null ? "" : kanji.trim();
     }
 
-    private static boolean locallyImproved(Records.StudyItem before, Records.StudyItem after) {
+    private static boolean locallyImproved(RecordsStudyModels.StudyItem before, RecordsStudyModels.StudyItem after) {
         if (before == null || after == null) {
             return false;
         }

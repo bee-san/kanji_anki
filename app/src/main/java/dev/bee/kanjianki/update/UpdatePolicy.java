@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.update;
 
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
-import dev.bee.kanjianki.core.Records;
 
 import java.util.regex.Pattern;
 
@@ -13,15 +13,15 @@ final class UpdatePolicy {
     private UpdatePolicy() {
     }
 
-    static AssetSelection selectAssets(Records.ReleaseInfo release) {
+    static AssetSelection selectAssets(RecordsSchedulerModels.ReleaseInfo release) {
         if (release == null) {
             return AssetSelection.failure("Latest release metadata is empty.");
         }
-        Records.ReleaseAsset apk = release.apkAsset();
+        RecordsSchedulerModels.ReleaseAsset apk = release.apkAsset();
         if (apk == null) {
             return AssetSelection.failure("Latest release has no APK asset.");
         }
-        Records.ReleaseAsset checksum = release.checksumAssetFor(apk.name);
+        RecordsSchedulerModels.ReleaseAsset checksum = release.checksumAssetFor(apk.name);
         if (checksum == null) {
             return AssetSelection.failure("Latest release has no SHA-256 checksum asset.");
         }
@@ -99,17 +99,17 @@ final class UpdatePolicy {
     static final class AssetSelection {
         final boolean ok;
         final String message;
-        final Records.ReleaseAsset apk;
-        final Records.ReleaseAsset checksum;
+        final RecordsSchedulerModels.ReleaseAsset apk;
+        final RecordsSchedulerModels.ReleaseAsset checksum;
 
-        private AssetSelection(boolean ok, String message, Records.ReleaseAsset apk, Records.ReleaseAsset checksum) {
+        private AssetSelection(boolean ok, String message, RecordsSchedulerModels.ReleaseAsset apk, RecordsSchedulerModels.ReleaseAsset checksum) {
             this.ok = ok;
             this.message = message;
             this.apk = apk;
             this.checksum = checksum;
         }
 
-        private static AssetSelection success(Records.ReleaseAsset apk, Records.ReleaseAsset checksum) {
+        private static AssetSelection success(RecordsSchedulerModels.ReleaseAsset apk, RecordsSchedulerModels.ReleaseAsset checksum) {
             return new AssetSelection(true, "", apk, checksum);
         }
 

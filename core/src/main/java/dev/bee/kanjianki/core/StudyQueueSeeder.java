@@ -11,13 +11,13 @@ import java.util.regex.Pattern;
 final class StudyQueueSeeder {
     private static final Pattern MULTI_WHITESPACE = Pattern.compile("\\s+");
 
-    List<Records.StudyItem> seedQueue(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+    List<RecordsStudyModels.StudyItem> seedQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return seedQueueInternal(new SeedQueueRequest(
                 rows,
@@ -31,19 +31,19 @@ final class StudyQueueSeeder {
         ));
     }
 
-    List<Records.StudyItem> seedQueue(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+    List<RecordsStudyModels.StudyItem> seedQueue(
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
-            Records.AdaptiveLoadPlan plan,
-            Records.StudyLadderSettings ladder
+            RecordsSchedulerModels.AdaptiveLoadPlan plan,
+            RecordsBase.StudyLadderSettings ladder
     ) {
         if (plan == null) {
             return seedQueue(rows, existing, settings, nowMillis, startOfDayMillis, ladder);
         }
-        List<Records.DashboardRow> admissionRows = plan.allKanjiMode ? rows : rowsForFocus(rows, plan.focusKanji);
+        List<RecordsImportModels.DashboardRow> admissionRows = plan.allKanjiMode ? rows : rowsForFocus(rows, plan.focusKanji);
         int cappedAdmission = plan.allKanjiMode
                 ? plan.newAdmissionLimit
                 : Math.min(plan.newAdmissionLimit, settings.newPerDay);
@@ -60,13 +60,13 @@ final class StudyQueueSeeder {
     }
 
     BridgeScheduler.ExtraNewCardsResult seedExtraNewCards(
-            List<Records.DashboardRow> rows,
-            List<Records.StudyItem> existing,
-            Records.Settings settings,
+            List<RecordsImportModels.DashboardRow> rows,
+            List<RecordsStudyModels.StudyItem> existing,
+            RecordsSyncModels.Settings settings,
             long nowMillis,
             long startOfDayMillis,
             int requestedCount,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         int requested = Math.max(0, requestedCount);
         SeedQueueRequest request = new SeedQueueRequest(
@@ -83,9 +83,9 @@ final class StudyQueueSeeder {
         SeedQueueState state = reconcileExistingItems(request, rowIndex);
         List<String> admittedKanji = new ArrayList<>();
         int available = 0;
-        for (Records.DashboardRow row : request.admissionRows) {
+        for (RecordsImportModels.DashboardRow row : request.admissionRows) {
             String rowKey = rowFamilyKey(row);
-            Records.StudyItem current = state.byFamily.get(rowKey);
+            RecordsStudyModels.StudyItem current = state.byFamily.get(rowKey);
             boolean eligible = current == null || canReopenRetiredExtraSeedItem(request.settings, row, current);
             if (eligible) {
                 available++;
@@ -100,9 +100,9 @@ final class StudyQueueSeeder {
     }
 
     private boolean canReopenRetiredExtraSeedItem(
-            Records.Settings settings,
-            Records.DashboardRow row,
-            Records.StudyItem current
+            RecordsSyncModels.Settings settings,
+            RecordsImportModels.DashboardRow row,
+            RecordsStudyModels.StudyItem current
     ) {
         return StudyLadderRules.STATE_RETIRED.equals(current.state)
                 && row.matureSupportCount < settings.matureSupportThreshold;
@@ -111,11 +111,11 @@ final class StudyQueueSeeder {
     private void admitExtraSeedRow(
             SeedQueueRequest request,
             SeedQueueState state,
-            Records.DashboardRow row,
+            RecordsImportModels.DashboardRow row,
             String rowKey,
-            Records.StudyItem current
+            RecordsStudyModels.StudyItem current
     ) {
-        Records.StudyItem admitted = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
+        RecordsStudyModels.StudyItem admitted = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
         if (current != null) {
             state.items.remove(current);
         }
@@ -125,31 +125,31 @@ final class StudyQueueSeeder {
         state.newToday++;
     }
 
-    private List<Records.StudyItem> seedQueueInternal(SeedQueueRequest request) {
+    private List<RecordsStudyModels.StudyItem> seedQueueInternal(SeedQueueRequest request) {
         SeedRowIndex rowIndex = indexSeedRows(request.allRows);
         SeedQueueState state = reconcileExistingItems(request, rowIndex);
-        for (Records.DashboardRow row : request.admissionRows) {
+        for (RecordsImportModels.DashboardRow row : request.admissionRows) {
             admitSeedRow(request, state, row);
         }
         sortSeedItems(state.items);
         return state.items;
     }
 
-    private void sortSeedItems(List<Records.StudyItem> items) {
+    private void sortSeedItems(List<RecordsStudyModels.StudyItem> items) {
         items.sort(Comparator
-                .comparing((Records.StudyItem item) -> item.state.equals(StudyLadderRules.STATE_RETIRED))
+                .comparing((RecordsStudyModels.StudyItem item) -> item.state.equals(StudyLadderRules.STATE_RETIRED))
                 .thenComparingLong(item -> item.dueAtMillis)
                 .thenComparing(item -> item.kanji));
     }
 
-    private List<Records.DashboardRow> rowsForFocus(List<Records.DashboardRow> rows, List<String> focusKanji) {
-        Map<String, Records.DashboardRow> byKanji = new HashMap<>();
-        for (Records.DashboardRow row : rows) {
+    private List<RecordsImportModels.DashboardRow> rowsForFocus(List<RecordsImportModels.DashboardRow> rows, List<String> focusKanji) {
+        Map<String, RecordsImportModels.DashboardRow> byKanji = new HashMap<>();
+        for (RecordsImportModels.DashboardRow row : rows) {
             byKanji.put(row.kanji, row);
         }
-        List<Records.DashboardRow> out = new ArrayList<>();
+        List<RecordsImportModels.DashboardRow> out = new ArrayList<>();
         for (String kanji : focusKanji) {
-            Records.DashboardRow row = byKanji.get(kanji);
+            RecordsImportModels.DashboardRow row = byKanji.get(kanji);
             if (row != null) {
                 out.add(row);
             }
@@ -157,11 +157,11 @@ final class StudyQueueSeeder {
         return out;
     }
 
-    private SeedRowIndex indexSeedRows(List<Records.DashboardRow> rows) {
+    private SeedRowIndex indexSeedRows(List<RecordsImportModels.DashboardRow> rows) {
         SeedRowIndex index = new SeedRowIndex();
-        for (Records.DashboardRow row : rows) {
+        for (RecordsImportModels.DashboardRow row : rows) {
             index.rowByFamily.put(rowFamilyKey(row), row);
-            List<Records.DashboardRow> familyRows = index.rowsByKanji.get(row.kanji);
+            List<RecordsImportModels.DashboardRow> familyRows = index.rowsByKanji.get(row.kanji);
             if (familyRows == null) {
                 familyRows = new ArrayList<>();
                 index.rowsByKanji.put(row.kanji, familyRows);
@@ -173,8 +173,8 @@ final class StudyQueueSeeder {
 
     private SeedQueueState reconcileExistingItems(SeedQueueRequest request, SeedRowIndex rowIndex) {
         SeedQueueState state = new SeedQueueState();
-        for (Records.StudyItem item : request.existing) {
-            Records.StudyItem current = alignOrRetireSeedItem(request, rowIndex, item);
+        for (RecordsStudyModels.StudyItem item : request.existing) {
+            RecordsStudyModels.StudyItem current = alignOrRetireSeedItem(request, rowIndex, item);
             state.byFamily.put(familyKey(current), current);
             state.items.add(current);
             state.trackActiveItem(current, request.startOfDayMillis);
@@ -182,13 +182,13 @@ final class StudyQueueSeeder {
         return state;
     }
 
-    private Records.StudyItem alignOrRetireSeedItem(
+    private RecordsStudyModels.StudyItem alignOrRetireSeedItem(
             SeedQueueRequest request,
             SeedRowIndex rowIndex,
-            Records.StudyItem item
+            RecordsStudyModels.StudyItem item
     ) {
-        Records.DashboardRow row = seedRowForItem(rowIndex, item);
-        Records.StudyItem current = row == null
+        RecordsImportModels.DashboardRow row = seedRowForItem(rowIndex, item);
+        RecordsStudyModels.StudyItem current = row == null
                 ? StudyLadderRules.alignRungToLadder(item, request.ladder)
                 : alignAnswerSignature(item, row, request.nowMillis, request.ladder);
         if (shouldRetireSeedItem(request.settings, row, item, current)) {
@@ -197,9 +197,9 @@ final class StudyQueueSeeder {
         return current;
     }
 
-    private Records.DashboardRow seedRowForItem(SeedRowIndex rowIndex, Records.StudyItem item) {
-        Records.DashboardRow row = rowIndex.rowByFamily.get(familyKey(item));
-        List<Records.DashboardRow> familyRows = rowIndex.rowsByKanji.get(item.kanji);
+    private RecordsImportModels.DashboardRow seedRowForItem(SeedRowIndex rowIndex, RecordsStudyModels.StudyItem item) {
+        RecordsImportModels.DashboardRow row = rowIndex.rowByFamily.get(familyKey(item));
+        List<RecordsImportModels.DashboardRow> familyRows = rowIndex.rowsByKanji.get(item.kanji);
         if (row != null || familyRows == null || (!item.answerSignature.isEmpty() && familyRows.size() != 1)) {
             return row;
         }
@@ -207,18 +207,18 @@ final class StudyQueueSeeder {
     }
 
     private boolean shouldRetireSeedItem(
-            Records.Settings settings,
-            Records.DashboardRow row,
-            Records.StudyItem original,
-            Records.StudyItem current
+            RecordsSyncModels.Settings settings,
+            RecordsImportModels.DashboardRow row,
+            RecordsStudyModels.StudyItem original,
+            RecordsStudyModels.StudyItem current
     ) {
         return !StudyLadderRules.STATE_RETIRED.equals(original.state)
                 && (row == null || (row.matureSupportCount >= settings.matureSupportThreshold && current.totalReviews > 0));
     }
 
-    private void admitSeedRow(SeedQueueRequest request, SeedQueueState state, Records.DashboardRow row) {
+    private void admitSeedRow(SeedQueueRequest request, SeedQueueState state, RecordsImportModels.DashboardRow row) {
         String rowKey = rowFamilyKey(row);
-        Records.StudyItem current = state.byFamily.get(rowKey);
+        RecordsStudyModels.StudyItem current = state.byFamily.get(rowKey);
         if (current == null) {
             addNewSeedItemIfRoom(request, state, row, rowKey);
         } else if (canReopenRetiredSeedItem(request, state, row, current)) {
@@ -229,13 +229,13 @@ final class StudyQueueSeeder {
     private void addNewSeedItemIfRoom(
             SeedQueueRequest request,
             SeedQueueState state,
-            Records.DashboardRow row,
+            RecordsImportModels.DashboardRow row,
             String rowKey
     ) {
         if (!state.hasAdmissionRoom(request)) {
             return;
         }
-        Records.StudyItem item = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
+        RecordsStudyModels.StudyItem item = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
         state.items.add(item);
         state.byFamily.put(rowKey, item);
         state.activeCount++;
@@ -245,8 +245,8 @@ final class StudyQueueSeeder {
     private boolean canReopenRetiredSeedItem(
             SeedQueueRequest request,
             SeedQueueState state,
-            Records.DashboardRow row,
-            Records.StudyItem current
+            RecordsImportModels.DashboardRow row,
+            RecordsStudyModels.StudyItem current
     ) {
         return StudyLadderRules.STATE_RETIRED.equals(current.state)
                 && row.matureSupportCount < request.settings.matureSupportThreshold
@@ -256,11 +256,11 @@ final class StudyQueueSeeder {
     private void reopenSeedItem(
             SeedQueueRequest request,
             SeedQueueState state,
-            Records.DashboardRow row,
+            RecordsImportModels.DashboardRow row,
             String rowKey,
-            Records.StudyItem current
+            RecordsStudyModels.StudyItem current
     ) {
-        Records.StudyItem reopened = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
+        RecordsStudyModels.StudyItem reopened = newStudyItem(row.kanji, request.nowMillis, answerSignature(row), request.ladder);
         state.items.remove(current);
         state.items.add(reopened);
         state.byFamily.put(rowKey, reopened);
@@ -268,16 +268,16 @@ final class StudyQueueSeeder {
         state.newToday++;
     }
 
-    private Records.StudyItem retiredCopy(Records.StudyItem item) {
+    private RecordsStudyModels.StudyItem retiredCopy(RecordsStudyModels.StudyItem item) {
         return item.copyBuilder()
                 .state(StudyLadderRules.STATE_RETIRED)
                 .activeToken(null)
                 .build();
     }
 
-    private Records.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature, Records.StudyLadderSettings ladder) {
-        Records.LadderRung startingRung = StudyLadderRules.safeLadder(ladder).startingRung(false);
-        return new Records.StudyItem(
+    private RecordsStudyModels.StudyItem newStudyItem(String kanji, long nowMillis, String answerSignature, RecordsBase.StudyLadderSettings ladder) {
+        RecordsBase.LadderRung startingRung = StudyLadderRules.safeLadder(ladder).startingRung(false);
+        return new RecordsStudyModels.StudyItem(
                 kanji,
                 StudyLadderRules.STATE_NEW,
                 nowMillis,
@@ -297,26 +297,26 @@ final class StudyQueueSeeder {
                 answerSignature,
                 null,
                 nowMillis,
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
-                Records.TaskMemory.initial(),
+                RecordsStudyModels.TaskMemory.initial(),
+                RecordsStudyModels.TaskMemory.initial(),
+                RecordsStudyModels.TaskMemory.initial(),
+                RecordsStudyModels.TaskMemory.initial(),
+                RecordsStudyModels.TaskMemory.initial(),
                 startingRung,
-                Records.SchedulerPhase.NEW_LEARNING,
+                RecordsBase.SchedulerPhase.NEW_LEARNING,
                 0,
                 0,
                 0L,
                 false,
-                Records.TaskMemory.initial()
+                RecordsStudyModels.TaskMemory.initial()
         );
     }
 
-    private Records.StudyItem alignAnswerSignature(
-            Records.StudyItem item,
-            Records.DashboardRow row,
+    private RecordsStudyModels.StudyItem alignAnswerSignature(
+            RecordsStudyModels.StudyItem item,
+            RecordsImportModels.DashboardRow row,
             long nowMillis,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         String signature = answerSignature(row);
         if (item.answerSignature.isEmpty() || signature.equals(item.answerSignature)) {
@@ -326,7 +326,7 @@ final class StudyQueueSeeder {
         if (retired) {
             return StudyLadderRules.alignRungToLadder(item.copyBuilder().answerSignature(signature).build(), ladder);
         }
-        Records.LadderRung fallbackRung = StudyLadderRules.demoteRung(item.rung, item.hasSimilarKanji, ladder);
+        RecordsBase.LadderRung fallbackRung = StudyLadderRules.demoteRung(item.rung, item.hasSimilarKanji, ladder);
         return item.copyBuilder()
                 .state(StudyLadderRules.STATE_LEARNING)
                 .dueAtMillis(nowMillis)
@@ -343,40 +343,40 @@ final class StudyQueueSeeder {
                 .matureIntervalDays(0)
                 .answerSignature(signature)
                 .activeToken(null)
-                .typingMeaningMemory(Records.TaskMemory.initial())
-                .meaningKanjiMemory(Records.TaskMemory.initial())
-                .kanjiMeaningMemory(Records.TaskMemory.initial())
-                .fontMeaningMemory(Records.TaskMemory.initial())
-                .wordReadingMemory(Records.TaskMemory.initial())
-                .writingRemediationMemory(Records.TaskMemory.initial())
-                .similarKanjiMemory(Records.TaskMemory.initial())
+                .typingMeaningMemory(RecordsStudyModels.TaskMemory.initial())
+                .meaningKanjiMemory(RecordsStudyModels.TaskMemory.initial())
+                .kanjiMeaningMemory(RecordsStudyModels.TaskMemory.initial())
+                .fontMeaningMemory(RecordsStudyModels.TaskMemory.initial())
+                .wordReadingMemory(RecordsStudyModels.TaskMemory.initial())
+                .writingRemediationMemory(RecordsStudyModels.TaskMemory.initial())
+                .similarKanjiMemory(RecordsStudyModels.TaskMemory.initial())
                 .rung(fallbackRung)
-                .phase(Records.SchedulerPhase.NEW_LEARNING)
+                .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .realPassStreak(0)
                 .realAgainStreak(0)
                 .lastRealReviewDueAtMillis(0L)
                 .build();
     }
 
-    static List<Records.DashboardRow> sortedAdmissionRows(List<Records.DashboardRow> rows, Records.Settings settings) {
-        List<Records.DashboardRow> out = new ArrayList<>(rows);
+    static List<RecordsImportModels.DashboardRow> sortedAdmissionRows(List<RecordsImportModels.DashboardRow> rows, RecordsSyncModels.Settings settings) {
+        List<RecordsImportModels.DashboardRow> out = new ArrayList<>(rows);
         out.sort((left, right) -> compareRowsForNewCardSort(left, right, settings));
         return out;
     }
 
     static int compareRowsForNewCardSort(
-            Records.DashboardRow left,
-            Records.DashboardRow right,
-            Records.Settings settings
+            RecordsImportModels.DashboardRow left,
+            RecordsImportModels.DashboardRow right,
+            RecordsSyncModels.Settings settings
     ) {
-        String mode = settings == null ? Records.DEFAULT_NEW_CARD_SORT_MODE : settings.newCardSortMode;
-        if (Records.NEW_CARD_SORT_FREQUENCY.equals(mode)) {
+        String mode = settings == null ? RecordsBase.DEFAULT_NEW_CARD_SORT_MODE : settings.newCardSortMode;
+        if (RecordsBase.NEW_CARD_SORT_FREQUENCY.equals(mode)) {
             return compareRank(left, right);
         }
         int primary = switch (mode) {
-            case Records.NEW_CARD_SORT_FSRS_DIFFICULTY -> compareOptionalDescending(maxDifficulty(left), maxDifficulty(right));
-            case Records.NEW_CARD_SORT_RETRIEVABILITY_RISK -> compareOptionalAscending(minRetrievability(left), minRetrievability(right));
-            case Records.NEW_CARD_SORT_KANI_WEAKNESS -> compareWeakness(left, right);
+            case RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> compareOptionalDescending(maxDifficulty(left), maxDifficulty(right));
+            case RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> compareOptionalAscending(minRetrievability(left), minRetrievability(right));
+            case RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> compareWeakness(left, right);
             default -> compareRank(left, right);
         };
         if (primary != 0) {
@@ -389,7 +389,7 @@ final class StudyQueueSeeder {
         return rowKanji(left).compareTo(rowKanji(right));
     }
 
-    private static int compareWeakness(Records.DashboardRow left, Records.DashboardRow right) {
+    private static int compareWeakness(RecordsImportModels.DashboardRow left, RecordsImportModels.DashboardRow right) {
         int weakness = Integer.compare(rowWeakness(right), rowWeakness(left));
         if (weakness != 0) {
             return weakness;
@@ -397,7 +397,7 @@ final class StudyQueueSeeder {
         return Integer.compare(rowSuspendedExamples(right), rowSuspendedExamples(left));
     }
 
-    private static int compareRank(Records.DashboardRow left, Records.DashboardRow right) {
+    private static int compareRank(RecordsImportModels.DashboardRow left, RecordsImportModels.DashboardRow right) {
         return Integer.compare(rankSortValue(left), rankSortValue(right));
     }
 
@@ -427,28 +427,28 @@ final class StudyQueueSeeder {
         return Double.compare(left, right);
     }
 
-    private static int rankSortValue(Records.DashboardRow row) {
+    private static int rankSortValue(RecordsImportModels.DashboardRow row) {
         return row == null || row.jitenRank == null ? Integer.MAX_VALUE : row.jitenRank;
     }
 
-    private static int rowWeakness(Records.DashboardRow row) {
+    private static int rowWeakness(RecordsImportModels.DashboardRow row) {
         return row == null ? 0 : row.weaknessScore;
     }
 
-    private static int rowSuspendedExamples(Records.DashboardRow row) {
+    private static int rowSuspendedExamples(RecordsImportModels.DashboardRow row) {
         return row == null ? 0 : row.suspendedExampleCount;
     }
 
-    private static String rowKanji(Records.DashboardRow row) {
+    private static String rowKanji(RecordsImportModels.DashboardRow row) {
         return row == null ? "" : row.kanji;
     }
 
-    private static Double maxDifficulty(Records.DashboardRow row) {
+    private static Double maxDifficulty(RecordsImportModels.DashboardRow row) {
         if (row == null) {
             return null;
         }
         Double best = null;
-        for (Records.Example example : row.examples) {
+        for (RecordsImportModels.Example example : row.examples) {
             if (example.fsrsDifficulty != null && Double.isFinite(example.fsrsDifficulty)) {
                 best = best == null ? example.fsrsDifficulty : Math.max(best, example.fsrsDifficulty);
             }
@@ -456,12 +456,12 @@ final class StudyQueueSeeder {
         return best;
     }
 
-    private static Double minRetrievability(Records.DashboardRow row) {
+    private static Double minRetrievability(RecordsImportModels.DashboardRow row) {
         if (row == null) {
             return null;
         }
         Double lowest = null;
-        for (Records.Example example : row.examples) {
+        for (RecordsImportModels.Example example : row.examples) {
             Double normalized = normalizedRetrievability(example.fsrsRetrievability);
             if (normalized != null) {
                 lowest = lowest == null ? normalized : Math.min(lowest, normalized);
@@ -480,11 +480,11 @@ final class StudyQueueSeeder {
         return value > 1.0 ? null : value;
     }
 
-    static String familyKey(Records.StudyItem item) {
+    static String familyKey(RecordsStudyModels.StudyItem item) {
         return familyKey(item.kanji, item.answerSignature);
     }
 
-    static String rowFamilyKey(Records.DashboardRow row) {
+    static String rowFamilyKey(RecordsImportModels.DashboardRow row) {
         return familyKey(row.kanji, answerSignature(row));
     }
 
@@ -492,9 +492,9 @@ final class StudyQueueSeeder {
         return kanji + "\u0000" + Objects.requireNonNullElse(answerSignature, "");
     }
 
-    static String answerSignature(Records.DashboardRow row) {
-        Records.Example example = null;
-        for (Records.Example candidate : row.examples) {
+    static String answerSignature(RecordsImportModels.DashboardRow row) {
+        RecordsImportModels.Example example = null;
+        for (RecordsImportModels.Example candidate : row.examples) {
             if ("suspended".equals(candidate.sourceType)) {
                 example = candidate;
                 break;
@@ -528,7 +528,7 @@ final class StudyQueueSeeder {
             this.allKanjiMode = allKanjiMode;
         }
 
-        int activeQueueCap(Records.Settings settings) {
+        int activeQueueCap(RecordsSyncModels.Settings settings) {
             return allKanjiMode ? Integer.MAX_VALUE : settings.activeQueueCap;
         }
 
@@ -538,24 +538,24 @@ final class StudyQueueSeeder {
     }
 
     private static final class SeedQueueRequest {
-        final List<Records.DashboardRow> allRows;
-        final List<Records.DashboardRow> admissionRows;
-        final List<Records.StudyItem> existing;
-        final Records.Settings settings;
+        final List<RecordsImportModels.DashboardRow> allRows;
+        final List<RecordsImportModels.DashboardRow> admissionRows;
+        final List<RecordsStudyModels.StudyItem> existing;
+        final RecordsSyncModels.Settings settings;
         final long nowMillis;
         final long startOfDayMillis;
         final SeedQueueLimits limits;
-        final Records.StudyLadderSettings ladder;
+        final RecordsBase.StudyLadderSettings ladder;
 
         SeedQueueRequest(
-                List<Records.DashboardRow> allRows,
-                List<Records.DashboardRow> admissionRows,
-                List<Records.StudyItem> existing,
-                Records.Settings settings,
+                List<RecordsImportModels.DashboardRow> allRows,
+                List<RecordsImportModels.DashboardRow> admissionRows,
+                List<RecordsStudyModels.StudyItem> existing,
+                RecordsSyncModels.Settings settings,
                 long nowMillis,
                 long startOfDayMillis,
                 SeedQueueLimits limits,
-                Records.StudyLadderSettings ladder
+                RecordsBase.StudyLadderSettings ladder
         ) {
             this.allRows = allRows;
             this.admissionRows = sortedAdmissionRows(admissionRows, settings);
@@ -569,17 +569,17 @@ final class StudyQueueSeeder {
     }
 
     private static final class SeedRowIndex {
-        final Map<String, Records.DashboardRow> rowByFamily = new HashMap<>();
-        final Map<String, List<Records.DashboardRow>> rowsByKanji = new HashMap<>();
+        final Map<String, RecordsImportModels.DashboardRow> rowByFamily = new HashMap<>();
+        final Map<String, List<RecordsImportModels.DashboardRow>> rowsByKanji = new HashMap<>();
     }
 
     private static final class SeedQueueState {
-        final Map<String, Records.StudyItem> byFamily = new HashMap<>();
-        final List<Records.StudyItem> items = new ArrayList<>();
+        final Map<String, RecordsStudyModels.StudyItem> byFamily = new HashMap<>();
+        final List<RecordsStudyModels.StudyItem> items = new ArrayList<>();
         int activeCount;
         int newToday;
 
-        void trackActiveItem(Records.StudyItem item, long startOfDayMillis) {
+        void trackActiveItem(RecordsStudyModels.StudyItem item, long startOfDayMillis) {
             if (StudyLadderRules.STATE_RETIRED.equals(item.state)) {
                 return;
             }

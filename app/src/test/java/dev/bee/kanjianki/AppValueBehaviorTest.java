@@ -1,8 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 
@@ -40,8 +42,8 @@ public final class AppValueBehaviorTest {
         DictionaryLookup lookup = DictionaryLookup.fromKanjiEntries(
                 Collections.singletonList(new DictionaryLookup.KanjiEntry(fields))
         );
-        Records.StudySession session = session("安", false, BridgeScheduler.TASK_KANJI_MEANING);
-        Records.Example example = example("安心", "アンシン", "old collection meaning");
+        RecordsSchedulerModels.StudySession session = session("安", false, BridgeScheduler.TASK_KANJI_MEANING);
+        RecordsImportModels.Example example = example("安心", "アンシン", "old collection meaning");
 
         List<String> lines = StudyCueTexts.answerLines(lookup, session, example, false);
 
@@ -50,8 +52,8 @@ public final class AppValueBehaviorTest {
 
     @Test
     public void studyCueTextsFallbacksCleanCollectionClues() {
-        Records.StudySession session = session("語", false, BridgeScheduler.TASK_KANJI_MEANING);
-        Records.Example example = example("言語", "", "(noun) JMdict [x] 1. language\nspeech");
+        RecordsSchedulerModels.StudySession session = session("語", false, BridgeScheduler.TASK_KANJI_MEANING);
+        RecordsImportModels.Example example = example("言語", "", "(noun) JMdict [x] 1. language\nspeech");
 
         List<String> lines = StudyCueTexts.answerLines(DictionaryLookup.empty(), session, example, false);
 
@@ -68,8 +70,8 @@ public final class AppValueBehaviorTest {
     @Test
     public void studyCueTextsHandleEmptyAndWordReadingSessions() {
         List<String> emptyLines = StudyCueTexts.answerLines(DictionaryLookup.empty(), null, null, false);
-        Records.StudySession session = session("読", false, BridgeScheduler.TASK_WORD_READING);
-        Records.Example example = example("読書", "ドクショ", "");
+        RecordsSchedulerModels.StudySession session = session("読", false, BridgeScheduler.TASK_WORD_READING);
+        RecordsImportModels.Example example = example("読書", "ドクショ", "");
 
         List<String> wordReadingLines = StudyCueTexts.answerLines(DictionaryLookup.empty(), session, example, true);
 
@@ -79,8 +81,8 @@ public final class AppValueBehaviorTest {
 
     @Test
     public void wordReadingCueDoesNotInventReadingWhenExampleAndRowAreBlank() {
-        Records.StudySession session = session("読", false, BridgeScheduler.TASK_WORD_READING, "", "");
-        Records.Example blankExample = example("", "", "");
+        RecordsSchedulerModels.StudySession session = session("読", false, BridgeScheduler.TASK_WORD_READING, "", "");
+        RecordsImportModels.Example blankExample = example("", "", "");
 
         List<String> lines = StudyCueTexts.answerLines(DictionaryLookup.empty(), session, blankExample, true);
 
@@ -89,8 +91,8 @@ public final class AppValueBehaviorTest {
 
     @Test
     public void studyCueTextsHandleNullRowsAndExamples() {
-        Records.StudySession noRow = new Records.StudySession(
-                new Records.StudyItem(
+        RecordsSchedulerModels.StudySession noRow = new RecordsSchedulerModels.StudySession(
+                new RecordsStudyModels.StudyItem(
                         "空",
                         "new",
                         1234L,
@@ -117,10 +119,10 @@ public final class AppValueBehaviorTest {
                 false,
                 ""
         );
-        Records.StudySession regular = session("語", false, BridgeScheduler.TASK_KANJI_MEANING);
-        Records.StudySession wordReading = session("読", false, BridgeScheduler.TASK_WORD_READING, "", null);
-        Records.Example emptyMeaning = example("言語", "ゴ", "");
-        Records.Example nullExpression = example(null, null, "");
+        RecordsSchedulerModels.StudySession regular = session("語", false, BridgeScheduler.TASK_KANJI_MEANING);
+        RecordsSchedulerModels.StudySession wordReading = session("読", false, BridgeScheduler.TASK_WORD_READING, "", null);
+        RecordsImportModels.Example emptyMeaning = example("言語", "ゴ", "");
+        RecordsImportModels.Example nullExpression = example(null, null, "");
 
         assertEquals(
                 Collections.singletonList("Collection clue"),
@@ -146,7 +148,7 @@ public final class AppValueBehaviorTest {
 
     @Test
     public void studyReviewRequestsMapWritingAnalysisIntoReviewPayload() {
-        Records.StudySession session = session("書", true, BridgeScheduler.TASK_WRITE_KANJI);
+        RecordsSchedulerModels.StudySession session = session("書", true, BridgeScheduler.TASK_WRITE_KANJI);
         WritingAnalysis analysis = new WritingAnalysis(
                 WritingAnalysis.Status.CLOSE,
                 "hard",
@@ -157,7 +159,7 @@ public final class AppValueBehaviorTest {
         );
 
         StudyReviewRequests.MappedReview mapped = StudyReviewRequests.from(session, analysis, 2, "easy", false);
-        Records.ReviewRequest request = mapped.request();
+        RecordsSchedulerModels.ReviewRequest request = mapped.request();
 
         assertEquals("hard", mapped.ratingCode());
         assertEquals("hard", request.rating);
@@ -175,8 +177,8 @@ public final class AppValueBehaviorTest {
 
     @Test
     public void studyReviewRequestsRespectManualOverrideAndNonWritingTasks() {
-        Records.StudySession writingSession = session("筆", true, BridgeScheduler.TASK_WRITE_KANJI);
-        Records.StudySession readingSession = session("読", false, BridgeScheduler.TASK_WORD_READING);
+        RecordsSchedulerModels.StudySession writingSession = session("筆", true, BridgeScheduler.TASK_WRITE_KANJI);
+        RecordsSchedulerModels.StudySession readingSession = session("読", false, BridgeScheduler.TASK_WORD_READING);
 
         StudyReviewRequests.MappedReview override = StudyReviewRequests.from(writingSession, null, 0, "easy", true);
         StudyReviewRequests.MappedReview nonWriting = StudyReviewRequests.from(readingSession, null, 0, "good", false);
@@ -191,7 +193,7 @@ public final class AppValueBehaviorTest {
 
     @Test
     public void studyReviewRequestsDistinguishCleanPassAndFailedWritingAnalysis() {
-        Records.StudySession writingSession = session("清", true, BridgeScheduler.TASK_WRITE_KANJI);
+        RecordsSchedulerModels.StudySession writingSession = session("清", true, BridgeScheduler.TASK_WRITE_KANJI);
         WritingAnalysis cleanPass = new WritingAnalysis(
                 WritingAnalysis.Status.PASS,
                 "good",
@@ -332,18 +334,18 @@ public final class AppValueBehaviorTest {
         assertFalse(UiDateText.sameLocalDay(ad.getTimeInMillis(), bc.getTimeInMillis()));
     }
 
-    private static Records.StudySession session(String kanji, boolean writingRequired, String taskType) {
+    private static RecordsSchedulerModels.StudySession session(String kanji, boolean writingRequired, String taskType) {
         return session(kanji, writingRequired, taskType, "collection meaning", "ゴ");
     }
 
-    private static Records.StudySession session(
+    private static RecordsSchedulerModels.StudySession session(
             String kanji,
             boolean writingRequired,
             String taskType,
             String primaryMeaning,
             String reading
     ) {
-        Records.StudyItem item = new Records.StudyItem(
+        RecordsStudyModels.StudyItem item = new RecordsStudyModels.StudyItem(
                 kanji,
                 "new",
                 1234L,
@@ -364,7 +366,7 @@ public final class AppValueBehaviorTest {
                 "active-token",
                 100L
         );
-        Records.DashboardRow row = new Records.DashboardRow(
+        RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
                 kanji,
                 null,
                 primaryMeaning,
@@ -378,10 +380,10 @@ public final class AppValueBehaviorTest {
                 0,
                 Collections.emptyList()
         );
-        return new Records.StudySession(item, row, "session-token", taskType, writingRequired, "prompt text");
+        return new RecordsSchedulerModels.StudySession(item, row, "session-token", taskType, writingRequired, "prompt text");
     }
 
-    private static Records.Example example(String expression, String reading, String meaning) {
-        return new Records.Example("anki", 1L, 2L, expression, reading, meaning, "", false, 0);
+    private static RecordsImportModels.Example example(String expression, String reading, String meaning) {
+        return new RecordsImportModels.Example("anki", 1L, 2L, expression, reading, meaning, "", false, 0);
     }
 }

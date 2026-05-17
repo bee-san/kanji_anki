@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.update;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 
 import java.util.Arrays;
 
@@ -25,10 +25,10 @@ public final class UpdatePolicyBehaviorTest {
 
     @Test
     public void selectAssetsPairsApkWithItsExactChecksumAsset() {
-        Records.ReleaseAsset apk = new Records.ReleaseAsset("kani-android-0.4.4.apk", "https://example/apk");
-        Records.ReleaseAsset otherChecksum = new Records.ReleaseAsset("other.apk.sha256", "https://example/other-sha");
-        Records.ReleaseAsset checksum = new Records.ReleaseAsset("kani-android-0.4.4.apk.sha256", "https://example/sha");
-        Records.ReleaseInfo release = new Records.ReleaseInfo(
+        RecordsSchedulerModels.ReleaseAsset apk = new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.4.apk", "https://example/apk");
+        RecordsSchedulerModels.ReleaseAsset otherChecksum = new RecordsSchedulerModels.ReleaseAsset("other.apk.sha256", "https://example/other-sha");
+        RecordsSchedulerModels.ReleaseAsset checksum = new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.4.apk.sha256", "https://example/sha");
+        RecordsSchedulerModels.ReleaseInfo release = new RecordsSchedulerModels.ReleaseInfo(
                 "v0.4.4",
                 "https://example/releases/v0.4.4",
                 Arrays.asList(otherChecksum, apk, checksum)

@@ -22,13 +22,13 @@ public final class SimilarKanjiChoicePlannerTest {
     @Test
     public void buildsDirectLocalChoicesAndSkipsMissingMeaningTargets() {
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
-        List<Records.KanjiInventoryItem> inventory = Arrays.asList(
+        List<RecordsImportModels.KanjiInventoryItem> inventory = Arrays.asList(
                 item("拉", "pull"),
                 item("提", "carry"),
                 item("謎", "riddle"),
                 item("麺", "")
         );
-        List<Records.SimilarKanjiPair> pairs = Arrays.asList(
+        List<RecordsImportModels.SimilarKanjiPair> pairs = Arrays.asList(
                         pair("拉", "提"),
                         pair("拉", "謎"),
                         pair("提", "外"),
@@ -38,9 +38,9 @@ public final class SimilarKanjiChoicePlannerTest {
                         pair("", "提")
         );
 
-        List<Records.SimilarKanjiChoiceCard> cards = planner.buildCandidates(inventory, pairs);
+        List<RecordsImportModels.SimilarKanjiChoiceCard> cards = planner.buildCandidates(inventory, pairs);
 
-        Records.SimilarKanjiChoiceCard pull = find(cards, "拉");
+        RecordsImportModels.SimilarKanjiChoiceCard pull = find(cards, "拉");
         assertEquals("pull", pull.primaryMeaning);
         assertEquals(Arrays.asList("拉", "提", "謎"), pull.choices);
         assertEquals("拉\t提\t謎", pull.choiceSignature);
@@ -53,16 +53,16 @@ public final class SimilarKanjiChoicePlannerTest {
     @Test
     public void wrongSelectionQueuesOnlyTargetAndSelectedNeighbor() {
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
-        Records.SimilarKanjiChoiceCard card = new Records.SimilarKanjiChoiceCard(
+        RecordsImportModels.SimilarKanjiChoiceCard card = new RecordsImportModels.SimilarKanjiChoiceCard(
                 "拉",
                 "pull",
                 Arrays.asList("拉", "提", "謎", "麺"),
                 "拉\t提\t謎\t麺"
         );
 
-        Records.SimilarKanjiChoiceResult wrong = planner.evaluateSelection(card, "謎");
-        Records.SimilarKanjiChoiceResult correct = planner.evaluateSelection(card, "拉");
-        Records.SimilarKanjiChoiceResult outsideChoice = planner.evaluateSelection(card, "外");
+        RecordsImportModels.SimilarKanjiChoiceResult wrong = planner.evaluateSelection(card, "謎");
+        RecordsImportModels.SimilarKanjiChoiceResult correct = planner.evaluateSelection(card, "拉");
+        RecordsImportModels.SimilarKanjiChoiceResult outsideChoice = planner.evaluateSelection(card, "外");
 
         assertFalse(wrong.correct);
         assertEquals(Arrays.asList("拉", "謎"), wrong.repairKanji);
@@ -75,9 +75,9 @@ public final class SimilarKanjiChoicePlannerTest {
     public void nullCardAndChoiceSignatureHandleSparseValues() {
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
 
-        Records.SimilarKanjiChoiceResult nullCard = planner.evaluateSelection(null, " 拉 ");
-        Records.SimilarKanjiChoiceResult nullSelection = planner.evaluateSelection(
-                new Records.SimilarKanjiChoiceCard("拉", "pull", Arrays.asList("拉", "提"), "拉\t提"),
+        RecordsImportModels.SimilarKanjiChoiceResult nullCard = planner.evaluateSelection(null, " 拉 ");
+        RecordsImportModels.SimilarKanjiChoiceResult nullSelection = planner.evaluateSelection(
+                new RecordsImportModels.SimilarKanjiChoiceCard("拉", "pull", Arrays.asList("拉", "提"), "拉\t提"),
                 null
         );
 
@@ -93,7 +93,7 @@ public final class SimilarKanjiChoicePlannerTest {
     @Test
     public void sparsePairsAndMissingNeighborsAreSkipped() {
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
-        List<Records.KanjiInventoryItem> inventory = Arrays.asList(
+        List<RecordsImportModels.KanjiInventoryItem> inventory = Arrays.asList(
                 item("拉", "pull"),
                 item("提", "carry"),
                 item("謎", "riddle")
@@ -108,16 +108,16 @@ public final class SimilarKanjiChoicePlannerTest {
         )).isEmpty());
     }
 
-    private static Records.KanjiInventoryItem item(String kanji, String meaning) {
-        return new Records.KanjiInventoryItem(kanji, meaning, "", "", 1, 1, false, 0L);
+    private static RecordsImportModels.KanjiInventoryItem item(String kanji, String meaning) {
+        return new RecordsImportModels.KanjiInventoryItem(kanji, meaning, "", "", 1, 1, false, 0L);
     }
 
-    private static Records.SimilarKanjiPair pair(String first, String second) {
-        return new Records.SimilarKanjiPair(first, second, "fixture", 0L, 0L);
+    private static RecordsImportModels.SimilarKanjiPair pair(String first, String second) {
+        return new RecordsImportModels.SimilarKanjiPair(first, second, "fixture", 0L, 0L);
     }
 
-    private static Records.SimilarKanjiChoiceCard find(List<Records.SimilarKanjiChoiceCard> cards, String target) {
-        for (Records.SimilarKanjiChoiceCard card : cards) {
+    private static RecordsImportModels.SimilarKanjiChoiceCard find(List<RecordsImportModels.SimilarKanjiChoiceCard> cards, String target) {
+        for (RecordsImportModels.SimilarKanjiChoiceCard card : cards) {
             if (target.equals(card.targetKanji)) {
                 return card;
             }
@@ -125,8 +125,8 @@ public final class SimilarKanjiChoicePlannerTest {
         throw new AssertionError("No card for " + target + " in " + Collections.singletonList(cards.size()));
     }
 
-    private static boolean hasTarget(List<Records.SimilarKanjiChoiceCard> cards, String target) {
-        for (Records.SimilarKanjiChoiceCard card : cards) {
+    private static boolean hasTarget(List<RecordsImportModels.SimilarKanjiChoiceCard> cards, String target) {
+        for (RecordsImportModels.SimilarKanjiChoiceCard card : cards) {
             if (target.equals(card.targetKanji)) {
                 return true;
             }

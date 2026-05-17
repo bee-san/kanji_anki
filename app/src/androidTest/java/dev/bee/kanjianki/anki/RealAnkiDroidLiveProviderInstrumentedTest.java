@@ -1,12 +1,12 @@
 package dev.bee.kanjianki.anki;
 
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 import android.os.Bundle;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import dev.bee.kanjianki.core.Records;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -44,7 +44,7 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
 
     @Test
     public void readsUserKikuCollectionThroughRealAnkiDroid() throws Exception {
-        Records.Settings settings = Records.Settings.kikuDefaults();
+        RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         AnkiDroidGateway gateway = new AnkiDroidGateway(context);
         AnkiDroidGateway.ProviderStatus status = gateway.status();
 
@@ -52,7 +52,7 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
         assertTrue(status.message, status.permissionGranted);
         assertEquals("com.ichi2.anki.flashcards", status.authority);
 
-        Records.CollectionSnapshot snapshot = gateway.readCollection(settings);
+        RecordsSyncModels.CollectionSnapshot snapshot = gateway.readCollection(settings);
         int minimumNotes = liveMinimumNotes();
         assertTrue("Expected the copied user Kiku collection, got " + snapshot.notes.size() + " notes.",
                 snapshot.notes.size() >= minimumNotes);
@@ -74,19 +74,19 @@ public final class RealAnkiDroidLiveProviderInstrumentedTest {
         }
     }
 
-    private void assertAllCardsHaveNotes(Records.CollectionSnapshot snapshot) {
+    private void assertAllCardsHaveNotes(RecordsSyncModels.CollectionSnapshot snapshot) {
         Set<Long> noteIds = new LinkedHashSet<>();
-        for (Records.Note note : snapshot.notes) {
+        for (RecordsSyncModels.Note note : snapshot.notes) {
             noteIds.add(note.noteId);
         }
-        for (Records.Card card : snapshot.cards) {
+        for (RecordsSyncModels.Card card : snapshot.cards) {
             assertTrue("Card " + card.cardId + " points at missing note " + card.noteId, noteIds.contains(card.noteId));
             assertEquals("Kiku Mining template must stay on ord 0.", 0, card.ord);
         }
     }
 
-    private void assertHasRealSchedulerState(Records.CollectionSnapshot snapshot) {
-        for (Records.Card card : snapshot.cards) {
+    private void assertHasRealSchedulerState(RecordsSyncModels.CollectionSnapshot snapshot) {
+        for (RecordsSyncModels.Card card : snapshot.cards) {
             if (card.queue != 0 || card.type != 0 || card.intervalDays > 0 || card.reps > 0 || card.lapses > 0) {
                 return;
             }

@@ -1,7 +1,10 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.Records;
 
 import org.junit.Test;
 
@@ -44,14 +47,14 @@ public final class StudySessionTrackerTest {
     public void targetInitializationUsesRemainingThenTargetAndClampsManualValues() {
         StudySessionTracker tracker = new StudySessionTracker();
 
-        tracker.initializeTarget(new Records.AdaptiveLoadPlan(40, 7, 3, Arrays.asList("裂", "浅"), 1, false, "focus"));
+        tracker.initializeTarget(new RecordsSchedulerModels.AdaptiveLoadPlan(40, 7, 3, Arrays.asList("裂", "浅"), 1, false, "focus"));
         assertEquals(3, tracker.targetCount());
 
-        tracker.initializeTarget(new Records.AdaptiveLoadPlan(40, 10, 9, Collections.singletonList("謎"), 1, false, "ignored"));
+        tracker.initializeTarget(new RecordsSchedulerModels.AdaptiveLoadPlan(40, 10, 9, Collections.singletonList("謎"), 1, false, "ignored"));
         assertEquals(3, tracker.targetCount());
 
         tracker.resetProgress();
-        tracker.initializeTarget(new Records.AdaptiveLoadPlan(40, 7, 0, Collections.singletonList("語"), 1, false, "fallback"));
+        tracker.initializeTarget(new RecordsSchedulerModels.AdaptiveLoadPlan(40, 7, 0, Collections.singletonList("語"), 1, false, "fallback"));
         assertEquals(7, tracker.targetCount());
 
         tracker.setTargetCount(-12);
@@ -62,15 +65,15 @@ public final class StudySessionTrackerTest {
 
     @Test
     public void sessionAndRepairKeysAreStableAndNullSafe() {
-        Records.StudySession session = new Records.StudySession(
-                item("裂", Records.LadderRung.KANJI_MEANING, 0, 0),
+        RecordsSchedulerModels.StudySession session = new RecordsSchedulerModels.StudySession(
+                item("裂", RecordsBase.LadderRung.KANJI_MEANING, 0, 0),
                 row("裂"),
                 "token-1",
                 BridgeScheduler.TASK_KANJI_MEANING,
                 false,
                 "split"
         );
-        Records.SimilarKanjiWritingRepair repair = new Records.SimilarKanjiWritingRepair(
+        RecordsImportModels.SimilarKanjiWritingRepair repair = new RecordsImportModels.SimilarKanjiWritingRepair(
                 42L,
                 "裂",
                 "烈",
@@ -97,9 +100,9 @@ public final class StudySessionTrackerTest {
     @Test
     public void reviewOutcomesTrackMovedForwardAndMissedKanji() {
         StudySessionTracker tracker = new StudySessionTracker();
-        Records.StudyItem before = item("裂", Records.LadderRung.KANJI_MEANING, 0, 0);
-        Records.StudyItem locallyImproved = item("裂", Records.LadderRung.KANJI_MEANING, 1, 0);
-        Records.StudyItem streakImproved = item("裂", Records.LadderRung.KANJI_MEANING, 0, 2);
+        RecordsStudyModels.StudyItem before = item("裂", RecordsBase.LadderRung.KANJI_MEANING, 0, 0);
+        RecordsStudyModels.StudyItem locallyImproved = item("裂", RecordsBase.LadderRung.KANJI_MEANING, 1, 0);
+        RecordsStudyModels.StudyItem streakImproved = item("裂", RecordsBase.LadderRung.KANJI_MEANING, 0, 2);
 
         tracker.recordReviewOutcome(" 裂 ", BridgeScheduler.RATING_AGAIN, before, before);
         assertEquals(0, tracker.movedForwardCount());
@@ -179,8 +182,8 @@ public final class StudySessionTrackerTest {
         assertEquals(15L, task.activeElapsedMillis);
     }
 
-    private static Records.DashboardRow row(String kanji) {
-        return new Records.DashboardRow(
+    private static RecordsImportModels.DashboardRow row(String kanji) {
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 100,
                 "meaning",
@@ -196,8 +199,8 @@ public final class StudySessionTrackerTest {
         );
     }
 
-    private static Records.StudyItem item(String kanji, Records.LadderRung rung, int writingLevel, int realPassStreak) {
-        return new Records.StudyItem(kanji, "review", 100L, 1.0, 5.0, 1, 0, 0, 0, null, 0L)
+    private static RecordsStudyModels.StudyItem item(String kanji, RecordsBase.LadderRung rung, int writingLevel, int realPassStreak) {
+        return new RecordsStudyModels.StudyItem(kanji, "review", 100L, 1.0, 5.0, 1, 0, 0, 0, null, 0L)
                 .copyBuilder()
                 .rung(rung)
                 .writingLevel(writingLevel)

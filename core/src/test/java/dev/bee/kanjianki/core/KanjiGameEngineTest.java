@@ -18,7 +18,7 @@ public final class KanjiGameEngineTest {
 
     @Test
     public void meaningPopBuildsPracticeOnlyMultipleChoiceQuestion() {
-        List<Records.DashboardRow> rows = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
                 row("裂", "split", "れつ"),
                 row("提", "present", "てい"),
                 row("語", "language", "ご")
@@ -42,13 +42,13 @@ public final class KanjiGameEngineTest {
 
     @Test
     public void readingRushTargetsDashboardRowsBeforeInventoryDecoys() {
-        List<Records.DashboardRow> rows = Collections.singletonList(rowWithExample(
+        List<RecordsImportModels.DashboardRow> rows = Collections.singletonList(rowWithExample(
                 "裂",
                 "split",
                 "れつ",
                 example("分裂", "ぶんれつ", "division")
         ));
-        List<Records.KanjiInventoryItem> inventory = Arrays.asList(
+        List<RecordsImportModels.KanjiInventoryItem> inventory = Arrays.asList(
                 inventory("語", "language", "ご"),
                 inventory("提", "present", "てい")
         );
@@ -70,12 +70,12 @@ public final class KanjiGameEngineTest {
 
     @Test
     public void confusableClashUsesSimilarKanjiPairsWithoutStudyState() {
-        List<Records.DashboardRow> rows = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
                 row("裂", "split", "れつ"),
                 row("提", "present", "てい")
         );
-        List<Records.SimilarKanjiPair> pairs = Collections.singletonList(
-                new Records.SimilarKanjiPair("裂", "提", "fixture", 1L, 1L)
+        List<RecordsImportModels.SimilarKanjiPair> pairs = Collections.singletonList(
+                new RecordsImportModels.SimilarKanjiPair("裂", "提", "fixture", 1L, 1L)
         );
 
         KanjiGameEngine.GameQuestion question = engine.nextQuestion(
@@ -108,12 +108,12 @@ public final class KanjiGameEngineTest {
 
     @Test
     public void availableModesOnlyIncludesBuildableGames() {
-        List<Records.DashboardRow> rows = Arrays.asList(
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
                 row("裂", "split", "れつ"),
                 row("提", "present", "てい")
         );
-        List<Records.SimilarKanjiPair> pairs = Collections.singletonList(
-                new Records.SimilarKanjiPair("裂", "提", "fixture", 1L, 1L)
+        List<RecordsImportModels.SimilarKanjiPair> pairs = Collections.singletonList(
+                new RecordsImportModels.SimilarKanjiPair("裂", "提", "fixture", 1L, 1L)
         );
 
         List<KanjiGameEngine.GameMode> modes = engine.availableModes(rows, Collections.emptyList(), pairs);
@@ -123,12 +123,12 @@ public final class KanjiGameEngineTest {
         assertTrue(modes.contains(KanjiGameEngine.GameMode.CONFUSABLE_CLASH));
     }
 
-    private static Records.DashboardRow row(String kanji, String meaning, String reading) {
+    private static RecordsImportModels.DashboardRow row(String kanji, String meaning, String reading) {
         return rowWithExample(kanji, meaning, reading, example(kanji + "語", reading, meaning));
     }
 
-    private static Records.DashboardRow rowWithExample(String kanji, String meaning, String reading, Records.Example example) {
-        return new Records.DashboardRow(
+    private static RecordsImportModels.DashboardRow rowWithExample(String kanji, String meaning, String reading, RecordsImportModels.Example example) {
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 100,
                 meaning,
@@ -144,11 +144,11 @@ public final class KanjiGameEngineTest {
         );
     }
 
-    private static Records.Example example(String expression, String reading, String meaning) {
-        return new Records.Example("active", 1L, 2L, expression, reading, meaning, "", false, 0);
+    private static RecordsImportModels.Example example(String expression, String reading, String meaning) {
+        return new RecordsImportModels.Example("active", 1L, 2L, expression, reading, meaning, "", false, 0);
     }
 
-    private static Records.KanjiInventoryItem inventory(String kanji, String meaning, String reading) {
-        return new Records.KanjiInventoryItem(kanji, meaning, reading, kanji, 1, 1, false, 1L);
+    private static RecordsImportModels.KanjiInventoryItem inventory(String kanji, String meaning, String reading) {
+        return new RecordsImportModels.KanjiInventoryItem(kanji, meaning, reading, kanji, 1, 1, false, 1L);
     }
 }

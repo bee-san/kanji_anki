@@ -1,5 +1,7 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +13,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
@@ -102,14 +103,14 @@ public final class MainActivityGamesInstrumentedTest {
     private void seedGameRows() {
         try (LocalStore store = new LocalStore(context)) {
             store.saveSuccessfulSync(
-                    new Records.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
+                    new RecordsSyncModels.CollectionSnapshot(Collections.emptyList(), Collections.emptyList()),
                     Collections.emptyList(),
                     Arrays.asList(
                             dashboardRow("裂", "split", "れつ"),
                             dashboardRow("提", "present", "てい"),
                             dashboardRow("語", "language", "ご")
                     ),
-                    Records.Settings.kikuDefaults(),
+                    RecordsSyncModels.Settings.kikuDefaults(),
                     1L,
                     2L,
                     null
@@ -117,8 +118,8 @@ public final class MainActivityGamesInstrumentedTest {
         }
     }
 
-    private static Records.DashboardRow dashboardRow(String kanji, String meaning, String reading) {
-        return new Records.DashboardRow(
+    private static RecordsImportModels.DashboardRow dashboardRow(String kanji, String meaning, String reading) {
+        return new RecordsImportModels.DashboardRow(
                 kanji,
                 100,
                 meaning,
@@ -130,7 +131,7 @@ public final class MainActivityGamesInstrumentedTest {
                 1,
                 0,
                 0,
-                Collections.singletonList(new Records.Example("active", 1L, 1L, kanji + "語", reading, meaning, "", false, 1))
+                Collections.singletonList(new RecordsImportModels.Example("active", 1L, 1L, kanji + "語", reading, meaning, "", false, 1))
         );
     }
 

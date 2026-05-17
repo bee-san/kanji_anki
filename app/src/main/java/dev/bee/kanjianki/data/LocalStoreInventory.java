@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.RecordsImportModels;
+import dev.bee.kanjianki.core.RecordsStudyModels;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -7,7 +9,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
@@ -26,13 +27,13 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
         super(context);
     }
 
-    public List<Records.DashboardRow> dashboardRows() {
+    public List<RecordsImportModels.DashboardRow> dashboardRows() {
         SQLiteDatabase db = getReadableDatabase();
-        List<Records.DashboardRow> rows = new ArrayList<>();
+        List<RecordsImportModels.DashboardRow> rows = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, "weakness_score DESC, suspended_example_count DESC, kanji ASC", "120")) {
             while (cursor.moveToNext()) {
                 String kanji = string(cursor, COLUMN_KANJI);
-                rows.add(new Records.DashboardRow(
+                rows.add(new RecordsImportModels.DashboardRow(
                         kanji,
                         nullableInt(cursor, COLUMN_JITEN_RANK),
                         string(cursor, COLUMN_PRIMARY_MEANING),
@@ -51,13 +52,13 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
         return rows;
     }
 
-    public List<Records.DashboardRow> activeDashboardRows() {
+    public List<RecordsImportModels.DashboardRow> activeDashboardRows() {
         Set<String> suspended = locallySuspendedKanji();
         if (suspended.isEmpty()) {
             return dashboardRows();
         }
-        List<Records.DashboardRow> out = new ArrayList<>();
-        for (Records.DashboardRow row : dashboardRows()) {
+        List<RecordsImportModels.DashboardRow> out = new ArrayList<>();
+        for (RecordsImportModels.DashboardRow row : dashboardRows()) {
             if (!suspended.contains(row.kanji)) {
                 out.add(row);
             }
@@ -65,18 +66,18 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
         return out;
     }
 
-    public Records.DashboardRow rowForKanji(String kanji) {
+    public RecordsImportModels.DashboardRow rowForKanji(String kanji) {
         return readDashboardRow(getReadableDatabase(), kanji);
     }
 
-    public Records.KanjiInventoryItem inventoryItemForKanji(String kanji) {
+    public RecordsImportModels.KanjiInventoryItem inventoryItemForKanji(String kanji) {
         return readInventoryItem(getReadableDatabase(), kanji);
     }
 
-    public List<Records.KanjiInventoryItem> searchKanjiInventory(String query) {
+    public List<RecordsImportModels.KanjiInventoryItem> searchKanjiInventory(String query) {
         SQLiteDatabase db = getReadableDatabase();
         String normalized = TextUtil.normalizeJapanese(query == null ? "" : query).toLowerCase(Locale.ROOT);
-        List<Records.KanjiInventoryItem> out = new ArrayList<>();
+        List<RecordsImportModels.KanjiInventoryItem> out = new ArrayList<>();
         String selection = null;
         String[] args = null;
         if (!normalized.isEmpty()) {
@@ -138,12 +139,12 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
         }
     }
 
-    public Records.KanjiRecoveryTimeline timelineForKanji(String kanji) {
+    public RecordsStudyModels.KanjiRecoveryTimeline timelineForKanji(String kanji) {
         SQLiteDatabase db = getReadableDatabase();
-        Records.KanjiInventoryItem inventoryItem = readInventoryItem(db, kanji);
-        Records.DashboardRow row = readDashboardRow(db, kanji);
-        Records.StudyItem item = studyItemForKanji(db, kanji);
-        List<Records.KanjiTimelineEvent> events = new ArrayList<>();
+        RecordsImportModels.KanjiInventoryItem inventoryItem = readInventoryItem(db, kanji);
+        RecordsImportModels.DashboardRow row = readDashboardRow(db, kanji);
+        RecordsStudyModels.StudyItem item = studyItemForKanji(db, kanji);
+        List<RecordsImportModels.KanjiTimelineEvent> events = new ArrayList<>();
         Cursor cursor = db.query(
                 TABLE_KANJI_TIMELINE_EVENTS,
                 null,
@@ -162,12 +163,12 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
             cursor.close();
         }
         Collections.reverse(events);
-        return new Records.KanjiRecoveryTimeline(inventoryItem, row, item, events);
+        return new RecordsStudyModels.KanjiRecoveryTimeline(inventoryItem, row, item, events);
     }
 
-    public List<Records.StudyItem> studyItems() {
+    public List<RecordsStudyModels.StudyItem> studyItems() {
         SQLiteDatabase db = getReadableDatabase();
-        List<Records.StudyItem> items = new ArrayList<>();
+        List<RecordsStudyModels.StudyItem> items = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_STUDY_ITEMS, null, null, null, null, null, "due_at ASC")) {
             while (cursor.moveToNext()) {
                 items.add(readStudyItem(cursor));
@@ -175,7 +176,7 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
         }
         Set<String> withSimilar = kanjiWithSimilarNeighbors(db);
         for (int i = 0; i < items.size(); i++) {
-            Records.StudyItem current = items.get(i);
+            RecordsStudyModels.StudyItem current = items.get(i);
             boolean hasSimilar = withSimilar.contains(current.kanji);
             if (hasSimilar != current.hasSimilarKanji) {
                 items.set(i, current.withHasSimilarKanji(hasSimilar));
@@ -188,7 +189,7 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
      * Returns the set of kanji that have at least one entry in the
      * {@code similar_kanji_pairs} table, either as kanji_a or kanji_b.
      * This set is the data source for
-     * {@link Records.StudyItem#hasSimilarKanji}: when a study item's kanji
+     * {@link RecordsStudyModels.StudyItem#hasSimilarKanji}: when a study item's kanji
      * is present here, the {@code similar_kanji} rung is included in the
      * ladder for that card.
      */
@@ -210,7 +211,7 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
     }
 
     /**
-     * Re-applies the {@link Records.StudyItem#hasSimilarKanji} predicate to
+     * Re-applies the {@link RecordsStudyModels.StudyItem#hasSimilarKanji} predicate to
      * each item in the given list using the current
      * {@code similar_kanji_pairs} contents. Call this after
      * {@link BridgeScheduler#seedQueue} produces new items but before
@@ -218,20 +219,20 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
      * inclusion decision is consistent with the just-rebuilt similarity
      * data, without waiting for a follow-up DB reload.
      */
-    public List<Records.StudyItem> annotateSimilarKanjiAvailability(List<Records.StudyItem> items) {
+    public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
         if (items == null || items.isEmpty()) {
             return items == null ? Collections.emptyList() : items;
         }
         Set<String> withSimilar = kanjiWithSimilarNeighbors(getReadableDatabase());
-        List<Records.StudyItem> out = new ArrayList<>(items.size());
-        for (Records.StudyItem item : items) {
+        List<RecordsStudyModels.StudyItem> out = new ArrayList<>(items.size());
+        for (RecordsStudyModels.StudyItem item : items) {
             boolean hasSimilar = withSimilar.contains(item.kanji);
             out.add(hasSimilar == item.hasSimilarKanji ? item : item.withHasSimilarKanji(hasSimilar));
         }
         return out;
     }
 
-    public List<Records.SuspendedImport> suspendedImports() {
+    public List<RecordsImportModels.SuspendedImport> suspendedImports() {
         SQLiteDatabase db = getReadableDatabase();
         Map<String, MutableSuspendedImport> imports = new LinkedHashMap<>();
         try (Cursor cursor = db.query(TABLE_SUSPENDED_IMPORTS, null, null, null, null, null, "jiten_rank ASC, kanji ASC")) {
@@ -252,7 +253,7 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
                 if (imported == null) {
                     continue;
                 }
-                imported.sources.add(new Records.SuspendedSource(
+                imported.sources.add(new RecordsImportModels.SuspendedSource(
                         imported.kanji,
                         longValue(sources, COLUMN_CARD_ID),
                         longValue(sources, COLUMN_NOTE_ID),
@@ -264,7 +265,7 @@ abstract class LocalStoreInventory extends LocalStoreSimilarKanji {
             }
         }
 
-        List<Records.SuspendedImport> out = new ArrayList<>();
+        List<RecordsImportModels.SuspendedImport> out = new ArrayList<>();
         for (MutableSuspendedImport imported : imports.values()) {
             out.add(imported.build());
         }

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data;
 
-import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSyncModels;
 
 import org.junit.Test;
 
@@ -73,13 +74,13 @@ public final class StudyStatsStoreOutcomeMetricsTest {
         StudyStatsStore.KaniOutcomeStats stats = StudyStatsStore.calculateKaniOutcomeStats(
                 Collections.emptyList(),
                 Arrays.asList(
-                        item("review", Records.LadderRung.WRITE_KANJI, Records.SchedulerPhase.REVIEW, 0, 2, 0),
-                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 2, 0, 22),
-                        item("review", Records.LadderRung.SIMILAR_KANJI, Records.SchedulerPhase.REVIEW, 0, 1),
-                        item("review", Records.LadderRung.KANJI_MEANING, Records.SchedulerPhase.REVIEW, 1, 0, 21),
-                        item("review", Records.LadderRung.FONT_MEANING, Records.SchedulerPhase.NEW_LEARNING, 8, 8, 40),
-                        item("review", Records.LadderRung.WORD_READING, Records.SchedulerPhase.RELEARNING, 8, 8, 40),
-                        item("retired", Records.LadderRung.WORD_READING, Records.SchedulerPhase.REVIEW, 9, 9, 40)
+                        item("review", RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 2, 0),
+                        item("review", RecordsBase.LadderRung.TYPE_MEANING, RecordsBase.SchedulerPhase.REVIEW, 2, 0, 22),
+                        item("review", RecordsBase.LadderRung.SIMILAR_KANJI, RecordsBase.SchedulerPhase.REVIEW, 0, 1),
+                        item("review", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.REVIEW, 1, 0, 21),
+                        item("review", RecordsBase.LadderRung.FONT_MEANING, RecordsBase.SchedulerPhase.NEW_LEARNING, 8, 8, 40),
+                        item("review", RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.RELEARNING, 8, 8, 40),
+                        item("retired", RecordsBase.LadderRung.WORD_READING, RecordsBase.SchedulerPhase.REVIEW, 9, 9, 40)
                 ),
                 21,
                 2
@@ -88,12 +89,12 @@ public final class StudyStatsStoreOutcomeMetricsTest {
         assertEquals(6, stats.ladderHealth.totalActiveItems);
         assertEquals(21, stats.ladderHealth.ladderPromotionIntervalDays);
         assertEquals(2, stats.ladderHealth.ladderDemotionFailStreak);
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.WRITE_KANJI));
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.TYPE_MEANING));
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.SIMILAR_KANJI));
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.KANJI_MEANING));
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.FONT_MEANING));
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.WORD_READING));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.WRITE_KANJI));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.TYPE_MEANING));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.KANJI_MEANING));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.FONT_MEANING));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.WORD_READING));
         assertEquals(1, stats.ladderHealth.promotionReadyCount);
         assertEquals(2, stats.ladderHealth.demotionRiskCount);
         assertEquals(1, stats.ladderHealth.demotionReadyCount);
@@ -106,7 +107,7 @@ public final class StudyStatsStoreOutcomeMetricsTest {
                 Arrays.asList(
                         null,
                         item(null, null, null, -4, -8),
-                        item("review", Records.LadderRung.TYPE_MEANING, Records.SchedulerPhase.REVIEW, 1, 1, 2)
+                        item("review", RecordsBase.LadderRung.TYPE_MEANING, RecordsBase.SchedulerPhase.REVIEW, 1, 1, 2)
                 ),
                 0,
                 0
@@ -115,8 +116,8 @@ public final class StudyStatsStoreOutcomeMetricsTest {
         assertEquals(1, stats.ladderHealth.ladderPromotionIntervalDays);
         assertEquals(1, stats.ladderHealth.ladderDemotionFailStreak);
         assertEquals(2, stats.ladderHealth.totalActiveItems);
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.KANJI_MEANING));
-        assertEquals(1, stats.ladderHealth.countFor(Records.LadderRung.TYPE_MEANING));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.KANJI_MEANING));
+        assertEquals(1, stats.ladderHealth.countFor(RecordsBase.LadderRung.TYPE_MEANING));
         assertEquals(1, stats.ladderHealth.promotionReadyCount);
         assertEquals(1, stats.ladderHealth.demotionRiskCount);
         assertEquals(1, stats.ladderHealth.demotionReadyCount);
@@ -138,7 +139,7 @@ public final class StudyStatsStoreOutcomeMetricsTest {
         StudyStatsStore.KaniOutcomeStats nullBacked = new StudyStatsStore.KaniOutcomeStats(null, null, null);
         assertEquals(0, nullBacked.weakKanjiImproved.examples.size());
         assertEquals(0, nullBacked.matureSupportGained.examples.size());
-        assertEquals(Records.Settings.kikuDefaults().realDueReviewsToMove, nullBacked.ladderHealth.realDueReviewsToMove);
+        assertEquals(RecordsSyncModels.Settings.kikuDefaults().realDueReviewsToMove, nullBacked.ladderHealth.realDueReviewsToMove);
 
         StudyStatsStore.WeakKanjiImprovedMetric weak = new StudyStatsStore.WeakKanjiImprovedMetric(-1, -2.0, -3.0, null);
         assertEquals(0, weak.improvedCount);
@@ -161,7 +162,7 @@ public final class StudyStatsStoreOutcomeMetricsTest {
         StudyStatsStore.KaniOutcomeStats legacyOutcome =
                 new StudyStatsStore.KaniOutcomeStats(weak, legacySupport);
         assertEquals(2, legacyOutcome.matureSupportGained.matureSupportGained);
-        assertEquals(Records.Settings.kikuDefaults().realDueReviewsToMove, legacyOutcome.ladderHealth.realDueReviewsToMove);
+        assertEquals(RecordsSyncModels.Settings.kikuDefaults().realDueReviewsToMove, legacyOutcome.ladderHealth.realDueReviewsToMove);
     }
 
     @Test
@@ -189,7 +190,7 @@ public final class StudyStatsStoreOutcomeMetricsTest {
         assertEquals(0, ladder.promotionReadyCount);
         assertEquals(0, ladder.demotionRiskCount);
         assertEquals(0, ladder.demotionReadyCount);
-        assertEquals(0, ladder.countFor(Records.LadderRung.WRITE_KANJI));
+        assertEquals(0, ladder.countFor(RecordsBase.LadderRung.WRITE_KANJI));
 
         StudyStatsStore.RecentMistake mistake = new StudyStatsStore.RecentMistake(null, null, 123L);
         assertEquals("", mistake.kanji);
@@ -211,8 +212,8 @@ public final class StudyStatsStoreOutcomeMetricsTest {
 
     private static StudyStatsStore.LadderItemEvidence item(
             String state,
-            Records.LadderRung rung,
-            Records.SchedulerPhase phase,
+            RecordsBase.LadderRung rung,
+            RecordsBase.SchedulerPhase phase,
             int realPassStreak,
             int realAgainStreak
     ) {
@@ -221,8 +222,8 @@ public final class StudyStatsStoreOutcomeMetricsTest {
 
     private static StudyStatsStore.LadderItemEvidence item(
             String state,
-            Records.LadderRung rung,
-            Records.SchedulerPhase phase,
+            RecordsBase.LadderRung rung,
+            RecordsBase.SchedulerPhase phase,
             int realPassStreak,
             int realAgainStreak,
             int matureIntervalDays

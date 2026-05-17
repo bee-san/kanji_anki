@@ -14,7 +14,7 @@ public final class KanjiImportSelector {
     private final int maxRank;
 
     public KanjiImportSelector(JitenKanjiRanks ranks, int cutoff) {
-        this(ranks, Records.DEFAULT_SUSPENDED_RANK_MIN, cutoff);
+        this(ranks, RecordsBase.DEFAULT_SUSPENDED_RANK_MIN, cutoff);
     }
 
     public KanjiImportSelector(JitenKanjiRanks ranks, int minRank, int maxRank) {
@@ -30,14 +30,14 @@ public final class KanjiImportSelector {
         this.maxRank = normalizedMax;
     }
 
-    public List<Records.SuspendedImport> importFrom(Records.CollectionSnapshot snapshot, Records.Settings settings) {
+    public List<RecordsImportModels.SuspendedImport> importFrom(RecordsSyncModels.CollectionSnapshot snapshot, RecordsSyncModels.Settings settings) {
         if (snapshot == null || settings == null || !settings.hasImportSourceEnabled()) {
             return new ArrayList<>();
         }
-        Map<Long, Records.Note> notesById = snapshot.notesById();
-        Map<String, Map<Long, Records.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
-        for (Records.Card card : snapshot.cards) {
-            Records.Note note = notesById.get(card.noteId);
+        Map<Long, RecordsSyncModels.Note> notesById = snapshot.notesById();
+        Map<String, Map<Long, RecordsImportModels.SuspendedSource>> sourcesByKanji = new LinkedHashMap<>();
+        for (RecordsSyncModels.Card card : snapshot.cards) {
+            RecordsSyncModels.Note note = notesById.get(card.noteId);
             if (note != null) {
                 SourceMatch match = sourceMatch(card, note, settings);
                 if (match.matches()) {
@@ -46,13 +46,13 @@ public final class KanjiImportSelector {
             }
         }
 
-        List<Records.SuspendedImport> results = new ArrayList<>();
-        for (Map.Entry<String, Map<Long, Records.SuspendedSource>> entry : sourcesByKanji.entrySet()) {
+        List<RecordsImportModels.SuspendedImport> results = new ArrayList<>();
+        for (Map.Entry<String, Map<Long, RecordsImportModels.SuspendedSource>> entry : sourcesByKanji.entrySet()) {
             if (entry.getValue().size() < settings.importMinMatchingCardsPerKanji) {
                 continue;
             }
             Integer rank = ranks.rankOf(entry.getKey());
-            results.add(new Records.SuspendedImport(
+            results.add(new RecordsImportModels.SuspendedImport(
                     entry.getKey(),
                     rank,
                     true,
@@ -61,12 +61,12 @@ public final class KanjiImportSelector {
             ));
         }
         results.sort(Comparator
-                .comparingInt((Records.SuspendedImport item) -> item.jitenRank)
+                .comparingInt((RecordsImportModels.SuspendedImport item) -> item.jitenRank)
                 .thenComparing(item -> item.kanji));
         return results;
     }
 
-    private SourceMatch sourceMatch(Records.Card card, Records.Note note, Records.Settings settings) {
+    private SourceMatch sourceMatch(RecordsSyncModels.Card card, RecordsSyncModels.Note note, RecordsSyncModels.Settings settings) {
         boolean activeMatch = settings.importActiveCards && !card.suspended;
         boolean suspendedMatch = settings.importSuspendedCards && card.suspended;
         boolean taggedMatch = settings.importTaggedCardsEnabled() && hasMatchingTag(note, settings.importTags);
@@ -75,7 +75,7 @@ public final class KanjiImportSelector {
         return new SourceMatch(activeMatch, suspendedMatch, taggedMatch, weakMatch, browserQueryMatch);
     }
 
-    private boolean hasMatchingTag(Records.Note note, List<String> importTags) {
+    private boolean hasMatchingTag(RecordsSyncModels.Note note, List<String> importTags) {
         if (note.tags.isEmpty()) {
             return false;
         }
@@ -88,16 +88,16 @@ public final class KanjiImportSelector {
         return false;
     }
 
-    private boolean weakCard(Records.Card card, Records.Settings settings) {
+    private boolean weakCard(RecordsSyncModels.Card card, RecordsSyncModels.Settings settings) {
         return (card.fsrsDifficulty != null && card.fsrsDifficulty >= settings.importWeakFsrsDifficultyThreshold)
                 || card.lapses >= settings.importWeakLapsesThreshold;
     }
 
     private void addSources(
-            Map<String, Map<Long, Records.SuspendedSource>> sourcesByKanji,
-            Records.Card card,
-            Records.Note note,
-            Records.Settings settings,
+            Map<String, Map<Long, RecordsImportModels.SuspendedSource>> sourcesByKanji,
+            RecordsSyncModels.Card card,
+            RecordsSyncModels.Note note,
+            RecordsSyncModels.Settings settings,
             SourceMatch match
     ) {
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
@@ -110,23 +110,23 @@ public final class KanjiImportSelector {
         }
     }
 
-    private Records.SuspendedSource sourceFromCard(
+    private RecordsImportModels.SuspendedSource sourceFromCard(
             String kanji,
-            Records.Card card,
-            Records.Note note,
+            RecordsSyncModels.Card card,
+            RecordsSyncModels.Note note,
             String expression,
-            Records.Settings settings,
+            RecordsSyncModels.Settings settings,
             SourceMatch match
     ) {
         String sourceType = resolveSourceType(card, match);
-        return new Records.SuspendedSource(
+        return new RecordsImportModels.SuspendedSource(
                 kanji,
                 card.cardId,
                 note.noteId,
                 expression,
                 TextUtil.normalizeJapanese(note.reading(settings)),
                 TextUtil.firstMeaningLine(note.meaning(settings)),
-                Records.SuspendedSourceDetails.builder(TextUtil.normalizeJapanese(note.sentence(settings)))
+                RecordsImportModels.SuspendedSourceDetails.builder(TextUtil.normalizeJapanese(note.sentence(settings)))
                         .sourceType(sourceType)
                         .suspended(card.suspended)
                         .forcePractice(match.forcePractice())
@@ -138,14 +138,14 @@ public final class KanjiImportSelector {
         );
     }
 
-    private static String resolveSourceType(Records.Card card, SourceMatch match) {
+    private static String resolveSourceType(RecordsSyncModels.Card card, SourceMatch match) {
         if (card.suspended) {
-            return Records.SOURCE_SUSPENDED;
+            return RecordsBase.SOURCE_SUSPENDED;
         }
         if (match.browserQuery()) {
-            return Records.SOURCE_BROWSER_QUERY;
+            return RecordsBase.SOURCE_BROWSER_QUERY;
         }
-        return Records.SOURCE_ACTIVE;
+        return RecordsBase.SOURCE_ACTIVE;
     }
 
     private record SourceMatch(boolean active, boolean suspended, boolean tagged, boolean weak, boolean browserQuery) {
@@ -157,22 +157,22 @@ public final class KanjiImportSelector {
             return suspended || tagged || weak || browserQuery;
         }
 
-        private List<String> ruleTypes(Records.Card card) {
+        private List<String> ruleTypes(RecordsSyncModels.Card card) {
             List<String> rules = new ArrayList<>();
             if (active && !card.suspended) {
-                rules.add(Records.SOURCE_ACTIVE);
+                rules.add(RecordsBase.SOURCE_ACTIVE);
             }
             if (suspended) {
-                rules.add(Records.SOURCE_SUSPENDED);
+                rules.add(RecordsBase.SOURCE_SUSPENDED);
             }
             if (tagged) {
-                rules.add(Records.SOURCE_TAGGED);
+                rules.add(RecordsBase.SOURCE_TAGGED);
             }
             if (weak) {
-                rules.add(Records.SOURCE_WEAK);
+                rules.add(RecordsBase.SOURCE_WEAK);
             }
             if (browserQuery) {
-                rules.add(Records.SOURCE_BROWSER_QUERY);
+                rules.add(RecordsBase.SOURCE_BROWSER_QUERY);
             }
             return rules;
         }

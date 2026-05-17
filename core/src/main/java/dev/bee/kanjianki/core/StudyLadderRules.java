@@ -19,41 +19,41 @@ public final class StudyLadderRules {
     private StudyLadderRules() {
     }
 
-    public static Records.LadderRung promoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
-        return promoteRung(current, hasSimilarKanji, Records.StudyLadderSettings.defaults());
+    public static RecordsBase.LadderRung promoteRung(RecordsBase.LadderRung current, boolean hasSimilarKanji) {
+        return promoteRung(current, hasSimilarKanji, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public static Records.LadderRung promoteRung(
-            Records.LadderRung current,
+    public static RecordsBase.LadderRung promoteRung(
+            RecordsBase.LadderRung current,
             boolean hasSimilarKanji,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return safeLadder(ladder).nextRung(current, hasSimilarKanji);
     }
 
-    public static Records.LadderRung demoteRung(Records.LadderRung current, boolean hasSimilarKanji) {
-        return demoteRung(current, hasSimilarKanji, Records.StudyLadderSettings.defaults());
+    public static RecordsBase.LadderRung demoteRung(RecordsBase.LadderRung current, boolean hasSimilarKanji) {
+        return demoteRung(current, hasSimilarKanji, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public static Records.LadderRung demoteRung(
-            Records.LadderRung current,
+    public static RecordsBase.LadderRung demoteRung(
+            RecordsBase.LadderRung current,
             boolean hasSimilarKanji,
-            Records.StudyLadderSettings ladder
+            RecordsBase.StudyLadderSettings ladder
     ) {
         return safeLadder(ladder).previousRung(current, hasSimilarKanji);
     }
 
-    public static List<Records.LadderRung> rungsForItem(Records.StudyItem item) {
-        return rungsForItem(item, Records.StudyLadderSettings.defaults());
+    public static List<RecordsBase.LadderRung> rungsForItem(RecordsStudyModels.StudyItem item) {
+        return rungsForItem(item, RecordsBase.StudyLadderSettings.defaults());
     }
 
-    public static List<Records.LadderRung> rungsForItem(
-            Records.StudyItem item,
-            Records.StudyLadderSettings ladder
+    public static List<RecordsBase.LadderRung> rungsForItem(
+            RecordsStudyModels.StudyItem item,
+            RecordsBase.StudyLadderSettings ladder
     ) {
-        List<Records.LadderRung> out = new ArrayList<>();
-        Records.StudyLadderSettings safeLadder = safeLadder(ladder);
-        for (Records.LadderRung rung : safeLadder.orderedRungs) {
+        List<RecordsBase.LadderRung> out = new ArrayList<>();
+        RecordsBase.StudyLadderSettings safeLadder = safeLadder(ladder);
+        for (RecordsBase.LadderRung rung : safeLadder.orderedRungs) {
             if (safeLadder.isValidForItem(rung, item.hasSimilarKanji)) {
                 out.add(rung);
             }
@@ -61,12 +61,12 @@ public final class StudyLadderRules {
         return Collections.unmodifiableList(out);
     }
 
-    public static Records.StudyLadderSettings safeLadder(Records.StudyLadderSettings ladder) {
-        return ladder == null ? Records.StudyLadderSettings.defaults() : ladder;
+    public static RecordsBase.StudyLadderSettings safeLadder(RecordsBase.StudyLadderSettings ladder) {
+        return ladder == null ? RecordsBase.StudyLadderSettings.defaults() : ladder;
     }
 
-    static Records.StudyItem alignRungToLadder(Records.StudyItem item, Records.StudyLadderSettings ladder) {
-        Records.LadderRung effective = safeLadder(ladder).effectiveRung(item.rung, item.hasSimilarKanji);
+    static RecordsStudyModels.StudyItem alignRungToLadder(RecordsStudyModels.StudyItem item, RecordsBase.StudyLadderSettings ladder) {
+        RecordsBase.LadderRung effective = safeLadder(ladder).effectiveRung(item.rung, item.hasSimilarKanji);
         return effective == item.rung ? item : item.withRung(effective);
     }
 
@@ -81,7 +81,7 @@ public final class StudyLadderRules {
         return Math.min(studyAheadMillis, DAY);
     }
 
-    static int rungToLegacyStage(Records.LadderRung rung) {
+    static int rungToLegacyStage(RecordsBase.LadderRung rung) {
         return switch (rung) {
             case TYPE_MEANING -> MIN_RECOGNITION_STAGE;
             case FONT_MEANING -> 1;
