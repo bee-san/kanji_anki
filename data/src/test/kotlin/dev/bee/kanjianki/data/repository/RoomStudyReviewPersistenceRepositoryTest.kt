@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data.repository
 
 import dev.bee.kanjianki.data.history.KanjiTimelineEventDao
 import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
+import dev.bee.kanjianki.data.StudyQueueMutationGate
 import dev.bee.kanjianki.data.history.KanjiTimelineEventEntity
 import dev.bee.kanjianki.data.inventory.DashboardRowDao
 import dev.bee.kanjianki.data.inventory.DashboardRowEntity
@@ -47,6 +48,7 @@ class RoomStudyReviewPersistenceRepositoryTest {
             dashboardRows = FakeDashboardRowDao(row("裂")),
             kanjiExamples = FakeKanjiExampleDao(listOf(example("裂", sourceType = "active"))),
             ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            studyQueueMutationGate = RecordingStudyQueueMutationGate(studyItems.events),
             runInTransaction = { block ->
                 studyItems.events += "transaction"
                 block()
@@ -66,7 +68,7 @@ class RoomStudyReviewPersistenceRepositoryTest {
         )
 
         assertTrue(saved)
-        assertEquals(listOf("transaction", "upsert"), studyItems.events)
+        assertEquals(listOf("gate", "transaction", "upsert"), studyItems.events)
         assertEquals(2, studyItems.items.single().totalReviews)
         assertEquals(123_456L, studyItems.items.single().dueAt)
         assertNull(studyItems.items.single().activeToken)
@@ -103,6 +105,7 @@ class RoomStudyReviewPersistenceRepositoryTest {
             dashboardRows = FakeDashboardRowDao(row("裂")),
             kanjiExamples = FakeKanjiExampleDao(listOf(example("裂"))),
             ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
             runInTransaction = { block -> block() },
         )
 
@@ -121,6 +124,37 @@ class RoomStudyReviewPersistenceRepositoryTest {
     }
 
     @Test
+    fun staleReviewTokenDoesNotOverwriteCurrentStudyItem() = runBlocking {
+        val studyItems = FakeStudyItemDao(listOf(entity("裂", activeToken = "newer-token")))
+        val reviewLogs = FakeReviewLogDao()
+        val timelineEvents = FakeKanjiTimelineEventDao()
+        val repository = RoomStudyReviewPersistenceRepository(
+            studyItems = studyItems,
+            reviewLogs = reviewLogs,
+            studyTaskLogs = FakeStudyTaskLogDao(),
+            timelineEvents = timelineEvents,
+            dashboardRows = FakeDashboardRowDao(row("裂")),
+            kanjiExamples = FakeKanjiExampleDao(listOf(example("裂"))),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
+            runInTransaction = { block -> block() },
+        )
+
+        val saved = repository.saveAppliedReview(
+            input(
+                before = item(memoryReviewCount = 1),
+                after = item(totalReviews = 2, memoryReviewCount = 2),
+            ),
+        )
+
+        assertFalse(saved)
+        assertEquals("newer-token", studyItems.items.single().activeToken)
+        assertEquals(1, studyItems.items.single().totalReviews)
+        assertEquals(emptyList<ReviewLogEntity>(), reviewLogs.logs)
+        assertEquals(emptyList<KanjiTimelineEventEntity>(), timelineEvents.events)
+    }
+
+    @Test
     fun missingStudyItemDoesNotWriteReviewAuditRows() = runBlocking {
         val reviewLogs = FakeReviewLogDao()
         val timelineEvents = FakeKanjiTimelineEventDao()
@@ -132,6 +166,7 @@ class RoomStudyReviewPersistenceRepositoryTest {
             dashboardRows = FakeDashboardRowDao(row("裂")),
             kanjiExamples = FakeKanjiExampleDao(listOf(example("裂"))),
             ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
             runInTransaction = { block -> block() },
         )
 
@@ -160,6 +195,7 @@ class RoomStudyReviewPersistenceRepositoryTest {
             dashboardRows = FakeDashboardRowDao(row("裂")),
             kanjiExamples = FakeKanjiExampleDao(listOf(example("裂"))),
             ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.DISABLED,
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
             runInTransaction = { block -> block() },
         )
 
@@ -174,6 +210,19 @@ class RoomStudyReviewPersistenceRepositoryTest {
         assertEquals(1, studyItems.items.single().totalReviews)
         assertEquals(emptyList<ReviewLogEntity>(), reviewLogs.logs)
         assertEquals(emptyList<KanjiTimelineEventEntity>(), timelineEvents.events)
+    }
+
+    private object PassThroughStudyQueueMutationGate : StudyQueueMutationGate {
+        override suspend fun <T> mutate(block: suspend () -> T): T = block()
+    }
+
+    private class RecordingStudyQueueMutationGate(
+        private val events: MutableList<String>,
+    ) : StudyQueueMutationGate {
+        override suspend fun <T> mutate(block: suspend () -> T): T {
+            events += "gate"
+            return block()
+        }
     }
 
     private class FakeStudyItemDao(
@@ -345,7 +394,10 @@ class RoomStudyReviewPersistenceRepositoryTest {
         ),
     )
 
-    private fun entity(kanji: String): StudyItemEntity = StudyItemEntity(
+    private fun entity(
+        kanji: String,
+        activeToken: String? = "review-token",
+    ): StudyItemEntity = StudyItemEntity(
         kanji = kanji,
         state = "review",
         dueAt = 10_000L,
@@ -375,7 +427,7 @@ class RoomStudyReviewPersistenceRepositoryTest {
         realAgainStreak = 0,
         lastRealReviewDueAt = 0L,
         similarKanjiMemory = "",
-        activeToken = "review-token",
+        activeToken = activeToken,
         createdAt = 1L,
     )
 

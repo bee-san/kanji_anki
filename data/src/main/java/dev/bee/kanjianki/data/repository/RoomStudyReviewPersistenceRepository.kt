@@ -2,7 +2,9 @@ package dev.bee.kanjianki.data.repository
 
 import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
+import dev.bee.kanjianki.data.RoomStudyQueueMutationGate
 import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
+import dev.bee.kanjianki.data.StudyQueueMutationGate
 import dev.bee.kanjianki.data.history.KanjiTimelineEventDao
 import dev.bee.kanjianki.data.history.KanjiTimelineEventEntity
 import dev.bee.kanjianki.data.inventory.DashboardRowDao
@@ -11,6 +13,7 @@ import dev.bee.kanjianki.data.inventory.KanjiExampleEntity
 import dev.bee.kanjianki.data.study.ReviewLogDao
 import dev.bee.kanjianki.data.study.ReviewLogEntity
 import dev.bee.kanjianki.data.study.StudyItemDao
+import dev.bee.kanjianki.data.study.StudyItemEntity
 import dev.bee.kanjianki.data.study.StudyTaskLogDao
 import dev.bee.kanjianki.data.study.StudyTaskLogEntity
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
@@ -29,11 +32,22 @@ class RoomStudyReviewPersistenceRepository internal constructor(
     private val dashboardRows: DashboardRowDao,
     private val kanjiExamples: KanjiExampleDao,
     private val ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
+    private val studyQueueMutationGate: StudyQueueMutationGate,
     private val runInTransaction: suspend (suspend () -> Boolean) -> Boolean,
 ) : StudyReviewPersistenceRepository {
     constructor(
         database: KaniRoomDatabase,
         ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
+    ) : this(
+        database = database,
+        ownershipPolicy = ownershipPolicy,
+        studyQueueMutationGate = RoomStudyQueueMutationGate(),
+    )
+
+    constructor(
+        database: KaniRoomDatabase,
+        ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
+        studyQueueMutationGate: StudyQueueMutationGate,
     ) : this(
         studyItems = database.studyItemDao(),
         reviewLogs = database.reviewLogDao(),
@@ -42,27 +56,51 @@ class RoomStudyReviewPersistenceRepository internal constructor(
         dashboardRows = database.dashboardRowDao(),
         kanjiExamples = database.kanjiExampleDao(),
         ownershipPolicy = ownershipPolicy,
+        studyQueueMutationGate = studyQueueMutationGate,
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
     override suspend fun saveAppliedReview(input: StudyReviewPersistenceInput): Boolean =
-        runInTransaction {
-            if (!ownershipPolicy.canWriteReviewsToRoom()) {
-                return@runInTransaction false
+        studyQueueMutationGate.mutate {
+            runInTransaction {
+                if (!ownershipPolicy.canWriteReviewsToRoom()) {
+                    return@runInTransaction false
+                }
+                val current = studyItems.get(
+                    kanji = input.before.kanji,
+                    answerSignature = input.before.answerSignature,
+                ) ?: return@runInTransaction false
+                if (!current.matchesReviewBase(input)) {
+                    return@runInTransaction false
+                }
+                val insertedReview = reviewLogs.insert(input.toReviewLogEntity())
+                if (insertedReview == CONFLICT_IGNORED) {
+                    return@runInTransaction false
+                }
+                input.toStudyTaskLogEntity()?.let { studyTaskLogs.insert(it) }
+                studyItems.upsert(current.withReviewUpdate(input.after))
+                timelineEvents.upsert(input.toTimelineEventEntity())
+                true
             }
-            val current = studyItems.get(
-                kanji = input.before.kanji,
-                answerSignature = input.before.answerSignature,
-            ) ?: return@runInTransaction false
-            val insertedReview = reviewLogs.insert(input.toReviewLogEntity())
-            if (insertedReview == CONFLICT_IGNORED) {
-                return@runInTransaction false
-            }
-            input.toStudyTaskLogEntity()?.let { studyTaskLogs.insert(it) }
-            studyItems.upsert(current.withReviewUpdate(input.after))
-            timelineEvents.upsert(input.toTimelineEventEntity())
-            true
         }
+
+    private fun StudyItemEntity.matchesReviewBase(input: StudyReviewPersistenceInput): Boolean =
+        activeToken == input.request.token &&
+            activeToken == input.before.activeToken &&
+            state == input.before.state.wireName &&
+            dueAt == input.before.dueAtMillis &&
+            stability == input.before.stability &&
+            difficulty == input.before.difficulty &&
+            totalReviews == input.before.totalReviews &&
+            lapses == input.before.lapses &&
+            learningStep == input.before.learningStep &&
+            writingLevel == input.before.writingLevel &&
+            matureIntervalDays == input.before.matureIntervalDays &&
+            rung == input.before.rung.wireName &&
+            phase == input.before.phase.wireName &&
+            realPassStreak == input.before.realPassStreak &&
+            realAgainStreak == input.before.realAgainStreak &&
+            lastRealReviewDueAt == input.before.lastRealReviewDueAtMillis
 
     private suspend fun StudyReviewPersistenceInput.toTimelineEventEntity(): KanjiTimelineEventEntity {
         val row = dashboardRows.get(request.kanji)

@@ -9,7 +9,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 import dagger.hilt.components.SingletonComponent;
 import dev.bee.kanjianki.data.KaniRoomDatabase;
 import dev.bee.kanjianki.data.KaniRoomDatabaseFactory;
+import dev.bee.kanjianki.data.RoomStudyQueueMutationGate;
 import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy;
+import dev.bee.kanjianki.data.StudyQueueMutationGate;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
@@ -50,8 +52,12 @@ public final class KaniDataModule {
 
     @Provides
     @Singleton
-    static SourceMirrorSyncRepository provideSourceMirrorSyncRepository(KaniRoomDatabase database) {
-        return new RoomSourceMirrorSyncRepository(database);
+    static SourceMirrorSyncRepository provideSourceMirrorSyncRepository(
+            KaniRoomDatabase database,
+            StudyQueueMutationGate studyQueueMutationGate,
+            RoomStudyRuntimeOwnershipPolicy ownershipPolicy
+    ) {
+        return new RoomSourceMirrorSyncRepository(database, studyQueueMutationGate, ownershipPolicy);
     }
 
     @Provides
@@ -62,8 +68,12 @@ public final class KaniDataModule {
 
     @Provides
     @Singleton
-    static StudyQueueRepository provideStudyQueueRepository(KaniRoomDatabase database) {
-        return new RoomStudyQueueRepository(database);
+    static StudyQueueRepository provideStudyQueueRepository(
+            KaniRoomDatabase database,
+            StudyQueueMutationGate studyQueueMutationGate,
+            RoomStudyRuntimeOwnershipPolicy ownershipPolicy
+    ) {
+        return new RoomStudyQueueRepository(database, studyQueueMutationGate, ownershipPolicy);
     }
 
     @Provides
@@ -86,11 +96,18 @@ public final class KaniDataModule {
 
     @Provides
     @Singleton
+    static StudyQueueMutationGate provideStudyQueueMutationGate() {
+        return new RoomStudyQueueMutationGate();
+    }
+
+    @Provides
+    @Singleton
     static StudyReviewPersistenceRepository provideStudyReviewPersistenceRepository(
             KaniRoomDatabase database,
-            RoomStudyRuntimeOwnershipPolicy ownershipPolicy
+            RoomStudyRuntimeOwnershipPolicy ownershipPolicy,
+            StudyQueueMutationGate studyQueueMutationGate
     ) {
-        return new RoomStudyReviewPersistenceRepository(database, ownershipPolicy);
+        return new RoomStudyReviewPersistenceRepository(database, ownershipPolicy, studyQueueMutationGate);
     }
 
     @Provides

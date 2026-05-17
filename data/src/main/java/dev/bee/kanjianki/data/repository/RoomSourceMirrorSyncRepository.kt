@@ -2,6 +2,9 @@ package dev.bee.kanjianki.data.repository
 
 import androidx.room.withTransaction
 import dev.bee.kanjianki.data.KaniRoomDatabase
+import dev.bee.kanjianki.data.RoomStudyQueueMutationGate
+import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
+import dev.bee.kanjianki.data.StudyQueueMutationGate
 import dev.bee.kanjianki.data.history.SyncCardSnapshotDao
 import dev.bee.kanjianki.data.history.SyncCardSnapshotEntity
 import dev.bee.kanjianki.data.history.SyncKanjiSnapshotDao
@@ -34,6 +37,7 @@ import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
+import dev.bee.kanjianki.domain.repository.StudyQueueSeedBuilder
 import dev.bee.kanjianki.domain.sync.SyncKanjiInventoryBuilder
 
 class RoomSourceMirrorSyncRepository internal constructor(
@@ -53,9 +57,21 @@ class RoomSourceMirrorSyncRepository internal constructor(
     private val syncKanjiSnapshots: SyncKanjiSnapshotDao,
     private val studyItems: StudyItemDao,
     private val similarKanjiPairs: SimilarKanjiPairDao,
+    private val studyQueueMutationGate: StudyQueueMutationGate,
+    private val ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
     private val runInTransaction: suspend (suspend () -> SyncRunId) -> SyncRunId,
 ) : SourceMirrorSyncRepository {
     constructor(database: KaniRoomDatabase) : this(
+        database = database,
+        studyQueueMutationGate = RoomStudyQueueMutationGate(),
+        ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.DISABLED,
+    )
+
+    constructor(
+        database: KaniRoomDatabase,
+        studyQueueMutationGate: StudyQueueMutationGate,
+        ownershipPolicy: RoomStudyRuntimeOwnershipPolicy,
+    ) : this(
         syncRuns = database.syncRunDao(),
         sourceNotes = database.sourceNoteDao(),
         sourceCards = database.sourceCardDao(),
@@ -72,6 +88,8 @@ class RoomSourceMirrorSyncRepository internal constructor(
         syncKanjiSnapshots = database.syncKanjiSnapshotDao(),
         studyItems = database.studyItemDao(),
         similarKanjiPairs = database.similarKanjiPairDao(),
+        studyQueueMutationGate = studyQueueMutationGate,
+        ownershipPolicy = ownershipPolicy,
         runInTransaction = { block -> database.withTransaction { block() } },
     )
 
@@ -82,36 +100,50 @@ class RoomSourceMirrorSyncRepository internal constructor(
         importCandidates: List<ImportedKanjiCandidate>,
         dashboardRows: List<StudyDashboardRow>,
         settings: ImportSettings,
-        seededQueueItems: List<StudyQueueItem>?,
+        queueSeedBuilder: StudyQueueSeedBuilder?,
         similarKanjiIndex: SimilarKanjiIndex?,
-    ): SyncRunId = runInTransaction {
-        val finishedAt = requireNotNull(syncRun.finishedAt)
-        val previousNoteIds = sourceNotes.listIds().toSet()
-        val previousCardIds = sourceCards.listIds().toSet()
-        val currentNoteIds = notes.mapTo(mutableSetOf()) { it.noteId.value }
-        val currentCardIds = cards.mapTo(mutableSetOf()) { it.cardId.value }
-        val syncRunId = SyncRunId(
-            syncRuns.insert(
-                syncRun.copy(
-                    id = null,
-                    deletedNotesCount = (previousNoteIds - currentNoteIds).size,
-                    deletedCardsCount = (previousCardIds - currentCardIds).size,
-                ).toEntity(),
-            ),
-        )
-        sourceCards.deleteAll()
-        sourceNotes.deleteAll()
-        sourceNotes.upsertAll(notes.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
-        sourceCards.upsertAll(cards.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
-        recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
-        recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
-        recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
-        recordHistoricalKanjiSnapshots(syncRunId, finishedAt, notes, cards, dashboardRows, settings)
-        recordDashboardRows(finishedAt, dashboardRows)
-        recordKanjiInventory(finishedAt, notes, cards, importCandidates, dashboardRows, settings)
-        rebuildSimilarKanjiPairs(finishedAt, similarKanjiIndex)
-        replaceStudyQueue(seedQueueItems = seededQueueItems)
-        syncRunId
+    ): SyncRunId = studyQueueMutationGate.mutate {
+        runInTransaction {
+            val seededQueueItems = if (ownershipPolicy.canWriteStudyRuntimeToRoom()) {
+                queueSeedBuilder?.seed(currentStudyQueueItems())
+            } else {
+                null
+            }
+            val finishedAt = requireNotNull(syncRun.finishedAt)
+            val previousNoteIds = sourceNotes.listIds().toSet()
+            val previousCardIds = sourceCards.listIds().toSet()
+            val currentNoteIds = notes.mapTo(mutableSetOf()) { it.noteId.value }
+            val currentCardIds = cards.mapTo(mutableSetOf()) { it.cardId.value }
+            val syncRunId = SyncRunId(
+                syncRuns.insert(
+                    syncRun.copy(
+                        id = null,
+                        deletedNotesCount = (previousNoteIds - currentNoteIds).size,
+                        deletedCardsCount = (previousCardIds - currentCardIds).size,
+                    ).toEntity(),
+                ),
+            )
+            sourceCards.deleteAll()
+            sourceNotes.deleteAll()
+            sourceNotes.upsertAll(notes.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
+            sourceCards.upsertAll(cards.map { it.copy(lastSeenSyncId = syncRunId).toEntity() })
+            recordImportEvidence(syncRunId, finishedAt, importCandidates, settings)
+            recordSuspendedArchive(syncRunId, finishedAt, notes, cards, importCandidates)
+            recordHistoricalSnapshots(syncRunId, syncRun.startedAt, finishedAt, notes, cards, settings)
+            recordHistoricalKanjiSnapshots(syncRunId, finishedAt, notes, cards, dashboardRows, settings)
+            recordDashboardRows(finishedAt, dashboardRows)
+            recordKanjiInventory(finishedAt, notes, cards, importCandidates, dashboardRows, settings)
+            rebuildSimilarKanjiPairs(finishedAt, similarKanjiIndex)
+            replaceStudyQueue(seedQueueItems = seededQueueItems)
+            syncRunId
+        }
+    }
+
+    private suspend fun currentStudyQueueItems(): List<StudyQueueItem> {
+        val withSimilar = similarKanjiPairs.kanjiWithSimilarNeighbors().toSet()
+        return studyItems.listAll().map { item ->
+            item.toDomain(hasSimilarKanji = item.kanji in withSimilar)
+        }
     }
 
     private suspend fun recordImportEvidence(

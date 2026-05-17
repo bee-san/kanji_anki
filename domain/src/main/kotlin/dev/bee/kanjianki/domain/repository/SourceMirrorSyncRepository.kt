@@ -10,6 +10,10 @@ import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 
+fun interface StudyQueueSeedBuilder {
+    suspend fun seed(existingItems: List<StudyQueueItem>): List<StudyQueueItem>
+}
+
 interface SourceMirrorSyncRepository {
     suspend fun recordSuccessfulSnapshot(
         syncRun: SyncRun,
@@ -18,7 +22,7 @@ interface SourceMirrorSyncRepository {
         importCandidates: List<ImportedKanjiCandidate>,
         dashboardRows: List<StudyDashboardRow>,
         settings: ImportSettings,
-        seededQueueItems: List<StudyQueueItem>? = null,
+        queueSeedBuilder: StudyQueueSeedBuilder? = null,
         similarKanjiIndex: SimilarKanjiIndex? = null,
     ): SyncRunId
 }

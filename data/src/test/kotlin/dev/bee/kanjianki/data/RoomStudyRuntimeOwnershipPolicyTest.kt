@@ -11,6 +11,7 @@ class RoomStudyRuntimeOwnershipPolicyTest {
 
         assertFalse(policy.localStudyStateSafeForRoom())
         assertFalse(policy.canReadStudyRuntimeFromRoom())
+        assertFalse(policy.canWriteStudyRuntimeToRoom())
         assertFalse(policy.canWriteReviewsToRoom())
     }
 
@@ -23,6 +24,7 @@ class RoomStudyRuntimeOwnershipPolicyTest {
 
         assertFalse(unsafeEnabled.localStudyStateSafeForRoom())
         assertFalse(unsafeEnabled.canReadStudyRuntimeFromRoom())
+        assertFalse(unsafeEnabled.canWriteStudyRuntimeToRoom())
         assertFalse(unsafeEnabled.canWriteReviewsToRoom())
     }
 
@@ -32,6 +34,7 @@ class RoomStudyRuntimeOwnershipPolicyTest {
 
         assertTrue(policy.localStudyStateSafeForRoom())
         assertTrue(policy.canReadStudyRuntimeFromRoom())
+        assertTrue(policy.canWriteStudyRuntimeToRoom())
         assertTrue(policy.canWriteReviewsToRoom())
     }
 
@@ -41,6 +44,7 @@ class RoomStudyRuntimeOwnershipPolicyTest {
 
         assertTrue(policy.localStudyStateSafeForRoom())
         assertTrue(policy.canReadStudyRuntimeFromRoom())
+        assertTrue(policy.canWriteStudyRuntimeToRoom())
         assertTrue(policy.canWriteReviewsToRoom())
     }
 }

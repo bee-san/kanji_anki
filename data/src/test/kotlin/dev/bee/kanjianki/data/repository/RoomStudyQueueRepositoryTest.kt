@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.data.repository
 
+import dev.bee.kanjianki.data.StudyQueueMutationGate
+import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
 import dev.bee.kanjianki.data.similar.SimilarKanjiPairDao
 import dev.bee.kanjianki.data.similar.SimilarKanjiPairEntity
 import dev.bee.kanjianki.data.study.StudyItemDao
@@ -27,6 +29,8 @@ class RoomStudyQueueRepositoryTest {
                 ),
             ),
             similarKanjiPairs = FakeSimilarKanjiPairDao(listOf("裂")),
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
             runInTransaction = { block -> block() },
             claimInTransaction = { block -> block() },
         )
@@ -45,6 +49,8 @@ class RoomStudyQueueRepositoryTest {
         val repository = RoomStudyQueueRepository(
             studyItems = dao,
             similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            studyQueueMutationGate = RecordingStudyQueueMutationGate(dao.events),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
             runInTransaction = { block ->
                 transactions++
                 dao.events += "transaction"
@@ -61,7 +67,7 @@ class RoomStudyQueueRepositoryTest {
         )
 
         assertEquals(1, transactions)
-        assertEquals(listOf("transaction", "deleteAll", "upsertAll"), dao.events)
+        assertEquals(listOf("gate", "transaction", "deleteAll", "upsertAll"), dao.events)
         assertEquals(listOf("裂", "浅"), dao.items.map { it.kanji })
         assertEquals(listOf("new", "retired"), dao.items.map { it.state })
     }
@@ -73,6 +79,8 @@ class RoomStudyQueueRepositoryTest {
         val repository = RoomStudyQueueRepository(
             studyItems = dao,
             similarKanjiPairs = FakeSimilarKanjiPairDao(listOf("裂")),
+            studyQueueMutationGate = RecordingStudyQueueMutationGate(dao.events),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
             runInTransaction = { block -> block() },
             claimInTransaction = { block ->
                 claimTransactions++
@@ -87,7 +95,7 @@ class RoomStudyQueueRepositoryTest {
         assertEquals("token-1", claimed?.activeToken)
         assertTrue(claimed?.hasSimilarKanji == true)
         assertEquals("token-1", dao.items.single().activeToken)
-        assertEquals(listOf("claimTransaction"), dao.events)
+        assertEquals(listOf("gate", "claimTransaction"), dao.events)
     }
 
     @Test
@@ -96,6 +104,8 @@ class RoomStudyQueueRepositoryTest {
         val repository = RoomStudyQueueRepository(
             studyItems = dao,
             similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
             runInTransaction = { block -> block() },
             claimInTransaction = { block -> block() },
         )
@@ -113,6 +123,8 @@ class RoomStudyQueueRepositoryTest {
         val repository = RoomStudyQueueRepository(
             studyItems = dao,
             similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            studyQueueMutationGate = PassThroughStudyQueueMutationGate,
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
             runInTransaction = { block -> block() },
             claimInTransaction = { block -> block() },
         )
@@ -121,6 +133,48 @@ class RoomStudyQueueRepositoryTest {
 
         assertNull(claimed)
         assertNull(dao.items.single().activeToken)
+    }
+
+    @Test
+    fun disabledOwnershipPolicyBlocksRuntimeReadsAndWrites() = runBlocking {
+        val dao = FakeStudyItemDao(listOf(entity("裂", "review")))
+        val repository = RoomStudyQueueRepository(
+            studyItems = dao,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(listOf("裂")),
+            studyQueueMutationGate = RecordingStudyQueueMutationGate(dao.events),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.DISABLED,
+            runInTransaction = { block ->
+                dao.events += "transaction"
+                block()
+            },
+            claimInTransaction = { block ->
+                dao.events += "claimTransaction"
+                block()
+            },
+        )
+
+        assertEquals(emptyList<StudyQueueItem>(), repository.listActive())
+        assertEquals(emptyList<StudyQueueItem>(), repository.listAllForSeeding())
+        assertEquals(0, repository.dueCount(StudyItemState.REVIEW, nowMillis = 20))
+        assertNull(repository.claimActiveToken("裂", "裂|sig", "token-1"))
+        assertEquals(false, repository.updateReviewedItem(item("裂", StudyItemState.REVIEW)))
+        repository.replaceAllSeeded(listOf(item("浅", StudyItemState.NEW)))
+
+        assertEquals(listOf("裂"), dao.items.map { it.kanji })
+        assertEquals(emptyList<String>(), dao.events)
+    }
+
+    private object PassThroughStudyQueueMutationGate : StudyQueueMutationGate {
+        override suspend fun <T> mutate(block: suspend () -> T): T = block()
+    }
+
+    private class RecordingStudyQueueMutationGate(
+        private val events: MutableList<String>,
+    ) : StudyQueueMutationGate {
+        override suspend fun <T> mutate(block: suspend () -> T): T {
+            events += "gate"
+            return block()
+        }
     }
 
     private class FakeStudyItemDao(

@@ -16,6 +16,8 @@ import dev.bee.kanjianki.data.importing.SuspendedImportDao
 import dev.bee.kanjianki.data.importing.SuspendedImportEntity
 import dev.bee.kanjianki.data.importing.SuspendedSourceDao
 import dev.bee.kanjianki.data.importing.SuspendedSourceEntity
+import dev.bee.kanjianki.data.RoomStudyRuntimeOwnershipPolicy
+import dev.bee.kanjianki.data.StudyQueueMutationGate
 import dev.bee.kanjianki.data.inventory.DashboardRowDao
 import dev.bee.kanjianki.data.inventory.DashboardRowEntity
 import dev.bee.kanjianki.data.inventory.KanjiExampleDao
@@ -51,6 +53,7 @@ import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.study.StudyRung
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
+import dev.bee.kanjianki.domain.repository.StudyQueueSeedBuilder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -101,6 +104,7 @@ class RoomSourceMirrorSyncRepositoryTest {
         val syncCardSnapshots = FakeSyncCardSnapshotDao()
         val syncKanjiSnapshots = FakeSyncKanjiSnapshotDao()
         val studyItems = FakeStudyItemDao()
+        studyItems.upserted += studyQueueItem("火").toEntity()
         val similarKanjiPairs = FakeSimilarKanjiPairDao(
             existing = listOf(
                 SimilarKanjiPairEntity(
@@ -113,6 +117,8 @@ class RoomSourceMirrorSyncRepositoryTest {
             ),
         )
         var transactions = 0
+        val gateEvents = mutableListOf<String>()
+        val seedExistingKanji = mutableListOf<List<String>>()
         val repository = RoomSourceMirrorSyncRepository(
             syncRuns = syncRuns,
             sourceNotes = notes,
@@ -130,6 +136,8 @@ class RoomSourceMirrorSyncRepositoryTest {
             syncKanjiSnapshots = syncKanjiSnapshots,
             studyItems = studyItems,
             similarKanjiPairs = similarKanjiPairs,
+            studyQueueMutationGate = RecordingStudyQueueMutationGate(gateEvents),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
             runInTransaction = { block ->
                 transactions++
                 block()
@@ -184,7 +192,10 @@ class RoomSourceMirrorSyncRepositoryTest {
             ),
             dashboardRows = listOf(dashboardRow("日")),
             settings = ImportSettings(importActiveCards = true),
-            seededQueueItems = listOf(studyQueueItem("日")),
+            queueSeedBuilder = StudyQueueSeedBuilder { existingItems ->
+                seedExistingKanji += existingItems.map { it.kanji }
+                listOf(studyQueueItem("日"))
+            },
             similarKanjiIndex = FakeSimilarKanjiIndex(
                 listOf(
                     SimilarKanjiPair.canonical("日", "本", "fixture"),
@@ -195,6 +206,8 @@ class RoomSourceMirrorSyncRepositoryTest {
         )
 
         assertEquals(SyncRunId(42), id)
+        assertEquals(listOf("gate"), gateEvents)
+        assertEquals(listOf(listOf("火")), seedExistingKanji)
         assertEquals(1, transactions)
         assertEquals(1, syncRuns.inserted.single().deletedNotesCount)
         assertEquals(1, syncRuns.inserted.single().deletedCardsCount)
@@ -765,6 +778,15 @@ class RoomSourceMirrorSyncRepositoryTest {
         tags = "",
         lastSeenSyncId = SyncRunId(0),
     )
+
+    private class RecordingStudyQueueMutationGate(
+        private val events: MutableList<String>,
+    ) : StudyQueueMutationGate {
+        override suspend fun <T> mutate(block: suspend () -> T): T {
+            events += "gate"
+            return block()
+        }
+    }
 
     private fun sourceCard(
         cardId: Long,

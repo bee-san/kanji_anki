@@ -920,6 +920,14 @@ double-writing legacy and Room state. This prevents Room sync from replacing
 study items based only on Room-local seed state while production UI is still
 reading or writing legacy `LocalStore` data.
 
+Room study runtime reads and writes share one process-level mutation gate and
+the ownership policy above. Sync queue seeding reads the current queue and
+builds replacement rows inside the same gated Room transaction that records the
+source snapshot, so a foreground review cannot interleave between seed
+calculation and `study_items` replacement. Session token claims, direct queue
+updates, and review persistence must enter the same gate before their Room
+transaction.
+
 ### 5.2 Domain Model Families
 
 Replace broad `Records*` namespaces with focused domain packages:

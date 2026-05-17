@@ -13,7 +13,7 @@ import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
-import dev.bee.kanjianki.domain.repository.StudyQueueRepository
+import dev.bee.kanjianki.domain.repository.StudyQueueSeedBuilder
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
 import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
 import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlan
@@ -34,7 +34,6 @@ class RunSourceMirrorSyncUseCase(
     private val importCandidateSelector: ImportCandidateSelector,
     private val dashboardBuilder: SyncDashboardBuilder,
     private val clock: AppClock,
-    private val studyQueue: StudyQueueRepository? = null,
     private val queueSeeder: StudyQueueSeeder = StudyQueueSeeder(),
     private val adaptiveStudyPlanner: AdaptiveStudyPlanner = AdaptiveStudyPlanner(),
     private val executionGate: SyncExecutionGate = SyncExecutionGate(),
@@ -57,7 +56,7 @@ class RunSourceMirrorSyncUseCase(
             val dashboardRows = dashboardBuilder.build(importCandidates, settings)
             val finishedAt = clock.nowMillis()
             progress.reportSyncProgress(SyncProgressSnapshot.atStage(SyncProgressStage.BUILDING_PRACTICE_QUEUE))
-            val seededQueueItems = seedQueueItems(request, dashboardRows, finishedAt)
+            val queueSeedBuilder = queueSeedBuilder(request, dashboardRows, finishedAt)
             val syncRunId = sourceMirrorSync.recordSuccessfulSnapshot(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
                 notes = snapshot.notes,
@@ -65,7 +64,7 @@ class RunSourceMirrorSyncUseCase(
                 importCandidates = importCandidates,
                 dashboardRows = dashboardRows,
                 settings = settings,
-                seededQueueItems = seededQueueItems,
+                queueSeedBuilder = queueSeedBuilder,
                 similarKanjiIndex = request.similarKanjiIndex,
             )
             recordArchiveCleanup(syncRunId, snapshot, importCandidates, progress)
@@ -108,28 +107,26 @@ class RunSourceMirrorSyncUseCase(
         }
     }
 
-    private suspend fun seedQueueItems(
+    private fun queueSeedBuilder(
         request: RunSourceMirrorSyncRequest,
         dashboardRows: List<StudyDashboardRow>,
         nowMillis: Long,
-    ): List<StudyQueueItem>? {
+    ): StudyQueueSeedBuilder? {
         val queueContext = request.queueSeedContext ?: return null
-        val repository = requireNotNull(studyQueue) {
-            "StudyQueueRepository is required when queueSeedContext is supplied."
-        }
-        val existingItems = repository.listAllForSeeding()
         val seedingRows = dashboardRows.filterNot { it.kanji in queueContext.locallySuspendedKanji }
-        return queueSeeder.seed(
-            StudyQueueSeedRequest(
-                rows = seedingRows,
-                existing = existingItems,
-                settings = queueContext.settings,
-                nowMillis = nowMillis,
-                startOfDayMillis = queueContext.startOfDayMillis,
-                adaptivePlan = adaptivePlan(request, queueContext, seedingRows, existingItems, nowMillis),
-                ladderSettings = queueContext.ladderSettings,
-            ),
-        )
+        return StudyQueueSeedBuilder { existingItems ->
+            queueSeeder.seed(
+                StudyQueueSeedRequest(
+                    rows = seedingRows,
+                    existing = existingItems,
+                    settings = queueContext.settings,
+                    nowMillis = nowMillis,
+                    startOfDayMillis = queueContext.startOfDayMillis,
+                    adaptivePlan = adaptivePlan(request, queueContext, seedingRows, existingItems, nowMillis),
+                    ladderSettings = queueContext.ladderSettings,
+                ),
+            )
+        }
     }
 
     private fun adaptivePlan(

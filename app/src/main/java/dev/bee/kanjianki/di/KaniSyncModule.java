@@ -11,7 +11,6 @@ import dev.bee.kanjianki.ankidroid.AnkiDroidCollectionGateway;
 import dev.bee.kanjianki.domain.importing.ImportCandidateSelector;
 import dev.bee.kanjianki.domain.importing.KanjiRankLookup;
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
-import dev.bee.kanjianki.domain.repository.StudyQueueRepository;
 import dev.bee.kanjianki.domain.repository.SyncRunRepository;
 import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner;
 import dev.bee.kanjianki.domain.scheduler.StudyQueueSeeder;
@@ -83,7 +82,6 @@ public final class KaniSyncModule {
             ImportCandidateSelector importCandidateSelector,
             SyncDashboardBuilder syncDashboardBuilder,
             dev.bee.kanjianki.domain.common.AppClock clock,
-            StudyQueueRepository studyQueueRepository,
             SyncExecutionGate syncExecutionGate,
             SuspendedCardArchiveGateway suspendedCardArchiveGateway
     ) {
@@ -94,7 +92,6 @@ public final class KaniSyncModule {
                 importCandidateSelector,
                 syncDashboardBuilder,
                 clock,
-                studyQueueRepository,
                 new StudyQueueSeeder(),
                 new AdaptiveStudyPlanner(),
                 syncExecutionGate,

@@ -21,6 +21,7 @@ import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository
+import dev.bee.kanjianki.domain.repository.StudyQueueSeedBuilder
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
 import dev.bee.kanjianki.domain.scheduler.AdaptiveReviewStats
 import dev.bee.kanjianki.domain.scheduler.AdaptiveWorkloadPolicy
@@ -85,8 +86,9 @@ class RunSourceMirrorSyncUseCaseTest {
                 ),
             ),
         )
-        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
-        val studyQueue = FakeStudyQueueRepository(existing = listOf(studyQueueItem("火")))
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository(
+            existingQueueItems = listOf(studyQueueItem("火")),
+        )
         val useCase = RunSourceMirrorSyncUseCase(
             gateway = gateway,
             syncRuns = FakeSyncRunRepository(),
@@ -94,7 +96,6 @@ class RunSourceMirrorSyncUseCaseTest {
             importCandidateSelector = importSelector(),
             dashboardBuilder = dashboardBuilder(),
             clock = FakeClock(100, 150),
-            studyQueue = studyQueue,
         )
 
         val id = useCase(
@@ -112,7 +113,7 @@ class RunSourceMirrorSyncUseCaseTest {
         )
 
         assertEquals(SyncRunId(1), id)
-        assertEquals(1, studyQueue.listAllForSeedingCalls)
+        assertEquals(1, sourceMirrorSync.queueSeedBuilderCalls)
         assertEquals(listOf("日", "本", "火"), sourceMirrorSync.seededQueueItems!!.map { it.kanji })
         assertEquals(StudyItemState.NEW, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.state)
         assertEquals(150L, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.createdAtMillis)
@@ -137,7 +138,6 @@ class RunSourceMirrorSyncUseCaseTest {
             importCandidateSelector = importSelector(),
             dashboardBuilder = dashboardBuilder(),
             clock = FakeClock(100, 150),
-            studyQueue = FakeStudyQueueRepository(),
         )
 
         useCase(
@@ -222,7 +222,7 @@ class RunSourceMirrorSyncUseCaseTest {
 
     @Test
     fun gatewayFailureDoesNotSeedQueue() = runBlocking {
-        val studyQueue = FakeStudyQueueRepository()
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
         val useCase = RunSourceMirrorSyncUseCase(
             gateway = FakeGateway(
                 failure = CollectionGatewayException(
@@ -232,11 +232,10 @@ class RunSourceMirrorSyncUseCaseTest {
                 ),
             ),
             syncRuns = FakeSyncRunRepository(),
-            sourceMirrorSync = FakeSourceMirrorSyncRepository(),
+            sourceMirrorSync = sourceMirrorSync,
             importCandidateSelector = importSelector(),
             dashboardBuilder = dashboardBuilder(),
             clock = FakeClock(10, 20),
-            studyQueue = studyQueue,
         )
 
         useCase(
@@ -253,7 +252,7 @@ class RunSourceMirrorSyncUseCaseTest {
             ),
         )
 
-        assertEquals(0, studyQueue.listAllForSeedingCalls)
+        assertEquals(0, sourceMirrorSync.queueSeedBuilderCalls)
     }
 
     @Test
@@ -494,12 +493,14 @@ class RunSourceMirrorSyncUseCaseTest {
     private class FakeSourceMirrorSyncRepository(
         private val failure: Exception? = null,
         private val syncRuns: FakeSyncRunRepository? = null,
+        private val existingQueueItems: List<StudyQueueItem> = emptyList(),
     ) : SourceMirrorSyncRepository {
         val notes = mutableListOf<SourceNote>()
         val cards = mutableListOf<SourceCard>()
         val importCandidates = mutableListOf<ImportedKanjiCandidate>()
         val dashboardRows = mutableListOf<StudyDashboardRow>()
         var seededQueueItems: List<StudyQueueItem>? = null
+        var queueSeedBuilderCalls = 0
         var similarKanjiIndex: SimilarKanjiIndex? = null
         lateinit var syncRun: SyncRun
 
@@ -510,7 +511,7 @@ class RunSourceMirrorSyncUseCaseTest {
             importCandidates: List<ImportedKanjiCandidate>,
             dashboardRows: List<StudyDashboardRow>,
             settings: ImportSettings,
-            seededQueueItems: List<StudyQueueItem>?,
+            queueSeedBuilder: StudyQueueSeedBuilder?,
             similarKanjiIndex: SimilarKanjiIndex?,
         ): SyncRunId {
             failure?.let { throw it }
@@ -520,7 +521,10 @@ class RunSourceMirrorSyncUseCaseTest {
             this.cards += cards.map { it.copy(lastSeenSyncId = id) }
             this.importCandidates += importCandidates
             this.dashboardRows += dashboardRows
-            this.seededQueueItems = seededQueueItems
+            this.seededQueueItems = queueSeedBuilder?.let {
+                queueSeedBuilderCalls++
+                it.seed(existingQueueItems)
+            }
             this.similarKanjiIndex = similarKanjiIndex
             return id
         }

@@ -10,6 +10,9 @@ data class RoomStudyRuntimeOwnershipPolicy @JvmOverloads constructor(
         roomStudyReadsEnabled && localStudyStateSafeForRoom()
 
     fun canWriteReviewsToRoom(): Boolean =
+        canWriteStudyRuntimeToRoom()
+
+    fun canWriteStudyRuntimeToRoom(): Boolean =
         roomReviewWritesEnabled && localStudyStateSafeForRoom()
 
     fun localStudyStateSafeForRoom(): Boolean =
