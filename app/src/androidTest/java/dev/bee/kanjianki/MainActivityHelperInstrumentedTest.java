@@ -64,6 +64,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -221,7 +223,7 @@ public final class MainActivityHelperInstrumentedTest {
                         CompletableFuture.completedFuture(new WritingRecognizer.RecognitionResult(Collections.emptyList()))
                 );
                 activity.writingRecognizer = cachedRecognizer;
-                assertTrue(activity.currentWritingRecognizer() == cachedRecognizer);
+                assertSame(cachedRecognizer, activity.currentWritingRecognizer());
 
                 StudySessionTracker.ActiveStudyTask timing = new StudySessionTracker.ActiveStudyTask(null, null, null, -10L);
                 timing.pause(50L);
@@ -455,7 +457,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
                 difficulty.setText("7.5");
                 MainActivityBase.ImportThresholds thresholds = activity.readImportThresholds(difficulty, lapses, minMatching);
-                assertTrue(thresholds != null);
+                assertNotNull(thresholds);
                 assertEquals(7.5, thresholds.difficulty, 0.001);
                 assertEquals(3, thresholds.lapseThreshold);
                 assertEquals(2, thresholds.minCards);
@@ -810,7 +812,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
                 LinearLayout missingPermission = activity.updateSettingsPanel();
                 assertTrue(containsText(missingPermission, "Install permission: Missing"));
-                assertTrue(findButton(missingPermission, "Set up app installs") != null);
+                assertNotNull(findButton(missingPermission, "Set up app installs"));
                 performButtonClick(missingPermission, "Open updater");
                 assertHasText(activity, "GitHub updater");
 
@@ -818,7 +820,7 @@ public final class MainActivityHelperInstrumentedTest {
                 LinearLayout readyUpdate = activity.updateSettingsPanel();
                 assertTrue(containsText(readyUpdate, "Install permission: Ready"));
                 assertTrue(containsText(readyUpdate, "Verified APK ready: 0.5.0"));
-                assertTrue(findButton(readyUpdate, "Install verified update") != null);
+                assertNotNull(findButton(readyUpdate, "Install verified update"));
 
                 performButtonClick(readyUpdate, "Turn off automatic updates");
                 assertFalse(activity.store.autoUpdateStatus().enabled);
@@ -832,7 +834,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(reminder.enabled);
                 assertEquals(6, reminder.hour);
                 assertEquals(15, reminder.minute);
-                assertTrue(findButton(activity.reminderSettingsPanel(), "Enable reminder") != null);
+                assertNotNull(findButton(activity.reminderSettingsPanel(), "Enable reminder"));
             });
         } finally {
             MainActivity.setInstallPermissionForTests(null);
@@ -932,7 +934,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(3, activity.stateRank("retired"));
                 assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
                 assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
-                assertTrue(activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L) != MainActivityBase.CORAL);
+                assertNotEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L));
 
                 assertEquals("Needs focused kanji practice.", activity.queueCardBody(rowWithReason("裂", "", "", "", Collections.emptyList())));
                 assertEquals(
@@ -1180,7 +1182,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("new", targeted.state);
                 assertEquals(1234L, targeted.dueAtMillis);
                 RecordsStudyModels.StudyItem existingTarget = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
-                assertTrue(existingTarget == activity.studyItemForTargetedKanji(Collections.singletonList(existingTarget), "裂", now));
+                assertSame(existingTarget, activity.studyItemForTargetedKanji(Collections.singletonList(existingTarget), "裂", now));
                 assertEquals("new", activity.studyItemForTargetedKanji(Collections.emptyList(), "謎", 1234L).state);
                 assertEquals(activity.dp(300), activity.studyPadHeightForScreenDp(699));
                 assertEquals(activity.dp(340), activity.studyPadHeightForScreenDp(700));
@@ -1215,7 +1217,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.AdaptiveLoadPlan complete = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 2, 0, Arrays.asList("裂", "語"), 0, false, "Done");
 
                 activity.renderFocusDone(complete);
-                assertTrue(findButton(activity.content, "Study more new cards") != null);
+                assertNotNull(findButton(activity.content, "Study more new cards"));
                 performButtonClick(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderFocusDone(complete);
@@ -1281,11 +1283,11 @@ public final class MainActivityHelperInstrumentedTest {
                 );
                 assertTrue(containsText(activity.learningPanel(promptOnly), "Prompt only"));
                 assertTrue(containsText(activity.heroKanjiPanel(session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
-                assertTrue(activity.randomFontVariantTypeface() != null);
+                assertNotNull(activity.randomFontVariantTypeface());
 
                 activity.renderSimilarKanjiSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
-                assertTrue(activity.flashcardCard != null);
-                assertTrue(activity.flashcardGestureArea == activity.flashcardCard);
+                assertNotNull(activity.flashcardCard);
+                assertSame(activity.flashcardCard, activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
@@ -1552,7 +1554,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeAnalysis = null;
                 assertTrue(activity.showNoInkWhenNeeded());
-                assertTrue(activity.activeAnalysis.status == WritingAnalysis.Status.NO_INK);
+                assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
                 assertFalse(activity.isTeachingTask(null));
                 assertTrue(activity.isTeachingTask(session("裂", "context_writing", row)));
                 assertTrue(activity.isTeachingTask(session("裂", "guided_writing", row)));
@@ -1874,7 +1876,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.resultStatus.setText("Still checking");
                 activity.resultStatus.setVisibility(View.VISIBLE);
                 activity.handleDrawingEdited();
-                assertTrue(activity.activeAnalysis != null);
+                assertNotNull(activity.activeAnalysis);
                 assertEquals(View.VISIBLE, activity.resultStatus.getVisibility());
 
                 activity.checkingWriting = false;
@@ -2072,7 +2074,7 @@ public final class MainActivityHelperInstrumentedTest {
                 );
             });
             scenario.onActivity(activity -> {
-                assertTrue(activity.activeAnalysis != null);
+                assertNotNull(activity.activeAnalysis);
                 assertTrue(activity.activeAnalysis.status == WritingAnalysis.Status.PASS
                         || activity.activeAnalysis.status == WritingAnalysis.Status.CLOSE
                         || activity.activeAnalysis.status == WritingAnalysis.Status.WRONG);
@@ -2628,6 +2630,7 @@ public final class MainActivityHelperInstrumentedTest {
 
         @Override
         public void close() {
+            // Fake recognizer has no native resources to release.
         }
     }
 }

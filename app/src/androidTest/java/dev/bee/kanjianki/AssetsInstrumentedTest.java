@@ -16,6 +16,7 @@ import org.junit.runner.RunWith;
 
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -49,7 +50,7 @@ public final class AssetsInstrumentedTest {
         DictionaryLookup lookup = DictionaryAssets.load(context);
 
         assertNotNull(lookup);
-        assertTrue(lookup.kanjiCount() == 0);
+        assertEquals(0, lookup.kanjiCount());
     }
 
     @Test

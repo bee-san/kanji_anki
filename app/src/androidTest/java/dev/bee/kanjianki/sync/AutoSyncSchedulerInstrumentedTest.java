@@ -126,6 +126,7 @@ public final class AutoSyncSchedulerInstrumentedTest {
 
         @Override
         public void cancel() {
+            // Throwing backend is only used to exercise schedule failures.
         }
     }
 
@@ -182,10 +183,12 @@ public final class AutoSyncSchedulerInstrumentedTest {
 
         @Override
         public void cancel(int jobId) {
+            // Rejecting scheduler exposes only schedule failure behavior.
         }
 
         @Override
         public void cancelAll() {
+            // Rejecting scheduler exposes only schedule failure behavior.
         }
 
         @Override

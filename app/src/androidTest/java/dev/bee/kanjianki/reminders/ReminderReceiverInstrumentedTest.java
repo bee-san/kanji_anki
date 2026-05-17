@@ -225,10 +225,12 @@ public final class ReminderReceiverInstrumentedTest {
 
         @Override
         public void scheduleAlarm(long triggerAtMillis) {
+            // This fake only tracks notification behavior.
         }
 
         @Override
         public void cancelAlarm() {
+            // This fake only tracks notification behavior.
         }
 
         @Override

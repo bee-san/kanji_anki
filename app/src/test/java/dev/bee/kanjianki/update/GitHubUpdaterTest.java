@@ -459,6 +459,7 @@ public final class GitHubUpdaterTest {
 
         @Override
         public void disconnect() {
+            // Test connection has no external resource to release.
         }
 
         @Override
@@ -468,6 +469,7 @@ public final class GitHubUpdaterTest {
 
         @Override
         public void connect() {
+            // Test connection is preconfigured and never opens a socket.
         }
     }
 
@@ -491,6 +493,7 @@ public final class GitHubUpdaterTest {
 
         @Override
         public void disconnect() {
+            // Test connection has no external resource to release.
         }
 
         @Override
@@ -500,6 +503,7 @@ public final class GitHubUpdaterTest {
 
         @Override
         public void connect() {
+            // Test connection is preconfigured and never opens a socket.
         }
     }
 
@@ -615,6 +619,7 @@ public final class GitHubUpdaterTest {
 
         @Override
         public void disconnect() {
+            // Test connection has no external resource to release.
         }
 
         @Override
@@ -624,6 +629,7 @@ public final class GitHubUpdaterTest {
 
         @Override
         public void connect() {
+            // Test connection is preconfigured and never opens a socket.
         }
     }
 }

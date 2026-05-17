@@ -42,6 +42,7 @@ import kotlin.coroutines.EmptyCoroutineContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -157,7 +158,7 @@ public final class UpdateFlowInstrumentedTest {
         assertEquals(1, manual.started);
         assertEquals(0, manual.notifications);
         assertEquals("dev.bee.kanjianki.CONFIRM_MANUAL", manual.startedIntent.getAction());
-        assertTrue((manual.startedIntent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0);
+        assertNotEquals(0, manual.startedIntent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK);
 
         PendingActionHandler automatic = new PendingActionHandler();
         Intent automaticStatus = new Intent().putExtra(Intent.EXTRA_INTENT, new Intent("dev.bee.kanjianki.CONFIRM_AUTO"));
@@ -706,7 +707,7 @@ public final class UpdateFlowInstrumentedTest {
 
         assertEquals("android.settings.MANAGE_UNKNOWN_APP_SOURCES", intent.getAction());
         assertEquals(Uri.parse("package:" + context.getPackageName()), intent.getData());
-        assertTrue((intent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0);
+        assertNotEquals(0, intent.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK);
     }
 
     @Test

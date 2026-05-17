@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -114,7 +115,7 @@ public final class AutoSyncJobServiceInstrumentedTest {
         AtomicBoolean factoryUsed = new AtomicBoolean();
         AtomicReference<Boolean> stoppedValue = new AtomicReference<>();
         AutoSyncJobService.JobFinisherFactory originalFactory = replaceJobFinisherFactory(createdService -> {
-            assertTrue(createdService == service);
+            assertSame(service, createdService);
             factoryUsed.set(true);
             return (params, needsReschedule) -> stoppedValue.set(needsReschedule);
         });

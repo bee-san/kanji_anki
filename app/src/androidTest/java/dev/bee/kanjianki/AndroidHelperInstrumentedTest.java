@@ -168,10 +168,12 @@ public final class AndroidHelperInstrumentedTest {
 
         @Override
         public void showShortMessage(String message) {
+            // This fake only captures chooser selections.
         }
 
         @Override
         public void showLongMessage(String message) {
+            // This fake only captures chooser selections.
         }
 
         @Override
@@ -222,20 +224,24 @@ public final class AndroidHelperInstrumentedTest {
             EditText frequencySort,
             NoteTypeFieldMappings.Inputs inputs
     ) {
+        // Fake chooser drives the selection directly through showNoteTypeChoices.
     }
 
     private static final class DirectExecutorService extends AbstractExecutorService {
         private boolean shutdown;
+        private boolean terminated;
         private boolean executed;
 
         @Override
         public void shutdown() {
             shutdown = true;
+            terminated = true;
         }
 
         @Override
         public List<Runnable> shutdownNow() {
             shutdown = true;
+            terminated = true;
             return Collections.emptyList();
         }
 
@@ -246,12 +252,12 @@ public final class AndroidHelperInstrumentedTest {
 
         @Override
         public boolean isTerminated() {
-            return shutdown;
+            return terminated;
         }
 
         @Override
         public boolean awaitTermination(long timeout, TimeUnit unit) {
-            return shutdown;
+            return terminated;
         }
 
         @Override

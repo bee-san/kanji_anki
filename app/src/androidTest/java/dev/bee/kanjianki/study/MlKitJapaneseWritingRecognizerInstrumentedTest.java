@@ -15,12 +15,8 @@ import static org.junit.Assert.assertNotNull;
 public final class MlKitJapaneseWritingRecognizerInstrumentedTest {
     @Test
     public void defaultConstructorCreatesAndClosesGoogleRecognizer() {
-        MlKitJapaneseWritingRecognizer recognizer = new MlKitJapaneseWritingRecognizer();
-
-        try {
+        try (MlKitJapaneseWritingRecognizer recognizer = new MlKitJapaneseWritingRecognizer()) {
             assertNotNull(recognizer);
-        } finally {
-            recognizer.close();
         }
     }
 
@@ -42,12 +38,10 @@ public final class MlKitJapaneseWritingRecognizerInstrumentedTest {
                 .setPreContext("前")
                 .build();
 
-        try {
+        try (backend) {
             assertNotNull(backend.downloadModel());
             assertNotNull(backend.recognize(ink));
             assertNotNull(backend.recognize(ink, context));
-        } finally {
-            backend.close();
         }
     }
 }
