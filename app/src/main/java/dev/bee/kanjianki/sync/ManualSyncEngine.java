@@ -114,7 +114,7 @@ public final class ManualSyncEngine {
             // the similar_kanji rung is available for them.
             seeded = store.annotateSimilarKanjiAvailability(seeded);
             store.replaceStudyItems(seeded, syncId, finished, settings);
-            return new SyncResult(true, false, rows.size(), currentSuspendedImports.size(), removal.message, plan.status);
+            return SyncResult.success(rows.size(), currentSuspendedImports.size(), removal.message, plan.status);
         } catch (AnkiDroidGateway.SyncFailure error) {
             long finished = clock.nowMillis();
             store.saveFailedSync(
@@ -124,11 +124,11 @@ public final class ManualSyncEngine {
                     error.permanentFailure ? "permanent" : "retryable",
                     error.getMessage()
             );
-            return new SyncResult(false, false, 0, 0, error.getMessage(), "");
+            return SyncResult.failed(error.getMessage());
         } catch (Throwable error) {
             long finished = clock.nowMillis();
             store.saveFailedSync(started, finished, "retryable_error", "unexpected", error.getMessage());
-            return new SyncResult(false, false, 0, 0, error.getMessage(), "");
+            return SyncResult.failed(error.getMessage());
         }
     }
 
@@ -278,7 +278,15 @@ public final class ManualSyncEngine {
             this.adaptiveSummary = adaptiveSummary == null ? "" : adaptiveSummary;
         }
 
-        private static SyncResult skipped(String message) {
+        static SyncResult success(int dashboardRows, int importedSuspendedKanji, String message, String adaptiveSummary) {
+            return new SyncResult(true, false, dashboardRows, importedSuspendedKanji, message, adaptiveSummary);
+        }
+
+        static SyncResult failed(String message) {
+            return new SyncResult(false, false, 0, 0, message, "");
+        }
+
+        static SyncResult skipped(String message) {
             return new SyncResult(false, true, 0, 0, message, "");
         }
     }

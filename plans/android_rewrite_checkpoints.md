@@ -1044,3 +1044,18 @@ current defaults rather than carrying corrupt values into sync. The app graph
 does not expose this as an unqualified Hilt binding while Room is still running
 in sandbox mode; live runtime settings stay on the legacy source of truth until
 the Room cutover explicitly moves sync ownership.
+
+Study review and manual sync cutover adapters exist, but neither is wired into
+the visible Java runtime while Room study ownership is disabled:
+
+- `RoomStudyReviewBridge` maps legacy review inputs to
+  `ApplyStudyReviewUseCase`, persists through Room only when the ownership
+  policy permits review writes, and returns a non-advanced failed legacy result
+  if Room persistence rejects the update.
+- `StudySessionTracker.completeActiveTaskSnapshot` extracts task-completion
+  evidence without writing `LocalStore`; the legacy write path delegates through
+  that snapshot so behavior stays unchanged while Room review logging is staged.
+- `DomainManualSyncRunner` maps legacy manual-sync settings, progress, and
+  result fields onto `RunSourceMirrorSyncUseCase` and Room sync repositories.
+  `MainActivityHome` and `AutoSyncRunner` still use `ManualSyncEngine`; the
+  domain runner is a tested bridge for the later explicit sync ownership move.
