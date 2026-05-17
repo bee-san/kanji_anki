@@ -758,9 +758,11 @@ Rules:
 - A backup is optional for developer/debug builds and future UX polish, not a
   blocker for the rewrite architecture.
 
-The current SQLite DB is `kanji_anki_simple.db`, current schema version observed
-as `20`. The rewrite may keep that name or replace it with a new Room database
-name if doing so makes ownership and reset behavior clearer.
+The legacy SQLite DB is `kanji_anki_simple.db`, current schema version observed
+as `20`. The rewrite Room DB is `kanji_anki_room.db`; this intentionally keeps
+Room from opening the legacy `SQLiteOpenHelper` file as if it were the new
+schema. Room database creation must go through a single factory/reset policy
+that uses destructive migration for Kani-owned local data.
 
 ### 4.5 Dependency Injection
 

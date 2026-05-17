@@ -674,11 +674,15 @@ Result: `BUILD SUCCESSFUL`.
 
 Current app database:
 
-- Name: `kanji_anki_simple.db`.
+- Legacy `SQLiteOpenHelper` name: `kanji_anki_simple.db`.
+- Rewrite Room name: `kanji_anki_room.db`.
 - Version: `20`.
 - Source of truth today: `SQLiteOpenHelper` in
   `app/src/main/java/dev/bee/kanjianki/data/LocalStoreBase.java`.
 - Schema constants: `app/src/main/java/dev/bee/kanjianki/data/LocalStoreSchema.java`.
+- Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
+  It rejects ambiguous ownership and uses destructive migration for the
+  Room-owned file.
 
 Current table families:
 

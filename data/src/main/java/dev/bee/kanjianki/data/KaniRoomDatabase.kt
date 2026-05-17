@@ -112,7 +112,8 @@ abstract class KaniRoomDatabase : RoomDatabase() {
     abstract fun syncKanjiSnapshotDao(): SyncKanjiSnapshotDao
 
     companion object {
-        const val DATABASE_NAME = "kanji_anki_simple.db"
+        const val DATABASE_NAME = "kanji_anki_room.db"
+        const val LEGACY_DATABASE_NAME = "kanji_anki_simple.db"
         const val SCHEMA_VERSION = 20
     }
 }
