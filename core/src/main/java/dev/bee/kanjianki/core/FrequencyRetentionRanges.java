@@ -11,12 +11,13 @@ public final class FrequencyRetentionRanges {
     public static final double MAX_RETENTION = 0.99;
     public static final int MIN_RANK = 1;
     public static final int MAX_RANK = 20000;
+    public static final String EXAMPLE_TEXT = "1-500=95%\n501-2000=90%\n2001-20000=85%";
 
     private FrequencyRetentionRanges() {
     }
 
     public static String exampleText() {
-        return "1-500=95%\n501-2000=90%\n2001-20000=85%";
+        return EXAMPLE_TEXT;
     }
 
     public static Double retentionForRank(String text, Integer rank) {

@@ -164,7 +164,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     abstract boolean handleFlashcardGesture(MotionEvent event);
     abstract String streakHeadline(StudyStatsStore.StudyStreak streak);
     abstract void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan);
-    abstract DictionaryLookup dictionaryLookup();
+    abstract DictionaryLookup currentDictionaryLookup();
     abstract RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row);
     abstract boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis);
     abstract void clearStudyModeOverrides();
@@ -360,7 +360,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return "Saved." + streakText;
     }
 
-    WritingRecognizer writingRecognizer() {
+    WritingRecognizer currentWritingRecognizer() {
         if (writingRecognizerForTests != null) {
             return writingRecognizerForTests;
         }
@@ -596,7 +596,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
-        DictionaryLookup.KanjiEntry entry = dictionaryLookup().lookupKanji(kanji);
+        DictionaryLookup.KanjiEntry entry = currentDictionaryLookup().lookupKanji(kanji);
         if (entry != null) {
             String meaning = StudyCueTexts.displayGlosses(entry.meanings, 2);
             if (!meaning.isEmpty()) {

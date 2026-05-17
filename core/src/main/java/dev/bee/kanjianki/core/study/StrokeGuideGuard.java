@@ -27,7 +27,7 @@ public final class StrokeGuideGuard {
             float corridorFraction
     ) {
         if (guide == null || guide.isEmpty() || width <= 0f || height <= 0f) {
-            return Decision.allowed();
+            return Decision.allow();
         }
         if (!finite(x) || !finite(y)) {
             return Decision.rejected(nextStrokeNumber(guide, committedStrokeCount), "Stay close to the guide.");
@@ -38,12 +38,12 @@ public final class StrokeGuideGuard {
         }
         InkStroke expected = guide.strokes.get(strokeIndex);
         if (expected == null || expected.points.isEmpty()) {
-            return Decision.allowed();
+            return Decision.allow();
         }
         float corridor = Math.max(1f, Math.min(width, height) * Math.max(0f, corridorFraction));
         float distance = distanceToStroke(expected, width, height, x, y);
         if (distance <= corridor) {
-            return Decision.allowed();
+            return Decision.allow();
         }
         return Decision.rejected(strokeIndex + 1, "Stay close to stroke " + (strokeIndex + 1) + ".");
     }
@@ -105,7 +105,7 @@ public final class StrokeGuideGuard {
             this.message = message == null ? "" : message;
         }
 
-        public static Decision allowed() {
+        public static Decision allow() {
             return new Decision(true, 0, "");
         }
 

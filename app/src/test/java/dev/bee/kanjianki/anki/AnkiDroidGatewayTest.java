@@ -421,15 +421,6 @@ public final class AnkiDroidGatewayTest {
                 "long",
                 0L
         ));
-        assertEquals(7, invokePrivateStatic("intValue", new Class<?>[]{Cursor.class, String.class, int.class}, empty, "missing", 7));
-        assertEquals(8, invokePrivateStatic("intValue", new Class<?>[]{Cursor.class, String.class, int.class}, nulls, "int", 8));
-        assertEquals(5, invokePrivateStatic(
-                "intValue",
-                new Class<?>[]{Cursor.class, String.class, int.class},
-                cursor(row("int", "5")),
-                "int",
-                0
-        ));
     }
 
     @Test

@@ -6,6 +6,7 @@ import java.util.List;
 final class StudySchedulerMigration {
     private static final String DROP_STUDY_DUE_INDEX = "DROP INDEX IF EXISTS idx_study_due";
     private static final String CREATE_STUDY_DUE_INDEX = "CREATE INDEX IF NOT EXISTS idx_study_due ON ";
+    private static final String DELETE_FROM = "DELETE FROM ";
 
     private StudySchedulerMigration() {
     }
@@ -22,9 +23,9 @@ final class StudySchedulerMigration {
                 "DROP TABLE IF EXISTS " + studyItemsTable,
                 createStudyItemsSql,
                 CREATE_STUDY_DUE_INDEX + studyItemsTable + "(state, due_at)",
-                "DELETE FROM " + learningRepeatsTable,
-                "DELETE FROM " + similarChoiceStateTable,
-                "DELETE FROM " + similarRepairQueueTable
+                DELETE_FROM + learningRepeatsTable,
+                DELETE_FROM + similarChoiceStateTable,
+                DELETE_FROM + similarRepairQueueTable
         );
     }
 }

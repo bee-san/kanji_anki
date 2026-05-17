@@ -519,11 +519,6 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return index < 0 || cursor.isNull(index) ? fallback : cursor.getLong(index);
     }
 
-    private static int intValue(Cursor cursor, String column, int fallback) {
-        int index = cursor.getColumnIndex(column);
-        return index < 0 || cursor.isNull(index) ? fallback : cursor.getInt(index);
-    }
-
     private static final class ModelMapping {
         private final long modelId;
         private final String name;

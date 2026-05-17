@@ -16,7 +16,7 @@ public final class AutoSyncRunner {
     private final AppClock clock;
 
     public AutoSyncRunner(Context context, LocalStore store, CollectionGateway gateway) {
-        this(context, store, gateway, AppClock.system());
+        this(context, store, gateway, AppClock.systemClock());
     }
 
     public AutoSyncRunner(Context context, LocalStore store, CollectionGateway gateway, AppClock clock) {

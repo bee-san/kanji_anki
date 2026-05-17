@@ -42,7 +42,7 @@ public abstract class RecordsBase {
     public static final String SOURCE_TAGGED = "tagged";
     public static final String SOURCE_WEAK = "weak";
     public static final String SOURCE_BROWSER_QUERY = "browser_query";
-    protected static final Logger LOGGER = Logger.getLogger(Records.class.getName());
+    protected static final Logger LOGGER = Logger.getLogger(RecordsBase.class.getName());
     protected static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");
     protected static final Pattern IMPORT_TAG_SEPARATOR = Pattern.compile("[,\\s]+");
 

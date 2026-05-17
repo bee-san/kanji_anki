@@ -45,7 +45,7 @@ public final class ManualSyncEngine {
     }
 
     public ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, RecordsSyncModels.Settings settings, SyncProgress.Listener progress) {
-        this(context, store, gateway, settings, progress, AppClock.system());
+        this(context, store, gateway, settings, progress, AppClock.systemClock());
     }
 
     ManualSyncEngine(Context context, LocalStore store, CollectionGateway gateway, RecordsSyncModels.Settings settings, SyncProgress.Listener progress, AppClock clock) {

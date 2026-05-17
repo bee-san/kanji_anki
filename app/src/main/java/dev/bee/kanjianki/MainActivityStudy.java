@@ -93,6 +93,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivityStudy extends MainActivityStats {
+    private static final String LABEL_CHOOSE_KANJI = "Choose the kanji";
+
     private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
     private final Random meaningChoiceRandom = new Random();
 
@@ -508,7 +510,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
         LinearLayout cardShell = softStudyCard();
         cardShell.addView(modePill("Recall"));
-        cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
+        cardShell.addView(text(LABEL_CHOOSE_KANJI, 30, STUDY_PLUM, true));
         cardShell.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
         cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
         addStudyReasonLine(cardShell, session);
@@ -626,7 +628,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
         LinearLayout cardShell = softStudyCard();
         cardShell.addView(modePill("Recognise"));
-        cardShell.addView(text("Choose the kanji", 30, STUDY_PLUM, true));
+        cardShell.addView(text(LABEL_CHOOSE_KANJI, 30, STUDY_PLUM, true));
         cardShell.addView(text(LABEL_SIMILAR_KANJI, 16, STUDY_PINK_DARK, true));
         cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
         addStudyReasonLine(cardShell, session);
@@ -686,9 +688,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             button.setTextSize(34);
             button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
             button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
-            button.setOnClickListener(v -> {
-                submitSimilarKanjiChoice(card, glyph);
-            });
+            button.setOnClickListener(v -> submitSimilarKanjiChoice(card, glyph));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
             lp.setMargins(dp(4), dp(8), dp(4), 0);
             if (row != null) {
@@ -1062,7 +1062,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             return "Type the meaning";
         }
         if (isMeaningKanjiTask(session)) {
-            return "Choose the kanji";
+            return LABEL_CHOOSE_KANJI;
         }
         return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
     }
@@ -1132,7 +1132,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
         List<String> lines = StudyCueTexts.answerLines(
-                dictionaryLookup(),
+                currentDictionaryLookup(),
                 session,
                 exampleForSession(session),
                 isWordReadingTask(session)
@@ -1144,7 +1144,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    DictionaryLookup dictionaryLookup() {
+    DictionaryLookup currentDictionaryLookup() {
         if (dictionaryLookup == null) {
             dictionaryLookup = DictionaryAssets.load(this);
         }
@@ -1191,7 +1191,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         if (isTypingMeaningTask(activeSession)
                 && TypingAnswerMatcher.matches(
-                dictionaryLookup(),
+                currentDictionaryLookup(),
                 activeSession.item.kanji,
                 typingAnswerInput == null ? "" : typingAnswerInput.getText().toString(),
                 collectionMeaningForSession(activeSession))) {
@@ -1418,7 +1418,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         checkWritingButton.setEnabled(false);
         updateResultActions();
         setStudyStatus("Checking handwriting...", MUTED);
-        WritingRecognizer recognizer = writingRecognizer();
+        WritingRecognizer recognizer = currentWritingRecognizer();
         if (recognizer == null) {
             showModelUnavailable("The handwriting checker is unavailable on this device.");
             return;
@@ -1962,7 +1962,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         writingModelDownloaded = false;
         updateResultActions();
         String token = activeSession == null ? null : activeSession.token;
-        WritingRecognizer recognizer = writingRecognizer();
+        WritingRecognizer recognizer = currentWritingRecognizer();
         if (recognizer == null) {
             writingModelStatusKnown = true;
             setStudyStatus(guideStatusPrefix(strokeGuide(activeSession.item.kanji)) + "\nAutomatic handwriting checks are unavailable on this device.", CORAL);
@@ -1998,7 +1998,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void downloadWritingModel() {
         String token = activeSession == null ? null : activeSession.token;
-        WritingRecognizer recognizer = writingRecognizer();
+        WritingRecognizer recognizer = currentWritingRecognizer();
         if (recognizer == null) {
             setStudyStatus("The handwriting checker is unavailable on this device.", CORAL);
             return;

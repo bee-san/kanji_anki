@@ -45,7 +45,7 @@ public final class ReminderScheduler {
     }
 
     public static void schedule(Context context, LocalStore.ReminderSettings settings) {
-        schedule(context, settings, AppClock.system());
+        schedule(context, settings, AppClock.systemClock());
     }
 
     public static void schedule(Context context, LocalStore.ReminderSettings settings, AppClock clock) {
@@ -98,7 +98,7 @@ public final class ReminderScheduler {
 
     @SuppressLint("MissingPermission")
     public static void showReminderNotification(Context context) {
-        showReminderNotification(context, AppClock.system());
+        showReminderNotification(context, AppClock.systemClock());
     }
 
     @SuppressLint("MissingPermission")
@@ -108,7 +108,7 @@ public final class ReminderScheduler {
 
     @SuppressLint("MissingPermission")
     static void showReminderNotification(Context context, ReminderServices services) {
-        showReminderNotification(context, services, AppClock.system());
+        showReminderNotification(context, services, AppClock.systemClock());
     }
 
     @SuppressLint("MissingPermission")
@@ -254,7 +254,7 @@ public final class ReminderScheduler {
     }
 
     static long nextTriggerMillis(LocalStore.ReminderSettings settings) {
-        return nextTriggerMillis(settings, AppClock.system());
+        return nextTriggerMillis(settings, AppClock.systemClock());
     }
 
     static long nextTriggerMillis(LocalStore.ReminderSettings settings, AppClock clock) {

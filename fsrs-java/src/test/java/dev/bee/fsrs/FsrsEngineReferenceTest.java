@@ -46,7 +46,7 @@ public final class FsrsEngineReferenceTest {
         double[] values = defaults.toArray();
 
         assertEquals(21, FsrsParameters.PARAMETER_COUNT);
-        assertArrayEquals(FsrsParameters.LATEST_DEFAULT_VALUES, values, 0.0);
+        assertArrayEquals(FsrsParameters.latestDefaultValues(), values, 0.0);
         assertEquals(0.212, defaults.get(0), 0.0);
         assertEquals(0.1542, defaults.decayMagnitude(), 0.0);
         assertEquals(-0.1542, defaults.decay(), 0.0);
@@ -56,17 +56,17 @@ public final class FsrsEngineReferenceTest {
         values[0] = 99.0;
         assertEquals(0.212, defaults.get(0), 0.0);
 
-        double[] custom = FsrsParameters.LATEST_DEFAULT_VALUES.clone();
+        double[] custom = FsrsParameters.latestDefaultValues();
         FsrsParameters copied = FsrsParameters.of(custom);
         custom[0] = 99.0;
         assertEquals(0.212, copied.get(0), 0.0);
 
         expectIllegalArgument(() -> FsrsParameters.of(null));
         expectIllegalArgument(() -> FsrsParameters.of(Arrays.copyOf(custom, 20)));
-        double[] nonFinite = FsrsParameters.LATEST_DEFAULT_VALUES.clone();
+        double[] nonFinite = FsrsParameters.latestDefaultValues();
         nonFinite[0] = Double.NaN;
         expectIllegalArgument(() -> FsrsParameters.of(nonFinite));
-        double[] badDecay = FsrsParameters.LATEST_DEFAULT_VALUES.clone();
+        double[] badDecay = FsrsParameters.latestDefaultValues();
         badDecay[20] = 0.0;
         expectIllegalArgument(() -> FsrsParameters.of(badDecay));
     }

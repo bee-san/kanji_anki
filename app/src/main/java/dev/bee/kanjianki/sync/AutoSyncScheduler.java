@@ -27,18 +27,18 @@ public final class AutoSyncScheduler {
     }
 
     public static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings) {
-        schedule(context, store, settings, AppClock.system());
+        schedule(context, store, settings, AppClock.systemClock());
     }
 
     public static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, AppClock clock) {
-        schedule(context, store, settings, new AndroidSchedulerBackend(context), clock);
+        schedule(store, settings, new AndroidSchedulerBackend(context), clock);
     }
 
-    static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend) {
-        schedule(context, store, settings, backend, AppClock.system());
+    static void schedule(LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend) {
+        schedule(store, settings, backend, AppClock.systemClock());
     }
 
-    static void schedule(Context context, LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend, AppClock clock) {
+    static void schedule(LocalStore store, LocalStore.AutoSyncSettings settings, SchedulerBackend backend, AppClock clock) {
         long now = AppClock.orSystem(clock).nowMillis();
         scheduleWithState(
                 settings,

@@ -6,7 +6,7 @@ public interface AppClock {
 
     long nowMillis();
 
-    static AppClock system() {
+    static AppClock systemClock() {
         return SYSTEM;
     }
 

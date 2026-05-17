@@ -890,16 +890,6 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(hasColumn("import_decisions", "rule_types"));
     }
 
-    private void assertMigratedTimelineState() {
-        assertTrue(count("kanji_timeline_events") >= 3);
-        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji("拉");
-        assertNotNull(timeline.currentRow);
-        assertNull(timeline.currentStudyItem);
-        assertTrue(hasTimelineType(timeline, "first_seen"));
-        assertTrue(hasTimelineType(timeline, "weak_support_seen"));
-        assertTrue(hasTimelineType(timeline, "review_passed"));
-    }
-
     @Test
     public void testSettingsAndReviewTokensPersistAcrossStoreInstances() {
         store.putIntSetting("suspended_rank_cutoff", 4000);
@@ -2281,17 +2271,6 @@ public final class LocalStoreInstrumentedTest {
 
     private boolean hasTimelineType(RecordsStudyModels.KanjiRecoveryTimeline timeline, String eventType) {
         return countTimelineType(timeline, eventType) > 0;
-    }
-
-    private void assertTimelineEventSource(RecordsStudyModels.KanjiRecoveryTimeline timeline, String eventType, String expression, String reading) {
-        for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
-            if (eventType.equals(event.eventType)) {
-                assertEquals(expression, event.sourceExpression);
-                assertEquals(reading, event.sourceReading);
-                return;
-            }
-        }
-        throw new AssertionError("Expected timeline event " + eventType);
     }
 
     private void assertTimelineEventDetailContains(RecordsStudyModels.KanjiRecoveryTimeline timeline, String eventType, String detail) {

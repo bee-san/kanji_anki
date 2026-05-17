@@ -1,6 +1,8 @@
 package dev.bee.fsrs;
 
 final class DefaultFsrsEngine implements FsrsEngine {
+    private static final String PARAM_RATING = "rating";
+
     private final FsrsParameters parameters;
 
     DefaultFsrsEngine(FsrsParameters parameters) {
@@ -24,7 +26,7 @@ final class DefaultFsrsEngine implements FsrsEngine {
     @Override
     public FsrsMemoryState nextState(FsrsMemoryState previousState, FsrsRating rating, int elapsedDays) {
         Fsrs.requireNonNull(previousState, "previousState");
-        Fsrs.requireNonNull(rating, "rating");
+        Fsrs.requireNonNull(rating, PARAM_RATING);
         Fsrs.validateElapsedDays(elapsedDays);
         validateDifficulty(previousState.difficulty());
 
@@ -44,7 +46,7 @@ final class DefaultFsrsEngine implements FsrsEngine {
     @Override
     public double nextDifficulty(double currentDifficulty, FsrsRating rating) {
         validateDifficulty(currentDifficulty);
-        Fsrs.requireNonNull(rating, "rating");
+        Fsrs.requireNonNull(rating, PARAM_RATING);
         double deltaDifficulty = -(parameters.get(6) * (rating.value() - 3.0));
         double linearDamping = (10.0 - currentDifficulty) * deltaDifficulty / 9.0;
         double easyInitialDifficulty = initialDifficulty(FsrsRating.EASY, false);
@@ -58,7 +60,7 @@ final class DefaultFsrsEngine implements FsrsEngine {
         if (!Double.isFinite(stability) || stability <= 0.0) {
             throw new IllegalArgumentException("stability must be finite and positive");
         }
-        Fsrs.requireNonNull(rating, "rating");
+        Fsrs.requireNonNull(rating, PARAM_RATING);
         double increase = Math.exp(parameters.get(17) * (rating.value() - 3.0 + parameters.get(18)))
                 * Math.pow(stability, -parameters.get(19));
         if (rating == FsrsRating.GOOD || rating == FsrsRating.EASY) {

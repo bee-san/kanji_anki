@@ -221,7 +221,7 @@ public final class MainActivityHelperInstrumentedTest {
                         CompletableFuture.completedFuture(new WritingRecognizer.RecognitionResult(Collections.emptyList()))
                 );
                 activity.writingRecognizer = cachedRecognizer;
-                assertTrue(activity.writingRecognizer() == cachedRecognizer);
+                assertTrue(activity.currentWritingRecognizer() == cachedRecognizer);
 
                 StudySessionTracker.ActiveStudyTask timing = new StudySessionTracker.ActiveStudyTask(null, null, null, -10L);
                 timing.pause(50L);
@@ -1413,7 +1413,7 @@ public final class MainActivityHelperInstrumentedTest {
                     throw new RuntimeException("ml kit unavailable");
                 });
                 activity.writingRecognizer = null;
-                assertNull(activity.writingRecognizer());
+                assertNull(activity.currentWritingRecognizer());
 
                 MainActivity.setWritingRecognizerFactoryForTests(null);
                 MainActivity.setWritingRecognizerForTests(staleStatusRecognizer);

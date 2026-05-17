@@ -322,12 +322,12 @@ public final class ReminderSchedulerTest {
 
         @Override
         public void scheduleFromStoredSettings() {
-            events.record("boot");
+            events.append("boot");
         }
 
         @Override
         public void handleDailyReminder() {
-            events.record("daily");
+            events.append("daily");
         }
     }
 
@@ -346,20 +346,20 @@ public final class ReminderSchedulerTest {
 
         @Override
         public void showReminderNotification() {
-            events.record("show");
+            events.append("show");
         }
 
         @Override
         public void schedule(LocalStore.ReminderSettings settings) {
             scheduledSettings = settings;
-            events.record("schedule");
+            events.append("schedule");
         }
     }
 
     private static final class Events {
         String joined = "";
 
-        void record(String event) {
+        void append(String event) {
             if (!joined.isEmpty()) {
                 joined += ",";
             }

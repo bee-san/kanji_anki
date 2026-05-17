@@ -302,34 +302,6 @@ public final class StudyStatsStore {
         return new LadderHealthMetric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady);
     }
 
-    private List<LadderItemEvidence> ladderItemEvidence(SQLiteDatabase db) {
-        Cursor cursor = db.query(
-                TABLE_STUDY_ITEMS,
-                new String[]{COLUMN_STATE, COLUMN_RUNG, COLUMN_PHASE, COLUMN_REAL_PASS_STREAK, COLUMN_REAL_AGAIN_STREAK, COLUMN_MATURE_INTERVAL_DAYS},
-                null,
-                null,
-                null,
-                null,
-                null
-        );
-        List<LadderItemEvidence> out = new ArrayList<>();
-        try {
-            while (cursor.moveToNext()) {
-                out.add(new LadderItemEvidence(
-                        string(cursor, COLUMN_STATE),
-                        RecordsBase.LadderRung.fromWireName(string(cursor, COLUMN_RUNG)),
-                        RecordsBase.SchedulerPhase.fromWireName(string(cursor, COLUMN_PHASE)),
-                        integer(cursor, COLUMN_REAL_PASS_STREAK),
-                        integer(cursor, COLUMN_REAL_AGAIN_STREAK),
-                        integer(cursor, COLUMN_MATURE_INTERVAL_DAYS)
-                ));
-            }
-        } finally {
-            cursor.close();
-        }
-        return out;
-    }
-
     private int realDueReviewsToMove() {
         return store.getIntSetting(
                 SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY,
