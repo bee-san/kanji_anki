@@ -13,4 +13,6 @@ android {
 
 dependencies {
     implementation(project(":domain"))
+    testImplementation(libs.coroutines.core)
+    testImplementation(libs.junit)
 }
