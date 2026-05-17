@@ -481,6 +481,11 @@ Current artifacts:
 - `LegacyStudySessionBridgeTest` compares the bridge against `BridgeScheduler`
   for due-review token reuse, write/relearning priority, new-card sort mode,
   and null-session behavior.
+- `LegacyStudySessionBridge` now delegates to `LoadNextStudySessionUseCase`
+  through in-memory `StudyQueueRepository` and `StudyDashboardRepository`
+  adapters over the rows/items already loaded by the legacy screen. This wires
+  the runtime Study session path through the use case without changing the
+  current `LocalStore` persistence boundary yet.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
@@ -604,7 +609,6 @@ Explicit gaps:
   sessions through the legacy bridge.
 - Study progress is wired into the runtime Study screen through the legacy
   tracker bridge; the future Compose/ViewModel surface is not built yet.
-- `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
   write path.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
@@ -638,6 +642,9 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 ```
 
 Result: `BUILD SUCCESSFUL`.
+
+The same `:app:testDebugUnitTest` command passed after wiring
+`LegacyStudySessionBridge` through `LoadNextStudySessionUseCase`.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

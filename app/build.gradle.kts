@@ -146,6 +146,7 @@ dependencies {
     implementation(project(":ankidroid"))
     implementation(project(":dictionary-android"))
     implementation(project(":writing-android"))
+    implementation(libs.coroutines.core)
     implementation(libs.androidx.work.runtime)
     implementation(libs.mlkit.digital.ink)
     testImplementation(libs.junit)
