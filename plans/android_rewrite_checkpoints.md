@@ -321,6 +321,44 @@ the data schema parity test included.
 The same `ciFast` command passed after adding the first repository interfaces,
 Room implementations, and mapper tests.
 
+## Step 6 Sync Domain Rewrite
+
+Status: started. This is not yet a manual-sync replacement.
+
+Current artifacts:
+
+- `CollectionGateway` in `:domain` defines a suspendable collection-read
+  boundary.
+- `RunSourceMirrorSyncUseCase` reads a collection snapshot, inserts a sync-run
+  summary, and writes source note/card rows with the generated sync ID.
+- `CollectionGatewayException` maps provider failures into permanent vs
+  retryable sync-run status.
+
+Explicit gaps:
+
+- No AnkiDroid module implementation yet.
+- No import analysis, suspended archive cleanup, dashboard rebuild, queue
+  seeding, similar-kanji rebuild, or historical snapshot write in the new use
+  case yet.
+- Manual and background sync still use the legacy Java path.
+
+Verification commands:
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test
+```
+
+Result: `BUILD SUCCESSFUL`; fake gateway tests cover source snapshot write and
+failure sync-run mapping.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew ciFast
+```
+
+Result: `BUILD SUCCESSFUL`.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:
