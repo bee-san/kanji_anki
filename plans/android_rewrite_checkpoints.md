@@ -405,6 +405,15 @@ Current artifacts:
   - moved-forward and missed-kanji outcome counts.
   - repair failures not marking already-moved kanji as missed.
   - display clamping for done runs, active tasks, and continue-all sessions.
+- `StudySessionTracker` in `:app` now delegates study-run progress state,
+  task keys, hard-cap checks, outcome counts, and top-bar snapshots to
+  `StudyProgressCalculator` while keeping the current Java active-task timing
+  and `LocalStore` answer-duration write path.
+- `MainActivityBase.studyTopBar` renders from the Kotlin
+  `StudyProgressSnapshot` instead of recalculating visible counters in the
+  Activity.
+- `StudySessionTrackerTest` covers the app bridge for the same visible Study
+  top-bar display rules.
 - `ReviewTokenGuard` in `:domain` isolates duplicate-review protection.
 - `ReviewTokenGuardTest` covers:
   - matching active tokens being accepted and consumed.
@@ -557,7 +566,8 @@ Explicit gaps:
   reviews through the legacy bridge.
 - Kotlin session-selection calculation is wired into normal runtime Study
   sessions through the legacy bridge.
-- Study progress is not wired into the runtime Study screen yet.
+- Study progress is wired into the runtime Study screen through the legacy
+  tracker bridge; the future Compose/ViewModel surface is not built yet.
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
 - Runtime Study review persistence still uses the legacy Java `LocalStore`
   write path.

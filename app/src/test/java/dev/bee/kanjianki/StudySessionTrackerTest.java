@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.domain.scheduler.StudyProgressSnapshot;
 
 import org.junit.Test;
 
@@ -61,6 +62,27 @@ public final class StudySessionTrackerTest {
         assertEquals(0, tracker.targetCount());
         tracker.registerTaskShown("visible");
         assertEquals(1, tracker.targetCount());
+    }
+
+    @Test
+    public void progressSnapshotMatchesStudyTopBarDisplayRules() {
+        StudySessionTracker tracker = new StudySessionTracker();
+        tracker.setTargetCount(2);
+        tracker.markTaskCompleted("one");
+        tracker.markTaskCompleted("two");
+
+        StudyProgressSnapshot done = tracker.progressSnapshot(false, false);
+        assertEquals(2, done.getVisibleCompletedCount());
+        assertEquals(2, done.getVisibleTargetCount());
+        assertEquals(1f, done.getFraction(), 0.0001f);
+        assertTrue(done.isDone());
+        assertTrue(done.getAtHardCap());
+
+        StudyProgressSnapshot continueAllActive = tracker.progressSnapshot(true, true);
+        assertEquals(2, continueAllActive.getVisibleCompletedCount());
+        assertEquals(3, continueAllActive.getVisibleTargetCount());
+        assertEquals(2f / 3f, continueAllActive.getFraction(), 0.0001f);
+        assertFalse(continueAllActive.getAtHardCap());
     }
 
     @Test

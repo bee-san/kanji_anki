@@ -39,6 +39,7 @@ import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.data.StudyStatsStore;
+import dev.bee.kanjianki.domain.scheduler.StudyProgressSnapshot;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
 import dev.bee.kanjianki.study.WritingRecognizer;
@@ -546,18 +547,15 @@ abstract class MainActivityBase extends MainActivityUiSupport {
 
     View studyTopBar(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         initializeSessionProgressTarget(plan);
-        int completed = studySessionTracker.completedCount();
-        int target = studySessionTracker.targetCount();
-        boolean activeTask = activeSession != null;
-        if (activeTask && target <= completed && continueAllKanjiSession) {
-            target = completed + 1;
-        }
-        if (activeTask) {
-            target = Math.max(1, target);
-        }
-        int visibleCompleted = Math.max(0, Math.min(target, completed));
-        float fraction = target <= 0 ? 0f : Math.max(0f, Math.min(1f, completed / (float) target));
-        return new StudyTopBarView(this, visibleCompleted, target, fraction, this::renderHome, this::renderSettings);
+        StudyProgressSnapshot progress = studySessionTracker.progressSnapshot(activeSession != null, continueAllKanjiSession);
+        return new StudyTopBarView(
+                this,
+                progress.getVisibleCompletedCount(),
+                progress.getVisibleTargetCount(),
+                progress.getFraction(),
+                this::renderHome,
+                this::renderSettings
+        );
     }
 
     void styleStudyActionBarShell() {
