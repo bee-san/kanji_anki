@@ -899,6 +899,13 @@ Room-backed legacy snapshots through the Hilt entry point and IO executor.
 The same `ciFast` command passed after changing Study to wait for the Room
 snapshot or legacy fallback before starting an active session.
 
+Review found that enabling runtime Room reads before moving sync and study
+review writes to Room could stale-repeat reviewed cards. Home and Study are
+back on the legacy `LocalStore` snapshot until those write paths move together.
+The Room read bridge now uses a single transactional snapshot repository so it
+can be re-enabled without mixing dashboard rows and queue items from different
+database moments.
+
 The same `ciFast` command passed after adding `:ankidroid:testDebugUnitTest`
 to the local and GitHub Android rewrite gates.
 
@@ -918,7 +925,9 @@ Current app database:
 - Schema constants: `app/src/main/java/dev/bee/kanjianki/data/LocalStoreSchema.java`.
 - Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
   It rejects ambiguous ownership and uses destructive migration for the
-  Room-owned file.
+  Room-owned file. The Room DB remains a non-authoritative rewrite store while
+  destructive migration is enabled; before Room becomes authoritative, add
+  explicit migrations or an intentional backup/reset path for user-facing state.
 - Source mirror parity: Room `source_cards` now stores explicit `suspended`
   and `browser_query_matched` flags. These are required for Room-owned import
   analysis to distinguish suspended, active, weak, tagged, and browser-query

@@ -281,7 +281,10 @@ final class LegacyStudyMappers {
                 example.lapses,
                 example.intervalDays,
                 example.reps,
-                example.fsrsStability
+                example.fsrsStability,
+                example.cardId,
+                example.noteId,
+                example.sentence
         );
     }
 

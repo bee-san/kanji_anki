@@ -158,8 +158,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderStudy() {
-        renderStudyLoading();
-        loadRoomStudySnapshotOrFallback(NAV_STUDY, this::renderStudy, () -> renderStudy(legacyStudySnapshot()));
+        renderStudy(legacyStudySnapshot());
     }
 
     void renderStudy(RoomLegacyStudySnapshot snapshot) {
@@ -211,20 +210,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         registerStudyTaskShown(taskKey);
         startActiveStudyTask(taskKey, activeSession.item.kanji, activeSession.taskType, now);
         renderSession(activeSession);
-    }
-
-    void renderStudyLoading() {
-        abandonActiveStudyTask();
-        activeSession = null;
-        activeSimilarWritingRepair = null;
-        base(NAV_STUDY);
-        prepareStudyContent(null, false);
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Study practice", 32, STUDY_PLUM, true));
-        card.addView(text("Loading queue", 22, STUDY_PLUM, true));
-        card.addView(text("Preparing the next card.", 16, STUDY_MUTED, false));
-        content.addView(card);
     }
 
     void renderEmptyStudyQueue() {

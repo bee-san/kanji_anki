@@ -9,10 +9,8 @@ import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.study.StudyRung
 import dev.bee.kanjianki.domain.model.study.TaskMemory
 import dev.bee.kanjianki.domain.model.study.TaskMemoryBank
-import dev.bee.kanjianki.domain.repository.StudyDashboardRepository
-import dev.bee.kanjianki.domain.repository.StudyQueueRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import dev.bee.kanjianki.domain.repository.StudyRuntimeSnapshot
+import dev.bee.kanjianki.domain.repository.StudyRuntimeSnapshotRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -22,8 +20,8 @@ class RoomLegacyStudyReadBridgeTest {
     @Test
     fun activeSnapshotMapsRoomRowsAndItemsToLegacyRuntimeRecords() = runBlocking {
         val bridge = RoomLegacyStudyReadBridge(
-            studyDashboardRepository = FakeStudyDashboardRepository(
-                listOf(
+            studyRuntimeSnapshotRepository = FakeStudyRuntimeSnapshotRepository(
+                rows = listOf(
                     StudyDashboardRow(
                         kanji = "日",
                         jitenRank = 42,
@@ -56,9 +54,7 @@ class RoomLegacyStudyReadBridgeTest {
                         ),
                     ),
                 ),
-            ),
-            studyQueueRepository = FakeStudyQueueRepository(
-                listOf(
+                items = listOf(
                     StudyQueueItem(
                         kanji = "日",
                         state = StudyItemState.REVIEW,
@@ -152,45 +148,11 @@ class RoomLegacyStudyReadBridgeTest {
         assertEquals(777L, item.writingRemediationMemory.lastPassedDueAtMillis)
     }
 
-    private class FakeStudyDashboardRepository(
+    private class FakeStudyRuntimeSnapshotRepository(
         private val rows: List<StudyDashboardRow>,
-    ) : StudyDashboardRepository {
-        override fun observeTop(limit: Int): Flow<List<StudyDashboardRow>> = flowOf(rows.take(limit))
-
-        override fun observeActive(limit: Int): Flow<List<StudyDashboardRow>> = flowOf(rows.take(limit))
-
-        override suspend fun listTop(limit: Int): List<StudyDashboardRow> = rows.take(limit)
-
-        override suspend fun listActive(limit: Int): List<StudyDashboardRow> = rows.take(limit)
-
-        override suspend fun get(kanji: String): StudyDashboardRow? = rows.firstOrNull { it.kanji == kanji }
-
-        override suspend fun isLocallySuspended(kanji: String): Boolean = false
-
-        override suspend fun setLocallySuspended(
-            kanji: String,
-            suspended: Boolean,
-            nowMillis: Long,
-        ): Boolean = false
-    }
-
-    private class FakeStudyQueueRepository(
         private val items: List<StudyQueueItem>,
-    ) : StudyQueueRepository {
-        override suspend fun listActive(): List<StudyQueueItem> = items
-
-        override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> =
-            items.filter { it.state == state }
-
-        override suspend fun listAllForSeeding(): List<StudyQueueItem> = items
-
-        override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
-
-        override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = false
-
-        override suspend fun dueCount(
-            state: StudyItemState,
-            nowMillis: Long,
-        ): Int = items.count { it.state == state && it.dueAtMillis <= nowMillis }
+    ) : StudyRuntimeSnapshotRepository {
+        override suspend fun activeSnapshot(dashboardLimit: Int): StudyRuntimeSnapshot =
+            StudyRuntimeSnapshot(rows.take(dashboardLimit), items)
     }
 }

@@ -97,7 +97,6 @@ abstract class MainActivityHome extends MainActivityBase {
 
     void renderHome() {
         renderHome(legacyStudySnapshot());
-        loadRoomStudySnapshot("home", this::renderHome);
     }
 
     void renderHome(RoomLegacyStudySnapshot snapshot) {

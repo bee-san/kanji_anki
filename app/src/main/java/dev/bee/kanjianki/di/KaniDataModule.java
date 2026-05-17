@@ -13,11 +13,13 @@ import dev.bee.kanjianki.data.repository.RoomSourceMirrorRepository;
 import dev.bee.kanjianki.data.repository.RoomSourceMirrorSyncRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyDashboardRepository;
 import dev.bee.kanjianki.data.repository.RoomStudyQueueRepository;
+import dev.bee.kanjianki.data.repository.RoomStudyRuntimeSnapshotRepository;
 import dev.bee.kanjianki.data.repository.RoomSyncRunRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorRepository;
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository;
 import dev.bee.kanjianki.domain.repository.StudyDashboardRepository;
 import dev.bee.kanjianki.domain.repository.StudyQueueRepository;
+import dev.bee.kanjianki.domain.repository.StudyRuntimeSnapshotRepository;
 import dev.bee.kanjianki.domain.repository.SyncRunRepository;
 import dev.bee.kanjianki.domain.scheduler.ApplyStudyReviewUseCase;
 import dev.bee.kanjianki.domain.scheduler.LoadNextStudySessionUseCase;
@@ -65,6 +67,12 @@ public final class KaniDataModule {
     @Singleton
     static StudyDashboardRepository provideStudyDashboardRepository(KaniRoomDatabase database) {
         return new RoomStudyDashboardRepository(database, RoomStudyDashboardRepository.DEFAULT_EXAMPLE_LIMIT);
+    }
+
+    @Provides
+    @Singleton
+    static StudyRuntimeSnapshotRepository provideStudyRuntimeSnapshotRepository(KaniRoomDatabase database) {
+        return new RoomStudyRuntimeSnapshotRepository(database, RoomStudyDashboardRepository.DEFAULT_EXAMPLE_LIMIT);
     }
 
     @Provides
