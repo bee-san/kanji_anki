@@ -683,6 +683,17 @@ Current app database:
 - Room creation point: `data/src/main/java/dev/bee/kanjianki/data/KaniRoomDatabaseFactory.kt`.
   It rejects ambiguous ownership and uses destructive migration for the
   Room-owned file.
+- App graph creation point:
+  `app/src/main/java/dev/bee/kanjianki/di/KaniDataModule.java`.
+  `KaniApplication` is now `@HiltAndroidApp`, and Hilt owns singleton bindings
+  for the Room DB plus source mirror, sync run, study queue, study dashboard,
+  session-selection, and review-application domain entrypoints.
+
+Runtime DI gap:
+
+- Existing Java screens/services still instantiate their legacy collaborators
+  directly. Hilt is available for new ViewModels and for each runtime surface as
+  it moves to Room-backed repositories.
 
 Current table families:
 
