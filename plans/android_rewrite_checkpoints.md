@@ -452,6 +452,16 @@ Current artifacts:
   - accepted reviews persisting the transitioned item.
   - missing Room rows reporting an unpersisted result without changing the
     transition outcome.
+- `LegacyStudyReviewBridge` in `:app` maps legacy `Records*` review inputs to
+  the Kotlin `StudyReviewTransitionEngine`, then maps the transitioned item
+  back to `RecordsStudyModels.StudyItem` for the current `LocalStore` write
+  path.
+- `MainActivityStudy.submitNormalReview` now calculates normal Study review
+  transitions through `LegacyStudyReviewBridge` instead of
+  `BridgeScheduler.applyReview`.
+- `LegacyStudyReviewBridgeTest` compares the bridge against `BridgeScheduler`
+  for review pass promotion, review-fail demotion, new-learning repeat, and
+  duplicate-token behavior.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
@@ -533,11 +543,12 @@ Current artifacts:
 
 Explicit gaps:
 
-- Kotlin review-transition use case is extracted but is not wired into the
-  runtime Study screen yet.
+- Kotlin review-transition calculation is wired into normal runtime Study
+  reviews through the legacy bridge.
 - Study progress is not wired into the runtime Study screen yet.
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
-- Runtime Study still calls the legacy Java review write path.
+- Runtime Study review persistence still uses the legacy Java `LocalStore`
+  write path.
 - Study dashboard repository is read-only for now; local suspension writes
   remain on the legacy path.
 - Adaptive planner split is not ported yet.

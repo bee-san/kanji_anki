@@ -1528,14 +1528,14 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void submitNormalReview(RecordsSchedulerModels.ReviewRequest request) {
-        BridgeScheduler scheduler = new BridgeScheduler();
         Set<String> consumed = new HashSet<>(store.consumedTokens());
         long now = System.currentTimeMillis();
         RecordsSchedulerModels.SchedulerParameters parameters = store.schedulerParameters();
         RecordsSchedulerModels.SchedulerParameters effectiveParameters = parameters.withTargetRetention(
                 parameters.targetRetentionForRank(activeSession.row.jitenRank)
         );
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, effectiveParameters, settings(), studyLadderSettings());
+        RecordsSchedulerModels.ReviewResult result = new LegacyStudyReviewBridge()
+                .applyReview(activeSession.item, request, consumed, now, effectiveParameters, settings(), store.learningStepSettings(), studyLadderSettings());
         completeActiveStudyTask(sessionTaskKey(activeSession), result.appliedRating, now);
         StudyStatsStore.StudyStreak streak = null;
         if (!result.duplicate) {
