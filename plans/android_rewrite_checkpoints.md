@@ -359,6 +359,47 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL`.
 
+## Step 7 Scheduler Rewrite
+
+Status: started. The legacy scheduler remains the app runtime path.
+
+Current artifacts:
+
+- `LearningStepEngine` in `:domain` handles Anki-exact learning/relearning
+  step transitions for `Again`, `Hard`, `Good`, and `Easy`.
+- `LearningStepSettings` locks current defaults:
+  - new learning: `1m`, `10m`
+  - relearning: `10m`
+- `LearningStepEngineTest` covers:
+  - `Again` returns to the first step.
+  - `Good` advances and graduates after the final step.
+  - `Hard` on the first step uses the delay between Again and Good.
+  - `Hard` on later steps repeats the current step.
+  - `Easy` graduates immediately.
+  - relearning preserves the relearning phase until graduation.
+
+Explicit gaps:
+
+- FSRS graduation remains in the Java scheduler/adapter path.
+- Ladder movement, study session selection, adaptive planner split, token
+  guard, and progress calculator are not ported yet.
+
+Verification commands:
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test
+```
+
+Result: `BUILD SUCCESSFUL`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew ciFast
+```
+
+Result: `BUILD SUCCESSFUL`.
+
 ## Current Persistence Facts For Room Migration
 
 Current app database:
