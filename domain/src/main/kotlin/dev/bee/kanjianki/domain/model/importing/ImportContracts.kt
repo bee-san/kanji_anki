@@ -42,11 +42,6 @@ data class NoteTypeMapping(
         require(noteTypeName.isNotBlank()) { "noteTypeName must not be blank" }
         require(templateName.isNotBlank()) { "templateName must not be blank" }
         require(expressionField.isNotBlank()) { "expressionField must not be blank" }
-        require(readingField.isNotBlank()) { "readingField must not be blank" }
-        require(meaningField.isNotBlank()) { "meaningField must not be blank" }
-        require(sentenceField.isNotBlank()) { "sentenceField must not be blank" }
-        require(frequencyField.isNotBlank()) { "frequencyField must not be blank" }
-        require(frequencySortField.isNotBlank()) { "frequencySortField must not be blank" }
     }
 
     companion object {

@@ -39,6 +39,24 @@ class ImportContractsTest {
     }
 
     @Test
+    fun noteTypeMappingAllowsOptionalBlankFields() {
+        val mapping = NoteTypeMapping(
+            noteTypeName = "Custom Japanese",
+            templateName = "Mining",
+            expressionField = "Front",
+            readingField = "",
+            meaningField = "",
+            sentenceField = "",
+            frequencyField = "",
+            frequencySortField = "",
+        )
+
+        assertEquals("Custom Japanese", mapping.noteTypeName)
+        assertEquals("", mapping.readingField)
+        assertEquals("", mapping.meaningField)
+    }
+
+    @Test
     fun optionalImportSourcesOnlyEnableWhenConfigured() {
         val settings = ImportSettings(
             importActiveCards = true,
