@@ -1162,3 +1162,7 @@ the visible Java runtime while Room study ownership is disabled:
   studied-today evidence, and the bundled similar-kanji index. It is tested as
   a staged factory and is not wired into the visible runtime until sync
   settings ownership moves off `LocalStore`.
+- `DomainManualSyncRunner` now accepts a suspending request factory and has a
+  constructor for the staged `RoomSyncRequestFactory`. The current legacy
+  constructor still maps `RecordsSyncModels.Settings` through `LocalStore`, but
+  the runner no longer requires sync-request construction to be synchronous.

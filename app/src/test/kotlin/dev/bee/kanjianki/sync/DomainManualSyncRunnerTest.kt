@@ -116,6 +116,35 @@ class DomainManualSyncRunnerTest {
     }
 
     @Test
+    fun requestFactoryCanUseSuspendingRoomSources() = runBlocking {
+        var requestFactoryCalls = 0
+        val runner = DomainManualSyncRunner(
+            requestFactory = {
+                requestFactoryCalls++
+                suspendingRequest()
+            },
+            runSourceMirrorSync = { request ->
+                assertEquals(ImportSettings(matureDays = 30), request.importSettings)
+                SyncRunId(1)
+            },
+            syncRunReader = {
+                syncRun(
+                    status = SyncRunStatus.SUCCESS,
+                    suspendedKanjiImportedCount = 1,
+                )
+            },
+            dashboardRowCounter = { 2 },
+        )
+
+        val result = runner.run(RecordsSyncModels.Settings.kikuDefaults())
+
+        assertTrue(result.success)
+        assertEquals(1, requestFactoryCalls)
+        assertEquals(2, result.dashboardRows)
+        assertEquals(1, result.importedSuspendedKanji)
+    }
+
+    @Test
     fun dashboardCountFailureDoesNotTurnRecordedSuccessIntoFailedResult() = runBlocking {
         val runner = runnerReturning(
             syncRun = syncRun(
@@ -262,6 +291,9 @@ class DomainManualSyncRunnerTest {
             allKanjiMode = false,
             status = status,
         )
+
+    private suspend fun suspendingRequest(): RunSourceMirrorSyncRequest =
+        RunSourceMirrorSyncRequest(importSettings = ImportSettings(matureDays = 30))
 
     private fun syncRun(
         id: SyncRunId = SyncRunId(1),

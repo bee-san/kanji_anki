@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.sync
 
 import dev.bee.kanjianki.LegacySyncRequestFactory
+import dev.bee.kanjianki.RoomSyncRequestFactory
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.sync.SyncRun
@@ -18,7 +19,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.coroutines.cancellation.CancellationException
 
 class DomainManualSyncRunner(
-    private val requestFactory: (RecordsSyncModels.Settings) -> RunSourceMirrorSyncRequest,
+    private val requestFactory: suspend (RecordsSyncModels.Settings) -> RunSourceMirrorSyncRequest,
     private val runSourceMirrorSync: suspend (RunSourceMirrorSyncRequest) -> SyncRunId,
     private val syncRunReader: suspend (SyncRunId) -> SyncRun?,
     private val dashboardRowCounter: suspend () -> Int,
@@ -30,6 +31,18 @@ class DomainManualSyncRunner(
         studyDashboard: StudyDashboardRepository,
     ) : this(
         requestFactory = { settings -> requestFactory.request(settings) },
+        runSourceMirrorSync = { request -> runSourceMirrorSync(request) },
+        syncRunReader = { id -> syncRuns.get(id) },
+        dashboardRowCounter = { studyDashboard.listTop(DASHBOARD_ROW_COUNT_LIMIT).size },
+    )
+
+    constructor(
+        requestFactory: RoomSyncRequestFactory,
+        runSourceMirrorSync: RunSourceMirrorSyncUseCase,
+        syncRuns: SyncRunRepository,
+        studyDashboard: StudyDashboardRepository,
+    ) : this(
+        requestFactory = { requestFactory.request() },
         runSourceMirrorSync = { request -> runSourceMirrorSync(request) },
         syncRunReader = { id -> syncRuns.get(id) },
         dashboardRowCounter = { studyDashboard.listTop(DASHBOARD_ROW_COUNT_LIMIT).size },
