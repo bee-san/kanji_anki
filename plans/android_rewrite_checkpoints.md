@@ -424,7 +424,7 @@ Current artifacts:
   - due-at-horizon inclusion and beyond-horizon exclusion.
 - `StudyQueueItem`, `StudyDashboardRow`, `StudyExample`, and
   `StudyItemState` in `:domain` provide the minimal study queue model needed
-  by the future session selector.
+  by the future session selector and review transition.
 - `StudyQueueModelsTest` covers:
   - stable study-item state wire names.
   - answer signatures preferring suspended examples, then active examples, then
@@ -469,7 +469,8 @@ Current artifacts:
 - `RoomStudyQueueRepository` in `:data` reads active `study_items` through
   Room and annotates similar-kanji availability from `similar_kanji_pairs`.
 - `StudyItemMappers` maps `StudyItemEntity` to `StudyQueueItem`, including
-  rung/phase/state wire names and task-memory decode.
+  rung/phase/state wire names, real-review evidence fields, and task-memory
+  decode.
 - `StudyDashboardRepository` in `:domain` defines top and active read-side
   dashboard row boundaries.
 - `RoomStudyDashboardRepository` in `:data` reads `dashboard_rows` and

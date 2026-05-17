@@ -73,9 +73,13 @@ data class StudyQueueItem(
     val lapses: Int,
     val learningStep: Int,
     val writingLevel: Int,
+    val matureIntervalDays: Int = 0,
     val answerSignature: String = "",
     val rung: StudyRung = StudyRung.KANJI_MEANING,
     val phase: StudyPhase = StudyPhase.NEW_LEARNING,
+    val realPassStreak: Int = 0,
+    val realAgainStreak: Int = 0,
+    val lastRealReviewDueAtMillis: Long = 0L,
     val suppressedByTaskType: String = "",
     val hasSimilarKanji: Boolean = false,
     val activeToken: String? = null,
@@ -88,6 +92,12 @@ data class StudyQueueItem(
         require(lapses >= 0) { "lapses must not be negative" }
         require(learningStep >= 0) { "learningStep must not be negative" }
         require(writingLevel >= 0) { "writingLevel must not be negative" }
+        require(matureIntervalDays >= 0) { "matureIntervalDays must not be negative" }
+        require(realPassStreak >= 0) { "realPassStreak must not be negative" }
+        require(realAgainStreak >= 0) { "realAgainStreak must not be negative" }
+        require(lastRealReviewDueAtMillis >= 0L) {
+            "lastRealReviewDueAtMillis must not be negative"
+        }
     }
 
     val familyKey: String
