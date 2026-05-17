@@ -136,6 +136,11 @@ class RoomStudyRuntimeSnapshotRepositoryTest {
         override suspend fun listByStates(states: List<String>): List<StudyItemEntity> =
             items.filter { it.state in states }
 
+        override suspend fun latestForKanji(kanji: String): StudyItemEntity? =
+            items.filter { it.kanji == kanji }
+                .sortedWith(compareBy<StudyItemEntity> { it.state == "retired" }.thenBy { it.dueAt })
+                .firstOrNull()
+
         override suspend fun listAll(): List<StudyItemEntity> = items
 
         override suspend fun dueCount(

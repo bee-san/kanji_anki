@@ -245,6 +245,11 @@ class RoomStudyReviewPersistenceRepositoryTest {
 
         override suspend fun listByStates(states: List<String>): List<StudyItemEntity> = emptyList()
 
+        override suspend fun latestForKanji(kanji: String): StudyItemEntity? =
+            items.filter { it.kanji == kanji }
+                .sortedWith(compareBy<StudyItemEntity> { it.state == "retired" }.thenBy { it.dueAt })
+                .firstOrNull()
+
         override suspend fun listAll(): List<StudyItemEntity> = items
 
         override suspend fun dueCount(
@@ -296,6 +301,11 @@ class RoomStudyReviewPersistenceRepositoryTest {
         val events = mutableListOf<KanjiTimelineEventEntity>()
 
         override suspend fun listForKanji(kanji: String): List<KanjiTimelineEventEntity> = emptyList()
+
+        override suspend fun listLatestForKanji(
+            kanji: String,
+            limit: Int,
+        ): List<KanjiTimelineEventEntity> = emptyList()
 
         override suspend fun upsert(event: KanjiTimelineEventEntity) {
             events += event

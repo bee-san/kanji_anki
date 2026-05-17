@@ -19,6 +19,9 @@ interface StudyItemDao {
     @Query("SELECT * FROM study_items WHERE state IN (:states) ORDER BY due_at ASC, kanji ASC")
     suspend fun listByStates(states: List<String>): List<StudyItemEntity>
 
+    @Query("SELECT * FROM study_items WHERE kanji = :kanji ORDER BY CASE WHEN state = 'retired' THEN 1 ELSE 0 END ASC, due_at ASC LIMIT 1")
+    suspend fun latestForKanji(kanji: String): StudyItemEntity?
+
     @Query("SELECT * FROM study_items ORDER BY state ASC, due_at ASC, kanji ASC, answer_signature ASC")
     suspend fun listAll(): List<StudyItemEntity>
 

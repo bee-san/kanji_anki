@@ -786,6 +786,11 @@ class RoomSourceMirrorSyncRepositoryTest {
         override suspend fun listByStates(states: List<String>): List<StudyItemEntity> =
             upserted.filter { it.state in states }
 
+        override suspend fun latestForKanji(kanji: String): StudyItemEntity? =
+            upserted.filter { it.kanji == kanji }
+                .sortedWith(compareBy<StudyItemEntity> { it.state == "retired" }.thenBy { it.dueAt })
+                .firstOrNull()
+
         override suspend fun listAll(): List<StudyItemEntity> = upserted.sortedBy { it.kanji }
 
         override suspend fun dueCount(

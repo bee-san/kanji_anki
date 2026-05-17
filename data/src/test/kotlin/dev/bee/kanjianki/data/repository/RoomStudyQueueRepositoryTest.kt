@@ -244,6 +244,11 @@ class RoomStudyQueueRepositoryTest {
         override suspend fun listByStates(states: List<String>): List<StudyItemEntity> =
             items.filter { it.state in states }.sortedWith(compareBy<StudyItemEntity> { it.dueAt }.thenBy { it.kanji })
 
+        override suspend fun latestForKanji(kanji: String): StudyItemEntity? =
+            items.filter { it.kanji == kanji }
+                .sortedWith(compareBy<StudyItemEntity> { it.state == "retired" }.thenBy { it.dueAt })
+                .firstOrNull()
+
         override suspend fun listAll(): List<StudyItemEntity> =
             items.sortedWith(compareBy<StudyItemEntity> { it.state }.thenBy { it.dueAt }.thenBy { it.kanji }.thenBy { it.answerSignature })
 

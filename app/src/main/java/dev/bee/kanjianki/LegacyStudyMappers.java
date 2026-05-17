@@ -9,7 +9,9 @@ import dev.bee.kanjianki.domain.model.importing.NewCardSortMode;
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow;
 import dev.bee.kanjianki.domain.model.study.StudyExample;
 import dev.bee.kanjianki.domain.model.study.StudyItemState;
+import dev.bee.kanjianki.domain.model.study.StudyKanjiRecoveryTimeline;
 import dev.bee.kanjianki.domain.model.study.StudyKanjiInventoryItem;
+import dev.bee.kanjianki.domain.model.study.StudyKanjiTimelineEvent;
 import dev.bee.kanjianki.domain.model.study.StudyPhase;
 import dev.bee.kanjianki.domain.model.study.StudyQueueItem;
 import dev.bee.kanjianki.domain.model.study.StudyRating;
@@ -235,6 +237,40 @@ final class LegacyStudyMappers {
                 item.getExampleCount(),
                 item.getSuspended(),
                 item.getLastSeenAtMillis()
+        );
+    }
+
+    static RecordsImportModels.KanjiTimelineEvent toLegacy(StudyKanjiTimelineEvent event) {
+        return new RecordsImportModels.KanjiTimelineEvent(
+                event.getId(),
+                event.getKanji(),
+                event.getOccurredAtMillis(),
+                event.getEventType(),
+                event.getTitle(),
+                event.getDetail(),
+                event.getSourceExpression(),
+                event.getSourceReading(),
+                event.getRating(),
+                event.getWritingRequired(),
+                event.getWritingPassed(),
+                event.getManualOverride(),
+                event.getWeaknessScore(),
+                event.getMatureSupportCount(),
+                event.getSyncId(),
+                event.getDedupeKey()
+        );
+    }
+
+    static RecordsStudyModels.KanjiRecoveryTimeline toLegacy(StudyKanjiRecoveryTimeline timeline) {
+        List<RecordsImportModels.KanjiTimelineEvent> events = new ArrayList<>();
+        for (StudyKanjiTimelineEvent event : timeline.getEvents()) {
+            events.add(toLegacy(event));
+        }
+        return new RecordsStudyModels.KanjiRecoveryTimeline(
+                timeline.getInventoryItem() == null ? null : toLegacy(timeline.getInventoryItem()),
+                timeline.getCurrentRow() == null ? null : toLegacy(timeline.getCurrentRow()),
+                timeline.getCurrentStudyItem() == null ? null : toLegacy(timeline.getCurrentStudyItem()),
+                events
         );
     }
 
