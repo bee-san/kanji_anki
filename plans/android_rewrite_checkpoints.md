@@ -434,6 +434,17 @@ Current artifacts:
     stability, difficulty, retention, and maximum-interval clamps.
   - existing reviews sending clamped state into the Kotlin FSRS API.
   - elapsed-day and interval-result validation.
+- `StudyReviewTransitionEngine` in `:domain` composes token validation, rating
+  resolution, learning-step transitions, FSRS scheduling, ladder movement,
+  writing-level adjustment, and task-memory handoff for a reviewed
+  `StudyQueueItem`.
+- `StudyReviewTransitionEngineTest` covers:
+  - duplicate token rejection without mutating the item.
+  - learning-step repeats without entering FSRS.
+  - new-learning and relearning graduation through FSRS.
+  - review passes using elapsed task-memory days and promotion thresholds.
+  - review lapses entering relearning and demoting after the configured fail
+    streak.
 - `TaskMemory` and `TaskMemoryBank` in `:domain` preserve per-task memory
   encoding and task/rung memory routing.
 - `TaskMemoryTest` covers:
@@ -510,13 +521,9 @@ Current artifacts:
 
 Explicit gaps:
 
-- FSRS scheduling policy is extracted but is not wired into the runtime review
-  transition yet.
-- Ladder movement is not wired into the runtime review transition yet.
+- Kotlin review-transition policy is extracted but is not wired into the
+  runtime review write path yet.
 - Study progress is not wired into the runtime Study screen yet.
-- Review token guard is not wired into the runtime review transition yet.
-- Task memory updates and handoff are not wired into the runtime review
-  transition yet.
 - `LoadNextStudySessionUseCase` is not wired into the runtime Study screen yet.
 - Study queue repository is read-only for now; review-transition writes remain
   on the legacy path.
