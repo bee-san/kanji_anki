@@ -30,11 +30,7 @@ class SyncDashboardBuilder(
         )
 
     private fun ImportSourceEvidence.toStudyExample(): StudyExample = StudyExample(
-        sourceType = if (suspended) {
-            ImportSource.SUSPENDED.wireName
-        } else {
-            ImportSource.ACTIVE.wireName
-        },
+        sourceType = sourceType.wireName,
         expression = expression,
         reading = reading,
         meaning = meaning,

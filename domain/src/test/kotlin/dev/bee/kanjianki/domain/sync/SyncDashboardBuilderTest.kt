@@ -78,6 +78,26 @@ class SyncDashboardBuilderTest {
         assertEquals("active", row.examples.single().sourceType)
     }
 
+    @Test
+    fun preservesNonSuspendedSourceProvenance() {
+        val rows = builder().build(
+            importCandidates = listOf(
+                candidate(
+                    kanji = "弱",
+                    source = source(
+                        kanji = "弱",
+                        cardId = 8,
+                        sourceType = ImportSource.BROWSER_QUERY,
+                        forcePractice = true,
+                    ),
+                ),
+            ),
+            settings = ImportSettings(importBrowserQueryCards = true, importBrowserQuery = "deck:Mining"),
+        )
+
+        assertEquals("browser_query", rows.single().examples.single().sourceType)
+    }
+
     private fun builder(): SyncDashboardBuilder = SyncDashboardBuilder { kanji ->
         rankOf(kanji)
     }
