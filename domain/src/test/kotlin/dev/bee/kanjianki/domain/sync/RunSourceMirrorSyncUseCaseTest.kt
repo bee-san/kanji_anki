@@ -10,11 +10,17 @@ import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
+import dev.bee.kanjianki.domain.model.study.StudyItemState
+import dev.bee.kanjianki.domain.model.study.StudyPhase
+import dev.bee.kanjianki.domain.model.study.StudyQueueItem
+import dev.bee.kanjianki.domain.model.study.StudyRung
 import dev.bee.kanjianki.domain.model.sync.SyncErrorCode
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
+import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
+import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -61,6 +67,49 @@ class RunSourceMirrorSyncUseCaseTest {
     }
 
     @Test
+    fun successfulReadSeedsQueueWhenQueueSettingsAreSupplied() = runBlocking {
+        val gateway = FakeGateway(
+            CollectionSnapshot(
+                notes = listOf(sourceNote(noteId = 10), sourceNote(noteId = 11)),
+                cards = listOf(
+                    sourceCard(noteId = 10, suspended = false),
+                    sourceCard(cardId = 21, noteId = 11, suspended = true),
+                ),
+            ),
+        )
+        val sourceMirrorSync = FakeSourceMirrorSyncRepository()
+        val studyQueue = FakeStudyQueueRepository(existing = listOf(studyQueueItem("火")))
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = gateway,
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = sourceMirrorSync,
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(100, 150),
+            studyQueue = studyQueue,
+        )
+
+        val id = useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                queueSeedSettings = StudyQueueSeedSettings(
+                    activeQueueCap = 10,
+                    newPerDay = 10,
+                    matureSupportThreshold = 2,
+                ),
+                startOfDayMillis = 50,
+            ),
+        )
+
+        assertEquals(SyncRunId(1), id)
+        assertEquals(1, studyQueue.listAllForSeedingCalls)
+        assertEquals(listOf("日", "本", "火"), sourceMirrorSync.seededQueueItems!!.map { it.kanji })
+        assertEquals(StudyItemState.NEW, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.state)
+        assertEquals(150L, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "日" }.createdAtMillis)
+        assertEquals(StudyItemState.RETIRED, sourceMirrorSync.seededQueueItems!!.single { it.kanji == "火" }.state)
+    }
+
+    @Test
     fun gatewayFailureWritesFailedSyncRunWithoutSourceSnapshot() = runBlocking {
         val gateway = FakeGateway(
             failure = CollectionGatewayException(
@@ -88,6 +137,40 @@ class RunSourceMirrorSyncUseCaseTest {
         assertTrue(sourceMirrorSync.notes.isEmpty())
         assertTrue(sourceMirrorSync.cards.isEmpty())
     }
+
+    @Test
+    fun gatewayFailureDoesNotSeedQueue() = runBlocking {
+        val studyQueue = FakeStudyQueueRepository()
+        val useCase = RunSourceMirrorSyncUseCase(
+            gateway = FakeGateway(
+                failure = CollectionGatewayException(
+                    errorCode = SyncErrorCode.RETRYABLE,
+                    permanent = false,
+                    message = "provider busy",
+                ),
+            ),
+            syncRuns = FakeSyncRunRepository(),
+            sourceMirrorSync = FakeSourceMirrorSyncRepository(),
+            importCandidateSelector = importSelector(),
+            dashboardBuilder = dashboardBuilder(),
+            clock = FakeClock(10, 20),
+            studyQueue = studyQueue,
+        )
+
+        useCase(
+            RunSourceMirrorSyncRequest(
+                importSettings = ImportSettings(),
+                queueSeedSettings = StudyQueueSeedSettings(
+                    activeQueueCap = 10,
+                    newPerDay = 10,
+                    matureSupportThreshold = 2,
+                ),
+            ),
+        )
+
+        assertEquals(0, studyQueue.listAllForSeedingCalls)
+    }
+
 
     private fun importSelector(): ImportCandidateSelector =
         ImportCandidateSelector { kanji ->
@@ -146,6 +229,7 @@ class RunSourceMirrorSyncUseCaseTest {
         val cards = mutableListOf<SourceCard>()
         val importCandidates = mutableListOf<ImportedKanjiCandidate>()
         val dashboardRows = mutableListOf<StudyDashboardRow>()
+        var seededQueueItems: List<StudyQueueItem>? = null
         lateinit var syncRun: SyncRun
 
         override suspend fun recordSuccessfulSnapshot(
@@ -155,6 +239,7 @@ class RunSourceMirrorSyncUseCaseTest {
             importCandidates: List<ImportedKanjiCandidate>,
             dashboardRows: List<StudyDashboardRow>,
             settings: ImportSettings,
+            seededQueueItems: List<StudyQueueItem>?,
         ): SyncRunId {
             val id = SyncRunId(1)
             this.syncRun = syncRun.copy(id = id)
@@ -162,8 +247,35 @@ class RunSourceMirrorSyncUseCaseTest {
             this.cards += cards.map { it.copy(lastSeenSyncId = id) }
             this.importCandidates += importCandidates
             this.dashboardRows += dashboardRows
+            this.seededQueueItems = seededQueueItems
             return id
         }
+    }
+
+    private class FakeStudyQueueRepository(
+        private val existing: List<StudyQueueItem> = emptyList(),
+    ) : StudyQueueRepository {
+        var listAllForSeedingCalls = 0
+
+        override suspend fun listActive(): List<StudyQueueItem> =
+            existing.filter { it.state != StudyItemState.RETIRED }
+
+        override suspend fun listByState(state: StudyItemState): List<StudyQueueItem> =
+            existing.filter { it.state == state }
+
+        override suspend fun listAllForSeeding(): List<StudyQueueItem> {
+            listAllForSeedingCalls++
+            return existing
+        }
+
+        override suspend fun replaceAllSeeded(items: List<StudyQueueItem>) = Unit
+
+        override suspend fun updateReviewedItem(item: StudyQueueItem): Boolean = false
+
+        override suspend fun dueCount(
+            state: StudyItemState,
+            nowMillis: Long,
+        ): Int = 0
     }
 
     private fun sourceNote(noteId: Long = 10): SourceNote = SourceNote(
@@ -199,5 +311,21 @@ class RunSourceMirrorSyncUseCaseTest {
         fsrsDifficulty = null,
         fsrsRetrievability = null,
         lastSeenSyncId = SyncRunId(0),
+    )
+
+    private fun studyQueueItem(kanji: String): StudyQueueItem = StudyQueueItem(
+        kanji = kanji,
+        state = StudyItemState.REVIEW,
+        dueAtMillis = 0,
+        stability = 3.0,
+        difficulty = 6.0,
+        totalReviews = 1,
+        lapses = 0,
+        learningStep = 0,
+        writingLevel = 0,
+        answerSignature = "$kanji|old",
+        rung = StudyRung.KANJI_MEANING,
+        phase = StudyPhase.REVIEW,
+        createdAtMillis = 0,
     )
 }

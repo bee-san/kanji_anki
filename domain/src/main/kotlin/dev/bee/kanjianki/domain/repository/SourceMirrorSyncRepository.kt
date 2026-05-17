@@ -6,6 +6,7 @@ import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
+import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 
 interface SourceMirrorSyncRepository {
@@ -16,5 +17,6 @@ interface SourceMirrorSyncRepository {
         importCandidates: List<ImportedKanjiCandidate>,
         dashboardRows: List<StudyDashboardRow>,
         settings: ImportSettings,
+        seededQueueItems: List<StudyQueueItem>? = null,
     ): SyncRunId
 }

@@ -26,6 +26,8 @@ import dev.bee.kanjianki.data.source.SourceCardDao
 import dev.bee.kanjianki.data.source.SourceCardEntity
 import dev.bee.kanjianki.data.source.SourceNoteDao
 import dev.bee.kanjianki.data.source.SourceNoteEntity
+import dev.bee.kanjianki.data.study.StudyItemDao
+import dev.bee.kanjianki.data.study.StudyItemEntity
 import dev.bee.kanjianki.data.sync.SyncRunDao
 import dev.bee.kanjianki.data.sync.SyncRunEntity
 import dev.bee.kanjianki.domain.importing.ImportSourceEvidence
@@ -39,6 +41,10 @@ import dev.bee.kanjianki.domain.model.source.SourceCard
 import dev.bee.kanjianki.domain.model.source.SourceNote
 import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
 import dev.bee.kanjianki.domain.model.study.StudyExample
+import dev.bee.kanjianki.domain.model.study.StudyItemState
+import dev.bee.kanjianki.domain.model.study.StudyPhase
+import dev.bee.kanjianki.domain.model.study.StudyQueueItem
+import dev.bee.kanjianki.domain.model.study.StudyRung
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import kotlinx.coroutines.flow.Flow
@@ -90,6 +96,7 @@ class RoomSourceMirrorSyncRepositoryTest {
         val syncNoteSnapshots = FakeSyncNoteSnapshotDao()
         val syncCardSnapshots = FakeSyncCardSnapshotDao()
         val syncKanjiSnapshots = FakeSyncKanjiSnapshotDao()
+        val studyItems = FakeStudyItemDao()
         var transactions = 0
         val repository = RoomSourceMirrorSyncRepository(
             syncRuns = syncRuns,
@@ -106,6 +113,7 @@ class RoomSourceMirrorSyncRepositoryTest {
             syncNoteSnapshots = syncNoteSnapshots,
             syncCardSnapshots = syncCardSnapshots,
             syncKanjiSnapshots = syncKanjiSnapshots,
+            studyItems = studyItems,
             runInTransaction = { block ->
                 transactions++
                 block()
@@ -132,6 +140,7 @@ class RoomSourceMirrorSyncRepositoryTest {
             ),
             dashboardRows = listOf(dashboardRow("日")),
             settings = ImportSettings(importActiveCards = true),
+            seededQueueItems = listOf(studyQueueItem("日")),
         )
 
         assertEquals(SyncRunId(42), id)
@@ -189,6 +198,9 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(9, kanjiInventory.upserted.single { it.kanji == "古" }.sourceCount)
         assertEquals(20L, kanjiInventory.upserted.single { it.kanji == "日" }.lastSeenAt)
         assertTrue(kanjiInventory.upserted.single { it.kanji == "日" }.searchText.contains("日本"))
+        assertTrue(studyItems.deletedAll)
+        assertEquals(listOf("日"), studyItems.upserted.map { it.kanji })
+        assertEquals(listOf("new"), studyItems.upserted.map { it.state })
     }
 
     private class FakeSyncRunDao(
@@ -495,6 +507,50 @@ class RoomSourceMirrorSyncRepositoryTest {
         }
     }
 
+    private class FakeStudyItemDao : StudyItemDao {
+        val upserted = mutableListOf<StudyItemEntity>()
+        var deletedAll = false
+
+        override fun observe(
+            kanji: String,
+            answerSignature: String,
+        ): Flow<StudyItemEntity?> = emptyFlow()
+
+        override suspend fun get(
+            kanji: String,
+            answerSignature: String,
+        ): StudyItemEntity? = upserted.firstOrNull { it.kanji == kanji && it.answerSignature == answerSignature }
+
+        override suspend fun listByState(state: String): List<StudyItemEntity> =
+            upserted.filter { it.state == state }
+
+        override suspend fun listByStates(states: List<String>): List<StudyItemEntity> =
+            upserted.filter { it.state in states }
+
+        override suspend fun listAll(): List<StudyItemEntity> = upserted.sortedBy { it.kanji }
+
+        override suspend fun dueCount(
+            state: String,
+            nowMillis: Long,
+        ): Int = upserted.count { it.state == state && it.dueAt <= nowMillis }
+
+        override suspend fun upsert(item: StudyItemEntity) {
+            upserted.removeAll { it.kanji == item.kanji && it.answerSignature == item.answerSignature }
+            upserted += item
+        }
+
+        override suspend fun upsertAll(items: List<StudyItemEntity>) {
+            for (item in items) {
+                upsert(item)
+            }
+        }
+
+        override suspend fun deleteAll() {
+            deletedAll = true
+            upserted.clear()
+        }
+    }
+
     private fun successRun(): SyncRun = SyncRun(
         id = null,
         startedAt = 10,
@@ -611,5 +667,21 @@ class RoomSourceMirrorSyncRepositoryTest {
         fsrsDifficulty = null,
         fsrsRetrievability = null,
         lastSeenSyncId = SyncRunId(0),
+    )
+
+    private fun studyQueueItem(kanji: String): StudyQueueItem = StudyQueueItem(
+        kanji = kanji,
+        state = StudyItemState.NEW,
+        dueAtMillis = 20,
+        stability = 0.4,
+        difficulty = 5.0,
+        totalReviews = 0,
+        lapses = 0,
+        learningStep = 0,
+        writingLevel = 0,
+        answerSignature = "$kanji|sig",
+        rung = StudyRung.KANJI_MEANING,
+        phase = StudyPhase.NEW_LEARNING,
+        createdAtMillis = 20,
     )
 }

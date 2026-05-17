@@ -6,10 +6,18 @@ import dev.bee.kanjianki.domain.importing.ImportedKanjiCandidate
 import dev.bee.kanjianki.domain.model.SyncRunId
 import dev.bee.kanjianki.domain.model.importing.ImportSettings
 import dev.bee.kanjianki.domain.model.source.SourceCard
+import dev.bee.kanjianki.domain.model.study.StudyDashboardRow
+import dev.bee.kanjianki.domain.model.study.StudyQueueItem
 import dev.bee.kanjianki.domain.model.sync.SyncRun
 import dev.bee.kanjianki.domain.model.sync.SyncRunStatus
 import dev.bee.kanjianki.domain.repository.SourceMirrorSyncRepository
+import dev.bee.kanjianki.domain.repository.StudyQueueRepository
 import dev.bee.kanjianki.domain.repository.SyncRunRepository
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlan
+import dev.bee.kanjianki.domain.scheduler.StudyLadderSettings
+import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedRequest
+import dev.bee.kanjianki.domain.scheduler.StudyQueueSeedSettings
+import dev.bee.kanjianki.domain.scheduler.StudyQueueSeeder
 
 class RunSourceMirrorSyncUseCase(
     private val gateway: CollectionGateway,
@@ -18,14 +26,21 @@ class RunSourceMirrorSyncUseCase(
     private val importCandidateSelector: ImportCandidateSelector,
     private val dashboardBuilder: SyncDashboardBuilder,
     private val clock: AppClock,
+    private val studyQueue: StudyQueueRepository? = null,
+    private val queueSeeder: StudyQueueSeeder = StudyQueueSeeder(),
 ) {
-    suspend operator fun invoke(settings: ImportSettings): SyncRunId {
+    suspend operator fun invoke(settings: ImportSettings): SyncRunId =
+        invoke(RunSourceMirrorSyncRequest(importSettings = settings))
+
+    suspend operator fun invoke(request: RunSourceMirrorSyncRequest): SyncRunId {
         val startedAt = clock.nowMillis()
         return try {
+            val settings = request.importSettings
             val snapshot = gateway.readCollection(settings)
             val importCandidates = importCandidateSelector.select(snapshot, settings)
             val dashboardRows = dashboardBuilder.build(importCandidates, settings)
             val finishedAt = clock.nowMillis()
+            val seededQueueItems = seedQueueItems(request, dashboardRows, finishedAt)
             sourceMirrorSync.recordSuccessfulSnapshot(
                 syncRun = successRun(startedAt, finishedAt, snapshot, importCandidates),
                 notes = snapshot.notes,
@@ -33,11 +48,34 @@ class RunSourceMirrorSyncUseCase(
                 importCandidates = importCandidates,
                 dashboardRows = dashboardRows,
                 settings = settings,
+                seededQueueItems = seededQueueItems,
             )
         } catch (error: CollectionGatewayException) {
             val finishedAt = clock.nowMillis()
             syncRuns.insert(failureRun(startedAt, finishedAt, error))
         }
+    }
+
+    private suspend fun seedQueueItems(
+        request: RunSourceMirrorSyncRequest,
+        dashboardRows: List<StudyDashboardRow>,
+        nowMillis: Long,
+    ): List<StudyQueueItem>? {
+        val queueSettings = request.queueSeedSettings ?: return null
+        val repository = requireNotNull(studyQueue) {
+            "StudyQueueRepository is required when queueSeedSettings are supplied."
+        }
+        return queueSeeder.seed(
+            StudyQueueSeedRequest(
+                rows = dashboardRows,
+                existing = repository.listAllForSeeding(),
+                settings = queueSettings,
+                nowMillis = nowMillis,
+                startOfDayMillis = request.startOfDayMillis,
+                adaptivePlan = request.adaptivePlan,
+                ladderSettings = request.ladderSettings,
+            ),
+        )
     }
 
     private fun successRun(
@@ -94,3 +132,11 @@ class RunSourceMirrorSyncUseCase(
     )
 
 }
+
+data class RunSourceMirrorSyncRequest(
+    val importSettings: ImportSettings,
+    val queueSeedSettings: StudyQueueSeedSettings? = null,
+    val startOfDayMillis: Long = 0L,
+    val adaptivePlan: AdaptiveStudyPlan? = null,
+    val ladderSettings: StudyLadderSettings = StudyLadderSettings.defaults,
+)
