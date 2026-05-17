@@ -958,6 +958,14 @@ Current app database:
   instead of requiring compatibility migrations; once Room becomes
   authoritative, future schema changes need migrations or another deliberate
   reset decision.
+- Existing-install reset owner:
+  `data/src/main/java/dev/bee/kanjianki/data/KaniLocalDataResetCoordinator.kt`.
+  Room open now preflights legacy Kani database families through this single
+  owner. The default policy blocks mixed old/new local state when a legacy
+  database is present; `CLEAN_REWRITE` deletes the legacy database family before
+  Room opens. A clean-start sync repository test verifies source mirror,
+  dashboard, inventory, study queue, suspended imports/archive, decisions, and
+  historical snapshots rebuild from an empty reset state.
 - Source mirror parity: Room `source_cards` now stores explicit `suspended`
   and `browser_query_matched` flags. These are required for Room-owned import
   analysis to distinguish suspended, active, weak, tagged, and browser-query

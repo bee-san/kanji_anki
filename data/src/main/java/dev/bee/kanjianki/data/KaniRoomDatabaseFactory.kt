@@ -7,6 +7,11 @@ class KaniRoomDatabaseFactory(
     private val resetPolicy: KaniRoomDatabaseResetPolicy = KaniRoomDatabaseResetPolicy(),
 ) {
     fun create(context: Context): KaniRoomDatabase {
+        KaniLocalDataResetCoordinator(
+            resetPolicy = resetPolicy,
+            databaseStore = AndroidKaniDatabaseStore(context),
+        ).prepareForRoomOpen()
+
         val builder = Room.databaseBuilder(
             context.applicationContext,
             KaniRoomDatabase::class.java,
@@ -22,6 +27,7 @@ class KaniRoomDatabaseFactory(
 data class KaniRoomDatabaseResetPolicy(
     val roomDatabaseName: String = KaniRoomDatabase.DATABASE_NAME,
     val legacyDatabaseNames: Set<String> = setOf(KaniRoomDatabase.LEGACY_DATABASE_NAME),
+    val allowLegacyDatabaseReset: Boolean = false,
     val allowDestructiveRoomReset: Boolean = false,
 ) {
     init {
@@ -40,6 +46,7 @@ data class KaniRoomDatabaseResetPolicy(
     companion object {
         @JvmField
         val CLEAN_REWRITE: KaniRoomDatabaseResetPolicy = KaniRoomDatabaseResetPolicy(
+            allowLegacyDatabaseReset = true,
             allowDestructiveRoomReset = true,
         )
     }

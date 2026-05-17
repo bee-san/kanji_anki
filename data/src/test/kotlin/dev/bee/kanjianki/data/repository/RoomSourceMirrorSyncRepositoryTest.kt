@@ -286,6 +286,82 @@ class RoomSourceMirrorSyncRepositoryTest {
         assertEquals(20L, similarKanjiPairs.upserted.single { it.kanjiA == "日" }.firstSeenAt)
     }
 
+    @Test
+    fun recordSuccessfulSnapshotRebuildsFromCleanResetState() = runBlocking {
+        val syncRuns = FakeSyncRunDao(generatedId = 7)
+        val notes = FakeSourceNoteDao(existingIds = emptyList())
+        val cards = FakeSourceCardDao(existingIds = emptyList())
+        val audits = FakeImportRuleAuditDao()
+        val decisions = FakeImportDecisionDao()
+        val archive = FakeSuspendedArchiveDao()
+        val suspendedImports = FakeSuspendedImportDao()
+        val suspendedSources = FakeSuspendedSourceDao()
+        val dashboardRows = FakeDashboardRowDao()
+        val kanjiExamples = FakeKanjiExampleDao()
+        val kanjiInventory = FakeKanjiInventoryDao()
+        val syncNoteSnapshots = FakeSyncNoteSnapshotDao()
+        val syncCardSnapshots = FakeSyncCardSnapshotDao()
+        val syncKanjiSnapshots = FakeSyncKanjiSnapshotDao()
+        val studyItems = FakeStudyItemDao()
+        val gateEvents = mutableListOf<String>()
+        val repository = RoomSourceMirrorSyncRepository(
+            syncRuns = syncRuns,
+            sourceNotes = notes,
+            sourceCards = cards,
+            importRuleAudits = audits,
+            importDecisions = decisions,
+            suspendedArchive = archive,
+            suspendedImports = suspendedImports,
+            suspendedSources = suspendedSources,
+            dashboardRows = dashboardRows,
+            kanjiExamples = kanjiExamples,
+            kanjiInventory = kanjiInventory,
+            syncNoteSnapshots = syncNoteSnapshots,
+            syncCardSnapshots = syncCardSnapshots,
+            syncKanjiSnapshots = syncKanjiSnapshots,
+            studyItems = studyItems,
+            similarKanjiPairs = FakeSimilarKanjiPairDao(),
+            studyQueueMutationGate = RecordingStudyQueueMutationGate(gateEvents),
+            ownershipPolicy = RoomStudyRuntimeOwnershipPolicy.ROOM_AUTHORITATIVE,
+            runInTransaction = { block -> block() },
+        )
+
+        val id = repository.recordSuccessfulSnapshot(
+            syncRun = successRun(),
+            notes = listOf(sourceNote(1)),
+            cards = listOf(sourceCard(cardId = 10, noteId = 1, suspended = true)),
+            importCandidates = listOf(
+                importCandidate(
+                    kanji = "日",
+                    sources = listOf(sourceEvidence(kanji = "日", cardId = 10, noteId = 1, sourceType = ImportSource.SUSPENDED)),
+                ),
+            ),
+            dashboardRows = listOf(dashboardRow("日")),
+            settings = ImportSettings(),
+            queueSeedBuilder = StudyQueueSeedBuilder { existingItems ->
+                assertEquals(emptyList<StudyQueueItem>(), existingItems)
+                listOf(studyQueueItem("日"))
+            },
+            similarKanjiIndex = FakeSimilarKanjiIndex(emptyList()),
+        )
+
+        assertEquals(SyncRunId(7), id)
+        assertEquals(listOf("gate"), gateEvents)
+        assertEquals(listOf(1L), notes.upserted.map { it.noteId })
+        assertEquals(listOf(10L), cards.upserted.map { it.cardId })
+        assertEquals(listOf("日"), dashboardRows.upserted.map { it.kanji })
+        assertEquals(listOf("日"), kanjiExamples.upserted.map { it.kanji })
+        assertEquals(listOf("日"), kanjiInventory.upserted.map { it.kanji })
+        assertEquals(listOf("日"), studyItems.upserted.map { it.kanji })
+        assertEquals(listOf("日"), suspendedImports.upserted.map { it.kanji })
+        assertEquals(listOf(10L), archive.upserted.map { it.cardId })
+        assertEquals(listOf("日"), decisions.upserted.map { it.kanji })
+        assertEquals(listOf(7L), syncRuns.inserted.map { it.id })
+        assertEquals(listOf(7L), syncNoteSnapshots.upserted.map { it.syncId })
+        assertEquals(listOf(7L), syncCardSnapshots.upserted.map { it.syncId })
+        assertEquals(listOf(7L), syncKanjiSnapshots.upserted.map { it.syncId }.distinct())
+    }
+
     private class FakeSyncRunDao(
         private val generatedId: Long,
     ) : SyncRunDao {
