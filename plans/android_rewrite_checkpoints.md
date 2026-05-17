@@ -590,6 +590,11 @@ Current artifacts:
   existing Java `AdaptiveLoadPlanner` for manual Pareto planning, auto Pareto
   drop-offs, due recovery max-item caps, null request fallback, null fields
   inside a request, and the explicit settings entrypoint.
+- Adaptive workload setting keys, defaults, labels, clamping, mode
+  normalization, and target-ceiling helpers now live on `AdaptiveStudyPlanner`
+  for Java/Kotlin callers.
+- `LocalStoreStudy` and `MainActivitySettings` use the domain adaptive
+  workload helpers while preserving the existing setting keys and UI text.
 
 Explicit gaps:
 
@@ -604,9 +609,9 @@ Explicit gaps:
   write path.
 - Runtime local suspension writes remain on the legacy Java `LocalStore` path
   until the detail screen is moved to the Room repository.
-- The legacy Java adaptive planner remains as a parity oracle and as the holder
-  for old settings constants/helper types until settings are moved to the
-  domain/DataStore boundary.
+- The legacy Java adaptive planner remains as a parity oracle and compatibility
+  `PlanRequest` / `WorkloadPolicy` type for reminder tests and bridge inputs
+  until settings are moved fully to the domain/DataStore boundary.
 
 Verification commands:
 
@@ -641,6 +646,14 @@ ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
 
 Result: `BUILD SUCCESSFUL` after wiring runtime adaptive-plan calculation
 through `LegacyAdaptiveStudyPlannerBridge`.
+
+```sh
+ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \
+  ./gradlew :domain:test :app:testDebugUnitTest
+```
+
+Result: `BUILD SUCCESSFUL` after moving adaptive workload helpers to the
+domain planner for Java settings callers.
 
 ```sh
 ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk \

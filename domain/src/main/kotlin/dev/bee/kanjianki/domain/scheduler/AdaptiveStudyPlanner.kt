@@ -209,6 +209,9 @@ class AdaptiveStudyPlanner {
     }
 
     companion object {
+        const val SETTING_KEY = "adaptive_load_work_percent"
+        const val MODE_SETTING_KEY = "adaptive_load_mode"
+        const val MAX_ITEMS_SETTING_KEY = "adaptive_load_max_items"
         const val MODE_AUTO = "auto"
         const val MODE_MANUAL = "manual"
         const val DEFAULT_WORKLOAD_PERCENT = 20
@@ -218,12 +221,15 @@ class AdaptiveStudyPlanner {
         const val MAX_MAX_ITEMS = 20
         private const val AUTO_PARETO_CAP = 20
 
+        @JvmStatic
         fun normalizeWorkloadMode(mode: String?): String =
             AdaptiveWorkloadMode.fromSetting(mode).settingValue
 
+        @JvmStatic
         fun isAutoMode(mode: String?): Boolean =
             AdaptiveWorkloadMode.fromSetting(mode).isAuto
 
+        @JvmStatic
         fun snapWorkloadPercent(value: Int): Int {
             val clamped = value.coerceIn(0, 100)
             if (clamped == 100) {
@@ -234,6 +240,7 @@ class AdaptiveStudyPlanner {
                 .coerceIn(0, 95)
         }
 
+        @JvmStatic
         fun targetCeiling(workloadPercent: Int): Int {
             val snapped = snapWorkloadPercent(workloadPercent)
             if (snapped >= 100) {
@@ -242,9 +249,11 @@ class AdaptiveStudyPlanner {
             return (1 + snapped / 5).coerceIn(1, 20)
         }
 
+        @JvmStatic
         fun normalizeMaxItems(value: Int): Int =
             value.coerceIn(MIN_MAX_ITEMS, MAX_MAX_ITEMS)
 
+        @JvmStatic
         fun workloadLabel(workloadPercent: Int): String {
             val snapped = snapWorkloadPercent(workloadPercent)
             return when {

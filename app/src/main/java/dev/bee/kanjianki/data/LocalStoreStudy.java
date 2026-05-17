@@ -10,11 +10,11 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -213,14 +213,14 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public int adaptiveLoadWorkPercent() {
-        return AdaptiveLoadPlanner.snapWorkloadPercent(getIntSetting(
-                AdaptiveLoadPlanner.SETTING_KEY,
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT
+        return AdaptiveStudyPlanner.snapWorkloadPercent(getIntSetting(
+                AdaptiveStudyPlanner.SETTING_KEY,
+                AdaptiveStudyPlanner.DEFAULT_WORKLOAD_PERCENT
         ));
     }
 
     public void saveAdaptiveLoadWorkPercent(int percent) {
-        putIntSetting(AdaptiveLoadPlanner.SETTING_KEY, AdaptiveLoadPlanner.snapWorkloadPercent(percent));
+        putIntSetting(AdaptiveStudyPlanner.SETTING_KEY, AdaptiveStudyPlanner.snapWorkloadPercent(percent));
     }
 
     public int studyAheadMinutes() {
@@ -259,25 +259,25 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public int adaptiveLoadMaxItems() {
-        return AdaptiveLoadPlanner.normalizeMaxItems(getIntSetting(
-                "adaptive_load_max_items",
-                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+        return AdaptiveStudyPlanner.normalizeMaxItems(getIntSetting(
+                AdaptiveStudyPlanner.MAX_ITEMS_SETTING_KEY,
+                AdaptiveStudyPlanner.DEFAULT_MAX_ITEMS
         ));
     }
 
     public void saveAdaptiveLoadMaxItems(int maxItems) {
-        putIntSetting("adaptive_load_max_items", AdaptiveLoadPlanner.normalizeMaxItems(maxItems));
+        putIntSetting(AdaptiveStudyPlanner.MAX_ITEMS_SETTING_KEY, AdaptiveStudyPlanner.normalizeMaxItems(maxItems));
     }
 
     public String adaptiveLoadMode() {
-        return AdaptiveLoadPlanner.normalizeWorkloadMode(getStringSetting(
-                AdaptiveLoadPlanner.MODE_SETTING_KEY,
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE
+        return AdaptiveStudyPlanner.normalizeWorkloadMode(getStringSetting(
+                AdaptiveStudyPlanner.MODE_SETTING_KEY,
+                AdaptiveStudyPlanner.DEFAULT_WORKLOAD_MODE
         ));
     }
 
     public void saveAdaptiveLoadMode(String mode) {
-        putStringSetting(AdaptiveLoadPlanner.MODE_SETTING_KEY, AdaptiveLoadPlanner.normalizeWorkloadMode(mode));
+        putStringSetting(AdaptiveStudyPlanner.MODE_SETTING_KEY, AdaptiveStudyPlanner.normalizeWorkloadMode(mode));
     }
 
     public ReminderSettings reminderSettings() {

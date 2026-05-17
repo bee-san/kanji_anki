@@ -42,7 +42,7 @@ public final class LegacyAdaptiveStudyPlannerBridge {
                     EMPTY_STATS,
                     0,
                     Collections.emptySet(),
-                    AdaptiveLoadPlanner.WorkloadPolicy.manual(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT),
+                    AdaptiveLoadPlanner.WorkloadPolicy.manual(AdaptiveStudyPlanner.DEFAULT_WORKLOAD_PERCENT),
                     0L,
                     RecordsSyncModels.Settings.kikuDefaults()
             );
@@ -94,7 +94,7 @@ public final class LegacyAdaptiveStudyPlannerBridge {
             RecordsSyncModels.Settings settings
     ) {
         AdaptiveLoadPlanner.WorkloadPolicy safePolicy = workloadPolicy == null
-                ? AdaptiveLoadPlanner.WorkloadPolicy.manual(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT)
+                ? AdaptiveLoadPlanner.WorkloadPolicy.manual(AdaptiveStudyPlanner.DEFAULT_WORKLOAD_PERCENT)
                 : workloadPolicy;
         AdaptiveWorkloadMode mode = safePolicy.mode().isAuto()
                 ? AdaptiveWorkloadMode.AUTO

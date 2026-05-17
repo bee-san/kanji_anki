@@ -48,7 +48,6 @@ import androidx.core.widget.TextViewCompat;
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
@@ -67,6 +66,7 @@ import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.data.StudyStatsStore;
+import dev.bee.kanjianki.domain.scheduler.AdaptiveStudyPlanner;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
@@ -979,7 +979,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout workloadSettingsPanel() {
         int current = store.adaptiveLoadWorkPercent();
         int currentMax = store.adaptiveLoadMaxItems();
-        boolean autoMode = AdaptiveLoadPlanner.isAutoMode(store.adaptiveLoadMode());
+        boolean autoMode = AdaptiveStudyPlanner.isAutoMode(store.adaptiveLoadMode());
         final int[] selected = new int[]{current};
         final int[] selectedMax = new int[]{currentMax};
         LinearLayout box = settingsPanelBox();
@@ -1003,7 +1003,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             box.addView(saveMax);
             Button manual = secondaryButton("Use manual workload");
             manual.setOnClickListener(v -> {
-                store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
+                store.saveAdaptiveLoadMode(AdaptiveStudyPlanner.MODE_MANUAL);
                 Toast.makeText(this, "Manual workload enabled.", Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
@@ -1021,7 +1021,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = AdaptiveLoadPlanner.snapWorkloadPercent(progress);
+                selected[0] = AdaptiveStudyPlanner.snapWorkloadPercent(progress);
                 status.setText(workloadStatusText(selected[0], selectedMax[0]));
             }
 
@@ -1050,7 +1050,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save workload", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
+            store.saveAdaptiveLoadMode(AdaptiveStudyPlanner.MODE_MANUAL);
             store.saveAdaptiveLoadWorkPercent(selected[0]);
             store.saveAdaptiveLoadMaxItems(selectedMax[0]);
             Toast.makeText(this, "Workload saved. Study uses the new adaptive focus.", Toast.LENGTH_SHORT).show();
@@ -1059,7 +1059,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(save);
         Button automatic = secondaryButton("Use automatic Pareto");
         automatic.setOnClickListener(v -> {
-            store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
+            store.saveAdaptiveLoadMode(AdaptiveStudyPlanner.MODE_AUTO);
             Toast.makeText(this, "Automatic Pareto workload enabled.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1073,12 +1073,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(maxStatus);
 
         SeekBar maxSlider = new SeekBar(this);
-        maxSlider.setMax(AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
-        maxSlider.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+        maxSlider.setMax(AdaptiveStudyPlanner.MAX_MAX_ITEMS - AdaptiveStudyPlanner.MIN_MAX_ITEMS);
+        maxSlider.setProgress(selectedMax[0] - AdaptiveStudyPlanner.MIN_MAX_ITEMS);
         maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selectedMax[0] = AdaptiveLoadPlanner.normalizeMaxItems(progress + AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+                selectedMax[0] = AdaptiveStudyPlanner.normalizeMaxItems(progress + AdaptiveStudyPlanner.MIN_MAX_ITEMS);
                 maxStatus.setText(maxItemsStatusText(selectedMax[0]));
                 if (workloadStatus != null && selectedWorkload != null) {
                     workloadStatus.setText(workloadStatusText(selectedWorkload[0], selectedMax[0]));
@@ -1092,7 +1092,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+                seekBar.setProgress(selectedMax[0] - AdaptiveStudyPlanner.MIN_MAX_ITEMS);
             }
         });
         box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
@@ -1565,17 +1565,17 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String workloadStatusText(int percent, int maxItems) {
-        int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
-        int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems);
-        String label = AdaptiveLoadPlanner.workloadLabel(snapped);
+        int snapped = AdaptiveStudyPlanner.snapWorkloadPercent(percent);
+        int normalizedMax = AdaptiveStudyPlanner.normalizeMaxItems(maxItems);
+        String label = AdaptiveStudyPlanner.workloadLabel(snapped);
         if (snapped >= 100) {
             return label + ": up to " + normalizedMax + " items";
         }
-        return label + ": up to " + Math.min(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax) + " items";
+        return label + ": up to " + Math.min(AdaptiveStudyPlanner.targetCeiling(snapped), normalizedMax) + " items";
     }
 
     String maxItemsStatusText(int maxItems) {
-        return "Maximum: " + countText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems), "item", "items");
+        return "Maximum: " + countText(AdaptiveStudyPlanner.normalizeMaxItems(maxItems), "item", "items");
     }
 
     String autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
