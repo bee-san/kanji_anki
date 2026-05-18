@@ -438,16 +438,16 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Import filters", 23, INK, true));
+        box.addView(text(SettingsTextCopy.importFiltersTitle(), 23, INK, true));
         box.addView(text(settingsImportSummary(current), 17, TEAL, true));
-        box.addView(text("Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.importFiltersBody(), 15, MUTED, false));
         addImportPresetButtons(box);
 
-        CheckBox activeCards = importFilterCheckBox("Active cards", current.importActiveCards);
-        CheckBox suspendedCards = importFilterCheckBox("Suspended cards", current.importSuspendedCards);
-        CheckBox taggedCards = importFilterCheckBox("Tagged cards", current.importTaggedCardsEnabled());
-        CheckBox weakCards = importFilterCheckBox("Weak cards", current.importWeakCards);
-        CheckBox browserQueryCards = importFilterCheckBox("Browser query", current.importBrowserQueryCards);
+        CheckBox activeCards = importFilterCheckBox(SettingsTextCopy.activeCardsLabel(), current.importActiveCards);
+        CheckBox suspendedCards = importFilterCheckBox(SettingsTextCopy.suspendedCardsLabel(), current.importSuspendedCards);
+        CheckBox taggedCards = importFilterCheckBox(SettingsTextCopy.taggedCardsLabel(), current.importTaggedCardsEnabled());
+        CheckBox weakCards = importFilterCheckBox(SettingsTextCopy.weakCardsLabel(), current.importWeakCards);
+        CheckBox browserQueryCards = importFilterCheckBox(SettingsTextCopy.browserQueryLabel(), current.importBrowserQueryCards);
         box.addView(activeCards);
         box.addView(suspendedCards);
         box.addView(taggedCards);
@@ -455,36 +455,36 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(browserQueryCards);
 
         EditText browserQueryInput = fieldInput(current.importBrowserQuery);
-        browserQueryInput.setHint("deck:Japanese tag:kani");
-        addFieldMappingInput(box, "Anki browser query", browserQueryInput);
+        browserQueryInput.setHint(SettingsTextCopy.ankiBrowserQueryHint());
+        addFieldMappingInput(box, SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput);
 
         EditText tags = fieldInput(current.importTagsText());
-        tags.setHint("tag1, tag2");
-        addFieldMappingInput(box, "Anki note tags", tags);
+        tags.setHint(SettingsTextCopy.ankiNoteTagsHint());
+        addFieldMappingInput(box, SettingsTextCopy.ankiNoteTagsLabel(), tags);
 
         LinearLayout thresholds = new LinearLayout(this);
         thresholds.setOrientation(LinearLayout.HORIZONTAL);
         EditText difficultyInput = decimalInput(current.importWeakFsrsDifficultyThreshold);
-        LinearLayout difficultyColumn = inputColumn("FSRS difficulty", difficultyInput, 0);
+        LinearLayout difficultyColumn = inputColumn(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 0);
         EditText lapses = thresholdInput(current.importWeakLapsesThreshold);
-        LinearLayout lapsesColumn = inputColumn("Lapses", lapses, dp(10));
+        LinearLayout lapsesColumn = inputColumn(SettingsTextCopy.lapsesLabel(), lapses, dp(10));
         thresholds.addView(difficultyColumn, new LinearLayout.LayoutParams(0, -2, 1));
         thresholds.addView(lapsesColumn, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(thresholds);
 
         EditText minMatching = thresholdInput(current.importMinMatchingCardsPerKanji);
-        addFieldMappingInput(box, "Minimum matching cards per kanji", minMatching);
+        addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
 
-        Button save = primaryButton("Save import filters", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveImportFiltersLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
             String queryText = browserQueryInput.getText().toString().trim();
             if (browserQueryCards.isChecked() && queryText.isEmpty()) {
-                Toast.makeText(this, "Enter an Anki browser query or turn off Browser query.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
-                Toast.makeText(this, "Turn on at least one import source.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
             ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
@@ -501,7 +501,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
             store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, boolFlag(browserQueryCards.isChecked()));
             store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, queryText);
-            Toast.makeText(this, "Import filters saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });
         box.addView(save);
@@ -509,7 +509,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void addImportPresetButtons(LinearLayout box) {
-        box.addView(text("Presets", 17, INK, true));
+        box.addView(text(SettingsTextCopy.presetsTitle(), 17, INK, true));
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         for (SettingsImportPreset preset : SettingsImportPreset.defaults()) {
@@ -531,7 +531,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, preset.minMatchingCards());
         store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, boolFlag(preset.browserQueryCards()));
         store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, preset.browserQuery());
-        Toast.makeText(this, "Import preset saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
         renderSettings();
     }
 
@@ -548,11 +548,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
             lapseThreshold = parseThresholdInput(lapses);
             minCards = parseThresholdInput(minMatching);
         } catch (NumberFormatException error) {
-            Toast.makeText(this, "Use numeric import thresholds.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.numericImportThresholdsToast(), Toast.LENGTH_SHORT).show();
             return null;
         }
         if (!validImportThresholds(difficulty, lapseThreshold, minCards)) {
-            Toast.makeText(this, "Use difficulty 1-10, lapses 1-100, and cards 1-1000.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.importThresholdRangeToast(), Toast.LENGTH_SHORT).show();
             return null;
         }
         return new ImportThresholds(difficulty, lapseThreshold, minCards);
@@ -618,37 +618,37 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         LinearLayout box = settingsPanelBox();
         final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
-        box.addView(text("Frequency range", 23, INK, true));
+        box.addView(text(SettingsTextCopy.frequencyRangeTitle(), 23, INK, true));
         TextView status = text(frequencyRangeStatusText(selected[0], selected[1]), 17, TEAL, true);
         box.addView(status);
-        box.addView(text("Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.frequencyRangeBody(), 15, MUTED, false));
 
         LinearLayout inputs = new LinearLayout(this);
         inputs.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout minColumn = new LinearLayout(this);
         minColumn.setOrientation(LinearLayout.VERTICAL);
-        minColumn.addView(text("Min rank", 15, INK, true));
+        minColumn.addView(text(SettingsTextCopy.minRankLabel(), 15, INK, true));
         EditText minInput = rankInput(selected[0]);
         minColumn.addView(minInput, new LinearLayout.LayoutParams(-1, dp(58)));
         inputs.addView(minColumn, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout maxColumn = new LinearLayout(this);
         maxColumn.setOrientation(LinearLayout.VERTICAL);
         maxColumn.setPadding(dp(10), 0, 0, 0);
-        maxColumn.addView(text("Max rank", 15, INK, true));
+        maxColumn.addView(text(SettingsTextCopy.maxRankLabel(), 15, INK, true));
         EditText maxInput = rankInput(selected[1]);
         maxColumn.addView(maxInput, new LinearLayout.LayoutParams(-1, dp(58)));
         inputs.addView(maxColumn, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(inputs);
 
-        box.addView(text("Minimum rank", 14, MUTED, true));
+        box.addView(text(SettingsTextCopy.minimumRankLabel(), 14, MUTED, true));
         SeekBar minSlider = new SeekBar(this);
         box.addView(minSlider, new LinearLayout.LayoutParams(-1, dp(56)));
-        box.addView(text("Maximum rank", 14, MUTED, true));
+        box.addView(text(SettingsTextCopy.maximumRankLabel(), 14, MUTED, true));
         SeekBar maxSlider = new SeekBar(this);
         box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
         bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
 
-        Button save = primaryButton("Save frequency range", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveFrequencyRangeLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             int minRank;
             int maxRank;
@@ -656,17 +656,17 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 minRank = parseRankInput(minInput);
                 maxRank = parseRankInput(maxInput);
             } catch (NumberFormatException error) {
-                Toast.makeText(this, "Enter numeric ranks.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.numericRanksToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (!SettingsInputRules.validRank(minRank) || !SettingsInputRules.validRank(maxRank)) {
-                Toast.makeText(this, "Use ranks from 1 to 20000.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.rankRangeToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
             SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
             store.putIntSetting("suspended_rank_min", rankRange.minRank());
             store.putIntSetting("suspended_rank_max", rankRange.maxRank());
-            Toast.makeText(this, "Frequency range saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });
         box.addView(save);

@@ -118,6 +118,48 @@ public final class SettingsTextCopyTest {
     }
 
     @Test
+    public void importAndFrequencyPanelCopyPreservesLabelsAndToasts() {
+        assertEquals("Import filters", SettingsTextCopy.importFiltersTitle());
+        assertEquals(
+                "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.",
+                SettingsTextCopy.importFiltersBody()
+        );
+        assertEquals("Active cards", SettingsTextCopy.activeCardsLabel());
+        assertEquals("Suspended cards", SettingsTextCopy.suspendedCardsLabel());
+        assertEquals("Tagged cards", SettingsTextCopy.taggedCardsLabel());
+        assertEquals("Weak cards", SettingsTextCopy.weakCardsLabel());
+        assertEquals("Browser query", SettingsTextCopy.browserQueryLabel());
+        assertEquals("deck:Japanese tag:kani", SettingsTextCopy.ankiBrowserQueryHint());
+        assertEquals("Anki browser query", SettingsTextCopy.ankiBrowserQueryLabel());
+        assertEquals("tag1, tag2", SettingsTextCopy.ankiNoteTagsHint());
+        assertEquals("Anki note tags", SettingsTextCopy.ankiNoteTagsLabel());
+        assertEquals("FSRS difficulty", SettingsTextCopy.fsrsDifficultyLabel());
+        assertEquals("Lapses", SettingsTextCopy.lapsesLabel());
+        assertEquals("Minimum matching cards per kanji", SettingsTextCopy.minimumMatchingCardsLabel());
+        assertEquals("Save import filters", SettingsTextCopy.saveImportFiltersLabel());
+        assertEquals("Enter an Anki browser query or turn off Browser query.", SettingsTextCopy.browserQueryRequiredToast());
+        assertEquals("Turn on at least one import source.", SettingsTextCopy.importSourceRequiredToast());
+        assertEquals("Import filters saved. Sync again to rebuild practice.", SettingsTextCopy.importFiltersSavedToast());
+        assertEquals("Presets", SettingsTextCopy.presetsTitle());
+        assertEquals("Import preset saved. Sync again to rebuild practice.", SettingsTextCopy.importPresetSavedToast());
+        assertEquals("Use numeric import thresholds.", SettingsTextCopy.numericImportThresholdsToast());
+        assertEquals("Use difficulty 1-10, lapses 1-100, and cards 1-1000.", SettingsTextCopy.importThresholdRangeToast());
+        assertEquals("Frequency range", SettingsTextCopy.frequencyRangeTitle());
+        assertEquals(
+                "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000.",
+                SettingsTextCopy.frequencyRangeBody()
+        );
+        assertEquals("Min rank", SettingsTextCopy.minRankLabel());
+        assertEquals("Max rank", SettingsTextCopy.maxRankLabel());
+        assertEquals("Minimum rank", SettingsTextCopy.minimumRankLabel());
+        assertEquals("Maximum rank", SettingsTextCopy.maximumRankLabel());
+        assertEquals("Save frequency range", SettingsTextCopy.saveFrequencyRangeLabel());
+        assertEquals("Enter numeric ranks.", SettingsTextCopy.numericRanksToast());
+        assertEquals("Use ranks from 1 to 20000.", SettingsTextCopy.rankRangeToast());
+        assertEquals("Frequency range saved. Sync again to rebuild practice.", SettingsTextCopy.frequencyRangeSavedToast());
+    }
+
+    @Test
     public void workloadSummariesPreserveSettingsCopy() {
         assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
         assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
