@@ -164,15 +164,7 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     String notHelpingRowText(KanjiImpactAnalyzer.Row row) {
-        return row.kanji
-                + "  "
-                + row.reviewCount
-                + " Kani reviews · "
-                + row.sameCardCount
-                + " same-card checks · retention "
-                + formatSignedPercent(row.retentionDelta)
-                + " · difficulty "
-                + formatSignedDecimal(row.difficultyDelta);
+        return StatsTextCopy.notHelpingRowText(row.kanji, row.reviewCount, row.sameCardCount, row.retentionDelta, row.difficultyDelta);
     }
 
     String ladderHealthBody(StudyStatsStore.LadderHealthMetric metric) {
@@ -195,14 +187,11 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     String weaknessImprovementBody(StudyStatsStore.WeakKanjiImprovedMetric metric) {
-        if (metric.improvedCount == 0) {
-            return "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.";
-        }
-        return "Average weakness: "
-                + formatWeakness(metric.averageBeforeWeakness)
-                + " -> "
-                + formatWeakness(metric.averageAfterWeakness)
-                + " after Kani practice.";
+        return StatsTextCopy.weaknessImprovementBody(
+                metric.improvedCount,
+                metric.averageBeforeWeakness,
+                metric.averageAfterWeakness
+        );
     }
 
     List<String> weaknessImprovementExamples(StudyStatsStore.WeakKanjiImprovedMetric metric) {
@@ -210,7 +199,7 @@ abstract class MainActivityStats extends MainActivityGames {
         int maxExamples = Math.min(3, metric.examples.size());
         for (int i = 0; i < maxExamples; i++) {
             StudyStatsStore.KanjiImprovement example = metric.examples.get(i);
-            examples.add(example.kanji + "  " + formatWeakness(example.beforeWeakness) + " -> " + formatWeakness(example.afterWeakness));
+            examples.add(StatsTextCopy.weaknessImprovementExample(example.kanji, example.beforeWeakness, example.afterWeakness));
         }
         return examples;
     }
@@ -218,36 +207,25 @@ abstract class MainActivityStats extends MainActivityGames {
     List<String> supportGainExamples(StudyStatsStore.MatureSupportGainedMetric metric) {
         List<String> examples = new ArrayList<>();
         for (StudyStatsStore.KanjiSupportGain example : metric.examples) {
-            examples.add(example.kanji + "  " + example.beforeMatureSupport + " -> " + example.afterMatureSupport + " mature cards");
+            examples.add(StatsTextCopy.supportGainExample(example.kanji, example.beforeMatureSupport, example.afterMatureSupport));
         }
         return examples;
     }
 
     String formatWeakness(double weakness) {
-        return String.format(java.util.Locale.ROOT, "%.2f", weakness);
+        return StatsTextCopy.formatWeakness(weakness);
     }
 
     String formatSignedPercent(double value) {
-        return String.format(java.util.Locale.ROOT, "%+.0f%%", value * 100.0);
+        return StatsTextCopy.formatSignedPercent(value);
     }
 
     String formatSignedDecimal(double value) {
-        return String.format(java.util.Locale.ROOT, "%+.1f", value);
+        return StatsTextCopy.formatSignedDecimal(value);
     }
 
     String formatStudyTime(long millis) {
-        long seconds = Math.max(0L, Math.round(millis / 1000.0));
-        if (seconds < 60L) {
-            return seconds + " sec";
-        }
-        long minutes = seconds / 60L;
-        long remainingSeconds = seconds % 60L;
-        if (minutes < 60L) {
-            return remainingSeconds == 0L ? minutes + " min" : minutes + " min " + remainingSeconds + " sec";
-        }
-        long hours = minutes / 60L;
-        long remainingMinutes = minutes % 60L;
-        return remainingMinutes == 0L ? hours + " hr" : hours + " hr " + remainingMinutes + " min";
+        return StatsTextCopy.formatStudyTime(millis);
     }
 
     LinearLayout statPanel(String title, String value, String body, int stroke) {

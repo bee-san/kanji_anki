@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class StatsTextCopy {
     private StatsTextCopy() {
@@ -84,6 +85,64 @@ public final class StatsTextCopy {
         };
     }
 
+    public static String weaknessImprovementBody(int improvedCount, double averageBeforeWeakness, double averageAfterWeakness) {
+        if (improvedCount == 0) {
+            return "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.";
+        }
+        return "Average weakness: "
+                + formatWeakness(averageBeforeWeakness)
+                + " -> "
+                + formatWeakness(averageAfterWeakness)
+                + " after Kani practice.";
+    }
+
+    public static String weaknessImprovementExample(String kanji, double beforeWeakness, double afterWeakness) {
+        return clean(kanji) + "  " + formatWeakness(beforeWeakness) + " -> " + formatWeakness(afterWeakness);
+    }
+
+    public static String supportGainExample(String kanji, int beforeMatureSupport, int afterMatureSupport) {
+        return clean(kanji) + "  " + beforeMatureSupport + " -> " + afterMatureSupport + " mature cards";
+    }
+
+    public static String notHelpingRowText(String kanji, int reviewCount, int sameCardCount, double retentionDelta, double difficultyDelta) {
+        return clean(kanji)
+                + "  "
+                + reviewCount
+                + " Kani reviews · "
+                + sameCardCount
+                + " same-card checks · retention "
+                + formatSignedPercent(retentionDelta)
+                + " · difficulty "
+                + formatSignedDecimal(difficultyDelta);
+    }
+
+    public static String formatWeakness(double weakness) {
+        return String.format(Locale.ROOT, "%.2f", weakness);
+    }
+
+    public static String formatSignedPercent(double value) {
+        return String.format(Locale.ROOT, "%+.0f%%", value * 100.0);
+    }
+
+    public static String formatSignedDecimal(double value) {
+        return String.format(Locale.ROOT, "%+.1f", value);
+    }
+
+    public static String formatStudyTime(long millis) {
+        long seconds = Math.max(0L, Math.round(millis / 1000.0));
+        if (seconds < 60L) {
+            return seconds + " sec";
+        }
+        long minutes = seconds / 60L;
+        long remainingSeconds = seconds % 60L;
+        if (minutes < 60L) {
+            return remainingSeconds == 0L ? minutes + " min" : minutes + " min " + remainingSeconds + " sec";
+        }
+        long hours = minutes / 60L;
+        long remainingMinutes = minutes % 60L;
+        return remainingMinutes == 0L ? hours + " hr" : hours + " hr " + remainingMinutes + " min";
+    }
+
     private static String workingVerdictBody(
             int weakKanjiImproved,
             int matureSupportGained,
@@ -105,5 +164,9 @@ public final class StatsTextCopy {
             body += " Watch " + StudyTextCopy.countText(demotionRiskCount, "review-phase item with a miss streak", "review-phase items with miss streaks") + ".";
         }
         return body;
+    }
+
+    private static String clean(String value) {
+        return value == null ? "" : value;
     }
 }

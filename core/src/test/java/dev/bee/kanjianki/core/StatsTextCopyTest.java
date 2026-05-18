@@ -68,4 +68,29 @@ public final class StatsTextCopyTest {
         assertEquals("Font meaning", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.FONT_MEANING));
         assertEquals("Word reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.WORD_READING));
     }
+
+    @Test
+    public void weaknessAndSupportFormattingPreservesStatsRows() {
+        assertEquals(
+                "Weakness improvements will show after Kani reviews are followed by a successful AnkiDroid sync.",
+                StatsTextCopy.weaknessImprovementBody(0, 0.0, 0.0)
+        );
+        assertEquals(
+                "Average weakness: 0.80 -> 0.25 after Kani practice.",
+                StatsTextCopy.weaknessImprovementBody(2, 0.8, 0.25)
+        );
+        assertEquals("裂  0.80 -> 0.25", StatsTextCopy.weaknessImprovementExample("裂", 0.8, 0.25));
+        assertEquals("裂  1 -> 3 mature cards", StatsTextCopy.supportGainExample("裂", 1, 3));
+    }
+
+    @Test
+    public void impactAndTimeFormattingPreservesStatsHelpers() {
+        assertEquals("裂  3 Kani reviews · 2 same-card checks · retention +12% · difficulty -0.4", StatsTextCopy.notHelpingRowText("裂", 3, 2, 0.12, -0.4));
+        assertEquals("0 sec", StatsTextCopy.formatStudyTime(-1));
+        assertEquals("59 sec", StatsTextCopy.formatStudyTime(59_000));
+        assertEquals("1 min", StatsTextCopy.formatStudyTime(60_000));
+        assertEquals("1 min 5 sec", StatsTextCopy.formatStudyTime(65_000));
+        assertEquals("1 hr", StatsTextCopy.formatStudyTime(3_600_000));
+        assertEquals("1 hr 2 min", StatsTextCopy.formatStudyTime(3_720_000));
+    }
 }
