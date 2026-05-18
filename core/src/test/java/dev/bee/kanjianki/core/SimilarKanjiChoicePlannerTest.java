@@ -91,6 +91,27 @@ public final class SimilarKanjiChoicePlannerTest {
     }
 
     @Test
+    public void fallbackChoicesKeepTargetAndFirstThreeNeighborsInStoreOrder() {
+        List<String> choices = SimilarKanjiChoicePlanner.fallbackChoices(
+                "裂",
+                Arrays.asList(
+                        pair("裂", "列"),
+                        pair("裂", "烈"),
+                        pair("劣", "裂"),
+                        pair("裂", "例"),
+                        pair("裂", "列")
+                )
+        );
+
+        assertEquals(Arrays.asList("裂", "列", "烈", "劣"), choices);
+    }
+
+    @Test
+    public void fallbackChoicesAllowMissingPairs() {
+        assertEquals(Collections.singletonList("裂"), SimilarKanjiChoicePlanner.fallbackChoices("裂", null));
+    }
+
+    @Test
     public void sparsePairsAndMissingNeighborsAreSkipped() {
         SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
         List<RecordsImportModels.KanjiInventoryItem> inventory = Arrays.asList(

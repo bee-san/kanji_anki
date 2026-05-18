@@ -87,7 +87,6 @@ import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -640,17 +639,10 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     List<String> buildSimilarKanjiChoices(String targetKanji) {
-        List<RecordsImportModels.SimilarKanjiPair> pairs = store.similarPairsForKanji(targetKanji);
-        Set<String> choices = new LinkedHashSet<>();
-        choices.add(targetKanji);
-        for (RecordsImportModels.SimilarKanjiPair pair : pairs) {
-            String other = pair.kanjiA.equals(targetKanji) ? pair.kanjiB : pair.kanjiA;
-            choices.add(other);
-            if (choices.size() >= 4) {
-                break;
-            }
-        }
-        return new ArrayList<>(choices);
+        return SimilarKanjiChoicePlanner.fallbackChoices(
+                targetKanji,
+                store.similarPairsForKanji(targetKanji)
+        );
     }
 
     View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {

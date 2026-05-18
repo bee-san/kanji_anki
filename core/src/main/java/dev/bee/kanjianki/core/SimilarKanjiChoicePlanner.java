@@ -10,6 +10,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 public final class SimilarKanjiChoicePlanner {
+    public static final int FALLBACK_CHOICE_LIMIT = 4;
+
     public List<RecordsImportModels.SimilarKanjiChoiceCard> buildCandidates(
             List<RecordsImportModels.KanjiInventoryItem> inventory,
             List<RecordsImportModels.SimilarKanjiPair> pairs
@@ -106,6 +108,24 @@ public final class SimilarKanjiChoicePlanner {
             repairs.add(selected);
         }
         return new RecordsImportModels.SimilarKanjiChoiceResult(card, selected, false, new ArrayList<>(repairs));
+    }
+
+    public static List<String> fallbackChoices(String targetKanji, List<RecordsImportModels.SimilarKanjiPair> pairs) {
+        LinkedHashSet<String> choices = new LinkedHashSet<>();
+        choices.add(targetKanji);
+        if (pairs != null) {
+            for (RecordsImportModels.SimilarKanjiPair pair : pairs) {
+                if (pair == null) {
+                    continue;
+                }
+                String other = pair.kanjiA.equals(targetKanji) ? pair.kanjiB : pair.kanjiA;
+                choices.add(other);
+                if (choices.size() >= FALLBACK_CHOICE_LIMIT) {
+                    break;
+                }
+            }
+        }
+        return new ArrayList<>(choices);
     }
 
     public static String choiceSignature(List<String> choices) {
