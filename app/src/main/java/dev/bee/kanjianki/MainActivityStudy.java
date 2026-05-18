@@ -185,10 +185,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderNoStudySession(seededPlan);
             return;
         }
-        store.saveStudyItem(activeSession.item);
-        String taskKey = sessionTaskKey(activeSession);
-        registerStudyTaskShown(taskKey);
-        startActiveStudyTask(taskKey, activeSession.item.kanji, activeSession.taskType, now);
+        activateStudySession(activeSession, now);
         renderSession(activeSession);
     }
 
@@ -413,11 +410,18 @@ abstract class MainActivityStudy extends MainActivityStats {
                 now,
                 studyLadderSettings()
         );
-        store.saveStudyItem(activeSession.item);
-        String taskKey = sessionTaskKey(activeSession);
-        registerStudyTaskShown(taskKey);
-        startActiveStudyTask(taskKey, activeSession.item.kanji, activeSession.taskType, now);
+        activateStudySession(activeSession, now);
         renderSession(activeSession);
+    }
+
+    String activateStudySession(RecordsSchedulerModels.StudySession session, long now) {
+        return StudySessionActions.activateStudySession(
+                session,
+                now,
+                store::saveStudyItem,
+                this::registerStudyTaskShown,
+                this::startActiveStudyTask
+        );
     }
 
     RecordsStudyModels.StudyItem studyItemForTargetedKanji(List<RecordsStudyModels.StudyItem> seeded, String kanji, long now) {
