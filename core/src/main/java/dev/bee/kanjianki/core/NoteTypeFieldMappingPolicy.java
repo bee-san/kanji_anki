@@ -74,7 +74,7 @@ public final class NoteTypeFieldMappingPolicy {
         return labels;
     }
 
-    public static class NoteTypeChoice {
+    public static final class NoteTypeChoice {
         private final String name;
         private final List<String> fields;
 

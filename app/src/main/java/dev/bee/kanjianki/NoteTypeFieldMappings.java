@@ -80,11 +80,15 @@ final class NoteTypeFieldMappings {
     }
 
     static String[] labels(List<Choice> noteTypes) {
-        return NoteTypeFieldMappingPolicy.labels(noteTypes);
+        List<NoteTypeFieldMappingPolicy.NoteTypeChoice> choices = new ArrayList<>();
+        for (Choice noteType : noteTypes == null ? Collections.<Choice>emptyList() : noteTypes) {
+            choices.add(noteType.coreChoice);
+        }
+        return NoteTypeFieldMappingPolicy.labels(choices);
     }
 
     static String label(Choice noteType) {
-        return NoteTypeFieldMappingPolicy.label(noteType);
+        return NoteTypeFieldMappingPolicy.label(noteType == null ? null : noteType.coreChoice);
     }
 
     static String firstMatchingField(List<String> fields, String... candidates) {
@@ -149,9 +153,19 @@ final class NoteTypeFieldMappings {
         void setFrequencySort(String value);
     }
 
-    static final class Choice extends NoteTypeFieldMappingPolicy.NoteTypeChoice {
+    static final class Choice {
+        private final NoteTypeFieldMappingPolicy.NoteTypeChoice coreChoice;
+
         Choice(String name, List<String> fields) {
-            super(name, fields);
+            this.coreChoice = NoteTypeFieldMappingPolicy.choice(name, fields);
+        }
+
+        String name() {
+            return coreChoice.name();
+        }
+
+        List<String> fields() {
+            return coreChoice.fields();
         }
     }
 
