@@ -506,20 +506,23 @@ abstract class MainActivityHome extends MainActivityBase {
         SyncProgressPanel progressView = new SyncProgressPanel(this);
         content.addView(progressView);
         CollectionGateway syncGateway = collectionGatewayForTests == null ? gateway : collectionGatewayForTests;
-        io.execute(() -> {
-            ManualSyncEngine.SyncResult result = new ManualSyncEngine(
-                    this,
-                    store,
-                    syncGateway,
-                    settings(),
-                    update -> main.post(() -> progressView.render(update))
-            ).run();
-            if (result.success) {
-                store.activateAutoSyncAfterFirstSuccess();
-                AutoSyncScheduler.schedule(this);
-            }
-            main.post(() -> renderSyncResult(result));
-        });
+        ManualSyncCoordinator coordinator = new ManualSyncCoordinator(
+                io,
+                main::post,
+                progress -> new ManualSyncEngine(
+                        this,
+                        store,
+                        syncGateway,
+                        settings(),
+                        progress
+                ).run(),
+                () -> {
+                    store.activateAutoSyncAfterFirstSuccess();
+                    AutoSyncScheduler.schedule(this);
+                },
+                this::renderSyncResult
+        );
+        coordinator.start(update -> main.post(() -> progressView.render(update)));
     }
 
     void renderSyncResult(ManualSyncEngine.SyncResult result) {
