@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
+import dev.bee.kanjianki.core.StatsTextCopy;
 import dev.bee.kanjianki.data.StudyStatsStore;
 
 import java.util.ArrayList;
@@ -41,9 +42,8 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     LinearLayout statsVerdictPanel(StudyStatsStore.KaniOutcomeStats stats) {
-        boolean working = stats != null
-                && (stats.weakKanjiImproved.improvedCount > 0 || stats.matureSupportGained.matureSupportGained > 0);
-        boolean hasLadder = stats != null && stats.ladderHealth.totalActiveItems > 0;
+        boolean working = statsWorking(stats);
+        boolean hasLadder = statsHasLadder(stats);
         int stroke;
         int background;
         if (working) {
@@ -57,39 +57,37 @@ abstract class MainActivityStats extends MainActivityGames {
             background = Color.rgb(246, 246, 248);
         }
         LinearLayout box = panelBox(background, stroke);
-        box.addView(text(working ? "Kani is working for you" : "Kani is not currently working for you", 24, working ? TEAL : MUTED, true));
+        box.addView(text(StatsTextCopy.verdictTitle(working), 24, working ? TEAL : MUTED, true));
         box.addView(text(statsVerdictBody(stats, working, hasLadder), 15, working ? INK : MUTED, false));
         return box;
     }
 
     String statsVerdictBody(StudyStatsStore.KaniOutcomeStats stats, boolean working, boolean hasLadder) {
         if (stats == null) {
-            return "No Kani evidence is available yet. Study weak kanji, then sync AnkiDroid so this page can compare before and after.";
+            return StatsTextCopy.verdictBody(false, working, hasLadder, 0, 0, 0, 0, 0);
         }
         StudyStatsStore.LadderHealthMetric ladder = stats.ladderHealth;
-        if (working) {
-            List<String> signals = new ArrayList<>();
-            if (stats.weakKanjiImproved.improvedCount > 0) {
-                signals.add(countText(stats.weakKanjiImproved.improvedCount, "weak kanji is burning down", "weak kanji are burning down"));
-            }
-            if (stats.matureSupportGained.matureSupportGained > 0) {
-                signals.add(countText(stats.matureSupportGained.matureSupportGained, "mature Anki card has been gained", "mature Anki cards have been gained"));
-            }
-            if (ladder.promotionReadyCount > 0) {
-                signals.add(countText(ladder.promotionReadyCount, "review-phase item crossed the FSRS climb threshold", "review-phase items crossed the FSRS climb threshold"));
-            }
-            String body = String.join(". ", signals) + ".";
-            if (ladder.demotionRiskCount > 0) {
-                body += " Watch " + countText(ladder.demotionRiskCount, "review-phase item with a miss streak", "review-phase items with miss streaks") + ".";
-            }
-            return body;
-        }
-        if (hasLadder) {
-            return "Kani is tracking "
-                    + countText(ladder.totalActiveItems, "active kanji", "active kanji")
-                    + ", but no weakness burn-down or mature Anki support conversion has landed yet. Study due reviews, then sync AnkiDroid.";
-        }
-        return "No before-and-after evidence yet. Do Kani reviews, then sync AnkiDroid so this page can compare weak kanji and mature support.";
+        return StatsTextCopy.verdictBody(
+                true,
+                working,
+                hasLadder,
+                stats.weakKanjiImproved.improvedCount,
+                stats.matureSupportGained.matureSupportGained,
+                ladder.promotionReadyCount,
+                ladder.demotionRiskCount,
+                ladder.totalActiveItems
+        );
+    }
+
+    boolean statsWorking(StudyStatsStore.KaniOutcomeStats stats) {
+        return stats != null && StatsTextCopy.verdictWorking(
+                stats.weakKanjiImproved.improvedCount,
+                stats.matureSupportGained.matureSupportGained
+        );
+    }
+
+    boolean statsHasLadder(StudyStatsStore.KaniOutcomeStats stats) {
+        return stats != null && StatsTextCopy.verdictHasLadder(stats.ladderHealth.totalActiveItems);
     }
 
     LinearLayout studyTimePanel(StudyStatsStore.StudyTaskTimeStats stats) {
