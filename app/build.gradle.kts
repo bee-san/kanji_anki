@@ -142,6 +142,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":dictionary-core"))
     implementation(project(":update-core"))
+    implementation(project(":writing-core"))
     implementation("androidx.work:work-runtime:2.11.2")
     implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")

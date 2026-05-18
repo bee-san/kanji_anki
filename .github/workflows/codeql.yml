@@ -73,7 +73,7 @@ jobs:
             :core:compileJava \
             :domain:compileKotlin \
             :sync-domain:compileJava \
-            :writing-core:compileKotlin \
+            :writing-core:compileJava \
             :dictionary-core:compileJava \
             :update-core:compileJava \
             :app:compileDebugJavaWithJavac \
