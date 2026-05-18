@@ -480,6 +480,10 @@ abstract class MainActivityBase extends MainActivityUiSupport {
                 now);
     }
 
+    boolean itemDueForFocus(RecordsStudyModels.StudyItem item, long now) {
+        return FocusedStudyPlanPolicy.itemDueForFocus(item, now);
+    }
+
     void prepareStudyContent(RecordsSchedulerModels.AdaptiveLoadPlan plan, boolean fillViewport) {
         activeStudyPlan = plan;
         content.removeAllViews();
@@ -707,16 +711,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
             this.difficulty = difficulty;
             this.lapseThreshold = lapseThreshold;
             this.minCards = minCards;
-        }
-    }
-
-    static final class QueueEntry {
-        final RecordsImportModels.DashboardRow row;
-        final RecordsStudyModels.StudyItem item;
-
-        QueueEntry(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item) {
-            this.row = row;
-            this.item = item;
         }
     }
 

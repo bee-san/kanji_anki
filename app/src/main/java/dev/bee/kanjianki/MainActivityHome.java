@@ -52,6 +52,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -78,9 +79,7 @@ import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -105,7 +104,7 @@ abstract class MainActivityHome extends MainActivityBase {
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, now, false);
         RecordsSchedulerModels.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
-        List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
+        List<FocusQueuePolicy.QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
         AnkiDroidGateway.ProviderStatus provider = gateway.status();
 
         content.addView(homeHeader());
@@ -419,7 +418,7 @@ abstract class MainActivityHome extends MainActivityBase {
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         List<RecordsStudyModels.StudyItem> items = studyQueue(rows, now, false);
         RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
-        List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
+        List<FocusQueuePolicy.QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
 
         content.addView(homeSectionHeader("Focus queue", "Home", this::renderHome));
         content.addView(text(adaptiveFocusText(plan), 16, MUTED, false));
@@ -435,7 +434,7 @@ abstract class MainActivityHome extends MainActivityBase {
             emptyState(EMPTY_ACTIVE_PRACTICE_TITLE, EMPTY_ACTIVE_PRACTICE_BODY);
             return;
         }
-        for (QueueEntry entry : entries) {
+        for (FocusQueuePolicy.QueueEntry entry : entries) {
             content.addView(queueRowView(entry, now));
         }
     }
@@ -560,7 +559,7 @@ abstract class MainActivityHome extends MainActivityBase {
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         List<RecordsStudyModels.StudyItem> items = store.studyItems();
         RecordsSchedulerModels.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
-        List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
+        List<FocusQueuePolicy.QueueEntry> entries = queuedEntries(rows, items, now, plan);
         summary.addView(text(countText(entries.size(), "kanji ready to study", "kanji ready to study"), 24, Color.WHITE, true));
         summary.addView(text(countText(result.dashboardRows, "candidate found from Anki", "candidates found from Anki") + ". " + adaptiveFocusText(plan) + ".", 16, Color.WHITE, false));
         addOptionalSyncSummaryLines(summary, result);
@@ -631,50 +630,12 @@ abstract class MainActivityHome extends MainActivityBase {
         return seeded;
     }
 
-    List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
+    List<FocusQueuePolicy.QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
         return queuedEntries(rows, items, now, null);
     }
 
-    List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        Map<String, RecordsImportModels.DashboardRow> rowByKanji = new HashMap<>();
-        for (RecordsImportModels.DashboardRow row : rows) {
-            rowByKanji.put(row.kanji, row);
-        }
-        Map<String, Integer> focusOrder = new HashMap<>();
-        if (plan != null) {
-            for (int i = 0; i < plan.focusKanji.size(); i++) {
-                focusOrder.put(plan.focusKanji.get(i), i);
-            }
-        }
-        List<QueueEntry> entries = new ArrayList<>();
-        BridgeScheduler scheduler = new BridgeScheduler();
-        for (RecordsStudyModels.StudyItem item : scheduler.activeQueueItems(items, rows, now, studyAheadMillis(), null, studyLadderSettings())) {
-            RecordsImportModels.DashboardRow row = rowByKanji.get(item.kanji);
-            if (row != null) {
-                entries.add(new QueueEntry(row, item));
-            }
-        }
-        entries.sort(Comparator
-                .comparingInt((QueueEntry entry) -> focusOrder.getOrDefault(entry.row.kanji, Integer.MAX_VALUE))
-                .thenComparingInt((QueueEntry entry) -> entry.item.dueAtMillis <= now ? 0 : 1)
-                .thenComparingInt(entry -> stateRank(entry.item.state))
-                .thenComparingLong(entry -> entry.item.dueAtMillis)
-                .thenComparingInt(entry -> -entry.row.weaknessScore)
-                .thenComparing(entry -> entry.row.kanji));
-        return entries;
-    }
-
-    int stateRank(String state) {
-        if (STATE_LEARNING.equals(state)) {
-            return 0;
-        }
-        if ("review".equals(state)) {
-            return 1;
-        }
-        if ("new".equals(state)) {
-            return 2;
-        }
-        return 3;
+    List<FocusQueuePolicy.QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
+        return FocusQueuePolicy.queuedEntries(rows, items, now, studyAheadMillis(), plan, studyLadderSettings());
     }
 
     int rowColor(RecordsStudyModels.StudyItem item, long now) {
@@ -687,7 +648,7 @@ abstract class MainActivityHome extends MainActivityBase {
         return Color.rgb(246, 202, 225);
     }
 
-    View queueRowView(QueueEntry entry, long now) {
+    View queueRowView(FocusQueuePolicy.QueueEntry entry, long now) {
         RecordsImportModels.DashboardRow row = entry.row;
         RecordsStudyModels.StudyItem item = entry.item;
         LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
