@@ -56,6 +56,7 @@ import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
+import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -983,28 +984,11 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String timelineStatusText(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        RecordsStudyModels.StudyItem item = timeline.currentStudyItem;
-        if (item != null && STATE_RETIRED.equals(item.state)) {
-            return "Retired by Anki support";
-        }
-        if (item != null && item.dueAtMillis > System.currentTimeMillis()) {
-            return "Resting until review";
-        }
-        if (timeline.currentRow == null) {
-            return "Retired by Anki support";
-        }
-        return "Active repair";
+        return TimelineCopy.statusText(timeline, System.currentTimeMillis());
     }
 
     int timelineStatusColor(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        RecordsStudyModels.StudyItem item = timeline.currentStudyItem;
-        if (item != null && STATE_RETIRED.equals(item.state)) {
-            return TEAL;
-        }
-        if (item != null && item.dueAtMillis > System.currentTimeMillis()) {
-            return BLUE;
-        }
-        return CORAL;
+        return timelineToneColor(TimelineCopy.statusTone(timeline, System.currentTimeMillis()));
     }
 
     View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
@@ -1022,11 +1006,15 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     int timelineEventColor(String eventType) {
-        if ("review_failed".equals(eventType) || "support_dropped".equals(eventType) || "reopened".equals(eventType)) {
-            return CORAL;
-        }
-        if ("review_passed".equals(eventType) || "support_improved".equals(eventType) || STATE_RETIRED.equals(eventType)) {
+        return timelineToneColor(TimelineCopy.eventTone(eventType));
+    }
+
+    int timelineToneColor(TimelineCopy.Tone tone) {
+        if (tone == TimelineCopy.Tone.POSITIVE) {
             return TEAL;
+        }
+        if (tone == TimelineCopy.Tone.WARNING) {
+            return CORAL;
         }
         return BLUE;
     }
@@ -1036,13 +1024,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String timelineSourceLine(RecordsImportModels.KanjiTimelineEvent event) {
-        if (event.sourceExpression.isEmpty()) {
-            return "";
-        }
-        if (event.sourceReading.isEmpty()) {
-            return "Source: " + event.sourceExpression;
-        }
-        return "Source: " + event.sourceExpression + "  " + event.sourceReading;
+        return TimelineCopy.sourceLine(event);
     }
 
     View exampleView(RecordsImportModels.Example example) {
