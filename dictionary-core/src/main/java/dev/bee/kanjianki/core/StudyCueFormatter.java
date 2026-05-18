@@ -98,7 +98,7 @@ public final class StudyCueFormatter {
     }
 
     static String cleanMeaningText(String raw) {
-        String value = TextUtil.stripHtml(raw);
+        String value = DictionaryTextUtil.stripHtml(raw);
         value = MEANING_LABEL_PATTERN.matcher(value).replaceAll(" ");
         value = DATE_METADATA_PATTERN.matcher(value).replaceAll(" ");
         value = JM_DICT_PATTERN.matcher(value).replaceAll(" ");

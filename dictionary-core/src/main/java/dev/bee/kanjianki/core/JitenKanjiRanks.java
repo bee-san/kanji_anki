@@ -60,7 +60,7 @@ public final class JitenKanjiRanks {
     }
 
     private static RankEntry rankEntry(String kanji, int rank) {
-        return !kanji.isEmpty() && TextUtil.isKanji(kanji.codePointAt(0)) ? new RankEntry(kanji, rank) : null;
+        return !kanji.isEmpty() && DictionaryTextUtil.isKanji(kanji.codePointAt(0)) ? new RankEntry(kanji, rank) : null;
     }
 
     private static boolean isInteger(String value) {

@@ -43,6 +43,7 @@ tasks.check {
 }
 
 dependencies {
+    api(project(":dictionary-core"))
     api(project(":domain"))
     api(project(":sync-domain"))
     implementation(project(":update-core"))
