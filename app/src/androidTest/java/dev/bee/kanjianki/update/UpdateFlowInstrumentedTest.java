@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInstaller;
@@ -325,30 +326,37 @@ public final class UpdateFlowInstrumentedTest {
         GitHubUpdater.ApkMetadata missing = GitHubUpdater.metadataFromPackageInfo(null);
         assertEquals("", missing.packageName);
         assertEquals("", missing.versionName);
+        assertEquals(0, missing.targetSdkVersion);
 
         PackageInfo bothNull = new PackageInfo();
         GitHubUpdater.ApkMetadata empty = GitHubUpdater.metadataFromPackageInfo(bothNull);
         assertEquals("", empty.packageName);
         assertEquals("", empty.versionName);
+        assertEquals(0, empty.targetSdkVersion);
 
         PackageInfo packageOnly = new PackageInfo();
         packageOnly.packageName = "dev.bee.kanjianki";
         GitHubUpdater.ApkMetadata packageOnlyMetadata = GitHubUpdater.metadataFromPackageInfo(packageOnly);
         assertEquals("dev.bee.kanjianki", packageOnlyMetadata.packageName);
         assertEquals("", packageOnlyMetadata.versionName);
+        assertEquals(0, packageOnlyMetadata.targetSdkVersion);
 
         PackageInfo versionOnly = new PackageInfo();
         versionOnly.versionName = "9.9.9";
         GitHubUpdater.ApkMetadata versionOnlyMetadata = GitHubUpdater.metadataFromPackageInfo(versionOnly);
         assertEquals("", versionOnlyMetadata.packageName);
         assertEquals("9.9.9", versionOnlyMetadata.versionName);
+        assertEquals(0, versionOnlyMetadata.targetSdkVersion);
 
         PackageInfo complete = new PackageInfo();
         complete.packageName = "dev.bee.kanjianki";
         complete.versionName = "9.9.9";
+        complete.applicationInfo = new ApplicationInfo();
+        complete.applicationInfo.targetSdkVersion = 34;
         GitHubUpdater.ApkMetadata completeMetadata = GitHubUpdater.metadataFromPackageInfo(complete);
         assertEquals("dev.bee.kanjianki", completeMetadata.packageName);
         assertEquals("9.9.9", completeMetadata.versionName);
+        assertEquals(34, completeMetadata.targetSdkVersion);
     }
 
     @Test
@@ -363,7 +371,7 @@ public final class UpdateFlowInstrumentedTest {
         }
         FakeInstallerBackend success = new FakeInstallerBackend(new FakeInstallerSession(false));
 
-        GitHubUpdater.startPackageInstaller(context, success, apk, "v8.0.0", GitHubUpdater.UpdateSource.MANUAL);
+        GitHubUpdater.startPackageInstaller(context, success, apk, "v8.0.0", GitHubUpdater.UpdateSource.MANUAL, 34);
 
         assertEquals(41, success.createdSessionId);
         assertEquals(41, success.openedSessionId);
@@ -379,7 +387,7 @@ public final class UpdateFlowInstrumentedTest {
         openFailure.failOpen = true;
         IOException openError;
         try {
-            GitHubUpdater.startPackageInstaller(context, openFailure, apk, "v8.0.0", GitHubUpdater.UpdateSource.MANUAL);
+            GitHubUpdater.startPackageInstaller(context, openFailure, apk, "v8.0.0", GitHubUpdater.UpdateSource.MANUAL, 34);
             throw new AssertionError("Expected IOException");
         } catch (IOException caught) {
             openError = caught;
@@ -392,7 +400,7 @@ public final class UpdateFlowInstrumentedTest {
         FakeInstallerBackend writeFailure = new FakeInstallerBackend(new FakeInstallerSession(true));
         IOException writeError;
         try {
-            GitHubUpdater.startPackageInstaller(context, writeFailure, apk, "v8.0.0", GitHubUpdater.UpdateSource.MANUAL);
+            GitHubUpdater.startPackageInstaller(context, writeFailure, apk, "v8.0.0", GitHubUpdater.UpdateSource.MANUAL, 34);
             throw new AssertionError("Expected IOException");
         } catch (IOException caught) {
             writeError = caught;
@@ -414,7 +422,7 @@ public final class UpdateFlowInstrumentedTest {
         FakeInstallerBackend fsyncFailure = new FakeInstallerBackend(fsyncSession);
         IOException fsyncError;
         try {
-            GitHubUpdater.startPackageInstaller(context, fsyncFailure, apk, "v8.0.1", GitHubUpdater.UpdateSource.MANUAL);
+            GitHubUpdater.startPackageInstaller(context, fsyncFailure, apk, "v8.0.1", GitHubUpdater.UpdateSource.MANUAL, 34);
             throw new AssertionError("Expected IOException");
         } catch (IOException caught) {
             fsyncError = caught;
@@ -430,7 +438,7 @@ public final class UpdateFlowInstrumentedTest {
         FakeInstallerBackend commitFailure = new FakeInstallerBackend(commitSession);
         IllegalStateException commitError;
         try {
-            GitHubUpdater.startPackageInstaller(context, commitFailure, apk, "v8.0.1", GitHubUpdater.UpdateSource.MANUAL);
+            GitHubUpdater.startPackageInstaller(context, commitFailure, apk, "v8.0.1", GitHubUpdater.UpdateSource.MANUAL, 34);
             throw new AssertionError("Expected IllegalStateException");
         } catch (IllegalStateException caught) {
             commitError = caught;
@@ -557,7 +565,7 @@ public final class UpdateFlowInstrumentedTest {
         assertEquals(context.getPackageManager().canRequestPackageInstalls(), client.canRequestPackageInstalls());
 
         client.showPendingUpdate("v8.0.2", "ready");
-        client.startPackageInstaller(apk, "v8.0.2", GitHubUpdater.UpdateSource.MANUAL);
+        client.startPackageInstaller(apk, "v8.0.2", GitHubUpdater.UpdateSource.MANUAL, 34);
 
         assertEquals(41, backend.createdSessionId);
         assertEquals(41, backend.openedSessionId);
@@ -655,7 +663,7 @@ public final class UpdateFlowInstrumentedTest {
             store.recordAutoUpdateResult(10L, "pending", "v99.99.99", cached.getName(), "ready to install");
         }
         FakeUpdateClient client = new FakeUpdateClient()
-                .metadata(context.getPackageName(), "99.99.99")
+                .metadata(context.getPackageName(), "99.99.99", 34)
                 .canInstall(true);
 
         GitHubUpdater.UpdateResult result = new GitHubUpdater(context, client).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED);
@@ -666,6 +674,7 @@ public final class UpdateFlowInstrumentedTest {
         assertEquals(1, client.installs);
         assertEquals("v99.99.99", client.installedVersion);
         assertEquals(GitHubUpdater.UpdateSource.CACHED, client.installedSource);
+        assertEquals(34, client.installedTargetSdk);
         assertEquals(0, client.notifications);
         try (LocalStore store = new LocalStore(context)) {
             LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
@@ -949,7 +958,7 @@ public final class UpdateFlowInstrumentedTest {
                 .latest(releaseJson("v99.99.99", apkAsset(), checksumAsset()))
                 .checksum(sha256(apk))
                 .downloadBytes(apk)
-                .metadata(context.getPackageName(), "99.99.99")
+                .metadata(context.getPackageName(), "99.99.99", 34)
                 .canInstall(true);
 
         GitHubUpdater.UpdateResult result = new GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL);
@@ -961,6 +970,7 @@ public final class UpdateFlowInstrumentedTest {
         assertEquals(1, client.installs);
         assertEquals("v99.99.99", client.installedVersion);
         assertEquals(GitHubUpdater.UpdateSource.MANUAL, client.installedSource);
+        assertEquals(34, client.installedTargetSdk);
         try (LocalStore store = new LocalStore(context)) {
             LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
             assertEquals("kani.apk", status.pendingApkName);
@@ -1311,6 +1321,7 @@ public final class UpdateFlowInstrumentedTest {
         private int notifications;
         private String installedVersion;
         private GitHubUpdater.UpdateSource installedSource;
+        private int installedTargetSdk;
 
         FakeUpdateClient latest(String latestJson) {
             this.latestJson = latestJson;
@@ -1329,6 +1340,11 @@ public final class UpdateFlowInstrumentedTest {
 
         FakeUpdateClient metadata(String packageName, String versionName) {
             this.metadata = new GitHubUpdater.ApkMetadata(packageName, versionName);
+            return this;
+        }
+
+        FakeUpdateClient metadata(String packageName, String versionName, int targetSdkVersion) {
+            this.metadata = new GitHubUpdater.ApkMetadata(packageName, versionName, targetSdkVersion);
             return this;
         }
 
@@ -1377,10 +1393,16 @@ public final class UpdateFlowInstrumentedTest {
         }
 
         @Override
-        public void startPackageInstaller(File apkFile, String version, GitHubUpdater.UpdateSource source) {
+        public void startPackageInstaller(
+                File apkFile,
+                String version,
+                GitHubUpdater.UpdateSource source,
+                int targetSdkVersion
+        ) {
             installs++;
             installedVersion = version;
             installedSource = source;
+            installedTargetSdk = targetSdkVersion;
         }
 
         @Override

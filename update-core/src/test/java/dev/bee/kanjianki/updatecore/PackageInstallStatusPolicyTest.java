@@ -73,8 +73,27 @@ public class PackageInstallStatusPolicyTest {
 
     @Test
     public void installerCanSkipExtraUserActionOnlyWhenAppAndRuntimeSupportIt() {
-        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(30, 31));
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(28, 31));
+        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(29, 31));
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(29, 33));
+        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(30, 33));
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(30, 34));
+        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(31, 34));
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(32, 35));
+        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(33, 35));
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(33, 36));
+        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(34, 36));
         assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(31, 30));
-        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(31, 31));
+    }
+
+    @Test
+    public void installerUserActionMinimumTargetSdkFollowsRuntimeRelease() {
+        assertEquals(Integer.MAX_VALUE, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(30));
+        assertEquals(29, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(31));
+        assertEquals(29, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(32));
+        assertEquals(30, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(33));
+        assertEquals(31, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(34));
+        assertEquals(33, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(35));
+        assertEquals(34, PackageInstallStatusPolicy.minimumTargetSdkForInstallerWithoutExtraUserAction(36));
     }
 }

@@ -279,9 +279,10 @@ public final class GitHubUpdaterTest {
 
     @Test
     public void installerUserActionPolicyRequiresBothRequestedAndRuntimeApiSupport() {
-        assertFalse(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(30, 31));
+        assertFalse(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(28, 31));
+        assertTrue(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(29, 31));
         assertFalse(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(31, 30));
-        assertTrue(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(31, 31));
+        assertTrue(GitHubUpdater.shouldAllowInstallerWithoutExtraUserAction(34, 36));
     }
 
     @Test

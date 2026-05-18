@@ -102,7 +102,7 @@ public final class GitHubUpdater {
                 return recordResult(checkedAt, UpdateResult.failed(archive.message), latest.tagName(), "", "");
             }
 
-            return installVerifiedApk(checkedAt, latest.tagName(), apkFile, source);
+            return installVerifiedApk(checkedAt, latest.tagName(), apkFile, source, metadata.targetSdkVersion);
         } catch (IOException | RuntimeException error) {
             return recordResult(checkedAt, UpdateResult.failed("Update check failed: " + readableMessage(error)), "", "", "");
         }
@@ -134,7 +134,7 @@ public final class GitHubUpdater {
                 deleteCachedApk(apkFile);
                 return recordResult(checkedAt, UpdateResult.failed(archive.message), status.lastVersion, "", "");
             }
-            return installVerifiedApk(checkedAt, status.lastVersion, apkFile, source);
+            return installVerifiedApk(checkedAt, status.lastVersion, apkFile, source, metadata.targetSdkVersion);
         } catch (IOException | RuntimeException error) {
             return recordResult(checkedAt, UpdateResult.failed("Update install failed: " + readableMessage(error)), status.lastVersion, status.pendingApkName, status.pendingMessage);
         }
@@ -144,7 +144,13 @@ public final class GitHubUpdater {
         return UpdateTextPolicy.readableMessage(error);
     }
 
-    private UpdateResult installVerifiedApk(long checkedAt, String version, File apkFile, UpdateSource source) throws IOException {
+    private UpdateResult installVerifiedApk(
+            long checkedAt,
+            String version,
+            File apkFile,
+            UpdateSource source,
+            int targetSdkVersion
+    ) throws IOException {
         if (!client.canRequestPackageInstalls()) {
             Intent permission = installPermissionIntent(context);
             String message = "APK verified. Grant install permission to continue.";
@@ -153,7 +159,7 @@ public final class GitHubUpdater {
             return recordResult(checkedAt, result, version, apkFile.getName(), message);
         }
 
-        client.startPackageInstaller(apkFile, version, source);
+        client.startPackageInstaller(apkFile, version, source, targetSdkVersion);
         String message = "APK verified. Android installer started.";
         return recordResult(checkedAt, new UpdateResult(true, message, null, false, false), version, apkFile.getName(), "");
     }
@@ -335,7 +341,7 @@ public final class GitHubUpdater {
 
         boolean canRequestPackageInstalls();
 
-        void startPackageInstaller(File apkFile, String version, UpdateSource source) throws IOException;
+        void startPackageInstaller(File apkFile, String version, UpdateSource source, int targetSdkVersion) throws IOException;
 
         boolean showPendingUpdate(String version, String message);
     }
@@ -405,8 +411,20 @@ public final class GitHubUpdater {
         }
 
         @Override
-        public void startPackageInstaller(File apkFile, String version, UpdateSource source) throws IOException {
-            GitHubUpdater.startPackageInstaller(context, installerBackendFactory.create(context), apkFile, version, source);
+        public void startPackageInstaller(
+                File apkFile,
+                String version,
+                UpdateSource source,
+                int targetSdkVersion
+        ) throws IOException {
+            GitHubUpdater.startPackageInstaller(
+                    context,
+                    installerBackendFactory.create(context),
+                    apkFile,
+                    version,
+                    source,
+                    targetSdkVersion
+            );
         }
 
         @Override
@@ -417,9 +435,13 @@ public final class GitHubUpdater {
 
     static ApkMetadata metadataFromPackageInfo(PackageInfo info) {
         if (info == null) {
-            return new ApkMetadata("", "");
+            return new ApkMetadata("", "", 0);
         }
-        return new ApkMetadata(info.packageName == null ? "" : info.packageName, info.versionName == null ? "" : info.versionName);
+        return new ApkMetadata(
+                info.packageName == null ? "" : info.packageName,
+                info.versionName == null ? "" : info.versionName,
+                info.applicationInfo == null ? 0 : info.applicationInfo.targetSdkVersion
+        );
     }
 
     static void startPackageInstaller(
@@ -427,9 +449,10 @@ public final class GitHubUpdater {
             InstallerBackend installer,
             File apkFile,
             String version,
-            UpdateSource source
+            UpdateSource source,
+            int targetSdkVersion
     ) throws IOException {
-        PackageInstaller.SessionParams params = sessionParams(context.getPackageName(), Build.VERSION.SDK_INT);
+        PackageInstaller.SessionParams params = sessionParams(context.getPackageName(), targetSdkVersion);
 
         int sessionId = installer.createSession(params);
         InstallerSession session = null;
@@ -464,10 +487,11 @@ public final class GitHubUpdater {
         }
     }
 
-    static PackageInstaller.SessionParams sessionParams(String packageName, int sdkInt) {
+    static PackageInstaller.SessionParams sessionParams(String packageName, int targetSdkVersion) {
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
         params.setAppPackageName(packageName);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && shouldAllowInstallerWithoutExtraUserAction(sdkInt, Build.VERSION.SDK_INT)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && shouldAllowInstallerWithoutExtraUserAction(targetSdkVersion, Build.VERSION.SDK_INT)) {
             params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
         }
         return params;
@@ -663,10 +687,16 @@ public final class GitHubUpdater {
     static final class ApkMetadata {
         final String packageName;
         final String versionName;
+        final int targetSdkVersion;
 
         ApkMetadata(String packageName, String versionName) {
+            this(packageName, versionName, 0);
+        }
+
+        ApkMetadata(String packageName, String versionName, int targetSdkVersion) {
             this.packageName = packageName;
             this.versionName = versionName;
+            this.targetSdkVersion = targetSdkVersion;
         }
     }
 }
