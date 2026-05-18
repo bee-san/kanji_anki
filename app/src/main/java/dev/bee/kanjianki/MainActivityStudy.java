@@ -106,6 +106,16 @@ abstract class MainActivityStudy extends MainActivityStats {
         void onClick(String glyph, LinearLayout grid);
     }
 
+    static final class CapturedWritingAttempt {
+        final CapturedWriting captured;
+        final WritingSample sample;
+
+        CapturedWritingAttempt(CapturedWriting captured, WritingSample sample) {
+            this.captured = captured;
+            this.sample = sample;
+        }
+    }
+
     private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
     private final Random meaningChoiceRandom = new Random();
 
@@ -1327,11 +1337,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         RecordsSchedulerModels.StudySession session = activeSession;
         String token = session.token;
         String target = session.item.kanji;
-        CapturedWriting captured;
-        WritingSample sample;
+        CapturedWritingAttempt attempt;
         try {
-            captured = drawingPad.capturedWriting();
-            sample = drawingPad.writingSample();
+            attempt = capturedWritingAttempt();
         } catch (IllegalArgumentException error) {
             activeAnalysis = WritingAnalysisEngine.noInk(currentHintState.level(), hintsUsed);
             showAnalysis(activeAnalysis);
@@ -1359,8 +1367,12 @@ abstract class MainActivityStudy extends MainActivityStats {
                 });
                 return;
             }
-            recognizeWriting(recognizer, captured, sample, guide, target, token);
+            recognizeWriting(recognizer, attempt.captured, attempt.sample, guide, target, token);
         });
+    }
+
+    CapturedWritingAttempt capturedWritingAttempt() {
+        return new CapturedWritingAttempt(drawingPad.capturedWriting(), drawingPad.writingSample());
     }
 
     void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
