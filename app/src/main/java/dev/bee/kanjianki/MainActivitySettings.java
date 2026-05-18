@@ -55,6 +55,7 @@ import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
+import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -1339,28 +1340,18 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save retention", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            String rangesText = rankRanges.getText().toString().trim();
-            if (rankRetentionEnabled.isChecked()) {
-                try {
-                    FrequencyRetentionRanges.parse(rangesText);
-                } catch (IllegalArgumentException error) {
-                    Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show();
-                    return;
-                }
-            }
-            RecordsSchedulerModels.SchedulerParameters latest = store.schedulerParameters();
-            store.saveSchedulerParameters(new RecordsSchedulerModels.SchedulerParameters(
-                    selected[0] / 100.0,
-                    latest.againMultiplier,
-                    latest.hardMultiplier,
-                    latest.goodMultiplier,
-                    latest.easyMultiplier,
-                    latest.lastAdjustedAtMillis,
-                    latest.lastAdjustmentReviewCount
-            ).withFrequencyRetention(
+            RetentionSettingsPolicy.SaveResult request = RetentionSettingsPolicy.saveRequest(
+                    selected[0],
                     rankRetentionEnabled.isChecked(),
-                    rangesText));
-            Toast.makeText(this, "FSRS retention saved.", Toast.LENGTH_SHORT).show();
+                    rankRanges.getText().toString(),
+                    store.schedulerParameters()
+            );
+            if (!request.valid) {
+                Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
+                return;
+            }
+            store.saveSchedulerParameters(request.parameters);
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
