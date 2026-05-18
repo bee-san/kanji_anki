@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
+import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 final class SettingsWriteActions {
@@ -78,6 +79,10 @@ final class SettingsWriteActions {
         LocalStore.ReminderSettings settings = reminderSettings(fields);
         writer.saveReminderSettings(settings);
         return settings;
+    }
+
+    static void setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.ToggleResult result, AutoSyncSettingsWriter writer) {
+        writer.setAutoSyncEnabled(result.enabled());
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
@@ -157,6 +162,10 @@ final class SettingsWriteActions {
 
     interface ReminderSettingsWriter {
         void saveReminderSettings(LocalStore.ReminderSettings settings);
+    }
+
+    interface AutoSyncSettingsWriter {
+        void setAutoSyncEnabled(boolean enabled);
     }
 
     interface SettingWriter extends IntSettingWriter {

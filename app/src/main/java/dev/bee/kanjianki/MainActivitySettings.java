@@ -1470,7 +1470,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Button off = secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
                 off.setOnClickListener(v -> {
                     AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
-                    store.setAutoSyncEnabled(result.enabled());
+                    SettingsWriteActions.setAutoSyncEnabled(result, store::setAutoSyncEnabled);
                     AutoSyncScheduler.cancel(this);
                     Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
                     renderSettings();
@@ -1480,7 +1480,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Button on = primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), STUDY_PINK_DARK);
                 on.setOnClickListener(v -> {
                     AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
-                    store.setAutoSyncEnabled(result.enabled());
+                    SettingsWriteActions.setAutoSyncEnabled(result, store::setAutoSyncEnabled);
                     AutoSyncScheduler.schedule(this);
                     Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
                     renderSettings();

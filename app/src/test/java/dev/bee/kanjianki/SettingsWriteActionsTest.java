@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
+import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.SyncSettings;
@@ -145,6 +146,17 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void setAutoSyncEnabledWritesToggleResultFlag() {
+        RecordingAutoSyncWriter writer = new RecordingAutoSyncWriter();
+
+        SettingsWriteActions.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.enable(), writer);
+        assertTrue(writer.enabled);
+
+        SettingsWriteActions.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.disable(), writer);
+        assertEquals(false, writer.enabled);
+    }
+
+    @Test
     public void applyImportPresetWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
         SettingsImportPreset preset = new SettingsImportPreset(
@@ -252,6 +264,15 @@ public final class SettingsWriteActionsTest {
         @Override
         public void saveReminderSettings(LocalStore.ReminderSettings settings) {
             this.settings = settings;
+        }
+    }
+
+    private static final class RecordingAutoSyncWriter implements SettingsWriteActions.AutoSyncSettingsWriter {
+        boolean enabled;
+
+        @Override
+        public void setAutoSyncEnabled(boolean enabled) {
+            this.enabled = enabled;
         }
     }
 }
