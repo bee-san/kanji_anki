@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class WritingFeedbackCopyTest {
@@ -63,6 +64,53 @@ public final class WritingFeedbackCopyTest {
         assertEquals("\nTarget: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.MODEL_UNAVAILABLE, false, HintLevel.BLIND, 0), "裂"));
         assertEquals("\nTarget: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.NO_STROKE_DATA, false, HintLevel.BLIND, 0), "裂"));
         assertEquals("\nTarget: 裂", WritingFeedbackCopy.targetRevealText(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0), "裂"));
+    }
+
+    @Test
+    public void writingActionCopyPreservesButtonAndRatingChoices() {
+        assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, false));
+        assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, true));
+        assertEquals("Check", WritingFeedbackCopy.checkWritingButtonText(false, false));
+        assertEquals("Try cleaner", WritingFeedbackCopy.checkWritingButtonText(false, true));
+
+        assertEquals("Fail", WritingFeedbackCopy.submitLabel(null));
+        assertEquals("Fail", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)));
+        assertEquals("Save hard", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)));
+        assertEquals("Pass", WritingFeedbackCopy.submitLabel(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)));
+
+        assertEquals("again", WritingFeedbackCopy.submitRating(null));
+        assertEquals("again", WritingFeedbackCopy.submitRating(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)));
+        assertEquals("hard", WritingFeedbackCopy.submitRating(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)));
+        assertEquals("good", WritingFeedbackCopy.submitRating(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)));
+    }
+
+    @Test
+    public void writingActionPolicyPreservesSubmittableAndFallbackStatuses() {
+        assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
+        assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)));
+        assertFalse(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.NO_INK, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.MODEL_UNAVAILABLE, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.NO_STROKE_DATA, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0)));
+
+        assertFalse(WritingFeedbackCopy.canManualOverride(null));
+        assertFalse(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)));
+        assertFalse(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.NO_INK, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.MODEL_UNAVAILABLE, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.NO_STROKE_DATA, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.canManualOverride(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0)));
+
+        assertFalse(WritingFeedbackCopy.canPracticeAfterAnalysis(null));
+        assertTrue(WritingFeedbackCopy.canPracticeAfterAnalysis(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)));
+        assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(null));
+        assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0)));
+        assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.CLOSE, true, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.NO_STROKE_DATA, false, HintLevel.BLIND, 0)));
+        assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0)));
     }
 
     private static StrokeGuide guide() {

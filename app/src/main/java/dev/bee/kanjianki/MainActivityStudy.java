@@ -68,6 +68,7 @@ import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
+import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
@@ -1589,10 +1590,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String checkWritingButtonText(boolean messyPass) {
-        if (checkingWriting) {
-            return "Checking...";
-        }
-        return messyPass ? "Try cleaner" : "Check";
+        return WritingFeedbackCopy.checkWritingButtonText(checkingWriting, messyPass);
     }
 
     void updateUndoStrokeButton() {
@@ -1619,23 +1617,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String writingSubmitLabel(WritingAnalysis analysis) {
-        if (analysis == null || !analysis.writingPassed) {
-            return "Fail";
-        }
-        if (analysis.status == WritingAnalysis.Status.CLOSE) {
-            return "Save hard";
-        }
-        return LABEL_PASS;
+        return WritingFeedbackCopy.submitLabel(analysis);
     }
 
     String writingSubmitRating(WritingAnalysis analysis) {
-        if (analysis == null || !analysis.writingPassed) {
-            return RATING_AGAIN;
-        }
-        if (analysis.status == WritingAnalysis.Status.CLOSE) {
-            return RATING_HARD;
-        }
-        return RATING_GOOD;
+        return WritingFeedbackCopy.submitRating(analysis);
     }
 
     void updateFallbackActionButtons(boolean hasResult, boolean passed, StrokeGuide guide) {
@@ -1688,15 +1674,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis) {
-        if (analysis == null) {
-            return false;
-        }
-        switch (analysis.status) {
-            case WRONG, NO_STROKE_DATA, RECOGNITION_ERROR:
-                return true;
-            default:
-                return false;
-        }
+        return WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis);
     }
 
     void startCleanerRetry() {
@@ -1823,34 +1801,15 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean canSubmitAnalysis(WritingAnalysis analysis) {
-        if (analysis == null) {
-            return false;
-        }
-        switch (analysis.status) {
-            case PASS, CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
-                return true;
-            default:
-                return false;
-        }
+        return WritingFeedbackCopy.canSubmitAnalysis(analysis);
     }
 
     boolean canManualOverride(WritingAnalysis analysis) {
-        if (analysis == null) {
-            return false;
-        }
-        switch (analysis.status) {
-            case CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
-                return true;
-            default:
-                return false;
-        }
+        return WritingFeedbackCopy.canManualOverride(analysis);
     }
 
     boolean canPracticeAfterAnalysis(WritingAnalysis analysis) {
-        if (analysis == null) {
-            return false;
-        }
-        return canManualOverride(analysis);
+        return WritingFeedbackCopy.canPracticeAfterAnalysis(analysis);
     }
 
     void setStudyStatus(String value, int color) {

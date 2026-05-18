@@ -79,4 +79,71 @@ public final class WritingFeedbackCopy {
                 return "";
         }
     }
+
+    public static String checkWritingButtonText(boolean checkingWriting, boolean messyPass) {
+        if (checkingWriting) {
+            return "Checking...";
+        }
+        return messyPass ? "Try cleaner" : "Check";
+    }
+
+    public static String submitLabel(WritingAnalysis analysis) {
+        if (analysis == null || !analysis.writingPassed) {
+            return "Fail";
+        }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return "Save hard";
+        }
+        return "Pass";
+    }
+
+    public static String submitRating(WritingAnalysis analysis) {
+        if (analysis == null || !analysis.writingPassed) {
+            return StudyRating.AGAIN.code();
+        }
+        if (analysis.status == WritingAnalysis.Status.CLOSE) {
+            return StudyRating.HARD.code();
+        }
+        return StudyRating.GOOD.code();
+    }
+
+    public static boolean canSubmitAnalysis(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case PASS, CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean canManualOverride(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case CLOSE, WRONG, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean canPracticeAfterAnalysis(WritingAnalysis analysis) {
+        return canManualOverride(analysis);
+    }
+
+    public static boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis) {
+        if (analysis == null) {
+            return false;
+        }
+        switch (analysis.status) {
+            case WRONG, NO_STROKE_DATA, RECOGNITION_ERROR:
+                return true;
+            default:
+                return false;
+        }
+    }
 }
