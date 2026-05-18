@@ -21,6 +21,24 @@ public final class HomeTextCopy {
         return plan.remaining + " items left / " + plan.target;
     }
 
+    public static String streakHeadline(int currentDays) {
+        if (currentDays <= 0) {
+            return "No streak yet";
+        }
+        return currentDays + "-day streak";
+    }
+
+    public static String streakMetricBody(boolean studiedToday, int bestDays) {
+        if (studiedToday) {
+            return bestDays > 0 ? "Best: " + streakDayCount(bestDays) : "Done today";
+        }
+        return "Not done today";
+    }
+
+    public static String streakDayCount(int days) {
+        return days + " " + (days == 1 ? "day" : "days");
+    }
+
     public static String browseResultHeading(int size) {
         if (size <= 0) {
             return "No matches";

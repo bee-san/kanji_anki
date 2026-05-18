@@ -470,10 +470,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String streakHeadline(StudyStatsStore.StudyStreak streak) {
-        if (streak.currentDays <= 0) {
-            return "No streak yet";
-        }
-        return streak.currentDays + "-day streak";
+        return HomeTextCopy.streakHeadline(streak == null ? 0 : streak.currentDays);
     }
 
     int streakAccent(StudyStatsStore.StudyStreak streak) {
@@ -481,10 +478,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String streakMetricBody(StudyStatsStore.StudyStreak streak) {
-        if (streak != null && streak.studiedToday) {
-            return streak.bestDays > 0 ? "Best: " + streakDayCount(streak.bestDays) : "Done today";
-        }
-        return "Not done today";
+        return HomeTextCopy.streakMetricBody(streak != null && streak.studiedToday, streak == null ? 0 : streak.bestDays);
     }
 
     String humanSyncTime(long timestampMillis) {
@@ -492,7 +486,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String streakDayCount(int days) {
-        return days + " " + (days == 1 ? "day" : "days");
+        return HomeTextCopy.streakDayCount(days);
     }
 
     void confirmSync() {

@@ -29,6 +29,18 @@ public final class HomeTextCopyTest {
     }
 
     @Test
+    public void streakCopyPreservesHomeMetricCopy() {
+        assertEquals("No streak yet", HomeTextCopy.streakHeadline(0));
+        assertEquals("No streak yet", HomeTextCopy.streakHeadline(-1));
+        assertEquals("2-day streak", HomeTextCopy.streakHeadline(2));
+        assertEquals("Not done today", HomeTextCopy.streakMetricBody(false, 0));
+        assertEquals("Best: 5 days", HomeTextCopy.streakMetricBody(true, 5));
+        assertEquals("Done today", HomeTextCopy.streakMetricBody(true, 0));
+        assertEquals("1 day", HomeTextCopy.streakDayCount(1));
+        assertEquals("3 days", HomeTextCopy.streakDayCount(3));
+    }
+
+    @Test
     public void browseResultHeadingPreservesBrowseCopy() {
         assertEquals("No matches", HomeTextCopy.browseResultHeading(0));
         assertEquals("No matches", HomeTextCopy.browseResultHeading(-1));
