@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data;
 import dev.bee.kanjianki.core.KaniOutcomePolicy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.LadderHealthPolicy;
+import dev.bee.kanjianki.core.RecentMistakePolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.StudyStreakPolicy;
@@ -24,7 +25,6 @@ public final class StudyStatsStore {
     private static final String COLUMN_KANJI = "kanji";
     private static final String COLUMN_RATING = "rating";
     private static final String COLUMN_REVIEWED_AT = "reviewed_at";
-    private static final String RATING_AGAIN = "again";
     private static final String STATE_RETIRED = "retired";
     private final LocalStore store;
 
@@ -55,25 +55,24 @@ public final class StudyStatsStore {
     }
 
     public List<RecentMistake> recentMistakes(int limit) {
-        int boundedLimit = Math.max(1, limit);
         Cursor cursor = db().query(
                 TABLE_REVIEW_LOG,
                 new String[]{COLUMN_KANJI, COLUMN_RATING, COLUMN_REVIEWED_AT},
                 "rating IN (?, ?)",
-                new String[]{RATING_AGAIN, "hard"},
+                RecentMistakePolicy.mistakeRatings(),
                 null,
                 null,
                 "reviewed_at DESC, id DESC",
-                Integer.toString(boundedLimit)
+                Integer.toString(RecentMistakePolicy.boundedLimit(limit))
         );
         List<RecentMistake> mistakes = new ArrayList<>();
         try {
             while (cursor.moveToNext()) {
-                mistakes.add(new RecentMistake(
+                mistakes.add(RecentMistake.fromCore(RecentMistakePolicy.mistake(
                         string(cursor, COLUMN_KANJI),
                         string(cursor, COLUMN_RATING),
                         longValue(cursor, COLUMN_REVIEWED_AT)
-                ));
+                )));
             }
         } finally {
             cursor.close();
@@ -630,9 +629,18 @@ public final class StudyStatsStore {
         public final long reviewedAtMillis;
 
         public RecentMistake(String kanji, String rating, long reviewedAtMillis) {
-            this.kanji = kanji == null ? "" : kanji;
-            this.rating = rating == null ? "" : rating;
-            this.reviewedAtMillis = reviewedAtMillis;
+            this(RecentMistakePolicy.mistake(kanji, rating, reviewedAtMillis));
+        }
+
+        private RecentMistake(RecentMistakePolicy.RecentMistake mistake) {
+            RecentMistakePolicy.RecentMistake safeMistake = mistake == null ? RecentMistakePolicy.mistake(null, null, 0L) : mistake;
+            this.kanji = safeMistake.kanji();
+            this.rating = safeMistake.rating();
+            this.reviewedAtMillis = safeMistake.reviewedAtMillis();
+        }
+
+        private static RecentMistake fromCore(RecentMistakePolicy.RecentMistake mistake) {
+            return new RecentMistake(mistake);
         }
     }
 
