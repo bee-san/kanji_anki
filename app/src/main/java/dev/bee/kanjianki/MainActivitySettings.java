@@ -556,13 +556,25 @@ abstract class MainActivitySettings extends MainActivityStudy {
             List<String> parsedTags,
             String queryText
     ) {
+        if (activeCards.isChecked()) {
+            return SettingsInputRules.hasSelectedImportSource(true, false, false, false, false, null, null);
+        }
+        if (suspendedCards.isChecked()) {
+            return SettingsInputRules.hasSelectedImportSource(false, true, false, false, false, null, null);
+        }
+        if (weakCards.isChecked()) {
+            return SettingsInputRules.hasSelectedImportSource(false, false, false, true, false, null, null);
+        }
+        if (taggedCards.isChecked() && SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, parsedTags, "")) {
+            return true;
+        }
         return SettingsInputRules.hasSelectedImportSource(
-                activeCards.isChecked(),
-                suspendedCards.isChecked(),
-                taggedCards.isChecked(),
-                weakCards.isChecked(),
+                false,
+                false,
+                false,
+                false,
                 browserQueryCards.isChecked(),
-                parsedTags,
+                Collections.emptyList(),
                 queryText
         );
     }

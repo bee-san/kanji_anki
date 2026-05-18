@@ -419,6 +419,33 @@ public final class MainActivityHelperInstrumentedTest {
                 ""
         ));
         assertTrue(activity.hasSelectedImportSource(
+                checked(activity, true),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        assertTrue(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, true),
+                null,
+                null,
+                null,
+                null,
+                null
+        ));
+        assertTrue(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                null,
+                checked(activity, true),
+                null,
+                null,
+                null
+        ));
+        assertTrue(activity.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, true),
@@ -426,6 +453,15 @@ public final class MainActivityHelperInstrumentedTest {
                 checked(activity, false),
                 Collections.singletonList("leeches"),
                 ""
+        ));
+        assertTrue(activity.hasSelectedImportSource(
+                checked(activity, false),
+                checked(activity, false),
+                checked(activity, true),
+                checked(activity, false),
+                null,
+                Collections.singletonList("leeches"),
+                null
         ));
         assertTrue(activity.hasSelectedImportSource(
                 checked(activity, false),
