@@ -1237,15 +1237,16 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyActionBar.removeAllViews();
         studyActionBar.setVisibility(View.VISIBLE);
 
+        studyActionBar.addView(writingToolActions());
+        studyActionBar.addView(writingPrimaryActions());
+        studyActionBar.addView(writingFallbackActions());
+    }
+
+    LinearLayout writingToolActions() {
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         Button clear = studySecondaryButton("Erase");
-        clear.setOnClickListener(v -> {
-            drawingPad.clear();
-            activeAnalysis = null;
-            setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)), MUTED);
-            updateResultActions();
-        });
+        clear.setOnClickListener(v -> eraseWritingPad());
         actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
         undoStrokeButton = studySecondaryButton("Undo");
         undoStrokeButton.setOnClickListener(v -> undoWritingStroke());
@@ -1253,8 +1254,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         hintButton = studySecondaryButton("Hint");
         hintButton.setOnClickListener(v -> showWritingHint());
         actions.addView(hintButton, new LinearLayout.LayoutParams(0, dp(58), 1));
-        studyActionBar.addView(actions);
+        return actions;
+    }
 
+    LinearLayout writingPrimaryActions() {
         LinearLayout primaryActions = new LinearLayout(this);
         primaryActions.setOrientation(LinearLayout.HORIZONTAL);
         checkWritingButton = pinkPrimaryButton("Check");
@@ -1268,8 +1271,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         nextAfterPassButton = pinkPrimaryButton(LABEL_PASS);
         nextAfterPassButton.setOnClickListener(v -> submitReview(writingSubmitRating(activeAnalysis), false));
         primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
-        studyActionBar.addView(primaryActions);
+        return primaryActions;
+    }
 
+    LinearLayout writingFallbackActions() {
         LinearLayout fallbackActions = new LinearLayout(this);
         fallbackActions.setOrientation(LinearLayout.HORIZONTAL);
         replayButton = studySecondaryButton("Replay");
@@ -1281,18 +1286,27 @@ abstract class MainActivityStudy extends MainActivityStats {
         fallbackActions.addView(manualOverrideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
 
         practiceWithGuideButton = studySecondaryButton("Try again with full guide");
-        practiceWithGuideButton.setOnClickListener(v -> {
-            setHintState(HintState.initial());
-            hintsUsed++;
-            activeAnalysis = null;
-            drawingPad.clear();
-            StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-            drawingPad.setGuide(guide, currentHintState, false);
-            setStudyStatus(WritingFeedbackCopy.freshGuidedTryStatus(guideLabel(currentHintState, guide)), MUTED);
-            updateResultActions();
-        });
+        practiceWithGuideButton.setOnClickListener(v -> startGuidedWritingRetry());
         fallbackActions.addView(practiceWithGuideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
-        studyActionBar.addView(fallbackActions);
+        return fallbackActions;
+    }
+
+    void eraseWritingPad() {
+        drawingPad.clear();
+        activeAnalysis = null;
+        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)), MUTED);
+        updateResultActions();
+    }
+
+    void startGuidedWritingRetry() {
+        setHintState(HintState.initial());
+        hintsUsed++;
+        activeAnalysis = null;
+        drawingPad.clear();
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        drawingPad.setGuide(guide, currentHintState, false);
+        setStudyStatus(WritingFeedbackCopy.freshGuidedTryStatus(guideLabel(currentHintState, guide)), MUTED);
+        updateResultActions();
     }
 
     int studyPadHeight() {
