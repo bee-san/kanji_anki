@@ -58,7 +58,6 @@ import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
-import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
@@ -1660,11 +1659,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean canRevealMoreHelp() {
-        if (activeSession == null || currentHintState == null || currentHintState.level() == HintLevel.TRACE) {
+        if (activeSession == null) {
             return false;
         }
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        return guide == null || guide.isEmpty() || currentHintState.level() == HintLevel.OUTLINE || currentHintState.revealedStrokeCount() < guide.strokeCount();
+        return hintProgression.canRevealMoreHelp(currentHintState, guide);
     }
 
     boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis) {

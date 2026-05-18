@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core.study;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -147,6 +148,28 @@ public class HintProgressionTest {
     }
 
     @Test
+    public void canRevealMoreHelpFollowsHintLevelAndGuideAvailability() {
+        HintProgression progression = new HintProgression();
+
+        assertFalse(progression.canRevealMoreHelp(null, guide()));
+        assertFalse(progression.canRevealMoreHelp(HintState.fromWritingLevel(0), guide()));
+        assertTrue(progression.canRevealMoreHelp(HintState.fromWritingLevel(1), guide()));
+        assertTrue(progression.canRevealMoreHelp(HintState.fromWritingLevel(2), null));
+        assertTrue(progression.canRevealMoreHelp(HintState.fromWritingLevel(3), emptyGuide()));
+    }
+
+    @Test
+    public void canRevealMoreHelpStopsWhenStrokeHintsAreExhausted() {
+        HintProgression progression = new HintProgression();
+        StrokeGuide guide = guide();
+
+        assertTrue(progression.canRevealMoreHelp(new HintState(HintLevel.MINIMAL, 2, 0), guide));
+        assertTrue(progression.canRevealMoreHelp(new HintState(HintLevel.BLIND, 2, 0), guide));
+        assertFalse(progression.canRevealMoreHelp(new HintState(HintLevel.MINIMAL, 3, 0), guide));
+        assertFalse(progression.canRevealMoreHelp(new HintState(HintLevel.BLIND, 4, 0), guide));
+    }
+
+    @Test
     public void nullStateRevealedStrokeAndPassBranchesKeepStableProgression() {
         HintProgression progression = new HintProgression();
         StrokeGuide guide = guide();
@@ -186,6 +209,10 @@ public class HintProgressionTest {
                 "拉",
                 Arrays.asList(stroke(), stroke(), stroke())
         );
+    }
+
+    private StrokeGuide emptyGuide() {
+        return new StrokeGuide("拉", List.of());
     }
 
     private InkStroke stroke() {

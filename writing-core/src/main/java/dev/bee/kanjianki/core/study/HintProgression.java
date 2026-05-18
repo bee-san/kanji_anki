@@ -37,6 +37,16 @@ public final class HintProgression {
         );
     }
 
+    public boolean canRevealMoreHelp(HintState state, StrokeGuide guide) {
+        if (state == null || state.level() == HintLevel.TRACE) {
+            return false;
+        }
+        return guide == null
+                || guide.isEmpty()
+                || state.level() == HintLevel.OUTLINE
+                || state.revealedStrokeCount() < guide.strokeCount();
+    }
+
     public HintState afterReview(HintState state, boolean writingPassed, int hintsUsed) {
         HintState safeState = state == null ? HintState.initial() : state;
         if (!writingPassed) {
