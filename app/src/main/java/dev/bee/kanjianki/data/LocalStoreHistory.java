@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarChoiceCodec;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.SimilarKanjiRepairPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiStorageKeys;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimelineCopy;
@@ -776,15 +777,16 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             String wrongSelection,
             long nowMillis
     ) {
-        String normalized = normalizeSingleKanji(repairKanji);
-        if (normalized.isEmpty()) {
+        SimilarKanjiRepairPolicy.RepairDraft draft =
+                SimilarKanjiRepairPolicy.newRepair(card, repairKanji, wrongSelection, nowMillis);
+        if (draft == null) {
             return;
         }
         try (Cursor pending = db.query(
                 TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
                 new String[]{"id"},
                 "status=? AND target_kanji=? AND choice_signature=? AND repair_kanji=?",
-                new String[]{STATUS_PENDING, card.targetKanji, card.choiceSignature, normalized},
+                new String[]{STATUS_PENDING, draft.targetKanji(), draft.choiceSignature(), draft.repairKanji()},
                 null,
                 null,
                 null,
@@ -795,18 +797,18 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             }
         }
         ContentValues values = new ContentValues();
-        values.put(COLUMN_TARGET_KANJI, card.targetKanji);
-        values.put("repair_kanji", normalized);
-        values.put(COLUMN_CHOICE_SIGNATURE, card.choiceSignature);
-        values.put("wrong_selection", wrongSelection == null ? "" : wrongSelection);
-        values.put("prompt_meaning", card.primaryMeaning);
-        values.put(COLUMN_STATUS, STATUS_PENDING);
-        values.put(COLUMN_DUE_AT, nowMillis);
-        values.put(COLUMN_ACTIVE_TOKEN, "");
-        values.put(COLUMN_ATTEMPTS, 0);
-        values.put(COLUMN_CREATED_AT, nowMillis);
-        values.put(COLUMN_UPDATED_AT, nowMillis);
-        values.put(COLUMN_COMPLETED_AT, 0L);
+        values.put(COLUMN_TARGET_KANJI, draft.targetKanji());
+        values.put("repair_kanji", draft.repairKanji());
+        values.put(COLUMN_CHOICE_SIGNATURE, draft.choiceSignature());
+        values.put("wrong_selection", draft.wrongSelection());
+        values.put("prompt_meaning", draft.promptMeaning());
+        values.put(COLUMN_STATUS, draft.status());
+        values.put(COLUMN_DUE_AT, draft.dueAtMillis());
+        values.put(COLUMN_ACTIVE_TOKEN, draft.activeToken());
+        values.put(COLUMN_ATTEMPTS, draft.attempts());
+        values.put(COLUMN_CREATED_AT, draft.createdAtMillis());
+        values.put(COLUMN_UPDATED_AT, draft.updatedAtMillis());
+        values.put(COLUMN_COMPLETED_AT, draft.completedAtMillis());
         db.insert(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, null, values);
     }
 

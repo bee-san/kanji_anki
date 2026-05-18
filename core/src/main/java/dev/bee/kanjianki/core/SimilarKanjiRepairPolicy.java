@@ -1,9 +1,39 @@
 package dev.bee.kanjianki.core;
 
 public final class SimilarKanjiRepairPolicy {
+    public static final String STATUS_PENDING = "pending";
     public static final String STATUS_COMPLETE = "complete";
 
     private SimilarKanjiRepairPolicy() {
+    }
+
+    public static RepairDraft newRepair(
+            RecordsImportModels.SimilarKanjiChoiceCard card,
+            String repairKanji,
+            String wrongSelection,
+            long nowMillis
+    ) {
+        if (card == null) {
+            return null;
+        }
+        String normalized = TextUtil.normalizeSingleKanji(repairKanji);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return new RepairDraft(
+                card.targetKanji,
+                normalized,
+                card.choiceSignature,
+                wrongSelection == null ? "" : wrongSelection,
+                card.primaryMeaning,
+                STATUS_PENDING,
+                nowMillis,
+                "",
+                0,
+                nowMillis,
+                nowMillis,
+                0L
+        );
     }
 
     public static FinishUpdate finishUpdate(
@@ -25,6 +55,22 @@ public final class SimilarKanjiRepairPolicy {
             Long completedAtMillis,
             Integer attempts,
             Long dueAtMillis
+    ) {
+    }
+
+    public record RepairDraft(
+            String targetKanji,
+            String repairKanji,
+            String choiceSignature,
+            String wrongSelection,
+            String promptMeaning,
+            String status,
+            long dueAtMillis,
+            String activeToken,
+            int attempts,
+            long createdAtMillis,
+            long updatedAtMillis,
+            long completedAtMillis
     ) {
     }
 }
