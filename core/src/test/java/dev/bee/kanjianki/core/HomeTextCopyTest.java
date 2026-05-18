@@ -41,6 +41,21 @@ public final class HomeTextCopyTest {
     }
 
     @Test
+    public void reviewToastPreservesSavedCopyAndStreakSuffix() {
+        assertEquals("Already saved.", HomeTextCopy.reviewToast(true, StudyRatings.GOOD, 2));
+        assertEquals("Saved.", HomeTextCopy.reviewToast(false, StudyRatings.GOOD, 0));
+        assertEquals("Saved. 2-day streak.", HomeTextCopy.reviewToast(false, StudyRatings.GOOD, 2));
+        assertEquals(
+                "Saved. This kanji will come back soon.",
+                HomeTextCopy.reviewToast(false, StudyRatings.AGAIN, 0)
+        );
+        assertEquals(
+                "Saved. This kanji will come back soon. 2-day streak.",
+                HomeTextCopy.reviewToast(false, StudyRatings.AGAIN, 2)
+        );
+    }
+
+    @Test
     public void browseResultHeadingPreservesBrowseCopy() {
         assertEquals("No matches", HomeTextCopy.browseResultHeading(0));
         assertEquals("No matches", HomeTextCopy.browseResultHeading(-1));

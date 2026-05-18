@@ -39,6 +39,17 @@ public final class HomeTextCopy {
         return days + " " + (days == 1 ? "day" : "days");
     }
 
+    public static String reviewToast(boolean duplicate, String appliedRating, int currentStreakDays) {
+        if (duplicate) {
+            return "Already saved.";
+        }
+        String streakText = currentStreakDays <= 0 ? "" : " " + streakHeadline(currentStreakDays) + ".";
+        if (StudyRatings.AGAIN.equals(appliedRating)) {
+            return "Saved. This kanji will come back soon." + streakText;
+        }
+        return "Saved." + streakText;
+    }
+
     public static String browseResultHeading(int size) {
         if (size <= 0) {
             return "No matches";

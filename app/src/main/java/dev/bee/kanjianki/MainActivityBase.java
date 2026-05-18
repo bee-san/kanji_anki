@@ -34,6 +34,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
+import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
@@ -357,14 +358,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     String reviewToast(RecordsSchedulerModels.ReviewResult result, StudyStatsStore.StudyStreak streak) {
-        if (result.duplicate) {
-            return "Already saved.";
-        }
-        String streakText = streak == null || streak.currentDays <= 0 ? "" : " " + streakHeadline(streak) + ".";
-        if (RATING_AGAIN.equals(result.appliedRating)) {
-            return "Saved. This kanji will come back soon." + streakText;
-        }
-        return "Saved." + streakText;
+        int currentStreakDays = streak == null ? 0 : streak.currentDays;
+        return HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays);
     }
 
     WritingRecognizer currentWritingRecognizer() {
