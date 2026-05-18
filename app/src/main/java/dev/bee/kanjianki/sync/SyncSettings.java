@@ -3,6 +3,7 @@ package dev.bee.kanjianki.sync;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.syncdomain.ImportSettingsRepairPolicy;
 
 public final class SyncSettings {
     public static final String NOTE_TYPE_SETTING_KEY = "note_type_name";
@@ -30,7 +31,6 @@ public final class SyncSettings {
     public static final String NEW_CARD_SORT_MODE_SETTING_KEY = "new_card_sort_mode";
     private static final int ABSENT_INT_SETTING = Integer.MIN_VALUE;
     private static final double ABSENT_DOUBLE_SETTING = Double.NaN;
-    private static final int OLD_DEFAULT_IMPORT_ACTIVE_CARDS = 1;
 
     private SyncSettings() {
     }
@@ -132,68 +132,41 @@ public final class SyncSettings {
     }
 
     private static void repairOldDefaultImportSettings(LocalStore store) {
-        if (store == null || !hasAnyImportSetting(store) || !matchesOldDefaultImportSettings(store)) {
+        if (store == null) {
             return;
         }
-        store.putIntSetting(IMPORT_ACTIVE_CARDS_SETTING_KEY, 0);
-        store.putIntSetting(IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1);
+        ImportSettingsRepairPolicy.RepairDecision repair = ImportSettingsRepairPolicy.oldDefaultRepair(
+                storedImportSettings(store),
+                RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY,
+                RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES,
+                RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
+        );
+        if (repair.shouldRepair()) {
+            store.putIntSetting(IMPORT_ACTIVE_CARDS_SETTING_KEY, repair.importActiveCards());
+            store.putIntSetting(IMPORT_SUSPENDED_CARDS_SETTING_KEY, repair.importSuspendedCards());
+        }
     }
 
-    private static boolean hasAnyImportSetting(LocalStore store) {
-        return intSettingPresent(store, IMPORT_ACTIVE_CARDS_SETTING_KEY)
-                || intSettingPresent(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY)
-                || intSettingPresent(store, IMPORT_TAGGED_CARDS_SETTING_KEY)
-                || store.getStringSetting(IMPORT_TAGS_SETTING_KEY, null) != null
-                || intSettingPresent(store, IMPORT_WEAK_CARDS_SETTING_KEY)
-                || doubleSettingPresent(store, IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY)
-                || intSettingPresent(store, IMPORT_WEAK_LAPSES_SETTING_KEY)
-                || intSettingPresent(store, IMPORT_MIN_MATCHING_CARDS_SETTING_KEY);
+    private static ImportSettingsRepairPolicy.StoredImportSettings storedImportSettings(LocalStore store) {
+        return new ImportSettingsRepairPolicy.StoredImportSettings()
+                .importActiveCards(nullableIntSetting(store, IMPORT_ACTIVE_CARDS_SETTING_KEY))
+                .importSuspendedCards(nullableIntSetting(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY))
+                .importTaggedCards(nullableIntSetting(store, IMPORT_TAGGED_CARDS_SETTING_KEY))
+                .importTags(store.getStringSetting(IMPORT_TAGS_SETTING_KEY, null))
+                .importWeakCards(nullableIntSetting(store, IMPORT_WEAK_CARDS_SETTING_KEY))
+                .importWeakFsrsDifficulty(nullableDoubleSetting(store, IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY))
+                .importWeakLapses(nullableIntSetting(store, IMPORT_WEAK_LAPSES_SETTING_KEY))
+                .importMinMatchingCards(nullableIntSetting(store, IMPORT_MIN_MATCHING_CARDS_SETTING_KEY));
     }
 
-    private static boolean matchesOldDefaultImportSettings(LocalStore store) {
-        return intSettingMatchesOrAbsent(store, IMPORT_ACTIVE_CARDS_SETTING_KEY, OLD_DEFAULT_IMPORT_ACTIVE_CARDS)
-                && intSettingMatchesOrAbsent(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY, 1)
-                && intSettingMatchesOrAbsent(store, IMPORT_TAGGED_CARDS_SETTING_KEY, 0)
-                && importTagsEmptyOrAbsent(store)
-                && intSettingMatchesOrAbsent(store, IMPORT_WEAK_CARDS_SETTING_KEY, 0)
-                && doubleSettingMatchesOrAbsent(
-                        store,
-                        IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY,
-                        RecordsBase.DEFAULT_IMPORT_WEAK_FSRS_DIFFICULTY
-                )
-                && intSettingMatchesOrAbsent(
-                        store,
-                        IMPORT_WEAK_LAPSES_SETTING_KEY,
-                        RecordsBase.DEFAULT_IMPORT_WEAK_LAPSES
-                )
-                && intSettingMatchesOrAbsent(
-                        store,
-                        IMPORT_MIN_MATCHING_CARDS_SETTING_KEY,
-                        RecordsBase.DEFAULT_IMPORT_MIN_MATCHING_CARDS_PER_KANJI
-                );
-    }
-
-    private static boolean intSettingPresent(LocalStore store, String key) {
-        return store.getIntSetting(key, ABSENT_INT_SETTING) != ABSENT_INT_SETTING;
-    }
-
-    private static boolean doubleSettingPresent(LocalStore store, String key) {
-        return !Double.isNaN(store.getDoubleSetting(key, ABSENT_DOUBLE_SETTING));
-    }
-
-    private static boolean intSettingMatchesOrAbsent(LocalStore store, String key, int expected) {
+    private static Integer nullableIntSetting(LocalStore store, String key) {
         int value = store.getIntSetting(key, ABSENT_INT_SETTING);
-        return value == ABSENT_INT_SETTING || value == expected;
+        return value == ABSENT_INT_SETTING ? null : value;
     }
 
-    private static boolean importTagsEmptyOrAbsent(LocalStore store) {
-        String value = store.getStringSetting(IMPORT_TAGS_SETTING_KEY, null);
-        return value == null || RecordsBase.parseImportTags(value).isEmpty();
-    }
-
-    private static boolean doubleSettingMatchesOrAbsent(LocalStore store, String key, double expected) {
+    private static Double nullableDoubleSetting(LocalStore store, String key) {
         double value = store.getDoubleSetting(key, ABSENT_DOUBLE_SETTING);
-        return Double.isNaN(value) || Math.abs(value - expected) < 0.0001;
+        return Double.isNaN(value) ? null : value;
     }
 
     private static boolean boolSetting(LocalStore store, String key, boolean fallback) {
