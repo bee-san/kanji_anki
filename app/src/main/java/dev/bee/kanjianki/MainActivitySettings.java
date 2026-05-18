@@ -491,16 +491,21 @@ abstract class MainActivitySettings extends MainActivityStudy {
             if (parsedThresholds == null) {
                 return;
             }
-            store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, boolFlag(activeCards.isChecked()));
-            store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, boolFlag(suspendedCards.isChecked()));
-            store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, boolFlag(taggedCards.isChecked()));
-            store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, String.join(" ", parsedTags));
-            store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, boolFlag(weakCards.isChecked()));
-            store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, parsedThresholds.difficulty);
-            store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, parsedThresholds.lapseThreshold);
-            store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, parsedThresholds.minCards);
-            store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, boolFlag(browserQueryCards.isChecked()));
-            store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, queryText);
+            SettingsWriteActions.saveImportFilters(
+                    new SettingsWriteActions.ImportFilterWriteRequest(
+                            activeCards.isChecked(),
+                            suspendedCards.isChecked(),
+                            taggedCards.isChecked(),
+                            String.join(" ", parsedTags),
+                            weakCards.isChecked(),
+                            parsedThresholds.difficulty,
+                            parsedThresholds.lapseThreshold,
+                            parsedThresholds.minCards,
+                            browserQueryCards.isChecked(),
+                            queryText
+                    ),
+                    importFilterWriter()
+            );
             Toast.makeText(this, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });
@@ -521,9 +526,28 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void applyImportPreset(SettingsImportPreset preset) {
-        SettingsWriteActions.applyImportPreset(preset, store::putIntSetting, store::putStringSetting, store::putDoubleSetting);
+        SettingsWriteActions.applyImportPreset(preset, importFilterWriter());
         Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
         renderSettings();
+    }
+
+    SettingsWriteActions.SettingWriter importFilterWriter() {
+        return new SettingsWriteActions.SettingWriter() {
+            @Override
+            public void putIntSetting(String key, int value) {
+                store.putIntSetting(key, value);
+            }
+
+            @Override
+            public void putStringSetting(String key, String value) {
+                store.putStringSetting(key, value);
+            }
+
+            @Override
+            public void putDoubleSetting(String key, double value) {
+                store.putDoubleSetting(key, value);
+            }
+        };
     }
 
     static int boolFlag(boolean value) {

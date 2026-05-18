@@ -19,16 +19,34 @@ final class SettingsWriteActions {
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
-        writer.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(preset.activeCards()));
-        writer.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(preset.suspendedCards()));
-        writer.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(preset.taggedCards()));
-        writer.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, preset.tags());
-        writer.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(preset.weakCards()));
-        writer.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, preset.weakDifficulty());
-        writer.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, preset.weakLapses());
-        writer.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, preset.minMatchingCards());
-        writer.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(preset.browserQueryCards()));
-        writer.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, preset.browserQuery());
+        saveImportFilters(
+                new ImportFilterWriteRequest(
+                        preset.activeCards(),
+                        preset.suspendedCards(),
+                        preset.taggedCards(),
+                        preset.tags(),
+                        preset.weakCards(),
+                        preset.weakDifficulty(),
+                        preset.weakLapses(),
+                        preset.minMatchingCards(),
+                        preset.browserQueryCards(),
+                        preset.browserQuery()
+                ),
+                writer
+        );
+    }
+
+    static void saveImportFilters(ImportFilterWriteRequest request, SettingWriter writer) {
+        writer.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.activeCards()));
+        writer.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.suspendedCards()));
+        writer.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.taggedCards()));
+        writer.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, request.tags());
+        writer.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.weakCards()));
+        writer.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, request.weakDifficulty());
+        writer.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, request.weakLapses());
+        writer.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, request.minMatchingCards());
+        writer.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.browserQueryCards()));
+        writer.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, request.browserQuery());
     }
 
     static void applyImportPreset(
@@ -71,5 +89,19 @@ final class SettingsWriteActions {
         void putStringSetting(String key, String value);
 
         void putDoubleSetting(String key, double value);
+    }
+
+    record ImportFilterWriteRequest(
+            boolean activeCards,
+            boolean suspendedCards,
+            boolean taggedCards,
+            String tags,
+            boolean weakCards,
+            double weakDifficulty,
+            int weakLapses,
+            int minMatchingCards,
+            boolean browserQueryCards,
+            String browserQuery
+    ) {
     }
 }

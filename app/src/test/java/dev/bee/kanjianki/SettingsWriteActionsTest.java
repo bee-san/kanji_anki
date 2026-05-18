@@ -73,6 +73,39 @@ public final class SettingsWriteActionsTest {
         assertEquals("deck:Mining", writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY));
     }
 
+    @Test
+    public void saveImportFiltersWritesSelectedValuesWithPresetEncoding() {
+        RecordingSettingsWriter writer = new RecordingSettingsWriter();
+
+        SettingsWriteActions.saveImportFilters(
+                new SettingsWriteActions.ImportFilterWriteRequest(
+                        false,
+                        true,
+                        true,
+                        "kani leech",
+                        false,
+                        6.5,
+                        5,
+                        3,
+                        true,
+                        "rated:30:1"
+                ),
+                writer
+        );
+
+        assertEquals(10, writer.settings.size());
+        assertEquals(0, writer.settings.get(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY));
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY));
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY));
+        assertEquals("kani leech", writer.settings.get(SyncSettings.IMPORT_TAGS_SETTING_KEY));
+        assertEquals(0, writer.settings.get(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY));
+        assertEquals(6.5, (Double) writer.settings.get(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY), 0.0);
+        assertEquals(5, writer.settings.get(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY));
+        assertEquals(3, writer.settings.get(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY));
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY));
+        assertEquals("rated:30:1", writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY));
+    }
+
     private static final class RecordingSettingsWriter implements SettingsWriteActions.SettingWriter {
         final Map<String, Object> settings = new LinkedHashMap<>();
 
