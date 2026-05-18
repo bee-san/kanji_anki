@@ -96,4 +96,14 @@ public final class SettingsInputRulesTest {
         assertEquals(97, SettingsInputRules.retentionPercent(1.0));
         assertEquals(80, SettingsInputRules.retentionPercent(Double.NaN));
     }
+
+    @Test
+    public void studyAheadMinutesClampPreservesStoredBounds() {
+        assertEquals(0, SettingsInputRules.normalizeStudyAheadMinutes(Integer.MIN_VALUE));
+        assertEquals(0, SettingsInputRules.normalizeStudyAheadMinutes(-5));
+        assertEquals(0, SettingsInputRules.normalizeStudyAheadMinutes(0));
+        assertEquals(15, SettingsInputRules.normalizeStudyAheadMinutes(15));
+        assertEquals(1440, SettingsInputRules.normalizeStudyAheadMinutes(1440));
+        assertEquals(1440, SettingsInputRules.normalizeStudyAheadMinutes(99_999));
+    }
 }

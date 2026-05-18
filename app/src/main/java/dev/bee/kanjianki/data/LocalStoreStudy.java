@@ -13,6 +13,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.LocalDayPolicy;
+import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
@@ -225,11 +226,14 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public int studyAheadMinutes() {
-        return clampStudyAheadMinutes(getIntSetting(SETTING_STUDY_AHEAD_MINUTES, DEFAULT_STUDY_AHEAD_MINUTES));
+        return SettingsInputRules.normalizeStudyAheadMinutes(getIntSetting(
+                SETTING_STUDY_AHEAD_MINUTES,
+                SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES
+        ));
     }
 
     public void saveStudyAheadMinutes(int minutes) {
-        putIntSetting(SETTING_STUDY_AHEAD_MINUTES, clampStudyAheadMinutes(minutes));
+        putIntSetting(SETTING_STUDY_AHEAD_MINUTES, SettingsInputRules.normalizeStudyAheadMinutes(minutes));
     }
 
     public RecordsBase.StudyLadderSettings studyLadderSettings() {
@@ -250,13 +254,6 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         } finally {
             db.endTransaction();
         }
-    }
-
-    static int clampStudyAheadMinutes(int minutes) {
-        if (minutes <= 0) {
-            return 0;
-        }
-        return Math.min(minutes, MAX_STUDY_AHEAD_MINUTES);
     }
 
     public int adaptiveLoadMaxItems() {

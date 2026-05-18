@@ -3,6 +3,8 @@ package dev.bee.kanjianki.core;
 import java.util.List;
 
 public final class SettingsInputRules {
+    public static final int DEFAULT_STUDY_AHEAD_MINUTES = 0;
+    public static final int MAX_STUDY_AHEAD_MINUTES = 1440;
     private static final int MAX_RANK_SLIDER_PROGRESS = FrequencyRetentionRanges.MAX_RANK - 1;
 
     private SettingsInputRules() {
@@ -58,6 +60,13 @@ public final class SettingsInputRules {
 
     public static int retentionPercent(double retention) {
         return Math.max(80, Math.min(97, (int) Math.round(retention * 100.0)));
+    }
+
+    public static int normalizeStudyAheadMinutes(int minutes) {
+        if (minutes <= 0) {
+            return 0;
+        }
+        return Math.min(minutes, MAX_STUDY_AHEAD_MINUTES);
     }
 
     private static int clampRank(int rank) {

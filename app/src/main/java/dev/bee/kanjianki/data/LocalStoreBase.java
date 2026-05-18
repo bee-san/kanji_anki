@@ -192,8 +192,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
     static final int DEFAULT_AUTO_SYNC_MINUTE = DEFAULT_REMINDER_MINUTE;
     static final String SETTING_STUDY_AHEAD_MINUTES = "study_ahead_minutes";
-    static final int DEFAULT_STUDY_AHEAD_MINUTES = 0;
-    static final int MAX_STUDY_AHEAD_MINUTES = 1440;
     static final String KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled";
     static final String KEY_AUTO_UPDATE_LAST_CHECK_AT = "auto_update_last_check_at";
     static final String KEY_AUTO_UPDATE_LAST_RESULT = "auto_update_last_result";
