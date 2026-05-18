@@ -578,13 +578,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
             List<String> parsedTags,
             String queryText
     ) {
-        if (activeCards.isChecked() || suspendedCards.isChecked() || weakCards.isChecked()) {
-            return true;
-        }
-        if (taggedCards.isChecked() && !parsedTags.isEmpty()) {
-            return true;
-        }
-        return browserQueryCards.isChecked() && !queryText.isEmpty();
+        return SettingsInputRules.hasSelectedImportSource(
+                activeCards.isChecked(),
+                suspendedCards.isChecked(),
+                taggedCards.isChecked(),
+                weakCards.isChecked(),
+                browserQueryCards.isChecked(),
+                parsedTags,
+                queryText
+        );
     }
 
     boolean validImportThresholds(double difficulty, int lapseThreshold, int minCards) {
@@ -1383,7 +1385,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     int retentionPercent(double retention) {
-        return Math.max(80, Math.min(97, (int) Math.round(retention * 100.0)));
+        return SettingsInputRules.retentionPercent(retention);
     }
 
     String retentionStatusText(int retentionPercent) {

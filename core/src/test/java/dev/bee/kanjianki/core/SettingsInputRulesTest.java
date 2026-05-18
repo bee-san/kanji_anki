@@ -2,8 +2,11 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.util.Collections;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public final class SettingsInputRulesTest {
@@ -35,5 +38,49 @@ public final class SettingsInputRulesTest {
         assertEquals(10, SettingsInputRules.rankFromSliderProgress(9));
         assertEquals(20000, SettingsInputRules.rankFromSliderProgress(19999));
         assertEquals(20000, SettingsInputRules.rankFromSliderProgress(50_000));
+    }
+
+    @Test
+    public void importSourceSelectionPreservesEnabledSourceRules() {
+        assertFalse(SettingsInputRules.hasSelectedImportSource(
+                false, false, false, false, false, Collections.emptyList(), ""
+        ));
+        assertTrue(SettingsInputRules.hasSelectedImportSource(
+                true, false, false, false, false, null, null
+        ));
+        assertTrue(SettingsInputRules.hasSelectedImportSource(
+                false, true, false, false, false, null, null
+        ));
+        assertTrue(SettingsInputRules.hasSelectedImportSource(
+                false, false, false, true, false, null, null
+        ));
+        assertFalse(SettingsInputRules.hasSelectedImportSource(
+                false, false, true, false, false, Collections.emptyList(), null
+        ));
+        assertTrue(SettingsInputRules.hasSelectedImportSource(
+                false, false, true, false, false, Collections.singletonList("leeches"), null
+        ));
+        assertFalse(SettingsInputRules.hasSelectedImportSource(
+                false, false, false, false, true, Collections.emptyList(), ""
+        ));
+        assertTrue(SettingsInputRules.hasSelectedImportSource(
+                false, false, false, false, true, Collections.emptyList(), "deck:Kiku"
+        ));
+        assertThrows(NullPointerException.class, () -> SettingsInputRules.hasSelectedImportSource(
+                false, false, true, false, false, null, ""
+        ));
+        assertThrows(NullPointerException.class, () -> SettingsInputRules.hasSelectedImportSource(
+                false, false, false, false, true, Collections.emptyList(), null
+        ));
+    }
+
+    @Test
+    public void retentionPercentPreservesSettingsClamp() {
+        assertEquals(80, SettingsInputRules.retentionPercent(0.1));
+        assertEquals(80, SettingsInputRules.retentionPercent(0.799));
+        assertEquals(90, SettingsInputRules.retentionPercent(0.9));
+        assertEquals(97, SettingsInputRules.retentionPercent(0.974));
+        assertEquals(97, SettingsInputRules.retentionPercent(1.0));
+        assertEquals(80, SettingsInputRules.retentionPercent(Double.NaN));
     }
 }
