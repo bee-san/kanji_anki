@@ -88,6 +88,7 @@ import dev.bee.kanjianki.sync.ManualSyncEngine;
 import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
+import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -145,14 +146,14 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button toggle = secondaryButton(status.enabled ? "Turn off automatic updates" : "Turn on automatic updates");
         toggle.setOnClickListener(v -> {
-            store.saveAutoUpdateEnabled(!status.enabled);
-            if (status.enabled) {
-                AutoUpdateScheduler.cancel(this);
-                Toast.makeText(this, "Automatic updates turned off.", Toast.LENGTH_SHORT).show();
-            } else {
+            AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
+            store.saveAutoUpdateEnabled(result.enabled());
+            if (result.enabled()) {
                 AutoUpdateScheduler.schedule(this);
-                Toast.makeText(this, "Automatic updates turned on.", Toast.LENGTH_SHORT).show();
+            } else {
+                AutoUpdateScheduler.cancel(this);
             }
+            Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
             renderUpdate();
         });
         box.addView(toggle);
