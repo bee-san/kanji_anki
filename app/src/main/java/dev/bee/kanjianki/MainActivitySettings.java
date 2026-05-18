@@ -1263,10 +1263,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, request.promotionDays);
-            store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, request.failStreak);
-            store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, request.failStreak);
-            store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, request.failStreak);
+            SettingsWriteActions.saveLadderThresholds(request, store::putIntSetting);
             Toast.makeText(this, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
