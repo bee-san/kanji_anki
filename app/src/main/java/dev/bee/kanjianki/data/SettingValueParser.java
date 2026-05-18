@@ -1,30 +1,20 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.SettingValuePolicy;
+
 final class SettingValueParser {
     private SettingValueParser() {
     }
 
     static int parseInt(String value, int fallback) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException error) {
-            return fallback;
-        }
+        return SettingValuePolicy.parseInt(value, fallback);
     }
 
     static long parseLong(String value, long fallback) {
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException error) {
-            return fallback;
-        }
+        return SettingValuePolicy.parseLong(value, fallback);
     }
 
     static double parseDouble(String value, double fallback) {
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException error) {
-            return fallback;
-        }
+        return SettingValuePolicy.parseDouble(value, fallback);
     }
 }
