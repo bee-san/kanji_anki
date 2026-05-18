@@ -897,13 +897,12 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String studyReasonLine(RecordsSchedulerModels.StudySession session) {
-        if (activeSimilarWritingRepair != null) {
-            return "Why: similar-kanji miss · writing repair · practice-only";
-        }
-        if (session == null || session.row == null) {
-            return "";
-        }
-        return focusReasonLine(session.row, session.item, System.currentTimeMillis());
+        return StudyTextCopy.studyReasonLine(
+                activeSimilarWritingRepair != null,
+                session,
+                settings().matureSupportThreshold,
+                System.currentTimeMillis()
+        );
     }
 
     void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {

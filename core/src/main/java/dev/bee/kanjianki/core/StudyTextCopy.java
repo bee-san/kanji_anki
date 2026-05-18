@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.core;
 
 public final class StudyTextCopy {
+    public static final String SIMILAR_REPAIR_REASON = "Why: similar-kanji miss \u00b7 writing repair \u00b7 practice-only";
+
     private StudyTextCopy() {
     }
 
@@ -67,6 +69,21 @@ public final class StudyTextCopy {
             prompt.append(". Write ").append(repair.repairKanji).append(".");
         }
         return prompt.toString();
+    }
+
+    public static String studyReasonLine(
+            boolean similarRepairActive,
+            RecordsSchedulerModels.StudySession session,
+            int matureSupportThreshold,
+            long nowMillis
+    ) {
+        if (similarRepairActive) {
+            return SIMILAR_REPAIR_REASON;
+        }
+        if (session == null || session.row == null) {
+            return "";
+        }
+        return FocusQueueCopy.focusReasonLine(session.row, session.item, nowMillis, matureSupportThreshold);
     }
 
     public static String cleanLearnerText(String raw, String fallback, int maxChars) {
