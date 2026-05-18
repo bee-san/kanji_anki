@@ -294,15 +294,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             return 0;
         }
         long now = System.currentTimeMillis();
-        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
-                rows,
-                store.studyItems(),
-                settings(),
-                now,
-                startOfDay(now),
-                Integer.MAX_VALUE,
-                studyLadderSettings()
-        );
+        BridgeScheduler.ExtraNewCardsResult result = seedExtraNewCards(rows, now, Integer.MAX_VALUE);
         return result.availableCount;
     }
 
@@ -349,15 +341,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             return false;
         }
         long now = System.currentTimeMillis();
-        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
-                rows,
-                store.studyItems(),
-                settings(),
-                now,
-                startOfDay(now),
-                requestedCount,
-                studyLadderSettings()
-        );
+        BridgeScheduler.ExtraNewCardsResult result = seedExtraNewCards(rows, now, requestedCount);
         if (!result.admittedAny()) {
             Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
             return false;
@@ -375,6 +359,18 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         renderStudy();
         return true;
+    }
+
+    BridgeScheduler.ExtraNewCardsResult seedExtraNewCards(List<RecordsImportModels.DashboardRow> rows, long now, int requestedCount) {
+        return new BridgeScheduler().seedExtraNewCards(
+                rows,
+                store.studyItems(),
+                settings(),
+                now,
+                startOfDay(now),
+                requestedCount,
+                studyLadderSettings()
+        );
     }
 
     StudyMoreNewCardActions.StudyItemWriter studyMoreNewCardWriter() {
