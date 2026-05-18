@@ -1,6 +1,6 @@
 package dev.bee.kanjianki;
 
-import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.NoteTypeFieldMappingPolicy;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.os.Handler;
@@ -70,21 +70,13 @@ final class NoteTypeFieldMappings {
     }
 
     static void applyFieldGuesses(List<String> fields, FieldInputs inputs) {
-        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
-        String expression = firstMatchingField(fields, defaults.expressionField, "Front", "Japanese", "Word", "Vocabulary", "Term");
-        String meaning = firstMatchingField(fields, defaults.meaningField, "Meaning", "Back", "Definition", "Glossary");
-        if (expression.trim().isEmpty() && !fields.isEmpty()) {
-            expression = fields.get(0);
-        }
-        if (meaning.trim().isEmpty() && fields.size() > 1) {
-            meaning = fields.get(1);
-        }
-        inputs.setExpression(expression);
-        inputs.setReading(firstMatchingField(fields, defaults.readingField, "Reading", "Kana", "Pronunciation"));
-        inputs.setMeaning(meaning);
-        inputs.setSentence(firstMatchingField(fields, defaults.sentenceField, "Context", "Example", "ExampleSentence"));
-        inputs.setFrequency(firstMatchingField(fields, defaults.frequencyField, "Freq"));
-        inputs.setFrequencySort(firstMatchingField(fields, defaults.frequencySortField, "FrequencySort", defaults.frequencyField));
+        NoteTypeFieldMappingPolicy.FieldGuesses guesses = NoteTypeFieldMappingPolicy.guessFields(fields);
+        inputs.setExpression(guesses.expression);
+        inputs.setReading(guesses.reading);
+        inputs.setMeaning(guesses.meaning);
+        inputs.setSentence(guesses.sentence);
+        inputs.setFrequency(guesses.frequency);
+        inputs.setFrequencySort(guesses.frequencySort);
     }
 
     static String[] labels(List<Choice> noteTypes) {
@@ -100,14 +92,7 @@ final class NoteTypeFieldMappings {
     }
 
     static String firstMatchingField(List<String> fields, String... candidates) {
-        for (String candidate : candidates) {
-            for (String field : fields) {
-                if (field.equalsIgnoreCase(candidate)) {
-                    return field;
-                }
-            }
-        }
-        return "";
+        return NoteTypeFieldMappingPolicy.firstMatchingField(fields, candidates);
     }
 
     static String errorMessage(Exception error) {
