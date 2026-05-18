@@ -206,6 +206,59 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void targetedSessionUsesExistingItemAndLearnerMeaningPrompt() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsStudyModels.StudyItem existing = itemAtRung("裂", RecordsBase.LadderRung.WORD_READING)
+                .copyBuilder()
+                .state("review")
+                .activeToken("keep-token")
+                .hasSimilarKanji(true)
+                .build();
+
+        RecordsSchedulerModels.StudySession session = scheduler.targetedSession(
+                Collections.singletonList(existing),
+                rowWithMeaning("裂", "split", "reason fallback"),
+                1234L,
+                RecordsBase.StudyLadderSettings.defaults()
+        );
+
+        assertNotNull(session);
+        assertEquals("keep-token", session.token);
+        assertEquals("keep-token", session.item.activeToken);
+        assertSame(existing, scheduler.targetedStudyItem(Collections.singletonList(existing), "裂", 1234L, RecordsBase.StudyLadderSettings.defaults()));
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item.rung);
+        assertEquals("word_reading", session.taskType);
+        assertEquals("split", session.prompt);
+        assertFalse(session.writingRequired);
+    }
+
+    @Test
+    public void targetedSessionCreatesNewItemWithFallbackPromptAndEffectiveRung() {
+        BridgeScheduler scheduler = new BridgeScheduler();
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false);
+
+        RecordsSchedulerModels.StudySession session = scheduler.targetedSession(
+                Collections.emptyList(),
+                rowWithMeaning("謎", "", "local reason"),
+                1234L,
+                ladder
+        );
+
+        assertNotNull(session);
+        assertEquals("謎", session.item.kanji);
+        assertEquals("new", session.item.state);
+        assertEquals(1234L, session.item.dueAtMillis);
+        assertEquals(1234L, session.item.createdAtMillis);
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, session.item.rung);
+        assertEquals("meaning_kanji", session.taskType);
+        assertEquals("local reason", session.prompt);
+        assertFalse(session.writingRequired);
+        assertTrue(session.token.startsWith("謎-"));
+        assertEquals(session.token, session.item.activeToken);
+    }
+
+    @Test
     public void nextSessionPrioritizesDueReviewsBeforeNewCards() {
         BridgeScheduler scheduler = new BridgeScheduler();
         RecordsStudyModels.StudyItem newProblem = itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING);
@@ -1809,6 +1862,10 @@ public class BridgeSchedulerTest {
 
     private RecordsImportModels.DashboardRow row(String kanji, int score) {
         return new RecordsImportModels.DashboardRow(kanji, 900, "meaning", "reading", "search", score, "reason", "reason text", 1, score > 15 ? 1 : 0, 0, new ArrayList<>());
+    }
+
+    private RecordsImportModels.DashboardRow rowWithMeaning(String kanji, String meaning, String reasonText) {
+        return new RecordsImportModels.DashboardRow(kanji, 900, meaning, "reading", "search", 10, "reason", reasonText, 1, 0, 0, new ArrayList<>());
     }
 
     private RecordsImportModels.DashboardRow rowWithExamples(String kanji, int score, RecordsImportModels.Example... examples) {

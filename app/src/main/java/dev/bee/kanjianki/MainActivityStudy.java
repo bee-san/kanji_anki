@@ -410,17 +410,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true);
         activeStudyPlan = adaptivePlan(rows, seeded, now);
-        RecordsStudyModels.StudyItem item = studyItemForTargetedKanji(seeded, kanji, now);
-        String token = StudyTokenFactory.studyItem(item.kanji, item.activeToken);
-        item = item.withRung(studyLadderSettings().effectiveRung(item.rung, item.hasSimilarKanji));
-        String taskType = rungTaskType(item);
-        activeSession = new RecordsSchedulerModels.StudySession(
-                item.withToken(token),
+        activeSession = new BridgeScheduler().targetedSession(
+                seeded,
                 row,
-                token,
-                taskType,
-                item.rung == RecordsBase.LadderRung.WRITE_KANJI,
-                row.primaryMeaning.isEmpty() ? row.reasonText : row.primaryMeaning
+                now,
+                studyLadderSettings()
         );
         store.saveStudyItem(activeSession.item);
         String taskKey = sessionTaskKey(activeSession);
@@ -430,28 +424,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     RecordsStudyModels.StudyItem studyItemForTargetedKanji(List<RecordsStudyModels.StudyItem> seeded, String kanji, long now) {
-        RecordsStudyModels.StudyItem item = findStudyItem(seeded, kanji);
-        return item == null ? newTargetedStudyItem(kanji, now) : item;
+        return new BridgeScheduler().targetedStudyItem(seeded, kanji, now, studyLadderSettings());
     }
 
     RecordsStudyModels.StudyItem newTargetedStudyItem(String kanji, long now) {
-        return new RecordsStudyModels.StudyItem(
-                kanji,
-                "new",
-                now,
-                0.4,
-                5.0,
-                0,
-                0,
-                0,
-                0,
-                null,
-                now
-        ).withRung(studyLadderSettings().startingRung(false));
-    }
-
-    String rungTaskType(RecordsStudyModels.StudyItem item) {
-        return studyLadderSettings().effectiveRung(item.rung, item.hasSimilarKanji).wireName();
+        return new BridgeScheduler().newTargetedStudyItem(kanji, now, studyLadderSettings());
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {

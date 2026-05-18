@@ -35,6 +35,7 @@ public final class BridgeScheduler {
 
     private final StudyQueueSeeder queueSeeder;
     private final StudySessionSelector sessionSelector;
+    private final TargetedStudySessionPolicy targetedSessionPolicy;
     private final ReviewTransitionEngine transitionEngine;
     private final SiblingSuppressionPolicy suppressionPolicy;
 
@@ -46,6 +47,7 @@ public final class BridgeScheduler {
         Objects.requireNonNull(fsrsAdapter);
         this.queueSeeder = new StudyQueueSeeder();
         this.sessionSelector = new StudySessionSelector();
+        this.targetedSessionPolicy = new TargetedStudySessionPolicy();
         this.transitionEngine = new ReviewTransitionEngine(fsrsAdapter);
         this.suppressionPolicy = new SiblingSuppressionPolicy();
     }
@@ -161,6 +163,32 @@ public final class BridgeScheduler {
             RecordsBase.StudyLadderSettings ladder
     ) {
         return sessionSelector.nextSession(items, rows, nowMillis, studyAheadMillis, allowedKanji, settings, ladder);
+    }
+
+    public RecordsSchedulerModels.StudySession targetedSession(
+            List<RecordsStudyModels.StudyItem> seededItems,
+            RecordsImportModels.DashboardRow row,
+            long nowMillis,
+            RecordsBase.StudyLadderSettings ladder
+    ) {
+        return targetedSessionPolicy.targetedSession(seededItems, row, nowMillis, ladder);
+    }
+
+    public RecordsStudyModels.StudyItem targetedStudyItem(
+            List<RecordsStudyModels.StudyItem> seededItems,
+            String kanji,
+            long nowMillis,
+            RecordsBase.StudyLadderSettings ladder
+    ) {
+        return targetedSessionPolicy.targetedStudyItem(seededItems, kanji, nowMillis, ladder);
+    }
+
+    public RecordsStudyModels.StudyItem newTargetedStudyItem(
+            String kanji,
+            long nowMillis,
+            RecordsBase.StudyLadderSettings ladder
+    ) {
+        return targetedSessionPolicy.newTargetedStudyItem(kanji, nowMillis, ladder);
     }
 
     public RecordsSchedulerModels.ReviewResult applyReview(
