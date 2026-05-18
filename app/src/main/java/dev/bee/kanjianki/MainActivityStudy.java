@@ -1103,7 +1103,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 activeSession.item.kanji,
                 typingAnswerInput == null ? "" : typingAnswerInput.getText().toString(),
                 collectionMeaningForSession(activeSession))) {
-            Toast.makeText(this, "Typing answer accepted.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show();
             submitReview(RATING_GOOD, false);
             return;
         }
@@ -1418,7 +1418,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         Toast.makeText(
                 this,
-                passed ? "Repair saved." : "Saved. Try that repair again.",
+                StudyTextCopy.similarWritingRepairSavedToast(passed),
                 Toast.LENGTH_SHORT
         ).show();
         activeSimilarWritingRepair = null;

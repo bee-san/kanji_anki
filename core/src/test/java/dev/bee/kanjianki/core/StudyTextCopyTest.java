@@ -111,6 +111,7 @@ public final class StudyTextCopyTest {
                 "Which kanji means Fallback clue?",
                 StudyTextCopy.meaningKanjiChoiceQuestion(null, "fallback clue")
         );
+        assertEquals("Typing answer accepted.", StudyTextCopy.typingAnswerAcceptedToast());
     }
 
     @Test
@@ -123,6 +124,8 @@ public final class StudyTextCopyTest {
                 "Repair the shape mix-up. Write 拉.",
                 StudyTextCopy.similarRepairPrompt(repair("拉", "", ""))
         );
+        assertEquals("Repair saved.", StudyTextCopy.similarWritingRepairSavedToast(true));
+        assertEquals("Saved. Try that repair again.", StudyTextCopy.similarWritingRepairSavedToast(false));
     }
 
     @Test

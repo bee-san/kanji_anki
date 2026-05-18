@@ -75,6 +75,14 @@ public final class StudyTextCopy {
         return "Answer: " + targetKanji + " \u00b7 " + meaning;
     }
 
+    public static String typingAnswerAcceptedToast() {
+        return "Typing answer accepted.";
+    }
+
+    public static String similarWritingRepairSavedToast(boolean passed) {
+        return passed ? "Repair saved." : "Saved. Try that repair again.";
+    }
+
     public static String similarRepairPrompt(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         StringBuilder prompt = new StringBuilder("Repair the shape mix-up");
         if (!repair.promptMeaning.isEmpty()) {
