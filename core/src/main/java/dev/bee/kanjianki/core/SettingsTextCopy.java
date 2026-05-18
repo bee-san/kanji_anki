@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public final class SettingsTextCopy {
     private static final String SOURCE_ACTIVE = "active";
@@ -40,6 +41,37 @@ public final class SettingsTextCopy {
         return count + (count == 1 ? " matching card per kanji" : " matching cards per kanji");
     }
 
+    public static String settingsReminderSummary(boolean enabled, boolean blocked, String displayTime) {
+        if (blocked) {
+            return "Blocked";
+        }
+        return enabled ? displayTime : "Off";
+    }
+
+    public static String settingsAutoSyncSummary(boolean configured, boolean enabled, String displayTime) {
+        if (!configured) {
+            return "After first sync";
+        }
+        return enabled ? displayTime : "Off";
+    }
+
+    public static String settingsUpdateSummary(boolean hasPendingUpdate, boolean enabled) {
+        if (hasPendingUpdate) {
+            return "Verified APK ready";
+        }
+        return enabled ? "Automatic checks on" : "Manual checks";
+    }
+
+    public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
+        if (!configured) {
+            return "Starts after first successful sync";
+        }
+        if (enabled) {
+            return "On around " + displayTime;
+        }
+        return "Off";
+    }
+
     public static String workloadStatusText(int percent, int maxItems) {
         int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems);
@@ -59,5 +91,23 @@ public final class SettingsTextCopy {
             return "Auto Pareto: waiting for problem kanji";
         }
         return "Auto Pareto: " + StudyTextCopy.countText(plan.target, "item", "items") + " today";
+    }
+
+    public static String reminderStatus(boolean enabled, boolean blocked, String displayTime) {
+        if (blocked) {
+            return "Blocked: notifications off";
+        }
+        if (enabled) {
+            return "Daily around " + displayTime;
+        }
+        return "Off";
+    }
+
+    public static String reminderTime(int hour, int minute) {
+        return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+    }
+
+    public static String reminderTimeButtonLabel(int hour, int minute) {
+        return String.format(Locale.ROOT, "Reminder time: %02d:%02d", hour, minute);
     }
 }

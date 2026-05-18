@@ -350,24 +350,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     String settingsReminderSummary(LocalStore.ReminderSettings reminder) {
         boolean blocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(this);
-        if (blocked) {
-            return "Blocked";
-        }
-        return reminder.enabled ? reminder.displayTime() : "Off";
+        return SettingsTextCopy.settingsReminderSummary(reminder.enabled, blocked, reminder.displayTime());
     }
 
     String settingsAutoSyncSummary(LocalStore.AutoSyncSettings autoSync) {
-        if (!autoSync.configured) {
-            return "After first sync";
-        }
-        return autoSync.enabled ? autoSync.displayTime() : "Off";
+        return SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime());
     }
 
     String settingsUpdateSummary(LocalStore.AutoUpdateStatus autoUpdate) {
-        if (autoUpdate.hasPendingUpdate()) {
-            return "Verified APK ready";
-        }
-        return autoUpdate.enabled ? "Automatic checks on" : "Manual checks";
+        return SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled);
     }
 
     String settingsImportSummary(RecordsSyncModels.Settings settings) {
@@ -1510,13 +1501,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String autoSyncStatus(LocalStore.AutoSyncSettings auto) {
-        if (!auto.configured) {
-            return "Starts after first successful sync";
-        }
-        if (auto.enabled) {
-            return "On around " + auto.displayTime();
-        }
-        return "Off";
+        return SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime());
     }
 
     String autoSyncDetail(LocalStore.AutoSyncSettings auto) {
@@ -1566,21 +1551,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String reminderStatus(LocalStore.ReminderSettings reminder, boolean blocked) {
-        if (blocked) {
-            return "Blocked: notifications off";
-        }
-        if (reminder.enabled) {
-            return "Daily around " + reminder.displayTime();
-        }
-        return "Off";
+        return SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime());
     }
 
     String reminderTime(int hour, int minute) {
-        return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+        return SettingsTextCopy.reminderTime(hour, minute);
     }
 
     String reminderTimeButtonLabel(int hour, int minute) {
-        return String.format(Locale.ROOT, "Reminder time: %02d:%02d", hour, minute);
+        return SettingsTextCopy.reminderTimeButtonLabel(hour, minute);
     }
 
     Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
