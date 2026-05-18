@@ -29,13 +29,13 @@ abstract class MainActivityGames extends MainActivityHome {
         base("home");
         content.addView(fullWidthHomeButton());
         content.addView(text(KanjiGameCopy.LABEL_GAMES, 34, INK, true));
-        content.addView(text("Practice kanji without changing SRS.", 16, MUTED, false));
+        content.addView(text(KanjiGameCopy.GAMES_SUBTITLE, 16, MUTED, false));
         addSpace(8);
 
         GameData data = gameData();
         if (!data.hasKanji()) {
-            emptyState("No kanji games yet", "Sync AnkiDroid first so Kani can build practice games from your own cards.");
-            Button sync = primaryButton("Sync AnkiDroid", CORAL);
+            emptyState(KanjiGameCopy.EMPTY_NO_KANJI_TITLE, KanjiGameCopy.EMPTY_NO_KANJI_BODY);
+            Button sync = primaryButton(KanjiGameCopy.LABEL_SYNC_ANKIDROID, CORAL);
             sync.setOnClickListener(v -> confirmSync());
             content.addView(sync);
             return;
@@ -59,7 +59,7 @@ abstract class MainActivityGames extends MainActivityHome {
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text(mode.title, 22, available ? INK : MUTED, true);
         top.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        top.addView(chip(available ? "play" : "locked", color));
+        top.addView(chip(available ? KanjiGameCopy.LABEL_PLAY : KanjiGameCopy.LABEL_LOCKED, color));
         box.addView(top);
         box.addView(text(mode.label, 15, color, true));
         box.addView(text(KanjiGameCopy.modeBody(mode, available), 14, MUTED, false));
@@ -95,7 +95,7 @@ abstract class MainActivityGames extends MainActivityHome {
     private void renderGameUnavailable(KanjiGameEngine.GameMode mode) {
         base("home");
         content.addView(homeSectionHeader(mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
-        emptyState("Game not ready", "This game needs at least two usable choices from your local kanji data.");
+        emptyState(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY);
     }
 
     private LinearLayout gameScorePanel(boolean awaitingAnswer) {
@@ -103,9 +103,9 @@ abstract class MainActivityGames extends MainActivityHome {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBaselineAligned(false);
         int roundProgress = gameRound.progress(awaitingAnswer);
-        row.addView(gameMetric("Round", roundProgress + "/" + gameRound.totalQuestions, BLUE));
-        row.addView(gameMetric("Score", gameRound.correct + "/" + gameRound.totalQuestions, CORAL));
-        row.addView(gameMetric("Streak", Integer.toString(gameRound.streak), TEAL));
+        row.addView(gameMetric(KanjiGameCopy.LABEL_ROUND, roundProgress + "/" + gameRound.totalQuestions, BLUE));
+        row.addView(gameMetric(KanjiGameCopy.LABEL_SCORE, gameRound.correct + "/" + gameRound.totalQuestions, CORAL));
+        row.addView(gameMetric(KanjiGameCopy.LABEL_STREAK, Integer.toString(gameRound.streak), TEAL));
         return row;
     }
 
@@ -173,9 +173,9 @@ abstract class MainActivityGames extends MainActivityHome {
         if (roundComplete) {
             addRoundSummary(result);
         }
-        result.addView(text("Answer: " + question.correctAnswer, 18, INK, true));
+        result.addView(text(KanjiGameCopy.answerText(question.correctAnswer), 18, INK, true));
         if (!question.isCorrect(selected)) {
-            result.addView(text("You chose: " + selected, 16, MUTED, false));
+            result.addView(text(KanjiGameCopy.selectedAnswerText(selected), 16, MUTED, false));
         }
         result.addView(text(question.explanation, 15, MUTED, false));
         if (roundComplete) {

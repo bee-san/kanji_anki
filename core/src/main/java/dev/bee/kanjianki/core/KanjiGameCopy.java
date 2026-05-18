@@ -5,6 +5,17 @@ public final class KanjiGameCopy {
     public static final String LABEL_NEXT = "Next";
     public static final String LABEL_ROUND_COMPLETE = "Round complete";
     public static final String LABEL_NEW_ROUND = "New round";
+    public static final String LABEL_SYNC_ANKIDROID = "Sync AnkiDroid";
+    public static final String LABEL_PLAY = "play";
+    public static final String LABEL_LOCKED = "locked";
+    public static final String LABEL_ROUND = "Round";
+    public static final String LABEL_SCORE = "Score";
+    public static final String LABEL_STREAK = "Streak";
+    public static final String GAMES_SUBTITLE = "Practice kanji without changing SRS.";
+    public static final String EMPTY_NO_KANJI_TITLE = "No kanji games yet";
+    public static final String EMPTY_NO_KANJI_BODY = "Sync AnkiDroid first so Kani can build practice games from your own cards.";
+    public static final String GAME_NOT_READY_TITLE = "Game not ready";
+    public static final String GAME_NOT_READY_BODY = "This game needs at least two usable choices from your local kanji data.";
 
     private KanjiGameCopy() {
     }
@@ -47,6 +58,14 @@ public final class KanjiGameCopy {
             return LABEL_ROUND_COMPLETE;
         }
         return correct ? "Correct" : "Not quite";
+    }
+
+    public static String answerText(String correctAnswer) {
+        return "Answer: " + correctAnswer;
+    }
+
+    public static String selectedAnswerText(String selectedAnswer) {
+        return "You chose: " + selectedAnswer;
     }
 
     public static String finalScoreText(int correct, int total) {

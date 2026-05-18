@@ -65,9 +65,30 @@ public final class KanjiGameCopyTest {
         assertEquals("Round complete", KanjiGameCopy.resultTitle(true, false));
         assertEquals("Correct", KanjiGameCopy.resultTitle(false, true));
         assertEquals("Not quite", KanjiGameCopy.resultTitle(false, false));
+        assertEquals("Answer: pull", KanjiGameCopy.answerText("pull"));
+        assertEquals("You chose: push", KanjiGameCopy.selectedAnswerText("push"));
         assertEquals("Final score: 7/10", KanjiGameCopy.finalScoreText(7, 10));
         assertEquals("Accuracy: 70%", KanjiGameCopy.accuracyText(7, 10));
         assertEquals("Accuracy: 0%", KanjiGameCopy.accuracyText(7, 0));
+    }
+
+    @Test
+    public void screenConstantsPreserveMainActivityGamesCopy() {
+        assertEquals("Games", KanjiGameCopy.LABEL_GAMES);
+        assertEquals("Next", KanjiGameCopy.LABEL_NEXT);
+        assertEquals("Round complete", KanjiGameCopy.LABEL_ROUND_COMPLETE);
+        assertEquals("New round", KanjiGameCopy.LABEL_NEW_ROUND);
+        assertEquals("Sync AnkiDroid", KanjiGameCopy.LABEL_SYNC_ANKIDROID);
+        assertEquals("play", KanjiGameCopy.LABEL_PLAY);
+        assertEquals("locked", KanjiGameCopy.LABEL_LOCKED);
+        assertEquals("Round", KanjiGameCopy.LABEL_ROUND);
+        assertEquals("Score", KanjiGameCopy.LABEL_SCORE);
+        assertEquals("Streak", KanjiGameCopy.LABEL_STREAK);
+        assertEquals("Practice kanji without changing SRS.", KanjiGameCopy.GAMES_SUBTITLE);
+        assertEquals("No kanji games yet", KanjiGameCopy.EMPTY_NO_KANJI_TITLE);
+        assertEquals("Sync AnkiDroid first so Kani can build practice games from your own cards.", KanjiGameCopy.EMPTY_NO_KANJI_BODY);
+        assertEquals("Game not ready", KanjiGameCopy.GAME_NOT_READY_TITLE);
+        assertEquals("This game needs at least two usable choices from your local kanji data.", KanjiGameCopy.GAME_NOT_READY_BODY);
     }
 
     private static KanjiGameEngine.GameQuestion question(KanjiGameEngine.GameMode mode, String correctAnswer) {
