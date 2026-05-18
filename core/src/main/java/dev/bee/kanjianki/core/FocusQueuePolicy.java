@@ -60,7 +60,7 @@ public final class FocusQueuePolicy {
         return focusOrder;
     }
 
-    private static int stateRank(String state) {
+    public static int stateRank(String state) {
         if (StudyLadderRules.STATE_LEARNING.equals(state)) {
             return 0;
         }
@@ -73,7 +73,7 @@ public final class FocusQueuePolicy {
         return 3;
     }
 
-    public static final class QueueEntry {
+    public static class QueueEntry {
         public final RecordsImportModels.DashboardRow row;
         public final RecordsStudyModels.StudyItem item;
 

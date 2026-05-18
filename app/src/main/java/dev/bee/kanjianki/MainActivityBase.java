@@ -31,6 +31,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -711,6 +712,12 @@ abstract class MainActivityBase extends MainActivityUiSupport {
             this.difficulty = difficulty;
             this.lapseThreshold = lapseThreshold;
             this.minCards = minCards;
+        }
+    }
+
+    static final class QueueEntry extends FocusQueuePolicy.QueueEntry {
+        QueueEntry(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item) {
+            super(row, item);
         }
     }
 

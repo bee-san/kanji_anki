@@ -52,6 +52,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
@@ -638,6 +639,10 @@ abstract class MainActivityHome extends MainActivityBase {
         return FocusQueuePolicy.queuedEntries(rows, items, now, studyAheadMillis(), plan, studyLadderSettings());
     }
 
+    int stateRank(String state) {
+        return FocusQueuePolicy.stateRank(state);
+    }
+
     int rowColor(RecordsStudyModels.StudyItem item, long now) {
         if (item.dueAtMillis <= now) {
             return CORAL;
@@ -681,32 +686,11 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String queueCardBody(RecordsImportModels.DashboardRow row) {
-        if (row.reasonText == null || row.reasonText.isEmpty()) {
-            return "Needs focused kanji practice.";
-        }
-        String normalized = row.reasonText.toLowerCase(Locale.ROOT);
-        if (normalized.contains("similar-kanji") || normalized.contains("similar kanji") || normalized.contains("similar choice")) {
-            return "Shape mix-up made this a writing-practice target.";
-        }
-        return row.reasonText;
+        return FocusQueueCopy.queueCardBody(row);
     }
 
     String focusReasonLine(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item, long now) {
-        List<String> parts = new ArrayList<>();
-        if (row.weaknessScore > 0) {
-            parts.add("weakness " + row.weaknessScore);
-        }
-        int supportTarget = settings().matureSupportThreshold;
-        if (row.matureSupportCount < supportTarget) {
-            parts.add("support " + row.matureSupportCount + "/" + supportTarget);
-        }
-        parts.add(recognitionStageLabel(item));
-        if (item.dueAtMillis <= now) {
-            parts.add("due now");
-        } else if (STATE_LEARNING.equals(item.state)) {
-            parts.add(STATE_LEARNING);
-        }
-        return "Why: " + String.join(" · ", parts);
+        return FocusQueueCopy.focusReasonLine(row, item, now, settings().matureSupportThreshold);
     }
 
     TextView kanjiTile(String value, int sizePx, int textSp) {
@@ -720,23 +704,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String recognitionStageLabel(RecordsStudyModels.StudyItem item) {
-        switch (item.rung) {
-            case WRITE_KANJI:
-                return "write kanji";
-            case TYPE_MEANING:
-                return "type meaning";
-            case SIMILAR_KANJI:
-                return "similar kanji";
-            case MEANING_KANJI:
-                return "meaning -> kanji";
-            case FONT_MEANING:
-                return "font -> meaning";
-            case WORD_READING:
-                return "word -> reading";
-            case KANJI_MEANING:
-            default:
-                return "kanji -> meaning";
-        }
+        return FocusQueueCopy.recognitionStageLabel(item);
     }
 
     String sourceEvidenceText(RecordsImportModels.DashboardRow row) {
