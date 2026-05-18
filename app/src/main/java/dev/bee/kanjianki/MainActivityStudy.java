@@ -1824,7 +1824,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         String token = activeSession == null ? null : activeSession.token;
         WritingRecognizer recognizer = currentWritingRecognizer();
         if (recognizer == null) {
-            writingModelStatusKnown = true;
+            updateWritingModelAvailability(false);
             setStudyStatus(
                     WritingFeedbackCopy.unavailableModelStatusMessage(guideStatusPrefix(strokeGuide(activeSession.item.kanji))),
                     CORAL
@@ -1836,8 +1836,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             if (token == null || !isActiveToken(token)) {
                 return;
             }
-            writingModelStatusKnown = true;
-            writingModelDownloaded = error == null && status != null && status.downloaded;
+            updateWritingModelAvailability(error == null && status != null && status.downloaded);
             updateResultActions();
             if (activeAnalysis != null || checkingWriting) {
                 return;
@@ -1872,15 +1871,18 @@ abstract class MainActivityStudy extends MainActivityStats {
                 return;
             }
             if (error != null) {
-                writingModelStatusKnown = true;
-                writingModelDownloaded = false;
+                updateWritingModelAvailability(false);
                 setStudyStatus("Handwriting checker download failed: " + error.getMessage(), CORAL);
             } else {
-                writingModelStatusKnown = true;
-                writingModelDownloaded = true;
+                updateWritingModelAvailability(true);
                 setStudyStatus("Handwriting checker ready.", TEAL);
             }
             updateResultActions();
         }));
+    }
+
+    void updateWritingModelAvailability(boolean downloaded) {
+        writingModelStatusKnown = true;
+        writingModelDownloaded = downloaded;
     }
 }
