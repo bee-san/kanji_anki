@@ -17,4 +17,9 @@ dependencyResolutionManagement {
 rootProject.name = "Kani"
 include(":fsrs-java")
 include(":core")
+include(":domain")
+include(":sync-domain")
+include(":writing-core")
+include(":dictionary-core")
+include(":update-core")
 include(":app")

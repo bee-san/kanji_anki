@@ -15,6 +15,11 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'domain/**'
+      - 'sync-domain/**'
+      - 'writing-core/**'
+      - 'dictionary-core/**'
+      - 'update-core/**'
       - 'tools/**'
       - '.github/workflows/sonarqube.yml'
       - 'build.gradle*'
@@ -65,6 +70,7 @@ jobs:
           APP_CHANGED=false
           CORE_CHANGED=false
           FSRS_CHANGED=false
+          PURE_MODULES_CHANGED=false
           GRADLE_CHANGED=false
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -81,6 +87,9 @@ jobs:
                 fsrs-java/*)
                   FSRS_CHANGED=true
                   ;;
+                domain/*|sync-domain/*|writing-core/*|dictionary-core/*|update-core/*)
+                  PURE_MODULES_CHANGED=true
+                  ;;
                 build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/sonarqube.yml)
                   GRADLE_CHANGED=true
                   ;;
@@ -91,6 +100,7 @@ jobs:
           echo "app=$APP_CHANGED" >> "$GITHUB_OUTPUT"
           echo "core=$CORE_CHANGED" >> "$GITHUB_OUTPUT"
           echo "fsrs=$FSRS_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "pure_modules=$PURE_MODULES_CHANGED" >> "$GITHUB_OUTPUT"
           echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: Select coverage mode
@@ -127,11 +137,11 @@ jobs:
           gradle-version: "9.4.1"
 
       - name: Set up Android SDK
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699
 
       - name: Install Android SDK packages
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.gradle == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
@@ -160,6 +170,15 @@ jobs:
           if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :fsrs-java:test :fsrs-java:jacocoTestReport )
           fi
+          if [ "${{ steps.changed-areas.outputs.pure_modules }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
+            TASKS+=(
+              :domain:test :domain:jacocoTestReport
+              :sync-domain:test :sync-domain:jacocoTestReport
+              :writing-core:test :writing-core:jacocoTestReport
+              :dictionary-core:test :dictionary-core:jacocoTestReport
+              :update-core:test :update-core:jacocoTestReport
+            )
+          fi
           if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
             TASKS+=( :core:test :core:jacocoTestReport )
           fi
@@ -169,7 +188,19 @@ jobs:
           if [ ${#TASKS[@]} -eq 0 ]; then
             TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
           fi
-          ./gradlew :core:jar :app:compileDebugJavaWithJavac "${TASKS[@]}" --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
+          ./gradlew \
+            :core:jar \
+            :domain:jar \
+            :sync-domain:jar \
+            :writing-core:jar \
+            :dictionary-core:jar \
+            :update-core:jar \
+            :app:compileDebugJavaWithJavac \
+            "${TASKS[@]}" \
+            --parallel \
+            -Dorg.gradle.parallel=true \
+            -PsonarFullCoverage=false \
+            -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
           ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
 
       - name: Build and analyze (full connected coverage)
@@ -191,6 +222,16 @@ jobs:
               :core:jacocoTestReport \
               :fsrs-java:test \
               :fsrs-java:jacocoTestReport \
+              :domain:test \
+              :domain:jacocoTestReport \
+              :sync-domain:test \
+              :sync-domain:jacocoTestReport \
+              :writing-core:test \
+              :writing-core:jacocoTestReport \
+              :dictionary-core:test \
+              :dictionary-core:jacocoTestReport \
+              :update-core:test \
+              :update-core:jacocoTestReport \
               :app:testDebugUnitTest \
               :app:jacocoDebugUnitTestReport \
               :app:lintDebug \

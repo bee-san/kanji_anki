@@ -2,6 +2,7 @@ import org.gradle.api.tasks.Exec
 
 plugins {
     id("com.android.application") version "9.1.0" apply false
+    id("org.jetbrains.kotlin.jvm") version "2.0.21" apply false
     id("org.sonarqube") version "7.3.0.8198"
 }
 
@@ -17,16 +18,31 @@ val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String
 val maybeSonarMainBinaries = listOf(
     rootPath("fsrs-java/build/classes"),
     rootPath("core/build/classes"),
+    rootPath("domain/build/classes"),
+    rootPath("sync-domain/build/classes"),
+    rootPath("writing-core/build/classes"),
+    rootPath("dictionary-core/build/classes"),
+    rootPath("update-core/build/classes"),
     rootPath("app/build/intermediates/javac"),
 )
 val maybeSonarTestBinaries = listOf(
     rootPath("fsrs-java/build/classes"),
     rootPath("core/build/classes"),
+    rootPath("domain/build/classes"),
+    rootPath("sync-domain/build/classes"),
+    rootPath("writing-core/build/classes"),
+    rootPath("dictionary-core/build/classes"),
+    rootPath("update-core/build/classes"),
     rootPath("app/build/intermediates/javac"),
 )
 val maybeSonarCoveragePaths = buildList<String> {
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
         add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
@@ -78,6 +94,21 @@ val fastCiTasks = listOf(
     ":core:test",
     ":core:jacocoTestReport",
     ":core:jacocoTestCoverageVerification",
+    ":domain:test",
+    ":domain:jacocoTestReport",
+    ":domain:jacocoTestCoverageVerification",
+    ":sync-domain:test",
+    ":sync-domain:jacocoTestReport",
+    ":sync-domain:jacocoTestCoverageVerification",
+    ":writing-core:test",
+    ":writing-core:jacocoTestReport",
+    ":writing-core:jacocoTestCoverageVerification",
+    ":dictionary-core:test",
+    ":dictionary-core:jacocoTestReport",
+    ":dictionary-core:jacocoTestCoverageVerification",
+    ":update-core:test",
+    ":update-core:jacocoTestReport",
+    ":update-core:jacocoTestCoverageVerification",
     ":app:testDebugUnitTest",
     ":app:jacocoDebugUnitTestReport",
     ":app:compileDebugAndroidTestJavaWithJavac",
@@ -98,6 +129,11 @@ tasks.register("ciQuality") {
         "ciFast",
         ":fsrs-java:jar",
         ":core:jar",
+        ":domain:jar",
+        ":sync-domain:jar",
+        ":writing-core:jar",
+        ":dictionary-core:jar",
+        ":update-core:jar",
         ":app:compileDebugJavaWithJavac",
     )
 }
