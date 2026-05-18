@@ -69,6 +69,7 @@ import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
+import dev.bee.kanjianki.core.study.WritingHintPolicy;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
@@ -1472,13 +1473,12 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     HintState initialHintState(RecordsSchedulerModels.StudySession session) {
-        int stored = Math.max(0, Math.min(3, session.item.writingLevel));
-        if (TASK_TARGETED_WRITING.equals(session.taskType)
-                || session.item.totalReviews == 0
-                || session.item.learningStep == 0) {
-            return HintState.fromWritingLevel(Math.min(stored, 1));
-        }
-        return HintState.fromWritingLevel(stored);
+        return WritingHintPolicy.initialHintState(
+                session.item.writingLevel,
+                session.item.totalReviews,
+                session.item.learningStep,
+                TASK_TARGETED_WRITING.equals(session.taskType)
+        );
     }
 
     void setHintState(HintState state) {
