@@ -116,7 +116,7 @@ abstract class MainActivityHome extends MainActivityBase {
         addSpace(14);
 
         if (rows.isEmpty()) {
-            Button syncButton = primaryButton("Sync AnkiDroid", CORAL);
+            Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
             syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
         } else {
@@ -128,9 +128,13 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(homeActionRow());
 
         addSpace(16);
-        content.addView(homeSectionHeader("Focus queue", rows.isEmpty() ? null : "View all", rows.isEmpty() ? null : this::renderFocusQueue));
+        content.addView(homeSectionHeader(
+                HomeTextCopy.focusQueueTitle(),
+                rows.isEmpty() ? null : HomeTextCopy.viewAllLabel(),
+                rows.isEmpty() ? null : this::renderFocusQueue
+        ));
         if (rows.isEmpty()) {
-            emptyState("No kanji queued yet", "After the first sync, this screen shows the kanji that need focused recall and writing practice.");
+            emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.homeNoKanjiQueuedBody());
         } else {
             if (entries.isEmpty()) {
                 emptyState(EMPTY_ACTIVE_PRACTICE_TITLE, EMPTY_ACTIVE_PRACTICE_BODY);
@@ -148,10 +152,10 @@ abstract class MainActivityHome extends MainActivityBase {
 
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = text("Kani", 48, INK, true);
+        TextView title = text(HomeTextCopy.appTitle(), 48, INK, true);
         title.setLetterSpacing(0);
         copy.addView(title);
-        copy.addView(text("Your AnkiDroid companion app to cure kanji blindness", 16, MUTED, true));
+        copy.addView(text(HomeTextCopy.appSubtitle(), 16, MUTED, true));
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
         ImageView mascot = new ImageView(this);
@@ -172,15 +176,15 @@ abstract class MainActivityHome extends MainActivityBase {
         row.addView(metricCard(
                 R.drawable.ic_sync_24,
                 TEAL,
-                "Sync",
+                HomeTextCopy.syncMetricLabel(),
                 homeSyncValue(sync),
-                provider.canSync && sync != null && "success".equals(sync.status) ? "Up to date" : "Tap to sync",
+                HomeTextCopy.syncMetricStatus(provider.canSync && sync != null && "success".equals(sync.status)),
                 this::confirmSync
         ));
         row.addView(metricCard(
                 R.drawable.ic_flame_24,
                 streakAccent(streak),
-                "Streak",
+                HomeTextCopy.streakMetricLabel(),
                 streakHeadline(streak),
                 streakMetricBody(streak),
                 null
@@ -188,7 +192,7 @@ abstract class MainActivityHome extends MainActivityBase {
         row.addView(metricCard(
                 R.drawable.ic_target_24,
                 CORAL,
-                "Focus",
+                HomeTextCopy.focusMetricLabel(),
                 focusHeadline(plan),
                 null,
                 null
@@ -268,7 +272,7 @@ abstract class MainActivityHome extends MainActivityBase {
         title.setIncludeFontPadding(false);
         title.setLetterSpacing(0);
         copy.addView(title);
-        TextView support = text("Start focused practice", 13, Color.rgb(255, 245, 250), true);
+        TextView support = text(HomeTextCopy.studySupportText(), 13, Color.rgb(255, 245, 250), true);
         support.setIncludeFontPadding(false);
         support.setSingleLine(true);
         support.setPadding(0, dp(5), 0, 0);
@@ -318,10 +322,10 @@ abstract class MainActivityHome extends MainActivityBase {
 
     View homeActionRow() {
         List<View> actions = new ArrayList<>();
-        actions.add(pillButton("Browse Kanji", R.drawable.ic_book_24, this::renderBrowseKanji));
-        actions.add(pillButton("Recent mistakes", R.drawable.ic_trending_24, this::renderRecentMistakes));
-        actions.add(pillButton("Stats", R.drawable.ic_stats_24, this::renderStats));
-        actions.add(pillButton("Games", R.drawable.ic_game_24, this::renderGames));
+        actions.add(pillButton(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, this::renderBrowseKanji));
+        actions.add(pillButton(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, this::renderRecentMistakes));
+        actions.add(pillButton(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, this::renderStats));
+        actions.add(pillButton(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, this::renderGames));
         actions.add(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
         return twoColumnGrid(actions);
     }
@@ -391,7 +395,7 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
         iconLp.setMargins(0, 0, dp(8), 0);
         button.addView(icon, iconLp);
-        TextView text = text("Home", 15, INK, true);
+        TextView text = text(HomeTextCopy.homeLabel(), 15, INK, true);
         text.setGravity(Gravity.CENTER);
         button.addView(text, new LinearLayout.LayoutParams(-2, -2));
         button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
@@ -411,12 +415,12 @@ abstract class MainActivityHome extends MainActivityBase {
         RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
 
-        content.addView(homeSectionHeader("Focus queue", "Home", this::renderHome));
+        content.addView(homeSectionHeader(HomeTextCopy.focusQueueTitle(), HomeTextCopy.homeLabel(), this::renderHome));
         content.addView(text(adaptiveFocusText(plan), 16, MUTED, false));
         addSpace(8);
         if (rows.isEmpty()) {
-            emptyState("No kanji queued yet", "Sync AnkiDroid first to build a focus queue.");
-            Button syncButton = primaryButton("Sync AnkiDroid", CORAL);
+            emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.focusQueueNoKanjiQueuedBody());
+            Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
             syncButton.setOnClickListener(v -> confirmSync());
             content.addView(syncButton);
             return;
@@ -432,10 +436,10 @@ abstract class MainActivityHome extends MainActivityBase {
 
     void renderRecentMistakes() {
         base("home");
-        content.addView(homeSectionHeader("Recent mistakes", "Home", this::renderHome));
+        content.addView(homeSectionHeader(HomeTextCopy.recentMistakesTitle(), HomeTextCopy.homeLabel(), this::renderHome));
         List<StudyStatsStore.RecentMistake> mistakes = store.recentMistakes(12);
         if (mistakes.isEmpty()) {
-            emptyState("No recent mistakes yet", "Missed and hard reviews will show here after you study.");
+            emptyState(HomeTextCopy.noRecentMistakesTitle(), HomeTextCopy.noRecentMistakesBody());
             return;
         }
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
@@ -716,7 +720,7 @@ abstract class MainActivityHome extends MainActivityBase {
         search.setTextSize(18);
         content.addView(search, new LinearLayout.LayoutParams(-1, dp(58)));
 
-        Button submit = primaryButton("Search", TEAL);
+        Button submit = primaryButton(HomeTextCopy.browseSearchButtonLabel(), TEAL);
         submit.setOnClickListener(v -> renderBrowseKanji(search.getText().toString()));
         content.addView(submit);
 
@@ -745,13 +749,13 @@ abstract class MainActivityHome extends MainActivityBase {
         if (!item.readings.isEmpty()) {
             copy.addView(text(item.readings, 14, TEAL, true));
         }
-        copy.addView(text(countText(item.sourceCount, "local source", "local sources") + " · " + countText(item.exampleCount, "example", "examples"), 14, MUTED, false));
+        copy.addView(text(HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount), 14, MUTED, false));
         top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(top);
         if (item.suspended) {
             LinearLayout chips = new LinearLayout(this);
             chips.setOrientation(LinearLayout.HORIZONTAL);
-            chips.addView(chip("SUSPENDED", CORAL));
+            chips.addView(chip(HomeTextCopy.suspendedChipLabel(), CORAL));
             box.addView(chips);
         }
         return box;
@@ -814,7 +818,7 @@ abstract class MainActivityHome extends MainActivityBase {
         if (suspended) {
             LinearLayout chips = new LinearLayout(this);
             chips.setOrientation(LinearLayout.HORIZONTAL);
-            chips.addView(chip("SUSPENDED", CORAL));
+            chips.addView(chip(HomeTextCopy.suspendedChipLabel(), CORAL));
             content.addView(chips);
         }
         if (row == null) {
@@ -907,7 +911,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        content.addView(sectionTitle("Recovery timeline"));
+        content.addView(sectionTitle(HomeTextCopy.recoveryTimelineTitle()));
         content.addView(timelineStatusCard(timeline));
         if (timeline.events.isEmpty()) {
             content.addView(text(HomeTextCopy.timelineEmptyText(), 15, MUTED, false));

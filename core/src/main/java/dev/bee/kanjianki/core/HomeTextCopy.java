@@ -73,6 +73,86 @@ public final class HomeTextCopy {
         return "Saved." + streakText;
     }
 
+    public static String appTitle() {
+        return "Kani";
+    }
+
+    public static String appSubtitle() {
+        return "Your AnkiDroid companion app to cure kanji blindness";
+    }
+
+    public static String syncAnkiDroidLabel() {
+        return "Sync AnkiDroid";
+    }
+
+    public static String focusQueueTitle() {
+        return "Focus queue";
+    }
+
+    public static String viewAllLabel() {
+        return "View all";
+    }
+
+    public static String noKanjiQueuedTitle() {
+        return "No kanji queued yet";
+    }
+
+    public static String homeNoKanjiQueuedBody() {
+        return "After the first sync, this screen shows the kanji that need focused recall and writing practice.";
+    }
+
+    public static String focusQueueNoKanjiQueuedBody() {
+        return "Sync AnkiDroid first to build a focus queue.";
+    }
+
+    public static String syncMetricLabel() {
+        return "Sync";
+    }
+
+    public static String syncMetricStatus(boolean upToDate) {
+        return upToDate ? "Up to date" : "Tap to sync";
+    }
+
+    public static String streakMetricLabel() {
+        return "Streak";
+    }
+
+    public static String focusMetricLabel() {
+        return "Focus";
+    }
+
+    public static String studySupportText() {
+        return "Start focused practice";
+    }
+
+    public static String browseActionLabel() {
+        return "Browse Kanji";
+    }
+
+    public static String recentMistakesTitle() {
+        return "Recent mistakes";
+    }
+
+    public static String statsActionLabel() {
+        return "Stats";
+    }
+
+    public static String gamesActionLabel() {
+        return "Games";
+    }
+
+    public static String homeLabel() {
+        return "Home";
+    }
+
+    public static String noRecentMistakesTitle() {
+        return "No recent mistakes yet";
+    }
+
+    public static String noRecentMistakesBody() {
+        return "Missed and hard reviews will show here after you study.";
+    }
+
     public static String browseResultHeading(int size) {
         if (size <= 0) {
             return "No matches";
@@ -95,6 +175,10 @@ public final class HomeTextCopy {
         return "Search kanji, meaning, reading, or examples";
     }
 
+    public static String browseSearchButtonLabel() {
+        return "Search";
+    }
+
     public static String browseEmptyTitle() {
         return "No local kanji found";
     }
@@ -114,6 +198,16 @@ public final class HomeTextCopy {
     public static String browseItemMeaning(RecordsImportModels.KanjiInventoryItem item) {
         RecordsImportModels.KanjiInventoryItem safeItem = Objects.requireNonNull(item, "item");
         return safeItem.primaryMeaning.isEmpty() ? "Meaning not stored yet" : safeItem.primaryMeaning;
+    }
+
+    public static String browseInventorySummary(int sourceCount, int exampleCount) {
+        return StudyTextCopy.countText(sourceCount, "local source", "local sources")
+                + " · "
+                + StudyTextCopy.countText(exampleCount, "example", "examples");
+    }
+
+    public static String suspendedChipLabel() {
+        return "SUSPENDED";
     }
 
     public static String detailReasonTitle() {
@@ -216,6 +310,10 @@ public final class HomeTextCopy {
 
     public static String timelineEmptyText() {
         return "Timeline will fill in after the next sync or review.";
+    }
+
+    public static String recoveryTimelineTitle() {
+        return "Recovery timeline";
     }
 
     public static String noActiveEvidenceText() {

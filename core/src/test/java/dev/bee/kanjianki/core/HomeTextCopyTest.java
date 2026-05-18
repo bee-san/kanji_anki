@@ -68,6 +68,34 @@ public final class HomeTextCopyTest {
     }
 
     @Test
+    public void homeShellCopyPreservesHeaderMetricsAndEmptyStates() {
+        assertEquals("Kani", HomeTextCopy.appTitle());
+        assertEquals("Your AnkiDroid companion app to cure kanji blindness", HomeTextCopy.appSubtitle());
+        assertEquals("Sync AnkiDroid", HomeTextCopy.syncAnkiDroidLabel());
+        assertEquals("Focus queue", HomeTextCopy.focusQueueTitle());
+        assertEquals("View all", HomeTextCopy.viewAllLabel());
+        assertEquals("No kanji queued yet", HomeTextCopy.noKanjiQueuedTitle());
+        assertEquals(
+                "After the first sync, this screen shows the kanji that need focused recall and writing practice.",
+                HomeTextCopy.homeNoKanjiQueuedBody()
+        );
+        assertEquals("Sync AnkiDroid first to build a focus queue.", HomeTextCopy.focusQueueNoKanjiQueuedBody());
+        assertEquals("Sync", HomeTextCopy.syncMetricLabel());
+        assertEquals("Up to date", HomeTextCopy.syncMetricStatus(true));
+        assertEquals("Tap to sync", HomeTextCopy.syncMetricStatus(false));
+        assertEquals("Streak", HomeTextCopy.streakMetricLabel());
+        assertEquals("Focus", HomeTextCopy.focusMetricLabel());
+        assertEquals("Start focused practice", HomeTextCopy.studySupportText());
+        assertEquals("Browse Kanji", HomeTextCopy.browseActionLabel());
+        assertEquals("Recent mistakes", HomeTextCopy.recentMistakesTitle());
+        assertEquals("Stats", HomeTextCopy.statsActionLabel());
+        assertEquals("Games", HomeTextCopy.gamesActionLabel());
+        assertEquals("Home", HomeTextCopy.homeLabel());
+        assertEquals("No recent mistakes yet", HomeTextCopy.noRecentMistakesTitle());
+        assertEquals("Missed and hard reviews will show here after you study.", HomeTextCopy.noRecentMistakesBody());
+    }
+
+    @Test
     public void browseResultHeadingPreservesBrowseCopy() {
         assertEquals("No matches", HomeTextCopy.browseResultHeading(0));
         assertEquals("No matches", HomeTextCopy.browseResultHeading(-1));
@@ -80,12 +108,16 @@ public final class HomeTextCopyTest {
         assertEquals("Browse Kanji", HomeTextCopy.browseTitle());
         assertEquals("Local kanji from synced Kani data and study history.", HomeTextCopy.browseBody());
         assertEquals("Search kanji, meaning, reading, or examples", HomeTextCopy.browseSearchHint());
+        assertEquals("Search", HomeTextCopy.browseSearchButtonLabel());
         assertEquals("No local kanji found", HomeTextCopy.browseEmptyTitle());
         assertEquals("Sync AnkiDroid first, or try a different search.", HomeTextCopy.browseEmptyBody());
         assertEquals("Kanji not found", HomeTextCopy.kanjiNotFoundTitle());
         assertEquals("This row may have disappeared after a sync.", HomeTextCopy.kanjiNotFoundBody());
         assertEquals("Meaning not stored yet", HomeTextCopy.browseItemMeaning(inventory("語", "", "")));
         assertEquals("language", HomeTextCopy.browseItemMeaning(inventory("語", "language", "")));
+        assertEquals("1 local source · 2 examples", HomeTextCopy.browseInventorySummary(1, 2));
+        assertEquals("3 local sources · 1 example", HomeTextCopy.browseInventorySummary(3, 1));
+        assertEquals("SUSPENDED", HomeTextCopy.suspendedChipLabel());
         assertThrows(NullPointerException.class, () -> HomeTextCopy.browseItemMeaning(null));
     }
 
@@ -132,6 +164,7 @@ public final class HomeTextCopyTest {
         assertEquals("Mature support 0 / target 2", HomeTextCopy.matureSupportTargetText(0, 2));
         assertEquals("Mature support 3 / target 4", HomeTextCopy.matureSupportTargetText(3, 4));
         assertEquals("Timeline will fill in after the next sync or review.", HomeTextCopy.timelineEmptyText());
+        assertEquals("Recovery timeline", HomeTextCopy.recoveryTimelineTitle());
         assertEquals("No active Anki evidence in the latest local sync.", HomeTextCopy.noActiveEvidenceText());
     }
 
