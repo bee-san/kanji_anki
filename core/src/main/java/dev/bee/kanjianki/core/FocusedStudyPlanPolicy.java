@@ -38,7 +38,7 @@ public final class FocusedStudyPlanPolicy {
                 focus,
                 0,
                 false,
-                "Custom study: " + countText(focus.size(), "extra new card", "extra new cards") + "."
+                "Custom study: " + StudyTextCopy.countText(focus.size(), "extra new card", "extra new cards") + "."
         );
     }
 
@@ -99,10 +99,6 @@ public final class FocusedStudyPlanPolicy {
             }
         }
         return null;
-    }
-
-    private static String countText(int count, String singular, String plural) {
-        return count + " " + (count == 1 ? singular : plural);
     }
 
     private static List<String> safeRequestedKanji(List<String> requestedKanji) {
