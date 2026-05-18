@@ -12,6 +12,7 @@ import android.os.Build;
 
 import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
+import dev.bee.kanjianki.updatecore.UpdateNotificationPolicy;
 import dev.bee.kanjianki.updatecore.UpdateTextPolicy;
 
 final class UpdateNotifier {
@@ -28,7 +29,10 @@ final class UpdateNotifier {
     }
 
     static boolean showPendingUpdate(String version, String message, NotificationController controller) {
-        if (!controller.hasRuntimeNotificationPermission() || !controller.areNotificationsEnabled()) {
+        if (!UpdateNotificationPolicy.shouldShowPendingUpdate(
+                controller.hasRuntimeNotificationPermission(),
+                controller.areNotificationsEnabled()
+        )) {
             return false;
         }
         String body = UpdateTextPolicy.notificationBody(version, message);
