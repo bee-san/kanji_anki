@@ -55,8 +55,8 @@ public final class UpdateArtifactValidator {
     }
 
     public static final class ValidationResult {
-        private final boolean ok;
-        private final String message;
+        public final boolean ok;
+        public final String message;
 
         private ValidationResult(boolean ok, String message) {
             this.ok = ok;

@@ -15,8 +15,11 @@ public class PackageInstallStatusPolicyTest {
         );
 
         assertFalse(mapped.pendingUserAction());
+        assertFalse(mapped.pendingUserAction);
         assertTrue(mapped.success());
+        assertTrue(mapped.success);
         assertEquals("Install finished.", mapped.message());
+        assertEquals("Install finished.", mapped.message);
     }
 
     @Test

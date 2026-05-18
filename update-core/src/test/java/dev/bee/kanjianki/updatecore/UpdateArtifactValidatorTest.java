@@ -15,7 +15,9 @@ public class UpdateArtifactValidatorTest {
         UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateChecksum("not a sha", DIGEST_A);
 
         assertFalse(result.ok());
+        assertFalse(result.ok);
         assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message());
+        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message);
     }
 
     @Test

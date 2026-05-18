@@ -40,10 +40,10 @@ public final class UpdateReleaseAssetSelector {
     }
 
     public static final class AssetSelection {
-        private final boolean ok;
-        private final String message;
-        private final GitHubReleaseMetadata.ReleaseAsset apk;
-        private final GitHubReleaseMetadata.ReleaseAsset checksum;
+        public final boolean ok;
+        public final String message;
+        public final GitHubReleaseMetadata.ReleaseAsset apk;
+        public final GitHubReleaseMetadata.ReleaseAsset checksum;
 
         private AssetSelection(
                 boolean ok,

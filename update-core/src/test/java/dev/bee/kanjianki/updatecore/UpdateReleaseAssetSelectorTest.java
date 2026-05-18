@@ -64,8 +64,11 @@ public final class UpdateReleaseAssetSelectorTest {
         UpdateReleaseAssetSelector.AssetSelection selection = UpdateReleaseAssetSelector.selectAssets(release);
 
         assertTrue(selection.ok());
+        assertTrue(selection.ok);
         assertSame(apk, selection.apk());
+        assertSame(apk, selection.apk);
         assertSame(checksum, selection.checksum());
+        assertSame(checksum, selection.checksum);
     }
 
     private static GitHubReleaseMetadata.ReleaseAsset asset(String name, String url) {
