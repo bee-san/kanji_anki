@@ -94,4 +94,12 @@ public final class HomeTextCopy {
     public static String matureSupportTargetText(int matureSupportCount, int target) {
         return "Mature support " + matureSupportCount + " / target " + target;
     }
+
+    public static String timelineEmptyText() {
+        return "Timeline will fill in after the next sync or review.";
+    }
+
+    public static String noActiveEvidenceText() {
+        return "No active Anki evidence in the latest local sync.";
+    }
 }

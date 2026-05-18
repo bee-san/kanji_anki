@@ -917,7 +917,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(sectionTitle("Recovery timeline"));
         content.addView(timelineStatusCard(timeline));
         if (timeline.events.isEmpty()) {
-            content.addView(text("Timeline will fill in after the next sync or review.", 15, MUTED, false));
+            content.addView(text(HomeTextCopy.timelineEmptyText(), 15, MUTED, false));
             return;
         }
         for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
@@ -933,7 +933,7 @@ abstract class MainActivityHome extends MainActivityBase {
         if (row != null) {
             box.addView(text(HomeTextCopy.matureSupportTargetText(row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
         } else {
-            box.addView(text("No active Anki evidence in the latest local sync.", 15, MUTED, false));
+            box.addView(text(HomeTextCopy.noActiveEvidenceText(), 15, MUTED, false));
         }
         return box;
     }

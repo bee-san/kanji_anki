@@ -79,6 +79,8 @@ public final class HomeTextCopyTest {
         assertEquals("", HomeTextCopy.detailBrowserSearch(row("裂", ""), null));
         assertEquals("Mature support 0 / target 2", HomeTextCopy.matureSupportTargetText(0, 2));
         assertEquals("Mature support 3 / target 4", HomeTextCopy.matureSupportTargetText(3, 4));
+        assertEquals("Timeline will fill in after the next sync or review.", HomeTextCopy.timelineEmptyText());
+        assertEquals("No active Anki evidence in the latest local sync.", HomeTextCopy.noActiveEvidenceText());
     }
 
     private static RecordsImportModels.KanjiInventoryItem inventory(String kanji, String meaning, String browserSearch) {
