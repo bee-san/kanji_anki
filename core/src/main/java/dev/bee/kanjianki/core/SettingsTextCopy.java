@@ -3,6 +3,7 @@ package dev.bee.kanjianki.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public final class SettingsTextCopy {
     private static final String SOURCE_ACTIVE = "active";
@@ -12,7 +13,7 @@ public final class SettingsTextCopy {
     }
 
     public static String settingsImportSummary(RecordsSyncModels.Settings settings) {
-        RecordsSyncModels.Settings safeSettings = settings == null ? RecordsSyncModels.Settings.kikuDefaults() : settings;
+        RecordsSyncModels.Settings safeSettings = Objects.requireNonNull(settings, "settings");
         List<String> sources = new ArrayList<>();
         if (safeSettings.importActiveCards) {
             sources.add(SOURCE_ACTIVE);
@@ -36,7 +37,7 @@ public final class SettingsTextCopy {
     }
 
     public static String matchingCardsSummary(RecordsSyncModels.Settings settings) {
-        RecordsSyncModels.Settings safeSettings = settings == null ? RecordsSyncModels.Settings.kikuDefaults() : settings;
+        RecordsSyncModels.Settings safeSettings = Objects.requireNonNull(settings, "settings");
         int count = safeSettings.importMinMatchingCardsPerKanji;
         return count + (count == 1 ? " matching card per kanji" : " matching cards per kanji");
     }

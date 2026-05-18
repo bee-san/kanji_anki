@@ -470,7 +470,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String streakHeadline(StudyStatsStore.StudyStreak streak) {
-        return HomeTextCopy.streakHeadline(streak == null ? 0 : streak.currentDays);
+        return HomeTextCopy.streakHeadline(streak.currentDays);
     }
 
     int streakAccent(StudyStatsStore.StudyStreak streak) {

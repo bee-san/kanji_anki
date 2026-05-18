@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public final class SettingsTextCopyTest {
     @Test
@@ -14,6 +15,8 @@ public final class SettingsTextCopyTest {
         assertEquals("1 matching card per kanji", SettingsTextCopy.matchingCardsSummary(settings(false, true, false, false, false, 1)));
         assertEquals("active + suspended + tagged + weak + query; 3 matching cards per kanji", SettingsTextCopy.settingsImportSummary(settings(true, true, true, true, true, 3)));
         assertEquals("No sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, false, false, 2)));
+        assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsImportSummary(null));
+        assertThrows(NullPointerException.class, () -> SettingsTextCopy.matchingCardsSummary(null));
     }
 
     @Test
