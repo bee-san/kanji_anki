@@ -54,6 +54,7 @@ import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -908,8 +909,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save new card sort", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, selected[0]);
-            Toast.makeText(this, "New card sort saved.", Toast.LENGTH_SHORT).show();
+            NewCardSortSettingsPolicy.SaveRequest request = NewCardSortSettingsPolicy.saveRequest(selected[0]);
+            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
