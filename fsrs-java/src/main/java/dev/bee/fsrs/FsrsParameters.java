@@ -16,15 +16,6 @@ public final class FsrsParameters {
             0.1542
     };
 
-    /**
-     * Legacy public defaults array retained for source and binary compatibility.
-     *
-     * @deprecated Use {@link #latestDefaultValues()} for a defensive copy, or
-     * {@link #latestDefault()} for an immutable parameter object.
-     */
-    @Deprecated
-    public static final double[] LATEST_DEFAULT_VALUES = LATEST_DEFAULT_TEMPLATE.clone();
-
     private final double[] values;
 
     private FsrsParameters(double[] values) {

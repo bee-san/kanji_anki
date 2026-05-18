@@ -41,12 +41,11 @@ public final class FsrsEngineReferenceTest {
     }
 
     @Test
-    public void parametersValidateAndDefensivelyCopyValues() throws ReflectiveOperationException {
+    public void parametersValidateAndDefensivelyCopyValues() {
         FsrsParameters defaults = FsrsParameters.latestDefault();
         double[] values = defaults.toArray();
 
         assertEquals(21, FsrsParameters.PARAMETER_COUNT);
-        assertArrayEquals(legacyDefaultValuesField(), values, 0.0);
         assertArrayEquals(FsrsParameters.latestDefaultValues(), values, 0.0);
         assertEquals(0.212, defaults.get(0), 0.0);
         assertEquals(0.1542, defaults.decayMagnitude(), 0.0);
@@ -216,10 +215,6 @@ public final class FsrsEngineReferenceTest {
     private static void assertState(FsrsMemoryState state, double stability, double difficulty) {
         assertEquals(stability, state.stability(), TOLERANCE);
         assertEquals(difficulty, state.difficulty(), TOLERANCE);
-    }
-
-    private static double[] legacyDefaultValuesField() throws ReflectiveOperationException {
-        return (double[]) FsrsParameters.class.getField("LATEST_DEFAULT_VALUES").get(null);
     }
 
     private static void expectIllegalArgument(ThrowingRunnable runnable) {
