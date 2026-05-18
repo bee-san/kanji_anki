@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.update;
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.GitHubReleaseParser;
+import dev.bee.kanjianki.updatecore.UpdateArtifactValidator;
 
 final class UpdatePolicy {
     static final int STATUS_SUCCESS = 0;
@@ -26,22 +26,11 @@ final class UpdatePolicy {
     }
 
     static ValidationResult validateChecksum(String expected, String actual) {
-        ValidationResult expectedResult = validateExpectedChecksum(expected);
-        if (!expectedResult.ok) {
-            return expectedResult;
-        }
-        String normalizedExpected = expected.trim();
-        if (actual == null || !normalizedExpected.equalsIgnoreCase(actual.trim())) {
-            return ValidationResult.failure("Checksum mismatch. Install blocked.");
-        }
-        return ValidationResult.success("Checksum verified.");
+        return validationResult(UpdateArtifactValidator.validateChecksum(expected, actual));
     }
 
     static ValidationResult validateExpectedChecksum(String expected) {
-        if (!GitHubReleaseParser.isSha256Digest(expected)) {
-            return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
-        }
-        return ValidationResult.success("Checksum digest found.");
+        return validationResult(UpdateArtifactValidator.validateExpectedChecksum(expected));
     }
 
     static ValidationResult validatePackageMetadata(
@@ -51,20 +40,13 @@ final class UpdatePolicy {
             String archivePackageName,
             String archiveVersion
     ) {
-        if (archivePackageName == null || archivePackageName.isEmpty() || archiveVersion == null || archiveVersion.isEmpty()) {
-            return ValidationResult.failure("APK metadata could not be read. Install blocked.");
-        }
-        if (!archivePackageName.equals(expectedPackageName)) {
-            return ValidationResult.failure("APK package name is " + archivePackageName + ", expected " + expectedPackageName + ".");
-        }
-        if (!GitHubReleaseParser.isNewerSemver(currentVersion, archiveVersion)) {
-            return ValidationResult.failure("APK version " + archiveVersion + " is not newer than " + currentVersion + ".");
-        }
-        String normalizedRelease = normalizeVersion(releaseTag);
-        if (!normalizedRelease.isEmpty() && !normalizedRelease.equals(normalizeVersion(archiveVersion))) {
-            return ValidationResult.failure("APK version " + archiveVersion + " does not match release " + releaseTag + ".");
-        }
-        return ValidationResult.success("APK metadata verified.");
+        return validationResult(UpdateArtifactValidator.validatePackageMetadata(
+                expectedPackageName,
+                currentVersion,
+                releaseTag,
+                archivePackageName,
+                archiveVersion
+        ));
     }
 
     static InstallCallback mapInstallStatus(int status, String message) {
@@ -82,12 +64,8 @@ final class UpdatePolicy {
         return source == GitHubUpdater.UpdateSource.MANUAL || source == GitHubUpdater.UpdateSource.CACHED;
     }
 
-    private static String normalizeVersion(String version) {
-        if (version == null) {
-            return "";
-        }
-        String trimmed = version.trim();
-        return trimmed.startsWith("v") ? trimmed.substring(1) : trimmed;
+    private static ValidationResult validationResult(UpdateArtifactValidator.ValidationResult result) {
+        return result.ok ? ValidationResult.success(result.message) : ValidationResult.failure(result.message);
     }
 
     static final class AssetSelection {

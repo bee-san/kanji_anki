@@ -75,7 +75,7 @@ jobs:
             :sync-domain:compileKotlin \
             :writing-core:compileKotlin \
             :dictionary-core:compileKotlin \
-            :update-core:compileKotlin \
+            :update-core:compileJava \
             :app:compileDebugJavaWithJavac \
             --no-daemon \
             --no-build-cache \

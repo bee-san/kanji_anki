@@ -21,4 +21,9 @@ public class ReleaseVersionTest {
         assertFalse(ReleaseVersion.isNewerSemver("not-a-version", "also-bad"));
         assertFalse(ReleaseVersion.isNewerSemver("0.3.1", "0.3"));
     }
+
+    @Test
+    public void malformedCurrentVersionPreservesLegacyZeroFallback() {
+        assertTrue(ReleaseVersion.isNewerSemver("not-a-version", "v0.0.1"));
+    }
 }

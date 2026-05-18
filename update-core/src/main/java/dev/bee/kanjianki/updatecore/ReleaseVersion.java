@@ -22,7 +22,10 @@ public final class ReleaseVersion {
     }
 
     private static String stripLeadingV(String version) {
-        return version == null ? "" : version.replaceFirst("^v", "");
+        if (version == null) {
+            return "";
+        }
+        return version.startsWith("v") ? version.substring(1) : version;
     }
 
     private static int[] parseVersion(String version) {
