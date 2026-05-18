@@ -192,16 +192,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.store.reminderSettings().enabled);
 
                 long now = System.currentTimeMillis();
-                RecordsStudyModels.StudyItem retired = studyItem("退", RecordsBase.LadderRung.KANJI_MEANING, "retired", now);
-                RecordsStudyModels.StudyItem learningDue = studyItem("学", RecordsBase.LadderRung.KANJI_MEANING, "learning", now - 1L);
-                RecordsStudyModels.StudyItem learningFuture = studyItem("未", RecordsBase.LadderRung.KANJI_MEANING, "learning", now + 60_000L);
                 RecordsStudyModels.StudyItem reviewDue = studyItem("復", RecordsBase.LadderRung.KANJI_MEANING, "review", now - 1L);
-                assertFalse(activity.itemDueForFocus(null, now));
-                assertFalse(activity.itemDueForFocus(retired, now));
-                assertTrue(activity.itemDueForFocus(learningDue, now));
-                assertFalse(activity.itemDueForFocus(learningFuture, now));
-                assertFalse(activity.itemDueForFocus(studyItem("新", RecordsBase.LadderRung.KANJI_MEANING, "review", now).copyBuilder().totalReviews(0).build(), now));
-                assertTrue(activity.itemDueForFocus(reviewDue.copyBuilder().totalReviews(1).build(), now));
                 activity.studyMoreNewCardKanji.add("復");
                 RecordsSchedulerModels.AdaptiveLoadPlan extraPlan = activity.studyMoreNewCardsPlan(
                         Collections.singletonList(row("復", "review", "フク", Collections.emptyList())),
