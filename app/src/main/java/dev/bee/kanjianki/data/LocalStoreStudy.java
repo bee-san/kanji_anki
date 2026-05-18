@@ -18,6 +18,7 @@ import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import dev.bee.kanjianki.core.TextUtil;
+import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -281,8 +282,8 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     public ReminderSettings reminderSettings() {
         return new ReminderSettings(
                 getIntSetting("reminder_enabled", 0) == 1,
-                getIntSetting("reminder_hour", DEFAULT_REMINDER_HOUR),
-                getIntSetting("reminder_minute", DEFAULT_REMINDER_MINUTE)
+                getIntSetting("reminder_hour", TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR),
+                getIntSetting("reminder_minute", TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE)
         ).normalized();
     }
 
@@ -304,8 +305,8 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         return new AutoSyncSettings(
                 getIntSetting("auto_sync_configured", 0) == 1,
                 getIntSetting("auto_sync_enabled", 0) == 1,
-                getIntSetting("auto_sync_hour", DEFAULT_AUTO_SYNC_HOUR),
-                getIntSetting("auto_sync_minute", DEFAULT_AUTO_SYNC_MINUTE),
+                getIntSetting("auto_sync_hour", TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_HOUR),
+                getIntSetting("auto_sync_minute", TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_MINUTE),
                 getLongSetting(KEY_AUTO_SYNC_LAST_ATTEMPT_AT, 0L),
                 getLongSetting(KEY_AUTO_SYNC_LAST_SUCCESS_AT, 0L),
                 getLongSetting(KEY_AUTO_SYNC_NEXT_RUN_AT, 0L)

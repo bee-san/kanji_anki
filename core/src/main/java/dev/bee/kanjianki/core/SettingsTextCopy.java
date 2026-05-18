@@ -175,11 +175,11 @@ public final class SettingsTextCopy {
     }
 
     public static String reminderTime(int hour, int minute) {
-        return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+        return TimeOfDaySettingsPolicy.displayTime(hour, minute);
     }
 
     public static String reminderTimeButtonLabel(int hour, int minute) {
-        return String.format(Locale.ROOT, "Reminder time: %02d:%02d", hour, minute);
+        return "Reminder time: " + TimeOfDaySettingsPolicy.displayTime(hour, minute);
     }
 
     private static void addDetail(List<String> details, String prefix, String value) {

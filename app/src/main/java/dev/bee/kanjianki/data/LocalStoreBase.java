@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
+import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -187,10 +188,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String KEY_AUTO_SYNC_LAST_SUCCESS_AT = "auto_sync_last_success_at";
     static final String KEY_AUTO_SYNC_NEXT_RUN_AT = "auto_sync_next_run_at";
     static final String SIMILAR_KEY_DELIMITER = "\u0000";
-    static final int DEFAULT_REMINDER_HOUR = 19;
-    static final int DEFAULT_REMINDER_MINUTE = 0;
-    static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
-    static final int DEFAULT_AUTO_SYNC_MINUTE = DEFAULT_REMINDER_MINUTE;
     static final String SETTING_STUDY_AHEAD_MINUTES = "study_ahead_minutes";
     static final String KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled";
     static final String KEY_AUTO_UPDATE_LAST_CHECK_AT = "auto_update_last_check_at";
@@ -641,13 +638,13 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         }
 
         ReminderSettings normalized() {
-            int normalizedHour = Math.max(0, Math.min(23, hour));
-            int normalizedMinute = Math.max(0, Math.min(59, minute));
-            return new ReminderSettings(enabled, normalizedHour, normalizedMinute);
+            TimeOfDaySettingsPolicy.ReminderFields normalized =
+                    TimeOfDaySettingsPolicy.normalizeReminder(enabled, hour, minute);
+            return new ReminderSettings(normalized.enabled(), normalized.hour(), normalized.minute());
         }
 
         public String displayTime() {
-            return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+            return TimeOfDaySettingsPolicy.displayTime(hour, minute);
         }
     }
 
@@ -671,13 +668,28 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         }
 
         AutoSyncSettings normalized() {
-            int normalizedHour = Math.max(0, Math.min(23, hour));
-            int normalizedMinute = Math.max(0, Math.min(59, minute));
-            return new AutoSyncSettings(configured, configured && enabled, normalizedHour, normalizedMinute, Math.max(0L, lastAttemptAt), Math.max(0L, lastSuccessAt), Math.max(0L, nextRunAt));
+            TimeOfDaySettingsPolicy.AutoSyncFields normalized = TimeOfDaySettingsPolicy.normalizeAutoSync(
+                    configured,
+                    enabled,
+                    hour,
+                    minute,
+                    lastAttemptAt,
+                    lastSuccessAt,
+                    nextRunAt
+            );
+            return new AutoSyncSettings(
+                    normalized.configured(),
+                    normalized.enabled(),
+                    normalized.hour(),
+                    normalized.minute(),
+                    normalized.lastAttemptAtMillis(),
+                    normalized.lastSuccessAtMillis(),
+                    normalized.nextRunAtMillis()
+            );
         }
 
         public String displayTime() {
-            return String.format(Locale.ROOT, "%02d:%02d", hour, minute);
+            return TimeOfDaySettingsPolicy.displayTime(hour, minute);
         }
     }
 
