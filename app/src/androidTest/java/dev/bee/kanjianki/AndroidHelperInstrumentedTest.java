@@ -152,8 +152,12 @@ public final class AndroidHelperInstrumentedTest {
                 AttributionTexts.dictionarySourcesFromManifestText("{\"sources\":[]}")
         );
         assertEquals(
-                "Dictionary manifest is empty.",
+                "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
                 AttributionTexts.dictionarySourcesFromManifestText("{}")
+        );
+        assertEquals(
+                "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
+                AttributionTexts.dictionarySourcesFromManifestText("{\"sources\":\"not an array\"}")
         );
         assertEquals(
                 "kanjidic2\nVersion: 2026\nSHA-256: abc",

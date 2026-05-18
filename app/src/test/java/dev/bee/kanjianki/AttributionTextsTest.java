@@ -38,6 +38,10 @@ public final class AttributionTextsTest {
                 AttributionTexts.dictionarySourcesFromManifest(new FakeManifest("2026-05-15", null, null))
         );
         assertEquals(
+                "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
+                AttributionTexts.dictionarySourcesFromManifest(new FakeNonArraySourcesManifest("2026-05-15"))
+        );
+        assertEquals(
                 "Dictionary manifest is empty.",
                 AttributionTexts.dictionarySourcesFromManifest(new FakeManifest("2026-05-15", sourceArray(), null))
         );
@@ -159,6 +163,30 @@ public final class AttributionTextsTest {
         @Override
         public String optString(int index) {
             return values.get(index);
+        }
+    }
+
+    private static final class FakeNonArraySourcesManifest extends JSONObject {
+        private final String generatedAt;
+
+        private FakeNonArraySourcesManifest(String generatedAt) {
+            this.generatedAt = generatedAt;
+        }
+
+        @Override
+        public String optString(String name) {
+            if ("generated_at".equals(name)) {
+                return generatedAt;
+            }
+            if ("sources".equals(name)) {
+                return "not an array";
+            }
+            return "";
+        }
+
+        @Override
+        public JSONArray optJSONArray(String name) {
+            return null;
         }
     }
 
