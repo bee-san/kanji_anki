@@ -1127,7 +1127,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.saveLearningStepSettings(request.settings);
+            SettingsWriteActions.saveLearningSteps(request, store::saveLearningStepSettings);
             Toast.makeText(this, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });

@@ -3,6 +3,8 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
+import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 final class SettingsWriteActions {
@@ -36,6 +38,13 @@ final class SettingsWriteActions {
 
     static void saveNewCardSort(NewCardSortSettingsPolicy.SaveRequest request, StringSettingWriter writer) {
         writer.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
+    }
+
+    static void saveLearningSteps(LearningStepsSettingsPolicy.SaveResult request, LearningStepSettingsWriter writer) {
+        if (request == null || !request.valid) {
+            return;
+        }
+        writer.saveLearningStepSettings(request.settings);
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
@@ -103,6 +112,10 @@ final class SettingsWriteActions {
 
     interface DoubleSettingWriter {
         void putDoubleSetting(String key, double value);
+    }
+
+    interface LearningStepSettingsWriter {
+        void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings);
     }
 
     interface SettingWriter extends IntSettingWriter {

@@ -3,6 +3,8 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -95,6 +97,23 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void saveLearningStepsWritesValidParsedSettingsOnly() {
+        RecordingLearningStepWriter writer = new RecordingLearningStepWriter();
+
+        SettingsWriteActions.saveLearningSteps(
+                LearningStepsSettingsPolicy.saveRequest("1m 10m", "5m"),
+                writer
+        );
+        SettingsWriteActions.saveLearningSteps(
+                LearningStepsSettingsPolicy.saveRequest("bad", "5m"),
+                writer
+        );
+
+        assertEquals("1m, 10m", writer.settings.newStepsText());
+        assertEquals("5m", writer.settings.reviewStepsText());
+    }
+
+    @Test
     public void applyImportPresetWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
         SettingsImportPreset preset = new SettingsImportPreset(
@@ -175,6 +194,15 @@ public final class SettingsWriteActionsTest {
         @Override
         public void putDoubleSetting(String key, double value) {
             settings.put(key, value);
+        }
+    }
+
+    private static final class RecordingLearningStepWriter implements SettingsWriteActions.LearningStepSettingsWriter {
+        RecordsSchedulerModels.LearningStepSettings settings;
+
+        @Override
+        public void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings) {
+            this.settings = settings;
         }
     }
 }
