@@ -50,9 +50,10 @@ public final class WritingRecognizerTest {
 
         assertEquals("校", result.topText());
         assertEquals(1, result.candidates.size());
+        WritingRecognizer.Candidate appendedCandidate = new WritingRecognizer.Candidate("雑", null);
         assertThrows(
                 UnsupportedOperationException.class,
-                () -> result.candidates.add(new WritingRecognizer.Candidate("雑", null))
+                () -> result.candidates.add(appendedCandidate)
         );
     }
 
