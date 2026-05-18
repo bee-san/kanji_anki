@@ -129,6 +129,16 @@ public final class CapturedWritingTest {
     }
 
     @Test
+    public void staticWritingSampleConversionAllowsNoInk() {
+        WritingSample sample = CapturedWriting.toWritingSample(Collections.emptyList(), 200f, 300f);
+
+        assertEquals(0, sample.strokes.size());
+        assertEquals(200f, sample.width, 0f);
+        assertEquals(300f, sample.height, 0f);
+        assertFalse(sample.hasInk());
+    }
+
+    @Test
     public void prepareForRecognitionRejectsInvalidInputs() {
         List<CapturedStroke> strokes = Collections.singletonList(stroke(point(1f, 1f), point(2f, 2f)));
         List<CapturedStroke> emptyStrokes = Collections.emptyList();

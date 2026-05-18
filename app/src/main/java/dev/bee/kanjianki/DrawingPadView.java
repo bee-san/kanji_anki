@@ -14,6 +14,7 @@ import android.view.ViewParent;
 
 import dev.bee.kanjianki.core.study.HintPolicy;
 import dev.bee.kanjianki.core.study.HintState;
+import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingSample;
@@ -183,15 +184,19 @@ final class DrawingPadView extends View {
     }
 
     CapturedWriting capturedWriting() {
+        return new CapturedWriting(capturedStrokes(), (float) getWidth(), (float) getHeight(), "");
+    }
+
+    WritingSample writingSample() {
+        return CapturedWriting.toWritingSample(capturedStrokes(), (float) getWidth(), (float) getHeight());
+    }
+
+    private List<CapturedStroke> capturedStrokes() {
         List<CapturedStroke> strokes = new ArrayList<>();
         for (List<CapturedStroke.Point> points : committedStrokes) {
             strokes.add(new CapturedStroke(points));
         }
-        return new CapturedWriting(strokes, (float) getWidth(), (float) getHeight(), "");
-    }
-
-    WritingSample writingSample() {
-        return capturedWriting().toWritingSample();
+        return strokes;
     }
 
     @Override

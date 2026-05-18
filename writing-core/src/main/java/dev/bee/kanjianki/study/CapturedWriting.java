@@ -104,8 +104,16 @@ public final class CapturedWriting {
     }
 
     public WritingSample toWritingSample() {
+        float width = writingAreaWidth == null ? 0f : writingAreaWidth;
+        float height = writingAreaHeight == null ? 0f : writingAreaHeight;
+        return toWritingSample(strokes, width, height);
+    }
+
+    public static WritingSample toWritingSample(List<CapturedStroke> strokes, float width, float height) {
+        Objects.requireNonNull(strokes, "strokes");
         List<InkStroke> inkStrokes = new ArrayList<>();
         for (CapturedStroke stroke : strokes) {
+            Objects.requireNonNull(stroke, "stroke");
             List<InkPoint> inkPoints = new ArrayList<>();
             for (CapturedStroke.Point point : stroke.points) {
                 long timestamp = point.timestampMillis == null ? 0L : point.timestampMillis;
@@ -113,8 +121,6 @@ public final class CapturedWriting {
             }
             inkStrokes.add(new InkStroke(inkPoints));
         }
-        float width = writingAreaWidth == null ? 0f : writingAreaWidth;
-        float height = writingAreaHeight == null ? 0f : writingAreaHeight;
         return new WritingSample(inkStrokes, width, height);
     }
 
