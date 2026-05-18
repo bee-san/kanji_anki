@@ -16,6 +16,7 @@ import dev.bee.kanjianki.BuildConfig;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser;
+import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy;
 import dev.bee.kanjianki.updatecore.ReleaseVersion;
 import dev.bee.kanjianki.updatecore.Sha256Digest;
 import dev.bee.kanjianki.updatecore.UpdateCacheFilePolicy;
@@ -473,7 +474,7 @@ public final class GitHubUpdater {
     }
 
     static boolean shouldAllowInstallerWithoutExtraUserAction(int requestedSdk, int runtimeSdk) {
-        return requestedSdk >= Build.VERSION_CODES.S && runtimeSdk >= Build.VERSION_CODES.S;
+        return PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(requestedSdk, runtimeSdk);
     }
 
     interface InstallerBackend {

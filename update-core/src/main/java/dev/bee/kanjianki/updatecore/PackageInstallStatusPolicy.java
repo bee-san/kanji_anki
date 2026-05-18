@@ -3,6 +3,7 @@ package dev.bee.kanjianki.updatecore;
 public final class PackageInstallStatusPolicy {
     public static final int STATUS_SUCCESS = 0;
     public static final int STATUS_PENDING_USER_ACTION = -1;
+    public static final int ANDROID_S_API_LEVEL = 31;
     public static final String SOURCE_MANUAL = "MANUAL";
     public static final String SOURCE_AUTOMATIC = "AUTOMATIC";
     public static final String SOURCE_CACHED = "CACHED";
@@ -31,6 +32,10 @@ public final class PackageInstallStatusPolicy {
     public static boolean shouldLaunchInstallConfirmation(String sourceName) {
         String normalized = sourceNameOrDefault(sourceName);
         return SOURCE_MANUAL.equals(normalized) || SOURCE_CACHED.equals(normalized);
+    }
+
+    public static boolean shouldAllowInstallerWithoutExtraUserAction(int requestedSdk, int runtimeSdk) {
+        return requestedSdk >= ANDROID_S_API_LEVEL && runtimeSdk >= ANDROID_S_API_LEVEL;
     }
 
     public static final class InstallCallback {

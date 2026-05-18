@@ -70,4 +70,11 @@ public class PackageInstallStatusPolicyTest {
         assertFalse(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(null));
         assertFalse(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation("not-real"));
     }
+
+    @Test
+    public void installerCanSkipExtraUserActionOnlyWhenAppAndRuntimeSupportIt() {
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(30, 31));
+        assertFalse(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(31, 30));
+        assertTrue(PackageInstallStatusPolicy.shouldAllowInstallerWithoutExtraUserAction(31, 31));
+    }
 }
