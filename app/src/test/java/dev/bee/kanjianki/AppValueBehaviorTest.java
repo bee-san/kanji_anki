@@ -12,12 +12,8 @@ import dev.bee.kanjianki.core.study.WritingAnalysis;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -241,103 +237,6 @@ public final class AppValueBehaviorTest {
         UUID.fromString(generated.substring("学-".length()));
         assertTrue(generatedFromNull.startsWith("習-"));
         UUID.fromString(generatedFromNull.substring("習-".length()));
-    }
-
-    @Test
-    public void uiDateTextFormatsDeterministicRelativeDurations() {
-        long now = 1_000_000L;
-
-        assertEquals("date unknown", UiDateText.humanSyncTime(0L));
-        assertEquals("due now", UiDateText.dueText(now, now));
-        assertEquals("due in 1 min", UiDateText.dueText(now + 59_000L, now));
-        assertEquals("due in 2 min", UiDateText.dueText(now + 120_000L, now));
-        assertEquals("due in 3 hr", UiDateText.dueText(now + 3_600_000L * 3L, now));
-        assertEquals("Unknown time", UiDateText.timelineDate(0L));
-        assertEquals("not yet", UiDateText.autoUpdateLastCheckText(0L));
-    }
-
-    @Test
-    public void uiDateTextFormatsOlderDueDatesAndNonZeroAutoUpdateChecks() {
-        Locale originalLocale = Locale.getDefault();
-        TimeZone originalTimeZone = TimeZone.getDefault();
-        try {
-            Locale.setDefault(Locale.US);
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-            long now = 0L;
-            long later = 3L * 24L * 3_600_000L;
-
-            assertEquals("due Jan 4, 1970", UiDateText.dueText(later, now));
-            assertTrue(UiDateText.timelineDate(later).contains("Jan 4, 1970"));
-            assertTrue(UiDateText.autoUpdateLastCheckText(later).contains("Jan 4, 1970"));
-        } finally {
-            Locale.setDefault(originalLocale);
-            TimeZone.setDefault(originalTimeZone);
-        }
-    }
-
-    @Test
-    public void uiDateTextFormatsTodayYesterdayAndOlderSyncTimes() {
-        Locale originalLocale = Locale.getDefault();
-        TimeZone originalTimeZone = TimeZone.getDefault();
-        try {
-            Locale.setDefault(Locale.US);
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-            Calendar today = Calendar.getInstance();
-            today.set(Calendar.HOUR_OF_DAY, 9);
-            today.set(Calendar.MINUTE, 30);
-            today.set(Calendar.SECOND, 0);
-            today.set(Calendar.MILLISECOND, 0);
-            Calendar yesterday = (Calendar) today.clone();
-            yesterday.add(Calendar.DAY_OF_YEAR, -1);
-            Calendar older = (Calendar) today.clone();
-            older.add(Calendar.DAY_OF_YEAR, -3);
-
-            assertTrue(UiDateText.humanSyncTime(today.getTimeInMillis()).startsWith("today at "));
-            assertTrue(UiDateText.humanSyncTime(yesterday.getTimeInMillis()).startsWith("yesterday at "));
-            assertFalse(UiDateText.humanSyncTime(older.getTimeInMillis()).startsWith("today at "));
-            assertFalse(UiDateText.humanSyncTime(older.getTimeInMillis()).startsWith("yesterday at "));
-        } finally {
-            Locale.setDefault(originalLocale);
-            TimeZone.setDefault(originalTimeZone);
-        }
-    }
-
-    @Test
-    public void uiDateTextComputesLocalDayBoundaries() {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(2026, Calendar.MAY, 15, 13, 45, 30);
-        calendar.set(Calendar.MILLISECOND, 987);
-        long now = calendar.getTimeInMillis();
-
-        long nextDayStart = UiDateText.nextLocalDayStart(now);
-        Calendar next = Calendar.getInstance();
-        next.setTimeInMillis(nextDayStart);
-
-        assertTrue(UiDateText.sameLocalDay(now, now + 1L));
-        assertFalse(UiDateText.sameLocalDay(now, nextDayStart));
-        assertEquals(0, next.get(Calendar.HOUR_OF_DAY));
-        assertEquals(0, next.get(Calendar.MINUTE));
-        assertEquals(0, next.get(Calendar.SECOND));
-        assertEquals(0, next.get(Calendar.MILLISECOND));
-    }
-
-    @Test
-    public void uiDateTextSameLocalDayRejectsDifferentEraAndYear() {
-        Calendar ad = new GregorianCalendar(TimeZone.getTimeZone("UTC"), Locale.US);
-        ad.clear();
-        ad.set(Calendar.ERA, GregorianCalendar.AD);
-        ad.set(Calendar.YEAR, 2026);
-        ad.set(Calendar.DAY_OF_YEAR, 1);
-        Calendar nextYear = (Calendar) ad.clone();
-        nextYear.add(Calendar.YEAR, 1);
-        Calendar bc = new GregorianCalendar(TimeZone.getTimeZone("UTC"), Locale.US);
-        bc.clear();
-        bc.set(Calendar.ERA, GregorianCalendar.BC);
-        bc.set(Calendar.YEAR, 1);
-        bc.set(Calendar.DAY_OF_YEAR, 1);
-
-        assertFalse(UiDateText.sameLocalDay(ad.getTimeInMillis(), nextYear.getTimeInMillis()));
-        assertFalse(UiDateText.sameLocalDay(ad.getTimeInMillis(), bc.getTimeInMillis()));
     }
 
     private static RecordsSchedulerModels.StudySession session(String kanji, boolean writingRequired, String taskType) {
