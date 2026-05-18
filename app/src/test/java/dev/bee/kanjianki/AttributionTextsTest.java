@@ -24,75 +24,6 @@ public final class AttributionTextsTest {
     }
 
     @Test
-    public void manifestFormattingIncludesGeneratedAtSourcesVersionFallbackAndNotes() throws Exception {
-        JSONObject kanjidic = object(
-                "name", "KANJIDIC2",
-                "license", "Creative Commons Attribution-ShareAlike 4.0",
-                "upstream_url", "https://example.invalid/kanjidic2.xml",
-                "source_path", "kanjidic2.xml",
-                "fetch_date", "2026-05-14",
-                "database_version", "2026-05-01",
-                "version", "ignored because database_version wins",
-                "date_of_creation", "ignored because database_version wins",
-                "source_sha256", "abcd"
-        );
-        JSONObject jiten = object(
-                "id", "jiten",
-                "license", "  ",
-                "upstream_url", "",
-                "source_path", "jiten.tsv",
-                "fetch_date", "2026-05-13",
-                "database_version", "",
-                "version", "2026-rank",
-                "source_sha256", "efgh"
-        );
-        JSONArray notes = array(
-                "Dictionary updates ship as a DB, manifest, and checksum.",
-                "Rerun the generator after refreshing source exports."
-        );
-
-        List<String> lines = new ArrayList<>();
-        lines.add("Generated: 2026-05-15T08:30:00Z");
-        appendSource(lines, kanjidic);
-        appendSource(lines, jiten);
-        appendNotes(lines, notes);
-
-        assertEquals(
-                String.join("\n", Arrays.asList(
-                        "Generated: 2026-05-15T08:30:00Z",
-                        "",
-                        "KANJIDIC2",
-                        "License: Creative Commons Attribution-ShareAlike 4.0",
-                        "URL: https://example.invalid/kanjidic2.xml",
-                        "Source: kanjidic2.xml",
-                        "Fetched: 2026-05-14",
-                        "Version: 2026-05-01",
-                        "SHA-256: abcd",
-                        "",
-                        "jiten",
-                        "Source: jiten.tsv",
-                        "Fetched: 2026-05-13",
-                        "Version: 2026-rank",
-                        "SHA-256: efgh",
-                        "",
-                        "Dictionary updates ship as a DB, manifest, and checksum.",
-                        "Rerun the generator after refreshing source exports."
-                )),
-                String.join("\n", lines).trim()
-        );
-    }
-
-    @Test
-    public void appendNotesIgnoresMissingAndEmptyNoteArrays() throws Exception {
-        List<String> lines = new ArrayList<>();
-
-        appendNotes(lines, null);
-        appendNotes(lines, array());
-
-        assertEquals("", String.join("\n", lines));
-    }
-
-    @Test
     public void dictionaryManifestTextFallsBackForInvalidJsonInJvmUnitTests() {
         assertEquals(
                 "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
@@ -105,85 +36,29 @@ public final class AttributionTextsTest {
     }
 
     @Test
-    public void sourceFormattingFallsBackToIdAndDateOfCreationWhenVersionFieldsAreBlank() throws Exception {
+    public void sourceAndNoteAdaptersDelegateToCoreFormatter() throws Exception {
         List<String> lines = new ArrayList<>();
-        appendSource(lines, object(
-                "id", "legacy-source",
-                "license", "",
-                "upstream_url", "   ",
-                "source_path", "\t",
-                "fetch_date", "",
-                "database_version", " ",
-                "version", "",
-                "date_of_creation", " 2025-12-31 ",
-                "source_sha256", ""
+
+        AttributionTexts.appendSource(lines, object(
+                "name", "KANJIDIC2",
+                "license", "CC BY-SA",
+                "source_path", "kanjidic2.xml",
+                "database_version", "2026-05-01"
         ));
+        AttributionTexts.appendNotes(lines, array("note one", "note two"));
 
         assertEquals(
-                String.join("\n", Arrays.asList(
-                        "legacy-source",
-                        "Version: 2025-12-31"
-                )),
-                String.join("\n", lines).trim()
+                "\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
+                String.join("\n", lines)
         );
     }
 
-    @Test
-    public void sourceFormattingUsesVersionWhenDatabaseVersionIsMissing() throws Exception {
-        List<String> lines = new ArrayList<>();
-        appendSource(lines, objectWithNulls(
-                "id", "rank-source",
-                "database_version", null,
-                "version", " 2026-rank ",
-                "date_of_creation", "ignored"
-        ));
-
-        assertEquals(
-                String.join("\n", Arrays.asList(
-                        "rank-source",
-                        "Version: 2026-rank"
-                )),
-                String.join("\n", lines).trim()
-        );
-    }
-
-    @Test
-    public void sourceFormattingOmitsNullAndBlankOptionalValues() throws Exception {
-        List<String> lines = new ArrayList<>();
-        appendSource(lines, objectWithNulls(
-                "name", null,
-                "id", "null-heavy",
-                "license", null,
-                "upstream_url", " ",
-                "source_path", null,
-                "fetch_date", "",
-                "database_version", null,
-                "version", null,
-                "date_of_creation", null,
-                "source_sha256", null
-        ));
-
-        assertEquals("null-heavy", String.join("\n", lines).trim());
-    }
-
-    private static void appendSource(List<String> lines, JSONObject source) throws Exception {
-        AttributionTexts.appendSource(lines, source);
-    }
-
-    private static void appendNotes(List<String> lines, JSONArray notes) throws Exception {
-        AttributionTexts.appendNotes(lines, notes);
-    }
-
-    private static JSONObject object(String... entries) throws Exception {
+    private static JSONObject object(String... entries) {
         Map<String, String> values = new LinkedHashMap<>();
         for (int i = 0; i < entries.length; i += 2) {
             values.put(entries[i], entries[i + 1]);
         }
         return new FakeJsonObject(values);
-    }
-
-    private static JSONObject objectWithNulls(String... entries) throws Exception {
-        return object(entries);
     }
 
     private static JSONArray array(String... values) {

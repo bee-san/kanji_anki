@@ -5,31 +5,30 @@ import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import dev.bee.kanjianki.core.AttributionCopy;
 import dev.bee.kanjianki.data.DictionaryStore;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 final class AttributionTexts {
-    private static final String DICTIONARY_FALLBACK = "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.";
-    private static final String KANJIVG_FALLBACK = "KanjiVG stroke data, CC BY-SA 3.0.";
-
     private AttributionTexts() {
     }
 
     static String kanjiVg(Context context) {
         String text = rawResourceText(context, R.raw.kanjivg_attribution).trim();
-        return text.isEmpty() ? KANJIVG_FALLBACK : text;
+        return text.isEmpty() ? AttributionCopy.KANJIVG_FALLBACK : text;
     }
 
     static String dictionarySources(Context context) {
         try {
             return dictionarySourcesFromManifestText(DictionaryStore.activeManifestText(context));
         } catch (Exception error) {
-            return DICTIONARY_FALLBACK;
+            return AttributionCopy.DICTIONARY_FALLBACK;
         }
     }
 
@@ -38,20 +37,15 @@ final class AttributionTexts {
             JSONObject manifest = new JSONObject(manifestText);
             JSONArray sources = manifest.optJSONArray("sources");
             if (sources == null || sources.length() == 0) {
-                return "Dictionary manifest is empty.";
+                return AttributionCopy.DICTIONARY_FALLBACK;
             }
-            List<String> lines = new ArrayList<>();
-            String generatedAt = manifest.optString("generated_at");
-            if (!generatedAt.isEmpty()) {
-                lines.add("Generated: " + generatedAt);
-            }
-            for (int i = 0; i < sources.length(); i++) {
-                appendSource(lines, sources.getJSONObject(i));
-            }
-            appendNotes(lines, manifest.optJSONArray("notes"));
-            return String.join("\n", lines).trim();
+            return AttributionCopy.dictionarySources(
+                    manifest.optString("generated_at"),
+                    sourcesFromJson(sources),
+                    notesFromJson(manifest.optJSONArray("notes"))
+            );
         } catch (Exception error) {
-            return DICTIONARY_FALLBACK;
+            return AttributionCopy.DICTIONARY_FALLBACK;
         }
     }
 
@@ -71,42 +65,47 @@ final class AttributionTexts {
     }
 
     static void appendSource(List<String> lines, JSONObject source) {
-        lines.add("");
-        lines.add(source.optString("name", source.optString("id")));
-        addSourceLine(lines, "License", source.optString("license"));
-        addSourceLine(lines, "URL", source.optString("upstream_url"));
-        addSourceLine(lines, "Source", source.optString("source_path"));
-        addSourceLine(lines, "Fetched", source.optString("fetch_date"));
-        addSourceLine(lines, "Version", firstNonEmpty(
-                source.optString("database_version"),
-                source.optString("version"),
-                source.optString("date_of_creation")
-        ));
-        addSourceLine(lines, "SHA-256", source.optString("source_sha256"));
+        AttributionCopy.appendSource(lines, sourceFromJson(source));
     }
 
     static void appendNotes(List<String> lines, JSONArray notes) {
+        AttributionCopy.appendNotes(lines, notesFromJson(notes));
+    }
+
+    private static List<AttributionCopy.Source> sourcesFromJson(JSONArray sources) throws Exception {
+        List<AttributionCopy.Source> parsed = new ArrayList<>();
+        for (int i = 0; i < sources.length(); i++) {
+            parsed.add(sourceFromJson(sources.getJSONObject(i)));
+        }
+        return parsed;
+    }
+
+    private static AttributionCopy.Source sourceFromJson(JSONObject source) {
+        if (source == null) {
+            return null;
+        }
+        return new AttributionCopy.Source(
+                source.optString("id"),
+                source.optString("name"),
+                source.optString("license"),
+                source.optString("upstream_url"),
+                source.optString("source_path"),
+                source.optString("fetch_date"),
+                source.optString("database_version"),
+                source.optString("version"),
+                source.optString("date_of_creation"),
+                source.optString("source_sha256")
+        );
+    }
+
+    private static List<String> notesFromJson(JSONArray notes) {
         if (notes == null || notes.length() == 0) {
-            return;
+            return Collections.emptyList();
         }
-        lines.add("");
+        List<String> parsed = new ArrayList<>();
         for (int i = 0; i < notes.length(); i++) {
-            lines.add(notes.optString(i));
+            parsed.add(notes.optString(i));
         }
-    }
-
-    private static void addSourceLine(List<String> lines, String label, String value) {
-        if (!value.trim().isEmpty()) {
-            lines.add(label + ": " + value.trim());
-        }
-    }
-
-    private static String firstNonEmpty(String... values) {
-        for (String value : values) {
-            if (!value.trim().isEmpty()) {
-                return value.trim();
-            }
-        }
-        return "";
+        return parsed;
     }
 }
