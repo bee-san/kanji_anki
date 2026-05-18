@@ -95,6 +95,11 @@ public final class SettingsTextCopyTest {
         assertEquals("Daily sync", SettingsTextCopy.dailySyncStatusLabel());
         assertEquals("Updates", SettingsTextCopy.updatesStatusLabel());
         assertEquals("Matching cards", SettingsTextCopy.matchingCardsStatusLabel());
+        assertEquals("Reminder: Off", SettingsTextCopy.statusPillDescription("Reminder", "Off"));
+        assertEquals("Collapse Study behavior", SettingsTextCopy.categoryToggleDescription(true, "Study behavior"));
+        assertEquals("Expand Automation", SettingsTextCopy.categoryToggleDescription(false, "Automation"));
+        assertEquals("1 card", SettingsTextCopy.settingsCategoryPanelCount(1));
+        assertEquals("2 cards", SettingsTextCopy.settingsCategoryPanelCount(2));
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(false, true, "07:30"));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(true, true, "07:30"));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(true, false, "07:30"));
@@ -271,6 +276,7 @@ public final class SettingsTextCopyTest {
         );
         assertEquals("Use example ranges", SettingsTextCopy.useExampleRangesLabel());
         assertEquals("Save retention", SettingsTextCopy.saveRetentionLabel());
+        assertEquals("95%", SettingsTextCopy.retentionPresetLabel(95));
         assertEquals("Write kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WRITE_KANJI));
         assertEquals("Similar kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SIMILAR_KANJI));
         assertEquals("Type the meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.TYPE_MEANING));

@@ -202,6 +202,18 @@ public final class SettingsTextCopy {
         return "Matching cards";
     }
 
+    public static String statusPillDescription(String label, String value) {
+        return label + ": " + value;
+    }
+
+    public static String categoryToggleDescription(boolean expanded, String title) {
+        return (expanded ? "Collapse " : "Expand ") + title;
+    }
+
+    public static String settingsCategoryPanelCount(int panels) {
+        return panels + (panels == 1 ? " card" : " cards");
+    }
+
     public static String importFiltersTitle() {
         return "Import filters";
     }
@@ -464,6 +476,10 @@ public final class SettingsTextCopy {
 
     public static String saveRetentionLabel() {
         return "Save retention";
+    }
+
+    public static String retentionPresetLabel(int value) {
+        return value + "%";
     }
 
     public static String dailyWorkloadTitle() {

@@ -331,7 +331,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         valueView.setMaxLines(2);
         valueView.setPadding(0, dp(3), 0, 0);
         pill.addView(valueView);
-        pill.setContentDescription(label + ": " + value);
+        pill.setContentDescription(SettingsTextCopy.statusPillDescription(label, value));
         return pill;
     }
 
@@ -377,7 +377,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         header.setBackground(panel(expanded ? Color.WHITE : Color.rgb(255, 246, 251), STUDY_BORDER, dp(26)));
         header.setClickable(true);
         header.setFocusable(true);
-        header.setContentDescription((expanded ? "Collapse " : "Expand ") + title);
+        header.setContentDescription(SettingsTextCopy.categoryToggleDescription(expanded, title));
         header.setOnClickListener(v -> toggle.run());
         header.setElevation(dp(3));
 
@@ -400,7 +400,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         copy.addView(detail);
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
 
-        TextView count = text(panels.length + (panels.length == 1 ? " card" : " cards"), 12, STUDY_PINK_DARK, true);
+        TextView count = text(SettingsTextCopy.settingsCategoryPanelCount(panels.length), 12, STUDY_PINK_DARK, true);
         count.setGravity(Gravity.CENTER);
         count.setIncludeFontPadding(false);
         count.setPadding(dp(9), dp(6), dp(9), dp(6));
@@ -1322,7 +1322,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         LinearLayout quick = new LinearLayout(this);
         quick.setOrientation(LinearLayout.HORIZONTAL);
         for (int value : new int[]{85, 90, 95}) {
-            Button preset = secondaryButton(value + "%");
+            Button preset = secondaryButton(SettingsTextCopy.retentionPresetLabel(value));
             preset.setOnClickListener(v -> {
                 selected[0] = value;
                 slider.setProgress(value - 80);
