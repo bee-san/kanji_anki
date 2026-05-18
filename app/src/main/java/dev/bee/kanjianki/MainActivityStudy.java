@@ -55,6 +55,7 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
+import dev.bee.kanjianki.core.StudySessionFocusPolicy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
@@ -202,7 +203,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     RecordsSchedulerModels.StudySession nextActiveSession(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> seeded, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
-        Set<String> focus = continueAllKanjiSession || plan.allKanjiMode ? null : new HashSet<>(plan.focusKanji);
+        Set<String> focus = StudySessionFocusPolicy.allowedKanji(plan, continueAllKanjiSession);
         return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus, settings(), studyLadderSettings());
     }
 
