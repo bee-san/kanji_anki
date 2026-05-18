@@ -6,16 +6,13 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.util.Log;
 
+import dev.bee.kanjianki.core.AutoSyncSchedulePolicy;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.time.AppClock;
-
-import java.util.Calendar;
 
 public final class AutoSyncScheduler {
     private static final String TAG = "AutoSyncScheduler";
     private static final int JOB_ID = 3801;
-    private static final long MIN_DELAY_MILLIS = 10_000L;
-    private static final long DEADLINE_WINDOW_MILLIS = 6L * 60L * 60L * 1000L;
 
     private AutoSyncScheduler() {
     }
@@ -59,8 +56,11 @@ public final class AutoSyncScheduler {
             recorder.markAutoSyncScheduled(0L);
             return;
         }
-        long triggerAt = nextTriggerMillis(settings, now, alreadySyncedToday);
-        scheduleAt(recorder, backend, triggerAt, now);
+        schedulePlan(
+                recorder,
+                backend,
+                AutoSyncSchedulePolicy.plan(settings.enabled, settings.hour, settings.minute, now, alreadySyncedToday)
+        );
     }
 
     public static void cancel(Context context) {
@@ -76,35 +76,25 @@ public final class AutoSyncScheduler {
     }
 
     static long nextTriggerMillis(LocalStore.AutoSyncSettings settings, long now, boolean alreadySyncedToday) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(now);
-        calendar.set(Calendar.HOUR_OF_DAY, settings.hour);
-        calendar.set(Calendar.MINUTE, settings.minute);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        long trigger = calendar.getTimeInMillis();
-        if (trigger <= now || alreadySyncedToday) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1);
-            trigger = calendar.getTimeInMillis();
-        }
-        return trigger;
+        return AutoSyncSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, now, alreadySyncedToday);
     }
 
     private static long localDayStart(long now) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(now);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        return AutoSyncSchedulePolicy.localDayStart(now);
     }
 
     static void scheduleAt(ScheduleRecorder recorder, SchedulerBackend backend, long triggerAt, long now) {
-        long delay = Math.max(MIN_DELAY_MILLIS, triggerAt - now);
+        schedulePlan(recorder, backend, AutoSyncSchedulePolicy.planAt(triggerAt, now));
+    }
+
+    private static void schedulePlan(
+            ScheduleRecorder recorder,
+            SchedulerBackend backend,
+            AutoSyncSchedulePolicy.SchedulePlan plan
+    ) {
         try {
-            boolean scheduled = backend.schedule(delay, delay + DEADLINE_WINDOW_MILLIS);
-            recorder.markAutoSyncScheduled(scheduled ? triggerAt : 0L);
+            boolean scheduled = backend.schedule(plan.minimumLatencyMillis(), plan.overrideDeadlineMillis());
+            recorder.markAutoSyncScheduled(scheduled ? plan.triggerAtMillis() : 0L);
         } catch (RuntimeException error) {
             warn("Failed to schedule automatic sync job.", error);
             recorder.markAutoSyncScheduled(0L);

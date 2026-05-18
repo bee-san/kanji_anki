@@ -4,10 +4,9 @@ import android.content.Context;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
+import dev.bee.kanjianki.core.AutoSyncSchedulePolicy;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.time.AppClock;
-
-import java.util.Calendar;
 
 public final class AutoSyncRunner {
     private final Context context;
@@ -39,7 +38,7 @@ public final class AutoSyncRunner {
         if (!settings.enabled) {
             return Result.skipped("Daily Anki sync is off.");
         }
-        if (store.hasSuccessfulSyncSince(localDayStart(now))) {
+        if (store.hasSuccessfulSyncSince(AutoSyncSchedulePolicy.localDayStart(now))) {
             return Result.skipped("AnkiDroid already synced today.");
         }
         if (gateway instanceof AnkiDroidGateway ankiDroidGateway) {
@@ -69,16 +68,6 @@ public final class AutoSyncRunner {
             return Result.skipped(sync.message);
         }
         return Result.failed(sync.message);
-    }
-
-    private static long localDayStart(long now) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(now);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
     }
 
     public static final class Result {
