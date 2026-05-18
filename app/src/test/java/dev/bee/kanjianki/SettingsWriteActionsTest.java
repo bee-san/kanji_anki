@@ -114,6 +114,22 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void studyLadderActionsWriteMovedRestoredAndProvidedSettings() {
+        RecordingStudyLadderWriter writer = new RecordingStudyLadderWriter();
+        RecordsBase.StudyLadderSettings current = RecordsBase.StudyLadderSettings.defaults();
+
+        SettingsWriteActions.moveStudyLadderRung(current, RecordsBase.LadderRung.WORD_READING, -6, writer);
+        assertEquals(current.moveRung(RecordsBase.LadderRung.WORD_READING, -6).orderText(), writer.settings.orderText());
+
+        SettingsWriteActions.restoreDefaultStudyLadder(writer);
+        assertEquals(RecordsBase.StudyLadderSettings.defaults().orderText(), writer.settings.orderText());
+
+        RecordsBase.StudyLadderSettings disabled = current.withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false);
+        SettingsWriteActions.saveStudyLadder(disabled, writer);
+        assertEquals(disabled.enabledText(), writer.settings.enabledText());
+    }
+
+    @Test
     public void applyImportPresetWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
         SettingsImportPreset preset = new SettingsImportPreset(
@@ -202,6 +218,15 @@ public final class SettingsWriteActionsTest {
 
         @Override
         public void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings) {
+            this.settings = settings;
+        }
+    }
+
+    private static final class RecordingStudyLadderWriter implements SettingsWriteActions.StudyLadderSettingsWriter {
+        RecordsBase.StudyLadderSettings settings;
+
+        @Override
+        public void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings) {
             this.settings = settings;
         }
     }

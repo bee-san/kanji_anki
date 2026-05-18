@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
+import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -45,6 +46,23 @@ final class SettingsWriteActions {
             return;
         }
         writer.saveLearningStepSettings(request.settings);
+    }
+
+    static void saveStudyLadder(RecordsBase.StudyLadderSettings settings, StudyLadderSettingsWriter writer) {
+        writer.saveStudyLadderSettings(settings);
+    }
+
+    static void moveStudyLadderRung(
+            RecordsBase.StudyLadderSettings current,
+            RecordsBase.LadderRung rung,
+            int delta,
+            StudyLadderSettingsWriter writer
+    ) {
+        saveStudyLadder(current.moveRung(rung, delta), writer);
+    }
+
+    static void restoreDefaultStudyLadder(StudyLadderSettingsWriter writer) {
+        saveStudyLadder(RecordsBase.StudyLadderSettings.defaults(), writer);
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
@@ -116,6 +134,10 @@ final class SettingsWriteActions {
 
     interface LearningStepSettingsWriter {
         void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings);
+    }
+
+    interface StudyLadderSettingsWriter {
+        void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings);
     }
 
     interface SettingWriter extends IntSettingWriter {
