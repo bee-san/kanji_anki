@@ -109,6 +109,99 @@ public final class SettingsTextCopy {
         return "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.";
     }
 
+    public static String updatePageTitle() {
+        return "GitHub updater";
+    }
+
+    public static String updatePageBody(String versionName) {
+        return "Current version " + String.valueOf(versionName)
+                + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.";
+    }
+
+    public static String automaticUpdatesTitle() {
+        return "Automatic updates";
+    }
+
+    public static String checkForUpdateLabel() {
+        return "Check for update";
+    }
+
+    public static String autoUpdatePanelStatus(boolean enabled) {
+        return enabled ? "On: checks about once a day" : "Off";
+    }
+
+    public static String autoUpdateLastCheckLine(String lastCheckText) {
+        return "Last check: " + String.valueOf(lastCheckText);
+    }
+
+    public static String autoUpdateLastResultLine(String lastResult) {
+        return "Last result: " + String.valueOf(lastResult);
+    }
+
+    public static String installPermissionLine(boolean canInstall) {
+        return "Install permission: " + (canInstall ? "Ready" : "Missing");
+    }
+
+    public static String verifiedApkReadyLine(String version) {
+        return "Verified APK ready: " + versionText(version);
+    }
+
+    public static String pendingUpdateFallback() {
+        return "Android needs confirmation before Kani can replace itself.";
+    }
+
+    public static String installVerifiedUpdateLabel() {
+        return "Install verified update";
+    }
+
+    public static String setupAppInstallsLabel() {
+        return "Set up app installs";
+    }
+
+    public static String automaticUpdatesToggleLabel(boolean enabled) {
+        return enabled ? "Turn off automatic updates" : "Turn on automatic updates";
+    }
+
+    public static String backToSettingsLabel() {
+        return "Back to settings";
+    }
+
+    public static String settingsCockpitLabel() {
+        return "Settings cockpit";
+    }
+
+    public static String settingsHeroBody() {
+        return "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.";
+    }
+
+    public static String noteTypeStatusLabel() {
+        return "Note type";
+    }
+
+    public static String importFiltersStatusLabel() {
+        return "Import filters";
+    }
+
+    public static String importRanksStatusLabel() {
+        return "Import ranks";
+    }
+
+    public static String reminderStatusLabel() {
+        return "Reminder";
+    }
+
+    public static String dailySyncStatusLabel() {
+        return "Daily sync";
+    }
+
+    public static String updatesStatusLabel() {
+        return "Updates";
+    }
+
+    public static String matchingCardsStatusLabel() {
+        return "Matching cards";
+    }
+
     public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
         if (!configured) {
             return "Starts after first successful sync";

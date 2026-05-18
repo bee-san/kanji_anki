@@ -60,6 +60,41 @@ public final class SettingsTextCopyTest {
                 "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.",
                 SettingsTextCopy.settingsReferenceDataBody()
         );
+        assertEquals("GitHub updater", SettingsTextCopy.updatePageTitle());
+        assertEquals(
+                "Current version 1.2.3. Checks GitHub Releases, verifies the APK, and asks Android to install it.",
+                SettingsTextCopy.updatePageBody("1.2.3")
+        );
+        assertEquals("Automatic updates", SettingsTextCopy.automaticUpdatesTitle());
+        assertEquals("Check for update", SettingsTextCopy.checkForUpdateLabel());
+        assertEquals("On: checks about once a day", SettingsTextCopy.autoUpdatePanelStatus(true));
+        assertEquals("Off", SettingsTextCopy.autoUpdatePanelStatus(false));
+        assertEquals("Last check: not yet", SettingsTextCopy.autoUpdateLastCheckLine("not yet"));
+        assertEquals("Last result: none", SettingsTextCopy.autoUpdateLastResultLine("none"));
+        assertEquals("Install permission: Ready", SettingsTextCopy.installPermissionLine(true));
+        assertEquals("Install permission: Missing", SettingsTextCopy.installPermissionLine(false));
+        assertEquals("Verified APK ready: 0.4.33", SettingsTextCopy.verifiedApkReadyLine("v0.4.33"));
+        assertEquals(
+                "Android needs confirmation before Kani can replace itself.",
+                SettingsTextCopy.pendingUpdateFallback()
+        );
+        assertEquals("Install verified update", SettingsTextCopy.installVerifiedUpdateLabel());
+        assertEquals("Set up app installs", SettingsTextCopy.setupAppInstallsLabel());
+        assertEquals("Turn off automatic updates", SettingsTextCopy.automaticUpdatesToggleLabel(true));
+        assertEquals("Turn on automatic updates", SettingsTextCopy.automaticUpdatesToggleLabel(false));
+        assertEquals("Back to settings", SettingsTextCopy.backToSettingsLabel());
+        assertEquals("Settings cockpit", SettingsTextCopy.settingsCockpitLabel());
+        assertEquals(
+                "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.",
+                SettingsTextCopy.settingsHeroBody()
+        );
+        assertEquals("Note type", SettingsTextCopy.noteTypeStatusLabel());
+        assertEquals("Import filters", SettingsTextCopy.importFiltersStatusLabel());
+        assertEquals("Import ranks", SettingsTextCopy.importRanksStatusLabel());
+        assertEquals("Reminder", SettingsTextCopy.reminderStatusLabel());
+        assertEquals("Daily sync", SettingsTextCopy.dailySyncStatusLabel());
+        assertEquals("Updates", SettingsTextCopy.updatesStatusLabel());
+        assertEquals("Matching cards", SettingsTextCopy.matchingCardsStatusLabel());
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(false, true, "07:30"));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(true, true, "07:30"));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(true, false, "07:30"));

@@ -109,11 +109,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
         content.addView(backToSettingsButton());
-        content.addView(text("GitHub updater", 34, INK, true));
-        content.addView(text("Current version " + BuildConfig.VERSION_NAME + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.", 16, MUTED, false));
-        content.addView(autoUpdatePanel("Automatic updates"));
+        content.addView(text(SettingsTextCopy.updatePageTitle(), 34, INK, true));
+        content.addView(text(SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME), 16, MUTED, false));
+        content.addView(autoUpdatePanel(SettingsTextCopy.automaticUpdatesTitle()));
 
-        Button button = primaryButton("Check for update", STUDY_PINK_DARK);
+        Button button = primaryButton(SettingsTextCopy.checkForUpdateLabel(), STUDY_PINK_DARK);
         button.setOnClickListener(v -> runUpdate(false));
         content.addView(button);
     }
@@ -123,29 +123,29 @@ abstract class MainActivitySettings extends MainActivityStudy {
         boolean canInstall = canInstallUpdates();
         LinearLayout box = settingsPanelBox();
         box.addView(text(title, 23, INK, true));
-        box.addView(text(status.enabled ? "On: checks about once a day" : "Off", 18, status.enabled ? TEAL : MUTED, true));
-        box.addView(text("Last check: " + autoUpdateLastCheckText(status), 15, MUTED, false));
-        box.addView(text("Last result: " + status.lastResult, 15, MUTED, false));
-        box.addView(text("Install permission: " + (canInstall ? "Ready" : "Missing"), 15, canInstall ? TEAL : CORAL, true));
+        box.addView(text(SettingsTextCopy.autoUpdatePanelStatus(status.enabled), 18, status.enabled ? TEAL : MUTED, true));
+        box.addView(text(SettingsTextCopy.autoUpdateLastCheckLine(autoUpdateLastCheckText(status)), 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.autoUpdateLastResultLine(status.lastResult), 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.installPermissionLine(canInstall), 15, canInstall ? TEAL : CORAL, true));
 
         if (status.hasPendingUpdate()) {
-            box.addView(text("Verified APK ready: " + versionText(status.lastVersion), 18, CORAL, true));
-            String pending = status.pendingMessage.isEmpty() ? "Android needs confirmation before Kani can replace itself." : status.pendingMessage;
+            box.addView(text(SettingsTextCopy.verifiedApkReadyLine(status.lastVersion), 18, CORAL, true));
+            String pending = status.pendingMessage.isEmpty() ? SettingsTextCopy.pendingUpdateFallback() : status.pendingMessage;
             box.addView(text(pending, 15, MUTED, false));
             if (canInstall) {
-                Button install = primaryButton("Install verified update", CORAL);
+                Button install = primaryButton(SettingsTextCopy.installVerifiedUpdateLabel(), CORAL);
                 install.setOnClickListener(v -> runUpdate(true));
                 box.addView(install);
             }
         }
 
         if (!canInstall) {
-            Button permission = secondaryButton("Set up app installs");
+            Button permission = secondaryButton(SettingsTextCopy.setupAppInstallsLabel());
             permission.setOnClickListener(v -> startActivity(GitHubUpdater.installPermissionIntent(this)));
             box.addView(permission);
         }
 
-        Button toggle = secondaryButton(status.enabled ? "Turn off automatic updates" : "Turn on automatic updates");
+        Button toggle = secondaryButton(SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled));
         toggle.setOnClickListener(v -> {
             AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
             store.saveAutoUpdateEnabled(result.enabled());
@@ -177,7 +177,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     Button backToSettingsButton() {
-        Button back = secondaryButton("Back to settings");
+        Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
         back.setOnClickListener(v -> renderSettings(false));
         return back;
     }
@@ -265,7 +265,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         hero.setBackground(panel(Color.rgb(255, 248, 252), STUDY_BORDER, dp(30)));
         hero.setElevation(dp(6));
 
-        TextView pill = text("Settings cockpit", 13, STUDY_PINK_DARK, true);
+        TextView pill = text(SettingsTextCopy.settingsCockpitLabel(), 13, STUDY_PINK_DARK, true);
         pill.setGravity(Gravity.CENTER);
         pill.setIncludeFontPadding(false);
         pill.setPadding(dp(12), dp(7), dp(12), dp(7));
@@ -275,24 +275,24 @@ abstract class MainActivitySettings extends MainActivityStudy {
         TextView title = text(NAV_SETTINGS, 34, STUDY_PLUM, true);
         title.setPadding(0, dp(12), 0, dp(4));
         hero.addView(title);
-        hero.addView(text("Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.", 16, STUDY_MUTED, false));
+        hero.addView(text(SettingsTextCopy.settingsHeroBody(), 16, STUDY_MUTED, false));
 
         LinearLayout topRow = settingsStatusRow(
-                settingsStatusPill("Note type", current.modelName, STUDY_PLUM),
-                settingsStatusPill("Import filters", settingsImportSummary(current), TEAL)
+                settingsStatusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, STUDY_PLUM),
+                settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), settingsImportSummary(current), TEAL)
         );
         LinearLayout bottomRow = settingsStatusRow(
-                settingsStatusPill("Import ranks", current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL),
-                settingsStatusPill("Reminder", settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED)
+                settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL),
+                settingsStatusPill(SettingsTextCopy.reminderStatusLabel(), settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED)
         );
         LinearLayout automationRow = settingsStatusRow(
-                settingsStatusPill("Daily sync", settingsAutoSyncSummary(autoSync), autoSync.enabled ? TEAL : MUTED),
-                settingsStatusPill("Updates", settingsUpdateSummary(autoUpdate), autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK)
+                settingsStatusPill(SettingsTextCopy.dailySyncStatusLabel(), settingsAutoSyncSummary(autoSync), autoSync.enabled ? TEAL : MUTED),
+                settingsStatusPill(SettingsTextCopy.updatesStatusLabel(), settingsUpdateSummary(autoUpdate), autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK)
         );
         hero.addView(topRow);
         hero.addView(bottomRow);
         hero.addView(automationRow);
-        hero.addView(settingsStatusPill("Matching cards", matchingCardsSummary(current), STUDY_PLUM));
+        hero.addView(settingsStatusPill(SettingsTextCopy.matchingCardsStatusLabel(), matchingCardsSummary(current), STUDY_PLUM));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(8), 0, dp(10));
