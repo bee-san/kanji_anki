@@ -16,7 +16,10 @@ public interface FsrsEngine {
 
     double retrievability(FsrsMemoryState state, int elapsedDays);
 
-    double nextDifficulty(double currentDifficulty, FsrsRating rating);
+    default double nextDifficulty(double currentDifficulty, FsrsRating rating) {
+        Fsrs.requireNonNull(rating, "rating");
+        return nextState(new FsrsMemoryState(1.0, currentDifficulty), rating, 0).difficulty();
+    }
 
     FsrsMemoryState nextState(FsrsMemoryState previousState, FsrsRating rating, int elapsedDays);
 

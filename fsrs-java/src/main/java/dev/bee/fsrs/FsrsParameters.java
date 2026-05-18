@@ -8,13 +8,22 @@ import java.util.Arrays;
 public final class FsrsParameters {
     public static final int PARAMETER_COUNT = 21;
 
-    private static final double[] LATEST_DEFAULT_VALUES = {
+    private static final double[] LATEST_DEFAULT_TEMPLATE = {
             0.212, 1.2931, 2.3065, 8.2956, 6.4133,
             0.8334, 3.0194, 0.001, 1.8722, 0.1666,
             0.796, 1.4835, 0.0614, 0.2629, 1.6483,
             0.6014, 1.8729, 0.5425, 0.0912, 0.0658,
             0.1542
     };
+
+    /**
+     * Legacy public defaults array retained for source and binary compatibility.
+     *
+     * @deprecated Use {@link #latestDefaultValues()} for a defensive copy, or
+     * {@link #latestDefault()} for an immutable parameter object.
+     */
+    @Deprecated
+    public static final double[] LATEST_DEFAULT_VALUES = LATEST_DEFAULT_TEMPLATE.clone();
 
     private final double[] values;
 
@@ -23,11 +32,11 @@ public final class FsrsParameters {
     }
 
     public static FsrsParameters latestDefault() {
-        return of(LATEST_DEFAULT_VALUES);
+        return of(LATEST_DEFAULT_TEMPLATE);
     }
 
     public static double[] latestDefaultValues() {
-        return LATEST_DEFAULT_VALUES.clone();
+        return LATEST_DEFAULT_TEMPLATE.clone();
     }
 
     public static FsrsParameters of(double[] values) {

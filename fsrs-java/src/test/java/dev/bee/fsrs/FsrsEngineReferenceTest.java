@@ -41,11 +41,12 @@ public final class FsrsEngineReferenceTest {
     }
 
     @Test
-    public void parametersValidateAndDefensivelyCopyValues() {
+    public void parametersValidateAndDefensivelyCopyValues() throws ReflectiveOperationException {
         FsrsParameters defaults = FsrsParameters.latestDefault();
         double[] values = defaults.toArray();
 
         assertEquals(21, FsrsParameters.PARAMETER_COUNT);
+        assertArrayEquals(legacyDefaultValuesField(), values, 0.0);
         assertArrayEquals(FsrsParameters.latestDefaultValues(), values, 0.0);
         assertEquals(0.212, defaults.get(0), 0.0);
         assertEquals(0.1542, defaults.decayMagnitude(), 0.0);
@@ -175,9 +176,50 @@ public final class FsrsEngineReferenceTest {
         expectIllegalArgument(() -> engine.review(null));
     }
 
+    @Test
+    public void engineInterfaceKeepsDefaultNextDifficultyForExistingImplementations() {
+        FsrsEngine engine = new FsrsEngine() {
+            @Override
+            public FsrsMemoryState initialState(FsrsRating firstRating) {
+                return new FsrsMemoryState(1.0, 5.0);
+            }
+
+            @Override
+            public double retrievability(FsrsMemoryState state, int elapsedDays) {
+                return 0.9;
+            }
+
+            @Override
+            public FsrsMemoryState nextState(FsrsMemoryState previousState, FsrsRating rating, int elapsedDays) {
+                return new FsrsMemoryState(previousState.stability(), 4.0);
+            }
+
+            @Override
+            public double shortTermStability(double stability, FsrsRating rating) {
+                return stability;
+            }
+
+            @Override
+            public int nextIntervalDays(double stability, double desiredRetention, int maximumInterval) {
+                return 1;
+            }
+
+            @Override
+            public FsrsReviewOutput review(FsrsReviewInput input) {
+                return new FsrsReviewOutput(input.previousState(), 0.9, 1);
+            }
+        };
+
+        assertEquals(4.0, engine.nextDifficulty(6.0, FsrsRating.GOOD), 0.0);
+    }
+
     private static void assertState(FsrsMemoryState state, double stability, double difficulty) {
         assertEquals(stability, state.stability(), TOLERANCE);
         assertEquals(difficulty, state.difficulty(), TOLERANCE);
+    }
+
+    private static double[] legacyDefaultValuesField() throws ReflectiveOperationException {
+        return (double[]) FsrsParameters.class.getField("LATEST_DEFAULT_VALUES").get(null);
     }
 
     private static void expectIllegalArgument(ThrowingRunnable runnable) {
