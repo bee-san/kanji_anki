@@ -18,6 +18,7 @@ import androidx.annotation.RequiresApi;
 import dev.bee.kanjianki.core.SyncValidator;
 import dev.bee.kanjianki.syncdomain.ProviderArchiveCleanupPolicy;
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy;
+import dev.bee.kanjianki.syncdomain.SyncMirrorPolicy;
 import dev.bee.kanjianki.sync.SyncProgress;
 
 import java.util.ArrayList;
@@ -203,25 +204,25 @@ public final class AnkiDroidGateway implements CollectionGateway {
         return new RemovalSummary(cleanup.sourceCards(), 0, tagged, message);
     }
 
-    private Set<Long> selectedSuspendedCardIds(List<RecordsImportModels.SuspendedImport> imports) {
-        if (imports == null) {
-            return null;
-        }
-        List<ProviderArchiveCleanupPolicy.SelectedSource> sources = new ArrayList<>();
-        for (RecordsImportModels.SuspendedImport imported : imports) {
-            for (RecordsImportModels.SuspendedSource source : imported.sources) {
-                sources.add(new ProviderArchiveCleanupPolicy.SelectedSource(source.cardId, source.suspended));
-            }
-        }
-        return ProviderArchiveCleanupPolicy.selectedSuspendedCardIds(sources);
-    }
-
     private List<ProviderArchiveCleanupPolicy.Card> archiveCleanupCards(List<RecordsSyncModels.Card> cards) {
         List<ProviderArchiveCleanupPolicy.Card> cleanupCards = new ArrayList<>();
         for (RecordsSyncModels.Card card : cards) {
             cleanupCards.add(new ProviderArchiveCleanupPolicy.Card(card.cardId, card.noteId, card.suspended));
         }
         return cleanupCards;
+    }
+
+    private Set<Long> selectedSuspendedCardIds(List<RecordsImportModels.SuspendedImport> imports) {
+        if (imports == null) {
+            return null;
+        }
+        List<SyncMirrorPolicy.SelectedSource> sources = new ArrayList<>();
+        for (RecordsImportModels.SuspendedImport imported : imports) {
+            for (RecordsImportModels.SuspendedSource source : imported.sources) {
+                sources.add(new SyncMirrorPolicy.SelectedSource(source.cardId, source.suspended));
+            }
+        }
+        return SyncMirrorPolicy.selectedSuspendedCardIds(sources);
     }
 
     private boolean tagNoteArchived(ProviderTarget target, long noteId) {

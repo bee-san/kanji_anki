@@ -20,6 +20,7 @@ import dev.bee.kanjianki.core.SimilarKanjiRepairPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiStorageKeys;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimelineCopy;
+import dev.bee.kanjianki.syncdomain.SyncMirrorPolicy;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1375,29 +1376,22 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     Set<Long> selectedSuspendedCardIds(List<RecordsImportModels.SuspendedImport> imports) {
-        Set<Long> ids = new HashSet<>();
+        List<SyncMirrorPolicy.SelectedSource> sources = new ArrayList<>();
         for (RecordsImportModels.SuspendedImport imported : imports) {
             for (RecordsImportModels.SuspendedSource source : imported.sources) {
-                if (source.suspended) {
-                    ids.add(source.cardId);
-                }
+                sources.add(new SyncMirrorPolicy.SelectedSource(source.cardId, source.suspended));
             }
         }
-        return ids;
+        return SyncMirrorPolicy.selectedSuspendedCardIds(sources);
     }
 
     ActiveCardIndex activeCardIndex(List<RecordsSyncModels.Card> cards) {
-        Set<Long> noteIds = new HashSet<>();
-        Set<Long> cardIds = new HashSet<>();
-        int activeCardCount = 0;
+        List<SyncMirrorPolicy.Card> policyCards = new ArrayList<>();
         for (RecordsSyncModels.Card card : cards) {
-            if (!card.suspended) {
-                activeCardCount++;
-                noteIds.add(card.noteId);
-                cardIds.add(card.cardId);
-            }
+            policyCards.add(new SyncMirrorPolicy.Card(card.cardId, card.noteId, card.suspended));
         }
-        return new ActiveCardIndex(noteIds, cardIds, activeCardCount);
+        SyncMirrorPolicy.ActiveCardIndex index = SyncMirrorPolicy.activeCardIndex(policyCards);
+        return new ActiveCardIndex(index.noteIds(), index.cardIds(), index.activeCardCount());
     }
 
     int countDeletedExisting(SQLiteDatabase db, String table, String idColumn, Set<Long> currentIds) {
