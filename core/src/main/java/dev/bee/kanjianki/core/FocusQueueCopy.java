@@ -5,7 +5,32 @@ import java.util.List;
 import java.util.Locale;
 
 public final class FocusQueueCopy {
+    private static final String SOURCE_ACTIVE = "active";
+    private static final String SOURCE_SUSPENDED = "suspended";
+
     private FocusQueueCopy() {
+    }
+
+    public static String sourceEvidenceText(RecordsImportModels.DashboardRow row) {
+        String active = "";
+        String suspended = "";
+        for (RecordsImportModels.Example example : row.examples) {
+            if (active.isEmpty() && SOURCE_ACTIVE.equals(example.sourceType)) {
+                active = example.expression;
+            } else if (suspended.isEmpty() && SOURCE_SUSPENDED.equals(example.sourceType)) {
+                suspended = example.expression;
+            }
+        }
+        if (!active.isEmpty() && !suspended.isEmpty()) {
+            return "From " + active + " · missed " + suspended;
+        }
+        if (!active.isEmpty()) {
+            return "From " + active;
+        }
+        if (!suspended.isEmpty()) {
+            return "Missed " + suspended;
+        }
+        return "From your AnkiDroid sync";
     }
 
     public static String queueCardBody(RecordsImportModels.DashboardRow row) {

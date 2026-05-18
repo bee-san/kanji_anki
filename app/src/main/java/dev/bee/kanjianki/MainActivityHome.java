@@ -709,25 +709,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String sourceEvidenceText(RecordsImportModels.DashboardRow row) {
-        String active = "";
-        String suspended = "";
-        for (RecordsImportModels.Example example : row.examples) {
-            if (active.isEmpty() && SOURCE_ACTIVE.equals(example.sourceType)) {
-                active = example.expression;
-            } else if (suspended.isEmpty() && SOURCE_SUSPENDED.equals(example.sourceType)) {
-                suspended = example.expression;
-            }
-        }
-        if (!active.isEmpty() && !suspended.isEmpty()) {
-            return "From " + active + " · missed " + suspended;
-        }
-        if (!active.isEmpty()) {
-            return "From " + active;
-        }
-        if (!suspended.isEmpty()) {
-            return "Missed " + suspended;
-        }
-        return "From your AnkiDroid sync";
+        return FocusQueueCopy.sourceEvidenceText(row);
     }
 
     void renderDetail(String kanji) {

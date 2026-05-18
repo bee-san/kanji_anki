@@ -2,19 +2,36 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
 public final class FocusQueueCopyTest {
     @Test
+    public void sourceEvidenceTextPrefersFirstActiveAndSuspendedExamples() {
+        RecordsImportModels.Example active = example("active", "active-one");
+        RecordsImportModels.Example laterActive = example("active", "active-two");
+        RecordsImportModels.Example suspended = example("suspended", "suspended-one");
+        RecordsImportModels.Example laterSuspended = example("suspended", "suspended-two");
+
+        assertEquals(
+                "From active-one · missed suspended-one",
+                FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", Arrays.asList(active, laterActive, suspended, laterSuspended)))
+        );
+        assertEquals("From active-one", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", Collections.singletonList(active))));
+        assertEquals("Missed suspended-one", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", Collections.singletonList(suspended))));
+        assertEquals("From your AnkiDroid sync", FocusQueueCopy.sourceEvidenceText(row("x", 0, 0, "reason", Collections.emptyList())));
+    }
+
+    @Test
     public void queueCardBodyPreservesFallbackSimilarAndRawReasonText() {
-        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(row("字", 0, 0, "")));
+        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(row("x", 0, 0, "")));
         assertEquals(
                 "Shape mix-up made this a writing-practice target.",
-                FocusQueueCopy.queueCardBody(row("似", 0, 0, "Similar-kanji choice missed"))
+                FocusQueueCopy.queueCardBody(row("similar", 0, 0, "Similar-kanji choice missed"))
         );
-        assertEquals("Specific reason", FocusQueueCopy.queueCardBody(row("理", 0, 0, "Specific reason")));
+        assertEquals("Specific reason", FocusQueueCopy.queueCardBody(row("reason", 0, 0, "Specific reason")));
     }
 
     @Test
@@ -51,6 +68,16 @@ public final class FocusQueueCopyTest {
     }
 
     private static RecordsImportModels.DashboardRow row(String kanji, int weaknessScore, int matureSupportCount, String reasonText) {
+        return row(kanji, weaknessScore, matureSupportCount, reasonText, Collections.emptyList());
+    }
+
+    private static RecordsImportModels.DashboardRow row(
+            String kanji,
+            int weaknessScore,
+            int matureSupportCount,
+            String reasonText,
+            java.util.List<RecordsImportModels.Example> examples
+    ) {
         return new RecordsImportModels.DashboardRow(
                 kanji,
                 900,
@@ -63,7 +90,26 @@ public final class FocusQueueCopyTest {
                 1,
                 0,
                 matureSupportCount,
-                Collections.emptyList()
+                examples
+        );
+    }
+
+    private static RecordsImportModels.Example example(String sourceType, String expression) {
+        return new RecordsImportModels.Example(
+                sourceType,
+                1L,
+                2L,
+                expression,
+                "reading",
+                "meaning",
+                "sentence",
+                false,
+                0,
+                0,
+                0,
+                null,
+                null,
+                null
         );
     }
 
