@@ -76,6 +76,20 @@ public final class HomeTextCopyTest {
     }
 
     @Test
+    public void browseStaticCopyAndFallbackMeaningStayCentralized() {
+        assertEquals("Browse Kanji", HomeTextCopy.browseTitle());
+        assertEquals("Local kanji from synced Kani data and study history.", HomeTextCopy.browseBody());
+        assertEquals("Search kanji, meaning, reading, or examples", HomeTextCopy.browseSearchHint());
+        assertEquals("No local kanji found", HomeTextCopy.browseEmptyTitle());
+        assertEquals("Sync AnkiDroid first, or try a different search.", HomeTextCopy.browseEmptyBody());
+        assertEquals("Kanji not found", HomeTextCopy.kanjiNotFoundTitle());
+        assertEquals("This row may have disappeared after a sync.", HomeTextCopy.kanjiNotFoundBody());
+        assertEquals("Meaning not stored yet", HomeTextCopy.browseItemMeaning(inventory("語", "", "")));
+        assertEquals("language", HomeTextCopy.browseItemMeaning(inventory("語", "language", "")));
+        assertThrows(NullPointerException.class, () -> HomeTextCopy.browseItemMeaning(null));
+    }
+
+    @Test
     public void detailIdentityHelpersPreserveFallbackPriority() {
         RecordsImportModels.KanjiInventoryItem inventory = inventory("語", "language", "inventory:語");
         RecordsImportModels.DashboardRow row = row("裂", "row:裂");

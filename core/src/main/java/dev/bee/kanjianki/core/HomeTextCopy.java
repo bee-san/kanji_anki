@@ -83,6 +83,39 @@ public final class HomeTextCopy {
         return StudyTextCopy.countText(size, "kanji", "kanji");
     }
 
+    public static String browseTitle() {
+        return "Browse Kanji";
+    }
+
+    public static String browseBody() {
+        return "Local kanji from synced Kani data and study history.";
+    }
+
+    public static String browseSearchHint() {
+        return "Search kanji, meaning, reading, or examples";
+    }
+
+    public static String browseEmptyTitle() {
+        return "No local kanji found";
+    }
+
+    public static String browseEmptyBody() {
+        return "Sync AnkiDroid first, or try a different search.";
+    }
+
+    public static String kanjiNotFoundTitle() {
+        return "Kanji not found";
+    }
+
+    public static String kanjiNotFoundBody() {
+        return "This row may have disappeared after a sync.";
+    }
+
+    public static String browseItemMeaning(RecordsImportModels.KanjiInventoryItem item) {
+        RecordsImportModels.KanjiInventoryItem safeItem = Objects.requireNonNull(item, "item");
+        return safeItem.primaryMeaning.isEmpty() ? "Meaning not stored yet" : safeItem.primaryMeaning;
+    }
+
     public static String detailDisplayKanji(
             String fallback,
             RecordsImportModels.DashboardRow row,

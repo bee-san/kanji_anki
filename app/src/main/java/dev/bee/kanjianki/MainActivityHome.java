@@ -705,14 +705,14 @@ abstract class MainActivityHome extends MainActivityBase {
         activeBrowseQuery = query == null ? "" : query;
         base("home");
         content.addView(fullWidthHomeButton());
-        content.addView(text("Browse Kanji", 34, INK, true));
-        content.addView(text("Local kanji from synced Kani data and study history.", 16, MUTED, false));
+        content.addView(text(HomeTextCopy.browseTitle(), 34, INK, true));
+        content.addView(text(HomeTextCopy.browseBody(), 16, MUTED, false));
         addSpace(10);
 
         EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setText(query == null ? "" : query);
-        search.setHint("Search kanji, meaning, reading, or examples");
+        search.setHint(HomeTextCopy.browseSearchHint());
         search.setTextSize(18);
         content.addView(search, new LinearLayout.LayoutParams(-1, dp(58)));
 
@@ -723,7 +723,7 @@ abstract class MainActivityHome extends MainActivityBase {
         List<RecordsImportModels.KanjiInventoryItem> items = store.searchKanjiInventory(query);
         content.addView(sectionTitle(browseResultHeading(items.size())));
         if (items.isEmpty()) {
-            emptyState("No local kanji found", "Sync AnkiDroid first, or try a different search.");
+            emptyState(HomeTextCopy.browseEmptyTitle(), HomeTextCopy.browseEmptyBody());
             return;
         }
         for (RecordsImportModels.KanjiInventoryItem item : items) {
@@ -741,7 +741,7 @@ abstract class MainActivityHome extends MainActivityBase {
         top.addView(glyph, new LinearLayout.LayoutParams(dp(74), dp(74)));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(item.primaryMeaning.isEmpty() ? "Meaning not stored yet" : item.primaryMeaning, 19, INK, true));
+        copy.addView(text(HomeTextCopy.browseItemMeaning(item), 19, INK, true));
         if (!item.readings.isEmpty()) {
             copy.addView(text(item.readings, 14, TEAL, true));
         }
@@ -772,7 +772,7 @@ abstract class MainActivityHome extends MainActivityBase {
         RecordsImportModels.KanjiInventoryItem inventory = timeline.inventoryItem;
         if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
             content.addView(fullWidthHomeButton());
-            emptyState("Kanji not found", "This row may have disappeared after a sync.");
+            emptyState(HomeTextCopy.kanjiNotFoundTitle(), HomeTextCopy.kanjiNotFoundBody());
             return;
         }
         String displayKanji = detailDisplayKanji(kanji, row, inventory);
