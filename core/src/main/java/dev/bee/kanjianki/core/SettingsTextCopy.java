@@ -570,6 +570,26 @@ public final class SettingsTextCopy {
         return "Ladder thresholds saved.";
     }
 
+    public static String dailyAnkiSyncTitle() {
+        return "Daily Anki sync";
+    }
+
+    public static String turnOffDailySyncLabel() {
+        return "Turn off daily sync";
+    }
+
+    public static String turnOnDailySyncLabel() {
+        return "Turn on daily sync";
+    }
+
+    public static String appUpdatesTitle() {
+        return "App updates";
+    }
+
+    public static String openUpdaterLabel() {
+        return "Open updater";
+    }
+
     public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
         if (!configured) {
             return "Starts after first successful sync";
@@ -710,12 +730,64 @@ public final class SettingsTextCopy {
         return "Off";
     }
 
+    public static String dailyReminderTitle() {
+        return "Daily reminder";
+    }
+
+    public static String dailyReminderBody() {
+        return "Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work.";
+    }
+
+    public static String morningReminderPresetLabel() {
+        return "Morning";
+    }
+
+    public static String lunchReminderPresetLabel() {
+        return "Lunch";
+    }
+
+    public static String eveningReminderPresetLabel() {
+        return "Evening";
+    }
+
+    public static String nightReminderPresetLabel() {
+        return "Night";
+    }
+
+    public static String saveReminderLabel() {
+        return "Save reminder";
+    }
+
+    public static String enableReminderLabel() {
+        return "Enable reminder";
+    }
+
+    public static String turnOffReminderLabel() {
+        return "Turn off reminder";
+    }
+
+    public static String notificationsBlockedBody() {
+        return "Android notifications are off for Kani, so this reminder cannot appear yet.";
+    }
+
+    public static String openNotificationSettingsLabel() {
+        return "Open notification settings";
+    }
+
+    public static String notificationPermissionBody() {
+        return "Android will ask for notification permission before turning this on.";
+    }
+
     public static String reminderTime(int hour, int minute) {
         return TimeOfDaySettingsPolicy.displayTime(hour, minute);
     }
 
     public static String reminderTimeButtonLabel(int hour, int minute) {
         return "Reminder time: " + TimeOfDaySettingsPolicy.displayTime(hour, minute);
+    }
+
+    public static String reminderPresetButtonLabel(String label, int hour, int minute) {
+        return label + " " + reminderTime(hour, minute);
     }
 
     public static String studyAheadMinutesLabel() {

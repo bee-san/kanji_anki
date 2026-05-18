@@ -309,11 +309,38 @@ public final class SettingsTextCopyTest {
 
     @Test
     public void reminderCopyPreservesPanelStatusAndTimeFormatting() {
+        assertEquals("Daily reminder", SettingsTextCopy.dailyReminderTitle());
+        assertEquals(
+                "Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work.",
+                SettingsTextCopy.dailyReminderBody()
+        );
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
         assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
         assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"));
+        assertEquals("Morning", SettingsTextCopy.morningReminderPresetLabel());
+        assertEquals("Lunch", SettingsTextCopy.lunchReminderPresetLabel());
+        assertEquals("Evening", SettingsTextCopy.eveningReminderPresetLabel());
+        assertEquals("Night", SettingsTextCopy.nightReminderPresetLabel());
+        assertEquals("Save reminder", SettingsTextCopy.saveReminderLabel());
+        assertEquals("Enable reminder", SettingsTextCopy.enableReminderLabel());
+        assertEquals("Turn off reminder", SettingsTextCopy.turnOffReminderLabel());
+        assertEquals(
+                "Android notifications are off for Kani, so this reminder cannot appear yet.",
+                SettingsTextCopy.notificationsBlockedBody()
+        );
+        assertEquals("Open notification settings", SettingsTextCopy.openNotificationSettingsLabel());
+        assertEquals(
+                "Android will ask for notification permission before turning this on.",
+                SettingsTextCopy.notificationPermissionBody()
+        );
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
+        assertEquals("Night 21:05", SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 5));
+        assertEquals("Daily Anki sync", SettingsTextCopy.dailyAnkiSyncTitle());
+        assertEquals("Turn off daily sync", SettingsTextCopy.turnOffDailySyncLabel());
+        assertEquals("Turn on daily sync", SettingsTextCopy.turnOnDailySyncLabel());
+        assertEquals("App updates", SettingsTextCopy.appUpdatesTitle());
+        assertEquals("Open updater", SettingsTextCopy.openUpdaterLabel());
     }
 
     @Test

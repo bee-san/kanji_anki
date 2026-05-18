@@ -1390,9 +1390,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
         int[] selectedMinute = new int[]{reminder.minute};
 
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Daily reminder", 23, INK, true));
+        box.addView(text(SettingsTextCopy.dailyReminderTitle(), 23, INK, true));
         box.addView(text(reminderStatus(reminder, blocked), 17, reminderStatusColor(reminder, blocked), true));
-        box.addView(text("Kani can nudge you once a day to study active problem kanji. Reminder timing is approximate because Android may batch background work.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.dailyReminderBody(), 15, MUTED, false));
 
         Button time = secondaryButton(reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
         time.setOnClickListener(v -> new TimePickerDialog(
@@ -1405,17 +1405,17 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(time);
 
         List<View> presets = new ArrayList<>();
-        presets.add(reminderPresetButton("Morning", 8, 0, selectedHour, selectedMinute, time));
-        presets.add(reminderPresetButton("Lunch", 12, 30, selectedHour, selectedMinute, time));
-        presets.add(reminderPresetButton("Evening", 19, 0, selectedHour, selectedMinute, time));
-        presets.add(reminderPresetButton("Night", 21, 0, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton(SettingsTextCopy.morningReminderPresetLabel(), 8, 0, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton(SettingsTextCopy.lunchReminderPresetLabel(), 12, 30, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton(SettingsTextCopy.eveningReminderPresetLabel(), 19, 0, selectedHour, selectedMinute, time));
+        presets.add(reminderPresetButton(SettingsTextCopy.nightReminderPresetLabel(), 21, 0, selectedHour, selectedMinute, time));
         box.addView(twoColumnGrid(presets));
 
-        Button save = primaryButton(reminder.enabled ? "Save reminder" : "Enable reminder", STUDY_PINK_DARK);
+        Button save = primaryButton(reminder.enabled ? SettingsTextCopy.saveReminderLabel() : SettingsTextCopy.enableReminderLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true));
         box.addView(save);
         if (reminder.enabled) {
-            Button off = secondaryButton("Turn off reminder");
+            Button off = secondaryButton(SettingsTextCopy.turnOffReminderLabel());
             off.setOnClickListener(v -> {
                 ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute);
                 store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
@@ -1426,12 +1426,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
             box.addView(off);
         }
         if (blocked) {
-            box.addView(text("Android notifications are off for Kani, so this reminder cannot appear yet.", 14, CORAL, false));
-            Button notificationSettings = secondaryButton("Open notification settings");
+            box.addView(text(SettingsTextCopy.notificationsBlockedBody(), 14, CORAL, false));
+            Button notificationSettings = secondaryButton(SettingsTextCopy.openNotificationSettingsLabel());
             notificationSettings.setOnClickListener(v -> openNotificationSettings());
             box.addView(notificationSettings);
         } else if (!hasRuntimeNotificationPermissionForReminder()) {
-            box.addView(text("Android will ask for notification permission before turning this on.", 14, CORAL, false));
+            box.addView(text(SettingsTextCopy.notificationPermissionBody(), 14, CORAL, false));
         }
         return box;
     }
@@ -1446,12 +1446,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout autoSyncSettingsPanel() {
         LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Daily Anki sync", 23, INK, true));
+        box.addView(text(SettingsTextCopy.dailyAnkiSyncTitle(), 23, INK, true));
         box.addView(text(autoSyncStatus(auto), 17, auto.enabled ? TEAL : MUTED, true));
         box.addView(text(autoSyncDetail(auto), 15, MUTED, false));
         if (auto.configured) {
             if (auto.enabled) {
-                Button off = secondaryButton("Turn off daily sync");
+                Button off = secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
                 off.setOnClickListener(v -> {
                     AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
                     store.setAutoSyncEnabled(result.enabled());
@@ -1461,7 +1461,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 });
                 box.addView(off);
             } else {
-                Button on = primaryButton("Turn on daily sync", STUDY_PINK_DARK);
+                Button on = primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), STUDY_PINK_DARK);
                 on.setOnClickListener(v -> {
                     AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
                     store.setAutoSyncEnabled(result.enabled());
@@ -1503,8 +1503,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout updateSettingsPanel() {
-        LinearLayout box = autoUpdatePanel("App updates");
-        Button update = primaryButton("Open updater", STUDY_PINK_DARK);
+        LinearLayout box = autoUpdatePanel(SettingsTextCopy.appUpdatesTitle());
+        Button update = primaryButton(SettingsTextCopy.openUpdaterLabel(), STUDY_PINK_DARK);
         update.setOnClickListener(v -> renderUpdate());
         box.addView(update);
         return box;
@@ -1523,7 +1523,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
-        Button preset = secondaryButton(label + " " + reminderTime(hour, minute));
+        Button preset = secondaryButton(SettingsTextCopy.reminderPresetButtonLabel(label, hour, minute));
         preset.setTextSize(13);
         preset.setMinHeight(dp(54));
         preset.setOnClickListener(v -> {
