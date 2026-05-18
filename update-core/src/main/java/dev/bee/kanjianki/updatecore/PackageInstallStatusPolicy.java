@@ -3,6 +3,9 @@ package dev.bee.kanjianki.updatecore;
 public final class PackageInstallStatusPolicy {
     public static final int STATUS_SUCCESS = 0;
     public static final int STATUS_PENDING_USER_ACTION = -1;
+    public static final String SOURCE_MANUAL = "MANUAL";
+    public static final String SOURCE_AUTOMATIC = "AUTOMATIC";
+    public static final String SOURCE_CACHED = "CACHED";
 
     private PackageInstallStatusPolicy() {
     }
@@ -16,6 +19,18 @@ public final class PackageInstallStatusPolicy {
         }
         String suffix = message == null || message.trim().isEmpty() ? "" : ": " + message.trim();
         return new InstallCallback(false, false, "Install failed" + suffix + ".");
+    }
+
+    public static String sourceNameOrDefault(String raw) {
+        if (SOURCE_MANUAL.equals(raw) || SOURCE_AUTOMATIC.equals(raw) || SOURCE_CACHED.equals(raw)) {
+            return raw;
+        }
+        return SOURCE_AUTOMATIC;
+    }
+
+    public static boolean shouldLaunchInstallConfirmation(String sourceName) {
+        String normalized = sourceNameOrDefault(sourceName);
+        return SOURCE_MANUAL.equals(normalized) || SOURCE_CACHED.equals(normalized);
     }
 
     public static final class InstallCallback {

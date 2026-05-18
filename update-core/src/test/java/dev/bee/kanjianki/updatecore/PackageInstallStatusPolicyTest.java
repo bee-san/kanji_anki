@@ -54,4 +54,20 @@ public class PackageInstallStatusPolicyTest {
         assertEquals("Install failed.", nullMessage.message());
         assertEquals("Install failed.", blankMessage.message());
     }
+
+    @Test
+    public void sourceNameDefaultsMissingOrUnknownSourceToAutomatic() {
+        assertEquals(PackageInstallStatusPolicy.SOURCE_AUTOMATIC, PackageInstallStatusPolicy.sourceNameOrDefault(null));
+        assertEquals(PackageInstallStatusPolicy.SOURCE_AUTOMATIC, PackageInstallStatusPolicy.sourceNameOrDefault("not-real"));
+        assertEquals(PackageInstallStatusPolicy.SOURCE_CACHED, PackageInstallStatusPolicy.sourceNameOrDefault("CACHED"));
+    }
+
+    @Test
+    public void installConfirmationLaunchesForManualAndCachedSourcesOnly() {
+        assertTrue(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation("MANUAL"));
+        assertTrue(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation("CACHED"));
+        assertFalse(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation("AUTOMATIC"));
+        assertFalse(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(null));
+        assertFalse(PackageInstallStatusPolicy.shouldLaunchInstallConfirmation("not-real"));
+    }
 }

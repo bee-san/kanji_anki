@@ -49,11 +49,15 @@ final class UpdatePolicy {
     }
 
     static boolean shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource source) {
-        return source == GitHubUpdater.UpdateSource.MANUAL || source == GitHubUpdater.UpdateSource.CACHED;
+        return PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(sourceName(source));
     }
 
     private static ValidationResult validationResult(UpdateArtifactValidator.ValidationResult result) {
         return result.ok() ? ValidationResult.success(result.message()) : ValidationResult.failure(result.message());
+    }
+
+    private static String sourceName(GitHubUpdater.UpdateSource source) {
+        return source == null ? null : source.name();
     }
 
     static final class AssetSelection {

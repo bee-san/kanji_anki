@@ -9,6 +9,7 @@ import android.util.Log;
 import androidx.core.content.IntentCompat;
 
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy;
 
 import java.io.File;
 
@@ -98,14 +99,7 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
     }
 
     static GitHubUpdater.UpdateSource sourceFrom(String raw) {
-        if (raw == null) {
-            return GitHubUpdater.UpdateSource.AUTOMATIC;
-        }
-        try {
-            return GitHubUpdater.UpdateSource.valueOf(raw);
-        } catch (IllegalArgumentException ignored) {
-            return GitHubUpdater.UpdateSource.AUTOMATIC;
-        }
+        return GitHubUpdater.UpdateSource.valueOf(PackageInstallStatusPolicy.sourceNameOrDefault(raw));
     }
 
     interface PendingUserActionHandler {
