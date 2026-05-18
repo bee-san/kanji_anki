@@ -8,21 +8,16 @@ import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import dev.bee.kanjianki.core.DatabaseBackupPolicy;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Locale;
 
 public final class DatabaseBackupWorker extends Worker {
     private static final String TAG = "DatabaseBackupWorker";
-    private static final String DB_NAME = "kanji_anki_simple.db";
-    private static final String BACKUP_DIR = "backups";
-    private static final int MAX_BACKUPS = 31;
 
     public DatabaseBackupWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -36,7 +31,7 @@ public final class DatabaseBackupWorker extends Worker {
 
     static Result doWork(BackupEnvironment environment, long nowMillis) {
         return backupDatabase(
-                environment.databasePath(DB_NAME),
+                environment.databasePath(DatabaseBackupPolicy.DB_NAME),
                 environment.filesDir(),
                 nowMillis,
                 DatabaseBackupWorker::checkpoint,
@@ -53,7 +48,7 @@ public final class DatabaseBackupWorker extends Worker {
             return Result.failure();
         }
 
-        File backupDir = new File(filesDir, BACKUP_DIR);
+        File backupDir = DatabaseBackupPolicy.backupDir(filesDir);
         if (!backupDir.exists() && !backupDir.mkdirs()) {
             return Result.failure();
         }
@@ -64,8 +59,7 @@ public final class DatabaseBackupWorker extends Worker {
             warn("Backup checkpoint failed; copying database without a fresh WAL checkpoint.", error);
         }
 
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date(nowMillis));
-        File dest = new File(backupDir, "kanji_anki_simple_" + timestamp + ".db");
+        File dest = DatabaseBackupPolicy.backupFile(filesDir, nowMillis);
 
         try {
             copier.copy(dbFile, dest);
@@ -193,16 +187,9 @@ public final class DatabaseBackupWorker extends Worker {
     }
 
     static void pruneOldBackups(File backupDir) {
-        File[] files = backupDir.listFiles((dir, name) ->
-                name.startsWith("kanji_anki_simple_") && name.endsWith(".db"));
-        if (files == null || files.length <= MAX_BACKUPS) {
-            return;
-        }
-        Arrays.sort(files);
-        int toDelete = files.length - MAX_BACKUPS;
-        for (int i = 0; i < toDelete; i++) {
-            if (!files[i].delete()) {
-                warn("Failed to prune old backup: " + files[i].getName());
+        for (File oldBackup : DatabaseBackupPolicy.oldBackupsToPrune(backupDir)) {
+            if (!oldBackup.delete()) {
+                warn("Failed to prune old backup: " + oldBackup.getName());
             }
         }
     }
