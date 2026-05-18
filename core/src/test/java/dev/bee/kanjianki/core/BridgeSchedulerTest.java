@@ -1745,6 +1745,10 @@ public class BridgeSchedulerTest {
     public void studyAheadClampsNegativeToZeroAndAboveDayToDay() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long now = 1_000_000L;
+        assertEquals(
+                (long) SettingsInputRules.MAX_STUDY_AHEAD_MINUTES * 60_000L,
+                StudyLadderRules.clampStudyAheadMillis(Long.MAX_VALUE)
+        );
         long dueIn1Hour = now + 60L * 60_000L;
         long dueIn25Hours = now + 25L * 60L * 60_000L;
         RecordsStudyModels.StudyItem nearItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn1Hour);

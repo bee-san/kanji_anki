@@ -78,7 +78,7 @@ public final class StudyLadderRules {
         if (studyAheadMillis <= 0L) {
             return 0L;
         }
-        return Math.min(studyAheadMillis, DAY);
+        return Math.min(studyAheadMillis, (long) SettingsInputRules.MAX_STUDY_AHEAD_MINUTES * MINUTE);
     }
 
     static int rungToLegacyStage(RecordsBase.LadderRung rung) {
