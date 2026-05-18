@@ -2,6 +2,7 @@ package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 final class SettingsWriteActions {
@@ -31,6 +32,10 @@ final class SettingsWriteActions {
         writer.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, request.sentenceField());
         writer.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, request.frequencyField());
         writer.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, request.frequencySortField());
+    }
+
+    static void saveNewCardSort(NewCardSortSettingsPolicy.SaveRequest request, StringSettingWriter writer) {
+        writer.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {

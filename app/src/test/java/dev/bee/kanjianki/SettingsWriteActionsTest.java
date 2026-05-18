@@ -1,6 +1,8 @@
 package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.SettingsImportPreset;
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
+import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -77,6 +79,19 @@ public final class SettingsWriteActionsTest {
         assertEquals("Sentence", settings.get(SyncSettings.SENTENCE_FIELD_SETTING_KEY));
         assertEquals("Frequency", settings.get(SyncSettings.FREQUENCY_FIELD_SETTING_KEY));
         assertEquals("FrequencySort", settings.get(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY));
+    }
+
+    @Test
+    public void saveNewCardSortWritesNormalizedModeKey() {
+        Map<String, String> settings = new LinkedHashMap<>();
+
+        SettingsWriteActions.saveNewCardSort(
+                NewCardSortSettingsPolicy.saveRequest(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
+                settings::put
+        );
+
+        assertEquals(1, settings.size());
+        assertEquals(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, settings.get(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY));
     }
 
     @Test

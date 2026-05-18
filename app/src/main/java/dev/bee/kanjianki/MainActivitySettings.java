@@ -935,7 +935,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button save = primaryButton(SettingsTextCopy.saveNewCardSortLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             NewCardSortSettingsPolicy.SaveRequest request = NewCardSortSettingsPolicy.saveRequest(selected[0]);
-            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
+            SettingsWriteActions.saveNewCardSort(request, store::putStringSetting);
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
