@@ -12,6 +12,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.SimilarChoiceCodec;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
@@ -842,21 +843,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     static String serializeChoices(List<String> choices) {
-        return String.join("\t", choices == null ? Collections.emptyList() : choices);
+        return SimilarChoiceCodec.serializeChoices(choices);
     }
 
     static List<String> deserializeChoices(String encoded) {
-        if (encoded == null || encoded.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<String> out = new ArrayList<>();
-        String[] parts = TAB_SEPARATOR.split(encoded, -1);
-        for (String part : parts) {
-            if (!part.isEmpty()) {
-                out.add(part);
-            }
-        }
-        return out;
+        return SimilarChoiceCodec.deserializeChoices(encoded);
     }
 
     void addInventoryText(Map<String, MutableKanjiInventoryItem> inventory, List<String> kanji, String meaning, String reading, String expression, String sentence) {

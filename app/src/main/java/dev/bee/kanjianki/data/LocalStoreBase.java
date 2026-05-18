@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 
 public abstract class LocalStoreBase extends SQLiteOpenHelper {
-    static final java.util.regex.Pattern TAB_SEPARATOR = java.util.regex.Pattern.compile("\\t");
     static final String DB_NAME = LocalStoreSchema.DB_NAME;
     static final int DB_VERSION = LocalStoreSchema.DB_VERSION;
     static final String TABLE_SETTINGS = "settings";
