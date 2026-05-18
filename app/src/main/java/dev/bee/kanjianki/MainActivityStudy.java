@@ -1266,8 +1266,9 @@ abstract class MainActivityStudy extends MainActivityStats {
             hintsUsed++;
             activeAnalysis = null;
             drawingPad.clear();
-            drawingPad.setGuide(strokeGuide(activeSession.item.kanji), currentHintState, false);
-            setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\nFresh guided try. Draw it again, then check.", MUTED);
+            StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+            drawingPad.setGuide(guide, currentHintState, false);
+            setStudyStatus(WritingFeedbackCopy.freshGuidedTryStatus(guideLabel(currentHintState, guide)), MUTED);
             updateResultActions();
         });
         fallbackActions.addView(practiceWithGuideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
@@ -1490,7 +1491,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         hintsUsed++;
         activeAnalysis = null;
         drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(guideLabel(currentHintState, guide) + "\nHint used. One current stroke hinted; your ink stayed on the canvas.", MUTED);
+        setStudyStatus(WritingFeedbackCopy.hintUsedStatus(guideLabel(currentHintState, guide)), MUTED);
         updateResultActions();
     }
 
@@ -1636,7 +1637,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         drawingPad.clear();
         drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(guideLabel(currentHintState, guide) + "\nTry cleaner. Keep the same help level and draw it carefully once more.", MUTED);
+        setStudyStatus(WritingFeedbackCopy.cleanerRetryStatus(guideLabel(currentHintState, guide)), MUTED);
         if (resultStatus != null) {
             resultStatus.setVisibility(View.GONE);
         }
@@ -1649,7 +1650,8 @@ abstract class MainActivityStudy extends MainActivityStats {
             return;
         }
         activeAnalysis = null;
-        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\nUndid the last stroke.", MUTED);
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        setStudyStatus(WritingFeedbackCopy.undoStrokeStatus(guideLabel(currentHintState, guide)), MUTED);
         if (resultStatus != null) {
             resultStatus.setVisibility(View.GONE);
         }
@@ -1674,7 +1676,8 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         activeAnalysis = null;
         drawingPad.clearReplaySnapshot();
-        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\nUpdated ink. Check again when ready.", MUTED);
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        setStudyStatus(WritingFeedbackCopy.updatedInkStatus(guideLabel(currentHintState, guide)), MUTED);
         if (resultStatus != null) {
             resultStatus.setVisibility(View.GONE);
         }
@@ -1685,10 +1688,8 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (activeSession == null || drawingPad == null) {
             return;
         }
-        String message = decision == null || decision.message.isEmpty()
-                ? "Stay close to the guide."
-                : decision.message;
-        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)) + "\n" + message, MUTED);
+        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
+        setStudyStatus(WritingFeedbackCopy.blockedStrokeStatus(guideLabel(currentHintState, guide), decision), MUTED);
         updateUndoStrokeButton();
     }
 

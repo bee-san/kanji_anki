@@ -128,6 +128,50 @@ public final class WritingFeedbackCopyTest {
     }
 
     @Test
+    public void writingStatusCopyPreservesGuidePrefixedActionMessages() {
+        assertEquals(
+                "Guide\nHint used. One current stroke hinted; your ink stayed on the canvas.",
+                WritingFeedbackCopy.hintUsedStatus("Guide")
+        );
+        assertEquals(
+                "Guide\nFresh guided try. Draw it again, then check.",
+                WritingFeedbackCopy.freshGuidedTryStatus("Guide")
+        );
+        assertEquals(
+                "Guide\nTry cleaner. Keep the same help level and draw it carefully once more.",
+                WritingFeedbackCopy.cleanerRetryStatus("Guide")
+        );
+        assertEquals(
+                "Guide\nUndid the last stroke.",
+                WritingFeedbackCopy.undoStrokeStatus("Guide")
+        );
+        assertEquals(
+                "Guide\nUpdated ink. Check again when ready.",
+                WritingFeedbackCopy.updatedInkStatus("Guide")
+        );
+        assertEquals(
+                "Updated ink. Check again when ready.",
+                WritingFeedbackCopy.updatedInkStatus("")
+        );
+    }
+
+    @Test
+    public void blockedStrokeStatusUsesDecisionMessageOrFallback() {
+        assertEquals(
+                "Guide\nStay close to the guide.",
+                WritingFeedbackCopy.blockedStrokeStatus("Guide", null)
+        );
+        assertEquals(
+                "Guide\nStay close to the guide.",
+                WritingFeedbackCopy.blockedStrokeStatus("Guide", StrokeGuideGuard.Decision.rejected(1, ""))
+        );
+        assertEquals(
+                "Guide\nStay close to stroke 1.",
+                WritingFeedbackCopy.blockedStrokeStatus("Guide", StrokeGuideGuard.Decision.rejected(1, "Stay close to stroke 1."))
+        );
+    }
+
+    @Test
     public void writingActionPolicyPreservesSubmittableAndFallbackStatuses() {
         assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
         assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)));

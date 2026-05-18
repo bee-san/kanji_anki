@@ -115,6 +115,33 @@ public final class WritingFeedbackCopy {
         return appendStatus(guidePrefix, "Handwriting checker ready.");
     }
 
+    public static String hintUsedStatus(String guidePrefix) {
+        return appendStatus(guidePrefix, "Hint used. One current stroke hinted; your ink stayed on the canvas.");
+    }
+
+    public static String freshGuidedTryStatus(String guidePrefix) {
+        return appendStatus(guidePrefix, "Fresh guided try. Draw it again, then check.");
+    }
+
+    public static String cleanerRetryStatus(String guidePrefix) {
+        return appendStatus(guidePrefix, "Try cleaner. Keep the same help level and draw it carefully once more.");
+    }
+
+    public static String undoStrokeStatus(String guidePrefix) {
+        return appendStatus(guidePrefix, "Undid the last stroke.");
+    }
+
+    public static String updatedInkStatus(String guidePrefix) {
+        return appendStatus(guidePrefix, "Updated ink. Check again when ready.");
+    }
+
+    public static String blockedStrokeStatus(String guidePrefix, StrokeGuideGuard.Decision decision) {
+        String message = decision == null || decision.message.isEmpty()
+                ? "Stay close to the guide."
+                : decision.message;
+        return appendStatus(guidePrefix, message);
+    }
+
     public static String submitLabel(WritingAnalysis analysis) {
         if (analysis == null || !analysis.writingPassed) {
             return "Fail";
