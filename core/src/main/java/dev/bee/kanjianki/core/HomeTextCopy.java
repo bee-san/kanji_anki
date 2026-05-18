@@ -21,6 +21,26 @@ public final class HomeTextCopy {
         return plan.remaining + " items left / " + plan.target;
     }
 
+    public static String homeSyncValue(Long finishedAtMillis) {
+        if (finishedAtMillis == null) {
+            return "Never synced";
+        }
+        return sentenceCase(DateTextPolicy.humanSyncTime(finishedAtMillis));
+    }
+
+    public static String recentMistakeTitle(String rowMeaning) {
+        if (rowMeaning == null || rowMeaning.isEmpty()) {
+            return "Recent review miss";
+        }
+        return rowMeaning;
+    }
+
+    public static String recentMistakeSubtitle(String rating, String dateText) {
+        String safeRating = rating == null ? "" : rating;
+        String safeDate = dateText == null ? "" : dateText;
+        return "Rated " + safeRating + " on " + safeDate;
+    }
+
     public static String streakHeadline(int currentDays) {
         if (currentDays <= 0) {
             return "No streak yet";

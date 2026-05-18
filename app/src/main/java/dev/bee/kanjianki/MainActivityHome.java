@@ -332,10 +332,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String homeSyncValue(LocalStore.SyncStatus sync) {
-        if (sync == null) {
-            return "Never synced";
-        }
-        return sentenceCase(humanSyncTime(sync.finishedAt));
+        return HomeTextCopy.homeSyncValue(sync == null ? null : sync.finishedAt);
     }
 
     String sentenceCase(String value) {
@@ -457,8 +454,8 @@ abstract class MainActivityHome extends MainActivityBase {
         top.addView(kanji);
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(row == null ? "Recent review miss" : rowMeaning(row), 19, INK, true));
-        copy.addView(text("Rated " + mistake.rating + " on " + timelineDate(mistake.reviewedAtMillis), 14, MUTED, false));
+        copy.addView(text(HomeTextCopy.recentMistakeTitle(row == null ? "" : rowMeaning(row)), 19, INK, true));
+        copy.addView(text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, timelineDate(mistake.reviewedAtMillis)), 14, MUTED, false));
         if (row != null) {
             copy.addView(text(sourceEvidenceText(row), 14, INK, true));
         }

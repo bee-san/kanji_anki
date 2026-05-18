@@ -29,6 +29,17 @@ public final class HomeTextCopyTest {
     }
 
     @Test
+    public void homeSyncAndRecentMistakeCopyPreserveFallbacks() {
+        assertEquals("Never synced", HomeTextCopy.homeSyncValue(null));
+        assertEquals("Date unknown", HomeTextCopy.homeSyncValue(0L));
+        assertEquals("Recent review miss", HomeTextCopy.recentMistakeTitle(null));
+        assertEquals("Recent review miss", HomeTextCopy.recentMistakeTitle(""));
+        assertEquals("split", HomeTextCopy.recentMistakeTitle("split"));
+        assertEquals("Rated again on Unknown time", HomeTextCopy.recentMistakeSubtitle("again", "Unknown time"));
+        assertEquals("Rated  on ", HomeTextCopy.recentMistakeSubtitle(null, null));
+    }
+
+    @Test
     public void streakCopyPreservesHomeMetricCopy() {
         assertEquals("No streak yet", HomeTextCopy.streakHeadline(0));
         assertEquals("No streak yet", HomeTextCopy.streakHeadline(-1));
