@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -461,18 +462,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     ) {
     }
 
-    record CardMetrics(
-            int intervalDays,
-            int reps,
-            int lapses,
-            boolean suspended,
-            boolean mature,
-            Double fsrsStability,
-            Double fsrsDifficulty,
-            Double fsrsRetrievability
-    ) {
-    }
-
     record HistoricalCardMetrics(int intervalDays, int reps, int lapses, boolean mature) {
     }
 
@@ -482,87 +471,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
             Map<Long, LinkedHashSet<String>> deckNamesByNote,
             Map<String, HistoricalKanjiAggregate> aggregates
     ) {
-    }
-
-    static final class HistoricalKanjiAggregate {
-        final String kanji;
-        int activeCards;
-        int suspendedCards;
-        int matureSupportCount;
-        int totalLapses;
-        int totalReps;
-        int intervalCount;
-        double intervalSum;
-        int stabilityCount;
-        double stabilitySum;
-        int difficultyCount;
-        double difficultySum;
-        int retrievabilityCount;
-        double retrievabilitySum;
-        int weaknessScore;
-        String reasonCode = "";
-        int activeExampleCount;
-        int suspendedExampleCount;
-
-        HistoricalKanjiAggregate(String kanji) {
-            this.kanji = kanji == null ? "" : kanji;
-        }
-
-        void add(RecordsSyncModels.Card card, int matureDays) {
-            add(new CardMetrics(
-                    card.intervalDays,
-                    card.reps,
-                    card.lapses,
-                    card.suspended,
-                    card.mature(matureDays),
-                    card.fsrsStability,
-                    card.fsrsDifficulty,
-                    card.fsrsRetrievability
-            ));
-        }
-
-        void add(CardMetrics metrics) {
-            if (metrics.suspended()) {
-                suspendedCards++;
-            } else {
-                activeCards++;
-            }
-            if (metrics.mature()) {
-                matureSupportCount++;
-            }
-            totalLapses += Math.max(0, metrics.lapses());
-            totalReps += Math.max(0, metrics.reps());
-            intervalSum += Math.max(0, metrics.intervalDays());
-            intervalCount++;
-            if (metrics.fsrsStability() != null) {
-                stabilitySum += metrics.fsrsStability();
-                stabilityCount++;
-            }
-            if (metrics.fsrsDifficulty() != null) {
-                difficultySum += metrics.fsrsDifficulty();
-                difficultyCount++;
-            }
-            if (metrics.fsrsRetrievability() != null) {
-                retrievabilitySum += metrics.fsrsRetrievability();
-                retrievabilityCount++;
-            }
-        }
-
-        double averageIntervalDays() {
-            return intervalCount == 0 ? 0.0 : intervalSum / intervalCount;
-        }
-
-        Double averageStability() {
-            return stabilityCount == 0 ? null : stabilitySum / stabilityCount;
-        }
-
-        Double averageDifficulty() {
-            return difficultyCount == 0 ? null : difficultySum / difficultyCount;
-        }
-
-        Double averageRetrievability() {
-            return retrievabilityCount == 0 ? null : retrievabilitySum / retrievabilityCount;
-        }
     }
 
     static final class SimilarChoiceSnapshot {

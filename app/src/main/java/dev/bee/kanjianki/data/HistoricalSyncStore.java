@@ -8,6 +8,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
@@ -167,7 +168,7 @@ final class HistoricalSyncStore {
                 SQLiteDatabase.CONFLICT_REPLACE
         );
         for (String kanji : TextUtil.extractKanji(note.expression + " " + note.sentence)) {
-            aggregateFor(context.aggregates(), kanji).add(new CardMetrics(
+            aggregateFor(context.aggregates(), kanji).addCard(
                     intervalDays,
                     reps,
                     lapses,
@@ -176,7 +177,7 @@ final class HistoricalSyncStore {
                     nullableDouble(cards, COLUMN_FSRS_STABILITY),
                     nullableDouble(cards, COLUMN_FSRS_DIFFICULTY),
                     nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY)
-            ));
+            );
         }
     }
 
@@ -287,36 +288,38 @@ final class HistoricalSyncStore {
     void overlayDashboardRows(Map<String, HistoricalKanjiAggregate> aggregates, List<RecordsImportModels.DashboardRow> rows) {
         for (RecordsImportModels.DashboardRow row : rows) {
             HistoricalKanjiAggregate aggregate = aggregateFor(aggregates, row.kanji);
-            aggregate.weaknessScore = row.weaknessScore;
-            aggregate.reasonCode = row.reasonCode;
-            aggregate.activeExampleCount = Math.max(aggregate.activeExampleCount, row.activeExampleCount);
-            aggregate.suspendedExampleCount = Math.max(aggregate.suspendedExampleCount, row.suspendedExampleCount);
-            aggregate.matureSupportCount = Math.max(aggregate.matureSupportCount, row.matureSupportCount);
+            aggregate.mergeDashboardEvidence(
+                    row.weaknessScore,
+                    row.reasonCode,
+                    row.activeExampleCount,
+                    row.suspendedExampleCount,
+                    row.matureSupportCount
+            );
         }
     }
 
     void insertHistoricalKanjiAggregates(SQLiteDatabase db, long syncId, long finishedAt, Map<String, HistoricalKanjiAggregate> aggregates) {
         for (HistoricalKanjiAggregate aggregate : aggregates.values()) {
-            if (aggregate.kanji.isEmpty()) {
+            if (aggregate.kanji().isEmpty()) {
                 continue;
             }
             ContentValues values = new ContentValues();
             values.put(COLUMN_SYNC_ID, syncId);
             values.put(COLUMN_FINISHED_AT, finishedAt);
-            values.put(COLUMN_KANJI, aggregate.kanji);
-            values.put("active_cards", aggregate.activeCards);
-            values.put("suspended_cards", aggregate.suspendedCards);
-            values.put(COLUMN_MATURE_SUPPORT_COUNT, aggregate.matureSupportCount);
+            values.put(COLUMN_KANJI, aggregate.kanji());
+            values.put("active_cards", aggregate.activeCards());
+            values.put("suspended_cards", aggregate.suspendedCards());
+            values.put(COLUMN_MATURE_SUPPORT_COUNT, aggregate.matureSupportCount());
             values.put("average_interval_days", aggregate.averageIntervalDays());
-            values.put("total_lapses", aggregate.totalLapses);
-            values.put("total_reps", aggregate.totalReps);
+            values.put("total_lapses", aggregate.totalLapses());
+            values.put("total_reps", aggregate.totalReps());
             putNullableDouble(values, "fsrs_stability_avg", aggregate.averageStability());
             putNullableDouble(values, "fsrs_difficulty_avg", aggregate.averageDifficulty());
             putNullableDouble(values, "fsrs_retrievability_avg", aggregate.averageRetrievability());
-            values.put(COLUMN_WEAKNESS_SCORE, aggregate.weaknessScore);
-            values.put(COLUMN_REASON_CODE, aggregate.reasonCode);
-            values.put(COLUMN_ACTIVE_EXAMPLE_COUNT, aggregate.activeExampleCount);
-            values.put(COLUMN_SUSPENDED_EXAMPLE_COUNT, aggregate.suspendedExampleCount);
+            values.put(COLUMN_WEAKNESS_SCORE, aggregate.weaknessScore());
+            values.put(COLUMN_REASON_CODE, aggregate.reasonCode());
+            values.put(COLUMN_ACTIVE_EXAMPLE_COUNT, aggregate.activeExampleCount());
+            values.put(COLUMN_SUSPENDED_EXAMPLE_COUNT, aggregate.suspendedExampleCount());
             db.insertWithOnConflict(TABLE_SYNC_KANJI_SNAPSHOTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }

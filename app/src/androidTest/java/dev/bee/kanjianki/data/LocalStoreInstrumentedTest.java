@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data;
 
 import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
@@ -1888,8 +1889,8 @@ public final class LocalStoreInstrumentedTest {
         assertEquals(0, countTimelineType("拉", "reopened"));
 
         store.createHistoricalSyncTables(db);
-        Map<String, LocalStoreBase.HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
-        aggregates.put("", new LocalStoreBase.HistoricalKanjiAggregate(""));
+        Map<String, HistoricalKanjiAggregate> aggregates = new LinkedHashMap<>();
+        aggregates.put("", new HistoricalKanjiAggregate(""));
         store.insertHistoricalKanjiAggregates(db, 7L, 1400L, aggregates);
         assertEquals(0, count("sync_kanji_snapshots"));
     }

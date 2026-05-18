@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data;
 
 import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
