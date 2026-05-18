@@ -34,9 +34,19 @@ final class AttributionTexts {
 
     static String dictionarySourcesFromManifestText(String manifestText) {
         try {
-            JSONObject manifest = new JSONObject(manifestText);
-            JSONArray sources = manifest.optJSONArray("sources");
-            if (sources == null || sources.length() == 0) {
+            return dictionarySourcesFromManifest(new JSONObject(manifestText));
+        } catch (Exception error) {
+            return AttributionCopy.DICTIONARY_FALLBACK;
+        }
+    }
+
+    static String dictionarySourcesFromManifest(JSONObject manifest) {
+        try {
+            JSONArray sources = manifest == null ? null : manifest.optJSONArray("sources");
+            if (sources == null) {
+                return AttributionCopy.DICTIONARY_FALLBACK;
+            }
+            if (sources.length() == 0) {
                 return AttributionCopy.dictionarySources("", Collections.emptyList(), Collections.emptyList());
             }
             return AttributionCopy.dictionarySources(

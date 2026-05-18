@@ -32,6 +32,34 @@ public final class AttributionTextsTest {
     }
 
     @Test
+    public void parsedDictionaryManifestDistinguishesMissingSourcesFromEmptySources() {
+        assertEquals(
+                "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
+                AttributionTexts.dictionarySourcesFromManifest(new FakeManifest("2026-05-15", null, null))
+        );
+        assertEquals(
+                "Dictionary manifest is empty.",
+                AttributionTexts.dictionarySourcesFromManifest(new FakeManifest("2026-05-15", sourceArray(), null))
+        );
+    }
+
+    @Test
+    public void parsedDictionaryManifestDelegatesSourcesAndNotesToCoreFormatter() {
+        JSONArray sources = array(object(
+                "name", "KANJIDIC2",
+                "license", "CC BY-SA",
+                "source_path", "kanjidic2.xml",
+                "database_version", "2026-05-01"
+        ));
+        JSONArray notes = array("note one", "note two");
+
+        assertEquals(
+                "Generated: 2026-05-15\n\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
+                AttributionTexts.dictionarySourcesFromManifest(new FakeManifest("2026-05-15", sources, notes))
+        );
+    }
+
+    @Test
     public void sourceAndNoteAdaptersDelegateToCoreFormatter() throws Exception {
         List<String> lines = new ArrayList<>();
 
@@ -58,7 +86,15 @@ public final class AttributionTextsTest {
     }
 
     private static JSONArray array(String... values) {
-        return new FakeJsonArray(Arrays.asList(values));
+        return new FakeStringArray(Arrays.asList(values));
+    }
+
+    private static JSONArray array(JSONObject... values) {
+        return new FakeObjectArray(Arrays.asList(values));
+    }
+
+    private static JSONArray sourceArray() {
+        return new FakeObjectArray(java.util.Collections.emptyList());
     }
 
     private static final class FakeJsonObject extends JSONObject {
@@ -80,10 +116,38 @@ public final class AttributionTextsTest {
         }
     }
 
-    private static final class FakeJsonArray extends JSONArray {
+    private static final class FakeManifest extends JSONObject {
+        private final String generatedAt;
+        private final JSONArray sources;
+        private final JSONArray notes;
+
+        private FakeManifest(String generatedAt, JSONArray sources, JSONArray notes) {
+            this.generatedAt = generatedAt;
+            this.sources = sources;
+            this.notes = notes;
+        }
+
+        @Override
+        public String optString(String name) {
+            return "generated_at".equals(name) ? generatedAt : "";
+        }
+
+        @Override
+        public JSONArray optJSONArray(String name) {
+            if ("sources".equals(name)) {
+                return sources;
+            }
+            if ("notes".equals(name)) {
+                return notes;
+            }
+            return null;
+        }
+    }
+
+    private static final class FakeStringArray extends JSONArray {
         private final List<String> values;
 
-        private FakeJsonArray(List<String> values) {
+        private FakeStringArray(List<String> values) {
             this.values = values;
         }
 
@@ -94,6 +158,24 @@ public final class AttributionTextsTest {
 
         @Override
         public String optString(int index) {
+            return values.get(index);
+        }
+    }
+
+    private static final class FakeObjectArray extends JSONArray {
+        private final List<JSONObject> values;
+
+        private FakeObjectArray(List<JSONObject> values) {
+            this.values = values;
+        }
+
+        @Override
+        public int length() {
+            return values.size();
+        }
+
+        @Override
+        public JSONObject getJSONObject(int index) {
             return values.get(index);
         }
     }
