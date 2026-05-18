@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy;
+import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -702,16 +703,24 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         public final String pendingMessage;
 
         AutoUpdateStatus(boolean enabled, long lastCheckAtMillis, String lastResult, String lastVersion, String pendingApkName, String pendingMessage) {
-            this.enabled = enabled;
-            this.lastCheckAtMillis = lastCheckAtMillis;
-            this.lastResult = lastResult == null ? "" : lastResult;
-            this.lastVersion = lastVersion == null ? "" : lastVersion;
-            this.pendingApkName = pendingApkName == null ? "" : pendingApkName;
-            this.pendingMessage = pendingMessage == null ? "" : pendingMessage;
+            AutoUpdateStatusPolicy.StatusFields normalized = AutoUpdateStatusPolicy.normalize(
+                    enabled,
+                    lastCheckAtMillis,
+                    lastResult,
+                    lastVersion,
+                    pendingApkName,
+                    pendingMessage
+            );
+            this.enabled = normalized.enabled();
+            this.lastCheckAtMillis = normalized.lastCheckAtMillis();
+            this.lastResult = normalized.lastResult();
+            this.lastVersion = normalized.lastVersion();
+            this.pendingApkName = normalized.pendingApkName();
+            this.pendingMessage = normalized.pendingMessage();
         }
 
         public boolean hasPendingUpdate() {
-            return !pendingApkName.isEmpty();
+            return AutoUpdateStatusPolicy.hasPendingUpdate(pendingApkName);
         }
     }
 

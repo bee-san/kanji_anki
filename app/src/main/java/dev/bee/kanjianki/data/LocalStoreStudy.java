@@ -19,6 +19,7 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy;
+import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -367,7 +368,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         return new AutoUpdateStatus(
                 getIntSetting(KEY_AUTO_UPDATE_ENABLED, 1) == 1,
                 getLongSetting(KEY_AUTO_UPDATE_LAST_CHECK_AT, 0L),
-                getStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, "No automatic update check has run yet."),
+                getStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.DEFAULT_LAST_RESULT),
                 getStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, ""),
                 getStringSetting(KEY_AUTO_UPDATE_PENDING_APK, ""),
                 getStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, "")
@@ -383,10 +384,10 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         db.beginTransaction();
         try {
             putLongSetting(KEY_AUTO_UPDATE_LAST_CHECK_AT, checkedAt);
-            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, result == null ? "" : result);
-            putStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, version == null ? "" : version);
-            putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, pendingApkName == null ? "" : pendingApkName);
-            putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, pendingMessage == null ? "" : pendingMessage);
+            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result));
+            putStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, AutoUpdateStatusPolicy.text(version));
+            putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, AutoUpdateStatusPolicy.text(pendingApkName));
+            putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, AutoUpdateStatusPolicy.text(pendingMessage));
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -397,7 +398,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
         try {
-            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, result == null ? "" : result);
+            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result));
             putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, "");
             putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, "");
             db.setTransactionSuccessful();
