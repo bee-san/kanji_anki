@@ -82,7 +82,8 @@ public final class KanjiInventoryBuilderTest {
                 "old search",
                 5,
                 6,
-                1234L
+                1234L,
+                5678L
         ));
 
         KanjiInventoryBuilder.BuiltItem item = builder.build(previous).get(0);

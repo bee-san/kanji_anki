@@ -91,7 +91,7 @@ public final class KanjiInventoryBuilder {
                     item.searchText(old),
                     Math.max(item.sourceCount, old == null ? 0 : old.sourceCount()),
                     Math.max(item.exampleCount, old == null ? 0 : old.exampleCount()),
-                    old == null ? nowMillis : old.lastSeenAtMillis(),
+                    old == null ? nowMillis : old.firstSeenAtMillis(),
                     nowMillis
             ));
         }
@@ -129,6 +129,7 @@ public final class KanjiInventoryBuilder {
             String browserSearch,
             int sourceCount,
             int exampleCount,
+            long firstSeenAtMillis,
             long lastSeenAtMillis
     ) {
         public PreviousItem {
@@ -137,6 +138,7 @@ public final class KanjiInventoryBuilder {
             browserSearch = nullToEmpty(browserSearch);
             sourceCount = Math.max(0, sourceCount);
             exampleCount = Math.max(0, exampleCount);
+            firstSeenAtMillis = Math.max(0L, firstSeenAtMillis);
             lastSeenAtMillis = Math.max(0L, lastSeenAtMillis);
         }
     }

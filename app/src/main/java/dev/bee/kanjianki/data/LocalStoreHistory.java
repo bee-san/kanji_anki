@@ -509,14 +509,6 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    void addInventoryTextForNote(
-            KanjiInventoryBuilder inventory,
-            RecordsSyncModels.Note note,
-            RecordsSyncModels.Settings settings
-    ) {
-        inventory.addSnapshotNote(note);
-    }
-
     void addImportedInventory(KanjiInventoryBuilder inventory, List<RecordsImportModels.SuspendedImport> imports) {
         for (RecordsImportModels.SuspendedImport imported : imports) {
             inventory.addSuspendedImport(imported);
@@ -874,6 +866,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                                 string(cursor, COLUMN_BROWSER_SEARCH),
                                 integer(cursor, "source_count"),
                                 integer(cursor, "example_count"),
+                                longValue(cursor, COLUMN_FIRST_SEEN_AT),
                                 longValue(cursor, COLUMN_LAST_SEEN_AT)
                         )
                 );

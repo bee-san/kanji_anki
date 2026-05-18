@@ -2084,6 +2084,7 @@ public final class LocalStoreInstrumentedTest {
                 "deck:Kiku 拉",
                 1,
                 1,
+                1000L,
                 1000L
         ));
         KanjiInventoryBuilder.BuiltItem item = builder.build(previous).get(0);
