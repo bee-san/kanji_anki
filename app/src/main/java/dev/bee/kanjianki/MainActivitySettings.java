@@ -1113,7 +1113,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         int currentMinutes = store.studyAheadMinutes();
         int minMinutes = SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES;
         int maxMinutes = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES;
-        String validRange = studyAheadMinutesRange();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Study ahead", 23, INK, true));
         box.addView(text("Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).", 15, MUTED, false));
@@ -1133,11 +1132,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
             try {
                 parsed = Integer.parseInt(minutesInput.getText().toString().trim());
             } catch (NumberFormatException ex) {
-                Toast.makeText(this, String.format(Locale.ROOT, "Use a whole number of minutes (%s).", validRange), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.studyAheadWholeNumberErrorText(), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (parsed < minMinutes || parsed > maxMinutes) {
-                Toast.makeText(this, String.format(Locale.ROOT, "Use %d to disable, or up to %s.", minMinutes, studyAheadMaxDescription()), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.studyAheadOutOfRangeErrorText(), Toast.LENGTH_SHORT).show();
                 return;
             }
             store.saveStudyAheadMinutes(parsed);
@@ -1149,19 +1148,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     static String studyAheadMinutesLabel() {
-        return String.format(Locale.ROOT, "Minutes (%s)", studyAheadMinutesRange());
-    }
-
-    private static String studyAheadMinutesRange() {
-        return String.format(Locale.ROOT, "%d-%d", SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES, SettingsInputRules.MAX_STUDY_AHEAD_MINUTES);
-    }
-
-    private static String studyAheadMaxDescription() {
-        int maxMinutes = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES;
-        if (maxMinutes % 60 == 0) {
-            return String.format(Locale.ROOT, "%d minutes (%dh)", maxMinutes, maxMinutes / 60);
-        }
-        return String.format(Locale.ROOT, "%d minutes", maxMinutes);
+        return SettingsTextCopy.studyAheadMinutesLabel();
     }
 
     LinearLayout studyLadderSettingsPanel() {

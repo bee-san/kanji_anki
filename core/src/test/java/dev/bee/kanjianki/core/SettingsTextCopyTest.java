@@ -112,6 +112,15 @@ public final class SettingsTextCopyTest {
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
     }
 
+    @Test
+    public void studyAheadCopyPreservesLabelsAndValidationMessages() {
+        assertEquals("Minutes (0-1440)", SettingsTextCopy.studyAheadMinutesLabel());
+        assertEquals("0-1440", SettingsTextCopy.studyAheadMinutesRange());
+        assertEquals("1440 minutes (24h)", SettingsTextCopy.studyAheadMaxDescription());
+        assertEquals("Use a whole number of minutes (0-1440).", SettingsTextCopy.studyAheadWholeNumberErrorText());
+        assertEquals("Use 0 to disable, or up to 1440 minutes (24h).", SettingsTextCopy.studyAheadOutOfRangeErrorText());
+    }
+
     private static RecordsSyncModels.Settings settings(
             boolean active,
             boolean suspended,
