@@ -3,108 +3,69 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.StudySessionProgressTracker;
 import android.os.SystemClock;
 
-import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.data.LocalStore;
 
-import java.util.HashSet;
-import java.util.Set;
-
 final class StudySessionTracker {
-    private int completedCount;
-    private int targetCount;
     private ActiveStudyTask activeTask;
-    private final Set<String> completedTaskKeys = new HashSet<>();
-    private final Set<String> seenTaskKeys = new HashSet<>();
-    private final Set<String> movedForwardKanji = new HashSet<>();
-    private final Set<String> missedKanji = new HashSet<>();
+    private final StudySessionProgressTracker progressTracker = new StudySessionProgressTracker();
 
     int completedCount() {
-        return completedCount;
+        return progressTracker.completedCount();
     }
 
     int targetCount() {
-        return targetCount;
+        return progressTracker.targetCount();
     }
 
     int movedForwardCount() {
-        return movedForwardKanji.size();
+        return progressTracker.movedForwardCount();
     }
 
     int missedCount() {
-        return missedKanji.size();
+        return progressTracker.missedCount();
     }
 
     void resetProgress() {
-        completedCount = 0;
-        targetCount = 0;
-        completedTaskKeys.clear();
-        seenTaskKeys.clear();
-        movedForwardKanji.clear();
-        missedKanji.clear();
+        progressTracker.resetProgress();
     }
 
     void initializeTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        if (targetCount <= 0 && plan != null) {
-            targetCount = Math.max(0, plan.remaining > 0 ? plan.remaining : plan.target);
-        }
+        progressTracker.initializeTarget(plan);
     }
 
     void setTargetCount(int targetCount) {
-        this.targetCount = Math.max(0, targetCount);
+        progressTracker.setTargetCount(targetCount);
     }
 
     boolean includePendingTask(String key) {
-        if (isEmpty(key) || seenTaskKeys.contains(key) || completedTaskKeys.contains(key)) {
-            return false;
-        }
-        seenTaskKeys.add(key);
-        targetCount++;
-        return true;
+        return progressTracker.includePendingTask(key);
     }
 
     boolean atHardCap(boolean continueAllKanjiSession) {
-        return !continueAllKanjiSession && targetCount > 0 && completedCount >= targetCount;
+        return progressTracker.atHardCap(continueAllKanjiSession);
     }
 
     void registerTaskShown(String key) {
-        if (isEmpty(key)) {
-            return;
-        }
-        seenTaskKeys.add(key);
-        if (targetCount <= 0) {
-            targetCount = 1;
-        }
+        progressTracker.registerTaskShown(key);
     }
 
     void markTaskCompleted(String key) {
-        if (isEmpty(key)) {
-            return;
-        }
-        registerTaskShown(key);
-        if (completedTaskKeys.add(key)) {
-            completedCount++;
-            targetCount = Math.max(targetCount, completedCount);
-        }
+        progressTracker.markTaskCompleted(key);
     }
 
     static String sessionTaskKey(RecordsSchedulerModels.StudySession session) {
-        if (session == null) {
-            return "";
-        }
-        return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token;
+        return StudySessionProgressTracker.sessionTaskKey(session);
     }
 
     static String similarRepairProgressKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
-        return repair == null ? "" : "repair:" + repair.id;
+        return StudySessionProgressTracker.similarRepairProgressKey(repair);
     }
 
     static String similarRepairStudyTaskKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
-        if (repair == null) {
-            return "";
-        }
-        return similarRepairProgressKey(repair) + ":" + repair.activeToken;
+        return StudySessionProgressTracker.similarRepairStudyTaskKey(repair);
     }
 
     boolean hasActiveTask() {
@@ -145,30 +106,11 @@ final class StudySessionTracker {
     }
 
     void recordReviewOutcome(String kanji, String appliedRating, RecordsStudyModels.StudyItem before, RecordsStudyModels.StudyItem after) {
-        String safeKanji = safeKanji(kanji);
-        if (safeKanji.isEmpty()) {
-            return;
-        }
-        boolean moved = !BridgeScheduler.RATING_AGAIN.equals(appliedRating) || locallyImproved(before, after);
-        if (moved) {
-            movedForwardKanji.add(safeKanji);
-            missedKanji.remove(safeKanji);
-        } else {
-            missedKanji.add(safeKanji);
-        }
+        progressTracker.recordReviewOutcome(kanji, appliedRating, before, after);
     }
 
     void recordRepairOutcome(String kanji, boolean passed) {
-        String safeKanji = safeKanji(kanji);
-        if (safeKanji.isEmpty()) {
-            return;
-        }
-        if (passed) {
-            movedForwardKanji.add(safeKanji);
-            missedKanji.remove(safeKanji);
-        } else if (!movedForwardKanji.contains(safeKanji)) {
-            missedKanji.add(safeKanji);
-        }
+        progressTracker.recordRepairOutcome(kanji, passed);
     }
 
     void pauseActiveTask() {
@@ -189,18 +131,6 @@ final class StudySessionTracker {
 
     private static boolean isEmpty(String key) {
         return key == null || key.isEmpty();
-    }
-
-    private static String safeKanji(String kanji) {
-        return kanji == null ? "" : kanji.trim();
-    }
-
-    private static boolean locallyImproved(RecordsStudyModels.StudyItem before, RecordsStudyModels.StudyItem after) {
-        if (before == null || after == null) {
-            return false;
-        }
-        return after.writingLevel > before.writingLevel
-                || after.realPassStreak > before.realPassStreak;
     }
 
     static final class ActiveStudyTask {
