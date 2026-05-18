@@ -93,6 +93,7 @@ public final class HomeTextCopyTest {
     public void detailIdentityHelpersPreserveFallbackPriority() {
         RecordsImportModels.KanjiInventoryItem inventory = inventory("語", "language", "inventory:語");
         RecordsImportModels.DashboardRow row = row("裂", "row:裂");
+        RecordsImportModels.DashboardRow rowWithReason = row("裂", "row:裂", "manual reason");
 
         assertEquals("裂", HomeTextCopy.detailDisplayKanji("fallback", row, inventory));
         assertEquals("語", HomeTextCopy.detailDisplayKanji("fallback", null, inventory));
@@ -100,6 +101,14 @@ public final class HomeTextCopyTest {
         assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(null));
         assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(inventory("語", "", "")));
         assertEquals("language", HomeTextCopy.inventoryTitle(inventory));
+        assertEquals("Why it is here", HomeTextCopy.detailReasonTitle());
+        assertEquals(
+                "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.",
+                HomeTextCopy.historicalReasonText()
+        );
+        assertEquals("Current local practice evidence from AnkiDroid.", HomeTextCopy.activeReasonText(row));
+        assertEquals("manual reason", HomeTextCopy.activeReasonText(rowWithReason));
+        assertEquals("Anki browser: row:裂", HomeTextCopy.ankiBrowserLine("row:裂"));
         assertEquals("inventory:語", HomeTextCopy.detailBrowserSearch(row, inventory));
         assertEquals("row:裂", HomeTextCopy.detailBrowserSearch(row, inventory("語", "language", "")));
         assertEquals("", HomeTextCopy.detailBrowserSearch(row("裂", ""), null));
@@ -130,6 +139,10 @@ public final class HomeTextCopyTest {
     }
 
     private static RecordsImportModels.DashboardRow row(String kanji, String browserSearch) {
+        return row(kanji, browserSearch, "");
+    }
+
+    private static RecordsImportModels.DashboardRow row(String kanji, String browserSearch, String reasonText) {
         return new RecordsImportModels.DashboardRow(
                 kanji,
                 900,
@@ -138,7 +151,7 @@ public final class HomeTextCopyTest {
                 browserSearch,
                 1,
                 "reason",
-                "reason text",
+                reasonText,
                 1,
                 0,
                 1,

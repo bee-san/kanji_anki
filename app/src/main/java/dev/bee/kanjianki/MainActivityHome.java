@@ -836,17 +836,16 @@ abstract class MainActivityHome extends MainActivityBase {
 
     LinearLayout detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
         LinearLayout why = band(BLUE);
-        why.addView(text("Why it is here", 22, Color.WHITE, true));
+        why.addView(text(HomeTextCopy.detailReasonTitle(), 22, Color.WHITE, true));
         if (row == null) {
-            why.addView(text("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.", 17, Color.WHITE, false));
+            why.addView(text(HomeTextCopy.historicalReasonText(), 17, Color.WHITE, false));
             if (inventory != null && !inventory.browserSearch.isEmpty()) {
-                why.addView(text("Anki browser: " + compact(inventory.browserSearch, 96), 14, Color.WHITE, false));
+                why.addView(text(HomeTextCopy.ankiBrowserLine(compact(inventory.browserSearch, 96)), 14, Color.WHITE, false));
             }
         } else {
-            String reason = row.reasonText.isEmpty() ? "Current local practice evidence from AnkiDroid." : row.reasonText;
-            why.addView(text(reason, 17, Color.WHITE, false));
+            why.addView(text(HomeTextCopy.activeReasonText(row), 17, Color.WHITE, false));
             if (!row.browserSearch.isEmpty()) {
-                why.addView(text("Anki browser: " + compact(row.browserSearch, 96), 14, Color.WHITE, false));
+                why.addView(text(HomeTextCopy.ankiBrowserLine(compact(row.browserSearch, 96)), 14, Color.WHITE, false));
             }
         }
         return why;

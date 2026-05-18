@@ -116,6 +116,23 @@ public final class HomeTextCopy {
         return safeItem.primaryMeaning.isEmpty() ? "Meaning not stored yet" : safeItem.primaryMeaning;
     }
 
+    public static String detailReasonTitle() {
+        return "Why it is here";
+    }
+
+    public static String historicalReasonText() {
+        return "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history.";
+    }
+
+    public static String activeReasonText(RecordsImportModels.DashboardRow row) {
+        RecordsImportModels.DashboardRow safeRow = Objects.requireNonNull(row, "row");
+        return safeRow.reasonText.isEmpty() ? "Current local practice evidence from AnkiDroid." : safeRow.reasonText;
+    }
+
+    public static String ankiBrowserLine(String browserSearch) {
+        return "Anki browser: " + String.valueOf(browserSearch);
+    }
+
     public static String detailDisplayKanji(
             String fallback,
             RecordsImportModels.DashboardRow row,
