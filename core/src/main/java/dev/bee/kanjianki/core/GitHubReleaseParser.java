@@ -1,21 +1,18 @@
 package dev.bee.kanjianki.core;
 
+import dev.bee.kanjianki.updatecore.ReleaseVersion;
+import dev.bee.kanjianki.updatecore.Sha256Digest;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class GitHubReleaseParser {
-    private static final int SEMVER_COMPONENTS = 3;
-    private static final int SHA256_HEX_LENGTH = 64;
     private static final int UNICODE_ESCAPE_HEX_LENGTH = 4;
     private static final String KEY_ASSETS = "assets";
     private static final String KEY_BROWSER_DOWNLOAD_URL = "browser_download_url";
     private static final String KEY_HTML_URL = "html_url";
     private static final String KEY_NAME = "name";
     private static final String KEY_TAG_NAME = "tag_name";
-    private static final Pattern SHA256_PATTERN = Pattern.compile("(?i)\\b([a-f0-9]{" + SHA256_HEX_LENGTH + "})\\b");
-    private static final Pattern VERSION_PATTERN = Pattern.compile("^(\\d+)\\.(\\d+)\\.(\\d+)$");
 
     private GitHubReleaseParser() {
     }
@@ -37,22 +34,15 @@ public final class GitHubReleaseParser {
     }
 
     public static boolean isNewerSemver(String currentVersion, String tagName) {
-        int[] current = parseVersion(currentVersion == null ? "" : currentVersion.replaceFirst("^v", ""));
-        int[] remote = parseVersion(tagName == null ? "" : tagName.replaceFirst("^v", ""));
-        for (int i = 0; i < SEMVER_COMPONENTS; i++) {
-            if (remote[i] != current[i]) {
-                return remote[i] > current[i];
-            }
-        }
-        return false;
+        return ReleaseVersion.isNewerSemver(currentVersion, tagName);
     }
 
     public static String parseSha256(String checksumText) {
-        if (checksumText == null) {
-            return "";
-        }
-        Matcher matcher = SHA256_PATTERN.matcher(checksumText);
-        return matcher.find() ? matcher.group(1).toLowerCase() : "";
+        return Sha256Digest.findInText(checksumText);
+    }
+
+    public static boolean isSha256Digest(String checksumText) {
+        return Sha256Digest.isDigest(checksumText);
     }
 
     private static String stringValue(String json, String key) {
@@ -169,18 +159,6 @@ public final class GitHubReleaseParser {
             }
         }
         return -1;
-    }
-
-    private static int[] parseVersion(String version) {
-        Matcher matcher = VERSION_PATTERN.matcher(version);
-        if (!matcher.find()) {
-            return new int[]{0, 0, 0};
-        }
-        return new int[]{
-                Integer.parseInt(matcher.group(1)),
-                Integer.parseInt(matcher.group(2)),
-                Integer.parseInt(matcher.group(3))
-        };
     }
 
     private static ParsedString readString(String json, int quoteIndex) {

@@ -3,10 +3,7 @@ package dev.bee.kanjianki.update;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.GitHubReleaseParser;
 
-import java.util.regex.Pattern;
-
 final class UpdatePolicy {
-    private static final Pattern CHECKSUM_PATTERN = Pattern.compile("(?i)[0-9a-f]{64}");
     static final int STATUS_SUCCESS = 0;
     static final int STATUS_PENDING_USER_ACTION = -1;
 
@@ -41,10 +38,7 @@ final class UpdatePolicy {
     }
 
     static ValidationResult validateExpectedChecksum(String expected) {
-        if (expected == null || expected.trim().isEmpty()) {
-            return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
-        }
-        if (!CHECKSUM_PATTERN.matcher(expected.trim()).matches()) {
+        if (!GitHubReleaseParser.isSha256Digest(expected)) {
             return ValidationResult.failure("Checksum asset does not contain a SHA-256 digest.");
         }
         return ValidationResult.success("Checksum digest found.");
