@@ -23,6 +23,16 @@ final class SettingsWriteActions {
         writer.putIntSetting("suspended_rank_max", maxRank);
     }
 
+    static void saveNoteTypeFields(NoteTypeFieldWriteRequest request, StringSettingWriter writer) {
+        writer.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, request.noteType());
+        writer.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, request.expressionField());
+        writer.putStringSetting(SyncSettings.READING_FIELD_SETTING_KEY, request.readingField());
+        writer.putStringSetting(SyncSettings.MEANING_FIELD_SETTING_KEY, request.meaningField());
+        writer.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, request.sentenceField());
+        writer.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, request.frequencyField());
+        writer.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, request.frequencySortField());
+    }
+
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
         saveImportFilters(
                 new ImportFilterWriteRequest(
@@ -107,6 +117,17 @@ final class SettingsWriteActions {
             int minMatchingCards,
             boolean browserQueryCards,
             String browserQuery
+    ) {
+    }
+
+    record NoteTypeFieldWriteRequest(
+            String noteType,
+            String expressionField,
+            String readingField,
+            String meaningField,
+            String sentenceField,
+            String frequencyField,
+            String frequencySortField
     ) {
     }
 }

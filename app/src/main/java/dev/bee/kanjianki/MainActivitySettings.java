@@ -783,13 +783,18 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, SettingsTextCopy.expressionFieldRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, selected);
-            store.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, expressionField.getText().toString().trim());
-            store.putStringSetting(SyncSettings.READING_FIELD_SETTING_KEY, readingField.getText().toString().trim());
-            store.putStringSetting(SyncSettings.MEANING_FIELD_SETTING_KEY, meaningField.getText().toString().trim());
-            store.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, sentenceField.getText().toString().trim());
-            store.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, frequencyField.getText().toString().trim());
-            store.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, frequencySortField.getText().toString().trim());
+            SettingsWriteActions.saveNoteTypeFields(
+                    new SettingsWriteActions.NoteTypeFieldWriteRequest(
+                            selected,
+                            expressionField.getText().toString().trim(),
+                            readingField.getText().toString().trim(),
+                            meaningField.getText().toString().trim(),
+                            sentenceField.getText().toString().trim(),
+                            frequencyField.getText().toString().trim(),
+                            frequencySortField.getText().toString().trim()
+                    ),
+                    store::putStringSetting
+            );
             Toast.makeText(this, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });

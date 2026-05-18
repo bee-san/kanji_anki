@@ -53,6 +53,33 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void saveNoteTypeFieldsWritesAllFieldMappingKeys() {
+        Map<String, String> settings = new LinkedHashMap<>();
+
+        SettingsWriteActions.saveNoteTypeFields(
+                new SettingsWriteActions.NoteTypeFieldWriteRequest(
+                        "Kiku",
+                        "Expression",
+                        "Reading",
+                        "Meaning",
+                        "Sentence",
+                        "Frequency",
+                        "FrequencySort"
+                ),
+                settings::put
+        );
+
+        assertEquals(7, settings.size());
+        assertEquals("Kiku", settings.get(SyncSettings.NOTE_TYPE_SETTING_KEY));
+        assertEquals("Expression", settings.get(SyncSettings.EXPRESSION_FIELD_SETTING_KEY));
+        assertEquals("Reading", settings.get(SyncSettings.READING_FIELD_SETTING_KEY));
+        assertEquals("Meaning", settings.get(SyncSettings.MEANING_FIELD_SETTING_KEY));
+        assertEquals("Sentence", settings.get(SyncSettings.SENTENCE_FIELD_SETTING_KEY));
+        assertEquals("Frequency", settings.get(SyncSettings.FREQUENCY_FIELD_SETTING_KEY));
+        assertEquals("FrequencySort", settings.get(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY));
+    }
+
+    @Test
     public void applyImportPresetWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
         SettingsImportPreset preset = new SettingsImportPreset(
