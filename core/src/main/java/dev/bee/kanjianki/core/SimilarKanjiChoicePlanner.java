@@ -128,6 +128,24 @@ public final class SimilarKanjiChoicePlanner {
         return new ArrayList<>(choices);
     }
 
+    public static RecordsImportModels.SimilarKanjiChoiceCard choiceCardForSession(
+            RecordsImportModels.SimilarKanjiChoiceCard stored,
+            String targetKanji,
+            String primaryMeaning,
+            List<RecordsImportModels.SimilarKanjiPair> pairs
+    ) {
+        if (stored != null) {
+            return stored;
+        }
+        List<String> choices = fallbackChoices(targetKanji, pairs);
+        return new RecordsImportModels.SimilarKanjiChoiceCard(
+                targetKanji,
+                primaryMeaning == null ? "" : primaryMeaning,
+                choices,
+                choiceSignature(choices)
+        );
+    }
+
     public static String choiceSignature(List<String> choices) {
         TreeSet<String> sorted = new TreeSet<>();
         if (choices != null) {

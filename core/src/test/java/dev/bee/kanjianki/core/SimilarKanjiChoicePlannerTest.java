@@ -8,6 +8,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public final class SimilarKanjiChoicePlannerTest {
@@ -109,6 +110,46 @@ public final class SimilarKanjiChoicePlannerTest {
     @Test
     public void fallbackChoicesAllowMissingPairs() {
         assertEquals(Collections.singletonList("裂"), SimilarKanjiChoicePlanner.fallbackChoices("裂", null));
+    }
+
+    @Test
+    public void choiceCardForSessionPrefersStoredDueCard() {
+        RecordsImportModels.SimilarKanjiChoiceCard stored = new RecordsImportModels.SimilarKanjiChoiceCard(
+                "裂",
+                "stored meaning",
+                Arrays.asList("裂", "列"),
+                "stored-signature"
+        );
+
+        RecordsImportModels.SimilarKanjiChoiceCard card = SimilarKanjiChoicePlanner.choiceCardForSession(
+                stored,
+                "謎",
+                "fallback meaning",
+                Collections.singletonList(pair("謎", "迷"))
+        );
+
+        assertSame(stored, card);
+    }
+
+    @Test
+    public void choiceCardForSessionBuildsFallbackCardFromPairsAndMeaning() {
+        RecordsImportModels.SimilarKanjiChoiceCard card = SimilarKanjiChoicePlanner.choiceCardForSession(
+                null,
+                "裂",
+                "split",
+                Arrays.asList(
+                        pair("裂", "列"),
+                        pair("裂", "烈"),
+                        pair("劣", "裂"),
+                        pair("裂", "例"),
+                        pair("裂", "戻")
+                )
+        );
+
+        assertEquals("裂", card.targetKanji);
+        assertEquals("split", card.primaryMeaning);
+        assertEquals(Arrays.asList("裂", "列", "烈", "劣"), card.choices);
+        assertEquals("列\t劣\t烈\t裂", card.choiceSignature);
     }
 
     @Test
