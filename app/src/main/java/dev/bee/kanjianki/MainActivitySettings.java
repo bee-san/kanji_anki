@@ -1129,8 +1129,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout studyAheadSettingsPanel() {
         int currentMinutes = store.studyAheadMinutes();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Study ahead", 23, INK, true));
-        box.addView(text("Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.studyAheadTitle(), 23, INK, true));
+        box.addView(text(SettingsTextCopy.studyAheadBody(), 15, MUTED, false));
 
         EditText minutesInput = new EditText(this);
         minutesInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
@@ -1141,7 +1141,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(text(studyAheadMinutesLabel(), 15, INK, true));
         box.addView(minutesInput, new LinearLayout.LayoutParams(-1, dp(58)));
 
-        Button save = primaryButton("Save study ahead", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveStudyAheadLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesInput.getText().toString());
             if (!request.valid) {
@@ -1149,7 +1149,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 return;
             }
             store.saveStudyAheadMinutes(request.minutes);
-            Toast.makeText(this, "Study ahead saved.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);

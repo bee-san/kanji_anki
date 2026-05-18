@@ -228,6 +228,13 @@ public final class SettingsTextCopyTest {
         assertEquals("Both 1m 10m", SettingsTextCopy.sameLearningStepsLabel());
         assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel());
         assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast());
+        assertEquals("Study ahead", SettingsTextCopy.studyAheadTitle());
+        assertEquals(
+                "Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).",
+                SettingsTextCopy.studyAheadBody()
+        );
+        assertEquals("Save study ahead", SettingsTextCopy.saveStudyAheadLabel());
+        assertEquals("Study ahead saved.", SettingsTextCopy.studyAheadSavedToast());
     }
 
     @Test
