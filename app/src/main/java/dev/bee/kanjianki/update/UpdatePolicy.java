@@ -1,11 +1,12 @@
 package dev.bee.kanjianki.update;
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy;
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator;
 
 final class UpdatePolicy {
-    static final int STATUS_SUCCESS = 0;
-    static final int STATUS_PENDING_USER_ACTION = -1;
+    static final int STATUS_SUCCESS = PackageInstallStatusPolicy.STATUS_SUCCESS;
+    static final int STATUS_PENDING_USER_ACTION = PackageInstallStatusPolicy.STATUS_PENDING_USER_ACTION;
 
     private UpdatePolicy() {
     }
@@ -50,14 +51,8 @@ final class UpdatePolicy {
     }
 
     static InstallCallback mapInstallStatus(int status, String message) {
-        if (status == STATUS_SUCCESS) {
-            return new InstallCallback(false, true, "Install finished.");
-        }
-        if (status == STATUS_PENDING_USER_ACTION) {
-            return new InstallCallback(true, false, "Android needs confirmation to finish installing.");
-        }
-        String suffix = message == null || message.trim().isEmpty() ? "" : ": " + message.trim();
-        return new InstallCallback(false, false, "Install failed" + suffix + ".");
+        PackageInstallStatusPolicy.InstallCallback mapped = PackageInstallStatusPolicy.mapInstallStatus(status, message);
+        return new InstallCallback(mapped.pendingUserAction, mapped.success, mapped.message);
     }
 
     static boolean shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource source) {
