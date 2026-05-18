@@ -89,6 +89,7 @@ import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
+import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -1583,11 +1584,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
     void runUpdate(boolean cachedPending) {
         base(NAV_SETTINGS_ROUTE);
         int updateUiRun = beginUpdateUiRun();
+        UpdateRunScreenCopy.Copy copy = UpdateRunScreenCopy.forRun(cachedPending);
         content.addView(fullWidthHomeButton());
         content.addView(backToSettingsButton());
-        content.addView(text(cachedPending ? "Starting installer" : "Checking release", 32, INK, true));
-        content.addView(text(cachedPending ? "Using the verified APK already cached by Kani." : "Downloading metadata and verifying assets.", 16, MUTED, false));
-        content.addView(indeterminateProgressRow(cachedPending ? "Preparing verified APK" : "Checking GitHub Releases"));
+        content.addView(text(copy.title(), 32, INK, true));
+        content.addView(text(copy.body(), 16, MUTED, false));
+        content.addView(indeterminateProgressRow(copy.progressLabel()));
         io.execute(() -> {
             GitHubUpdater updater = new GitHubUpdater(this);
             GitHubUpdater.UpdateResult result = cachedPending
