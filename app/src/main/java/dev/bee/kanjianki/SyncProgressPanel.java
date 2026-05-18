@@ -6,9 +6,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import dev.bee.kanjianki.core.SyncProgressCopy;
 import dev.bee.kanjianki.sync.SyncProgress;
-
-import java.util.Locale;
 
 final class SyncProgressPanel extends LinearLayout {
     private static final int INK = 0xFF2D1635;
@@ -39,7 +38,8 @@ final class SyncProgressPanel extends LinearLayout {
     }
 
     void render(SyncProgress progress) {
-        stage.setText(syncStageText(progress.stage));
+        SyncProgressCopy.Stage currentStage = coreStage(progress.stage);
+        stage.setText(SyncProgressCopy.stageTitle(currentStage));
         if (progress.totalKnown()) {
             lastScannedCards = progress.scannedCards;
             lastTotalCards = progress.totalCards;
@@ -52,97 +52,42 @@ final class SyncProgressPanel extends LinearLayout {
             return;
         }
         progressBar.setIndeterminate(true);
-        count.setText(syncStageBody(progress.stage));
+        count.setText(SyncProgressCopy.stageBody(currentStage));
         rate.setText("");
-        progressBar.setContentDescription("Sync progress: " + syncStageText(progress.stage));
+        progressBar.setContentDescription("Sync progress: " + SyncProgressCopy.stageTitle(currentStage));
     }
 
     private void renderKnownTotal(SyncProgress progress) {
         progressBar.setIndeterminate(false);
         progressBar.setMax(1000);
-        int value = lastTotalCards == 0
-                ? 1000
-                : Math.min(1000, Math.max(0, Math.round((lastScannedCards * 1000f) / lastTotalCards)));
-        progressBar.setProgress(value);
-        String cardText = lastScannedCards + " / " + lastTotalCards + " cards scanned";
+        progressBar.setProgress(SyncProgressCopy.progressPermille(lastScannedCards, lastTotalCards));
+        String cardText = SyncProgressCopy.cardProgressText(lastScannedCards, lastTotalCards);
         count.setText(cardText);
         rate.setText(scanRateText(progress.stage));
         progressBar.setContentDescription("Sync progress: " + cardText);
     }
 
     private String scanRateText(SyncProgress.Stage stage) {
-        if (stage != SyncProgress.Stage.SCANNING_CARDS) {
-            return syncStageBody(stage);
-        }
-        if (lastScannedCards <= 0) {
-            return "Scanning cards.";
-        }
-        long elapsedMillis = Math.max(1L, SystemClock.elapsedRealtime() - scanStartedAt);
-        double perSecond = lastScannedCards * 1000.0 / elapsedMillis;
-        String rateText = String.format(Locale.US, perSecond >= 10.0 ? "%.0f cards/sec" : "%.1f cards/sec", perSecond);
-        int remaining = Math.max(0, lastTotalCards - lastScannedCards);
-        if (remaining == 0) {
-            return rateText + " - finishing up";
-        }
-        if (lastScannedCards >= 3 && elapsedMillis >= 1000L) {
-            long etaMillis = Math.round((remaining / perSecond) * 1000.0);
-            return rateText + " - about " + shortDuration(etaMillis) + " left";
-        }
-        return rateText + " - estimating time left";
+        return SyncProgressCopy.scanRateText(
+                coreStage(stage),
+                lastScannedCards,
+                lastTotalCards,
+                SystemClock.elapsedRealtime() - scanStartedAt
+        );
     }
 
-    private String syncStageText(SyncProgress.Stage stage) {
-        if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
-            return "Finding note type";
+    static SyncProgressCopy.Stage coreStage(SyncProgress.Stage stage) {
+        if (stage == null) {
+            return null;
         }
-        if (stage == SyncProgress.Stage.READING_NOTES) {
-            return "Reading notes";
-        }
-        if (stage == SyncProgress.Stage.SCANNING_CARDS) {
-            return "Scanning cards";
-        }
-        if (stage == SyncProgress.Stage.PROCESSING_IMPORTED_CARDS) {
-            return "Processing imported cards";
-        }
-        if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
-            return "Building practice queue";
-        }
-        if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
-            return "Archiving imported suspended cards";
-        }
-        return "Syncing cards";
-    }
-
-    private String syncStageBody(SyncProgress.Stage stage) {
-        if (stage == SyncProgress.Stage.FINDING_NOTE_TYPE) {
-            return "Checking collection shape.";
-        }
-        if (stage == SyncProgress.Stage.READING_NOTES) {
-            return "Reading notes before the card total is known.";
-        }
-        if (stage == SyncProgress.Stage.PROCESSING_IMPORTED_CARDS) {
-            return "AnkiDroid read finished. Processing imported cards locally.";
-        }
-        if (stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
-            return "Saving the practice queue.";
-        }
-        if (stage == SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS) {
-            return "Updating archived suspended cards.";
-        }
-        return "Preparing card scan.";
-    }
-
-    private String shortDuration(long millis) {
-        long seconds = Math.max(1L, Math.round(millis / 1000.0));
-        if (seconds < 60L) {
-            return seconds + " sec";
-        }
-        long minutes = Math.max(1L, Math.round(seconds / 60.0));
-        if (minutes < 60L) {
-            return minutes + " min";
-        }
-        long hours = Math.max(1L, Math.round(minutes / 60.0));
-        return hours + " hr";
+        return switch (stage) {
+            case FINDING_NOTE_TYPE -> SyncProgressCopy.Stage.FINDING_NOTE_TYPE;
+            case READING_NOTES -> SyncProgressCopy.Stage.READING_NOTES;
+            case SCANNING_CARDS -> SyncProgressCopy.Stage.SCANNING_CARDS;
+            case PROCESSING_IMPORTED_CARDS -> SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS;
+            case BUILDING_PRACTICE_QUEUE -> SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE;
+            case ARCHIVING_IMPORTED_CARDS -> SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS;
+        };
     }
 
     private TextView text(Context context, String value, int sp, int color, boolean bold) {
