@@ -20,6 +20,7 @@ import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.ReminderCopyPolicy;
+import dev.bee.kanjianki.core.ReminderNotificationPolicy;
 import dev.bee.kanjianki.core.ReminderSchedulePolicy;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.time.AppClock;
@@ -71,14 +72,12 @@ public final class ReminderScheduler {
     }
 
     static boolean notificationsAllowed(ReminderServices services) {
-        if (!services.hasRuntimeNotificationPermission()) {
-            return false;
-        }
-        if (!services.areNotificationsEnabled()) {
-            return false;
-        }
         Integer channelImportance = services.reminderChannelImportance();
-        return channelImportance == null || channelImportance != NotificationManager.IMPORTANCE_NONE;
+        return ReminderNotificationPolicy.notificationsAllowed(
+                services.hasRuntimeNotificationPermission(),
+                services.areNotificationsEnabled(),
+                channelImportance != null && channelImportance == NotificationManager.IMPORTANCE_NONE
+        );
     }
 
     public static boolean hasRuntimeNotificationPermission(Context context) {
