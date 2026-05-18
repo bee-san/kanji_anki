@@ -53,6 +53,74 @@ public final class FsrsParameters {
         return values[index];
     }
 
+    double initialStability(FsrsRating rating) {
+        return get(rating.value() - 1);
+    }
+
+    double initialDifficultyBase() {
+        return values[4];
+    }
+
+    double initialDifficultyExponent() {
+        return values[5];
+    }
+
+    double difficultyDeltaScale() {
+        return values[6];
+    }
+
+    double difficultyMeanReversionWeight() {
+        return values[7];
+    }
+
+    double recallStabilityBase() {
+        return values[8];
+    }
+
+    double recallStabilityStabilityDecay() {
+        return values[9];
+    }
+
+    double recallStabilityRetrievabilitySensitivity() {
+        return values[10];
+    }
+
+    double forgetStabilityBase() {
+        return values[11];
+    }
+
+    double forgetStabilityDifficultyDecay() {
+        return values[12];
+    }
+
+    double forgetStabilityStabilityGrowth() {
+        return values[13];
+    }
+
+    double forgetStabilityRetrievabilitySensitivity() {
+        return values[14];
+    }
+
+    double hardPenalty() {
+        return values[15];
+    }
+
+    double easyBonus() {
+        return values[16];
+    }
+
+    double shortTermBase() {
+        return values[17];
+    }
+
+    double shortTermRatingOffset() {
+        return values[18];
+    }
+
+    double shortTermStabilityDecay() {
+        return values[19];
+    }
+
     public double[] toArray() {
         return values.clone();
     }

@@ -47,11 +47,12 @@ final class DefaultFsrsEngine implements FsrsEngine {
     public double nextDifficulty(double currentDifficulty, FsrsRating rating) {
         validateDifficulty(currentDifficulty);
         Fsrs.requireNonNull(rating, PARAM_RATING);
-        double deltaDifficulty = -(parameters.get(6) * (rating.value() - 3.0));
+        double deltaDifficulty = -(parameters.difficultyDeltaScale() * (rating.value() - 3.0));
         double linearDamping = (10.0 - currentDifficulty) * deltaDifficulty / 9.0;
         double easyInitialDifficulty = initialDifficulty(FsrsRating.EASY, false);
-        double next = parameters.get(7) * easyInitialDifficulty
-                + (1.0 - parameters.get(7)) * (currentDifficulty + linearDamping);
+        double meanReversion = parameters.difficultyMeanReversionWeight();
+        double next = meanReversion * easyInitialDifficulty
+                + (1.0 - meanReversion) * (currentDifficulty + linearDamping);
         return Fsrs.clamp(next, Fsrs.MIN_DIFFICULTY, Fsrs.MAX_DIFFICULTY);
     }
 
@@ -61,8 +62,8 @@ final class DefaultFsrsEngine implements FsrsEngine {
             throw new IllegalArgumentException("stability must be finite and positive");
         }
         Fsrs.requireNonNull(rating, PARAM_RATING);
-        double increase = Math.exp(parameters.get(17) * (rating.value() - 3.0 + parameters.get(18)))
-                * Math.pow(stability, -parameters.get(19));
+        double increase = Math.exp(parameters.shortTermBase() * (rating.value() - 3.0 + parameters.shortTermRatingOffset()))
+                * Math.pow(stability, -parameters.shortTermStabilityDecay());
         if (rating == FsrsRating.GOOD || rating == FsrsRating.EASY) {
             increase = Math.max(increase, 1.0);
         }
@@ -92,11 +93,13 @@ final class DefaultFsrsEngine implements FsrsEngine {
     }
 
     private double initialStability(FsrsRating rating) {
-        return Math.max(parameters.get(rating.value() - 1), Fsrs.STABILITY_MIN);
+        return Math.max(parameters.initialStability(rating), Fsrs.STABILITY_MIN);
     }
 
     private double initialDifficulty(FsrsRating rating, boolean clamp) {
-        double difficulty = parameters.get(4) - Math.exp(parameters.get(5) * (rating.value() - 1.0)) + 1.0;
+        double difficulty = parameters.initialDifficultyBase()
+                - Math.exp(parameters.initialDifficultyExponent() * (rating.value() - 1.0))
+                + 1.0;
         return clamp ? Fsrs.clamp(difficulty, Fsrs.MIN_DIFFICULTY, Fsrs.MAX_DIFFICULTY) : difficulty;
     }
 
@@ -106,14 +109,14 @@ final class DefaultFsrsEngine implements FsrsEngine {
             double retrievability,
             FsrsRating rating
     ) {
-        double hardPenalty = rating == FsrsRating.HARD ? parameters.get(15) : 1.0;
-        double easyBonus = rating == FsrsRating.EASY ? parameters.get(16) : 1.0;
+        double hardPenalty = rating == FsrsRating.HARD ? parameters.hardPenalty() : 1.0;
+        double easyBonus = rating == FsrsRating.EASY ? parameters.easyBonus() : 1.0;
         double next = stability * (
                 1.0
-                        + Math.exp(parameters.get(8))
+                        + Math.exp(parameters.recallStabilityBase())
                         * (11.0 - difficulty)
-                        * Math.pow(stability, -parameters.get(9))
-                        * (Math.exp((1.0 - retrievability) * parameters.get(10)) - 1.0)
+                        * Math.pow(stability, -parameters.recallStabilityStabilityDecay())
+                        * (Math.exp((1.0 - retrievability) * parameters.recallStabilityRetrievabilitySensitivity()) - 1.0)
                         * hardPenalty
                         * easyBonus
         );
@@ -121,11 +124,11 @@ final class DefaultFsrsEngine implements FsrsEngine {
     }
 
     private double nextForgetStability(double difficulty, double stability, double retrievability) {
-        double longTermForget = parameters.get(11)
-                * Math.pow(difficulty, -parameters.get(12))
-                * (Math.pow(stability + 1.0, parameters.get(13)) - 1.0)
-                * Math.exp((1.0 - retrievability) * parameters.get(14));
-        double shortTermForgetCap = stability / Math.exp(parameters.get(17) * parameters.get(18));
+        double longTermForget = parameters.forgetStabilityBase()
+                * Math.pow(difficulty, -parameters.forgetStabilityDifficultyDecay())
+                * (Math.pow(stability + 1.0, parameters.forgetStabilityStabilityGrowth()) - 1.0)
+                * Math.exp((1.0 - retrievability) * parameters.forgetStabilityRetrievabilitySensitivity());
+        double shortTermForgetCap = stability / Math.exp(parameters.shortTermBase() * parameters.shortTermRatingOffset());
         return Math.max(Math.min(longTermForget, shortTermForgetCap), Fsrs.STABILITY_MIN);
     }
 

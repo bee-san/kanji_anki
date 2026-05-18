@@ -50,6 +50,24 @@ public final class FsrsEngineReferenceTest {
         assertEquals(0.1542, defaults.decayMagnitude(), 0.0);
         assertEquals(-0.1542, defaults.decay(), 0.0);
         assertEquals(Math.pow(0.9, 1.0 / defaults.decay()) - 1.0, defaults.factor(), 0.0);
+        assertEquals(0.212, defaults.initialStability(FsrsRating.AGAIN), 0.0);
+        assertEquals(8.2956, defaults.initialStability(FsrsRating.EASY), 0.0);
+        assertEquals(6.4133, defaults.initialDifficultyBase(), 0.0);
+        assertEquals(0.8334, defaults.initialDifficultyExponent(), 0.0);
+        assertEquals(3.0194, defaults.difficultyDeltaScale(), 0.0);
+        assertEquals(0.001, defaults.difficultyMeanReversionWeight(), 0.0);
+        assertEquals(1.8722, defaults.recallStabilityBase(), 0.0);
+        assertEquals(0.1666, defaults.recallStabilityStabilityDecay(), 0.0);
+        assertEquals(0.796, defaults.recallStabilityRetrievabilitySensitivity(), 0.0);
+        assertEquals(1.4835, defaults.forgetStabilityBase(), 0.0);
+        assertEquals(0.0614, defaults.forgetStabilityDifficultyDecay(), 0.0);
+        assertEquals(0.2629, defaults.forgetStabilityStabilityGrowth(), 0.0);
+        assertEquals(1.6483, defaults.forgetStabilityRetrievabilitySensitivity(), 0.0);
+        assertEquals(0.6014, defaults.hardPenalty(), 0.0);
+        assertEquals(1.8729, defaults.easyBonus(), 0.0);
+        assertEquals(0.5425, defaults.shortTermBase(), 0.0);
+        assertEquals(0.0912, defaults.shortTermRatingOffset(), 0.0);
+        assertEquals(0.0658, defaults.shortTermStabilityDecay(), 0.0);
         assertTrue(defaults.toString().startsWith("FsrsParameters["));
 
         values[0] = 99.0;
