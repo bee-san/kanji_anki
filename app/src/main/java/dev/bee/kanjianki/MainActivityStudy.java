@@ -875,23 +875,21 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
-        String token = StudyTokenFactory.studyItem("repair-" + repair.id, repair.activeToken);
-        RecordsImportModels.SimilarKanjiWritingRepair activeRepair = repair.withToken(token, now);
-        store.saveSimilarWritingRepair(activeRepair);
+        StudyRepairActions.ActiveRepair active = StudyRepairActions.activateSimilarWritingRepair(repair, now, store::saveSimilarWritingRepair);
+        RecordsImportModels.SimilarKanjiWritingRepair activeRepair = active.repair();
         activeSimilarWritingRepair = activeRepair;
         RecordsStudyModels.StudyItem item = newTargetedStudyItem(activeRepair.repairKanji, now);
         activeSession = new RecordsSchedulerModels.StudySession(
-                item.withToken(token),
+                item.withToken(active.token()),
                 null,
-                token,
+                active.token(),
                 TASK_REPAIR_WRITING,
                 true,
                 similarRepairPrompt(activeRepair)
         );
         activeStudyPlan = plan;
-        String progressKey = similarRepairProgressKey(activeRepair);
-        registerStudyTaskShown(progressKey);
-        startActiveStudyTask(similarRepairStudyTaskKey(activeRepair), activeRepair.repairKanji, TASK_REPAIR_WRITING, now);
+        registerStudyTaskShown(active.progressKey());
+        startActiveStudyTask(active.studyTaskKey(), activeRepair.repairKanji, TASK_REPAIR_WRITING, now);
         renderWritingSession(activeSession);
     }
 
