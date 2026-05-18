@@ -594,6 +594,42 @@ public final class SettingsTextCopy {
         return "Desired retention: " + retentionPercent + "%";
     }
 
+    public static String studyLadderTitle() {
+        return "Study ladder";
+    }
+
+    public static String studyLadderBody() {
+        return "Turn rungs off or move them up and down. At least one always-available rung stays on.";
+    }
+
+    public static String ladderToggleLabel(boolean enabled) {
+        return enabled ? "On" : "Off";
+    }
+
+    public static String moveUpLabel() {
+        return "Up";
+    }
+
+    public static String moveDownLabel() {
+        return "Down";
+    }
+
+    public static String restoreDefaultLadderLabel() {
+        return "Restore default ladder";
+    }
+
+    public static String studyLadderRestoredToast() {
+        return "Study ladder restored.";
+    }
+
+    public static String keepAlwaysAvailableRungToast() {
+        return "Keep at least one always-available rung on.";
+    }
+
+    public static String ladderRungToggleToast(RecordsBase.LadderRung rung, boolean wasEnabled) {
+        return settingsLadderRungLabel(rung) + (wasEnabled ? " off." : " on.");
+    }
+
     public static String ladderRungSubtitle(RecordsBase.StudyLadderSettings ladder, RecordsBase.LadderRung rung) {
         String status = ladder.isEnabled(rung) ? "Enabled" : "Disabled";
         String kind = rung == RecordsBase.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";

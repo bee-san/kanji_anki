@@ -1163,8 +1163,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout studyLadderSettingsPanel() {
         RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Study ladder", 23, INK, true));
-        box.addView(text("Turn rungs off or move them up and down. At least one always-available rung stays on.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.studyLadderTitle(), 23, INK, true));
+        box.addView(text(SettingsTextCopy.studyLadderBody(), 15, MUTED, false));
 
         List<RecordsBase.LadderRung> rungs = ladder.orderedRungs;
         for (int i = 0; i < rungs.size(); i++) {
@@ -1175,11 +1175,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
             LinearLayout controls = new LinearLayout(this);
             controls.setOrientation(LinearLayout.HORIZONTAL);
-            Button toggle = secondaryButton(ladder.isEnabled(rung) ? "On" : "Off");
+            Button toggle = secondaryButton(SettingsTextCopy.ladderToggleLabel(ladder.isEnabled(rung)));
             toggle.setOnClickListener(v -> toggleLadderRung(rung));
             controls.addView(toggle, new LinearLayout.LayoutParams(0, dp(48), 1));
 
-            Button up = secondaryButton("Up");
+            Button up = secondaryButton(SettingsTextCopy.moveUpLabel());
             up.setEnabled(i > 0);
             up.setOnClickListener(v -> {
                 store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, -1));
@@ -1189,7 +1189,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             upLp.setMargins(dp(8), 0, 0, 0);
             controls.addView(up, upLp);
 
-            Button down = secondaryButton("Down");
+            Button down = secondaryButton(SettingsTextCopy.moveDownLabel());
             down.setEnabled(i < rungs.size() - 1);
             down.setOnClickListener(v -> {
                 store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, 1));
@@ -1202,10 +1202,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
             box.addView(row);
         }
 
-        Button reset = secondaryButton("Restore default ladder");
+        Button reset = secondaryButton(SettingsTextCopy.restoreDefaultLadderLabel());
         reset.setOnClickListener(v -> {
             store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
-            Toast.makeText(this, "Study ladder restored.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(reset);
@@ -1217,11 +1217,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
         boolean wasEnabled = current.isEnabled(rung);
         RecordsBase.StudyLadderSettings next = current.withRungEnabled(rung, !wasEnabled);
         if (wasEnabled && next.enabledText().equals(current.enabledText())) {
-            Toast.makeText(this, "Keep at least one always-available rung on.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.keepAlwaysAvailableRungToast(), Toast.LENGTH_SHORT).show();
             return;
         }
         store.saveStudyLadderSettings(next);
-        Toast.makeText(this, ladderRungLabel(rung) + (wasEnabled ? " off." : " on."), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled), Toast.LENGTH_SHORT).show();
         renderSettings();
     }
 

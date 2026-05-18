@@ -268,6 +268,20 @@ public final class SettingsTextCopyTest {
         assertEquals("Word -> reading", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WORD_READING));
         assertEquals("Enabled always available rung", SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.WRITE_KANJI));
         assertEquals("Enabled conditional rung", SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertEquals("Study ladder", SettingsTextCopy.studyLadderTitle());
+        assertEquals(
+                "Turn rungs off or move them up and down. At least one always-available rung stays on.",
+                SettingsTextCopy.studyLadderBody()
+        );
+        assertEquals("On", SettingsTextCopy.ladderToggleLabel(true));
+        assertEquals("Off", SettingsTextCopy.ladderToggleLabel(false));
+        assertEquals("Up", SettingsTextCopy.moveUpLabel());
+        assertEquals("Down", SettingsTextCopy.moveDownLabel());
+        assertEquals("Restore default ladder", SettingsTextCopy.restoreDefaultLadderLabel());
+        assertEquals("Study ladder restored.", SettingsTextCopy.studyLadderRestoredToast());
+        assertEquals("Keep at least one always-available rung on.", SettingsTextCopy.keepAlwaysAvailableRungToast());
+        assertEquals("Write kanji off.", SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true));
+        assertEquals("Write kanji on.", SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, false));
         assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsLadderRungLabel(null));
     }
 
