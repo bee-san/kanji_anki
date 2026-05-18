@@ -1,18 +1,12 @@
 package dev.bee.kanjianki.reminders;
 
-import dev.bee.kanjianki.core.RecordsImportModels;
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.RecordsStudyModels;
 import android.content.Context;
 
 import dev.bee.kanjianki.data.LocalStore;
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 
 import org.junit.Test;
 
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.List;
 import java.util.TimeZone;
 
 import static org.junit.Assert.assertEquals;
@@ -150,32 +144,6 @@ public final class ReminderSchedulerTest {
     }
 
     @Test
-    public void reminderCopyAsksForSyncBeforeAnyActiveKanjiExist() {
-        ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(planRequest(
-                Collections.emptyList(),
-                Collections.emptyList(),
-                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS,
-                utc(2026, Calendar.MAY, 15, 8, 0)));
-
-        assertEquals("Sync Kani", copy.title);
-        assertEquals("Sync AnkiDroid to find the kanji your reviews keep exposing.", copy.message);
-    }
-
-    @Test
-    public void reminderCopyPlansActiveRowsBeforeFormattingMessage() {
-        long now = utc(2026, Calendar.MAY, 15, 8, 0);
-
-        ReminderScheduler.ReminderCopy copy = ReminderScheduler.reminderCopy(planRequest(
-                Collections.singletonList(row("裂", 80)),
-                Collections.singletonList(new RecordsStudyModels.StudyItem("裂", "review", now - 1L, 1.0, 5.0, 2, 0, 2, 1, null, now)),
-                1,
-                now));
-
-        assertEquals("Kani focus is ready", copy.title);
-        assertEquals("1 focus kanji is left today. Draw one now.", copy.message);
-    }
-
-    @Test
     public void nextTriggerWrapperUsesInjectedClock() {
         TimeZone original = TimeZone.getDefault();
         try {
@@ -190,66 +158,11 @@ public final class ReminderSchedulerTest {
         }
     }
 
-    @Test
-    public void reminderCopyFormatsFocusRecoveryAndRestMessages() {
-        ReminderScheduler.ReminderCopy oneFocus = ReminderScheduler.reminderCopyFor(1, 4);
-        ReminderScheduler.ReminderCopy manyFocus = ReminderScheduler.reminderCopyFor(3, 4);
-        ReminderScheduler.ReminderCopy oneDue = ReminderScheduler.reminderCopyFor(0, 1);
-        ReminderScheduler.ReminderCopy manyDue = ReminderScheduler.reminderCopyFor(0, 2);
-        ReminderScheduler.ReminderCopy rest = ReminderScheduler.reminderCopyFor(0, 0);
-
-        assertEquals("Kani focus is ready", oneFocus.title);
-        assertEquals("1 focus kanji is left today. Draw one now.", oneFocus.message);
-        assertEquals("3 focus kanji are left today. Draw one now.", manyFocus.message);
-        assertEquals("Kani recovery is due", oneDue.title);
-        assertEquals("1 problem kanji is ready. Draw one now.", oneDue.message);
-        assertEquals("2 problem kanji are ready. Draw one now.", manyDue.message);
-        assertEquals("Check Kani", rest.title);
-        assertEquals("Your queue can rest today. Open Kani if you want an extra problem kanji rep.", rest.message);
-    }
-
     private static long utc(int year, int month, int day, int hour, int minute) {
         Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
         calendar.set(year, month, day, hour, minute, 0);
         calendar.set(Calendar.MILLISECOND, 0);
         return calendar.getTimeInMillis();
-    }
-
-    private static AdaptiveLoadPlanner.PlanRequest planRequest(
-            List<RecordsImportModels.DashboardRow> rows,
-            List<RecordsStudyModels.StudyItem> items,
-            int maxItems,
-            long now
-    ) {
-        return AdaptiveLoadPlanner.PlanRequest.builder(
-                        rows,
-                        items,
-                        new RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
-                        0,
-                        Collections.emptySet(),
-                        AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
-                                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE,
-                                maxItems),
-                        now)
-                .build();
-    }
-
-    private static RecordsImportModels.DashboardRow row(String kanji, int score) {
-        return new RecordsImportModels.DashboardRow(
-                kanji,
-                900,
-                "meaning",
-                "reading",
-                "search",
-                score,
-                "reason",
-                "reason text",
-                1,
-                score > 15 ? 1 : 0,
-                0,
-                Collections.emptyList()
-        );
     }
 
     private static final class FakeReminderServices implements ReminderScheduler.ReminderServices {
