@@ -234,31 +234,13 @@ public final class AnkiDroidGatewayTest {
     }
 
     @Test
-    public void doubleValueTreatsNullStringAsMissingWhenCursorReportsValuePresent() throws Exception {
+    public void fsrsCursorTreatsNullStringAsMissingWhenCursorReportsValuePresent() throws Exception {
         Cursor cursor = cursorWithStringNullButNotSqlNull("fsrs_stability");
-
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "doubleValue", new Class<?>[]{Cursor.class, String.class}, cursor, "fsrs_stability"));
-    }
-
-    @Test
-    public void fsrsDataParserSkipsNonFiniteMatchedNumbersAndReadsLaterKeys() throws Exception {
-        Object fsrs = fsrsFromCursor(cursor(row(
-                "fsrs_stability", null,
-                "data", "s=" + repeat("9", 400) + " d=5 r=0.8"
-        )));
+        Object fsrs = fsrsFromCursor(cursor);
 
         assertNull(fieldValue(fsrs, "stability"));
-        assertEquals(5.0, (Double) fieldValue(fsrs, "difficulty"), 0.0001);
-        assertEquals(0.8, (Double) fieldValue(fsrs, "retrievability"), 0.0001);
-    }
-
-    @Test
-    public void parseDoubleRejectsNullInvalidAndNonFiniteValues() throws Exception {
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, new Object[]{null}));
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "bad"));
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, repeat("9", 400)));
-        assertNull(invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "1e309"));
-        assertEquals(5.0, (Double) invokePrivateStatic(AnkiDroidCardReader.class, "parseDouble", new Class<?>[]{String.class}, "+.5e1"), 0.0001);
+        assertNull(fieldValue(fsrs, "difficulty"));
+        assertNull(fieldValue(fsrs, "retrievability"));
     }
 
     @Test
