@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.data;
 
 import dev.bee.kanjianki.core.LocalDayPolicy;
+import dev.bee.kanjianki.core.LadderHealthPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.StudyStreakPolicy;
@@ -11,7 +12,6 @@ import dev.bee.kanjianki.sync.SyncSettings;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -261,7 +261,15 @@ public final class StudyStatsStore {
         } finally {
             cursor.close();
         }
-        return new LadderHealthMetric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady);
+        return toAppMetric(LadderHealthPolicy.fromCounts(
+                distribution,
+                total,
+                promotionDays,
+                failStreak,
+                promotionReady,
+                demotionRisk,
+                demotionReady
+        ));
     }
 
     private int realDueReviewsToMove() {
@@ -286,21 +294,39 @@ public final class StudyStatsStore {
     }
 
     private static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int ladderPromotionIntervalDays, int ladderDemotionFailStreak) {
-        int promotionDays = Math.max(1, ladderPromotionIntervalDays);
-        int failStreak = Math.max(1, ladderDemotionFailStreak);
-        LadderHealthAccumulator accumulator = new LadderHealthAccumulator();
-        for (LadderItemEvidence item : items) {
-            accumulator.addItem(item, promotionDays, failStreak);
-        }
-        return accumulator.metric(promotionDays, failStreak);
+        return toAppMetric(LadderHealthPolicy.summarize(toCoreLadderItems(items), ladderPromotionIntervalDays, ladderDemotionFailStreak));
     }
 
     private static Map<RecordsBase.LadderRung, Integer> emptyRungDistribution() {
-        Map<RecordsBase.LadderRung, Integer> out = new LinkedHashMap<>();
-        for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
-            out.put(rung, 0);
+        return LadderHealthPolicy.emptyRungDistribution();
+    }
+
+    private static List<LadderHealthPolicy.ItemEvidence> toCoreLadderItems(List<LadderItemEvidence> items) {
+        List<LadderHealthPolicy.ItemEvidence> out = new ArrayList<>();
+        for (LadderItemEvidence item : safeList(items)) {
+            out.add(item == null ? null : new LadderHealthPolicy.ItemEvidence(
+                    item.state,
+                    item.rung,
+                    item.phase,
+                    item.realPassStreak,
+                    item.realAgainStreak,
+                    item.matureIntervalDays
+            ));
         }
         return out;
+    }
+
+    private static LadderHealthMetric toAppMetric(LadderHealthPolicy.Metric metric) {
+        LadderHealthPolicy.Metric safeMetric = metric == null ? LadderHealthPolicy.Metric.empty() : metric;
+        return new LadderHealthMetric(
+                safeMetric.rungCounts(),
+                safeMetric.totalActiveItems(),
+                safeMetric.ladderPromotionIntervalDays(),
+                safeMetric.ladderDemotionFailStreak(),
+                safeMetric.promotionReadyCount(),
+                safeMetric.demotionRiskCount(),
+                safeMetric.demotionReadyCount()
+        );
     }
 
     private static <T> List<T> safeList(List<T> value) {
@@ -547,41 +573,6 @@ public final class StudyStatsStore {
                     0,
                     0
             );
-        }
-    }
-
-    private static final class LadderHealthAccumulator {
-        private final Map<RecordsBase.LadderRung, Integer> distribution = emptyRungDistribution();
-        private int total;
-        private int promotionReady;
-        private int demotionRisk;
-        private int demotionReady;
-
-        private void addItem(LadderItemEvidence item, int promotionDays, int failStreak) {
-            if (item == null || STATE_RETIRED.equals(item.state)) {
-                return;
-            }
-            distribution.put(item.rung, distribution.get(item.rung) + 1);
-            total++;
-            if (item.phase == RecordsBase.SchedulerPhase.REVIEW) {
-                recordReviewEvidence(item, promotionDays, failStreak);
-            }
-        }
-
-        private void recordReviewEvidence(LadderItemEvidence item, int promotionDays, int failStreak) {
-            if (item.matureIntervalDays > promotionDays) {
-                promotionReady++;
-            }
-            if (item.realAgainStreak > 0) {
-                demotionRisk++;
-            }
-            if (item.realAgainStreak >= failStreak) {
-                demotionReady++;
-            }
-        }
-
-        private LadderHealthMetric metric(int promotionDays, int failStreak) {
-            return new LadderHealthMetric(distribution, total, promotionDays, failStreak, promotionReady, demotionRisk, demotionReady);
         }
     }
 
