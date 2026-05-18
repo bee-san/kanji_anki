@@ -12,6 +12,7 @@ import android.os.Build;
 
 import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
+import dev.bee.kanjianki.updatecore.UpdateTextPolicy;
 
 final class UpdateNotifier {
     private static final String CHANNEL_ID = "kani_app_updates";
@@ -37,13 +38,7 @@ final class UpdateNotifier {
     }
 
     static String notificationBody(String version, String message) {
-        String body = version == null || version.isEmpty()
-                ? message
-                : "Version " + version.replaceFirst("^v", "") + " is verified and ready.";
-        if (body == null || body.trim().isEmpty()) {
-            body = "Open Kani to finish installing the verified update.";
-        }
-        return body;
+        return UpdateTextPolicy.notificationBody(version, message);
     }
 
     interface NotificationController {

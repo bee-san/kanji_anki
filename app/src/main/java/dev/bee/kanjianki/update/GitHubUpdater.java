@@ -18,6 +18,8 @@ import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser;
 import dev.bee.kanjianki.updatecore.ReleaseVersion;
 import dev.bee.kanjianki.updatecore.Sha256Digest;
+import dev.bee.kanjianki.updatecore.UpdateCacheFilePolicy;
+import dev.bee.kanjianki.updatecore.UpdateTextPolicy;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -138,14 +140,7 @@ public final class GitHubUpdater {
     }
 
     public static String readableMessage(Throwable error) {
-        if (error == null) {
-            return "unknown error";
-        }
-        String message = error.getMessage();
-        if (message != null && !message.trim().isEmpty()) {
-            return message;
-        }
-        return error.getClass().getSimpleName();
+        return UpdateTextPolicy.readableMessage(error);
     }
 
     private UpdateResult installVerifiedApk(long checkedAt, String version, File apkFile, UpdateSource source) throws IOException {
@@ -208,8 +203,7 @@ public final class GitHubUpdater {
     }
 
     static String safeFileName(String name) {
-        String safe = new File(name == null ? "" : name).getName();
-        return safe.isEmpty() ? "kani-update.apk" : safe;
+        return UpdateCacheFilePolicy.safeFileName(name);
     }
 
     public static Intent installPermissionIntent(Context context) {
