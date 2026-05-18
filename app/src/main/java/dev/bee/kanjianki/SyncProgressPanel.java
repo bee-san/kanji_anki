@@ -38,7 +38,7 @@ final class SyncProgressPanel extends LinearLayout {
     }
 
     void render(SyncProgress progress) {
-        SyncProgressCopy.Stage currentStage = coreStage(progress.stage);
+        SyncProgressCopy.Stage currentStage = progress.coreStage();
         stage.setText(SyncProgressCopy.stageTitle(currentStage));
         if (progress.totalKnown()) {
             lastScannedCards = progress.scannedCards;
@@ -63,31 +63,17 @@ final class SyncProgressPanel extends LinearLayout {
         progressBar.setProgress(SyncProgressCopy.progressPermille(lastScannedCards, lastTotalCards));
         String cardText = SyncProgressCopy.cardProgressText(lastScannedCards, lastTotalCards);
         count.setText(cardText);
-        rate.setText(scanRateText(progress.stage));
+        rate.setText(scanRateText(progress.coreStage()));
         progressBar.setContentDescription("Sync progress: " + cardText);
     }
 
-    private String scanRateText(SyncProgress.Stage stage) {
+    private String scanRateText(SyncProgressCopy.Stage stage) {
         return SyncProgressCopy.scanRateText(
-                coreStage(stage),
+                stage,
                 lastScannedCards,
                 lastTotalCards,
                 SystemClock.elapsedRealtime() - scanStartedAt
         );
-    }
-
-    static SyncProgressCopy.Stage coreStage(SyncProgress.Stage stage) {
-        if (stage == null) {
-            return null;
-        }
-        return switch (stage) {
-            case FINDING_NOTE_TYPE -> SyncProgressCopy.Stage.FINDING_NOTE_TYPE;
-            case READING_NOTES -> SyncProgressCopy.Stage.READING_NOTES;
-            case SCANNING_CARDS -> SyncProgressCopy.Stage.SCANNING_CARDS;
-            case PROCESSING_IMPORTED_CARDS -> SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS;
-            case BUILDING_PRACTICE_QUEUE -> SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE;
-            case ARCHIVING_IMPORTED_CARDS -> SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS;
-        };
     }
 
     private TextView text(Context context, String value, int sp, int color, boolean bold) {

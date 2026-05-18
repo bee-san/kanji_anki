@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.sync;
 
+import dev.bee.kanjianki.core.SyncProgressCopy;
+
 public final class SyncProgress {
     public static final Listener NONE = progress -> {
     };
@@ -24,6 +26,24 @@ public final class SyncProgress {
 
     public boolean totalKnown() {
         return totalCards >= 0;
+    }
+
+    public SyncProgressCopy.Stage coreStage() {
+        return coreStage(stage);
+    }
+
+    public static SyncProgressCopy.Stage coreStage(Stage stage) {
+        if (stage == null) {
+            return null;
+        }
+        return switch (stage) {
+            case FINDING_NOTE_TYPE -> SyncProgressCopy.Stage.FINDING_NOTE_TYPE;
+            case READING_NOTES -> SyncProgressCopy.Stage.READING_NOTES;
+            case SCANNING_CARDS -> SyncProgressCopy.Stage.SCANNING_CARDS;
+            case PROCESSING_IMPORTED_CARDS -> SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS;
+            case BUILDING_PRACTICE_QUEUE -> SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE;
+            case ARCHIVING_IMPORTED_CARDS -> SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS;
+        };
     }
 
     public interface Listener {
