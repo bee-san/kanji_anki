@@ -29,9 +29,11 @@ final class UpdateNotifier {
     }
 
     static boolean showPendingUpdate(String version, String message, NotificationController controller) {
+        boolean hasRuntimeNotificationPermission = controller.hasRuntimeNotificationPermission();
+        boolean notificationsEnabled = hasRuntimeNotificationPermission && controller.areNotificationsEnabled();
         if (!UpdateNotificationPolicy.shouldShowPendingUpdate(
-                controller.hasRuntimeNotificationPermission(),
-                controller.areNotificationsEnabled()
+                hasRuntimeNotificationPermission,
+                notificationsEnabled
         )) {
             return false;
         }

@@ -18,6 +18,7 @@ public final class UpdateNotifierTest {
         boolean shown = UpdateNotifier.showPendingUpdate("v0.4.3", "ready", controller);
 
         assertFalse(shown);
+        assertFalse(controller.notificationsQueried);
         assertFalse(controller.channelCreated);
         assertFalse(controller.notified);
     }
@@ -31,6 +32,7 @@ public final class UpdateNotifierTest {
         boolean shown = UpdateNotifier.showPendingUpdate("v0.4.3", "ready", controller);
 
         assertFalse(shown);
+        assertTrue(controller.notificationsQueried);
         assertFalse(controller.channelCreated);
         assertFalse(controller.notified);
     }
@@ -44,6 +46,7 @@ public final class UpdateNotifierTest {
         boolean shown = UpdateNotifier.showPendingUpdate("v0.4.3", "ignored", controller);
 
         assertTrue(shown);
+        assertTrue(controller.notificationsQueried);
         assertTrue(controller.channelCreated);
         assertTrue(controller.notified);
         assertEquals("channel notify", controller.events.toString());
@@ -61,6 +64,7 @@ public final class UpdateNotifierTest {
     private static final class Controller implements UpdateNotifier.NotificationController {
         boolean runtimePermission;
         boolean notificationsEnabled;
+        boolean notificationsQueried;
         boolean channelCreated;
         boolean notified;
         String title;
@@ -74,6 +78,7 @@ public final class UpdateNotifierTest {
 
         @Override
         public boolean areNotificationsEnabled() {
+            notificationsQueried = true;
             return notificationsEnabled;
         }
 
