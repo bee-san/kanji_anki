@@ -157,6 +157,40 @@ public final class SettingsTextCopyTest {
         assertEquals("Enter numeric ranks.", SettingsTextCopy.numericRanksToast());
         assertEquals("Use ranks from 1 to 20000.", SettingsTextCopy.rankRangeToast());
         assertEquals("Frequency range saved. Sync again to rebuild practice.", SettingsTextCopy.frequencyRangeSavedToast());
+        assertEquals("Offline data & licenses", SettingsTextCopy.offlineDataLicensesTitle());
+        assertEquals(
+                "One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.",
+                SettingsTextCopy.offlineDataLicensesBody()
+        );
+        assertEquals("Open data licenses", SettingsTextCopy.openDataLicensesLabel());
+        assertEquals("Data licenses", SettingsTextCopy.dataLicensesTitle());
+        assertEquals("Dictionary and stroke-order data bundled for offline study.", SettingsTextCopy.dataLicensesBody());
+        assertEquals("Dictionary data", SettingsTextCopy.dictionaryDataTitle());
+        assertEquals("Stroke data", SettingsTextCopy.strokeDataTitle());
+        assertEquals("Fonts", SettingsTextCopy.fontsTitle());
+        assertEquals("Note type & clue fields", SettingsTextCopy.noteTypeFieldsTitle());
+        assertEquals("Using Kiku", SettingsTextCopy.noteTypeUsingText("Kiku"));
+        assertEquals(
+                "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.",
+                SettingsTextCopy.noteTypeFieldsBody()
+        );
+        assertEquals("Required fields", SettingsTextCopy.requiredFieldsTitle());
+        assertEquals(
+                "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.",
+                SettingsTextCopy.requiredFieldsBody()
+        );
+        assertEquals("Expression field", SettingsTextCopy.expressionFieldLabel());
+        assertEquals("Reading field", SettingsTextCopy.readingFieldLabel());
+        assertEquals("Meaning field", SettingsTextCopy.meaningFieldLabel());
+        assertEquals("Sentence field", SettingsTextCopy.sentenceFieldLabel());
+        assertEquals("Frequency field", SettingsTextCopy.frequencyFieldLabel());
+        assertEquals("Frequency sort field", SettingsTextCopy.frequencySortFieldLabel());
+        assertEquals("Choose from AnkiDroid", SettingsTextCopy.chooseFromAnkiDroidLabel());
+        assertEquals("Use Kiku", SettingsTextCopy.useKikuLabel());
+        assertEquals("Save note type", SettingsTextCopy.saveNoteTypeLabel());
+        assertEquals("Enter a note type name.", SettingsTextCopy.noteTypeRequiredToast());
+        assertEquals("Choose the field that contains kanji.", SettingsTextCopy.expressionFieldRequiredToast());
+        assertEquals("Note type saved. Sync again to rebuild practice.", SettingsTextCopy.noteTypeSavedToast());
     }
 
     @Test

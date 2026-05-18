@@ -675,9 +675,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout dataLicenseSettingsPanel() {
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Offline data & licenses", 23, INK, true));
-        box.addView(text("One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.", 15, MUTED, false));
-        Button open = secondaryButton("Open data licenses");
+        box.addView(text(SettingsTextCopy.offlineDataLicensesTitle(), 23, INK, true));
+        box.addView(text(SettingsTextCopy.offlineDataLicensesBody(), 15, MUTED, false));
+        Button open = secondaryButton(SettingsTextCopy.openDataLicensesLabel());
         open.setOnClickListener(v -> renderDataSources());
         box.addView(open);
         return box;
@@ -687,25 +687,25 @@ abstract class MainActivitySettings extends MainActivityStudy {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
         content.addView(backToSettingsButton());
-        content.addView(text("Data licenses", 34, INK, true));
-        content.addView(text("Dictionary and stroke-order data bundled for offline study.", 16, MUTED, false));
+        content.addView(text(SettingsTextCopy.dataLicensesTitle(), 34, INK, true));
+        content.addView(text(SettingsTextCopy.dataLicensesBody(), 16, MUTED, false));
 
         LinearLayout dictionary = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        dictionary.addView(text("Dictionary data", 23, INK, true));
+        dictionary.addView(text(SettingsTextCopy.dictionaryDataTitle(), 23, INK, true));
         dictionary.addView(text(AttributionTexts.dictionarySources(this), 14, MUTED, false));
         content.addView(dictionary);
 
         LinearLayout stroke = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        stroke.addView(text("Stroke data", 23, INK, true));
+        stroke.addView(text(SettingsTextCopy.strokeDataTitle(), 23, INK, true));
         stroke.addView(text(AttributionTexts.kanjiVg(this), 14, MUTED, false));
         content.addView(stroke);
 
         LinearLayout fonts = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
-        fonts.addView(text("Fonts", 23, INK, true));
+        fonts.addView(text(SettingsTextCopy.fontsTitle(), 23, INK, true));
         fonts.addView(text(AttributionTexts.rawResourceText(this, R.raw.font_attribution), 14, MUTED, false));
         content.addView(fonts);
 
-        Button back = secondaryButton("Back to settings");
+        Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
         back.setOnClickListener(v -> renderSettings(false));
         content.addView(back);
     }
@@ -713,9 +713,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Note type & clue fields", 23, INK, true));
-        box.addView(text("Using " + current.modelName, 17, TEAL, true));
-        box.addView(text("Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.noteTypeFieldsTitle(), 23, INK, true));
+        box.addView(text(SettingsTextCopy.noteTypeUsingText(current.modelName), 17, TEAL, true));
+        box.addView(text(SettingsTextCopy.noteTypeFieldsBody(), 15, MUTED, false));
 
         EditText noteType = noteTypeInput(current.modelName);
         box.addView(noteType, new LinearLayout.LayoutParams(-1, dp(58)));
@@ -725,14 +725,14 @@ abstract class MainActivitySettings extends MainActivityStudy {
         EditText sentenceField = fieldInput(current.sentenceField);
         EditText frequencyField = fieldInput(current.frequencyField);
         EditText frequencySortField = fieldInput(current.frequencySortField);
-        box.addView(text("Required fields", 15, STUDY_PLUM, true));
-        box.addView(text("Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.", 14, MUTED, false));
-        addFieldMappingInput(box, "Expression field", expressionField);
-        addFieldMappingInput(box, "Reading field", readingField);
-        addFieldMappingInput(box, "Meaning field", meaningField);
-        addFieldMappingInput(box, "Sentence field", sentenceField);
-        addFieldMappingInput(box, "Frequency field", frequencyField);
-        addFieldMappingInput(box, "Frequency sort field", frequencySortField);
+        box.addView(text(SettingsTextCopy.requiredFieldsTitle(), 15, STUDY_PLUM, true));
+        box.addView(text(SettingsTextCopy.requiredFieldsBody(), 14, MUTED, false));
+        addFieldMappingInput(box, SettingsTextCopy.expressionFieldLabel(), expressionField);
+        addFieldMappingInput(box, SettingsTextCopy.readingFieldLabel(), readingField);
+        addFieldMappingInput(box, SettingsTextCopy.meaningFieldLabel(), meaningField);
+        addFieldMappingInput(box, SettingsTextCopy.sentenceFieldLabel(), sentenceField);
+        addFieldMappingInput(box, SettingsTextCopy.frequencyFieldLabel(), frequencyField);
+        addFieldMappingInput(box, SettingsTextCopy.frequencySortFieldLabel(), frequencySortField);
 
         NoteTypeFieldMappings.Inputs fieldMappings = new NoteTypeFieldMappings.Inputs(
                 noteType,
@@ -743,10 +743,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 frequencyField,
                 frequencySortField
         );
-        Button choose = secondaryButton("Choose from AnkiDroid");
+        Button choose = secondaryButton(SettingsTextCopy.chooseFromAnkiDroidLabel());
         choose.setOnClickListener(v -> NoteTypeFieldMappings.choose(this, gateway, io, main, fieldMappings));
         box.addView(choose);
-        Button kiku = secondaryButton("Use Kiku");
+        Button kiku = secondaryButton(SettingsTextCopy.useKikuLabel());
         kiku.setOnClickListener(v -> {
             noteType.setText(defaults.modelName);
             expressionField.setText(defaults.expressionField);
@@ -758,15 +758,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
         });
         box.addView(kiku);
 
-        Button save = primaryButton("Save note type", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveNoteTypeLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             String selected = noteType.getText().toString().trim();
             if (selected.isEmpty()) {
-                Toast.makeText(this, "Enter a note type name.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.noteTypeRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (expressionField.getText().toString().trim().isEmpty()) {
-                Toast.makeText(this, "Choose the field that contains kanji.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, SettingsTextCopy.expressionFieldRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
             store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, selected);
@@ -776,7 +776,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             store.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, sentenceField.getText().toString().trim());
             store.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, frequencyField.getText().toString().trim());
             store.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, frequencySortField.getText().toString().trim());
-            Toast.makeText(this, "Note type saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });
         box.addView(save);
