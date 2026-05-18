@@ -53,6 +53,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
+import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -1087,13 +1088,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save learning steps", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            List<Integer> parsedNew = RecordsSchedulerModels.LearningStepSettings.tryParseSteps(newSteps.getText().toString());
-            List<Integer> parsedReview = RecordsSchedulerModels.LearningStepSettings.tryParseSteps(reviewSteps.getText().toString());
-            if (parsedNew.isEmpty() || parsedReview.isEmpty()) {
-                Toast.makeText(this, "Use steps like 1m, 10m, or 1h.", Toast.LENGTH_SHORT).show();
+            LearningStepsSettingsPolicy.SaveResult request = LearningStepsSettingsPolicy.saveRequest(
+                    newSteps.getText().toString(),
+                    reviewSteps.getText().toString()
+            );
+            if (!request.valid) {
+                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.saveLearningStepSettings(new RecordsSchedulerModels.LearningStepSettings(parsedNew, parsedReview));
+            store.saveLearningStepSettings(request.settings);
             Toast.makeText(this, "Learning steps saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
