@@ -1,6 +1,5 @@
 package dev.bee.kanjianki.data;
 
-import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.content.ContentValues;
@@ -20,7 +19,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -324,6 +322,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
                 settings.modelName,
                 settings.importActiveCards,
                 settings.importSuspendedCards,
+                settings.importTaggedCardsEnabled(),
                 settings.importTags,
                 settings.importWeakCards,
                 settings.importWeakFsrsDifficultyThreshold,

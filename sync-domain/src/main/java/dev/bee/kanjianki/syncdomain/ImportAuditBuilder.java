@@ -48,7 +48,7 @@ public final class ImportAuditBuilder {
         if (safeSettings.importSuspendedCards()) {
             sources.add(ImportRuleMatch.SOURCE_SUSPENDED);
         }
-        if (!safeSettings.importTags().isEmpty()) {
+        if (safeSettings.importTaggedCards()) {
             sources.add(ImportRuleMatch.SOURCE_TAGGED);
         }
         if (safeSettings.importWeakCards()) {
@@ -107,7 +107,7 @@ public final class ImportAuditBuilder {
                 + "\"model_name\":" + jsonQuote(safeSettings.modelName())
                 + ",\"import_active_cards\":" + safeSettings.importActiveCards()
                 + ",\"import_suspended_cards\":" + safeSettings.importSuspendedCards()
-                + ",\"import_tagged_cards\":" + !safeSettings.importTags().isEmpty()
+                + ",\"import_tagged_cards\":" + safeSettings.importTaggedCards()
                 + ",\"import_tags\":" + jsonArray(safeSettings.importTags())
                 + ",\"import_weak_cards\":" + safeSettings.importWeakCards()
                 + ",\"import_weak_fsrs_difficulty\":" + safeSettings.weakFsrsDifficulty()
@@ -195,6 +195,7 @@ public final class ImportAuditBuilder {
         private final String modelName;
         private final boolean importActiveCards;
         private final boolean importSuspendedCards;
+        private final boolean importTaggedCards;
         private final List<String> importTags;
         private final boolean importWeakCards;
         private final double weakFsrsDifficulty;
@@ -209,6 +210,7 @@ public final class ImportAuditBuilder {
                 String modelName,
                 boolean importActiveCards,
                 boolean importSuspendedCards,
+                boolean importTaggedCards,
                 List<String> importTags,
                 boolean importWeakCards,
                 double weakFsrsDifficulty,
@@ -222,20 +224,21 @@ public final class ImportAuditBuilder {
             this.modelName = modelName == null ? "" : modelName;
             this.importActiveCards = importActiveCards;
             this.importSuspendedCards = importSuspendedCards;
+            this.importTaggedCards = importTaggedCards;
             this.importTags = Collections.unmodifiableList(new ArrayList<>(importTags == null ? Collections.emptyList() : importTags));
             this.importWeakCards = importWeakCards;
             this.weakFsrsDifficulty = weakFsrsDifficulty;
             this.weakLapses = weakLapses;
             this.minMatchingCards = minMatchingCards;
             this.importBrowserQueryCards = importBrowserQueryCards;
-            this.importBrowserQuery = importBrowserQuery == null ? "" : importBrowserQuery;
+            this.importBrowserQuery = importBrowserQuery == null ? "" : importBrowserQuery.trim();
             this.rankMin = rankMin;
             this.rankMax = rankMax;
         }
 
         private static SettingsSnapshot safe(SettingsSnapshot settings) {
             return settings == null
-                    ? new SettingsSnapshot("", false, true, Collections.emptyList(), false, 0.0, 0, 1, false, "", 1, Integer.MAX_VALUE)
+                    ? new SettingsSnapshot("", false, true, false, Collections.emptyList(), false, 0.0, 0, 1, false, "", 1, Integer.MAX_VALUE)
                     : settings;
         }
 
@@ -249,6 +252,10 @@ public final class ImportAuditBuilder {
 
         public boolean importSuspendedCards() {
             return importSuspendedCards;
+        }
+
+        public boolean importTaggedCards() {
+            return importTaggedCards;
         }
 
         public List<String> importTags() {

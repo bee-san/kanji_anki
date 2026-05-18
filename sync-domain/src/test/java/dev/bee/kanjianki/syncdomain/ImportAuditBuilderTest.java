@@ -13,7 +13,7 @@ public class ImportAuditBuilderTest {
     public void enabledSourcesPreserveCurrentOrderAndGuards() {
         assertEquals(
                 Collections.singletonList(ImportRuleMatch.SOURCE_SUSPENDED),
-                ImportAuditBuilder.enabledImportSources(settings(false, true, Collections.emptyList(), false, false, ""))
+                ImportAuditBuilder.enabledImportSources(settings(false, true, false, Collections.emptyList(), false, false, ""))
         );
         assertEquals(
                 Arrays.asList(
@@ -23,11 +23,15 @@ public class ImportAuditBuilderTest {
                         ImportRuleMatch.SOURCE_WEAK,
                         ImportRuleMatch.SOURCE_BROWSER_QUERY
                 ),
-                ImportAuditBuilder.enabledImportSources(settings(true, true, Collections.singletonList("leech"), true, true, "deck:foo"))
+                ImportAuditBuilder.enabledImportSources(settings(true, true, true, Collections.singletonList("leech"), true, true, "deck:foo"))
         );
         assertEquals(
                 Collections.emptyList(),
-                ImportAuditBuilder.enabledImportSources(settings(false, false, Collections.emptyList(), false, true, "   "))
+                ImportAuditBuilder.enabledImportSources(settings(false, false, false, Collections.emptyList(), false, true, "   "))
+        );
+        assertEquals(
+                Collections.emptyList(),
+                ImportAuditBuilder.enabledImportSources(settings(false, false, false, Collections.singletonList("leech"), false, false, ""))
         );
     }
 
@@ -44,7 +48,7 @@ public class ImportAuditBuilderTest {
 
     @Test
     public void reasonTextPreservesCurrentExactWording() {
-        ImportAuditBuilder.SettingsSnapshot settings = settings(false, true, Collections.emptyList(), false, false, "");
+        ImportAuditBuilder.SettingsSnapshot settings = settings(false, true, false, Collections.emptyList(), false, false, "");
         ImportAuditBuilder.ImportCandidate known = candidate("拉", 999, true);
         ImportAuditBuilder.ImportCandidate unknown = candidate("謎", null, false);
 
@@ -72,7 +76,7 @@ public class ImportAuditBuilderTest {
 
         ImportAuditBuilder.ImportDecisionAudit decision = ImportAuditBuilder.decision(
                 imported,
-                settings(true, false, Collections.emptyList(), true, true, "deck:foo")
+                settings(true, false, false, Collections.emptyList(), true, true, "deck:foo")
         );
 
         assertEquals("multiple_import_rules", decision.reasonCode());
@@ -87,7 +91,7 @@ public class ImportAuditBuilderTest {
     @Test
     public void settingsJsonPreservesCurrentShapeAndEscaping() {
         ImportAuditBuilder.RuleAudit audit = ImportAuditBuilder.ruleAudit(
-                settings(true, true, Arrays.asList("leech", "hard\"tag"), true, true, "deck:\"foo\"\n")
+                settings(true, true, true, Arrays.asList("leech", "hard\"tag"), true, true, "deck:\"foo\"\n")
         );
 
         assertEquals(
@@ -109,6 +113,7 @@ public class ImportAuditBuilderTest {
     private static ImportAuditBuilder.SettingsSnapshot settings(
             boolean active,
             boolean suspended,
+            boolean tagged,
             java.util.List<String> tags,
             boolean weak,
             boolean browserQueryEnabled,
@@ -118,13 +123,14 @@ public class ImportAuditBuilderTest {
                 "Basic",
                 active,
                 suspended,
+                tagged,
                 tags,
                 weak,
                 0.85,
                 3,
                 2,
                 browserQueryEnabled,
-                browserQuery == null ? "" : browserQuery.trim(),
+                browserQuery,
                 500,
                 2000
         );
