@@ -18,14 +18,14 @@ public final class FocusedStudyPlanPolicy {
         List<String> focus = new ArrayList<>();
         List<RecordsImportModels.DashboardRow> safeRows = safeRows(rows);
         for (String kanji : safeRequestedKanji(requestedKanji)) {
-            if (findRow(safeRows, kanji) != null) {
+            if (StudyCollectionLookup.dashboardRowByKanji(safeRows, kanji) != null) {
                 focus.add(kanji);
             }
         }
         int remaining = 0;
         List<RecordsStudyModels.StudyItem> safeItems = safeItems(items);
         for (String kanji : focus) {
-            RecordsStudyModels.StudyItem item = findStudyItem(safeItems, kanji);
+            RecordsStudyModels.StudyItem item = StudyCollectionLookup.studyItemByKanji(safeItems, kanji);
             if (itemDueForFocus(item, nowMillis)) {
                 remaining++;
             }
@@ -56,7 +56,7 @@ public final class FocusedStudyPlanPolicy {
         List<RecordsStudyModels.StudyItem> safeItems = safeItems(items);
         Set<String> safeStudied = studiedToday == null ? Collections.emptySet() : studiedToday;
         for (String kanji : focus) {
-            RecordsStudyModels.StudyItem item = findStudyItem(safeItems, kanji);
+            RecordsStudyModels.StudyItem item = StudyCollectionLookup.studyItemByKanji(safeItems, kanji);
             if (!safeStudied.contains(kanji) || itemDueForFocus(item, nowMillis)) {
                 remaining++;
             }
@@ -81,24 +81,6 @@ public final class FocusedStudyPlanPolicy {
             return item.dueAtMillis <= nowMillis;
         }
         return item.totalReviews > 0 && item.dueAtMillis <= nowMillis;
-    }
-
-    private static RecordsImportModels.DashboardRow findRow(List<RecordsImportModels.DashboardRow> rows, String kanji) {
-        for (RecordsImportModels.DashboardRow row : rows) {
-            if (row.kanji.equals(kanji)) {
-                return row;
-            }
-        }
-        return null;
-    }
-
-    private static RecordsStudyModels.StudyItem findStudyItem(List<RecordsStudyModels.StudyItem> items, String kanji) {
-        for (RecordsStudyModels.StudyItem item : items) {
-            if (item.kanji.equals(kanji)) {
-                return item;
-            }
-        }
-        return null;
     }
 
     private static List<String> safeRequestedKanji(List<String> requestedKanji) {

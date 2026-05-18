@@ -37,6 +37,7 @@ import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
 import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
+import dev.bee.kanjianki.core.StudyCollectionLookup;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -395,21 +396,11 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     RecordsImportModels.DashboardRow findRow(List<RecordsImportModels.DashboardRow> rows, String kanji) {
-        for (RecordsImportModels.DashboardRow row : rows) {
-            if (row.kanji.equals(kanji)) {
-                return row;
-            }
-        }
-        return null;
+        return StudyCollectionLookup.dashboardRowByKanji(rows, kanji);
     }
 
     RecordsStudyModels.StudyItem findStudyItem(List<RecordsStudyModels.StudyItem> items, String kanji) {
-        for (RecordsStudyModels.StudyItem item : items) {
-            if (item.kanji.equals(kanji)) {
-                return item;
-            }
-        }
-        return null;
+        return StudyCollectionLookup.studyItemByKanji(items, kanji);
     }
 
     String candidateText(List<RecognitionCandidate> candidates) {

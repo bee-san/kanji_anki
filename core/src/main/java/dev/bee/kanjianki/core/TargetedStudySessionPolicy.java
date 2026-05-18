@@ -1,6 +1,5 @@
 package dev.bee.kanjianki.core;
 
-import java.util.Collections;
 import java.util.List;
 
 final class TargetedStudySessionPolicy {
@@ -32,7 +31,7 @@ final class TargetedStudySessionPolicy {
             long nowMillis,
             RecordsBase.StudyLadderSettings ladder
     ) {
-        RecordsStudyModels.StudyItem item = findStudyItem(seededItems, kanji);
+        RecordsStudyModels.StudyItem item = StudyCollectionLookup.studyItemByKanji(seededItems, kanji);
         return item == null ? newTargetedStudyItem(kanji, nowMillis, ladder) : item;
     }
 
@@ -59,19 +58,6 @@ final class TargetedStudySessionPolicy {
                 null,
                 nowMillis
         ).withRung(safeLadder.startingRung(false));
-    }
-
-    private RecordsStudyModels.StudyItem findStudyItem(List<RecordsStudyModels.StudyItem> items, String kanji) {
-        for (RecordsStudyModels.StudyItem item : safeItems(items)) {
-            if (item.kanji.equals(kanji)) {
-                return item;
-            }
-        }
-        return null;
-    }
-
-    private List<RecordsStudyModels.StudyItem> safeItems(List<RecordsStudyModels.StudyItem> items) {
-        return items == null ? Collections.emptyList() : items;
     }
 
     private String promptFor(RecordsImportModels.DashboardRow row) {
