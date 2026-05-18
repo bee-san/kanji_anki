@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 final class StudySessionSelector {
     RecordsSchedulerModels.StudySession nextSession(
@@ -37,9 +36,7 @@ final class StudySessionSelector {
             return null;
         }
         RecordsImportModels.DashboardRow row = rowByKanji.get(best.kanji);
-        String token = best.activeToken == null || best.activeToken.isEmpty()
-                ? best.kanji + "-" + UUID.randomUUID()
-                : best.activeToken;
+        String token = StudyTokenPolicy.studyItem(best.kanji, best.activeToken);
         String taskType = StudyTaskTypes.forRung(best.rung);
         boolean writingRequired = best.rung == RecordsBase.LadderRung.WRITE_KANJI;
         String prompt = row.reasonText;
