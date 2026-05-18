@@ -135,6 +135,23 @@ public final class WritingFeedbackCopy {
         return canManualOverride(analysis);
     }
 
+    public static boolean canReplayAnalysis(WritingAnalysis analysis, boolean hasInk, StrokeGuide guide) {
+        if (analysis == null
+                || !hasInk
+                || guide == null
+                || guide.isEmpty()
+                || analysis.strokeOrder == null
+                || analysis.strokeOrder.missingGuide) {
+            return false;
+        }
+        switch (analysis.status) {
+            case NO_INK, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     public static boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis) {
         if (analysis == null) {
             return false;

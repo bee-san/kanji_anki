@@ -114,6 +114,26 @@ public final class WritingFeedbackCopyTest {
     }
 
     @Test
+    public void replayPolicyRequiresInkGuideAndReplayableAnalysis() {
+        StrokeOrderEvaluator.StrokeOrderResult order = strokeOrder();
+
+        assertTrue(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.PASS, true, order), true, guide()));
+        assertTrue(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.CLOSE, true, order), true, guide()));
+        assertTrue(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.WRONG, false, order), true, guide()));
+
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(null, true, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.PASS, true, order), false, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.PASS, true, order), true, null));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.PASS, true, order), true, emptyGuide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0), true, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.PASS, true, missingGuideOrder()), true, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.NO_INK, false, order), true, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.MODEL_UNAVAILABLE, false, order), true, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.NO_STROKE_DATA, false, order), true, guide()));
+        assertFalse(WritingFeedbackCopy.canReplayAnalysis(analysisWithOrder(WritingAnalysis.Status.RECOGNITION_ERROR, false, order), true, guide()));
+    }
+
+    @Test
     public void learningPanelVisibilityPreservesRecallAndTeachingRules() {
         assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, true, false, 1));
         assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.NO_INK, false, HintLevel.BLIND, 0), true, false, 1));
@@ -128,13 +148,41 @@ public final class WritingFeedbackCopyTest {
     }
 
     private static StrokeGuide guide() {
-        return new StrokeGuide("裂", Collections.singletonList(new InkStroke(Arrays.asList(
+        return new StrokeGuide("裂", Collections.singletonList(stroke()));
+    }
+
+    private static StrokeGuide emptyGuide() {
+        return new StrokeGuide("裂", Collections.emptyList());
+    }
+
+    private static StrokeOrderEvaluator.StrokeOrderResult strokeOrder() {
+        return StrokeOrderEvaluator.evaluate(guide(), sample());
+    }
+
+    private static StrokeOrderEvaluator.StrokeOrderResult missingGuideOrder() {
+        return StrokeOrderEvaluator.evaluate(emptyGuide(), sample());
+    }
+
+    private static WritingSample sample() {
+        return new WritingSample(Collections.singletonList(stroke()), 100f, 100f);
+    }
+
+    private static InkStroke stroke() {
+        return new InkStroke(Arrays.asList(
                 new InkPoint(0.1f, 0.2f, 0L),
                 new InkPoint(0.3f, 0.4f, 1L)
-        ))));
+        ));
     }
 
     private static WritingAnalysis analysis(WritingAnalysis.Status status, boolean passed, HintLevel hintLevel, int hintsUsed) {
         return new WritingAnalysis(status, passed ? "good" : "again", passed, status.name(), Collections.emptyList(), null, hintLevel, hintsUsed);
+    }
+
+    private static WritingAnalysis analysisWithOrder(
+            WritingAnalysis.Status status,
+            boolean passed,
+            StrokeOrderEvaluator.StrokeOrderResult order
+    ) {
+        return new WritingAnalysis(status, passed ? "good" : "again", passed, status.name(), Collections.emptyList(), order, HintLevel.BLIND, 0);
     }
 }

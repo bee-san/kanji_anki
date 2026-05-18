@@ -1735,21 +1735,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean canReplayAnalysis(WritingAnalysis analysis, StrokeGuide guide) {
-        if (analysis == null
-                || drawingPad == null
-                || !drawingPad.hasInk()
-                || guide == null
-                || guide.isEmpty()
-                || analysis.strokeOrder == null
-                || analysis.strokeOrder.missingGuide) {
-            return false;
-        }
-        switch (analysis.status) {
-            case NO_INK, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
-                return false;
-            default:
-                return true;
-        }
+        return WritingFeedbackCopy.canReplayAnalysis(analysis, drawingPad != null && drawingPad.hasInk(), guide);
     }
 
     String diagnosisText(WritingAnalysis analysis) {
