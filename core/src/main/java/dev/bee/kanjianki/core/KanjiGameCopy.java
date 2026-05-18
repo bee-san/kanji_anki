@@ -40,14 +40,7 @@ public final class KanjiGameCopy {
     }
 
     public static String accuracyText(int correct, int answered) {
-        return "Accuracy: " + accuracyPercent(correct, answered) + "%";
-    }
-
-    public static int accuracyPercent(int correct, int answered) {
-        if (answered <= 0) {
-            return 0;
-        }
-        return Math.round(correct * 100f / answered);
+        return "Accuracy: " + KanjiGameRoundState.accuracyPercent(correct, answered) + "%";
     }
 
     private static String safe(String value) {

@@ -34,7 +34,6 @@ public final class KanjiGameCopyTest {
         assertEquals("Final score: 7/10", KanjiGameCopy.finalScoreText(7, 10));
         assertEquals("Accuracy: 70%", KanjiGameCopy.accuracyText(7, 10));
         assertEquals("Accuracy: 0%", KanjiGameCopy.accuracyText(7, 0));
-        assertEquals(67, KanjiGameCopy.accuracyPercent(2, 3));
     }
 
     private static KanjiGameEngine.GameQuestion question(KanjiGameEngine.GameMode mode, String correctAnswer) {

@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import dev.bee.kanjianki.core.KanjiGameCopy;
 import dev.bee.kanjianki.core.KanjiGameEngine;
+import dev.bee.kanjianki.core.KanjiGameRoundState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +22,7 @@ abstract class MainActivityGames extends MainActivityHome {
 
     private final KanjiGameEngine gameEngine = new KanjiGameEngine();
     private final Random gameRandom = new Random();
-    private int gameAnswered;
-    private int gameCorrect;
-    private int gameStreak;
+    private KanjiGameRoundState gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS);
 
     void renderGames() {
         clearGameSession();
@@ -49,9 +48,7 @@ abstract class MainActivityGames extends MainActivityHome {
     }
 
     private void clearGameSession() {
-        gameAnswered = 0;
-        gameCorrect = 0;
-        gameStreak = 0;
+        gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS);
     }
 
     private View gameModeCard(KanjiGameEngine.GameMode mode, boolean available) {
@@ -74,9 +71,7 @@ abstract class MainActivityGames extends MainActivityHome {
     }
 
     private void startGame(KanjiGameEngine.GameMode mode) {
-        gameAnswered = 0;
-        gameCorrect = 0;
-        gameStreak = 0;
+        gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS);
         renderGameQuestion(mode);
     }
 
@@ -107,10 +102,10 @@ abstract class MainActivityGames extends MainActivityHome {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBaselineAligned(false);
-        int roundProgress = gameRoundProgress(awaitingAnswer);
-        row.addView(gameMetric("Round", roundProgress + "/" + GAME_ROUND_QUESTIONS, BLUE));
-        row.addView(gameMetric("Score", gameCorrect + "/" + GAME_ROUND_QUESTIONS, CORAL));
-        row.addView(gameMetric("Streak", Integer.toString(gameStreak), TEAL));
+        int roundProgress = gameRound.progress(awaitingAnswer);
+        row.addView(gameMetric("Round", roundProgress + "/" + gameRound.totalQuestions, BLUE));
+        row.addView(gameMetric("Score", gameRound.correct + "/" + gameRound.totalQuestions, CORAL));
+        row.addView(gameMetric("Streak", Integer.toString(gameRound.streak), TEAL));
         return row;
     }
 
@@ -169,13 +164,7 @@ abstract class MainActivityGames extends MainActivityHome {
 
     private void answerGameQuestion(KanjiGameEngine.GameQuestion question, String selected) {
         boolean correct = question.isCorrect(selected);
-        gameAnswered++;
-        if (correct) {
-            gameCorrect++;
-            gameStreak++;
-        } else {
-            gameStreak = 0;
-        }
+        gameRound = gameRound.answer(correct);
         renderGameResult(question, selected, correct);
     }
 
@@ -220,8 +209,8 @@ abstract class MainActivityGames extends MainActivityHome {
     }
 
     private void addRoundSummary(LinearLayout result) {
-        result.addView(text(KanjiGameCopy.finalScoreText(gameCorrect, GAME_ROUND_QUESTIONS), 20, INK, true));
-        result.addView(text(KanjiGameCopy.accuracyText(gameCorrect, gameAnswered), 15, MUTED, false));
+        result.addView(text(KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions), 20, INK, true));
+        result.addView(text(KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered), 15, MUTED, false));
     }
 
     private int gameResultColor(boolean roundComplete, boolean correct) {
@@ -244,12 +233,7 @@ abstract class MainActivityGames extends MainActivityHome {
     }
 
     private boolean gameRoundComplete() {
-        return gameAnswered >= GAME_ROUND_QUESTIONS;
-    }
-
-    private int gameRoundProgress(boolean awaitingAnswer) {
-        int progress = gameAnswered + (awaitingAnswer ? 1 : 0);
-        return Math.min(progress, GAME_ROUND_QUESTIONS);
+        return gameRound.roundComplete();
     }
 
     private int colorForGameMode(KanjiGameEngine.GameMode mode) {
