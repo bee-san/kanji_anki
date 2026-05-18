@@ -1,8 +1,9 @@
 package dev.bee.kanjianki.update;
 
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy;
 import dev.bee.kanjianki.updatecore.UpdateArtifactValidator;
+import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector;
 
 final class UpdatePolicy {
     static final int STATUS_SUCCESS = PackageInstallStatusPolicy.STATUS_SUCCESS;
@@ -11,19 +12,11 @@ final class UpdatePolicy {
     private UpdatePolicy() {
     }
 
-    static AssetSelection selectAssets(RecordsSchedulerModels.ReleaseInfo release) {
-        if (release == null) {
-            return AssetSelection.failure("Latest release metadata is empty.");
-        }
-        RecordsSchedulerModels.ReleaseAsset apk = release.apkAsset();
-        if (apk == null) {
-            return AssetSelection.failure("Latest release has no APK asset.");
-        }
-        RecordsSchedulerModels.ReleaseAsset checksum = release.checksumAssetFor(apk.name);
-        if (checksum == null) {
-            return AssetSelection.failure("Latest release has no SHA-256 checksum asset.");
-        }
-        return AssetSelection.success(apk, checksum);
+    static AssetSelection selectAssets(GitHubReleaseMetadata release) {
+        UpdateReleaseAssetSelector.AssetSelection selection = UpdateReleaseAssetSelector.selectAssets(release);
+        return selection.ok()
+                ? AssetSelection.success(selection.apk(), selection.checksum())
+                : AssetSelection.failure(selection.message());
     }
 
     static ValidationResult validateChecksum(String expected, String actual) {
@@ -66,17 +59,25 @@ final class UpdatePolicy {
     static final class AssetSelection {
         final boolean ok;
         final String message;
-        final RecordsSchedulerModels.ReleaseAsset apk;
-        final RecordsSchedulerModels.ReleaseAsset checksum;
+        final GitHubReleaseMetadata.ReleaseAsset apk;
+        final GitHubReleaseMetadata.ReleaseAsset checksum;
 
-        private AssetSelection(boolean ok, String message, RecordsSchedulerModels.ReleaseAsset apk, RecordsSchedulerModels.ReleaseAsset checksum) {
+        private AssetSelection(
+                boolean ok,
+                String message,
+                GitHubReleaseMetadata.ReleaseAsset apk,
+                GitHubReleaseMetadata.ReleaseAsset checksum
+        ) {
             this.ok = ok;
             this.message = message;
             this.apk = apk;
             this.checksum = checksum;
         }
 
-        private static AssetSelection success(RecordsSchedulerModels.ReleaseAsset apk, RecordsSchedulerModels.ReleaseAsset checksum) {
+        private static AssetSelection success(
+                GitHubReleaseMetadata.ReleaseAsset apk,
+                GitHubReleaseMetadata.ReleaseAsset checksum
+        ) {
             return new AssetSelection(true, "", apk, checksum);
         }
 

@@ -1,8 +1,8 @@
 package dev.bee.kanjianki.update;
 
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import android.app.PendingIntent;
 
+import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -229,10 +229,10 @@ public final class GitHubUpdaterTest {
 
     @Test
     public void rejectsReleaseWithoutApkAsset() {
-        RecordsSchedulerModels.ReleaseInfo release = new RecordsSchedulerModels.ReleaseInfo(
+        GitHubReleaseMetadata release = new GitHubReleaseMetadata(
                 "v0.4.3",
                 "https://example/releases/v0.4.3",
-                Collections.singletonList(new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.3.apk.sha256", "https://example/sha"))
+                Collections.singletonList(new GitHubReleaseMetadata.ReleaseAsset("kani-android-0.4.3.apk.sha256", "https://example/sha"))
         );
 
         UpdatePolicy.AssetSelection selection = UpdatePolicy.selectAssets(release);
@@ -243,12 +243,12 @@ public final class GitHubUpdaterTest {
 
     @Test
     public void rejectsReleaseWithoutMatchingChecksumAsset() {
-        RecordsSchedulerModels.ReleaseInfo release = new RecordsSchedulerModels.ReleaseInfo(
+        GitHubReleaseMetadata release = new GitHubReleaseMetadata(
                 "v0.4.3",
                 "https://example/releases/v0.4.3",
                 Arrays.asList(
-                        new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.3.apk", "https://example/apk"),
-                        new RecordsSchedulerModels.ReleaseAsset("other.apk.sha256", "https://example/sha")
+                        new GitHubReleaseMetadata.ReleaseAsset("kani-android-0.4.3.apk", "https://example/apk"),
+                        new GitHubReleaseMetadata.ReleaseAsset("other.apk.sha256", "https://example/sha")
                 )
         );
 

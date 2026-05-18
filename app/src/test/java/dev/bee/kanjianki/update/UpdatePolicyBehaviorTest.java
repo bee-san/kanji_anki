@@ -2,7 +2,7 @@ package dev.bee.kanjianki.update;
 
 import android.content.pm.PackageInstaller;
 
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
 
 import java.util.Arrays;
 
@@ -27,10 +27,10 @@ public final class UpdatePolicyBehaviorTest {
 
     @Test
     public void selectAssetsPairsApkWithItsExactChecksumAsset() {
-        RecordsSchedulerModels.ReleaseAsset apk = new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.4.apk", "https://example/apk");
-        RecordsSchedulerModels.ReleaseAsset otherChecksum = new RecordsSchedulerModels.ReleaseAsset("other.apk.sha256", "https://example/other-sha");
-        RecordsSchedulerModels.ReleaseAsset checksum = new RecordsSchedulerModels.ReleaseAsset("kani-android-0.4.4.apk.sha256", "https://example/sha");
-        RecordsSchedulerModels.ReleaseInfo release = new RecordsSchedulerModels.ReleaseInfo(
+        GitHubReleaseMetadata.ReleaseAsset apk = new GitHubReleaseMetadata.ReleaseAsset("kani-android-0.4.4.apk", "https://example/apk");
+        GitHubReleaseMetadata.ReleaseAsset otherChecksum = asset("other.apk.sha256", "https://example/other-sha");
+        GitHubReleaseMetadata.ReleaseAsset checksum = asset("kani-android-0.4.4.apk.sha256", "https://example/sha");
+        GitHubReleaseMetadata release = new GitHubReleaseMetadata(
                 "v0.4.4",
                 "https://example/releases/v0.4.4",
                 Arrays.asList(otherChecksum, apk, checksum)
@@ -41,6 +41,10 @@ public final class UpdatePolicyBehaviorTest {
         assertTrue(selection.ok);
         assertSame(apk, selection.apk);
         assertSame(checksum, selection.checksum);
+    }
+
+    private static GitHubReleaseMetadata.ReleaseAsset asset(String name, String url) {
+        return new GitHubReleaseMetadata.ReleaseAsset(name, url);
     }
 
     @Test

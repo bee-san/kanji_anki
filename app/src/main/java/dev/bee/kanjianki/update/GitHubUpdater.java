@@ -1,6 +1,5 @@
 package dev.bee.kanjianki.update;
 
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -14,8 +13,11 @@ import android.provider.Settings;
 import android.util.Log;
 
 import dev.bee.kanjianki.BuildConfig;
-import dev.bee.kanjianki.core.GitHubReleaseParser;
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata;
+import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser;
+import dev.bee.kanjianki.updatecore.ReleaseVersion;
+import dev.bee.kanjianki.updatecore.Sha256Digest;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,12 +54,12 @@ public final class GitHubUpdater {
         try {
             String api = API_BASE + BuildConfig.RELEASE_OWNER + "/" + BuildConfig.RELEASE_REPO + "/releases/latest";
             String json = client.getText(api);
-            RecordsSchedulerModels.ReleaseInfo latest = GitHubReleaseParser.parseLatest(json);
-            if (!GitHubReleaseParser.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName)) {
+            GitHubReleaseMetadata latest = GitHubReleaseMetadataParser.parseLatest(json);
+            if (!ReleaseVersion.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName())) {
                 return recordResult(
                         checkedAt,
                         new UpdateResult(false, "Already on " + BuildConfig.VERSION_NAME + ".", null, false, false),
-                        latest.tagName,
+                        latest.tagName(),
                         "",
                         ""
                 );
@@ -65,39 +67,39 @@ public final class GitHubUpdater {
 
             UpdatePolicy.AssetSelection assets = UpdatePolicy.selectAssets(latest);
             if (!assets.ok) {
-                return recordResult(checkedAt, UpdateResult.failed(assets.message), latest.tagName, "", "");
+                return recordResult(checkedAt, UpdateResult.failed(assets.message), latest.tagName(), "", "");
             }
 
-            String expected = GitHubReleaseParser.parseSha256(client.getText(assets.checksum.downloadUrl));
+            String expected = Sha256Digest.findInText(client.getText(assets.checksum.downloadUrl()));
             UpdatePolicy.ValidationResult expectedDigest = UpdatePolicy.validateExpectedChecksum(expected);
             if (!expectedDigest.ok) {
-                return recordResult(checkedAt, UpdateResult.failed(expectedDigest.message), latest.tagName, "", "");
+                return recordResult(checkedAt, UpdateResult.failed(expectedDigest.message), latest.tagName(), "", "");
             }
 
-            String safeApkName = safeFileName(assets.apk.name);
+            String safeApkName = safeFileName(assets.apk.name());
             File apkFile = cachedApkFile(safeApkName);
-            client.download(assets.apk.downloadUrl, apkFile);
+            client.download(assets.apk.downloadUrl(), apkFile);
 
             UpdatePolicy.ValidationResult checksum = UpdatePolicy.validateChecksum(expected, sha256(apkFile));
             if (!checksum.ok) {
                 deleteCachedApk(apkFile);
-                return recordResult(checkedAt, UpdateResult.failed(checksum.message), latest.tagName, "", "");
+                return recordResult(checkedAt, UpdateResult.failed(checksum.message), latest.tagName(), "", "");
             }
 
             ApkMetadata metadata = client.inspectApk(apkFile);
             UpdatePolicy.ValidationResult archive = UpdatePolicy.validatePackageMetadata(
                     context.getPackageName(),
                     BuildConfig.VERSION_NAME,
-                    latest.tagName,
+                    latest.tagName(),
                     metadata.packageName,
                     metadata.versionName
             );
             if (!archive.ok) {
                 deleteCachedApk(apkFile);
-                return recordResult(checkedAt, UpdateResult.failed(archive.message), latest.tagName, "", "");
+                return recordResult(checkedAt, UpdateResult.failed(archive.message), latest.tagName(), "", "");
             }
 
-            return installVerifiedApk(checkedAt, latest.tagName, apkFile, source);
+            return installVerifiedApk(checkedAt, latest.tagName(), apkFile, source);
         } catch (IOException | RuntimeException error) {
             return recordResult(checkedAt, UpdateResult.failed("Update check failed: " + readableMessage(error)), "", "", "");
         }
