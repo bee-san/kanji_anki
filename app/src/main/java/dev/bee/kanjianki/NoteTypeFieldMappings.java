@@ -1,6 +1,7 @@
 package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.NoteTypeFieldMappingPolicy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.os.Handler;
@@ -88,7 +89,7 @@ final class NoteTypeFieldMappings {
     }
 
     static String label(Choice noteType) {
-        return noteType.name + " (" + countText(noteType.fields.size(), "field", "fields") + ")";
+        return noteType.name + " (" + StudyTextCopy.countText(noteType.fields.size(), "field", "fields") + ")";
     }
 
     static String firstMatchingField(List<String> fields, String... candidates) {
@@ -101,10 +102,6 @@ final class NoteTypeFieldMappings {
             return "Could not read AnkiDroid note types.";
         }
         return message;
-    }
-
-    static String countText(int count, String singular, String plural) {
-        return count + " " + (count == 1 ? singular : plural);
     }
 
     static List<Choice> choicesFrom(List<AnkiDroidGateway.NoteType> noteTypes) {
