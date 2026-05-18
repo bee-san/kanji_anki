@@ -2,6 +2,8 @@ package dev.bee.kanjianki.update;
 
 import androidx.work.ListenableWorker;
 
+import dev.bee.kanjianki.updatecore.AutoUpdateRunPolicy;
+
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,6 +42,8 @@ public final class AutoUpdateWorkerTest {
     public void autoUpdateDecisionMapsCheckerResultToWorkerOutcome() {
         assertSuccess(AutoUpdateWorker.runAutoUpdate(true, false, () -> result(false)));
         assertRetry(AutoUpdateWorker.runAutoUpdate(true, false, () -> result(true)));
+        assertSuccess(AutoUpdateWorker.workerResult(AutoUpdateRunPolicy.WorkerOutcome.SUCCESS));
+        assertRetry(AutoUpdateWorker.workerResult(AutoUpdateRunPolicy.WorkerOutcome.RETRY));
     }
 
     @Test

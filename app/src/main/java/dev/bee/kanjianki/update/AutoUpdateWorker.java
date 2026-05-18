@@ -46,7 +46,11 @@ public final class AutoUpdateWorker extends Worker {
             return Result.success();
         }
         GitHubUpdater.UpdateResult result = checker.check();
-        return result.retryable ? Result.retry() : Result.success();
+        return workerResult(AutoUpdateRunPolicy.workerOutcome(result.retryable));
+    }
+
+    static Result workerResult(AutoUpdateRunPolicy.WorkerOutcome outcome) {
+        return outcome == AutoUpdateRunPolicy.WorkerOutcome.RETRY ? Result.retry() : Result.success();
     }
 
     interface UpdateChecker {
