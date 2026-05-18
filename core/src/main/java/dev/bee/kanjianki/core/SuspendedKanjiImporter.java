@@ -17,15 +17,9 @@ public final class SuspendedKanjiImporter {
 
     public SuspendedKanjiImporter(JitenKanjiRanks ranks, int minRank, int maxRank) {
         this.ranks = ranks;
-        int normalizedMin = Math.max(1, Math.min(20000, minRank));
-        int normalizedMax = Math.max(1, Math.min(20000, maxRank));
-        if (normalizedMin > normalizedMax) {
-            int swap = normalizedMin;
-            normalizedMin = normalizedMax;
-            normalizedMax = swap;
-        }
-        this.minRank = normalizedMin;
-        this.maxRank = normalizedMax;
+        SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
+        this.minRank = rankRange.minRank();
+        this.maxRank = rankRange.maxRank();
     }
 
     public List<RecordsImportModels.SuspendedImport> importFrom(RecordsSyncModels.CollectionSnapshot snapshot, RecordsSyncModels.Settings settings) {

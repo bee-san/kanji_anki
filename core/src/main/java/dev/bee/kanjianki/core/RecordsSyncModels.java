@@ -62,16 +62,13 @@ public abstract class RecordsSyncModels extends RecordsBase {
             this.frequencySortField = args.frequencySortField;
             this.matureDays = args.matureDays;
             this.matureSupportThreshold = args.matureSupportThreshold;
-            int normalizedMin = Math.max(1, Math.min(20000, args.suspendedRankMin));
-            int normalizedMax = Math.max(1, Math.min(20000, args.suspendedRankMax));
-            if (normalizedMin > normalizedMax) {
-                int swap = normalizedMin;
-                normalizedMin = normalizedMax;
-                normalizedMax = swap;
-            }
-            this.suspendedRankMin = normalizedMin;
-            this.suspendedRankMax = normalizedMax;
-            this.suspendedRankCutoff = normalizedMax;
+            SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(
+                    args.suspendedRankMin,
+                    args.suspendedRankMax
+            );
+            this.suspendedRankMin = rankRange.minRank();
+            this.suspendedRankMax = rankRange.maxRank();
+            this.suspendedRankCutoff = rankRange.maxRank();
             this.activeQueueCap = args.activeQueueCap;
             this.newPerDay = args.newPerDay;
             this.writingTriggerMissDays = Math.max(1, args.writingTriggerMissDays);

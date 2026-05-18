@@ -636,14 +636,13 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, "Enter numeric ranks.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (minRank < 1 || minRank > 20000 || maxRank < 1 || maxRank > 20000) {
+            if (!SettingsInputRules.validRank(minRank) || !SettingsInputRules.validRank(maxRank)) {
                 Toast.makeText(this, "Use ranks from 1 to 20000.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            int normalizedMin = Math.min(minRank, maxRank);
-            int normalizedMax = Math.max(minRank, maxRank);
-            store.putIntSetting("suspended_rank_min", normalizedMin);
-            store.putIntSetting("suspended_rank_max", normalizedMax);
+            SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
+            store.putIntSetting("suspended_rank_min", rankRange.minRank());
+            store.putIntSetting("suspended_rank_max", rankRange.maxRank());
             Toast.makeText(this, "Frequency range saved. Sync again to rebuild practice.", Toast.LENGTH_LONG).show();
             renderSettings();
         });

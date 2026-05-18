@@ -41,7 +41,29 @@ public final class SettingsInputRules {
         return Math.max(FrequencyRetentionRanges.MIN_RANK, Math.min(FrequencyRetentionRanges.MAX_RANK, progress + 1));
     }
 
+    public static boolean validRank(int rank) {
+        return rank >= FrequencyRetentionRanges.MIN_RANK && rank <= FrequencyRetentionRanges.MAX_RANK;
+    }
+
+    public static RankRange normalizedRankRange(int minRank, int maxRank) {
+        int normalizedMin = clampRank(minRank);
+        int normalizedMax = clampRank(maxRank);
+        if (normalizedMin > normalizedMax) {
+            int swap = normalizedMin;
+            normalizedMin = normalizedMax;
+            normalizedMax = swap;
+        }
+        return new RankRange(normalizedMin, normalizedMax);
+    }
+
     public static int retentionPercent(double retention) {
         return Math.max(80, Math.min(97, (int) Math.round(retention * 100.0)));
+    }
+
+    private static int clampRank(int rank) {
+        return Math.max(FrequencyRetentionRanges.MIN_RANK, Math.min(FrequencyRetentionRanges.MAX_RANK, rank));
+    }
+
+    public record RankRange(int minRank, int maxRank) {
     }
 }
