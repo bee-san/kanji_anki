@@ -68,6 +68,7 @@ import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
+import dev.bee.kanjianki.core.study.WritingActionPresentation;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
@@ -1268,7 +1269,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
 
         nextAfterPassButton = pinkPrimaryButton(LABEL_PASS);
-        nextAfterPassButton.setOnClickListener(v -> submitReview(writingSubmitRating(activeAnalysis), false));
+        nextAfterPassButton.setOnClickListener(v -> submitReview(WritingFeedbackCopy.submitRating(activeAnalysis), false));
         primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
         return primaryActions;
     }
@@ -1578,95 +1579,90 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void updateResultActions() {
-        boolean hasResult = activeAnalysis != null;
-        boolean passed = hasResult && activeAnalysis.writingPassed;
-        boolean messyPass = hasResult && activeAnalysis.status == WritingAnalysis.Status.CLOSE;
-        boolean submittable = activeAnalysis != null && canSubmitAnalysis(activeAnalysis);
-        StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
-        updateUndoStrokeButton();
-        updateCheckWritingButton(passed, messyPass);
-        updateDownloadModelButton();
-        updateNextAfterPassButton(submittable);
-        updateFallbackActionButtons(hasResult, passed, guide);
-        updateHintAndAnswerVisibility(passed);
-        if (resultStatus != null && !hasResult) {
+        WritingActionPresentation presentation = writingActionPresentation();
+        updateUndoStrokeButton(presentation);
+        updateCheckWritingButton(presentation);
+        updateDownloadModelButton(presentation);
+        updateNextAfterPassButton(presentation);
+        updateFallbackActionButtons(presentation);
+        updateHintAndAnswerVisibility(presentation);
+        if (resultStatus != null && !presentation.resultStatusVisible) {
             resultStatus.setVisibility(View.GONE);
         }
     }
 
-    void updateCheckWritingButton(boolean passed, boolean messyPass) {
-        if (checkWritingButton != null) {
-            checkWritingButton.setVisibility(!passed || messyPass ? View.VISIBLE : View.GONE);
-            checkWritingButton.setEnabled(!checkingWriting);
-            checkWritingButton.setText(checkWritingButtonText(messyPass));
-            checkWritingButton.setOnClickListener(messyPass ? v -> startCleanerRetry() : v -> checkWriting());
-        }
+    WritingActionPresentation writingActionPresentation() {
+        WritingActionPresentation.Input input = new WritingActionPresentation.Input(activeAnalysis);
+        input.checkingWriting = checkingWriting;
+        input.canUndoStroke = drawingPad != null && drawingPad.canUndoStroke();
+        input.writingModelStatusKnown = writingModelStatusKnown;
+        input.writingModelDownloaded = writingModelDownloaded;
+        input.hasReplaySnapshot = drawingPad != null && drawingPad.hasReplaySnapshot();
+        input.hasInk = drawingPad != null && drawingPad.hasInk();
+        input.guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
+        input.canRevealMoreHelp = canRevealMoreHelp();
+        input.recallTask = activeSession != null && isRecallTask(activeSession);
+        input.teachingTask = activeSession != null && isTeachingTask(activeSession);
+        input.currentPracticeLevel = currentPracticeLevel;
+        return WritingActionPresentation.from(input);
     }
 
-    String checkWritingButtonText(boolean messyPass) {
-        return WritingFeedbackCopy.checkWritingButtonText(checkingWriting, messyPass);
+    void updateCheckWritingButton(WritingActionPresentation presentation) {
+        if (checkWritingButton != null) {
+            checkWritingButton.setVisibility(presentation.checkVisible ? View.VISIBLE : View.GONE);
+            checkWritingButton.setEnabled(presentation.checkEnabled);
+            checkWritingButton.setText(presentation.checkText);
+            checkWritingButton.setOnClickListener(presentation.messyPass ? v -> startCleanerRetry() : v -> checkWriting());
+        }
     }
 
     void updateUndoStrokeButton() {
+        updateUndoStrokeButton(writingActionPresentation());
+    }
+
+    void updateUndoStrokeButton(WritingActionPresentation presentation) {
         if (undoStrokeButton != null) {
             undoStrokeButton.setVisibility(View.VISIBLE);
-            undoStrokeButton.setEnabled(!checkingWriting && drawingPad != null && drawingPad.canUndoStroke());
+            undoStrokeButton.setEnabled(presentation.undoEnabled);
         }
     }
 
-    void updateDownloadModelButton() {
+    void updateDownloadModelButton(WritingActionPresentation presentation) {
         if (downloadModelButton != null) {
-            downloadModelButton.setVisibility(writingModelStatusKnown && writingModelDownloaded ? View.GONE : View.VISIBLE);
+            downloadModelButton.setVisibility(presentation.downloadVisible ? View.VISIBLE : View.GONE);
         }
     }
 
-    void updateNextAfterPassButton(boolean submittable) {
+    void updateNextAfterPassButton(WritingActionPresentation presentation) {
         if (nextAfterPassButton != null) {
-            nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
-            if (submittable) {
-                nextAfterPassButton.setText(writingSubmitLabel(activeAnalysis));
-                nextAfterPassButton.setOnClickListener(v -> submitReview(writingSubmitRating(activeAnalysis), false));
+            nextAfterPassButton.setVisibility(presentation.nextVisible ? View.VISIBLE : View.GONE);
+            if (presentation.nextVisible) {
+                nextAfterPassButton.setText(presentation.nextLabel);
+                nextAfterPassButton.setOnClickListener(v -> submitReview(presentation.nextRating, false));
             }
         }
     }
 
-    String writingSubmitLabel(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.submitLabel(analysis);
-    }
-
-    String writingSubmitRating(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.submitRating(analysis);
-    }
-
-    void updateFallbackActionButtons(boolean hasResult, boolean passed, StrokeGuide guide) {
+    void updateFallbackActionButtons(WritingActionPresentation presentation) {
         if (manualOverrideButton != null) {
-            manualOverrideButton.setVisibility(hasResult && canManualOverride(activeAnalysis) ? View.VISIBLE : View.GONE);
+            manualOverrideButton.setVisibility(presentation.manualOverrideVisible ? View.VISIBLE : View.GONE);
         }
         if (practiceWithGuideButton != null) {
-            practiceWithGuideButton.setVisibility(hasResult && !passed && canPracticeAfterAnalysis(activeAnalysis) ? View.VISIBLE : View.GONE);
+            practiceWithGuideButton.setVisibility(presentation.practiceWithGuideVisible ? View.VISIBLE : View.GONE);
         }
         if (replayButton != null) {
-            replayButton.setVisibility(hasResult && drawingPad != null && drawingPad.hasReplaySnapshot() && canReplayAnalysis(activeAnalysis, guide) ? View.VISIBLE : View.GONE);
+            replayButton.setVisibility(presentation.replayVisible ? View.VISIBLE : View.GONE);
         }
     }
 
-    void updateHintAndAnswerVisibility(boolean passed) {
+    void updateHintAndAnswerVisibility(WritingActionPresentation presentation) {
         if (hintButton != null) {
-            hintButton.setVisibility(!passed && canRevealMoreHelp() ? View.VISIBLE : View.GONE);
-            hintButton.setText(currentPracticeLevel == 3 ? "Hint" : "More help");
+            hintButton.setVisibility(presentation.hintVisible ? View.VISIBLE : View.GONE);
+            hintButton.setText(presentation.hintText);
         }
         if (studyAnswerPanel != null) {
-            studyAnswerPanel.setVisibility(shouldShowLearningPanel(activeAnalysis) ? View.VISIBLE : View.GONE);
+            studyAnswerPanel.setVisibility(presentation.answerPanelVisible ? View.VISIBLE : View.GONE);
         }
-    }
-
-    boolean shouldShowLearningPanel(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.shouldShowLearningPanel(
-                analysis,
-                activeSession != null && isRecallTask(activeSession),
-                activeSession != null && isTeachingTask(activeSession),
-                currentPracticeLevel
-        );
     }
 
     boolean isTeachingTask(RecordsSchedulerModels.StudySession session) {
@@ -1785,18 +1781,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     boolean isWordReadingTask(RecordsSchedulerModels.StudySession session) {
         return StudyTaskCopy.isWordReadingTask(session);
-    }
-
-    boolean canSubmitAnalysis(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.canSubmitAnalysis(analysis);
-    }
-
-    boolean canManualOverride(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.canManualOverride(analysis);
-    }
-
-    boolean canPracticeAfterAnalysis(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.canPracticeAfterAnalysis(analysis);
     }
 
     void setStudyStatus(String value, int color) {
