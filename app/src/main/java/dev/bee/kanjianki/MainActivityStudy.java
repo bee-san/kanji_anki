@@ -65,6 +65,7 @@ import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
+import dev.bee.kanjianki.core.study.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
@@ -1420,7 +1421,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             submitSimilarWritingRepair(rating);
             return;
         }
-        StudyReviewRequests.MappedReview mappedReview = StudyReviewRequests.from(
+        StudyReviewRequestPolicy.MappedReview mappedReview = StudyReviewRequestPolicy.from(
                 activeSession,
                 activeAnalysis,
                 hintsUsed,

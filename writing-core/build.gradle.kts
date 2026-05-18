@@ -43,5 +43,6 @@ tasks.check {
 }
 
 dependencies {
+    implementation(project(":core"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

@@ -1,17 +1,14 @@
-package dev.bee.kanjianki;
+package dev.bee.kanjianki.core.study;
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.study.StudyRating;
-import dev.bee.kanjianki.core.study.WritingAnalysis;
-import dev.bee.kanjianki.core.study.WritingRatingMapper;
 
-final class StudyReviewRequests {
+public final class StudyReviewRequestPolicy {
     private static final WritingRatingMapper RATING_MAPPER = new WritingRatingMapper();
 
-    private StudyReviewRequests() {
+    private StudyReviewRequestPolicy() {
     }
 
-    static MappedReview from(
+    public static MappedReview from(
             RecordsSchedulerModels.StudySession session,
             WritingAnalysis analysis,
             int hintsUsed,
@@ -38,7 +35,7 @@ final class StudyReviewRequests {
         return new MappedReview(request, mappedRating.code());
     }
 
-    static final class MappedReview {
+    public static final class MappedReview {
         private final RecordsSchedulerModels.ReviewRequest request;
         private final String ratingCode;
 
@@ -47,11 +44,11 @@ final class StudyReviewRequests {
             this.ratingCode = ratingCode;
         }
 
-        RecordsSchedulerModels.ReviewRequest request() {
+        public RecordsSchedulerModels.ReviewRequest request() {
             return request;
         }
 
-        String ratingCode() {
+        public String ratingCode() {
             return ratingCode;
         }
     }
