@@ -67,6 +67,21 @@ public final class WritingFeedbackCopyTest {
     }
 
     @Test
+    public void candidateTextShowsTopThreeRecognizedValues() {
+        assertEquals("", WritingFeedbackCopy.candidateText(null));
+        assertEquals("", WritingFeedbackCopy.candidateText(Collections.emptyList()));
+        assertEquals(
+                "拉, 拡, 抽",
+                WritingFeedbackCopy.candidateText(Arrays.asList(
+                        new RecognitionCandidate("拉", 0.9f),
+                        new RecognitionCandidate("拡", 0.7f),
+                        new RecognitionCandidate("抽", 0.5f),
+                        new RecognitionCandidate("扌", 0.3f)
+                ))
+        );
+    }
+
+    @Test
     public void writingActionCopyPreservesButtonAndRatingChoices() {
         assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, false));
         assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, true));

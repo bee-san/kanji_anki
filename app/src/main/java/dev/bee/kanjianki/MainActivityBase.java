@@ -418,14 +418,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     String candidateText(List<RecognitionCandidate> candidates) {
-        if (candidates == null || candidates.isEmpty()) {
-            return "";
-        }
-        List<String> values = new ArrayList<>();
-        for (int i = 0; i < Math.min(3, candidates.size()); i++) {
-            values.add(candidates.get(i).text);
-        }
-        return String.join(", ", values);
+        return WritingFeedbackCopy.candidateText(candidates);
     }
 
     StrokeGuide strokeGuide(String kanji) {

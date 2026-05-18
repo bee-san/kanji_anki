@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.core.study;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class WritingFeedbackCopy {
     private static final HintProgression HINT_PROGRESSION = new HintProgression();
 
@@ -78,6 +81,17 @@ public final class WritingFeedbackCopy {
             default:
                 return "";
         }
+    }
+
+    public static String candidateText(List<RecognitionCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return "";
+        }
+        List<String> values = new ArrayList<>();
+        for (int i = 0; i < Math.min(3, candidates.size()); i++) {
+            values.add(candidates.get(i).text);
+        }
+        return String.join(", ", values);
     }
 
     public static String checkWritingButtonText(boolean checkingWriting, boolean messyPass) {
