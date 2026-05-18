@@ -17,6 +17,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.KanjiInventoryBuilder;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
@@ -1878,9 +1879,9 @@ public final class LocalStoreInstrumentedTest {
         assertEquals("", emptyImport.expression);
         assertEquals("", emptyImport.reading);
 
-        Map<String, LocalStoreBase.MutableKanjiInventoryItem> inventory = new LinkedHashMap<>();
-        inventory.put("", new LocalStoreBase.MutableKanjiInventoryItem(""));
-        store.writeKanjiInventory(db, inventory, 1250L, RecordsSyncModels.Settings.kikuDefaults());
+        KanjiInventoryBuilder inventory = new KanjiInventoryBuilder(1250L, RecordsSyncModels.Settings.kikuDefaults());
+        inventory.addKnownKanji("");
+        store.writeKanjiInventory(db, inventory);
         assertEquals(0, count("kanji_inventory"));
 
         RecordsStudyModels.StudyItem unchanged = new RecordsStudyModels.StudyItem("拉", "review", 0L, 2.0, 4.0, 1, 0, 0, 0, null, 1000L);
@@ -2066,30 +2067,30 @@ public final class LocalStoreInstrumentedTest {
 
     @Test
     public void testInventoryBuilderAndSettingsValuesNormalizeParserEdges() {
-        LocalStoreBase.MutableKanjiInventoryItem empty = new LocalStoreBase.MutableKanjiInventoryItem(null);
-        assertEquals("", empty.kanji);
-        assertEquals("known reading", empty.readingsText("known reading"));
-        assertEquals("", empty.readingsText(null));
+        KanjiInventoryBuilder empty = new KanjiInventoryBuilder(1L, RecordsSyncModels.Settings.kikuDefaults());
+        empty.addKnownKanji(null);
+        assertTrue(empty.build(Collections.emptyMap()).isEmpty());
 
-        LocalStoreBase.MutableKanjiInventoryItem item = new LocalStoreBase.MutableKanjiInventoryItem("拉");
-        item.add("pull", "ら", "拉語", "拉語を見た。");
-        item.add("", "ラー", "", "");
-        item.add(null, "ラ", null, null);
-        item.add("drag", "ろ", "拉致", "拉致した。");
-        assertEquals("pull", item.primaryMeaning);
-        assertEquals("ら / ラー / ラ +1 more", item.readingsText(""));
-        RecordsImportModels.KanjiInventoryItem previous = new RecordsImportModels.KanjiInventoryItem(
+        KanjiInventoryBuilder builder = new KanjiInventoryBuilder(2000L, RecordsSyncModels.Settings.kikuDefaults());
+        builder.addSourceText(Collections.singletonList("拉"), "pull", "ら", "拉語", "拉語を見た。");
+        builder.addSourceText(Collections.singletonList("拉"), "", "ラー", "", "");
+        builder.addSourceText(Collections.singletonList("拉"), null, "ラ", null, null);
+        builder.addSourceText(Collections.singletonList("拉"), "drag", "ろ", "拉致", "拉致した。");
+        Map<String, KanjiInventoryBuilder.PreviousItem> previous = Collections.singletonMap(
                 "拉",
+                new KanjiInventoryBuilder.PreviousItem(
                 "old pull",
                 "old reading",
                 "deck:Kiku 拉",
                 1,
                 1,
-                false,
                 1000L
-        );
-        assertTrue(item.searchText(previous).contains("old pull"));
-        assertTrue(item.searchText(previous).contains("deck:kiku 拉"));
+        ));
+        KanjiInventoryBuilder.BuiltItem item = builder.build(previous).get(0);
+        assertEquals("pull", item.primaryMeaning());
+        assertEquals("ら / ラー / ラ +1 more", item.readings());
+        assertTrue(item.searchText().contains("old pull"));
+        assertTrue(item.searchText().contains("deck:kiku 拉"));
 
         LocalStore.ReminderSettings earlyReminder = new LocalStore.ReminderSettings(true, -3, 90).normalized();
         assertEquals("00:59", earlyReminder.displayTime());

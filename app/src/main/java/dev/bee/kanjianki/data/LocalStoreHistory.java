@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data;
 
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
+import dev.bee.kanjianki.core.KanjiInventoryBuilder;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
@@ -10,7 +11,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarChoiceCodec;
@@ -22,13 +22,11 @@ import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimelineCopy;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -485,18 +483,18 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             long nowMillis,
             RecordsSyncModels.Settings settings
     ) {
-        Map<String, MutableKanjiInventoryItem> inventory = new LinkedHashMap<>();
+        KanjiInventoryBuilder inventory = new KanjiInventoryBuilder(nowMillis, settings);
         addSnapshotInventory(inventory, snapshot, settings);
         addImportedInventory(inventory, imports);
         addDashboardInventory(inventory, rows);
         addKnownKanji(inventory, db, TABLE_STUDY_ITEMS);
         addKnownKanji(inventory, db, TABLE_REVIEW_LOG);
         addKnownKanji(inventory, db, TABLE_KANJI_TIMELINE_EVENTS);
-        writeKanjiInventory(db, inventory, nowMillis, settings);
+        writeKanjiInventory(db, inventory);
     }
 
     void addSnapshotInventory(
-            Map<String, MutableKanjiInventoryItem> inventory,
+            KanjiInventoryBuilder inventory,
             RecordsSyncModels.CollectionSnapshot snapshot,
             RecordsSyncModels.Settings settings
     ) {
@@ -506,73 +504,51 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         ActiveCardIndex activeIndex = activeCardIndex(snapshot.cards);
         for (RecordsSyncModels.Note note : snapshot.notes) {
             if (activeIndex.noteIds.contains(note.noteId)) {
-                addInventoryTextForNote(inventory, note, settings);
+                inventory.addSnapshotNote(note);
             }
         }
     }
 
     void addInventoryTextForNote(
-            Map<String, MutableKanjiInventoryItem> inventory,
+            KanjiInventoryBuilder inventory,
             RecordsSyncModels.Note note,
             RecordsSyncModels.Settings settings
     ) {
-        String expression = TextUtil.normalizeJapanese(note.expression(settings));
-        String reading = TextUtil.normalizeJapanese(note.reading(settings));
-        String meaning = TextUtil.firstMeaningLine(note.meaning(settings));
-        String sentence = TextUtil.normalizeJapanese(note.sentence(settings));
-        addInventoryText(inventory, TextUtil.extractKanji(expression + " " + sentence), meaning, reading, expression, sentence);
+        inventory.addSnapshotNote(note);
     }
 
-    void addImportedInventory(Map<String, MutableKanjiInventoryItem> inventory, List<RecordsImportModels.SuspendedImport> imports) {
+    void addImportedInventory(KanjiInventoryBuilder inventory, List<RecordsImportModels.SuspendedImport> imports) {
         for (RecordsImportModels.SuspendedImport imported : imports) {
-            MutableKanjiInventoryItem item = inventoryItem(inventory, imported.kanji);
-            for (RecordsImportModels.SuspendedSource source : imported.sources) {
-                item.add(source.meaning, source.reading, source.expression, source.sentence);
-            }
+            inventory.addSuspendedImport(imported);
         }
     }
 
-    void addDashboardInventory(Map<String, MutableKanjiInventoryItem> inventory, List<RecordsImportModels.DashboardRow> rows) {
+    void addDashboardInventory(KanjiInventoryBuilder inventory, List<RecordsImportModels.DashboardRow> rows) {
         for (RecordsImportModels.DashboardRow row : rows) {
-            MutableKanjiInventoryItem item = inventoryItem(inventory, row.kanji);
-            item.add(row.primaryMeaning, row.reading, row.reasonText, row.browserSearch);
-            item.browserSearch = row.browserSearch;
-            for (RecordsImportModels.Example example : row.examples) {
-                item.exampleCount++;
-                item.add(example.meaning, example.reading, example.expression, example.sentence);
-            }
+            inventory.addDashboardRow(row);
         }
     }
 
-    void addKnownKanji(Map<String, MutableKanjiInventoryItem> inventory, SQLiteDatabase db, String table) {
+    void addKnownKanji(KanjiInventoryBuilder inventory, SQLiteDatabase db, String table) {
         try (Cursor cursor = db.query(true, table, new String[]{COLUMN_KANJI}, null, null, null, null, null, null)) {
             while (cursor.moveToNext()) {
-                inventoryItem(inventory, string(cursor, COLUMN_KANJI));
+                inventory.addKnownKanji(string(cursor, COLUMN_KANJI));
             }
         }
     }
 
-    void writeKanjiInventory(
-            SQLiteDatabase db,
-            Map<String, MutableKanjiInventoryItem> inventory,
-            long nowMillis,
-            RecordsSyncModels.Settings settings
-    ) {
-        for (MutableKanjiInventoryItem item : inventory.values()) {
-            if (item.kanji.isEmpty()) {
-                continue;
-            }
-            RecordsImportModels.KanjiInventoryItem previous = readInventoryItem(db, item.kanji);
+    void writeKanjiInventory(SQLiteDatabase db, KanjiInventoryBuilder inventory) {
+        for (KanjiInventoryBuilder.BuiltItem item : inventory.build(previousInventoryItems(db))) {
             ContentValues values = new ContentValues();
-            values.put(COLUMN_KANJI, item.kanji);
-            values.put(COLUMN_PRIMARY_MEANING, firstNonEmpty(item.primaryMeaning, previous == null ? "" : previous.primaryMeaning));
-            values.put("readings", item.readingsText(previous == null ? "" : previous.readings));
-            values.put(COLUMN_BROWSER_SEARCH, firstNonEmpty(item.browserSearch, previous == null ? TextUtil.browserSearchForKanji(item.kanji, settings) : previous.browserSearch));
-            values.put("search_text", item.searchText(previous));
-            values.put("source_count", Math.max(item.sourceCount, previous == null ? 0 : previous.sourceCount));
-            values.put("example_count", Math.max(item.exampleCount, previous == null ? 0 : previous.exampleCount));
-            values.put(COLUMN_FIRST_SEEN_AT, previous == null ? nowMillis : previous.lastSeenAtMillis);
-            values.put(COLUMN_LAST_SEEN_AT, nowMillis);
+            values.put(COLUMN_KANJI, item.kanji());
+            values.put(COLUMN_PRIMARY_MEANING, item.primaryMeaning());
+            values.put("readings", item.readings());
+            values.put(COLUMN_BROWSER_SEARCH, item.browserSearch());
+            values.put("search_text", item.searchText());
+            values.put("source_count", item.sourceCount());
+            values.put("example_count", item.exampleCount());
+            values.put(COLUMN_FIRST_SEEN_AT, item.firstSeenAtMillis());
+            values.put(COLUMN_LAST_SEEN_AT, item.lastSeenAtMillis());
             db.insertWithOnConflict(TABLE_KANJI_INVENTORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
@@ -854,21 +830,6 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return SimilarChoiceCodec.deserializeChoices(encoded);
     }
 
-    void addInventoryText(Map<String, MutableKanjiInventoryItem> inventory, List<String> kanji, String meaning, String reading, String expression, String sentence) {
-        for (String glyph : kanji) {
-            inventoryItem(inventory, glyph).add(meaning, reading, expression, sentence);
-        }
-    }
-
-    MutableKanjiInventoryItem inventoryItem(Map<String, MutableKanjiInventoryItem> inventory, String kanji) {
-        MutableKanjiInventoryItem item = inventory.get(kanji);
-        if (item == null) {
-            item = new MutableKanjiInventoryItem(kanji);
-            inventory.put(kanji, item);
-        }
-        return item;
-    }
-
     RecordsImportModels.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, String kanji) {
         Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
         try {
@@ -901,11 +862,24 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         }
     }
 
-    static String firstNonEmpty(String first, String second) {
-        if (first != null && !first.isEmpty()) {
-            return first;
+    Map<String, KanjiInventoryBuilder.PreviousItem> previousInventoryItems(SQLiteDatabase db) {
+        Map<String, KanjiInventoryBuilder.PreviousItem> previous = new LinkedHashMap<>();
+        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, null, null, null, null, ORDER_KANJI_ASC)) {
+            while (cursor.moveToNext()) {
+                previous.put(
+                        string(cursor, COLUMN_KANJI),
+                        new KanjiInventoryBuilder.PreviousItem(
+                                string(cursor, COLUMN_PRIMARY_MEANING),
+                                string(cursor, "readings"),
+                                string(cursor, COLUMN_BROWSER_SEARCH),
+                                integer(cursor, "source_count"),
+                                integer(cursor, "example_count"),
+                                longValue(cursor, COLUMN_LAST_SEEN_AT)
+                        )
+                );
+            }
         }
-        return second == null ? "" : second;
+        return previous;
     }
 
     static String normalizeSingleKanji(String value) {

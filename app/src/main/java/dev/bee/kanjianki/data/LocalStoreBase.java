@@ -16,7 +16,6 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -200,7 +199,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String KEY_AUTO_UPDATE_LAST_RESULT = "auto_update_last_result";
     static final String KEY_AUTO_UPDATE_LAST_VERSION = "auto_update_last_version";
     static final String KEY_AUTO_UPDATE_PENDING_APK = "auto_update_pending_apk";
-    static final int MAX_DISPLAYED_INVENTORY_READINGS = 3;
     static final String KEY_AUTO_UPDATE_PENDING_MESSAGE = "auto_update_pending_message";
 
     private final SettingsRepository settingsRepository = new SettingsRepository(this);
@@ -495,68 +493,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
             this.correctCount = correctCount;
             this.wrongCount = wrongCount;
             this.firstSeenAtMillis = firstSeenAtMillis;
-        }
-    }
-
-    static final class MutableKanjiInventoryItem {
-        final String kanji;
-        String primaryMeaning = "";
-        String browserSearch = "";
-        int sourceCount = 0;
-        int exampleCount = 0;
-        final Set<String> readings = new LinkedHashSet<>();
-        final Set<String> searchParts = new HashSet<>();
-
-        MutableKanjiInventoryItem(String kanji) {
-            this.kanji = kanji == null ? "" : kanji;
-            searchParts.add(this.kanji.toLowerCase(Locale.ROOT));
-        }
-
-        void add(String meaning, String reading, String expression, String sentence) {
-            sourceCount++;
-            if (primaryMeaning.isEmpty() && meaning != null && !meaning.isEmpty()) {
-                primaryMeaning = meaning;
-            }
-            if (reading != null && !reading.isEmpty()) {
-                readings.add(reading);
-            }
-            addSearch(meaning);
-            addSearch(reading);
-            addSearch(expression);
-            addSearch(sentence);
-        }
-
-        void addSearch(String value) {
-            String normalized = TextUtil.normalizeJapanese(value);
-            if (!normalized.isEmpty()) {
-                searchParts.add(normalized.toLowerCase(Locale.ROOT));
-            }
-        }
-
-        String readingsText(String previous) {
-            if (readings.isEmpty()) {
-                return previous == null ? "" : previous;
-            }
-            List<String> display = new ArrayList<>();
-            int hidden = 0;
-            for (String reading : readings) {
-                if (display.size() < MAX_DISPLAYED_INVENTORY_READINGS) {
-                    display.add(reading);
-                } else {
-                    hidden++;
-                }
-            }
-            String text = String.join(" / ", display);
-            return hidden == 0 ? text : text + " +" + hidden + " more";
-        }
-
-        String searchText(RecordsImportModels.KanjiInventoryItem previous) {
-            if (previous != null) {
-                addSearch(previous.primaryMeaning);
-                addSearch(previous.readings);
-                addSearch(previous.browserSearch);
-            }
-            return String.join(" ", searchParts);
         }
     }
 
