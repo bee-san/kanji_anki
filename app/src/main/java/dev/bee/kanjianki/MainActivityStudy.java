@@ -60,6 +60,7 @@ import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
+import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
@@ -1841,46 +1842,19 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String diagnosisText(WritingAnalysis analysis) {
-        if (!canShowDiagnosis(analysis)) {
-            return "";
-        }
-        List<String> lines = new ArrayList<>();
-        for (StrokeDiagnosis.Entry entry : analysis.strokeOrder.diagnosis.entries) {
-            String line = diagnosisLine(entry);
-            if (!line.isEmpty()) {
-                lines.add(line);
-            }
-        }
-        return String.join("\n", lines);
+        return StrokeDiagnosisFormatter.text(analysis);
     }
 
     boolean canShowDiagnosis(WritingAnalysis analysis) {
-        if (analysis == null
-                || analysis.strokeOrder == null
-                || analysis.strokeOrder.missingGuide
-                || analysis.strokeOrder.diagnosis.isEmpty()) {
-            return false;
-        }
-        switch (analysis.status) {
-            case NO_INK, MODEL_UNAVAILABLE, NO_STROKE_DATA, RECOGNITION_ERROR:
-                return false;
-            default:
-                return true;
-        }
+        return StrokeDiagnosisFormatter.canShow(analysis);
     }
 
     String diagnosisLine(StrokeDiagnosis.Entry entry) {
-        return switch (entry.label) {
-            case WRONG_ORDER -> strokeDiagnosisText(entry, "likely wrong order");
-            case WRONG_DIRECTION -> strokeDiagnosisText(entry, "likely wrong direction");
-            case MISSING_STROKE -> strokeDiagnosisText(entry, "may be missing");
-            case ROUGH_SHAPE -> strokeDiagnosisText(entry, "shape looks rough");
-            case RECOGNIZED_BUT_MESSY -> "Recognized, but the stroke path was messy";
-        };
+        return StrokeDiagnosisFormatter.line(entry);
     }
 
     String strokeDiagnosisText(StrokeDiagnosis.Entry entry, String label) {
-        return "Stroke " + entry.strokeNumber + ": " + label;
+        return StrokeDiagnosisFormatter.strokeLine(entry, label);
     }
 
     boolean isRecallTask(RecordsSchedulerModels.StudySession session) {
