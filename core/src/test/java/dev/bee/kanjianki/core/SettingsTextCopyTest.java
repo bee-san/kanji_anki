@@ -33,6 +33,23 @@ public final class SettingsTextCopyTest {
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(false, true, "07:30"));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(true, true, "07:30"));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(true, false, "07:30"));
+        assertEquals(
+                "Manual sync once, then Kani will keep itself refreshed once per day.",
+                SettingsTextCopy.autoSyncDetail(false, true, "", "", "")
+        );
+        assertEquals(
+                "Scheduled once per local day. Android may batch the exact time.",
+                SettingsTextCopy.autoSyncDetail(true, true, "", "", "")
+        );
+        assertEquals("Daily background sync is paused.", SettingsTextCopy.autoSyncDetail(true, false, "", "", "tomorrow"));
+        assertEquals(
+                "Last auto success yesterday. Last auto attempt today. Next scheduled tomorrow.",
+                SettingsTextCopy.autoSyncDetail(true, true, "yesterday", "today", "tomorrow")
+        );
+        assertEquals(
+                "Last auto success yesterday. Last auto attempt today.",
+                SettingsTextCopy.autoSyncDetail(true, false, "yesterday", "today", "tomorrow")
+        );
     }
 
     @Test

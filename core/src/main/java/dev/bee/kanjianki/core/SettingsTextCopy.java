@@ -73,6 +73,30 @@ public final class SettingsTextCopy {
         return "Off";
     }
 
+    public static String autoSyncDetail(
+            boolean configured,
+            boolean enabled,
+            String lastSuccessText,
+            String lastAttemptText,
+            String nextRunText
+    ) {
+        if (!configured) {
+            return "Manual sync once, then Kani will keep itself refreshed once per day.";
+        }
+        List<String> details = new ArrayList<>();
+        addDetail(details, "Last auto success ", lastSuccessText);
+        addDetail(details, "Last auto attempt ", lastAttemptText);
+        if (enabled) {
+            addDetail(details, "Next scheduled ", nextRunText);
+        }
+        if (details.isEmpty()) {
+            return enabled
+                    ? "Scheduled once per local day. Android may batch the exact time."
+                    : "Daily background sync is paused.";
+        }
+        return String.join(". ", details) + ".";
+    }
+
     public static String workloadStatusText(int percent, int maxItems) {
         int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems);
@@ -149,5 +173,11 @@ public final class SettingsTextCopy {
 
     public static String reminderTimeButtonLabel(int hour, int minute) {
         return String.format(Locale.ROOT, "Reminder time: %02d:%02d", hour, minute);
+    }
+
+    private static void addDetail(List<String> details, String prefix, String value) {
+        if (value != null && !value.isEmpty()) {
+            details.add(prefix + value);
+        }
     }
 }

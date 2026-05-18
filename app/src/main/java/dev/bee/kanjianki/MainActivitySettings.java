@@ -1490,25 +1490,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String autoSyncDetail(LocalStore.AutoSyncSettings auto) {
-        if (!auto.configured) {
-            return "Manual sync once, then Kani will keep itself refreshed once per day.";
-        }
-        List<String> details = new ArrayList<>();
-        if (auto.lastSuccessAt > 0L) {
-            details.add("Last auto success " + shortDateTime(auto.lastSuccessAt));
-        }
-        if (auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt) {
-            details.add("Last auto attempt " + shortDateTime(auto.lastAttemptAt));
-        }
-        if (auto.enabled && auto.nextRunAt > 0L) {
-            details.add("Next scheduled " + shortDateTime(auto.nextRunAt));
-        }
-        if (details.isEmpty()) {
-            return auto.enabled
-                    ? "Scheduled once per local day. Android may batch the exact time."
-                    : "Daily background sync is paused.";
-        }
-        return String.join(". ", details) + ".";
+        String lastSuccess = auto.lastSuccessAt > 0L ? shortDateTime(auto.lastSuccessAt) : "";
+        String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt ? shortDateTime(auto.lastAttemptAt) : "";
+        String nextRun = auto.nextRunAt > 0L ? shortDateTime(auto.nextRunAt) : "";
+        return SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun);
     }
 
     String shortDateTime(long millis) {
