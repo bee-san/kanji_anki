@@ -679,8 +679,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 return;
             }
             SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
-            store.putIntSetting("suspended_rank_min", rankRange.minRank());
-            store.putIntSetting("suspended_rank_max", rankRange.maxRank());
+            SettingsWriteActions.saveFrequencyRange(rankRange.minRank(), rankRange.maxRank(), store::putIntSetting);
             Toast.makeText(this, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });

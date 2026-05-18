@@ -18,6 +18,11 @@ final class SettingsWriteActions {
         writer.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, request.failStreak);
     }
 
+    static void saveFrequencyRange(int minRank, int maxRank, IntSettingWriter writer) {
+        writer.putIntSetting("suspended_rank_min", minRank);
+        writer.putIntSetting("suspended_rank_max", maxRank);
+    }
+
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
         saveImportFilters(
                 new ImportFilterWriteRequest(

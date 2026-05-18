@@ -42,6 +42,17 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void saveFrequencyRangeWritesLegacyRankKeys() {
+        Map<String, Integer> settings = new LinkedHashMap<>();
+
+        SettingsWriteActions.saveFrequencyRange(250, 3000, settings::put);
+
+        assertEquals(2, settings.size());
+        assertEquals(Integer.valueOf(250), settings.get("suspended_rank_min"));
+        assertEquals(Integer.valueOf(3000), settings.get("suspended_rank_max"));
+    }
+
+    @Test
     public void applyImportPresetWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
         SettingsImportPreset preset = new SettingsImportPreset(
