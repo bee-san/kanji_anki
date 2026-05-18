@@ -1779,7 +1779,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         WritingRecognizer recognizer = currentWritingRecognizer();
         if (recognizer == null) {
             writingModelStatusKnown = true;
-            setStudyStatus(guideStatusPrefix(strokeGuide(activeSession.item.kanji)) + "\nAutomatic handwriting checks are unavailable on this device.", CORAL);
+            setStudyStatus(
+                    WritingFeedbackCopy.unavailableModelStatusMessage(guideStatusPrefix(strokeGuide(activeSession.item.kanji))),
+                    CORAL
+            );
             updateResultActions();
             return;
         }
@@ -1800,14 +1803,14 @@ abstract class MainActivityStudy extends MainActivityStats {
     void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
         String prefix = guideStatusPrefix(strokeGuide(activeSession.item.kanji));
         if (error != null || status == null) {
-            setStudyStatus(prefix + "\nUnable to read handwriting checker status.", CORAL);
+            setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, status != null, false, error != null), CORAL);
             return;
         }
         if (!status.downloaded) {
-            setStudyStatus(prefix + "\nDownload the handwriting checker before automatic checks.", CORAL);
+            setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, true, false, false), CORAL);
             return;
         }
-        setStudyStatus(prefix + "\nHandwriting checker ready.", MUTED);
+        setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, true, true, false), MUTED);
     }
 
     void downloadWritingModel() {

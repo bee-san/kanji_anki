@@ -101,6 +101,20 @@ public final class WritingFeedbackCopy {
         return messyPass ? "Try cleaner" : "Check";
     }
 
+    public static String unavailableModelStatusMessage(String guidePrefix) {
+        return appendStatus(guidePrefix, "Automatic handwriting checks are unavailable on this device.");
+    }
+
+    public static String modelStatusMessage(String guidePrefix, boolean statusPresent, boolean downloaded, boolean hasError) {
+        if (hasError || !statusPresent) {
+            return appendStatus(guidePrefix, "Unable to read handwriting checker status.");
+        }
+        if (!downloaded) {
+            return appendStatus(guidePrefix, "Download the handwriting checker before automatic checks.");
+        }
+        return appendStatus(guidePrefix, "Handwriting checker ready.");
+    }
+
     public static String submitLabel(WritingAnalysis analysis) {
         if (analysis == null || !analysis.writingPassed) {
             return "Fail";
@@ -191,5 +205,13 @@ public final class WritingFeedbackCopy {
             return teachingTask && currentPracticeLevel < 3;
         }
         return true;
+    }
+
+    private static String appendStatus(String guidePrefix, String status) {
+        String prefix = guidePrefix == null ? "" : guidePrefix;
+        if (prefix.isEmpty()) {
+            return status;
+        }
+        return prefix + "\n" + status;
     }
 }

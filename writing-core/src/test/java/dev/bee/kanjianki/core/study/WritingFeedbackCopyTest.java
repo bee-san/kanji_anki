@@ -100,6 +100,34 @@ public final class WritingFeedbackCopyTest {
     }
 
     @Test
+    public void modelStatusCopyPreservesGuidePrefixedMessages() {
+        assertEquals(
+                "Guide\nAutomatic handwriting checks are unavailable on this device.",
+                WritingFeedbackCopy.unavailableModelStatusMessage("Guide")
+        );
+        assertEquals(
+                "Guide\nUnable to read handwriting checker status.",
+                WritingFeedbackCopy.modelStatusMessage("Guide", false, false, false)
+        );
+        assertEquals(
+                "Guide\nUnable to read handwriting checker status.",
+                WritingFeedbackCopy.modelStatusMessage("Guide", true, true, true)
+        );
+        assertEquals(
+                "Guide\nDownload the handwriting checker before automatic checks.",
+                WritingFeedbackCopy.modelStatusMessage("Guide", true, false, false)
+        );
+        assertEquals(
+                "Guide\nHandwriting checker ready.",
+                WritingFeedbackCopy.modelStatusMessage("Guide", true, true, false)
+        );
+        assertEquals(
+                "Handwriting checker ready.",
+                WritingFeedbackCopy.modelStatusMessage("", true, true, false)
+        );
+    }
+
+    @Test
     public void writingActionPolicyPreservesSubmittableAndFallbackStatuses() {
         assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
         assertTrue(WritingFeedbackCopy.canSubmitAnalysis(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0)));
