@@ -162,7 +162,10 @@ final class StudySessionTracker {
         }
 
         void resume(long nowElapsedMillis) {
-            visibleSinceElapsedMillis = StudyTaskTimingPolicy.visibleSinceAfterResume(visibleSinceElapsedMillis, nowElapsedMillis);
+            visibleSinceElapsedMillis = StudyTaskTimingPolicy.visibleSinceAfterResume(
+                    visibleSinceElapsedMillis,
+                    nowElapsedMillis
+            );
         }
     }
 }

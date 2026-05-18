@@ -17,7 +17,11 @@ public final class StudyTaskTimingPolicy {
         return Math.min(Math.max(0L, maxElapsedMillis), Math.max(0L, activeElapsedMillis));
     }
 
-    public static long elapsedAfterPause(long activeElapsedMillis, long visibleSinceElapsedMillis, long nowElapsedMillis) {
+    public static long elapsedAfterPause(
+            long activeElapsedMillis,
+            long visibleSinceElapsedMillis,
+            long nowElapsedMillis
+    ) {
         if (visibleSinceElapsedMillis <= 0L) {
             return Math.max(0L, activeElapsedMillis);
         }

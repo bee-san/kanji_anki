@@ -48,7 +48,11 @@ public final class StudyStatsStore {
         );
         try {
             cursor.moveToFirst();
-            return StudyTaskTimeStats.fromCore(StudyTaskTimingPolicy.summarize(cursor.getLong(0), cursor.getLong(1), cursor.getInt(2)));
+            return StudyTaskTimeStats.fromCore(StudyTaskTimingPolicy.summarize(
+                    cursor.getLong(0),
+                    cursor.getLong(1),
+                    cursor.getInt(2)
+            ));
         } finally {
             cursor.close();
         }
@@ -449,7 +453,9 @@ public final class StudyStatsStore {
         }
 
         private StudyTaskTimeStats(StudyTaskTimingPolicy.Summary summary) {
-            StudyTaskTimingPolicy.Summary safeSummary = summary == null ? StudyTaskTimingPolicy.summarize(0L, 0L, 0) : summary;
+            StudyTaskTimingPolicy.Summary safeSummary = summary == null
+                    ? StudyTaskTimingPolicy.summarize(0L, 0L, 0)
+                    : summary;
             this.todayMillis = safeSummary.todayMillis();
             this.lastSevenDaysMillis = safeSummary.lastSevenDaysMillis();
             this.answeredTasks = safeSummary.answeredTasks();
@@ -460,7 +466,11 @@ public final class StudyStatsStore {
         }
 
         public long averageMillisPerTask() {
-            return StudyTaskTimingPolicy.summarize(todayMillis, lastSevenDaysMillis, answeredTasks).averageMillisPerTask();
+            return StudyTaskTimingPolicy.summarize(
+                    todayMillis,
+                    lastSevenDaysMillis,
+                    answeredTasks
+            ).averageMillisPerTask();
         }
     }
 
