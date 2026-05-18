@@ -22,41 +22,6 @@ import static org.junit.Assert.assertTrue;
 
 public final class ReminderSchedulerTest {
     @Test
-    public void nextTriggerUsesTodayWhenReminderTimeIsStillAhead() {
-        TimeZone original = TimeZone.getDefault();
-        try {
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-            long now = utc(2026, Calendar.MAY, 15, 7, 15);
-
-            long trigger = ReminderScheduler.nextTriggerMillis(new LocalStore.ReminderSettings(true, 8, 30), now);
-
-            assertEquals(utc(2026, Calendar.MAY, 15, 8, 30), trigger);
-        } finally {
-            TimeZone.setDefault(original);
-        }
-    }
-
-    @Test
-    public void nextTriggerMovesToTomorrowWhenReminderTimeHasPassedOrMatchesNow() {
-        TimeZone original = TimeZone.getDefault();
-        try {
-            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-            long now = utc(2026, Calendar.MAY, 15, 8, 30);
-
-            assertEquals(
-                    utc(2026, Calendar.MAY, 16, 8, 30),
-                    ReminderScheduler.nextTriggerMillis(new LocalStore.ReminderSettings(true, 8, 30), now)
-            );
-            assertEquals(
-                    utc(2026, Calendar.MAY, 16, 7, 0),
-                    ReminderScheduler.nextTriggerMillis(new LocalStore.ReminderSettings(true, 7, 0), now)
-            );
-        } finally {
-            TimeZone.setDefault(original);
-        }
-    }
-
-    @Test
     public void scheduleDelegatesToServicesAndCancelsWhenDisabled() {
         TimeZone original = TimeZone.getDefault();
         try {

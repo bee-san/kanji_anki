@@ -20,10 +20,10 @@ import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.ReminderSchedulePolicy;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.time.AppClock;
 
-import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -261,18 +261,7 @@ public final class ReminderScheduler {
     }
 
     static long nextTriggerMillis(LocalStore.ReminderSettings settings, long nowMillis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(nowMillis);
-        calendar.set(Calendar.HOUR_OF_DAY, settings.hour);
-        calendar.set(Calendar.MINUTE, settings.minute);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        long trigger = calendar.getTimeInMillis();
-        if (trigger <= nowMillis) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1);
-            trigger = calendar.getTimeInMillis();
-        }
-        return trigger;
+        return ReminderSchedulePolicy.nextTriggerMillis(settings.hour, settings.minute, nowMillis);
     }
 
     private static ReminderCopy reminderCopy(Context context, AppClock clock) {
