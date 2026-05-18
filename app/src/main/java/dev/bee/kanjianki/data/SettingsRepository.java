@@ -4,6 +4,8 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import dev.bee.kanjianki.core.SettingValuePolicy;
+
 import java.util.Locale;
 
 final class SettingsRepository {
@@ -18,7 +20,7 @@ final class SettingsRepository {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            return SettingValueParser.parseInt(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_VALUE), fallback);
+            return SettingValuePolicy.parseInt(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_VALUE), fallback);
         }
     }
 
@@ -27,7 +29,7 @@ final class SettingsRepository {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            return SettingValueParser.parseLong(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_VALUE), fallback);
+            return SettingValuePolicy.parseLong(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_VALUE), fallback);
         }
     }
 
@@ -46,7 +48,7 @@ final class SettingsRepository {
             if (!cursor.moveToFirst()) {
                 return fallback;
             }
-            return SettingValueParser.parseDouble(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_VALUE), fallback);
+            return SettingValuePolicy.parseDouble(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_VALUE), fallback);
         }
     }
 
