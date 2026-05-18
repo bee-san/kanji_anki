@@ -77,6 +77,8 @@ public final class HomeTextCopyTest {
         assertEquals("inventory:語", HomeTextCopy.detailBrowserSearch(row, inventory));
         assertEquals("row:裂", HomeTextCopy.detailBrowserSearch(row, inventory("語", "language", "")));
         assertEquals("", HomeTextCopy.detailBrowserSearch(row("裂", ""), null));
+        assertEquals("Mature support 0 / target 2", HomeTextCopy.matureSupportTargetText(0, 2));
+        assertEquals("Mature support 3 / target 4", HomeTextCopy.matureSupportTargetText(3, 4));
     }
 
     private static RecordsImportModels.KanjiInventoryItem inventory(String kanji, String meaning, String browserSearch) {

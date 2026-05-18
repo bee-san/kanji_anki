@@ -90,4 +90,8 @@ public final class HomeTextCopy {
         }
         return "";
     }
+
+    public static String matureSupportTargetText(int matureSupportCount, int target) {
+        return "Mature support " + matureSupportCount + " / target " + target;
+    }
 }

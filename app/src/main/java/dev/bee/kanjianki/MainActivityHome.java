@@ -931,7 +931,7 @@ abstract class MainActivityHome extends MainActivityBase {
         box.addView(text(timelineStatusText(timeline), 20, INK, true));
         RecordsImportModels.DashboardRow row = timeline.currentRow;
         if (row != null) {
-            box.addView(text(String.format(Locale.ROOT, "Mature support %d / target %d", row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
+            box.addView(text(HomeTextCopy.matureSupportTargetText(row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
         } else {
             box.addView(text("No active Anki evidence in the latest local sync.", 15, MUTED, false));
         }
