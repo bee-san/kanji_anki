@@ -16,6 +16,7 @@ import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.RequiresApi;
 
 import dev.bee.kanjianki.core.SyncValidator;
+import dev.bee.kanjianki.syncdomain.ProviderNotePolicy;
 import dev.bee.kanjianki.sync.SyncProgress;
 
 import java.util.ArrayList;
@@ -34,9 +35,6 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private static final String TAG = "AnkiDroidGateway";
     private static final char FIELD_SEPARATOR = '\u001f';
     private static final String CONTENT_SCHEME = "content";
-    private static final String ARCHIVED_TAG = "kani_archived";
-    private static final String LEGACY_ARCHIVED_TAG = "kanji_anki_archived";
-    private static final String NOTE_MODEL_QUERY_PREFIX = "note:\"";
     private static final String READ_WRITE_DATABASE_PERMISSION = "com.ichi2.anki.permission.READ_WRITE_DATABASE";
     private static final String DEBUG_READ_WRITE_DATABASE_PERMISSION = "com.ichi2.anki.debug.permission.READ_WRITE_DATABASE";
     private static final String COLUMN_ID = "_id";
@@ -151,7 +149,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
         try {
             Map<Long, RecordsSyncModels.Note> extraNotes = queryNotesBySearch(
                     target, mapping, settings,
-                    configuredBrowserQuerySearch(settings)
+                    ProviderNotePolicy.configuredBrowserQuerySearch(settings.modelName, settings.normalizedBrowserQuery())
             );
             for (Map.Entry<Long, RecordsSyncModels.Note> entry : extraNotes.entrySet()) {
                 notes.putIfAbsent(entry.getKey(), entry.getValue());
@@ -241,8 +239,8 @@ public final class AnkiDroidGateway implements CollectionGateway {
                 }
             }
         }
-        if (!isArchivedTagPresent(Arrays.asList(NOTES_WHITESPACE_SEPARATOR.split(tags)))) {
-            tags = (tags + " " + ARCHIVED_TAG).trim();
+        if (!ProviderNotePolicy.isArchivedTagPresent(splitTags(tags))) {
+            tags = (tags + " " + ProviderNotePolicy.ARCHIVED_TAG).trim();
         }
         ContentValues values = new ContentValues();
         values.put(COLUMN_TAGS, tags);
@@ -336,7 +334,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
     private Map<Long, RecordsSyncModels.Note> queryNotes(ProviderTarget target, ModelMapping mapping, RecordsSyncModels.Settings settings) throws SyncFailure {
         Exception searchFailure = null;
         try {
-            return queryNotesBySearch(target, mapping, settings, NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\"");
+            return queryNotesBySearch(target, mapping, settings, ProviderNotePolicy.modelSearch(settings.modelName));
         } catch (Exception error) {
             searchFailure = error;
         }
@@ -395,24 +393,11 @@ public final class AnkiDroidGateway implements CollectionGateway {
 
     private void addNoteFromCursor(Map<Long, RecordsSyncModels.Note> notes, long noteId, Cursor cursor, ModelMapping mapping, RecordsSyncModels.Settings settings) {
         List<String> values = splitFields(value(cursor, COLUMN_FIELDS));
-        Map<String, String> fieldMap = selectRequiredFields(mapping.fields, values, settings);
+        Map<String, String> fieldMap = ProviderNotePolicy.selectRequiredFields(mapping.fields, values, settings.requiredFields());
         List<String> tags = splitTags(value(cursor, COLUMN_TAGS));
-        if (!isArchivedTagPresent(tags)) {
+        if (!ProviderNotePolicy.isArchivedTagPresent(tags)) {
             notes.put(noteId, new RecordsSyncModels.Note(noteId, mapping.modelId, mapping.name, fieldMap, tags));
         }
-    }
-
-    private static boolean isArchivedTagPresent(List<String> tags) {
-        return tags.contains(ARCHIVED_TAG) || tags.contains(LEGACY_ARCHIVED_TAG);
-    }
-
-    static Map<String, String> selectRequiredFields(List<String> modelFields, List<String> values, RecordsSyncModels.Settings settings) {
-        Map<String, String> fieldMap = new LinkedHashMap<>();
-        for (String field : settings.requiredFields()) {
-            int index = modelFields.indexOf(field);
-            fieldMap.put(field, index >= 0 && index < values.size() ? values.get(index) : "");
-        }
-        return fieldMap;
     }
 
     private List<RecordsSyncModels.Card> cardsWithNotes(List<RecordsSyncModels.Card> cards, Set<Long> noteIds) {
@@ -438,7 +423,7 @@ public final class AnkiDroidGateway implements CollectionGateway {
             return Collections.emptySet();
         }
         Set<Long> ids = new LinkedHashSet<>();
-        String search = configuredBrowserQuerySearch(settings);
+        String search = ProviderNotePolicy.configuredBrowserQuerySearch(settings.modelName, settings.normalizedBrowserQuery());
         Cursor cursor;
         try {
             cursor = resolver.query(
@@ -463,10 +448,6 @@ public final class AnkiDroidGateway implements CollectionGateway {
             }
         }
         return ids;
-    }
-
-    private static String configuredBrowserQuerySearch(RecordsSyncModels.Settings settings) {
-        return NOTE_MODEL_QUERY_PREFIX + settings.modelName + "\" (" + settings.normalizedBrowserQuery() + ")";
     }
 
     private static List<RecordsSyncModels.Card> markBrowserQueryMatchedCards(List<RecordsSyncModels.Card> cards, Set<Long> browserQueryNoteIds) {
