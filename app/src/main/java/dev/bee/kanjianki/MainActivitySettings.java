@@ -936,16 +936,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String newCardSortStatusText(String mode) {
-        return "Current: " + newCardSortLabel(mode);
+        return SettingsTextCopy.newCardSortStatusText(mode);
     }
 
     String newCardSortLabel(String mode) {
-        return switch (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            case RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty";
-            case RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk";
-            case RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness";
-            default -> "Frequency";
-        };
+        return SettingsTextCopy.newCardSortLabel(mode);
     }
 
     LinearLayout workloadSettingsPanel() {

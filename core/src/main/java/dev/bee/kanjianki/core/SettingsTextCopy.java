@@ -94,6 +94,19 @@ public final class SettingsTextCopy {
         return "Auto Pareto: " + StudyTextCopy.countText(plan.target, "item", "items") + " today";
     }
 
+    public static String newCardSortStatusText(String mode) {
+        return "Current: " + newCardSortLabel(mode);
+    }
+
+    public static String newCardSortLabel(String mode) {
+        return switch (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
+            case RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty";
+            case RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk";
+            case RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness";
+            default -> "Frequency";
+        };
+    }
+
     public static String reminderStatus(boolean enabled, boolean blocked, String displayTime) {
         if (blocked) {
             return "Blocked: notifications off";

@@ -49,6 +49,16 @@ public final class SettingsTextCopyTest {
     }
 
     @Test
+    public void newCardSortCopyPreservesModeLabelsAndStatus() {
+        assertEquals("Current: Frequency", SettingsTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE));
+        assertEquals("Anki difficulty", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY));
+        assertEquals("Retrievability risk", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+        assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"));
+        assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null));
+    }
+
+    @Test
     public void reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
         assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
