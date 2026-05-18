@@ -152,15 +152,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         long now = System.currentTimeMillis();
         RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
         activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
-        initializeSessionProgressTarget(activeStudyPlan);
-        includeDueSimilarWritingRepairs(now, ladder);
-        RecordsImportModels.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
-        if (repair != null) {
-            renderSimilarWritingRepair(repair, activeStudyPlan, now);
-            return;
-        }
-        if (studyRunAtHardCap()) {
-            renderStudyRunDone(activeStudyPlan);
+        if (renderPendingRepairOrDone(activeStudyPlan, now, ladder)) {
             return;
         }
         if (rows.isEmpty()) {
@@ -172,15 +164,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true, plan);
         RecordsSchedulerModels.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
         activeStudyPlan = seededPlan;
-        initializeSessionProgressTarget(seededPlan);
-        includeDueSimilarWritingRepairs(now, ladder);
-        repair = nextDueSimilarWritingRepair(now, ladder);
-        if (repair != null) {
-            renderSimilarWritingRepair(repair, seededPlan, now);
-            return;
-        }
-        if (studyRunAtHardCap()) {
-            renderStudyRunDone(seededPlan);
+        if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
             return;
         }
         activeSession = nextActiveSession(rows, seeded, seededPlan, now);
@@ -191,6 +175,25 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         activateStudySession(activeSession, now);
         renderSession(activeSession);
+    }
+
+    boolean renderPendingRepairOrDone(
+            RecordsSchedulerModels.AdaptiveLoadPlan plan,
+            long now,
+            RecordsBase.StudyLadderSettings ladder
+    ) {
+        initializeSessionProgressTarget(plan);
+        includeDueSimilarWritingRepairs(now, ladder);
+        RecordsImportModels.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
+        if (repair != null) {
+            renderSimilarWritingRepair(repair, plan, now);
+            return true;
+        }
+        if (studyRunAtHardCap()) {
+            renderStudyRunDone(plan);
+            return true;
+        }
+        return false;
     }
 
     void renderEmptyStudyQueue() {
