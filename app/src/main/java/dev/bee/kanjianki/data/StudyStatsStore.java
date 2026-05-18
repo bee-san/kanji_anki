@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.KaniOutcomePolicy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.LadderHealthPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
@@ -146,33 +147,7 @@ public final class StudyStatsStore {
     }
 
     private static KaniOutcomeStats calculateKaniOutcomeStats(List<OutcomeEvidence> outcomeEvidence, LadderHealthMetric ladderHealth) {
-        OutcomeAccumulator accumulator = new OutcomeAccumulator();
-        for (OutcomeEvidence evidence : safeList(outcomeEvidence)) {
-            accumulator.add(evidence.kanji, evidence.before, evidence.after);
-        }
-        accumulator.improvements.sort((left, right) -> {
-            int dropCompare = Double.compare(right.beforeWeakness - right.afterWeakness, left.beforeWeakness - left.afterWeakness);
-            return dropCompare == 0 ? left.kanji.compareTo(right.kanji) : dropCompare;
-        });
-        accumulator.supportGains.sort((left, right) -> {
-            int gainCompare = Integer.compare(right.afterMatureSupport - right.beforeMatureSupport, left.afterMatureSupport - left.beforeMatureSupport);
-            return gainCompare == 0 ? left.kanji.compareTo(right.kanji) : gainCompare;
-        });
-
-        int improvedCount = accumulator.improvements.size();
-        WeakKanjiImprovedMetric weakMetric = new WeakKanjiImprovedMetric(
-                improvedCount,
-                improvedCount == 0 ? 0.0 : accumulator.beforeWeaknessSum / improvedCount,
-                improvedCount == 0 ? 0.0 : accumulator.afterWeaknessSum / improvedCount,
-                topThreeImprovements(accumulator.improvements)
-        );
-        MatureSupportGainedMetric supportMetric = new MatureSupportGainedMetric(
-                accumulator.supportGains.size(),
-                accumulator.matureSupportGainSum,
-                accumulator.firstSupportCount,
-                topThreeSupportGains(accumulator.supportGains)
-        );
-        return new KaniOutcomeStats(weakMetric, supportMetric, ladderHealth);
+        return toAppOutcomeStats(KaniOutcomePolicy.summarize(toCoreOutcomeEvidence(outcomeEvidence), toCoreMetric(ladderHealth)));
     }
 
     private SQLiteDatabase db() {
@@ -329,6 +304,78 @@ public final class StudyStatsStore {
         );
     }
 
+    private static KaniOutcomeStats toAppOutcomeStats(KaniOutcomePolicy.OutcomeStats stats) {
+        KaniOutcomePolicy.OutcomeStats safeStats = stats == null ? KaniOutcomePolicy.OutcomeStats.empty() : stats;
+        return new KaniOutcomeStats(
+                toAppWeakMetric(safeStats.weakKanjiImproved()),
+                toAppSupportMetric(safeStats.matureSupportGained()),
+                toAppMetric(safeStats.ladderHealth())
+        );
+    }
+
+    private static WeakKanjiImprovedMetric toAppWeakMetric(KaniOutcomePolicy.WeakKanjiImprovedMetric metric) {
+        KaniOutcomePolicy.WeakKanjiImprovedMetric safeMetric = metric == null
+                ? KaniOutcomePolicy.WeakKanjiImprovedMetric.empty()
+                : metric;
+        List<KanjiImprovement> examples = new ArrayList<>();
+        for (KaniOutcomePolicy.KanjiImprovement example : safeMetric.examples()) {
+            examples.add(new KanjiImprovement(example.kanji(), example.beforeWeakness(), example.afterWeakness()));
+        }
+        return new WeakKanjiImprovedMetric(
+                safeMetric.improvedCount(),
+                safeMetric.averageBeforeWeakness(),
+                safeMetric.averageAfterWeakness(),
+                examples
+        );
+    }
+
+    private static MatureSupportGainedMetric toAppSupportMetric(KaniOutcomePolicy.MatureSupportGainedMetric metric) {
+        KaniOutcomePolicy.MatureSupportGainedMetric safeMetric = metric == null
+                ? KaniOutcomePolicy.MatureSupportGainedMetric.empty()
+                : metric;
+        List<KanjiSupportGain> examples = new ArrayList<>();
+        for (KaniOutcomePolicy.KanjiSupportGain example : safeMetric.examples()) {
+            examples.add(new KanjiSupportGain(example.kanji(), example.beforeMatureSupport(), example.afterMatureSupport()));
+        }
+        return new MatureSupportGainedMetric(
+                safeMetric.gainedSupportCount(),
+                safeMetric.matureSupportGained(),
+                safeMetric.firstSupportCount(),
+                examples
+        );
+    }
+
+    private static List<KaniOutcomePolicy.OutcomeEvidence> toCoreOutcomeEvidence(List<OutcomeEvidence> evidence) {
+        List<KaniOutcomePolicy.OutcomeEvidence> out = new ArrayList<>();
+        for (OutcomeEvidence item : safeList(evidence)) {
+            out.add(item == null ? null : new KaniOutcomePolicy.OutcomeEvidence(
+                    item.kanji,
+                    toCoreSnapshot(item.before),
+                    toCoreSnapshot(item.after)
+            ));
+        }
+        return out;
+    }
+
+    private static KaniOutcomePolicy.OutcomeSnapshot toCoreSnapshot(OutcomeSnapshot snapshot) {
+        return snapshot == null ? null : new KaniOutcomePolicy.OutcomeSnapshot(snapshot.weaknessScore, snapshot.matureSupportCount);
+    }
+
+    private static LadderHealthPolicy.Metric toCoreMetric(LadderHealthMetric metric) {
+        if (metric == null) {
+            return LadderHealthPolicy.Metric.empty();
+        }
+        return LadderHealthPolicy.fromCounts(
+                metric.rungCounts,
+                metric.totalActiveItems,
+                metric.ladderPromotionIntervalDays,
+                metric.ladderDemotionFailStreak,
+                metric.promotionReadyCount,
+                metric.demotionRiskCount,
+                metric.demotionReadyCount
+        );
+    }
+
     private static <T> List<T> safeList(List<T> value) {
         return value == null ? Collections.emptyList() : value;
     }
@@ -338,14 +385,6 @@ public final class StudyStatsStore {
             return null;
         }
         return new OutcomeSnapshot(cursor.getInt(weaknessColumnIndex), cursor.getInt(supportColumnIndex));
-    }
-
-    private static List<KanjiImprovement> topThreeImprovements(List<KanjiImprovement> improvements) {
-        return new ArrayList<>(improvements.subList(0, Math.min(3, improvements.size())));
-    }
-
-    private static List<KanjiSupportGain> topThreeSupportGains(List<KanjiSupportGain> supportGains) {
-        return new ArrayList<>(supportGains.subList(0, Math.min(3, supportGains.size())));
     }
 
     private static long localDayStart(long millis) {
@@ -632,48 +671,4 @@ public final class StudyStatsStore {
         }
     }
 
-    private static final class OutcomeAccumulator {
-        private final List<KanjiImprovement> improvements = new ArrayList<>();
-        private final List<KanjiSupportGain> supportGains = new ArrayList<>();
-        private double beforeWeaknessSum;
-        private double afterWeaknessSum;
-        private int matureSupportGainSum;
-        private int firstSupportCount;
-
-        private void add(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {
-            if (before == null || after == null) {
-                return;
-            }
-            addImprovement(kanji, before, after);
-            addSupportGain(kanji, before, after);
-        }
-
-        private void addImprovement(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {
-            int weaknessDrop = before.weaknessScore - after.weaknessScore;
-            if (before.weaknessScore <= 0 || weaknessDrop < 5) {
-                return;
-            }
-            double beforeWeakness = normalizedWeakness(before.weaknessScore);
-            double afterWeakness = normalizedWeakness(after.weaknessScore);
-            improvements.add(new KanjiImprovement(kanji, beforeWeakness, afterWeakness));
-            beforeWeaknessSum += beforeWeakness;
-            afterWeaknessSum += afterWeakness;
-        }
-
-        private static double normalizedWeakness(int weaknessScore) {
-            return Math.max(0, weaknessScore) / 100.0;
-        }
-
-        private void addSupportGain(String kanji, OutcomeSnapshot before, OutcomeSnapshot after) {
-            int supportGain = after.matureSupportCount - before.matureSupportCount;
-            if (supportGain <= 0) {
-                return;
-            }
-            supportGains.add(new KanjiSupportGain(kanji, before.matureSupportCount, after.matureSupportCount));
-            matureSupportGainSum += supportGain;
-            if (before.matureSupportCount == 0) {
-                firstSupportCount++;
-            }
-        }
-    }
 }
