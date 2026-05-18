@@ -154,13 +154,7 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     String notHelpingBody(KanjiImpactAnalyzer.Report report, List<KanjiImpactAnalyzer.Row> rows) {
-        if (report == null || report.empty()) {
-            return "No Kani impact evidence yet. Review in Kani, then sync AnkiDroid so this page can compare before and after.";
-        }
-        if (rows.isEmpty()) {
-            return "No sufficiently proven not-helping kanji right now. Sparse cases stay out of this list until Kani has enough reviews and synced Anki evidence.";
-        }
-        return "Only kanji with at least 3 Kani reviews, 2 current Anki cards, and same-card before/after evidence appear here.";
+        return StatsTextCopy.notHelpingBody(report == null || report.empty(), !rows.isEmpty());
     }
 
     String notHelpingRowText(KanjiImpactAnalyzer.Row row) {

@@ -85,6 +85,18 @@ public final class StatsTextCopyTest {
 
     @Test
     public void impactAndTimeFormattingPreservesStatsHelpers() {
+        assertEquals(
+                "No Kani impact evidence yet. Review in Kani, then sync AnkiDroid so this page can compare before and after.",
+                StatsTextCopy.notHelpingBody(true, false)
+        );
+        assertEquals(
+                "No sufficiently proven not-helping kanji right now. Sparse cases stay out of this list until Kani has enough reviews and synced Anki evidence.",
+                StatsTextCopy.notHelpingBody(false, false)
+        );
+        assertEquals(
+                "Only kanji with at least 3 Kani reviews, 2 current Anki cards, and same-card before/after evidence appear here.",
+                StatsTextCopy.notHelpingBody(false, true)
+        );
         assertEquals("裂  3 Kani reviews · 2 same-card checks · retention +12% · difficulty -0.4", StatsTextCopy.notHelpingRowText("裂", 3, 2, 0.12, -0.4));
         assertEquals("0 sec", StatsTextCopy.formatStudyTime(-1));
         assertEquals("59 sec", StatsTextCopy.formatStudyTime(59_000));

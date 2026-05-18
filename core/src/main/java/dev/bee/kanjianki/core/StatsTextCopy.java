@@ -116,6 +116,16 @@ public final class StatsTextCopy {
                 + formatSignedDecimal(difficultyDelta);
     }
 
+    public static String notHelpingBody(boolean noImpactEvidence, boolean hasNotHelpingRows) {
+        if (noImpactEvidence) {
+            return "No Kani impact evidence yet. Review in Kani, then sync AnkiDroid so this page can compare before and after.";
+        }
+        if (!hasNotHelpingRows) {
+            return "No sufficiently proven not-helping kanji right now. Sparse cases stay out of this list until Kani has enough reviews and synced Anki evidence.";
+        }
+        return "Only kanji with at least 3 Kani reviews, 2 current Anki cards, and same-card before/after evidence appear here.";
+    }
+
     public static String formatWeakness(double weakness) {
         return String.format(Locale.ROOT, "%.2f", weakness);
     }
