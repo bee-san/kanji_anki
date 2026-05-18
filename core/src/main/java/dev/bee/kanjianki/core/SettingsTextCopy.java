@@ -107,6 +107,32 @@ public final class SettingsTextCopy {
         };
     }
 
+    public static String frequencyRangeStatusText(int minRank, int maxRank) {
+        return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank);
+    }
+
+    public static String retentionStatusText(int retentionPercent) {
+        return "Desired retention: " + retentionPercent + "%";
+    }
+
+    public static String ladderRungSubtitle(RecordsBase.StudyLadderSettings ladder, RecordsBase.LadderRung rung) {
+        String status = ladder.isEnabled(rung) ? "Enabled" : "Disabled";
+        String kind = rung == RecordsBase.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";
+        return status + " " + kind + " rung";
+    }
+
+    public static String settingsLadderRungLabel(RecordsBase.LadderRung rung) {
+        return switch (rung) {
+            case WRITE_KANJI -> "Write kanji";
+            case SIMILAR_KANJI -> "Similar kanji";
+            case TYPE_MEANING -> "Type the meaning";
+            case MEANING_KANJI -> "Meaning -> kanji";
+            case KANJI_MEANING -> "Kanji -> meaning";
+            case FONT_MEANING -> "Font -> meaning";
+            case WORD_READING -> "Word -> reading";
+        };
+    }
+
     public static String reminderStatus(boolean enabled, boolean blocked, String displayTime) {
         if (blocked) {
             return "Blocked: notifications off";

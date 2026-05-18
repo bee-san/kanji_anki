@@ -59,6 +59,24 @@ public final class SettingsTextCopyTest {
     }
 
     @Test
+    public void rangeRetentionAndLadderCopyPreserveSettingsLabels() {
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults();
+
+        assertEquals("Jiten ranks 1-20000", SettingsTextCopy.frequencyRangeStatusText(1, 20000));
+        assertEquals("Desired retention: 95%", SettingsTextCopy.retentionStatusText(95));
+        assertEquals("Write kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WRITE_KANJI));
+        assertEquals("Similar kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertEquals("Type the meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.TYPE_MEANING));
+        assertEquals("Meaning -> kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.MEANING_KANJI));
+        assertEquals("Kanji -> meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.KANJI_MEANING));
+        assertEquals("Font -> meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.FONT_MEANING));
+        assertEquals("Word -> reading", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WORD_READING));
+        assertEquals("Enabled always available rung", SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.WRITE_KANJI));
+        assertEquals("Enabled conditional rung", SettingsTextCopy.ladderRungSubtitle(ladder, RecordsBase.LadderRung.SIMILAR_KANJI));
+        assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsLadderRungLabel(null));
+    }
+
+    @Test
     public void reminderCopyPreservesPanelStatusAndTimeFormatting() {
         assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
         assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));

@@ -900,7 +900,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String frequencyRangeStatusText(int minRank, int maxRank) {
-        return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank);
+        return SettingsTextCopy.frequencyRangeStatusText(minRank, maxRank);
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
@@ -1224,21 +1224,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String ladderRungSubtitle(RecordsBase.StudyLadderSettings ladder, RecordsBase.LadderRung rung) {
-        String status = ladder.isEnabled(rung) ? "Enabled" : "Disabled";
-        String kind = rung == RecordsBase.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";
-        return status + " " + kind + " rung";
+        return SettingsTextCopy.ladderRungSubtitle(ladder, rung);
     }
 
     String ladderRungLabel(RecordsBase.LadderRung rung) {
-        return switch (rung) {
-            case WRITE_KANJI -> "Write kanji";
-            case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
-            case TYPE_MEANING -> "Type the meaning";
-            case MEANING_KANJI -> "Meaning -> kanji";
-            case KANJI_MEANING -> "Kanji -> meaning";
-            case FONT_MEANING -> "Font -> meaning";
-            case WORD_READING -> "Word -> reading";
-        };
+        return SettingsTextCopy.settingsLadderRungLabel(rung);
     }
 
     LinearLayout ladderThresholdSettingsPanel() {
@@ -1402,7 +1392,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String retentionStatusText(int retentionPercent) {
-        return "Desired retention: " + retentionPercent + "%";
+        return SettingsTextCopy.retentionStatusText(retentionPercent);
     }
 
     LinearLayout reminderSettingsPanel() {
