@@ -53,6 +53,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
@@ -93,29 +94,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivitySettings extends MainActivityStudy {
-    private static final ImportPreset[] IMPORT_PRESETS = new ImportPreset[]{
-            new ImportPreset("Suspended only", false, true, false, "", false, 7.0, 2, 1, false, ""),
-            new ImportPreset("Kani tag", false, false, true, "kani", false, 7.0, 2, 1, false, ""),
-            new ImportPreset("Leech tag", false, false, true, "leech", false, 7.0, 2, 1, false, ""),
-            new ImportPreset("Mining deck", false, false, false, "", false, 7.0, 2, 1, true, "deck:Mining"),
-            new ImportPreset("Recent fails", false, false, false, "", false, 7.0, 2, 1, true, "rated:30:1")
-    };
-
-    private record ImportPreset(
-            String label,
-            boolean activeCards,
-            boolean suspendedCards,
-            boolean taggedCards,
-            String tags,
-            boolean weakCards,
-            double weakDifficulty,
-            int weakLapses,
-            int minMatchingCards,
-            boolean browserQueryCards,
-            String browserQuery
-    ) {
-    }
-
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -523,7 +501,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(text("Presets", 17, INK, true));
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
-        for (ImportPreset preset : IMPORT_PRESETS) {
+        for (SettingsImportPreset preset : SettingsImportPreset.defaults()) {
             Button button = secondaryButton(preset.label());
             button.setOnClickListener(v -> applyImportPreset(preset));
             grid.addView(button);
@@ -531,7 +509,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(grid);
     }
 
-    void applyImportPreset(ImportPreset preset) {
+    void applyImportPreset(SettingsImportPreset preset) {
         store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, boolFlag(preset.activeCards()));
         store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, boolFlag(preset.suspendedCards()));
         store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, boolFlag(preset.taggedCards()));
@@ -547,7 +525,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     static int boolFlag(boolean value) {
-        return value ? 1 : 0;
+        return SettingsImportPreset.boolFlag(value);
     }
 
     ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
