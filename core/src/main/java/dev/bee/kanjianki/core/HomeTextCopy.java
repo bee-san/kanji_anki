@@ -133,6 +133,52 @@ public final class HomeTextCopy {
         return "Anki browser: " + String.valueOf(browserSearch);
     }
 
+    public static String reviewNowLabel() {
+        return "Review this now";
+    }
+
+    public static String copyAnkiSearchLabel() {
+        return "Copy Anki search";
+    }
+
+    public static String ankiSearchClipLabel() {
+        return "Anki search";
+    }
+
+    public static String ankiSearchCopiedToast() {
+        return "Search copied";
+    }
+
+    public static String localSuspendButtonLabel(boolean currentlySuspended) {
+        return currentlySuspended ? "Unsuspend locally" : "Suspend locally";
+    }
+
+    public static String localSuspendToast(boolean wasSuspended) {
+        return wasSuspended ? "Kanji unsuspended." : "Kanji suspended locally.";
+    }
+
+    public static String examplesTitle() {
+        return "Examples";
+    }
+
+    public static String localInventoryTitle() {
+        return "Local inventory";
+    }
+
+    public static String localInventorySummary(int sourceCount, int exampleCount) {
+        return StudyTextCopy.countText(sourceCount, "source note/card", "source notes/cards")
+                + " · "
+                + StudyTextCopy.countText(exampleCount, "stored example", "stored examples");
+    }
+
+    public static String localInventorySearchLine(String browserSearch) {
+        return "Search: " + String.valueOf(browserSearch);
+    }
+
+    public static String localInventoryLastSeenLine(long lastSeenAtMillis) {
+        return "Last seen locally " + DateTextPolicy.shortDateTime(lastSeenAtMillis);
+    }
+
     public static String detailDisplayKanji(
             String fallback,
             RecordsImportModels.DashboardRow row,

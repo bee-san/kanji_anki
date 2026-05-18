@@ -109,6 +109,23 @@ public final class HomeTextCopyTest {
         assertEquals("Current local practice evidence from AnkiDroid.", HomeTextCopy.activeReasonText(row));
         assertEquals("manual reason", HomeTextCopy.activeReasonText(rowWithReason));
         assertEquals("Anki browser: row:裂", HomeTextCopy.ankiBrowserLine("row:裂"));
+        assertEquals("Review this now", HomeTextCopy.reviewNowLabel());
+        assertEquals("Copy Anki search", HomeTextCopy.copyAnkiSearchLabel());
+        assertEquals("Anki search", HomeTextCopy.ankiSearchClipLabel());
+        assertEquals("Search copied", HomeTextCopy.ankiSearchCopiedToast());
+        assertEquals("Suspend locally", HomeTextCopy.localSuspendButtonLabel(false));
+        assertEquals("Unsuspend locally", HomeTextCopy.localSuspendButtonLabel(true));
+        assertEquals("Kanji suspended locally.", HomeTextCopy.localSuspendToast(false));
+        assertEquals("Kanji unsuspended.", HomeTextCopy.localSuspendToast(true));
+        assertEquals("Examples", HomeTextCopy.examplesTitle());
+        assertEquals("Local inventory", HomeTextCopy.localInventoryTitle());
+        assertEquals("1 source note/card · 2 stored examples", HomeTextCopy.localInventorySummary(1, 2));
+        assertEquals("3 source notes/cards · 1 stored example", HomeTextCopy.localInventorySummary(3, 1));
+        assertEquals("Search: row:裂", HomeTextCopy.localInventorySearchLine("row:裂"));
+        assertEquals(
+                "Last seen locally " + DateTextPolicy.shortDateTime(123456789L),
+                HomeTextCopy.localInventoryLastSeenLine(123456789L)
+        );
         assertEquals("inventory:語", HomeTextCopy.detailBrowserSearch(row, inventory));
         assertEquals("row:裂", HomeTextCopy.detailBrowserSearch(row, inventory("語", "language", "")));
         assertEquals("", HomeTextCopy.detailBrowserSearch(row("裂", ""), null));

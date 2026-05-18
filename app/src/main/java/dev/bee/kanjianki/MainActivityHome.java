@@ -853,20 +853,20 @@ abstract class MainActivityHome extends MainActivityBase {
 
     void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
         if (row != null && !suspended) {
-            Button practice = primaryButton("Review this now", CORAL);
+            Button practice = primaryButton(HomeTextCopy.reviewNowLabel(), CORAL);
             practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
             content.addView(practice);
         }
         String browserSearch = detailBrowserSearch(row, inventory);
         if (!browserSearch.isEmpty()) {
-            Button copy = secondaryButton("Copy Anki search");
+            Button copy = secondaryButton(HomeTextCopy.copyAnkiSearchLabel());
             copy.setOnClickListener(v -> copyAnkiSearch(browserSearch, v));
             content.addView(copy);
         }
-        Button suspend = secondaryButton(suspended ? "Unsuspend locally" : "Suspend locally");
+        Button suspend = secondaryButton(HomeTextCopy.localSuspendButtonLabel(suspended));
         suspend.setOnClickListener(v -> {
             store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
-            Toast.makeText(this, suspended ? "Kanji unsuspended." : "Kanji suspended locally.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show();
             renderDetail(displayKanji, fromBrowse, browseQuery);
         });
         content.addView(suspend);
@@ -878,7 +878,7 @@ abstract class MainActivityHome extends MainActivityBase {
 
     void addDetailExamples(RecordsImportModels.DashboardRow row) {
         addSpace(12);
-        content.addView(sectionTitle("Examples"));
+        content.addView(sectionTitle(HomeTextCopy.examplesTitle()));
         for (RecordsImportModels.Example example : row.examples) {
             content.addView(exampleView(example));
         }
@@ -886,24 +886,24 @@ abstract class MainActivityHome extends MainActivityBase {
 
     View localInventoryPanel(RecordsImportModels.KanjiInventoryItem inventory) {
         LinearLayout box = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        box.addView(text("Local inventory", 19, INK, true));
-        box.addView(text(countText(inventory.sourceCount, "source note/card", "source notes/cards") + " · " + countText(inventory.exampleCount, "stored example", "stored examples"), 15, MUTED, false));
+        box.addView(text(HomeTextCopy.localInventoryTitle(), 19, INK, true));
+        box.addView(text(HomeTextCopy.localInventorySummary(inventory.sourceCount, inventory.exampleCount), 15, MUTED, false));
         if (!inventory.browserSearch.isEmpty()) {
-            box.addView(text("Search: " + compact(inventory.browserSearch, 96), 14, MUTED, false));
+            box.addView(text(HomeTextCopy.localInventorySearchLine(compact(inventory.browserSearch, 96)), 14, MUTED, false));
         }
         if (inventory.lastSeenAtMillis > 0L) {
-            box.addView(text("Last seen locally " + shortDateTime(inventory.lastSeenAtMillis), 14, MUTED, false));
+            box.addView(text(HomeTextCopy.localInventoryLastSeenLine(inventory.lastSeenAtMillis), 14, MUTED, false));
         }
         return box;
     }
 
     void copyAnkiSearch(String browserSearch, View v) {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText("Anki search", browserSearch));
+        clipboard.setPrimaryClip(ClipData.newPlainText(HomeTextCopy.ankiSearchClipLabel(), browserSearch));
         if (v instanceof Button button) {
             button.setText(R.string.copied_anki_search);
         }
-        Toast.makeText(this, "Search copied", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, HomeTextCopy.ankiSearchCopiedToast(), Toast.LENGTH_SHORT).show();
     }
 
     void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
