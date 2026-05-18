@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.StudyStreakPolicy;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -79,16 +80,18 @@ public final class StudyStatsStore {
     public StudyStreak studyStreak(long nowMillis) {
         long today = localDayStart(nowMillis);
         StudyDays studyDays = studyDays(today);
-        if (studyDays.days.isEmpty()) {
-            return new StudyStreak(0, 0, false, 0, 0L);
-        }
-        boolean studiedToday = studyDays.days.get(0) == today;
-        return new StudyStreak(
-                currentStreak(studyDays.days, today),
-                bestStreak(studyDays.days),
-                studiedToday,
+        StudyStreakPolicy.Streak streak = StudyStreakPolicy.summarize(
+                studyDays.days,
+                today,
                 studyDays.reviewsToday,
                 studyDays.lastStudyAt
+        );
+        return new StudyStreak(
+                streak.currentDays(),
+                streak.bestDays(),
+                streak.studiedToday(),
+                streak.reviewsToday(),
+                streak.lastStudyAtMillis()
         );
     }
 
@@ -201,41 +204,6 @@ public final class StudyStatsStore {
             cursor.close();
         }
         return new StudyDays(days, reviewsToday, lastStudyAt);
-    }
-
-    private int currentStreak(List<Long> days, long today) {
-        long yesterday = moveLocalDays(today, -1);
-        boolean studiedToday = days.get(0) == today;
-        if (!studiedToday && days.get(0) != yesterday) {
-            return 0;
-        }
-        long expected = studiedToday ? today : yesterday;
-        int current = 0;
-        for (long day : days) {
-            if (day != expected) {
-                break;
-            }
-            current++;
-            expected = moveLocalDays(expected, -1);
-        }
-        return current;
-    }
-
-    private int bestStreak(List<Long> days) {
-        int best = 0;
-        int run = 0;
-        long expectedPrevious = Long.MIN_VALUE;
-        for (int i = days.size() - 1; i >= 0; i--) {
-            long day = days.get(i);
-            if (run == 0 || day == moveLocalDays(expectedPrevious, 1)) {
-                run++;
-            } else {
-                run = 1;
-            }
-            best = Math.max(best, run);
-            expectedPrevious = day;
-        }
-        return best;
     }
 
     private List<OutcomeEvidence> outcomeEvidence(SQLiteDatabase db) {
