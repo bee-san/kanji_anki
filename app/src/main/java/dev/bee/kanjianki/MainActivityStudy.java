@@ -1409,18 +1409,18 @@ abstract class MainActivityStudy extends MainActivityStats {
             return;
         }
         long now = System.currentTimeMillis();
-        boolean passed = !RATING_AGAIN.equals(rating);
         completeActiveRepairStudyTask(similarRepairStudyTaskKey(repair), rating, now);
-        boolean saved = store.finishSimilarWritingRepair(repair.id, repair.activeToken, passed, now);
-        if (saved) {
-            studySessionTracker.recordRepairOutcome(repair.repairKanji, passed);
-        }
-        if (saved && passed) {
-            markStudyTaskCompleted(similarRepairProgressKey(repair));
-        }
+        StudyRepairActions.RepairCompletion completion = StudyRepairActions.completeSimilarWritingRepair(
+                repair,
+                rating,
+                now,
+                store::finishSimilarWritingRepair,
+                studySessionTracker::recordRepairOutcome,
+                this::markStudyTaskCompleted
+        );
         Toast.makeText(
                 this,
-                StudyTextCopy.similarWritingRepairSavedToast(passed),
+                StudyTextCopy.similarWritingRepairSavedToast(completion.passed()),
                 Toast.LENGTH_SHORT
         ).show();
         activeSimilarWritingRepair = null;
