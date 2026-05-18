@@ -31,6 +31,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
@@ -468,64 +469,15 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     RecordsSchedulerModels.AdaptiveLoadPlan studyMoreNewCardsPlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        List<String> focus = new ArrayList<>();
-        for (String kanji : studyMoreNewCardKanji) {
-            if (findRow(rows, kanji) != null) {
-                focus.add(kanji);
-            }
-        }
-        int remaining = 0;
-        for (String kanji : focus) {
-            RecordsStudyModels.StudyItem item = findStudyItem(items, kanji);
-            if (itemDueForFocus(item, now)) {
-                remaining++;
-            }
-        }
-        return new RecordsSchedulerModels.AdaptiveLoadPlan(
-                false,
-                100,
-                focus.size(),
-                remaining,
-                focus,
-                0,
-                false,
-                "Custom study: " + countText(focus.size(), "extra new card", "extra new cards") + "."
-        );
+        return FocusedStudyPlanPolicy.studyMoreNewCardsPlan(studyMoreNewCardKanji, rows, items, now);
     }
 
     RecordsSchedulerModels.AdaptiveLoadPlan allCurrentProblemKanjiPlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        List<String> focus = new ArrayList<>();
-        for (RecordsImportModels.DashboardRow row : rows) {
-            focus.add(row.kanji);
-        }
-        Set<String> studied = store.studiedKanjiSince(startOfDay(now));
-        int remaining = 0;
-        for (String kanji : focus) {
-            RecordsStudyModels.StudyItem item = findStudyItem(items, kanji);
-            if (!studied.contains(kanji) || itemDueForFocus(item, now)) {
-                remaining++;
-            }
-        }
-        return new RecordsSchedulerModels.AdaptiveLoadPlan(
-                false,
-                100,
-                focus.size(),
-                remaining,
-                focus,
-                focus.size(),
-                true,
-                "All current problem kanji are available today."
-        );
-    }
-
-    boolean itemDueForFocus(RecordsStudyModels.StudyItem item, long now) {
-        if (item == null || STATE_RETIRED.equals(item.state)) {
-            return false;
-        }
-        if (STATE_LEARNING.equals(item.state)) {
-            return item.dueAtMillis <= now;
-        }
-        return item.totalReviews > 0 && item.dueAtMillis <= now;
+        return FocusedStudyPlanPolicy.allCurrentProblemKanjiPlan(
+                rows,
+                items,
+                store.studiedKanjiSince(startOfDay(now)),
+                now);
     }
 
     void prepareStudyContent(RecordsSchedulerModels.AdaptiveLoadPlan plan, boolean fillViewport) {
