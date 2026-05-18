@@ -178,7 +178,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String STATE_RETIRED = "retired";
     static final String STATUS_SUCCESS = "success";
     static final String STATUS_PENDING = "pending";
-    static final String STATUS_COMPLETE = "complete";
     static final String TIMELINE_FIRST_SEEN = "first_seen";
     static final String TIMELINE_FIRST_SEEN_TITLE = "Kani started watching";
     static final String TIMELINE_FIRST_SEEN_KEY_PREFIX = "first_seen:";

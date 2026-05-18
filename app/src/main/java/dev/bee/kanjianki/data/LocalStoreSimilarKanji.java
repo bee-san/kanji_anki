@@ -9,6 +9,7 @@ import android.database.sqlite.SQLiteDatabase;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiChoiceReviewPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.SimilarKanjiRepairPolicy;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -314,15 +315,22 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
             if (!current.activeToken.isEmpty() && !current.activeToken.equals(token == null ? "" : token)) {
                 return false;
             }
+            SimilarKanjiRepairPolicy.FinishUpdate finishUpdate =
+                    SimilarKanjiRepairPolicy.finishUpdate(current, passed, nowMillis);
             ContentValues values = new ContentValues();
-            values.put(COLUMN_ACTIVE_TOKEN, "");
-            values.put(COLUMN_UPDATED_AT, nowMillis);
-            if (passed) {
-                values.put(COLUMN_STATUS, STATUS_COMPLETE);
-                values.put(COLUMN_COMPLETED_AT, nowMillis);
-            } else {
-                values.put(COLUMN_ATTEMPTS, current.attempts + 1);
-                values.put(COLUMN_DUE_AT, nowMillis);
+            values.put(COLUMN_ACTIVE_TOKEN, finishUpdate.activeToken());
+            values.put(COLUMN_UPDATED_AT, finishUpdate.updatedAtMillis());
+            if (finishUpdate.status() != null) {
+                values.put(COLUMN_STATUS, finishUpdate.status());
+            }
+            if (finishUpdate.completedAtMillis() != null) {
+                values.put(COLUMN_COMPLETED_AT, finishUpdate.completedAtMillis());
+            }
+            if (finishUpdate.attempts() != null) {
+                values.put(COLUMN_ATTEMPTS, finishUpdate.attempts());
+            }
+            if (finishUpdate.dueAtMillis() != null) {
+                values.put(COLUMN_DUE_AT, finishUpdate.dueAtMillis());
             }
             db.update(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, values, "id=?", new String[]{Long.toString(repairId)});
             db.setTransactionSuccessful();
