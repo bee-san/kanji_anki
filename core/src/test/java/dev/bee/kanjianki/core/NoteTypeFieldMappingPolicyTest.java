@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public final class NoteTypeFieldMappingPolicyTest {
@@ -64,5 +65,21 @@ public final class NoteTypeFieldMappingPolicyTest {
         assertEquals("", NoteTypeFieldMappingPolicy.firstMatchingField(null, "Expression", "Meaning"));
         assertEquals("", NoteTypeFieldMappingPolicy.firstMatchingField(Arrays.asList(null, "Front"), (String) null));
         assertEquals("", NoteTypeFieldMappingPolicy.firstMatchingField(Arrays.asList("Front", "Back"), "Expression"));
+    }
+
+    @Test
+    public void noteTypeChoicesNormalizeAndLabelFieldCounts() {
+        NoteTypeFieldMappingPolicy.NoteTypeChoice blank = NoteTypeFieldMappingPolicy.choice(null, null);
+        NoteTypeFieldMappingPolicy.NoteTypeChoice basic = NoteTypeFieldMappingPolicy.choice("Basic", Arrays.asList("Front", "Back"));
+
+        assertEquals("", blank.name());
+        assertEquals(0, blank.fields().size());
+        assertEquals(" (0 fields)", NoteTypeFieldMappingPolicy.label(blank));
+        assertEquals("Basic (2 fields)", NoteTypeFieldMappingPolicy.label(basic));
+        assertArrayEquals(
+                new String[]{" (0 fields)", "Basic (2 fields)"},
+                NoteTypeFieldMappingPolicy.labels(Arrays.asList(blank, basic))
+        );
+        assertArrayEquals(new String[0], NoteTypeFieldMappingPolicy.labels(null));
     }
 }

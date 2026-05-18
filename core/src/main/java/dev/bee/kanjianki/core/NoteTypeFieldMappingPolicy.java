@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -53,6 +54,42 @@ public final class NoteTypeFieldMappingPolicy {
             }
         }
         return "";
+    }
+
+    public static NoteTypeChoice choice(String name, List<String> fields) {
+        return new NoteTypeChoice(name, fields);
+    }
+
+    public static String label(NoteTypeChoice noteType) {
+        NoteTypeChoice safeNoteType = noteType == null ? choice("", Collections.emptyList()) : noteType;
+        return safeNoteType.name() + " (" + StudyTextCopy.countText(safeNoteType.fields().size(), "field", "fields") + ")";
+    }
+
+    public static String[] labels(List<? extends NoteTypeChoice> noteTypes) {
+        List<? extends NoteTypeChoice> safeNoteTypes = noteTypes == null ? Collections.emptyList() : noteTypes;
+        String[] labels = new String[safeNoteTypes.size()];
+        for (int i = 0; i < safeNoteTypes.size(); i++) {
+            labels[i] = label(safeNoteTypes.get(i));
+        }
+        return labels;
+    }
+
+    public static class NoteTypeChoice {
+        private final String name;
+        private final List<String> fields;
+
+        public NoteTypeChoice(String name, List<String> fields) {
+            this.name = name == null ? "" : name;
+            this.fields = Collections.unmodifiableList(new ArrayList<>(fields == null ? Collections.emptyList() : fields));
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public List<String> fields() {
+            return fields;
+        }
     }
 
     public static final class FieldGuesses {

@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.NoteTypeFieldMappingPolicy;
-import dev.bee.kanjianki.core.StudyTextCopy;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.os.Handler;
@@ -66,8 +65,8 @@ final class NoteTypeFieldMappings {
     }
 
     static void chooseNoteType(Choice noteType, FieldInputs inputs) {
-        inputs.setNoteType(noteType.name);
-        applyFieldGuesses(noteType.fields, inputs);
+        inputs.setNoteType(noteType.name());
+        applyFieldGuesses(noteType.fields(), inputs);
     }
 
     static void applyFieldGuesses(List<String> fields, FieldInputs inputs) {
@@ -81,15 +80,11 @@ final class NoteTypeFieldMappings {
     }
 
     static String[] labels(List<Choice> noteTypes) {
-        String[] labels = new String[noteTypes.size()];
-        for (int i = 0; i < noteTypes.size(); i++) {
-            labels[i] = label(noteTypes.get(i));
-        }
-        return labels;
+        return NoteTypeFieldMappingPolicy.labels(noteTypes);
     }
 
     static String label(Choice noteType) {
-        return noteType.name + " (" + StudyTextCopy.countText(noteType.fields.size(), "field", "fields") + ")";
+        return NoteTypeFieldMappingPolicy.label(noteType);
     }
 
     static String firstMatchingField(List<String> fields, String... candidates) {
@@ -154,13 +149,9 @@ final class NoteTypeFieldMappings {
         void setFrequencySort(String value);
     }
 
-    static final class Choice {
-        private final String name;
-        private final List<String> fields;
-
+    static final class Choice extends NoteTypeFieldMappingPolicy.NoteTypeChoice {
         Choice(String name, List<String> fields) {
-            this.name = name == null ? "" : name;
-            this.fields = Collections.unmodifiableList(new ArrayList<>(fields == null ? Collections.emptyList() : fields));
+            super(name, fields);
         }
     }
 
