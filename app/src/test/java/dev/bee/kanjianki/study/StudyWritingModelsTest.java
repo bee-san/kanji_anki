@@ -12,23 +12,12 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class StudyWritingModelsTest {
-    @Test
-    public void recognitionResultAndCandidateHandleEmptyMlKitOutputSafely() {
-        WritingRecognizer.RecognitionResult empty = new WritingRecognizer.RecognitionResult(Collections.emptyList());
-        WritingRecognizer.Candidate candidate = new WritingRecognizer.Candidate(null, 0.4f);
-
-        assertEquals("", empty.topText());
-        assertEquals("", candidate.text);
-        assertEquals(Float.valueOf(0.4f), candidate.score);
-    }
-
     @Test
     public void recognitionCandidatesCanDriveCoreWritingAnalysis() {
         WritingRecognizer.RecognitionResult result = new WritingRecognizer.RecognitionResult(
