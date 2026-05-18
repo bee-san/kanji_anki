@@ -610,16 +610,30 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        List<RecordsStudyModels.StudyItem> currentItems = store.studyItems();
-        if (!persist) {
-            return currentItems;
-        }
         BridgeScheduler scheduler = new BridgeScheduler();
-        RecordsSchedulerModels.AdaptiveLoadPlan effectivePlan = plan == null ? adaptivePlan(rows, currentItems, now) : plan;
-        List<RecordsStudyModels.StudyItem> seeded = scheduler.seedQueue(rows, currentItems, settings(), now, startOfDay(now), effectivePlan, studyLadderSettings());
-        seeded = store.annotateSimilarKanjiAvailability(seeded);
-        store.replaceStudyItems(seeded);
-        return seeded;
+        return HomeStudyQueueActions.studyQueue(new HomeStudyQueueActions.StudyQueueRequest(
+                rows,
+                now,
+                persist,
+                plan,
+                store::studyItems,
+                this::settings,
+                this::startOfDay,
+                this::studyLadderSettings,
+                this::adaptivePlan,
+                scheduler::seedQueue,
+                new HomeStudyQueueActions.StudyItemsWriter() {
+                    @Override
+                    public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
+                        return store.annotateSimilarKanjiAvailability(items);
+                    }
+
+                    @Override
+                    public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
+                        store.replaceStudyItems(items);
+                    }
+                }
+        ));
     }
 
     List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
