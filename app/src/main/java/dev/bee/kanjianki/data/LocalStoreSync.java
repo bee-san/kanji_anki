@@ -13,6 +13,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
+import dev.bee.kanjianki.syncdomain.ImportAuditBuilder;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -122,11 +123,13 @@ abstract class LocalStoreSync extends LocalStoreInventory {
     }
 
     void saveImportRuleAudit(SQLiteDatabase db, RecordsSyncModels.Settings settings, long finishedAt, long syncId) {
+        ImportAuditBuilder.SettingsSnapshot snapshot = importSettings(settings);
+        ImportAuditBuilder.RuleAudit audit = ImportAuditBuilder.ruleAudit(snapshot);
         ContentValues values = new ContentValues();
         values.put(COLUMN_SYNC_ID, syncId);
         values.put(COLUMN_CREATED_AT, finishedAt);
         values.put(COLUMN_MODEL_NAME, settings.modelName);
-        values.put(COLUMN_ENABLED_SOURCES, String.join(" ", enabledImportSources(settings)));
+        values.put(COLUMN_ENABLED_SOURCES, String.join(" ", audit.enabledSources()));
         values.put("rank_min", settings.suspendedRankMin);
         values.put("rank_max", settings.suspendedRankMax);
         values.put("min_matching_cards", settings.importMinMatchingCardsPerKanji);
@@ -134,7 +137,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         values.put("weak_fsrs_difficulty", settings.importWeakFsrsDifficultyThreshold);
         values.put("weak_lapses", settings.importWeakLapsesThreshold);
         values.put("browser_query", settings.normalizedBrowserQuery());
-        values.put(COLUMN_SETTINGS_JSON, importSettingsJson(settings));
+        values.put(COLUMN_SETTINGS_JSON, audit.settingsJson());
         db.insertWithOnConflict(TABLE_IMPORT_RULE_AUDITS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
@@ -145,23 +148,14 @@ abstract class LocalStoreSync extends LocalStoreInventory {
             long finishedAt,
             long syncId
     ) {
-        Set<String> sourceTypes = new LinkedHashSet<>();
-        Set<String> ruleTypes = new LinkedHashSet<>();
-        Set<Long> cardIds = new LinkedHashSet<>();
-        Set<Long> noteIds = new LinkedHashSet<>();
-        for (RecordsImportModels.SuspendedSource source : imported.sources) {
-            sourceTypes.add(source.sourceType);
-            ruleTypes.addAll(source.ruleTypes);
-            cardIds.add(source.cardId);
-            noteIds.add(source.noteId);
-        }
+        ImportAuditBuilder.ImportDecisionAudit decision = ImportAuditBuilder.decision(importCandidate(imported), importSettings(settings));
 
         ContentValues values = new ContentValues();
         values.put(COLUMN_SYNC_ID, syncId);
         values.put(COLUMN_KANJI, imported.kanji);
         values.put(COLUMN_DECISION, "imported");
-        values.put(COLUMN_REASON_CODE, importReasonCode(ruleTypes));
-        values.put(COLUMN_REASON_TEXT, importReasonText(imported, settings, ruleTypes, cardIds.size()));
+        values.put(COLUMN_REASON_CODE, decision.reasonCode());
+        values.put(COLUMN_REASON_TEXT, decision.reasonText());
         if (imported.jitenRank != null) {
             values.put(COLUMN_JITEN_RANK, imported.jitenRank);
         }
@@ -169,11 +163,11 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         values.put("rank_min", settings.suspendedRankMin);
         values.put("rank_max", settings.suspendedRankMax);
         values.put("min_matching_cards", settings.importMinMatchingCardsPerKanji);
-        values.put(COLUMN_SOURCE_COUNT, cardIds.size());
-        values.put(COLUMN_SOURCE_TYPES, String.join(" ", sourceTypes));
-        values.put(COLUMN_RULE_TYPES, String.join(" ", ruleTypes));
-        values.put(COLUMN_SOURCE_CARD_IDS, joinLongs(cardIds));
-        values.put(COLUMN_SOURCE_NOTE_IDS, joinLongs(noteIds));
+        values.put(COLUMN_SOURCE_COUNT, decision.sourceCount());
+        values.put(COLUMN_SOURCE_TYPES, String.join(" ", decision.sourceTypes()));
+        values.put(COLUMN_RULE_TYPES, String.join(" ", decision.ruleTypes()));
+        values.put(COLUMN_SOURCE_CARD_IDS, decision.sourceCardIds());
+        values.put(COLUMN_SOURCE_NOTE_IDS, decision.sourceNoteIds());
         values.put(COLUMN_CREATED_AT, finishedAt);
         db.insertWithOnConflict(TABLE_IMPORT_DECISIONS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
@@ -317,106 +311,29 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         }
     }
 
-    private List<String> enabledImportSources(RecordsSyncModels.Settings settings) {
-        List<String> sources = new ArrayList<>();
-        if (settings.importActiveCards) {
-            sources.add(RecordsBase.SOURCE_ACTIVE);
+    private ImportAuditBuilder.ImportCandidate importCandidate(RecordsImportModels.SuspendedImport imported) {
+        List<ImportAuditBuilder.ImportSource> sources = new ArrayList<>();
+        for (RecordsImportModels.SuspendedSource source : imported.sources) {
+            sources.add(new ImportAuditBuilder.ImportSource(source.cardId, source.noteId, source.sourceType, source.ruleTypes));
         }
-        if (settings.importSuspendedCards) {
-            sources.add(RecordsBase.SOURCE_SUSPENDED);
-        }
-        if (settings.importTaggedCardsEnabled()) {
-            sources.add(RecordsBase.SOURCE_TAGGED);
-        }
-        if (settings.importWeakCards) {
-            sources.add(RecordsBase.SOURCE_WEAK);
-        }
-        if (settings.browserQueryImportEnabled()) {
-            sources.add(RecordsBase.SOURCE_BROWSER_QUERY);
-        }
-        return sources;
+        return new ImportAuditBuilder.ImportCandidate(imported.kanji, imported.jitenRank, imported.rankKnown, sources);
     }
 
-    private String importReasonCode(Set<String> ruleTypes) {
-        if (ruleTypes.size() > 1) {
-            return "multiple_import_rules";
-        }
-        if (ruleTypes.contains(RecordsBase.SOURCE_BROWSER_QUERY)) {
-            return "browser_query_import";
-        }
-        if (ruleTypes.contains(RecordsBase.SOURCE_SUSPENDED)) {
-            return "suspended_import";
-        }
-        if (ruleTypes.contains(RecordsBase.SOURCE_TAGGED)) {
-            return "tagged_import";
-        }
-        if (ruleTypes.contains(RecordsBase.SOURCE_WEAK)) {
-            return "weak_card_import";
-        }
-        if (ruleTypes.contains(RecordsBase.SOURCE_ACTIVE)) {
-            return "active_import";
-        }
-        return "imported";
-    }
-
-    private String importReasonText(
-            RecordsImportModels.SuspendedImport imported,
-            RecordsSyncModels.Settings settings,
-            Set<String> ruleTypes,
-            int sourceCount
-    ) {
-        String rank = imported.jitenRank == null ? "unknown" : Integer.toString(imported.jitenRank);
-        String rules = ruleTypes.isEmpty() ? "unknown rule" : String.join(" + ", ruleTypes);
-        return "Imported by " + rules
-                + "; " + sourceCount + " source card" + (sourceCount == 1 ? "" : "s")
-                + "; Jiten rank " + rank
-                + "; rank range " + settings.suspendedRankMin + "-" + settings.suspendedRankMax
-                + "; minimum matching cards " + settings.importMinMatchingCardsPerKanji + ".";
-    }
-
-    private String importSettingsJson(RecordsSyncModels.Settings settings) {
-        return "{"
-                + "\"model_name\":" + TextUtil.jsonQuote(settings.modelName)
-                + ",\"import_active_cards\":" + settings.importActiveCards
-                + ",\"import_suspended_cards\":" + settings.importSuspendedCards
-                + ",\"import_tagged_cards\":" + settings.importTaggedCardsEnabled()
-                + ",\"import_tags\":" + jsonArray(settings.importTags)
-                + ",\"import_weak_cards\":" + settings.importWeakCards
-                + ",\"import_weak_fsrs_difficulty\":" + settings.importWeakFsrsDifficultyThreshold
-                + ",\"import_weak_lapses\":" + settings.importWeakLapsesThreshold
-                + ",\"import_browser_query_cards\":" + settings.importBrowserQueryCards
-                + ",\"import_browser_query\":" + TextUtil.jsonQuote(settings.normalizedBrowserQuery())
-                + ",\"rank_min\":" + settings.suspendedRankMin
-                + ",\"rank_max\":" + settings.suspendedRankMax
-                + ",\"min_matching_cards\":" + settings.importMinMatchingCardsPerKanji
-                + "}";
-    }
-
-    private String jsonArray(List<String> values) {
-        StringBuilder out = new StringBuilder("[");
-        boolean first = true;
-        for (String value : values) {
-            if (!first) {
-                out.append(',');
-            }
-            first = false;
-            out.append(TextUtil.jsonQuote(value));
-        }
-        out.append(']');
-        return out.toString();
-    }
-
-    private String joinLongs(Set<Long> values) {
-        StringBuilder out = new StringBuilder();
-        boolean first = true;
-        for (Long value : values) {
-            if (!first) {
-                out.append(' ');
-            }
-            first = false;
-            out.append(value);
-        }
-        return out.toString();
+    private ImportAuditBuilder.SettingsSnapshot importSettings(RecordsSyncModels.Settings settings) {
+        return new ImportAuditBuilder.SettingsSnapshot(
+                settings.modelName,
+                settings.importActiveCards,
+                settings.importSuspendedCards,
+                settings.importTags,
+                settings.importWeakCards,
+                settings.importWeakFsrsDifficultyThreshold,
+                settings.importWeakLapsesThreshold,
+                settings.importMinMatchingCardsPerKanji,
+                settings.importBrowserQueryCards,
+                settings.normalizedBrowserQuery(),
+                settings.suspendedRankMin,
+                settings.suspendedRankMax
+        );
     }
 
     public void saveFailedSync(long startedAt, long finishedAt, String status, String errorCode, String errorMessage) {

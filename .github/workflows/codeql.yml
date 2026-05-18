@@ -72,7 +72,7 @@ jobs:
             :fsrs-java:compileJava \
             :core:compileJava \
             :domain:compileKotlin \
-            :sync-domain:compileKotlin \
+            :sync-domain:compileJava \
             :writing-core:compileKotlin \
             :dictionary-core:compileJava \
             :update-core:compileJava \
