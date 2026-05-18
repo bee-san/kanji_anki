@@ -48,13 +48,7 @@ public final class CapturedWriting {
         }
         List<CapturedStroke> simplified = new ArrayList<>();
         for (CapturedStroke stroke : strokes) {
-            CapturedStroke next = simplify(stroke);
-            if (!next.points.isEmpty()) {
-                simplified.add(next);
-            }
-        }
-        if (simplified.isEmpty()) {
-            throw new IllegalArgumentException("Captured writing must contain at least one stroke.");
+            simplified.add(simplify(stroke));
         }
         requirePositiveFinite(width, "width");
         requirePositiveFinite(height, "height");
