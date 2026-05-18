@@ -1070,26 +1070,26 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout learningStepsSettingsPanel() {
         RecordsSchedulerModels.LearningStepSettings current = store.learningStepSettings();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Learning steps", 23, INK, true));
-        box.addView(text("New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.learningStepsTitle(), 23, INK, true));
+        box.addView(text(SettingsTextCopy.learningStepsBody(), 15, MUTED, false));
 
         EditText newSteps = stepInput(current.newStepsText());
         EditText reviewSteps = stepInput(current.reviewStepsText());
         box.addView(text(LABEL_NEW_CARDS, 15, INK, true));
         box.addView(newSteps, new LinearLayout.LayoutParams(-1, dp(58)));
-        box.addView(text("Review misses", 15, INK, true));
+        box.addView(text(SettingsTextCopy.reviewMissesLabel(), 15, INK, true));
         box.addView(reviewSteps, new LinearLayout.LayoutParams(-1, dp(58)));
 
         LinearLayout presets = new LinearLayout(this);
         presets.setOrientation(LinearLayout.HORIZONTAL);
-        Button ankiDefault = secondaryButton("Anki default");
+        Button ankiDefault = secondaryButton(SettingsTextCopy.ankiDefaultLabel());
         ankiDefault.setOnClickListener(v -> {
             RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
             newSteps.setText(defaults.newStepsText());
             reviewSteps.setText(defaults.reviewStepsText());
         });
         presets.addView(ankiDefault, new LinearLayout.LayoutParams(0, dp(54), 1));
-        Button sameSteps = secondaryButton("Both 1m 10m");
+        Button sameSteps = secondaryButton(SettingsTextCopy.sameLearningStepsLabel());
         sameSteps.setOnClickListener(v -> {
             RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
             newSteps.setText(defaults.newStepsText());
@@ -1098,7 +1098,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         presets.addView(sameSteps, new LinearLayout.LayoutParams(0, dp(54), 1));
         box.addView(presets);
 
-        Button save = primaryButton("Save learning steps", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveLearningStepsLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             LearningStepsSettingsPolicy.SaveResult request = LearningStepsSettingsPolicy.saveRequest(
                     newSteps.getText().toString(),
@@ -1109,7 +1109,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 return;
             }
             store.saveLearningStepSettings(request.settings);
-            Toast.makeText(this, "Learning steps saved.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);

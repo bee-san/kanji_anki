@@ -218,6 +218,16 @@ public final class SettingsTextCopyTest {
         assertEquals(Arrays.asList("Very little", "Pareto", "Balanced", "More", "All kanji"), Arrays.asList(SettingsTextCopy.workloadScaleLabels()));
         assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel());
         assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel());
+        assertEquals("Learning steps", SettingsTextCopy.learningStepsTitle());
+        assertEquals(
+                "New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.",
+                SettingsTextCopy.learningStepsBody()
+        );
+        assertEquals("Review misses", SettingsTextCopy.reviewMissesLabel());
+        assertEquals("Anki default", SettingsTextCopy.ankiDefaultLabel());
+        assertEquals("Both 1m 10m", SettingsTextCopy.sameLearningStepsLabel());
+        assertEquals("Save learning steps", SettingsTextCopy.saveLearningStepsLabel());
+        assertEquals("Learning steps saved.", SettingsTextCopy.learningStepsSavedToast());
     }
 
     @Test
