@@ -53,6 +53,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -587,10 +588,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     boolean validImportThresholds(double difficulty, int lapseThreshold, int minCards) {
-        boolean difficultyValid = difficulty >= 1.0 && difficulty <= 10.0;
-        boolean lapsesValid = lapseThreshold >= 1 && lapseThreshold <= 100;
-        boolean minCardsValid = minCards >= 1 && minCards <= 1000;
-        return difficultyValid && lapsesValid && minCardsValid;
+        return SettingsInputRules.validImportThresholds(difficulty, lapseThreshold, minCards);
     }
 
     CheckBox importFilterCheckBox(String label, boolean checked) {
@@ -889,11 +887,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     int rankSliderProgress(int rank) {
-        return Math.max(0, Math.min(19999, rank - 1));
+        return SettingsInputRules.rankSliderProgress(rank);
     }
 
     int rankFromSliderProgress(int progress) {
-        return Math.max(1, Math.min(20000, progress + 1));
+        return SettingsInputRules.rankFromSliderProgress(progress);
     }
 
     String frequencyRangeStatusText(int minRank, int maxRank) {
