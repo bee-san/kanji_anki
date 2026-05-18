@@ -20,82 +20,38 @@ public final class WritingActionPresentation {
     public final boolean answerPanelVisible;
     public final boolean resultStatusVisible;
 
-    private WritingActionPresentation(
-            boolean hasResult,
-            boolean passed,
-            boolean messyPass,
-            boolean checkVisible,
-            boolean checkEnabled,
-            String checkText,
-            boolean undoEnabled,
-            boolean downloadVisible,
-            boolean nextVisible,
-            String nextLabel,
-            String nextRating,
-            boolean manualOverrideVisible,
-            boolean practiceWithGuideVisible,
-            boolean replayVisible,
-            boolean hintVisible,
-            String hintText,
-            boolean answerPanelVisible,
-            boolean resultStatusVisible
-    ) {
-        this.hasResult = hasResult;
-        this.passed = passed;
-        this.messyPass = messyPass;
-        this.checkVisible = checkVisible;
-        this.checkEnabled = checkEnabled;
-        this.checkText = checkText;
-        this.undoEnabled = undoEnabled;
-        this.downloadVisible = downloadVisible;
-        this.nextVisible = nextVisible;
-        this.nextLabel = nextLabel;
-        this.nextRating = nextRating;
-        this.manualOverrideVisible = manualOverrideVisible;
-        this.practiceWithGuideVisible = practiceWithGuideVisible;
-        this.replayVisible = replayVisible;
-        this.hintVisible = hintVisible;
-        this.hintText = hintText;
-        this.answerPanelVisible = answerPanelVisible;
-        this.resultStatusVisible = resultStatusVisible;
+    private WritingActionPresentation(Input input) {
+        Input safeInput = input == null ? new Input(null) : input;
+        WritingAnalysis analysis = safeInput.analysis;
+        hasResult = analysis != null;
+        passed = hasResult && analysis.writingPassed;
+        messyPass = hasResult && analysis.status == WritingAnalysis.Status.CLOSE;
+        checkVisible = !passed || messyPass;
+        checkEnabled = !safeInput.checkingWriting;
+        checkText = WritingFeedbackCopy.checkWritingButtonText(safeInput.checkingWriting, messyPass);
+        undoEnabled = !safeInput.checkingWriting && safeInput.canUndoStroke;
+        downloadVisible = !(safeInput.writingModelStatusKnown && safeInput.writingModelDownloaded);
+        nextVisible = WritingFeedbackCopy.canSubmitAnalysis(analysis);
+        nextLabel = WritingFeedbackCopy.submitLabel(analysis);
+        nextRating = WritingFeedbackCopy.submitRating(analysis);
+        manualOverrideVisible = hasResult && WritingFeedbackCopy.canManualOverride(analysis);
+        practiceWithGuideVisible = hasResult && !passed && WritingFeedbackCopy.canPracticeAfterAnalysis(analysis);
+        replayVisible = hasResult
+                && safeInput.hasReplaySnapshot
+                && WritingFeedbackCopy.canReplayAnalysis(analysis, safeInput.hasInk, safeInput.guide);
+        hintVisible = !passed && safeInput.canRevealMoreHelp;
+        hintText = safeInput.currentPracticeLevel == 3 ? "Hint" : "More help";
+        answerPanelVisible = WritingFeedbackCopy.shouldShowLearningPanel(
+                analysis,
+                safeInput.recallTask,
+                safeInput.teachingTask,
+                safeInput.currentPracticeLevel
+        );
+        resultStatusVisible = hasResult;
     }
 
     public static WritingActionPresentation from(Input input) {
-        Input safeInput = input == null ? new Input(null) : input;
-        WritingAnalysis analysis = safeInput.analysis;
-        boolean hasResult = analysis != null;
-        boolean passed = hasResult && analysis.writingPassed;
-        boolean messyPass = hasResult && analysis.status == WritingAnalysis.Status.CLOSE;
-        boolean submittable = WritingFeedbackCopy.canSubmitAnalysis(analysis);
-        boolean replayVisible = hasResult
-                && safeInput.hasReplaySnapshot
-                && WritingFeedbackCopy.canReplayAnalysis(analysis, safeInput.hasInk, safeInput.guide);
-
-        return new WritingActionPresentation(
-                hasResult,
-                passed,
-                messyPass,
-                !passed || messyPass,
-                !safeInput.checkingWriting,
-                WritingFeedbackCopy.checkWritingButtonText(safeInput.checkingWriting, messyPass),
-                !safeInput.checkingWriting && safeInput.canUndoStroke,
-                !(safeInput.writingModelStatusKnown && safeInput.writingModelDownloaded),
-                submittable,
-                WritingFeedbackCopy.submitLabel(analysis),
-                WritingFeedbackCopy.submitRating(analysis),
-                hasResult && WritingFeedbackCopy.canManualOverride(analysis),
-                hasResult && !passed && WritingFeedbackCopy.canPracticeAfterAnalysis(analysis),
-                replayVisible,
-                !passed && safeInput.canRevealMoreHelp,
-                safeInput.currentPracticeLevel == 3 ? "Hint" : "More help",
-                WritingFeedbackCopy.shouldShowLearningPanel(
-                        analysis,
-                        safeInput.recallTask,
-                        safeInput.teachingTask,
-                        safeInput.currentPracticeLevel
-                ),
-                hasResult
-        );
+        return new WritingActionPresentation(input);
     }
 
     public static final class Input {
