@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 
 import java.util.ArrayList;
@@ -280,8 +281,8 @@ final class KanjiImpactReportStore {
     }
 
     private SameCardMetrics sameCardMetrics(SQLiteDatabase db, String kanji, long baselineSyncId, long currentSyncId) {
-        ImpactMetricBuilder baseline = new ImpactMetricBuilder();
-        ImpactMetricBuilder current = new ImpactMetricBuilder();
+        HistoricalKanjiAggregate baseline = new HistoricalKanjiAggregate(kanji);
+        HistoricalKanjiAggregate current = new HistoricalKanjiAggregate(kanji);
         Cursor cursor = db.rawQuery(
                 "SELECT "
                         + "b.interval_days AS b_interval_days, b.reps AS b_reps, b.lapses AS b_lapses, b.suspended AS b_suspended, b.mature AS b_mature, b.fsrs_stability AS b_fsrs_stability, b.fsrs_difficulty AS b_fsrs_difficulty, b.fsrs_retrievability AS b_fsrs_retrievability, "
@@ -295,28 +296,30 @@ final class KanjiImpactReportStore {
         );
         try {
             while (cursor.moveToNext()) {
-                baseline.add(cardMetrics(cursor, "b_"));
-                current.add(cardMetrics(cursor, "c_"));
+                addCardMetrics(baseline, cursor, "b_");
+                addCardMetrics(current, cursor, "c_");
             }
         } finally {
             cursor.close();
         }
-        if (current.totalCards() == 0) {
+        if (current.activeCards() + current.suspendedCards() == 0) {
             return SameCardMetrics.EMPTY;
         }
-        return new SameCardMetrics(baseline.build(), current.build());
+        return new SameCardMetrics(baseline.impactMetricSnapshot(), current.impactMetricSnapshot());
     }
 
-    private CardMetrics cardMetrics(Cursor cursor, String prefix) {
-        return new CardMetrics(
+    private void addCardMetrics(HistoricalKanjiAggregate aggregate, Cursor cursor, String prefix) {
+        aggregate.addCard(
                 integer(cursor, prefix + "interval_days"),
                 integer(cursor, prefix + "reps"),
                 integer(cursor, prefix + "lapses"),
                 integer(cursor, prefix + "suspended") == 1,
                 integer(cursor, prefix + "mature") == 1,
-                nullableDouble(cursor, prefix + "fsrs_stability"),
-                nullableDouble(cursor, prefix + "fsrs_difficulty"),
-                nullableDouble(cursor, prefix + "fsrs_retrievability")
+                new HistoricalKanjiAggregate.FsrsMemoryValues(
+                        nullableDouble(cursor, prefix + "fsrs_stability"),
+                        nullableDouble(cursor, prefix + "fsrs_difficulty"),
+                        nullableDouble(cursor, prefix + "fsrs_retrievability")
+                )
         );
     }
 
@@ -347,92 +350,4 @@ final class KanjiImpactReportStore {
         private static final SameCardMetrics EMPTY = new SameCardMetrics(null, null);
     }
 
-    private record CardMetrics(
-            int intervalDays,
-            int reps,
-            int lapses,
-            boolean suspended,
-            boolean mature,
-            Double fsrsStability,
-            Double fsrsDifficulty,
-            Double fsrsRetrievability
-    ) {
-    }
-
-    private static final class ImpactMetricBuilder {
-        private int activeCards;
-        private int suspendedCards;
-        private int matureSupportCount;
-        private int totalLapses;
-        private int totalReps;
-        private int intervalCount;
-        private double intervalSum;
-        private int stabilityCount;
-        private double stabilitySum;
-        private int difficultyCount;
-        private double difficultySum;
-        private int retrievabilityCount;
-        private double retrievabilitySum;
-
-        private void add(CardMetrics metrics) {
-            if (metrics.suspended()) {
-                suspendedCards++;
-            } else {
-                activeCards++;
-            }
-            if (metrics.mature()) {
-                matureSupportCount++;
-            }
-            totalLapses += Math.max(0, metrics.lapses());
-            totalReps += Math.max(0, metrics.reps());
-            intervalSum += Math.max(0, metrics.intervalDays());
-            intervalCount++;
-            if (metrics.fsrsStability() != null) {
-                stabilitySum += metrics.fsrsStability();
-                stabilityCount++;
-            }
-            if (metrics.fsrsDifficulty() != null) {
-                difficultySum += metrics.fsrsDifficulty();
-                difficultyCount++;
-            }
-            if (metrics.fsrsRetrievability() != null) {
-                retrievabilitySum += metrics.fsrsRetrievability();
-                retrievabilityCount++;
-            }
-        }
-
-        private int totalCards() {
-            return activeCards + suspendedCards;
-        }
-
-        private KanjiImpactAnalyzer.MetricSnapshot build() {
-            return new KanjiImpactAnalyzer.MetricSnapshot(
-                    activeCards,
-                    suspendedCards,
-                    matureSupportCount,
-                    averageIntervalDays(),
-                    totalReps,
-                    totalLapses,
-                    averageStability(),
-                    averageDifficulty(),
-                    averageRetrievability()
-            );
-        }
-
-        private double averageIntervalDays() {
-            return intervalCount == 0 ? 0.0 : intervalSum / intervalCount;
-        }
-
-        private Double averageStability() {
-            return stabilityCount == 0 ? null : stabilitySum / stabilityCount;
-        }
-
-        private Double averageDifficulty() {
-            return difficultyCount == 0 ? null : difficultySum / difficultyCount;
-        }
-
-        private Double averageRetrievability() {
-            return retrievabilityCount == 0 ? null : retrievabilitySum / retrievabilityCount;
-        }
-    }
 }

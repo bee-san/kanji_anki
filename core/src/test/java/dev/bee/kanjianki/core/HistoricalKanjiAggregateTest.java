@@ -23,6 +23,17 @@ public final class HistoricalKanjiAggregateTest {
         assertEquals(3.0, aggregate.averageStability(), 0.0001);
         assertEquals(8.0, aggregate.averageDifficulty(), 0.0001);
         assertEquals(0.5, aggregate.averageRetrievability(), 0.0001);
+
+        KanjiImpactAnalyzer.MetricSnapshot impact = aggregate.impactMetricSnapshot();
+        assertEquals(1, impact.activeCards);
+        assertEquals(1, impact.suspendedCards);
+        assertEquals(1, impact.matureCards);
+        assertEquals(4, impact.reps);
+        assertEquals(1, impact.lapses);
+        assertEquals(15.0, impact.averageIntervalDays, 0.0001);
+        assertEquals(3.0, impact.fsrsStability, 0.0001);
+        assertEquals(8.0, impact.fsrsDifficulty, 0.0001);
+        assertEquals(0.5, impact.fsrsRetrievability, 0.0001);
     }
 
     @Test

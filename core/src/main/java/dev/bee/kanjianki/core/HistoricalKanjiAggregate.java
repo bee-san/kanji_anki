@@ -142,6 +142,20 @@ public final class HistoricalKanjiAggregate {
         return suspendedExampleCount;
     }
 
+    public KanjiImpactAnalyzer.MetricSnapshot impactMetricSnapshot() {
+        return new KanjiImpactAnalyzer.MetricSnapshot(
+                activeCards,
+                suspendedCards,
+                matureSupportCount,
+                averageIntervalDays(),
+                totalReps,
+                totalLapses,
+                averageStability(),
+                averageDifficulty(),
+                averageRetrievability()
+        );
+    }
+
     public record FsrsMemoryValues(Double stability, Double difficulty, Double retrievability) {
     }
 }
