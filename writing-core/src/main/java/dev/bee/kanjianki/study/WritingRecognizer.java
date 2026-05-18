@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.study;
 
+import dev.bee.kanjianki.core.study.RecognitionCandidate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +16,10 @@ public interface WritingRecognizer extends AutoCloseable {
 
     @Override
     void close();
+
+    static List<RecognitionCandidate> recognitionCandidates(RecognitionResult result) {
+        return result == null ? Collections.emptyList() : result.toRecognitionCandidates();
+    }
 
     final class ModelStatus {
         public final String modelName;
@@ -41,6 +47,14 @@ public interface WritingRecognizer extends AutoCloseable {
                 return "";
             }
             return candidates.get(0).text;
+        }
+
+        public List<RecognitionCandidate> toRecognitionCandidates() {
+            List<RecognitionCandidate> out = new ArrayList<>();
+            for (Candidate candidate : candidates) {
+                out.add(new RecognitionCandidate(candidate.text, candidate.score));
+            }
+            return out;
         }
     }
 

@@ -390,14 +390,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     List<RecognitionCandidate> candidates(WritingRecognizer.RecognitionResult result) {
-        List<RecognitionCandidate> out = new ArrayList<>();
-        if (result == null) {
-            return out;
-        }
-        for (WritingRecognizer.Candidate candidate : result.candidates) {
-            out.add(new RecognitionCandidate(candidate.text, candidate.score));
-        }
-        return out;
+        return WritingRecognizer.recognitionCandidates(result);
     }
 
     RecordsImportModels.DashboardRow findRow(List<RecordsImportModels.DashboardRow> rows, String kanji) {

@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.study;
 
+import dev.bee.kanjianki.core.study.WritingSample;
+
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -88,6 +90,42 @@ public final class CapturedWritingTest {
         assertFalse(basic.hasWritingArea());
         assertFalse(basic.hasRecognitionContext());
         assertThrows(UnsupportedOperationException.class, () -> withAreaAndNullContext.strokes.add(stroke));
+    }
+
+    @Test
+    public void capturedWritingConvertsToWritingSample() {
+        CapturedWriting writing = new CapturedWriting(
+                Arrays.asList(
+                        stroke(new CapturedStroke.Point(1f, 2f, 30L)),
+                        stroke(new CapturedStroke.Point(3f, 4f))
+                ),
+                200f,
+                300f,
+                ""
+        );
+
+        WritingSample sample = writing.toWritingSample();
+
+        assertEquals(2, sample.strokes.size());
+        assertEquals(200f, sample.width, 0f);
+        assertEquals(300f, sample.height, 0f);
+        assertEquals(1f, sample.strokes.get(0).points.get(0).x, 0f);
+        assertEquals(2f, sample.strokes.get(0).points.get(0).y, 0f);
+        assertEquals(30L, sample.strokes.get(0).points.get(0).timestampMillis);
+        assertEquals(3f, sample.strokes.get(1).points.get(0).x, 0f);
+        assertEquals(4f, sample.strokes.get(1).points.get(0).y, 0f);
+        assertEquals(0L, sample.strokes.get(1).points.get(0).timestampMillis);
+    }
+
+    @Test
+    public void capturedWritingWithoutAreaConvertsToZeroSizedSample() {
+        CapturedWriting writing = CapturedWriting.of(Collections.singletonList(stroke(point(1f, 2f))));
+
+        WritingSample sample = writing.toWritingSample();
+
+        assertEquals(1, sample.strokes.size());
+        assertEquals(0f, sample.width, 0f);
+        assertEquals(0f, sample.height, 0f);
     }
 
     @Test

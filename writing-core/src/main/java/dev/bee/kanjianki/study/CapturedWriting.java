@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.study;
 
+import dev.bee.kanjianki.core.study.InkPoint;
+import dev.bee.kanjianki.core.study.InkStroke;
+import dev.bee.kanjianki.core.study.WritingSample;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -97,6 +101,21 @@ public final class CapturedWriting {
 
     public boolean hasRecognitionContext() {
         return hasWritingArea() || !preContext.isEmpty();
+    }
+
+    public WritingSample toWritingSample() {
+        List<InkStroke> inkStrokes = new ArrayList<>();
+        for (CapturedStroke stroke : strokes) {
+            List<InkPoint> inkPoints = new ArrayList<>();
+            for (CapturedStroke.Point point : stroke.points) {
+                long timestamp = point.timestampMillis == null ? 0L : point.timestampMillis;
+                inkPoints.add(new InkPoint(point.x, point.y, timestamp));
+            }
+            inkStrokes.add(new InkStroke(inkPoints));
+        }
+        float width = writingAreaWidth == null ? 0f : writingAreaWidth;
+        float height = writingAreaHeight == null ? 0f : writingAreaHeight;
+        return new WritingSample(inkStrokes, width, height);
     }
 
     private static void requirePositiveFinite(float value, String name) {

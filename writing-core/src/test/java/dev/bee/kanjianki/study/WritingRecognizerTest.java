@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.study;
 
+import dev.bee.kanjianki.core.study.RecognitionCandidate;
+
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -8,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -63,5 +66,25 @@ public final class WritingRecognizerTest {
         );
 
         assertEquals("校", result.topText());
+    }
+
+    @Test
+    public void recognitionCandidatesConvertToAnalysisCandidates() {
+        WritingRecognizer.RecognitionResult result = new WritingRecognizer.RecognitionResult(
+                Arrays.asList(
+                        new WritingRecognizer.Candidate("校", 0.61f),
+                        new WritingRecognizer.Candidate("拉", null)
+                )
+        );
+
+        List<RecognitionCandidate> candidates = WritingRecognizer.recognitionCandidates(result);
+        List<RecognitionCandidate> nullResult = WritingRecognizer.recognitionCandidates(null);
+
+        assertEquals(2, candidates.size());
+        assertEquals("校", candidates.get(0).text);
+        assertEquals(Float.valueOf(0.61f), candidates.get(0).score);
+        assertEquals("拉", candidates.get(1).text);
+        assertNull(candidates.get(1).score);
+        assertEquals(0, nullResult.size());
     }
 }
