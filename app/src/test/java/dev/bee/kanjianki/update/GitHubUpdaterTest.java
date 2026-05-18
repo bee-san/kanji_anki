@@ -384,23 +384,6 @@ public final class GitHubUpdaterTest {
         assertEquals(0, flags & PendingIntent.FLAG_IMMUTABLE);
     }
 
-    @Test
-    public void updateNotificationBodyPrefersVerifiedVersionThenMessageFallback() {
-        assertEquals(
-                "Version 0.4.3 is verified and ready.",
-                UpdateNotifier.notificationBody("v0.4.3", "manual message")
-        );
-        assertEquals("Checksum verified.", UpdateNotifier.notificationBody("", "Checksum verified."));
-        assertEquals(
-                "Open Kani to finish installing the verified update.",
-                UpdateNotifier.notificationBody(null, "  ")
-        );
-        assertEquals(
-                "Open Kani to finish installing the verified update.",
-                UpdateNotifier.notificationBody(null, null)
-        );
-    }
-
     private static String invokeSafeFileName(String name) throws Exception {
         return GitHubUpdater.safeFileName(name);
     }

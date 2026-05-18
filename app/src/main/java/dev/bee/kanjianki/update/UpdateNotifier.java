@@ -31,14 +31,10 @@ final class UpdateNotifier {
         if (!controller.hasRuntimeNotificationPermission() || !controller.areNotificationsEnabled()) {
             return false;
         }
-        String body = notificationBody(version, message);
+        String body = UpdateTextPolicy.notificationBody(version, message);
         controller.ensureChannel();
         controller.notifyUpdate("Kani update ready", body);
         return true;
-    }
-
-    static String notificationBody(String version, String message) {
-        return UpdateTextPolicy.notificationBody(version, message);
     }
 
     interface NotificationController {
