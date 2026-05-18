@@ -1450,19 +1450,40 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void saveAppliedReview(RecordsSchedulerModels.ReviewRequest request, RecordsSchedulerModels.ReviewResult result, long now) {
-        store.saveStudyItem(result.item);
-        store.saveReview(request, result.appliedRating, now, activeSession.item, result.item);
-        studySessionTracker.recordReviewOutcome(request.kanji, result.appliedRating, activeSession.item, result.item);
-        if (!RATING_AGAIN.equals(result.appliedRating)) {
-            markStudyRunPassed(request.kanji);
-        }
+        StudyReviewActions.saveAppliedReview(
+                request,
+                result,
+                activeSession.item,
+                now,
+                reviewWriter(),
+                studySessionTracker::recordReviewOutcome,
+                this::markStudyRunPassed
+        );
     }
 
     void tuneSchedulerIfNeeded(RecordsSchedulerModels.SchedulerParameters parameters, long now) {
         RecordsSchedulerModels.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
-        if (tuned.lastAdjustedAtMillis != parameters.lastAdjustedAtMillis || tuned.lastAdjustmentReviewCount != parameters.lastAdjustmentReviewCount) {
-            store.saveSchedulerParameters(tuned);
-        }
+        StudyReviewActions.saveTunedSchedulerIfChanged(parameters, tuned, store::saveSchedulerParameters);
+    }
+
+    StudyReviewActions.ReviewWriter reviewWriter() {
+        return new StudyReviewActions.ReviewWriter() {
+            @Override
+            public void saveStudyItem(RecordsStudyModels.StudyItem item) {
+                store.saveStudyItem(item);
+            }
+
+            @Override
+            public void saveReview(
+                    RecordsSchedulerModels.ReviewRequest request,
+                    String appliedRating,
+                    long reviewedAt,
+                    RecordsStudyModels.StudyItem beforeReview,
+                    RecordsStudyModels.StudyItem afterReview
+            ) {
+                store.saveReview(request, appliedRating, reviewedAt, beforeReview, afterReview);
+            }
+        };
     }
 
     HintState initialHintState(RecordsSchedulerModels.StudySession session) {
