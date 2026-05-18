@@ -19,7 +19,9 @@ import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser;
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy;
 import dev.bee.kanjianki.updatecore.ReleaseVersion;
 import dev.bee.kanjianki.updatecore.Sha256Digest;
+import dev.bee.kanjianki.updatecore.UpdateArtifactValidator;
 import dev.bee.kanjianki.updatecore.UpdateCacheFilePolicy;
+import dev.bee.kanjianki.updatecore.UpdateReleaseAssetSelector;
 import dev.bee.kanjianki.updatecore.UpdateTextPolicy;
 
 import java.io.BufferedInputStream;
@@ -68,38 +70,38 @@ public final class GitHubUpdater {
                 );
             }
 
-            UpdatePolicy.AssetSelection assets = UpdatePolicy.selectAssets(latest);
-            if (!assets.ok) {
-                return recordResult(checkedAt, UpdateResult.failed(assets.message), latest.tagName(), "", "");
+            UpdateReleaseAssetSelector.AssetSelection assets = UpdateReleaseAssetSelector.selectAssets(latest);
+            if (!assets.ok()) {
+                return recordResult(checkedAt, UpdateResult.failed(assets.message()), latest.tagName(), "", "");
             }
 
-            String expected = Sha256Digest.findInText(client.getText(assets.checksum.downloadUrl()));
-            UpdatePolicy.ValidationResult expectedDigest = UpdatePolicy.validateExpectedChecksum(expected);
-            if (!expectedDigest.ok) {
-                return recordResult(checkedAt, UpdateResult.failed(expectedDigest.message), latest.tagName(), "", "");
+            String expected = Sha256Digest.findInText(client.getText(assets.checksum().downloadUrl()));
+            UpdateArtifactValidator.ValidationResult expectedDigest = UpdateArtifactValidator.validateExpectedChecksum(expected);
+            if (!expectedDigest.ok()) {
+                return recordResult(checkedAt, UpdateResult.failed(expectedDigest.message()), latest.tagName(), "", "");
             }
 
-            String safeApkName = safeFileName(assets.apk.name());
+            String safeApkName = safeFileName(assets.apk().name());
             File apkFile = cachedApkFile(safeApkName);
-            client.download(assets.apk.downloadUrl(), apkFile);
+            client.download(assets.apk().downloadUrl(), apkFile);
 
-            UpdatePolicy.ValidationResult checksum = UpdatePolicy.validateChecksum(expected, sha256(apkFile));
-            if (!checksum.ok) {
+            UpdateArtifactValidator.ValidationResult checksum = UpdateArtifactValidator.validateChecksum(expected, sha256(apkFile));
+            if (!checksum.ok()) {
                 deleteCachedApk(apkFile);
-                return recordResult(checkedAt, UpdateResult.failed(checksum.message), latest.tagName(), "", "");
+                return recordResult(checkedAt, UpdateResult.failed(checksum.message()), latest.tagName(), "", "");
             }
 
             ApkMetadata metadata = client.inspectApk(apkFile);
-            UpdatePolicy.ValidationResult archive = UpdatePolicy.validatePackageMetadata(
+            UpdateArtifactValidator.ValidationResult archive = UpdateArtifactValidator.validatePackageMetadata(
                     context.getPackageName(),
                     BuildConfig.VERSION_NAME,
                     latest.tagName(),
                     metadata.packageName,
                     metadata.versionName
             );
-            if (!archive.ok) {
+            if (!archive.ok()) {
                 deleteCachedApk(apkFile);
-                return recordResult(checkedAt, UpdateResult.failed(archive.message), latest.tagName(), "", "");
+                return recordResult(checkedAt, UpdateResult.failed(archive.message()), latest.tagName(), "", "");
             }
 
             return installVerifiedApk(checkedAt, latest.tagName(), apkFile, source, metadata.targetSdkVersion);
@@ -123,16 +125,16 @@ public final class GitHubUpdater {
                 return recordResult(checkedAt, UpdateResult.failed("Verified APK cache is missing. Check again to download it."), status.lastVersion, "", "");
             }
             ApkMetadata metadata = client.inspectApk(apkFile);
-            UpdatePolicy.ValidationResult archive = UpdatePolicy.validatePackageMetadata(
+            UpdateArtifactValidator.ValidationResult archive = UpdateArtifactValidator.validatePackageMetadata(
                     context.getPackageName(),
                     BuildConfig.VERSION_NAME,
                     status.lastVersion,
                     metadata.packageName,
                     metadata.versionName
             );
-            if (!archive.ok) {
+            if (!archive.ok()) {
                 deleteCachedApk(apkFile);
-                return recordResult(checkedAt, UpdateResult.failed(archive.message), status.lastVersion, "", "");
+                return recordResult(checkedAt, UpdateResult.failed(archive.message()), status.lastVersion, "", "");
             }
             return installVerifiedApk(checkedAt, status.lastVersion, apkFile, source, metadata.targetSdkVersion);
         } catch (IOException | RuntimeException error) {

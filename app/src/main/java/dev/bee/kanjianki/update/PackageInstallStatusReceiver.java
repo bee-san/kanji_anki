@@ -30,17 +30,17 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
         String version = intent.getStringExtra(EXTRA_VERSION);
         GitHubUpdater.UpdateSource source = sourceFrom(intent.getStringExtra(EXTRA_SOURCE));
         String statusMessage = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-        UpdatePolicy.InstallCallback mapped = UpdatePolicy.mapInstallStatus(status, statusMessage);
+        PackageInstallStatusPolicy.InstallCallback mapped = PackageInstallStatusPolicy.mapInstallStatus(status, statusMessage);
         long now = System.currentTimeMillis();
 
         try (LocalStore store = new LocalStore(context)) {
-            if (mapped.pendingUserAction) {
-                String message = mapped.message;
+            if (mapped.pendingUserAction()) {
+                String message = mapped.message();
                 store.recordAutoUpdateResult(now, message, version, apkName, message);
                 handlePendingUserAction(context, intent, source, version, message);
             } else {
                 deleteCachedApk(context, apkName);
-                store.recordAutoUpdateResult(now, mapped.message, version, "", "");
+                store.recordAutoUpdateResult(now, mapped.message(), version, "", "");
             }
         }
     }
@@ -65,7 +65,8 @@ public final class PackageInstallStatusReceiver extends BroadcastReceiver {
             PendingUserActionHandler handler
     ) {
         Intent confirmation = pendingUserAction(intent);
-        if (confirmation != null && UpdatePolicy.shouldLaunchInstallConfirmation(source)) {
+        String sourceName = source == null ? null : source.name();
+        if (confirmation != null && PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(sourceName)) {
             confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             handler.startActivity(confirmation);
             return;
