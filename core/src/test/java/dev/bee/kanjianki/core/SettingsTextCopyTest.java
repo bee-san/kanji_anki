@@ -30,6 +30,10 @@ public final class SettingsTextCopyTest {
         assertEquals("Verified APK ready", SettingsTextCopy.settingsUpdateSummary(true, false));
         assertEquals("Automatic checks on", SettingsTextCopy.settingsUpdateSummary(false, true));
         assertEquals("Manual checks", SettingsTextCopy.settingsUpdateSummary(false, false));
+        assertEquals("unknown version", SettingsTextCopy.versionText(null));
+        assertEquals("unknown version", SettingsTextCopy.versionText("  "));
+        assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
+        assertEquals("release-v0.4.33", SettingsTextCopy.versionText("release-v0.4.33"));
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(false, true, "07:30"));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(true, true, "07:30"));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(true, false, "07:30"));

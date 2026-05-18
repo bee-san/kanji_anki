@@ -63,6 +63,13 @@ public final class SettingsTextCopy {
         return enabled ? "Automatic checks on" : "Manual checks";
     }
 
+    public static String versionText(String version) {
+        if (version == null || version.trim().isEmpty()) {
+            return "unknown version";
+        }
+        return version.replaceFirst("^v", "");
+    }
+
     public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
         if (!configured) {
             return "Starts after first successful sync";

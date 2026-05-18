@@ -176,10 +176,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String versionText(String version) {
-        if (version == null || version.trim().isEmpty()) {
-            return "unknown version";
-        }
-        return version.replaceFirst("^v", "");
+        return SettingsTextCopy.versionText(version);
     }
 
     boolean canInstallUpdates() {
