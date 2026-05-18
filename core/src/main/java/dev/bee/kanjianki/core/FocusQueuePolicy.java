@@ -73,6 +73,22 @@ public final class FocusQueuePolicy {
         return 3;
     }
 
+    public static QueueTone rowTone(RecordsStudyModels.StudyItem item, long nowMillis) {
+        if (item != null && item.dueAtMillis <= nowMillis) {
+            return QueueTone.DUE;
+        }
+        if (item != null && StudyLadderRules.STATE_LEARNING.equals(item.state)) {
+            return QueueTone.LEARNING;
+        }
+        return QueueTone.RESTING;
+    }
+
+    public enum QueueTone {
+        DUE,
+        LEARNING,
+        RESTING
+    }
+
     public static class QueueEntry {
         public final RecordsImportModels.DashboardRow row;
         public final RecordsStudyModels.StudyItem item;

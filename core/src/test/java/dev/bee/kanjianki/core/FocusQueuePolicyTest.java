@@ -79,6 +79,16 @@ public final class FocusQueuePolicyTest {
         assertEquals(3, FocusQueuePolicy.stateRank(""));
     }
 
+    @Test
+    public void rowToneSeparatesDueLearningAndRestingQueueItems() {
+        long now = 5_000L;
+
+        assertEquals(FocusQueuePolicy.QueueTone.DUE, FocusQueuePolicy.rowTone(review("裂", now), now));
+        assertEquals(FocusQueuePolicy.QueueTone.LEARNING, FocusQueuePolicy.rowTone(item("学", StudyLadderRules.STATE_LEARNING, now + 1_000L, 1), now));
+        assertEquals(FocusQueuePolicy.QueueTone.RESTING, FocusQueuePolicy.rowTone(review("待", now + 1_000L), now));
+        assertEquals(FocusQueuePolicy.QueueTone.RESTING, FocusQueuePolicy.rowTone(null, now));
+    }
+
     private static List<String> kanji(List<FocusQueuePolicy.QueueEntry> entries) {
         java.util.ArrayList<String> out = new java.util.ArrayList<>();
         for (FocusQueuePolicy.QueueEntry entry : entries) {

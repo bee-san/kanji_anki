@@ -632,10 +632,11 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     int rowColor(RecordsStudyModels.StudyItem item, long now) {
-        if (item.dueAtMillis <= now) {
+        FocusQueuePolicy.QueueTone tone = FocusQueuePolicy.rowTone(item, now);
+        if (tone == FocusQueuePolicy.QueueTone.DUE) {
             return CORAL;
         }
-        if (STATE_LEARNING.equals(item.state)) {
+        if (tone == FocusQueuePolicy.QueueTone.LEARNING) {
             return BLUE;
         }
         return Color.rgb(246, 202, 225);
