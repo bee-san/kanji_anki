@@ -43,6 +43,6 @@ tasks.check {
 }
 
 dependencies {
-    implementation(project(":fsrs-java"))
+    api(project(":domain"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

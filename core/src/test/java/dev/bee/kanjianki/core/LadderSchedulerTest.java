@@ -172,6 +172,29 @@ public class LadderSchedulerTest {
     }
 
     @Test
+    public void dueReviewPromotionSkipsDisabledRung() {
+        BridgeScheduler scheduler = schedulerWithReviewIntervalDays(22);
+        RecordsStudyModels.StudyItem item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
+        RecordsBase.StudyLadderSettings ladder = RecordsBase.StudyLadderSettings.defaults()
+                .withRungEnabled(RecordsBase.LadderRung.FONT_MEANING, false);
+
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+                item.withToken("skip-font"),
+                passRequest("裂", "skip-font"),
+                new HashSet<>(),
+                1000L,
+                null,
+                RecordsSyncModels.Settings.kikuDefaults(),
+                ladder
+        );
+
+        assertEquals(RecordsBase.LadderRung.WORD_READING, result.item.rung);
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, result.item.phase);
+        assertEquals(0, result.item.realPassStreak);
+        assertEquals(0, result.item.realAgainStreak);
+    }
+
+    @Test
     public void realDuePassDoesNotPromoteAtOrBelowFsrsIntervalThreshold() {
         for (long intervalDays : new long[]{20L, 21L}) {
             BridgeScheduler scheduler = schedulerWithReviewIntervalDays(intervalDays);

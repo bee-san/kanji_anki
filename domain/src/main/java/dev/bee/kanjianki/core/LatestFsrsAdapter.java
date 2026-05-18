@@ -59,17 +59,17 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
     }
 
     private static KaniFsrsReviewResult result(FsrsMemoryState state, int intervalDays) {
-        return new KaniFsrsReviewResult(state.stability(), state.difficulty(), intervalDays * BridgeScheduler.DAY);
+        return new KaniFsrsReviewResult(state.stability(), state.difficulty(), intervalDays * KaniFsrsReviewResult.DAY_MILLIS);
     }
 
     private static FsrsRating toRating(String rating) {
-        if (BridgeScheduler.RATING_HARD.equals(rating)) {
+        if (StudyRatings.HARD.equals(rating)) {
             return FsrsRating.HARD;
         }
-        if (BridgeScheduler.RATING_GOOD.equals(rating)) {
+        if (StudyRatings.GOOD.equals(rating)) {
             return FsrsRating.GOOD;
         }
-        if (BridgeScheduler.RATING_EASY.equals(rating)) {
+        if (StudyRatings.EASY.equals(rating)) {
             return FsrsRating.EASY;
         }
         return FsrsRating.AGAIN;
