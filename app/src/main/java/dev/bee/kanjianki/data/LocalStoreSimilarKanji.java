@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
+import dev.bee.kanjianki.core.SimilarKanjiChoiceReviewPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 
 import java.util.ArrayList;
@@ -220,16 +221,20 @@ abstract class LocalStoreSimilarKanji extends LocalStoreStudy {
             }
             SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
             RecordsImportModels.SimilarKanjiChoiceResult result = planner.evaluateSelection(card, normalizeSingleKanji(selectedKanji));
+            SimilarKanjiChoiceReviewPolicy.ReviewUpdate reviewUpdate =
+                    SimilarKanjiChoiceReviewPolicy.reviewUpdate(card, result, nowMillis);
 
             ContentValues values = new ContentValues();
-            values.put(COLUMN_LAST_REVIEWED_AT, nowMillis);
-            if (result.correct) {
-                values.put(COLUMN_PASSED_AT, nowMillis);
-                values.put(COLUMN_CORRECT_COUNT, card.correctCount + 1);
-            } else {
-                values.put(COLUMN_PASSED_AT, 0L);
-                values.put(COLUMN_DUE_AT, nowMillis);
-                values.put(COLUMN_WRONG_COUNT, card.wrongCount + 1);
+            values.put(COLUMN_LAST_REVIEWED_AT, reviewUpdate.lastReviewedAtMillis());
+            values.put(COLUMN_PASSED_AT, reviewUpdate.passedAtMillis());
+            if (reviewUpdate.dueAtMillis() != null) {
+                values.put(COLUMN_DUE_AT, reviewUpdate.dueAtMillis());
+            }
+            if (reviewUpdate.correctCount() != null) {
+                values.put(COLUMN_CORRECT_COUNT, reviewUpdate.correctCount());
+            }
+            if (reviewUpdate.wrongCount() != null) {
+                values.put(COLUMN_WRONG_COUNT, reviewUpdate.wrongCount());
             }
             db.update(
                     TABLE_SIMILAR_KANJI_CHOICE_STATE,
