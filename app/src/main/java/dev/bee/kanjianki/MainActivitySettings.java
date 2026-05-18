@@ -49,6 +49,7 @@ import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.DictionaryLookup;
@@ -1450,18 +1451,20 @@ abstract class MainActivitySettings extends MainActivityStudy {
             if (auto.enabled) {
                 Button off = secondaryButton("Turn off daily sync");
                 off.setOnClickListener(v -> {
-                    store.setAutoSyncEnabled(false);
+                    AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
+                    store.setAutoSyncEnabled(result.enabled());
                     AutoSyncScheduler.cancel(this);
-                    Toast.makeText(this, "Daily Anki sync turned off.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
                     renderSettings();
                 });
                 box.addView(off);
             } else {
                 Button on = primaryButton("Turn on daily sync", STUDY_PINK_DARK);
                 on.setOnClickListener(v -> {
-                    store.setAutoSyncEnabled(true);
+                    AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
+                    store.setAutoSyncEnabled(result.enabled());
                     AutoSyncScheduler.schedule(this);
-                    Toast.makeText(this, "Daily Anki sync turned on.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
                     renderSettings();
                 });
                 box.addView(on);
