@@ -56,6 +56,7 @@ import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RetentionSettingsPolicy;
+import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -1413,9 +1414,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         if (reminder.enabled) {
             Button off = secondaryButton("Turn off reminder");
             off.setOnClickListener(v -> {
-                store.saveReminderSettings(new LocalStore.ReminderSettings(false, reminder.hour, reminder.minute));
+                ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute);
+                store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
                 ReminderScheduler.cancel(this);
-                Toast.makeText(this, "Reminder turned off.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
             box.addView(off);
@@ -1528,11 +1530,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
-        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(enabled, hour, minute);
+        ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute);
+        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
         if (!enabled) {
             store.saveReminderSettings(reminder);
             ReminderScheduler.cancel(this);
-            Toast.makeText(this, "Reminder turned off.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
             renderSettings();
             return;
         }
@@ -1544,11 +1547,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         }
         store.saveReminderSettings(reminder);
         ReminderScheduler.schedule(this, reminder);
-        if (notificationsAllowedForReminders()) {
-            Toast.makeText(this, "Reminder saved for around " + reminder.displayTime() + ".", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Reminder saved, but Android notifications are off.", Toast.LENGTH_LONG).show();
-        }
+        boolean allowed = notificationsAllowedForReminders();
+        Toast.makeText(this, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
         renderSettings();
     }
 

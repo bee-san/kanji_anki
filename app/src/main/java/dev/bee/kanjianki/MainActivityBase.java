@@ -36,6 +36,7 @@ import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
 import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
+import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -292,18 +293,16 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         LocalStore.ReminderSettings reminder = pending == null ? store.reminderSettings() : pending;
         store.saveReminderSettings(reminder);
         ReminderScheduler.schedule(this, reminder);
-        if (notificationsAllowedForReminders()) {
-            Toast.makeText(this, "Reminder saved for around " + reminder.displayTime() + ".", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "Reminder saved, but Android notifications are off.", Toast.LENGTH_LONG).show();
-        }
+        boolean allowed = notificationsAllowedForReminders();
+        Toast.makeText(this, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
     }
 
     void disableReminderAfterDeniedPermission(LocalStore.ReminderSettings pending) {
         LocalStore.ReminderSettings fallback = pending == null ? store.reminderSettings() : pending;
-        store.saveReminderSettings(new LocalStore.ReminderSettings(false, fallback.hour, fallback.minute));
+        ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, fallback.hour, fallback.minute);
+        store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
         ReminderScheduler.cancel(this);
-        Toast.makeText(this, "Notifications are off, so reminders are disabled.", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, ReminderSettingsSavePolicy.PERMISSION_DENIED_MESSAGE, Toast.LENGTH_LONG).show();
     }
 
     @Override
