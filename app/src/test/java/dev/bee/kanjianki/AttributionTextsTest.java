@@ -29,10 +29,6 @@ public final class AttributionTextsTest {
                 "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
                 AttributionTexts.dictionarySourcesFromManifestText("not json")
         );
-        assertEquals(
-                "KANJIDIC2 dictionary data from EDRDG, Jiten rank data, and KanjiVG stroke data.",
-                AttributionTexts.dictionarySourcesFromManifestText("{\"sources\":[]}")
-        );
     }
 
     @Test

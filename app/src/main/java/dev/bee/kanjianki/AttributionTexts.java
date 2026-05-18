@@ -37,7 +37,7 @@ final class AttributionTexts {
             JSONObject manifest = new JSONObject(manifestText);
             JSONArray sources = manifest.optJSONArray("sources");
             if (sources == null || sources.length() == 0) {
-                return AttributionCopy.DICTIONARY_FALLBACK;
+                return AttributionCopy.dictionarySources("", Collections.emptyList(), Collections.emptyList());
             }
             return AttributionCopy.dictionarySources(
                     manifest.optString("generated_at"),
