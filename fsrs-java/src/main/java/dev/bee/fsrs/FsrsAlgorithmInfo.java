@@ -13,4 +13,8 @@ public final class FsrsAlgorithmInfo {
 
     private FsrsAlgorithmInfo() {
     }
+
+    public static String upstreamReference() {
+        return UPSTREAM_REPOSITORY + " " + UPSTREAM_RELEASE + " " + UPSTREAM_COMMIT;
+    }
 }

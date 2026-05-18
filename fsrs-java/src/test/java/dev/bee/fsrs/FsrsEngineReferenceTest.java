@@ -2,7 +2,6 @@ package dev.bee.fsrs;
 
 import org.junit.Test;
 
-import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -23,10 +22,10 @@ public final class FsrsEngineReferenceTest {
         assertEquals("6d42ecb259bbaaa02101f13c5e1b2ec7cdc77eae", FsrsAlgorithmInfo.UPSTREAM_SCHEDULER_BLOB);
         assertEquals("FSRS-6.x 21-parameter snapshot", FsrsAlgorithmInfo.ALGORITHM_LABEL);
         assertEquals(21, FsrsAlgorithmInfo.PARAMETER_COUNT);
-
-        Constructor<FsrsAlgorithmInfo> constructor = FsrsAlgorithmInfo.class.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        assertNotNull(constructor.newInstance());
+        assertEquals(
+                "open-spaced-repetition/py-fsrs v6.3.1 3abe686e9c058d3f3c00bbeb92e68b71211b2b31",
+                FsrsAlgorithmInfo.upstreamReference()
+        );
     }
 
     @Test
@@ -223,12 +222,10 @@ public final class FsrsEngineReferenceTest {
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
             assertNotNull(expected.getMessage());
-        } catch (ReflectiveOperationException reflectionFailure) {
-            throw new AssertionError(reflectionFailure);
         }
     }
 
     private interface ThrowingRunnable {
-        void run() throws ReflectiveOperationException;
+        void run();
     }
 }
