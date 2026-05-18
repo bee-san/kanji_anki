@@ -53,6 +53,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.SchedulerTuner;
+import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -370,31 +371,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String settingsImportSummary(RecordsSyncModels.Settings settings) {
-        List<String> sources = new ArrayList<>();
-        if (settings.importActiveCards) {
-            sources.add(SOURCE_ACTIVE);
-        }
-        if (settings.importSuspendedCards) {
-            sources.add(SOURCE_SUSPENDED);
-        }
-        if (settings.importTaggedCardsEnabled()) {
-            sources.add("tagged");
-        }
-        if (settings.importWeakCards) {
-            sources.add("weak");
-        }
-        if (settings.browserQueryImportEnabled()) {
-            sources.add("query");
-        }
-        if (sources.isEmpty()) {
-            return "No sources";
-        }
-        return String.join(" + ", sources) + "; " + matchingCardsSummary(settings);
+        return SettingsTextCopy.settingsImportSummary(settings);
     }
 
     String matchingCardsSummary(RecordsSyncModels.Settings settings) {
-        int count = settings.importMinMatchingCardsPerKanji;
-        return count + (count == 1 ? " matching card per kanji" : " matching cards per kanji");
+        return SettingsTextCopy.matchingCardsSummary(settings);
     }
 
     LinearLayout settingsCategory(
@@ -1565,24 +1546,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String workloadStatusText(int percent, int maxItems) {
-        int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
-        int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems);
-        String label = AdaptiveLoadPlanner.workloadLabel(snapped);
-        if (snapped >= 100) {
-            return label + ": up to " + normalizedMax + " items";
-        }
-        return label + ": up to " + Math.min(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax) + " items";
+        return SettingsTextCopy.workloadStatusText(percent, maxItems);
     }
 
     String maxItemsStatusText(int maxItems) {
-        return "Maximum: " + countText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems), "item", "items");
+        return SettingsTextCopy.maxItemsStatusText(maxItems);
     }
 
     String autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        if (plan == null || plan.target <= 0) {
-            return "Auto Pareto: waiting for problem kanji";
-        }
-        return "Auto Pareto: " + countText(plan.target, "item", "items") + " today";
+        return SettingsTextCopy.autoWorkloadStatusText(plan);
     }
 
     LinearLayout updateSettingsPanel() {
