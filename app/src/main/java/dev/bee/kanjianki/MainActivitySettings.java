@@ -57,6 +57,7 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
+import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -1112,8 +1113,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout studyAheadSettingsPanel() {
         int currentMinutes = store.studyAheadMinutes();
-        int minMinutes = SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES;
-        int maxMinutes = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES;
         LinearLayout box = settingsPanelBox();
         box.addView(text("Study ahead", 23, INK, true));
         box.addView(text("Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).", 15, MUTED, false));
@@ -1129,18 +1128,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save study ahead", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            int parsed;
-            try {
-                parsed = Integer.parseInt(minutesInput.getText().toString().trim());
-            } catch (NumberFormatException ex) {
-                Toast.makeText(this, SettingsTextCopy.studyAheadWholeNumberErrorText(), Toast.LENGTH_SHORT).show();
+            StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesInput.getText().toString());
+            if (!request.valid) {
+                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (parsed < minMinutes || parsed > maxMinutes) {
-                Toast.makeText(this, SettingsTextCopy.studyAheadOutOfRangeErrorText(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            store.saveStudyAheadMinutes(parsed);
+            store.saveStudyAheadMinutes(request.minutes);
             Toast.makeText(this, "Study ahead saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
