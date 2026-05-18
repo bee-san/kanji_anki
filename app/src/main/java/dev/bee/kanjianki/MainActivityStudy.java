@@ -1688,14 +1688,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (drawingPad == null || activeSession == null) {
             return;
         }
-        activeAnalysis = null;
+        clearWritingResult();
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         drawingPad.clear();
         drawingPad.setGuide(guide, currentHintState, false);
         setStudyStatus(WritingFeedbackCopy.cleanerRetryStatus(guideLabel(currentHintState, guide)), MUTED);
-        if (resultStatus != null) {
-            resultStatus.setVisibility(View.GONE);
-        }
         updateResultActions();
     }
 
@@ -1704,12 +1701,9 @@ abstract class MainActivityStudy extends MainActivityStats {
             updateUndoStrokeButton();
             return;
         }
-        activeAnalysis = null;
+        clearWritingResult();
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         setStudyStatus(WritingFeedbackCopy.undoStrokeStatus(guideLabel(currentHintState, guide)), MUTED);
-        if (resultStatus != null) {
-            resultStatus.setVisibility(View.GONE);
-        }
         updateResultActions();
     }
 
@@ -1729,14 +1723,18 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (checkingWriting || activeAnalysis == null || activeSession == null || drawingPad == null) {
             return;
         }
-        activeAnalysis = null;
+        clearWritingResult();
         drawingPad.clearReplaySnapshot();
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         setStudyStatus(WritingFeedbackCopy.updatedInkStatus(guideLabel(currentHintState, guide)), MUTED);
+        updateResultActions();
+    }
+
+    void clearWritingResult() {
+        activeAnalysis = null;
         if (resultStatus != null) {
             resultStatus.setVisibility(View.GONE);
         }
-        updateResultActions();
     }
 
     void handleDrawingBlocked(StrokeGuideGuard.Decision decision) {
