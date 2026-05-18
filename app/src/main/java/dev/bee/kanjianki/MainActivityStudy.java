@@ -460,21 +460,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderMeaningKanjiSession(RecordsSchedulerModels.StudySession session) {
-        prepareStudyContent(activeStudyPlan, true);
-        activeSimilarWritingRepair = null;
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardAnswerRevealed = false;
-        flashcardTouchTracking = false;
-        flashcardGestureArea = null;
-        typingAnswerInput = null;
-        drawingPad = null;
-        hintsUsed = 0;
-        setHintState(HintState.initial());
-        if (studyActionBar != null) {
-            studyActionBar.removeAllViews();
-            studyActionBar.setVisibility(View.GONE);
-        }
+        resetChoiceSession(true);
 
         RecordsImportModels.MeaningKanjiChoiceCard choiceCard = meaningKanjiChoiceCardForSession(session);
         if (choiceCard == null || choiceCard.choices.size() < 4) {
@@ -573,20 +559,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {
-        prepareStudyContent(activeStudyPlan, true);
-        activeSimilarWritingRepair = null;
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardAnswerRevealed = false;
-        flashcardGestureArea = null;
-        typingAnswerInput = null;
-        drawingPad = null;
-        hintsUsed = 0;
-        setHintState(HintState.initial());
-        if (studyActionBar != null) {
-            studyActionBar.removeAllViews();
-            studyActionBar.setVisibility(View.GONE);
-        }
+        resetChoiceSession(false);
 
         RecordsImportModels.SimilarKanjiChoiceCard choiceCard = similarChoiceCardForSession(session);
         List<String> choices = new ArrayList<>(choiceCard.choices);
@@ -679,22 +652,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
-        prepareStudyContent(activeStudyPlan, true);
-        activeSimilarWritingRepair = null;
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardAnswerRevealed = false;
-        flashcardTouchTracking = false;
-        typingAnswerInput = null;
-        hintsUsed = 0;
-        setHintState(HintState.initial());
-        drawingPad = null;
-        flashcardHeroPanel = null;
-
-        if (studyActionBar != null) {
-            studyActionBar.removeAllViews();
-            studyActionBar.setVisibility(View.GONE);
-        }
+        resetFlashcardSession();
 
         LinearLayout card = recognitionHeroCard(session);
         flashcardCard = card;
@@ -819,15 +777,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderWritingSession(RecordsSchedulerModels.StudySession session) {
-        prepareStudyContent(activeStudyPlan, false);
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardGestureArea = null;
-        flashcardAnswerRevealed = false;
-        flashcardTouchTracking = false;
-        typingAnswerInput = null;
-        hintsUsed = 0;
-        setHintState(initialHintState(session));
+        resetWritingSession(session);
 
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
@@ -875,6 +825,57 @@ abstract class MainActivityStudy extends MainActivityStats {
         buildStudyActionBar();
         updateResultActions();
         refreshWritingModelStatus();
+    }
+
+    void resetChoiceSession(boolean resetTouchTracking) {
+        prepareStudyContent(activeStudyPlan, true);
+        activeSimilarWritingRepair = null;
+        activeAnalysis = null;
+        checkingWriting = false;
+        flashcardAnswerRevealed = false;
+        if (resetTouchTracking) {
+            flashcardTouchTracking = false;
+        }
+        flashcardGestureArea = null;
+        typingAnswerInput = null;
+        drawingPad = null;
+        hintsUsed = 0;
+        setHintState(HintState.initial());
+        hideStudyActionBar();
+    }
+
+    void resetFlashcardSession() {
+        prepareStudyContent(activeStudyPlan, true);
+        activeSimilarWritingRepair = null;
+        activeAnalysis = null;
+        checkingWriting = false;
+        flashcardAnswerRevealed = false;
+        flashcardTouchTracking = false;
+        typingAnswerInput = null;
+        hintsUsed = 0;
+        setHintState(HintState.initial());
+        drawingPad = null;
+        flashcardHeroPanel = null;
+        hideStudyActionBar();
+    }
+
+    void resetWritingSession(RecordsSchedulerModels.StudySession session) {
+        prepareStudyContent(activeStudyPlan, false);
+        activeAnalysis = null;
+        checkingWriting = false;
+        flashcardGestureArea = null;
+        flashcardAnswerRevealed = false;
+        flashcardTouchTracking = false;
+        typingAnswerInput = null;
+        hintsUsed = 0;
+        setHintState(initialHintState(session));
+    }
+
+    void hideStudyActionBar() {
+        if (studyActionBar != null) {
+            studyActionBar.removeAllViews();
+            studyActionBar.setVisibility(View.GONE);
+        }
     }
 
     void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
