@@ -1434,7 +1434,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button off = secondaryButton(SettingsTextCopy.turnOffReminderLabel());
             off.setOnClickListener(v -> {
                 ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute);
-                store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
+                SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
                 ReminderScheduler.cancel(this);
                 Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
                 renderSettings();
@@ -1552,9 +1552,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
         ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute);
-        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
+        LocalStore.ReminderSettings reminder = SettingsWriteActions.reminderSettings(fields);
         if (!enabled) {
-            store.saveReminderSettings(reminder);
+            SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
             ReminderScheduler.cancel(this);
             Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
             renderSettings();
@@ -1566,7 +1566,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             requestPermissions(new String[]{PERMISSION_POST_NOTIFICATIONS}, REQUEST_POST_NOTIFICATIONS);
             return;
         }
-        store.saveReminderSettings(reminder);
+        SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
         ReminderScheduler.schedule(this, reminder);
         boolean allowed = notificationsAllowedForReminders();
         Toast.makeText(this, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();

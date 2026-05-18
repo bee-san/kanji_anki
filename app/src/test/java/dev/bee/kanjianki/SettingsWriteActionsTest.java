@@ -5,7 +5,9 @@ import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
+import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 import org.junit.Test;
@@ -130,6 +132,19 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void saveReminderBuildsAndWritesNormalizedFields() {
+        RecordingReminderWriter writer = new RecordingReminderWriter();
+        ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(true, 30, -4);
+
+        LocalStore.ReminderSettings reminder = SettingsWriteActions.saveReminder(fields, writer);
+
+        assertTrue(reminder.enabled);
+        assertEquals(23, reminder.hour);
+        assertEquals(0, reminder.minute);
+        assertEquals(reminder, writer.settings);
+    }
+
+    @Test
     public void applyImportPresetWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
         SettingsImportPreset preset = new SettingsImportPreset(
@@ -227,6 +242,15 @@ public final class SettingsWriteActionsTest {
 
         @Override
         public void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings) {
+            this.settings = settings;
+        }
+    }
+
+    private static final class RecordingReminderWriter implements SettingsWriteActions.ReminderSettingsWriter {
+        LocalStore.ReminderSettings settings;
+
+        @Override
+        public void saveReminderSettings(LocalStore.ReminderSettings settings) {
             this.settings = settings;
         }
     }

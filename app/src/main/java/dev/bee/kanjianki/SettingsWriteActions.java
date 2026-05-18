@@ -1,11 +1,13 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 final class SettingsWriteActions {
@@ -63,6 +65,19 @@ final class SettingsWriteActions {
 
     static void restoreDefaultStudyLadder(StudyLadderSettingsWriter writer) {
         saveStudyLadder(RecordsBase.StudyLadderSettings.defaults(), writer);
+    }
+
+    static LocalStore.ReminderSettings reminderSettings(ReminderSettingsSavePolicy.ReminderFields fields) {
+        return new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
+    }
+
+    static LocalStore.ReminderSettings saveReminder(
+            ReminderSettingsSavePolicy.ReminderFields fields,
+            ReminderSettingsWriter writer
+    ) {
+        LocalStore.ReminderSettings settings = reminderSettings(fields);
+        writer.saveReminderSettings(settings);
+        return settings;
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
@@ -138,6 +153,10 @@ final class SettingsWriteActions {
 
     interface StudyLadderSettingsWriter {
         void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings);
+    }
+
+    interface ReminderSettingsWriter {
+        void saveReminderSettings(LocalStore.ReminderSettings settings);
     }
 
     interface SettingWriter extends IntSettingWriter {
