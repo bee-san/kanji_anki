@@ -4,9 +4,9 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
 
-import org.junit.Test;
+import dev.bee.kanjianki.updatecore.AutoUpdateSchedulePolicy;
 
-import java.util.concurrent.TimeUnit;
+import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -20,7 +20,7 @@ public final class AutoUpdateSchedulerTest {
 
         AutoUpdateScheduler.schedule(false, backend);
 
-        assertEquals("kani_daily_auto_updates", backend.cancelledName);
+        assertEquals(AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME, backend.cancelledName);
         assertFalse(backend.enqueued);
     }
 
@@ -31,12 +31,12 @@ public final class AutoUpdateSchedulerTest {
         AutoUpdateScheduler.schedule(true, backend);
 
         assertTrue(backend.enqueued);
-        assertEquals("kani_daily_auto_updates", backend.enqueuedName);
+        assertEquals(AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME, backend.enqueuedName);
         assertEquals(ExistingPeriodicWorkPolicy.KEEP, backend.policy);
         assertNotNull(backend.request);
         assertEquals(NetworkType.CONNECTED, backend.request.getWorkSpec().constraints.getRequiredNetworkType());
-        assertEquals(TimeUnit.DAYS.toMillis(1), backend.request.getWorkSpec().intervalDuration);
-        assertEquals(TimeUnit.HOURS.toMillis(6), backend.request.getWorkSpec().flexDuration);
+        assertEquals(AutoUpdateSchedulePolicy.INTERVAL_MILLIS, backend.request.getWorkSpec().intervalDuration);
+        assertEquals(AutoUpdateSchedulePolicy.FLEX_MILLIS, backend.request.getWorkSpec().flexDuration);
     }
 
     private static final class Backend implements AutoUpdateScheduler.SchedulerBackend {

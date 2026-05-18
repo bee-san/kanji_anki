@@ -9,12 +9,11 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.updatecore.AutoUpdateSchedulePolicy;
 
 import java.util.concurrent.TimeUnit;
 
 public final class AutoUpdateScheduler {
-    private static final String UNIQUE_WORK_NAME = "kani_daily_auto_updates";
-
     private AutoUpdateScheduler() {
     }
 
@@ -26,34 +25,35 @@ public final class AutoUpdateScheduler {
     }
 
     static void schedule(boolean enabled, SchedulerBackend backend) {
-        if (!enabled) {
-            backend.cancelUniqueWork(UNIQUE_WORK_NAME);
+        AutoUpdateSchedulePolicy.SchedulePlan plan = AutoUpdateSchedulePolicy.plan(enabled);
+        if (!plan.enabled()) {
+            backend.cancelUniqueWork(plan.uniqueWorkName());
             return;
         }
         backend.enqueueUniquePeriodicWork(
-                UNIQUE_WORK_NAME,
+                plan.uniqueWorkName(),
                 ExistingPeriodicWorkPolicy.KEEP,
-                dailyUpdateRequest()
+                dailyUpdateRequest(plan)
         );
     }
 
-    private static PeriodicWorkRequest dailyUpdateRequest() {
+    private static PeriodicWorkRequest dailyUpdateRequest(AutoUpdateSchedulePolicy.SchedulePlan plan) {
         Constraints constraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiredNetworkType(plan.requiresConnectedNetwork() ? NetworkType.CONNECTED : NetworkType.NOT_REQUIRED)
                 .build();
         return new PeriodicWorkRequest.Builder(
                 AutoUpdateWorker.class,
-                1,
-                TimeUnit.DAYS,
-                6,
-                TimeUnit.HOURS
+                plan.intervalMillis(),
+                TimeUnit.MILLISECONDS,
+                plan.flexMillis(),
+                TimeUnit.MILLISECONDS
         )
                 .setConstraints(constraints)
                 .build();
     }
 
     public static void cancel(Context context) {
-        new WorkManagerSchedulerBackend(context.getApplicationContext()).cancelUniqueWork(UNIQUE_WORK_NAME);
+        new WorkManagerSchedulerBackend(context.getApplicationContext()).cancelUniqueWork(AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME);
     }
 
     interface SchedulerBackend {
