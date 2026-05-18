@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarChoiceCodec;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.SimilarKanjiStorageKeys;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimelineCopy;
 
@@ -630,7 +631,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     void deleteStaleSimilarChoiceStates(SQLiteDatabase db, Set<String> previousKeys, Set<String> currentKeys) {
         for (String key : previousKeys) {
-            String[] parts = key.split(SIMILAR_CHOICE_KEY_DELIMITER, 2);
+            String[] parts = SimilarKanjiStorageKeys.splitChoiceKey(key);
             if (!currentKeys.contains(key) && parts.length == 2) {
                 db.delete(
                         TABLE_SIMILAR_KANJI_CHOICE_STATE,
@@ -905,26 +906,19 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     static String normalizeSingleKanji(String value) {
-        String normalized = TextUtil.normalizeJapanese(value);
-        if (normalized.codePointCount(0, normalized.length()) != 1) {
-            return "";
-        }
-        return TextUtil.isKanji(normalized.codePointAt(0)) ? normalized : "";
+        return TextUtil.normalizeSingleKanji(value);
     }
 
     static String[] canonicalSimilarPair(String first, String second) {
-        if (first.compareTo(second) <= 0) {
-            return new String[]{first, second};
-        }
-        return new String[]{second, first};
+        return SimilarKanjiStorageKeys.canonicalPair(first, second);
     }
 
     static String similarKey(String first, String second, String source) {
-        return first + SIMILAR_KEY_DELIMITER + second + SIMILAR_KEY_DELIMITER + source;
+        return SimilarKanjiStorageKeys.pairKey(first, second, source);
     }
 
     static String similarChoiceKey(String targetKanji, String choiceSignature) {
-        return targetKanji + SIMILAR_CHOICE_KEY_DELIMITER + (choiceSignature == null ? "" : choiceSignature);
+        return SimilarKanjiStorageKeys.choiceKey(targetKanji, choiceSignature);
     }
 
     RecordsImportModels.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {

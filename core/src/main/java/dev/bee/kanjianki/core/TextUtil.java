@@ -26,6 +26,14 @@ public final class TextUtil {
         return MULTI_WHITESPACE.matcher(withSpaces).replaceAll(" ").trim();
     }
 
+    public static String normalizeSingleKanji(String value) {
+        String normalized = normalizeJapanese(value);
+        if (normalized.codePointCount(0, normalized.length()) != 1) {
+            return "";
+        }
+        return isKanji(normalized.codePointAt(0)) ? normalized : "";
+    }
+
     public static String stripHtml(String value) {
         if (value == null || value.isEmpty()) {
             return "";

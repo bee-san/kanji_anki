@@ -127,12 +127,7 @@ public final class SimilarKanjiIndex {
     }
 
     private static String cleanKanji(String value) {
-        String normalized = TextUtil.normalizeJapanese(value);
-        if (normalized.codePointCount(0, normalized.length()) != 1) {
-            return "";
-        }
-        int cp = normalized.codePointAt(0);
-        return TextUtil.isKanji(cp) ? normalized : "";
+        return TextUtil.normalizeSingleKanji(value);
     }
 
     public static final class Pair implements Comparable<Pair> {
@@ -156,7 +151,7 @@ public final class SimilarKanjiIndex {
         }
 
         private String key() {
-            return kanjiA + "\u0000" + kanjiB + "\u0000" + source;
+            return SimilarKanjiStorageKeys.pairKey(kanjiA, kanjiB, source);
         }
 
         @Override

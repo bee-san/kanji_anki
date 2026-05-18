@@ -188,7 +188,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
     static final String KEY_AUTO_SYNC_LAST_SUCCESS_AT = "auto_sync_last_success_at";
     static final String KEY_AUTO_SYNC_NEXT_RUN_AT = "auto_sync_next_run_at";
     static final String SIMILAR_KEY_DELIMITER = "\u0000";
-    static final String SIMILAR_CHOICE_KEY_DELIMITER = "\u0001";
     static final int DEFAULT_REMINDER_HOUR = 19;
     static final int DEFAULT_REMINDER_MINUTE = 0;
     static final int DEFAULT_AUTO_SYNC_HOUR = DEFAULT_REMINDER_HOUR;
