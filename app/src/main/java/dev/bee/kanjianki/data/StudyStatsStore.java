@@ -643,10 +643,9 @@ public final class StudyStatsStore {
         }
 
         private RecentMistake(RecentMistakePolicy.RecentMistake mistake) {
-            RecentMistakePolicy.RecentMistake safeMistake = mistake == null ? RecentMistakePolicy.mistake(null, null, 0L) : mistake;
-            this.kanji = safeMistake.kanji();
-            this.rating = safeMistake.rating();
-            this.reviewedAtMillis = safeMistake.reviewedAtMillis();
+            this.kanji = mistake.kanji();
+            this.rating = mistake.rating();
+            this.reviewedAtMillis = mistake.reviewedAtMillis();
         }
 
         private static RecentMistake fromCore(RecentMistakePolicy.RecentMistake mistake) {
