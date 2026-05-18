@@ -5,8 +5,10 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public final class KanjiGameCopyTest {
     @Test
@@ -29,6 +31,33 @@ public final class KanjiGameCopyTest {
         assertEquals("a very long answer choice that needs to be shortened...", KanjiGameCopy.choiceLabel(meaning, meaning.correctAnswer));
         assertEquals("", KanjiGameCopy.choiceLabel(meaning, null));
         assertThrows(NullPointerException.class, () -> KanjiGameCopy.choiceLabel(null, "拉"));
+    }
+
+    @Test
+    public void presentationSizingMatchesGameModeLayoutRules() {
+        KanjiGameEngine.GameQuestion meaning = question(KanjiGameEngine.GameMode.MEANING_POP, "pull");
+        KanjiGameEngine.GameQuestion shortReading = question(KanjiGameEngine.GameMode.READING_RUSH, "ひく");
+        KanjiGameEngine.GameQuestion longReading = new KanjiGameEngine.GameQuestion(
+                KanjiGameEngine.GameMode.READING_RUSH,
+                "引",
+                "長いプロンプト",
+                "Pick the reading",
+                "ひく",
+                Arrays.asList("ひく", "other"),
+                "引 = pull"
+        );
+        KanjiGameEngine.GameQuestion confusable = question(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, "拉");
+
+        assertEquals(52, KanjiGameCopy.promptTextSizeSp(meaning));
+        assertEquals(38, KanjiGameCopy.promptTextSizeSp(shortReading));
+        assertEquals(25, KanjiGameCopy.promptTextSizeSp(longReading));
+        assertEquals(32, KanjiGameCopy.choiceTextSizeSp(confusable));
+        assertEquals(15, KanjiGameCopy.choiceTextSizeSp(meaning));
+        assertTrue(KanjiGameCopy.choiceUsesKanjiTypography(confusable));
+        assertFalse(KanjiGameCopy.choiceUsesKanjiTypography(meaning));
+        assertThrows(NullPointerException.class, () -> KanjiGameCopy.promptTextSizeSp(null));
+        assertThrows(NullPointerException.class, () -> KanjiGameCopy.choiceTextSizeSp(null));
+        assertThrows(NullPointerException.class, () -> KanjiGameCopy.choiceUsesKanjiTypography(null));
     }
 
     @Test

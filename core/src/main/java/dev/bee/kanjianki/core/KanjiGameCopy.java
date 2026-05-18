@@ -27,6 +27,21 @@ public final class KanjiGameCopy {
         return StudyCueFormatter.compact(choice, 56);
     }
 
+    public static int promptTextSizeSp(KanjiGameEngine.GameQuestion question) {
+        if (question.mode == KanjiGameEngine.GameMode.MEANING_POP) {
+            return 52;
+        }
+        return question.prompt.length() <= 6 ? 38 : 25;
+    }
+
+    public static int choiceTextSizeSp(KanjiGameEngine.GameQuestion question) {
+        return choiceUsesKanjiTypography(question) ? 32 : 15;
+    }
+
+    public static boolean choiceUsesKanjiTypography(KanjiGameEngine.GameQuestion question) {
+        return question.mode == KanjiGameEngine.GameMode.CONFUSABLE_CLASH;
+    }
+
     public static String resultTitle(boolean roundComplete, boolean correct) {
         if (roundComplete) {
             return LABEL_ROUND_COMPLETE;

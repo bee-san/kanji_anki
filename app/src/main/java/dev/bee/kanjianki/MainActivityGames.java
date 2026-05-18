@@ -124,7 +124,7 @@ abstract class MainActivityGames extends MainActivityHome {
         int color = colorForGameMode(question.mode);
         LinearLayout card = panelBox(Color.WHITE, softened(color));
         card.addView(modePill(question.mode.label));
-        TextView prompt = text(question.prompt, promptSize(question), INK, true);
+        TextView prompt = text(question.prompt, KanjiGameCopy.promptTextSizeSp(question), INK, true);
         prompt.setGravity(Gravity.CENTER);
         prompt.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
         prompt.setPadding(0, dp(6), 0, dp(6));
@@ -134,20 +134,13 @@ abstract class MainActivityGames extends MainActivityHome {
         return card;
     }
 
-    private int promptSize(KanjiGameEngine.GameQuestion question) {
-        if (question.mode == KanjiGameEngine.GameMode.MEANING_POP) {
-            return 52;
-        }
-        return question.prompt.length() <= 6 ? 38 : 25;
-    }
-
     private void addGameChoices(LinearLayout card, KanjiGameEngine.GameQuestion question) {
         for (String choice : question.choices) {
             Button button = secondaryButton(KanjiGameCopy.choiceLabel(question, choice));
-            button.setTextSize(question.mode == KanjiGameEngine.GameMode.CONFUSABLE_CLASH ? 32 : 15);
+            button.setTextSize(KanjiGameCopy.choiceTextSizeSp(question));
             button.setMaxLines(2);
             button.setOnClickListener(v -> answerGameQuestion(question, choice));
-            if (question.mode == KanjiGameEngine.GameMode.CONFUSABLE_CLASH) {
+            if (KanjiGameCopy.choiceUsesKanjiTypography(question)) {
                 button.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
                 button.setTextColor(INK);
                 button.setLayoutParams(buttonLayout(dp(74)));
