@@ -112,24 +112,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView glyph = text(session.item.kanji, 72, STUDY_PLUM, true);
-        glyph.setGravity(Gravity.CENTER);
-        row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
-
-        LinearLayout details = new LinearLayout(this);
-        details.setOrientation(LinearLayout.VERTICAL);
-        if (session.row != null) {
-            addStudyCueLines(details, session);
-        } else {
-            details.addView(text(session.prompt, 15, MUTED, false));
-        }
-        row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(row);
+        box.addView(studyAnswerDetailsRow(session, 72));
         box.addView(text("Trace it below, then check.", 13, MUTED, false));
         return box;
     }
@@ -1039,12 +1022,16 @@ abstract class MainActivityStudy extends MainActivityStats {
     View flashcardAnswerPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Answer", 19, STUDY_PLUM, true));
+        box.addView(studyAnswerDetailsRow(session, 76));
+        return box;
+    }
 
+    LinearLayout studyAnswerDetailsRow(RecordsSchedulerModels.StudySession session, int glyphSize) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView glyph = text(session.item.kanji, 76, STUDY_PLUM, true);
+        TextView glyph = text(session.item.kanji, glyphSize, STUDY_PLUM, true);
         glyph.setGravity(Gravity.CENTER);
         row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
 
@@ -1056,8 +1043,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             details.addView(text(session.prompt, 15, MUTED, false));
         }
         row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(row);
-        return box;
+        return row;
     }
 
     void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
