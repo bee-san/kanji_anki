@@ -54,6 +54,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
+import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimelineCopy;
@@ -337,20 +338,11 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String sentenceCase(String value) {
-        if (value == null || value.isEmpty()) {
-            return "";
-        }
-        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+        return HomeTextCopy.sentenceCase(value);
     }
 
     String focusHeadline(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        if (plan == null || plan.target <= 0) {
-            return "Waiting";
-        }
-        if (plan.allKanjiMode) {
-            return "All current";
-        }
-        return plan.remaining + " items left / " + plan.target;
+        return HomeTextCopy.focusHeadline(plan);
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
@@ -778,13 +770,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String browseResultHeading(int size) {
-        if (size <= 0) {
-            return "No matches";
-        }
-        if (size >= 300) {
-            return "Showing first 300 matches";
-        }
-        return countText(size, "kanji", "kanji");
+        return HomeTextCopy.browseResultHeading(size);
     }
 
     void renderDetail(String kanji, boolean fromBrowse) {
@@ -819,10 +805,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String detailDisplayKanji(String fallback, RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
-        if (row != null) {
-            return row.kanji;
-        }
-        return inventory == null ? fallback : inventory.kanji;
+        return HomeTextCopy.detailDisplayKanji(fallback, row, inventory);
     }
 
     void addDetailHeader(String displayKanji, boolean fromBrowse, String browseQuery) {
@@ -860,10 +843,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String inventoryTitle(RecordsImportModels.KanjiInventoryItem inventory) {
-        if (inventory == null || inventory.primaryMeaning.isEmpty()) {
-            return "Historical recovery";
-        }
-        return inventory.primaryMeaning;
+        return HomeTextCopy.inventoryTitle(inventory);
     }
 
     LinearLayout detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
@@ -906,13 +886,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String detailBrowserSearch(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
-        if (inventory != null && !inventory.browserSearch.isEmpty()) {
-            return inventory.browserSearch;
-        }
-        if (row != null && !row.browserSearch.isEmpty()) {
-            return row.browserSearch;
-        }
-        return "";
+        return HomeTextCopy.detailBrowserSearch(row, inventory);
     }
 
     void addDetailExamples(RecordsImportModels.DashboardRow row) {
