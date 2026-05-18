@@ -51,6 +51,7 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
@@ -482,7 +483,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String humanSyncTime(long timestampMillis) {
-        return UiDateText.humanSyncTime(timestampMillis);
+        return DateTextPolicy.humanSyncTime(timestampMillis);
     }
 
     String streakDayCount(int days) {
@@ -972,7 +973,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     String timelineDate(long occurredAt) {
-        return UiDateText.timelineDate(occurredAt);
+        return DateTextPolicy.timelineDate(occurredAt);
     }
 
     String timelineSourceLine(RecordsImportModels.KanjiTimelineEvent event) {

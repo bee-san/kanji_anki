@@ -50,6 +50,7 @@ import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.SchedulerTuner;
@@ -151,7 +152,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String autoUpdateLastCheckText(LocalStore.AutoUpdateStatus status) {
-        return UiDateText.autoUpdateLastCheckText(status.lastCheckAtMillis);
+        return DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis);
     }
 
     String versionText(String version) {
@@ -1502,7 +1503,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String shortDateTime(long millis) {
-        return UiDateText.shortDateTime(millis);
+        return DateTextPolicy.shortDateTime(millis);
     }
 
     String workloadStatusText(int percent, int maxItems) {
