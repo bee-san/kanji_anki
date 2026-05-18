@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.core;
 
+import dev.bee.kanjianki.syncdomain.ImportRuleMatch;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -35,11 +37,11 @@ public abstract class RecordsBase {
     public static final String DEFAULT_FREQUENCY_RETENTION_RANGES = "";
     public static final String LEARNING_REPEAT_NEW = "new";
     public static final String LEARNING_REPEAT_REVIEW = "review";
-    public static final String SOURCE_ACTIVE = "active";
-    public static final String SOURCE_SUSPENDED = "suspended";
-    public static final String SOURCE_TAGGED = "tagged";
-    public static final String SOURCE_WEAK = "weak";
-    public static final String SOURCE_BROWSER_QUERY = "browser_query";
+    public static final String SOURCE_ACTIVE = ImportRuleMatch.SOURCE_ACTIVE;
+    public static final String SOURCE_SUSPENDED = ImportRuleMatch.SOURCE_SUSPENDED;
+    public static final String SOURCE_TAGGED = ImportRuleMatch.SOURCE_TAGGED;
+    public static final String SOURCE_WEAK = ImportRuleMatch.SOURCE_WEAK;
+    public static final String SOURCE_BROWSER_QUERY = ImportRuleMatch.SOURCE_BROWSER_QUERY;
     protected static final Logger LOGGER = Logger.getLogger(RecordsBase.class.getName());
     protected static final Pattern TASK_MEMORY_SEPARATOR = Pattern.compile("\\t");
     protected static final Pattern IMPORT_TAG_SEPARATOR = Pattern.compile("[,\\s]+");

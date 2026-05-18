@@ -44,5 +44,6 @@ tasks.check {
 
 dependencies {
     api(project(":domain"))
+    api(project(":sync-domain"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }

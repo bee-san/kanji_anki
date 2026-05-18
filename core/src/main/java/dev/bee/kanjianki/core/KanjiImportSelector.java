@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.core;
 
+import dev.bee.kanjianki.syncdomain.ImportRuleMatch;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -39,7 +41,7 @@ public final class KanjiImportSelector {
         for (RecordsSyncModels.Card card : snapshot.cards) {
             RecordsSyncModels.Note note = notesById.get(card.noteId);
             if (note != null) {
-                SourceMatch match = sourceMatch(card, note, settings);
+                ImportRuleMatch match = sourceMatch(card, note, settings);
                 if (match.matches()) {
                     addSources(sourcesByKanji, card, note, settings, match);
                 }
@@ -66,13 +68,13 @@ public final class KanjiImportSelector {
         return results;
     }
 
-    private SourceMatch sourceMatch(RecordsSyncModels.Card card, RecordsSyncModels.Note note, RecordsSyncModels.Settings settings) {
+    private ImportRuleMatch sourceMatch(RecordsSyncModels.Card card, RecordsSyncModels.Note note, RecordsSyncModels.Settings settings) {
         boolean activeMatch = settings.importActiveCards && !card.suspended;
         boolean suspendedMatch = settings.importSuspendedCards && card.suspended;
         boolean taggedMatch = settings.importTaggedCardsEnabled() && hasMatchingTag(note, settings.importTags);
         boolean weakMatch = settings.importWeakCards && weakCard(card, settings);
         boolean browserQueryMatch = settings.browserQueryImportEnabled() && card.browserQueryMatched;
-        return new SourceMatch(activeMatch, suspendedMatch, taggedMatch, weakMatch, browserQueryMatch);
+        return ImportRuleMatch.of(activeMatch, suspendedMatch, taggedMatch, weakMatch, browserQueryMatch);
     }
 
     private boolean hasMatchingTag(RecordsSyncModels.Note note, List<String> importTags) {
@@ -98,7 +100,7 @@ public final class KanjiImportSelector {
             RecordsSyncModels.Card card,
             RecordsSyncModels.Note note,
             RecordsSyncModels.Settings settings,
-            SourceMatch match
+            ImportRuleMatch match
     ) {
         String expression = TextUtil.normalizeJapanese(note.expression(settings));
         for (String kanji : TextUtil.extractKanji(expression)) {
@@ -116,9 +118,9 @@ public final class KanjiImportSelector {
             RecordsSyncModels.Note note,
             String expression,
             RecordsSyncModels.Settings settings,
-            SourceMatch match
+            ImportRuleMatch match
     ) {
-        String sourceType = resolveSourceType(card, match);
+        String sourceType = match.sourceType(card.suspended);
         return new RecordsImportModels.SuspendedSource(
                 kanji,
                 card.cardId,
@@ -133,48 +135,8 @@ public final class KanjiImportSelector {
                         .mature(card.mature(settings.matureDays))
                         .reviewStats(card.lapses, card.intervalDays, card.reps)
                         .fsrs(card.fsrsStability, card.fsrsDifficulty, card.fsrsRetrievability)
-                        .ruleTypes(match.ruleTypes(card))
+                        .ruleTypes(match.ruleTypes(card.suspended))
                         .build()
         );
-    }
-
-    private static String resolveSourceType(RecordsSyncModels.Card card, SourceMatch match) {
-        if (card.suspended) {
-            return RecordsBase.SOURCE_SUSPENDED;
-        }
-        if (match.browserQuery()) {
-            return RecordsBase.SOURCE_BROWSER_QUERY;
-        }
-        return RecordsBase.SOURCE_ACTIVE;
-    }
-
-    private record SourceMatch(boolean active, boolean suspended, boolean tagged, boolean weak, boolean browserQuery) {
-        private boolean matches() {
-            return active || suspended || tagged || weak || browserQuery;
-        }
-
-        private boolean forcePractice() {
-            return suspended || tagged || weak || browserQuery;
-        }
-
-        private List<String> ruleTypes(RecordsSyncModels.Card card) {
-            List<String> rules = new ArrayList<>();
-            if (active && !card.suspended) {
-                rules.add(RecordsBase.SOURCE_ACTIVE);
-            }
-            if (suspended) {
-                rules.add(RecordsBase.SOURCE_SUSPENDED);
-            }
-            if (tagged) {
-                rules.add(RecordsBase.SOURCE_TAGGED);
-            }
-            if (weak) {
-                rules.add(RecordsBase.SOURCE_WEAK);
-            }
-            if (browserQuery) {
-                rules.add(RecordsBase.SOURCE_BROWSER_QUERY);
-            }
-            return rules;
-        }
     }
 }
