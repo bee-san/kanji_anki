@@ -28,6 +28,7 @@ import androidx.core.view.WindowInsetsCompat;
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
+import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
@@ -591,13 +592,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     String adaptiveFocusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        if (plan == null || plan.target <= 0) {
-            return "Adaptive focus is waiting for sync";
-        }
-        if (plan.allKanjiMode) {
-            return "Adaptive focus is set to all current problem kanji";
-        }
-        return "Today's adaptive focus: " + plan.remaining + " items left / " + plan.target;
+        return AdaptiveFocusCopy.adaptiveFocusText(plan);
     }
 
     String guideLabel(int level, StrokeGuide guide) {
