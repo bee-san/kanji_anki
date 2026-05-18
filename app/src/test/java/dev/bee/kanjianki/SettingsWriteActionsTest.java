@@ -149,6 +149,30 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void saveWorkloadPreservesPartialWriteRequests() {
+        RecordingWorkloadWriter maxOnly = new RecordingWorkloadWriter();
+        RecordingWorkloadWriter manualOnly = new RecordingWorkloadWriter();
+        RecordingWorkloadWriter autoOnly = new RecordingWorkloadWriter();
+
+        SettingsWriteActions.saveWorkload(WorkloadSettingsPolicy.saveMaximum(99), maxOnly);
+        SettingsWriteActions.saveWorkload(WorkloadSettingsPolicy.enableManualMode(), manualOnly);
+        SettingsWriteActions.saveWorkload(WorkloadSettingsPolicy.enableAutomaticMode(), autoOnly);
+
+        assertEquals(0, maxOnly.modeWrites);
+        assertEquals(0, maxOnly.workloadWrites);
+        assertEquals(1, maxOnly.maxWrites);
+        assertEquals(AdaptiveLoadPlanner.MAX_MAX_ITEMS, maxOnly.maxItems);
+        assertEquals(1, manualOnly.modeWrites);
+        assertEquals(0, manualOnly.workloadWrites);
+        assertEquals(0, manualOnly.maxWrites);
+        assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, manualOnly.mode);
+        assertEquals(1, autoOnly.modeWrites);
+        assertEquals(0, autoOnly.workloadWrites);
+        assertEquals(0, autoOnly.maxWrites);
+        assertEquals(AdaptiveLoadPlanner.MODE_AUTO, autoOnly.mode);
+    }
+
+    @Test
     public void saveStudyAheadWritesValidMinutesOnly() {
         RecordingStudyAheadWriter writer = new RecordingStudyAheadWriter();
 
@@ -318,20 +342,26 @@ public final class SettingsWriteActionsTest {
         String mode;
         int workloadPercent;
         int maxItems;
+        int modeWrites;
+        int workloadWrites;
+        int maxWrites;
 
         @Override
         public void saveAdaptiveLoadMode(String mode) {
             this.mode = mode;
+            modeWrites++;
         }
 
         @Override
         public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
             this.workloadPercent = workloadPercent;
+            workloadWrites++;
         }
 
         @Override
         public void saveAdaptiveLoadMaxItems(int maxItems) {
             this.maxItems = maxItems;
+            maxWrites++;
         }
     }
 

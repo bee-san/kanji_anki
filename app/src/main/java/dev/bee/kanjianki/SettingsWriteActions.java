@@ -60,9 +60,15 @@ final class SettingsWriteActions {
     }
 
     static void saveWorkload(WorkloadSettingsPolicy.SaveRequest request, WorkloadSettingsWriter writer) {
-        writer.saveAdaptiveLoadMode(request.mode);
-        writer.saveAdaptiveLoadWorkPercent(request.workloadPercent);
-        writer.saveAdaptiveLoadMaxItems(request.maxItems);
+        if (request.mode != null) {
+            writer.saveAdaptiveLoadMode(request.mode);
+        }
+        if (request.workloadPercent != null) {
+            writer.saveAdaptiveLoadWorkPercent(request.workloadPercent);
+        }
+        if (request.maxItems != null) {
+            writer.saveAdaptiveLoadMaxItems(request.maxItems);
+        }
     }
 
     static void saveStudyAhead(StudyAheadSettingsPolicy.SaveResult request, StudyAheadSettingsWriter writer) {
