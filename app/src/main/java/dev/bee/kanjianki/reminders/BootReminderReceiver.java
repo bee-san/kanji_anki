@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
+import dev.bee.kanjianki.core.ReminderReceiverPolicy;
 import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 
@@ -47,10 +48,7 @@ public final class BootReminderReceiver extends BroadcastReceiver {
     }
 
     static boolean shouldReschedule(String action) {
-        return Intent.ACTION_BOOT_COMPLETED.equals(action)
-                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)
-                || Intent.ACTION_TIME_CHANGED.equals(action)
-                || Intent.ACTION_TIMEZONE_CHANGED.equals(action);
+        return ReminderReceiverPolicy.shouldReschedule(action);
     }
 
     interface ActionReader<T> {

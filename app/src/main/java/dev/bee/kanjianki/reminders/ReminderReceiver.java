@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import dev.bee.kanjianki.core.ReminderReceiverPolicy;
 import dev.bee.kanjianki.data.LocalStore;
 
 public final class ReminderReceiver extends BroadcastReceiver {
@@ -14,17 +15,21 @@ public final class ReminderReceiver extends BroadcastReceiver {
     }
 
     static void handle(String action, ReceiverActions actions) {
-        if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-            actions.scheduleFromStoredSettings();
-            return;
-        }
-        if (ReminderScheduler.ACTION_DAILY_REMINDER.equals(action)) {
-            actions.handleDailyReminder();
+        switch (ReminderReceiverPolicy.commandFor(action, ReminderScheduler.ACTION_DAILY_REMINDER)) {
+            case SCHEDULE_FROM_STORED_SETTINGS:
+                actions.scheduleFromStoredSettings();
+                return;
+            case HANDLE_DAILY_REMINDER:
+                actions.handleDailyReminder();
+                return;
+            case NONE:
+            default:
+                return;
         }
     }
 
     static void handleDailyReminder(LocalStore.ReminderSettings settings, DailyReminderActions actions) {
-        if (!settings.enabled) {
+        if (!ReminderReceiverPolicy.shouldHandleDailyReminder(settings.enabled)) {
             return;
         }
         actions.showReminderNotification();
