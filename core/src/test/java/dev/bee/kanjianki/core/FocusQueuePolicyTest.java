@@ -70,6 +70,15 @@ public final class FocusQueuePolicyTest {
         assertEquals(Collections.emptyList(), entries);
     }
 
+    @Test
+    public void stateRankOrdersLearningReviewNewThenUnknownStates() {
+        assertEquals(0, FocusQueuePolicy.stateRank(StudyLadderRules.STATE_LEARNING));
+        assertEquals(1, FocusQueuePolicy.stateRank(StudyLadderRules.STATE_REVIEW));
+        assertEquals(2, FocusQueuePolicy.stateRank(StudyLadderRules.STATE_NEW));
+        assertEquals(3, FocusQueuePolicy.stateRank(StudyLadderRules.STATE_RETIRED));
+        assertEquals(3, FocusQueuePolicy.stateRank(""));
+    }
+
     private static List<String> kanji(List<FocusQueuePolicy.QueueEntry> entries) {
         java.util.ArrayList<String> out = new java.util.ArrayList<>();
         for (FocusQueuePolicy.QueueEntry entry : entries) {

@@ -1015,10 +1015,6 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("1 hr 1 min", activity.formatStudyTime(3_660_000L));
         assertEquals("0.38", activity.formatWeakness(0.375));
 
-        assertEquals(0, activity.stateRank("learning"));
-        assertEquals(1, activity.stateRank("review"));
-        assertEquals(2, activity.stateRank("new"));
-        assertEquals(3, activity.stateRank("retired"));
         assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
         assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
         assertNotEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L));

@@ -631,10 +631,6 @@ abstract class MainActivityHome extends MainActivityBase {
         return entries;
     }
 
-    int stateRank(String state) {
-        return FocusQueuePolicy.stateRank(state);
-    }
-
     int rowColor(RecordsStudyModels.StudyItem item, long now) {
         if (item.dueAtMillis <= now) {
             return CORAL;
