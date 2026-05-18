@@ -78,6 +78,7 @@ public final class NoteTypeFieldMappingsTest {
 
         assertEquals(" (0 fields)", NoteTypeFieldMappings.label(blank));
         assertArrayEquals(new String[]{" (0 fields)"}, NoteTypeFieldMappings.labels(Collections.singletonList(blank)));
+        assertArrayEquals(new String[]{" (0 fields)"}, NoteTypeFieldMappings.labels(Collections.singletonList(null)));
     }
 
     @Test

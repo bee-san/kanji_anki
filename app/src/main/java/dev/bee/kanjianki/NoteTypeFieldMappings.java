@@ -82,7 +82,7 @@ final class NoteTypeFieldMappings {
     static String[] labels(List<Choice> noteTypes) {
         List<NoteTypeFieldMappingPolicy.NoteTypeChoice> choices = new ArrayList<>();
         for (Choice noteType : noteTypes == null ? Collections.<Choice>emptyList() : noteTypes) {
-            choices.add(noteType.coreChoice);
+            choices.add(noteType == null ? null : noteType.coreChoice);
         }
         return NoteTypeFieldMappingPolicy.labels(choices);
     }
