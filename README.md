@@ -36,6 +36,8 @@ Here are some flashcard types you may see:
 - Word -> Reading , we take the word(s) with the Kanji you frequently fail in Ankidroid and show you them again so you can learn it this time
 - Similar Kanji. If you fail say 5 words and 2 Kanji are identified as problematic, Kani will be able to tell if its because they are similar to one another and we will help teach you how to tell them apart.
 
+You can disable / enable / move them up and down the ladder however you want.
+
 Not another SRS app. Kani uses the Pareto principe to identify kanji actually worth doing that day.
 You know when you're doing Anki and it shows you 私 and you're just like... what was the point of that?
 
@@ -43,45 +45,11 @@ Kani will pick up (by default) up to 5 Kanji that are the absolute best bang for
 
 No more wasting time. I want you to spend as little time in this app as possible to spend more time immersing.
 
-## Install
-
-1. Install AnkiDroid.
-2. Download the latest `kani-android-X.Y.Z.apk` from
-   [GitHub Releases](https://github.com/bee-san/kanji_anki/releases).
-3. Open the APK on your Android device and allow installs from that source.
-4. Open Kani, grant the AnkiDroid provider permission, then tap
-   `Sync AnkiDroid`.
-
-Kani is sideloaded; it is not distributed through the Play Store.
-
-## Screenshots
-
-These screenshots were captured from the Android emulator used by the test
-suite.
-
-<p>
-  <img alt="Kani home screen showing active kanji repair queue" src="docs/screenshots/home.png" width="260">
-  <img alt="Kani kanji detail screen showing recovery timeline" src="docs/screenshots/timeline.png" width="260">
-  <img alt="Kani study repair screen with stroke guide and writing pad" src="docs/screenshots/study-repair.png" width="260">
-</p>
-
-## What It Does
-
-- Syncs `Kiku` notes and cards through AnkiDroid's flashcard provider.
-- Archives suspended trouble cards locally and tags archived notes in AnkiDroid
-  when the provider allows it.
-- Builds a weak-kanji queue from real active and suspended examples.
-- Shows a per-kanji recovery timeline: first import, support changes, reviews,
-  retirements, and reopened repairs.
-- Runs a small bridge SRS for focused recall and writing repair.
-- Uses bundled SQLite dictionary, Jiten rank data, and stroke-order guides offline.
-- Schedules one local background sync per day after the first successful manual
-  sync.
-- Checks GitHub Releases and can install a verified APK update with Android
-  confirmation.
-
-The runtime is Android-first. There is no Python server, fixture runtime, or
-polling loop.
+Random features I like:
+* Frequency based retention. Set 95% retention rate for Kanji with frequency of 1000 or more, and 80% for 1000 - 2000 and so on.
+* Fun games to play to memorise your problematic Kanji while on the train etc
+* Complete control over what is defined as a problematic kanji. You decide how you want to import problematic Kanji!
+* Stats - If Kani is not working for you... it will literally tell you "Kani is not working for you."
 
 ## Product Contract
 
