@@ -1,5 +1,8 @@
 package dev.bee.kanjianki.core;
 
+import java.util.Locale;
+import java.util.Objects;
+
 public final class HomeTextCopy {
     private HomeTextCopy() {
     }
@@ -121,5 +124,25 @@ public final class HomeTextCopy {
 
     public static String noActiveEvidenceText() {
         return "No active Anki evidence in the latest local sync.";
+    }
+
+    public static String exampleSourceLabel(RecordsImportModels.Example example) {
+        return Objects.requireNonNull(example, "example").sourceType.toUpperCase(Locale.ROOT);
+    }
+
+    public static String exampleExpressionLine(RecordsImportModels.Example example) {
+        RecordsImportModels.Example safeExample = Objects.requireNonNull(example, "example");
+        if (safeExample.reading.isEmpty()) {
+            return safeExample.expression;
+        }
+        return safeExample.expression + "  " + safeExample.reading;
+    }
+
+    public static String exampleMeaningLine(RecordsImportModels.Example example) {
+        RecordsImportModels.Example safeExample = Objects.requireNonNull(example, "example");
+        if (safeExample.meaning.isEmpty()) {
+            return "";
+        }
+        return StudyTextCopy.cleanLearnerText(safeExample.meaning, safeExample.meaning, 120);
     }
 }

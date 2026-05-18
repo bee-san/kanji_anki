@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public final class HomeTextCopyTest {
     @Test
@@ -94,6 +95,22 @@ public final class HomeTextCopyTest {
         assertEquals("No active Anki evidence in the latest local sync.", HomeTextCopy.noActiveEvidenceText());
     }
 
+    @Test
+    public void exampleCopyPreservesSourceExpressionAndMeaningCleanup() {
+        RecordsImportModels.Example active = example("active", "活動語", "カツドウゴ", "(suru verb) action");
+        RecordsImportModels.Example noReading = example("suspended", "停止語", "", "");
+
+        assertEquals("ACTIVE", HomeTextCopy.exampleSourceLabel(active));
+        assertEquals("SUSPENDED", HomeTextCopy.exampleSourceLabel(noReading));
+        assertEquals("活動語  カツドウゴ", HomeTextCopy.exampleExpressionLine(active));
+        assertEquals("停止語", HomeTextCopy.exampleExpressionLine(noReading));
+        assertEquals("Action", HomeTextCopy.exampleMeaningLine(active));
+        assertEquals("", HomeTextCopy.exampleMeaningLine(noReading));
+        assertThrows(NullPointerException.class, () -> HomeTextCopy.exampleSourceLabel(null));
+        assertThrows(NullPointerException.class, () -> HomeTextCopy.exampleExpressionLine(null));
+        assertThrows(NullPointerException.class, () -> HomeTextCopy.exampleMeaningLine(null));
+    }
+
     private static RecordsImportModels.KanjiInventoryItem inventory(String kanji, String meaning, String browserSearch) {
         return new RecordsImportModels.KanjiInventoryItem(kanji, meaning, "reading", browserSearch, 2, 3, false, 1000L);
     }
@@ -112,6 +129,30 @@ public final class HomeTextCopyTest {
                 0,
                 1,
                 Collections.emptyList()
+        );
+    }
+
+    private static RecordsImportModels.Example example(
+            String sourceType,
+            String expression,
+            String reading,
+            String meaning
+    ) {
+        return new RecordsImportModels.Example(
+                sourceType,
+                1L,
+                2L,
+                expression,
+                reading,
+                meaning,
+                "sentence",
+                false,
+                0,
+                0,
+                0,
+                null,
+                null,
+                null
         );
     }
 }

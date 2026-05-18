@@ -87,7 +87,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -980,13 +979,14 @@ abstract class MainActivityHome extends MainActivityBase {
     View exampleView(RecordsImportModels.Example example) {
         int color = SOURCE_SUSPENDED.equals(example.sourceType) ? CORAL : TEAL;
         LinearLayout box = panelBox(Color.WHITE, color);
-        box.addView(chip(example.sourceType.toUpperCase(Locale.ROOT), color));
-        box.addView(text(example.expression + (example.reading.isEmpty() ? "" : "  " + example.reading), 22, INK, true));
+        box.addView(chip(HomeTextCopy.exampleSourceLabel(example), color));
+        box.addView(text(HomeTextCopy.exampleExpressionLine(example), 22, INK, true));
         if (!example.sentence.isEmpty()) {
             box.addView(text(example.sentence, 16, MUTED, false));
         }
-        if (!example.meaning.isEmpty()) {
-            box.addView(text(cleanLearnerText(example.meaning, example.meaning, 120), 15, MUTED, false));
+        String meaning = HomeTextCopy.exampleMeaningLine(example);
+        if (!meaning.isEmpty()) {
+            box.addView(text(meaning, 15, MUTED, false));
         }
         return box;
     }
