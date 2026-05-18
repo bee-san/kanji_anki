@@ -493,16 +493,16 @@ abstract class MainActivityHome extends MainActivityBase {
     void confirmSync() {
         RecordsSyncModels.Settings current = settings();
         new AlertDialog.Builder(this)
-                .setTitle("Sync AnkiDroid?")
-                .setMessage("Kani imports suspended " + current.modelName + " cards by default, keeps them safe locally, and only uses active cards when that import filter is enabled.")
-                .setPositiveButton("Sync cards", (dialog, which) -> runSync())
-                .setNegativeButton("Cancel", null)
+                .setTitle(HomeTextCopy.syncDialogTitle())
+                .setMessage(HomeTextCopy.syncDialogMessage(current))
+                .setPositiveButton(HomeTextCopy.syncDialogPositiveLabel(), (dialog, which) -> runSync())
+                .setNegativeButton(HomeTextCopy.cancelLabel(), null)
                 .show();
     }
 
     void runSync() {
         base("home");
-        content.addView(text("Syncing AnkiDroid", 34, INK, true));
+        content.addView(text(HomeTextCopy.syncingTitle(), 34, INK, true));
         SyncProgressPanel progressView = new SyncProgressPanel(this);
         content.addView(progressView);
         CollectionGateway syncGateway = collectionGatewayForTests == null ? gateway : collectionGatewayForTests;
@@ -534,23 +534,23 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void renderSkippedSyncResult(ManualSyncEngine.SyncResult result) {
-        content.addView(text("Sync already running", 34, INK, true));
+        content.addView(text(HomeTextCopy.syncAlreadyRunningTitle(), 34, INK, true));
         LinearLayout info = band(BLUE);
-        info.addView(text(nonEmptyOr(result.message, "Kani is already reading AnkiDroid."), 17, Color.WHITE, false));
+        info.addView(text(nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback()), 17, Color.WHITE, false));
         content.addView(info);
         addBackHomeButton();
     }
 
     void renderSuccessfulSyncResult(ManualSyncEngine.SyncResult result) {
-        content.addView(text("Sync complete", 34, INK, true));
+        content.addView(text(HomeTextCopy.syncCompleteTitle(), 34, INK, true));
         LinearLayout summary = band(TEAL);
         long now = System.currentTimeMillis();
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         List<RecordsStudyModels.StudyItem> items = store.studyItems();
         RecordsSchedulerModels.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
         List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
-        summary.addView(text(countText(entries.size(), "kanji ready to study", "kanji ready to study"), 24, Color.WHITE, true));
-        summary.addView(text(countText(result.dashboardRows, "candidate found from Anki", "candidates found from Anki") + ". " + adaptiveFocusText(plan) + ".", 16, Color.WHITE, false));
+        summary.addView(text(HomeTextCopy.syncReadyCountText(entries.size()), 24, Color.WHITE, true));
+        summary.addView(text(HomeTextCopy.syncCandidateSummary(result.dashboardRows, adaptiveFocusText(plan)), 16, Color.WHITE, false));
         addOptionalSyncSummaryLines(summary, result);
         content.addView(summary);
         if (result.dashboardRows > 0) {
@@ -566,7 +566,7 @@ abstract class MainActivityHome extends MainActivityBase {
             summary.addView(text(result.adaptiveSummary, 15, Color.WHITE, false));
         }
         if (result.importedSuspendedKanji > 0) {
-            summary.addView(text(countText(result.importedSuspendedKanji, "new archived suspended kanji added", "new archived suspended kanji added"), 15, Color.WHITE, false));
+            summary.addView(text(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, Color.WHITE, false));
         }
         if (result.message != null && !result.message.isEmpty()) {
             summary.addView(text(result.message, 14, Color.WHITE, false));
@@ -574,12 +574,12 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void renderFailedSyncResult(ManualSyncEngine.SyncResult result) {
-        content.addView(text("Sync needs attention", 34, INK, true));
+        content.addView(text(HomeTextCopy.syncNeedsAttentionTitle(), 34, INK, true));
         LinearLayout error = band(CORAL);
-        error.addView(text("Could not read AnkiDroid", 24, Color.WHITE, true));
-        error.addView(text(nonEmptyOr(result.message, "Try again after checking AnkiDroid permissions."), 16, Color.WHITE, false));
+        error.addView(text(HomeTextCopy.syncReadErrorTitle(), 24, Color.WHITE, true));
+        error.addView(text(nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback()), 16, Color.WHITE, false));
         content.addView(error);
-        Button retry = primaryButton("Try sync again", TEAL);
+        Button retry = primaryButton(HomeTextCopy.trySyncAgainLabel(), TEAL);
         retry.setOnClickListener(v -> confirmSync());
         content.addView(retry);
         addBackHomeButton();

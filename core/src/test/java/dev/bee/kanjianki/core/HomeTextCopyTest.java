@@ -96,6 +96,54 @@ public final class HomeTextCopyTest {
     }
 
     @Test
+    public void syncCopyPreservesDialogResultAndFallbackText() {
+        RecordsSyncModels.Settings settings = new RecordsSyncModels.Settings(
+                "Basic",
+                "kanji",
+                "meaning",
+                "reading",
+                "deck",
+                "",
+                "",
+                "",
+                2,
+                1,
+                1000,
+                20,
+                5
+        );
+
+        assertEquals("Sync AnkiDroid?", HomeTextCopy.syncDialogTitle());
+        assertEquals(
+                "Kani imports suspended Basic cards by default, keeps them safe locally, and only uses active cards when that import filter is enabled.",
+                HomeTextCopy.syncDialogMessage(settings)
+        );
+        assertEquals("Sync cards", HomeTextCopy.syncDialogPositiveLabel());
+        assertEquals("Cancel", HomeTextCopy.cancelLabel());
+        assertEquals("Syncing AnkiDroid", HomeTextCopy.syncingTitle());
+        assertEquals("Sync already running", HomeTextCopy.syncAlreadyRunningTitle());
+        assertEquals("Kani is already reading AnkiDroid.", HomeTextCopy.syncAlreadyRunningFallback());
+        assertEquals("Sync complete", HomeTextCopy.syncCompleteTitle());
+        assertEquals("1 kanji ready to study", HomeTextCopy.syncReadyCountText(1));
+        assertEquals("3 kanji ready to study", HomeTextCopy.syncReadyCountText(3));
+        assertEquals(
+                "1 candidate found from Anki. Auto Pareto: 1 item today.",
+                HomeTextCopy.syncCandidateSummary(1, "Auto Pareto: 1 item today")
+        );
+        assertEquals(
+                "2 candidates found from Anki. Auto Pareto: 2 items today.",
+                HomeTextCopy.syncCandidateSummary(2, "Auto Pareto: 2 items today")
+        );
+        assertEquals("1 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(1));
+        assertEquals("4 new archived suspended kanji added", HomeTextCopy.importedSuspendedKanjiText(4));
+        assertEquals("Sync needs attention", HomeTextCopy.syncNeedsAttentionTitle());
+        assertEquals("Could not read AnkiDroid", HomeTextCopy.syncReadErrorTitle());
+        assertEquals("Try again after checking AnkiDroid permissions.", HomeTextCopy.syncFailureFallback());
+        assertEquals("Try sync again", HomeTextCopy.trySyncAgainLabel());
+        assertThrows(NullPointerException.class, () -> HomeTextCopy.syncDialogMessage(null));
+    }
+
+    @Test
     public void browseResultHeadingPreservesBrowseCopy() {
         assertEquals("No matches", HomeTextCopy.browseResultHeading(0));
         assertEquals("No matches", HomeTextCopy.browseResultHeading(-1));

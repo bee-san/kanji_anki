@@ -153,6 +153,71 @@ public final class HomeTextCopy {
         return "Missed and hard reviews will show here after you study.";
     }
 
+    public static String syncDialogTitle() {
+        return "Sync AnkiDroid?";
+    }
+
+    public static String syncDialogMessage(RecordsSyncModels.Settings settings) {
+        RecordsSyncModels.Settings safeSettings = Objects.requireNonNull(settings, "settings");
+        return "Kani imports suspended " + safeSettings.modelName
+                + " cards by default, keeps them safe locally, and only uses active cards when that import filter is enabled.";
+    }
+
+    public static String syncDialogPositiveLabel() {
+        return "Sync cards";
+    }
+
+    public static String cancelLabel() {
+        return "Cancel";
+    }
+
+    public static String syncingTitle() {
+        return "Syncing AnkiDroid";
+    }
+
+    public static String syncAlreadyRunningTitle() {
+        return "Sync already running";
+    }
+
+    public static String syncAlreadyRunningFallback() {
+        return "Kani is already reading AnkiDroid.";
+    }
+
+    public static String syncCompleteTitle() {
+        return "Sync complete";
+    }
+
+    public static String syncReadyCountText(int count) {
+        return StudyTextCopy.countText(count, "kanji ready to study", "kanji ready to study");
+    }
+
+    public static String syncCandidateSummary(int dashboardRows, String adaptiveFocusText) {
+        return StudyTextCopy.countText(dashboardRows, "candidate found from Anki", "candidates found from Anki")
+                + ". "
+                + String.valueOf(adaptiveFocusText)
+                + ".";
+    }
+
+    public static String importedSuspendedKanjiText(int count) {
+        return StudyTextCopy.countText(count, "new archived suspended kanji added", "new archived suspended kanji added");
+    }
+
+    public static String syncNeedsAttentionTitle() {
+        return "Sync needs attention";
+    }
+
+    public static String syncReadErrorTitle() {
+        return "Could not read AnkiDroid";
+    }
+
+    public static String syncFailureFallback() {
+        return "Try again after checking AnkiDroid permissions.";
+    }
+
+    public static String trySyncAgainLabel() {
+        return "Try sync again";
+    }
+
     public static String browseResultHeading(int size) {
         if (size <= 0) {
             return "No matches";
