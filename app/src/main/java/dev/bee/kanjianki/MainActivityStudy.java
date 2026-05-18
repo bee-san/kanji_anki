@@ -55,10 +55,11 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
+import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.StudySessionFocusPolicy;
+import dev.bee.kanjianki.core.StudySessionRoute;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
-import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -449,14 +450,20 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {
-        if (session.writingRequired) {
-            renderWritingSession(session);
-        } else if (BridgeScheduler.TASK_SIMILAR_KANJI.equals(session.taskType)) {
-            renderSimilarKanjiSession(session);
-        } else if (BridgeScheduler.TASK_MEANING_KANJI.equals(session.taskType)) {
-            renderMeaningKanjiSession(session);
-        } else {
-            renderFlashcardSession(session);
+        switch (StudySessionRoute.destination(session)) {
+            case WRITING:
+                renderWritingSession(session);
+                break;
+            case SIMILAR_KANJI:
+                renderSimilarKanjiSession(session);
+                break;
+            case MEANING_KANJI:
+                renderMeaningKanjiSession(session);
+                break;
+            case FLASHCARD:
+            default:
+                renderFlashcardSession(session);
+                break;
         }
     }
 
