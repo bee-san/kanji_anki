@@ -1,8 +1,9 @@
 package dev.bee.kanjianki;
 
 import java.text.DateFormat;
-import java.util.Calendar;
 import java.util.Date;
+
+import dev.bee.kanjianki.core.LocalDayPolicy;
 
 final class UiDateText {
     private UiDateText() {
@@ -13,15 +14,13 @@ final class UiDateText {
             return "date unknown";
         }
         Date date = new Date(timestampMillis);
-        Calendar then = Calendar.getInstance();
-        then.setTime(date);
-        Calendar now = Calendar.getInstance();
+        long now = System.currentTimeMillis();
         DateFormat timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT);
-        if (sameLocalDay(then, now)) {
+        if (sameLocalDay(timestampMillis, now)) {
             return "today at " + timeFormat.format(date);
         }
-        now.add(Calendar.DAY_OF_YEAR, -1);
-        if (sameLocalDay(then, now)) {
+        long yesterday = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(now), -1);
+        if (sameLocalDay(timestampMillis, yesterday)) {
             return "yesterday at " + timeFormat.format(date);
         }
         return shortDateTime(timestampMillis);
@@ -51,22 +50,11 @@ final class UiDateText {
     }
 
     static boolean sameLocalDay(long leftMillis, long rightMillis) {
-        Calendar left = Calendar.getInstance();
-        left.setTimeInMillis(leftMillis);
-        Calendar right = Calendar.getInstance();
-        right.setTimeInMillis(rightMillis);
-        return sameLocalDay(left, right);
+        return LocalDayPolicy.sameLocalDay(leftMillis, rightMillis);
     }
 
     static long nextLocalDayStart(long nowMillis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(nowMillis);
-        calendar.add(Calendar.DAY_OF_YEAR, 1);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        return LocalDayPolicy.nextLocalDayStart(nowMillis);
     }
 
     static String shortDateTime(long millis) {
@@ -75,11 +63,5 @@ final class UiDateText {
 
     static String autoUpdateLastCheckText(long lastCheckAtMillis) {
         return lastCheckAtMillis <= 0L ? "not yet" : shortDateTime(lastCheckAtMillis);
-    }
-
-    private static boolean sameLocalDay(Calendar left, Calendar right) {
-        return left.get(Calendar.ERA) == right.get(Calendar.ERA)
-                && left.get(Calendar.YEAR) == right.get(Calendar.YEAR)
-                && left.get(Calendar.DAY_OF_YEAR) == right.get(Calendar.DAY_OF_YEAR);
     }
 }

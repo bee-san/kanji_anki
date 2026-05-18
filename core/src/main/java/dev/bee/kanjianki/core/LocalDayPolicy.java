@@ -21,6 +21,20 @@ public final class LocalDayPolicy {
         return calendar.getTimeInMillis();
     }
 
+    public static long nextLocalDayStart(long millis) {
+        return moveLocalDays(localDayStart(millis), 1);
+    }
+
+    public static boolean sameLocalDay(long leftMillis, long rightMillis) {
+        Calendar left = Calendar.getInstance();
+        left.setTimeInMillis(leftMillis);
+        Calendar right = Calendar.getInstance();
+        right.setTimeInMillis(rightMillis);
+        return left.get(Calendar.ERA) == right.get(Calendar.ERA)
+                && left.get(Calendar.YEAR) == right.get(Calendar.YEAR)
+                && left.get(Calendar.DAY_OF_YEAR) == right.get(Calendar.DAY_OF_YEAR);
+    }
+
     private static void clearTimeOfDay(Calendar calendar) {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
         calendar.set(Calendar.MINUTE, 0);
