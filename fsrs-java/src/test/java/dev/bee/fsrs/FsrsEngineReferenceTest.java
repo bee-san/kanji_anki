@@ -46,6 +46,7 @@ public final class FsrsEngineReferenceTest {
 
         assertEquals(21, FsrsParameters.PARAMETER_COUNT);
         assertArrayEquals(FsrsParameters.latestDefaultValues(), values, 0.0);
+        assertArrayEquals(FsrsParameters.latestDefaultValues(), FsrsParameters.LATEST_DEFAULT_VALUES, 0.0);
         assertEquals(0.212, defaults.get(0), 0.0);
         assertEquals(0.1542, defaults.decayMagnitude(), 0.0);
         assertEquals(-0.1542, defaults.decay(), 0.0);
