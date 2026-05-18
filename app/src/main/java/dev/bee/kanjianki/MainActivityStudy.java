@@ -53,6 +53,7 @@ import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
+import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -125,38 +126,15 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     RecordsImportModels.Example firstExample(RecordsImportModels.DashboardRow row) {
-        if (row == null || row.examples.isEmpty()) {
-            return null;
-        }
-        for (RecordsImportModels.Example example : row.examples) {
-            if (SOURCE_ACTIVE.equals(example.sourceType)) {
-                return example;
-            }
-        }
-        return row.examples.get(0);
+        return StudyExampleSelector.firstExample(row);
     }
 
     RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row) {
-        if (row == null || row.examples.isEmpty()) {
-            return null;
-        }
-        RecordsImportModels.Example active = null;
-        for (RecordsImportModels.Example example : row.examples) {
-            if (SOURCE_SUSPENDED.equals(example.sourceType)) {
-                return example;
-            }
-            if (active == null && SOURCE_ACTIVE.equals(example.sourceType)) {
-                active = example;
-            }
-        }
-        return active == null ? row.examples.get(0) : active;
+        return StudyExampleSelector.wordReadingExample(row);
     }
 
     RecordsImportModels.Example exampleForSession(RecordsSchedulerModels.StudySession session) {
-        if (isWordReadingTask(session)) {
-            return wordReadingExample(session.row);
-        }
-        return firstExample(session == null ? null : session.row);
+        return StudyExampleSelector.exampleForSession(session);
     }
 
     void renderStudy() {
