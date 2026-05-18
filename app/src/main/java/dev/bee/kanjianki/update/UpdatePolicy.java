@@ -52,7 +52,7 @@ final class UpdatePolicy {
 
     static InstallCallback mapInstallStatus(int status, String message) {
         PackageInstallStatusPolicy.InstallCallback mapped = PackageInstallStatusPolicy.mapInstallStatus(status, message);
-        return new InstallCallback(mapped.pendingUserAction, mapped.success, mapped.message);
+        return new InstallCallback(mapped.pendingUserAction(), mapped.success(), mapped.message());
     }
 
     static boolean shouldLaunchInstallConfirmation(GitHubUpdater.UpdateSource source) {
@@ -60,7 +60,7 @@ final class UpdatePolicy {
     }
 
     private static ValidationResult validationResult(UpdateArtifactValidator.ValidationResult result) {
-        return result.ok ? ValidationResult.success(result.message) : ValidationResult.failure(result.message);
+        return result.ok() ? ValidationResult.success(result.message()) : ValidationResult.failure(result.message());
     }
 
     static final class AssetSelection {

@@ -14,9 +14,9 @@ public class PackageInstallStatusPolicyTest {
                 "ignored"
         );
 
-        assertFalse(mapped.pendingUserAction);
-        assertTrue(mapped.success);
-        assertEquals("Install finished.", mapped.message);
+        assertFalse(mapped.pendingUserAction());
+        assertTrue(mapped.success());
+        assertEquals("Install finished.", mapped.message());
     }
 
     @Test
@@ -26,9 +26,9 @@ public class PackageInstallStatusPolicyTest {
                 "ignored"
         );
 
-        assertTrue(mapped.pendingUserAction);
-        assertFalse(mapped.success);
-        assertEquals("Android needs confirmation to finish installing.", mapped.message);
+        assertTrue(mapped.pendingUserAction());
+        assertFalse(mapped.success());
+        assertEquals("Android needs confirmation to finish installing.", mapped.message());
     }
 
     @Test
@@ -38,9 +38,9 @@ public class PackageInstallStatusPolicyTest {
                 "  blocked by policy  "
         );
 
-        assertFalse(mapped.pendingUserAction);
-        assertFalse(mapped.success);
-        assertEquals("Install failed: blocked by policy.", mapped.message);
+        assertFalse(mapped.pendingUserAction());
+        assertFalse(mapped.success());
+        assertEquals("Install failed: blocked by policy.", mapped.message());
     }
 
     @Test
@@ -48,7 +48,7 @@ public class PackageInstallStatusPolicyTest {
         PackageInstallStatusPolicy.InstallCallback nullMessage = PackageInstallStatusPolicy.mapInstallStatus(12, null);
         PackageInstallStatusPolicy.InstallCallback blankMessage = PackageInstallStatusPolicy.mapInstallStatus(13, "  ");
 
-        assertEquals("Install failed.", nullMessage.message);
-        assertEquals("Install failed.", blankMessage.message);
+        assertEquals("Install failed.", nullMessage.message());
+        assertEquals("Install failed.", blankMessage.message());
     }
 }

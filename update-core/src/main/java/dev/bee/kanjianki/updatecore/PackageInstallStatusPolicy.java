@@ -19,14 +19,26 @@ public final class PackageInstallStatusPolicy {
     }
 
     public static final class InstallCallback {
-        public final boolean pendingUserAction;
-        public final boolean success;
-        public final String message;
+        private final boolean pendingUserAction;
+        private final boolean success;
+        private final String message;
 
         private InstallCallback(boolean pendingUserAction, boolean success, String message) {
             this.pendingUserAction = pendingUserAction;
             this.success = success;
             this.message = message;
+        }
+
+        public boolean pendingUserAction() {
+            return pendingUserAction;
+        }
+
+        public boolean success() {
+            return success;
+        }
+
+        public String message() {
+            return message;
         }
     }
 }

@@ -14,16 +14,16 @@ public class UpdateArtifactValidatorTest {
     public void checksumValidationRejectsInvalidExpectedDigestBeforeComparingActual() {
         UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateChecksum("not a sha", DIGEST_A);
 
-        assertFalse(result.ok);
-        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message);
+        assertFalse(result.ok());
+        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message());
     }
 
     @Test
     public void checksumValidationRejectsMissingActualDigest() {
         UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateChecksum(DIGEST_A, null);
 
-        assertFalse(result.ok);
-        assertEquals("Checksum mismatch. Install blocked.", result.message);
+        assertFalse(result.ok());
+        assertEquals("Checksum mismatch. Install blocked.", result.message());
     }
 
     @Test
@@ -33,8 +33,8 @@ public class UpdateArtifactValidatorTest {
                 "\n" + DIGEST_A + "\t"
         );
 
-        assertTrue(result.ok);
-        assertEquals("Checksum verified.", result.message);
+        assertTrue(result.ok());
+        assertEquals("Checksum verified.", result.message());
     }
 
     @Test
@@ -45,8 +45,8 @@ public class UpdateArtifactValidatorTest {
 
         UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateExpectedChecksum(DIGEST_B.toUpperCase());
 
-        assertTrue(result.ok);
-        assertEquals("Checksum digest found.", result.message);
+        assertTrue(result.ok());
+        assertEquals("Checksum digest found.", result.message());
     }
 
     @Test
@@ -67,8 +67,8 @@ public class UpdateArtifactValidatorTest {
                 "0.4.4"
         );
 
-        assertFalse(result.ok);
-        assertEquals("APK package name is dev.bee.other, expected dev.bee.kanjianki.", result.message);
+        assertFalse(result.ok());
+        assertEquals("APK package name is dev.bee.other, expected dev.bee.kanjianki.", result.message());
     }
 
     @Test
@@ -81,8 +81,8 @@ public class UpdateArtifactValidatorTest {
                 "0.4.4"
         );
 
-        assertFalse(result.ok);
-        assertEquals("APK version 0.4.4 is not newer than 0.4.4.", result.message);
+        assertFalse(result.ok());
+        assertEquals("APK version 0.4.4 is not newer than 0.4.4.", result.message());
     }
 
     @Test
@@ -95,8 +95,8 @@ public class UpdateArtifactValidatorTest {
                 "0.4.4"
         );
 
-        assertFalse(result.ok);
-        assertEquals("APK version 0.4.4 does not match release v0.4.5.", result.message);
+        assertFalse(result.ok());
+        assertEquals("APK version 0.4.4 does not match release v0.4.5.", result.message());
     }
 
     @Test
@@ -109,15 +109,15 @@ public class UpdateArtifactValidatorTest {
                 "0.4.4"
         );
 
-        assertTrue(result.ok);
-        assertEquals("APK metadata verified.", result.message);
+        assertTrue(result.ok());
+        assertEquals("APK metadata verified.", result.message());
     }
 
     private static void assertInvalidExpectedChecksum(String expected) {
         UpdateArtifactValidator.ValidationResult result = UpdateArtifactValidator.validateExpectedChecksum(expected);
 
-        assertFalse(result.ok);
-        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message);
+        assertFalse(result.ok());
+        assertEquals("Checksum asset does not contain a SHA-256 digest.", result.message());
     }
 
     private static void assertUnreadableArchiveMetadata(String archivePackageName, String archiveVersion) {
@@ -129,7 +129,7 @@ public class UpdateArtifactValidatorTest {
                 archiveVersion
         );
 
-        assertFalse(result.ok);
-        assertEquals("APK metadata could not be read. Install blocked.", result.message);
+        assertFalse(result.ok());
+        assertEquals("APK metadata could not be read. Install blocked.", result.message());
     }
 }

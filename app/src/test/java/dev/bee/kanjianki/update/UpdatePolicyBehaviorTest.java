@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.update;
 
+import android.content.pm.PackageInstaller;
+
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 
 import java.util.Arrays;
@@ -123,6 +125,12 @@ public final class UpdatePolicyBehaviorTest {
         assertFalse(mapped.pendingUserAction);
         assertTrue(mapped.success);
         assertEquals("Install finished.", mapped.message);
+    }
+
+    @Test
+    public void installerStatusConstantsMatchAndroidPackageInstaller() {
+        assertEquals(PackageInstaller.STATUS_SUCCESS, UpdatePolicy.STATUS_SUCCESS);
+        assertEquals(PackageInstaller.STATUS_PENDING_USER_ACTION, UpdatePolicy.STATUS_PENDING_USER_ACTION);
     }
 
     @Test
