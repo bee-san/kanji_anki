@@ -521,16 +521,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void applyImportPreset(SettingsImportPreset preset) {
-        store.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, boolFlag(preset.activeCards()));
-        store.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, boolFlag(preset.suspendedCards()));
-        store.putIntSetting(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY, boolFlag(preset.taggedCards()));
-        store.putStringSetting(SyncSettings.IMPORT_TAGS_SETTING_KEY, preset.tags());
-        store.putIntSetting(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY, boolFlag(preset.weakCards()));
-        store.putDoubleSetting(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY, preset.weakDifficulty());
-        store.putIntSetting(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY, preset.weakLapses());
-        store.putIntSetting(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY, preset.minMatchingCards());
-        store.putIntSetting(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY, boolFlag(preset.browserQueryCards()));
-        store.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, preset.browserQuery());
+        SettingsWriteActions.applyImportPreset(preset, store::putIntSetting, store::putStringSetting, store::putDoubleSetting);
         Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
         renderSettings();
     }

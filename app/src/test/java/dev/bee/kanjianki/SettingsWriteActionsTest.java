@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -38,5 +39,56 @@ public final class SettingsWriteActionsTest {
         );
 
         assertTrue(settings.isEmpty());
+    }
+
+    @Test
+    public void applyImportPresetWritesEveryImportSetting() {
+        RecordingSettingsWriter writer = new RecordingSettingsWriter();
+        SettingsImportPreset preset = new SettingsImportPreset(
+                "Custom",
+                true,
+                false,
+                true,
+                "kani leech",
+                true,
+                8.5,
+                4,
+                2,
+                true,
+                "deck:Mining"
+        );
+
+        SettingsWriteActions.applyImportPreset(preset, writer);
+
+        assertEquals(10, writer.settings.size());
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY));
+        assertEquals(0, writer.settings.get(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY));
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_TAGGED_CARDS_SETTING_KEY));
+        assertEquals("kani leech", writer.settings.get(SyncSettings.IMPORT_TAGS_SETTING_KEY));
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_WEAK_CARDS_SETTING_KEY));
+        assertEquals(8.5, (Double) writer.settings.get(SyncSettings.IMPORT_WEAK_FSRS_DIFFICULTY_SETTING_KEY), 0.0);
+        assertEquals(4, writer.settings.get(SyncSettings.IMPORT_WEAK_LAPSES_SETTING_KEY));
+        assertEquals(2, writer.settings.get(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY));
+        assertEquals(1, writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY));
+        assertEquals("deck:Mining", writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY));
+    }
+
+    private static final class RecordingSettingsWriter implements SettingsWriteActions.SettingWriter {
+        final Map<String, Object> settings = new LinkedHashMap<>();
+
+        @Override
+        public void putIntSetting(String key, int value) {
+            settings.put(key, value);
+        }
+
+        @Override
+        public void putStringSetting(String key, String value) {
+            settings.put(key, value);
+        }
+
+        @Override
+        public void putDoubleSetting(String key, double value) {
+            settings.put(key, value);
+        }
     }
 }
