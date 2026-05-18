@@ -1292,10 +1292,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         RecordsSchedulerModels.SchedulerParameters current = store.schedulerParameters();
         final int[] selected = new int[]{retentionPercent(current.targetRetention)};
         LinearLayout box = settingsPanelBox();
-        box.addView(text("FSRS retention", 23, INK, true));
+        box.addView(text(SettingsTextCopy.fsrsRetentionTitle(), 23, INK, true));
         TextView status = text(retentionStatusText(selected[0]), 17, TEAL, true);
         box.addView(status);
-        box.addView(text("Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.fsrsRetentionBody(), 15, MUTED, false));
 
         SeekBar slider = new SeekBar(this);
         slider.setMax(17);
@@ -1332,17 +1332,17 @@ abstract class MainActivitySettings extends MainActivityStudy {
         }
         box.addView(quick);
 
-        CheckBox rankRetentionEnabled = importFilterCheckBox("Use Jiten-rank retention ranges", current.frequencyRetentionEnabled);
+        CheckBox rankRetentionEnabled = importFilterCheckBox(SettingsTextCopy.useJitenRankRetentionRangesLabel(), current.frequencyRetentionEnabled);
         box.addView(rankRetentionEnabled);
-        box.addView(text("Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.jitenRankRetentionRangesBody(), 15, MUTED, false));
         EditText rankRanges = rankRetentionRangesInput(current.frequencyRetentionRanges);
         box.addView(rankRanges, new LinearLayout.LayoutParams(-1, dp(132)));
 
-        Button exampleRanges = secondaryButton("Use example ranges");
+        Button exampleRanges = secondaryButton(SettingsTextCopy.useExampleRangesLabel());
         exampleRanges.setOnClickListener(v -> rankRanges.setText(FrequencyRetentionRanges.exampleText()));
         box.addView(exampleRanges);
 
-        Button save = primaryButton("Save retention", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveRetentionLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             RetentionSettingsPolicy.SaveResult request = RetentionSettingsPolicy.saveRequest(
                     selected[0],

@@ -259,6 +259,18 @@ public final class SettingsTextCopyTest {
 
         assertEquals("Jiten ranks 1-20000", SettingsTextCopy.frequencyRangeStatusText(1, 20000));
         assertEquals("Desired retention: 95%", SettingsTextCopy.retentionStatusText(95));
+        assertEquals("FSRS retention", SettingsTextCopy.fsrsRetentionTitle());
+        assertEquals(
+                "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.",
+                SettingsTextCopy.fsrsRetentionBody()
+        );
+        assertEquals("Use Jiten-rank retention ranges", SettingsTextCopy.useJitenRankRetentionRangesLabel());
+        assertEquals(
+                "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.",
+                SettingsTextCopy.jitenRankRetentionRangesBody()
+        );
+        assertEquals("Use example ranges", SettingsTextCopy.useExampleRangesLabel());
+        assertEquals("Save retention", SettingsTextCopy.saveRetentionLabel());
         assertEquals("Write kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.WRITE_KANJI));
         assertEquals("Similar kanji", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.SIMILAR_KANJI));
         assertEquals("Type the meaning", SettingsTextCopy.settingsLadderRungLabel(RecordsBase.LadderRung.TYPE_MEANING));
