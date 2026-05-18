@@ -146,4 +146,19 @@ public final class WritingFeedbackCopy {
                 return false;
         }
     }
+
+    public static boolean shouldShowLearningPanel(
+            WritingAnalysis analysis,
+            boolean recallTask,
+            boolean teachingTask,
+            int currentPracticeLevel
+    ) {
+        if (recallTask) {
+            return analysis != null && analysis.status != WritingAnalysis.Status.NO_INK && !analysis.writingPassed;
+        }
+        if (analysis == null || analysis.status == WritingAnalysis.Status.NO_INK) {
+            return teachingTask && currentPracticeLevel < 3;
+        }
+        return true;
+    }
 }

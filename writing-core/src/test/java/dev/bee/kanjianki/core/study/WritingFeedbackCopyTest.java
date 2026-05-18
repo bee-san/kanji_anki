@@ -113,6 +113,20 @@ public final class WritingFeedbackCopyTest {
         assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, HintLevel.BLIND, 0)));
     }
 
+    @Test
+    public void learningPanelVisibilityPreservesRecallAndTeachingRules() {
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, true, false, 1));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.NO_INK, false, HintLevel.BLIND, 0), true, false, 1));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0), true, false, 1));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), true, false, 1));
+
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, false, false, 1));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(null, false, true, 1));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, false, true, 3));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.PASS, true, HintLevel.BLIND, 0), false, false, 3));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(analysis(WritingAnalysis.Status.WRONG, false, HintLevel.BLIND, 0), false, false, 3));
+    }
+
     private static StrokeGuide guide() {
         return new StrokeGuide("裂", Collections.singletonList(new InkStroke(Arrays.asList(
                 new InkPoint(0.1f, 0.2f, 0L),

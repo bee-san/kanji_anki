@@ -1647,13 +1647,12 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean shouldShowLearningPanel(WritingAnalysis analysis) {
-        if (activeSession != null && isRecallTask(activeSession)) {
-            return analysis != null && analysis.status != WritingAnalysis.Status.NO_INK && !analysis.writingPassed;
-        }
-        if (analysis == null || analysis.status == WritingAnalysis.Status.NO_INK) {
-            return activeSession != null && isTeachingTask(activeSession) && currentPracticeLevel < 3;
-        }
-        return true;
+        return WritingFeedbackCopy.shouldShowLearningPanel(
+                analysis,
+                activeSession != null && isRecallTask(activeSession),
+                activeSession != null && isTeachingTask(activeSession),
+                currentPracticeLevel
+        );
     }
 
     boolean isTeachingTask(RecordsSchedulerModels.StudySession session) {
