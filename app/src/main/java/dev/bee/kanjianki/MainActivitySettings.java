@@ -63,6 +63,7 @@ import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
+import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
@@ -955,15 +956,17 @@ abstract class MainActivitySettings extends MainActivityStudy {
             addMaxItemsControl(box, selectedMax, null, null);
             Button saveMax = primaryButton("Save maximum", STUDY_PINK_DARK);
             saveMax.setOnClickListener(v -> {
-                store.saveAdaptiveLoadMaxItems(selectedMax[0]);
-                Toast.makeText(this, "Pareto maximum saved.", Toast.LENGTH_SHORT).show();
+                WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
+                store.saveAdaptiveLoadMaxItems(request.maxItems);
+                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
             box.addView(saveMax);
             Button manual = secondaryButton("Use manual workload");
             manual.setOnClickListener(v -> {
-                store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
-                Toast.makeText(this, "Manual workload enabled.", Toast.LENGTH_SHORT).show();
+                WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
+                store.saveAdaptiveLoadMode(request.mode);
+                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
             box.addView(manual);
@@ -1009,17 +1012,19 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save workload", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
-            store.saveAdaptiveLoadWorkPercent(selected[0]);
-            store.saveAdaptiveLoadMaxItems(selectedMax[0]);
-            Toast.makeText(this, "Workload saved. Study uses the new adaptive focus.", Toast.LENGTH_SHORT).show();
+            WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
+            store.saveAdaptiveLoadMode(request.mode);
+            store.saveAdaptiveLoadWorkPercent(request.workloadPercent);
+            store.saveAdaptiveLoadMaxItems(request.maxItems);
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
         Button automatic = secondaryButton("Use automatic Pareto");
         automatic.setOnClickListener(v -> {
-            store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
-            Toast.makeText(this, "Automatic Pareto workload enabled.", Toast.LENGTH_SHORT).show();
+            WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
+            store.saveAdaptiveLoadMode(request.mode);
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(automatic);
