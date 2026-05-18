@@ -204,6 +204,20 @@ public final class SettingsTextCopyTest {
                 SettingsTextCopy.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
         );
         assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(0));
+        assertEquals("Daily workload", SettingsTextCopy.dailyWorkloadTitle());
+        assertEquals(
+                "Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.",
+                SettingsTextCopy.automaticWorkloadBody()
+        );
+        assertEquals("Save maximum", SettingsTextCopy.saveMaximumLabel());
+        assertEquals("Use manual workload", SettingsTextCopy.manualWorkloadLabel());
+        assertEquals(
+                "Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.",
+                SettingsTextCopy.manualWorkloadBody()
+        );
+        assertEquals(Arrays.asList("Very little", "Pareto", "Balanced", "More", "All kanji"), Arrays.asList(SettingsTextCopy.workloadScaleLabels()));
+        assertEquals("Save workload", SettingsTextCopy.saveWorkloadLabel());
+        assertEquals("Use automatic Pareto", SettingsTextCopy.automaticParetoLabel());
     }
 
     @Test
@@ -214,6 +228,12 @@ public final class SettingsTextCopyTest {
         assertEquals("Kani weakness", SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel("unknown"));
         assertEquals("Frequency", SettingsTextCopy.newCardSortLabel(null));
+        assertEquals("New card sort", SettingsTextCopy.newCardSortTitle());
+        assertEquals(
+                "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.",
+                SettingsTextCopy.newCardSortBody()
+        );
+        assertEquals("Save new card sort", SettingsTextCopy.saveNewCardSortLabel());
     }
 
     @Test

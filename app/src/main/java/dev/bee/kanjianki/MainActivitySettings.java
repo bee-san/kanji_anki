@@ -903,17 +903,17 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
         final String[] selected = new String[]{current.newCardSortMode};
         LinearLayout box = settingsPanelBox();
-        box.addView(text("New card sort", 23, INK, true));
+        box.addView(text(SettingsTextCopy.newCardSortTitle(), 23, INK, true));
         TextView status = text(newCardSortStatusText(selected[0]), 17, TEAL, true);
         box.addView(status);
-        box.addView(text("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.newCardSortBody(), 15, MUTED, false));
 
-        addSortModeButton(box, "Frequency", RecordsBase.NEW_CARD_SORT_FREQUENCY, selected, status);
-        addSortModeButton(box, "Anki difficulty", RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
-        addSortModeButton(box, "Retrievability risk", RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
-        addSortModeButton(box, "Kani weakness", RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
+        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY), RecordsBase.NEW_CARD_SORT_FREQUENCY, selected, status);
+        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY), RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
+        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK), RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
+        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS), RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
 
-        Button save = primaryButton("Save new card sort", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveNewCardSortLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             NewCardSortSettingsPolicy.SaveRequest request = NewCardSortSettingsPolicy.saveRequest(selected[0]);
             store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
@@ -948,7 +948,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         final int[] selected = new int[]{current};
         final int[] selectedMax = new int[]{currentMax};
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Daily workload", 23, INK, true));
+        box.addView(text(SettingsTextCopy.dailyWorkloadTitle(), 23, INK, true));
 
         if (autoMode) {
             long now = System.currentTimeMillis();
@@ -957,9 +957,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     ? null
                     : adaptivePlan(rows, store.studyItems(), now);
             box.addView(text(autoWorkloadStatusText(plan), 17, TEAL, true));
-            box.addView(text("Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.", 15, MUTED, false));
+            box.addView(text(SettingsTextCopy.automaticWorkloadBody(), 15, MUTED, false));
             addMaxItemsControl(box, selectedMax, null, null);
-            Button saveMax = primaryButton("Save maximum", STUDY_PINK_DARK);
+            Button saveMax = primaryButton(SettingsTextCopy.saveMaximumLabel(), STUDY_PINK_DARK);
             saveMax.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
                 store.saveAdaptiveLoadMaxItems(request.maxItems);
@@ -967,7 +967,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 renderSettings();
             });
             box.addView(saveMax);
-            Button manual = secondaryButton("Use manual workload");
+            Button manual = secondaryButton(SettingsTextCopy.manualWorkloadLabel());
             manual.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
                 store.saveAdaptiveLoadMode(request.mode);
@@ -980,7 +980,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         TextView status = text(workloadStatusText(selected[0], selectedMax[0]), 17, TEAL, true);
         box.addView(status);
-        box.addView(text("Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.manualWorkloadBody(), 15, MUTED, false));
 
         SeekBar slider = new SeekBar(this);
         slider.setMax(100);
@@ -1006,7 +1006,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         LinearLayout labels = new LinearLayout(this);
         labels.setOrientation(LinearLayout.HORIZONTAL);
-        for (String label : new String[]{"Very little", "Pareto", "Balanced", "More", "All kanji"}) {
+        for (String label : SettingsTextCopy.workloadScaleLabels()) {
             TextView item = text(label, 11, MUTED, false);
             item.setGravity(Gravity.CENTER);
             labels.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
@@ -1015,7 +1015,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         addMaxItemsControl(box, selectedMax, status, selected);
 
-        Button save = primaryButton("Save workload", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveWorkloadLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
             store.saveAdaptiveLoadMode(request.mode);
@@ -1025,7 +1025,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             renderSettings();
         });
         box.addView(save);
-        Button automatic = secondaryButton("Use automatic Pareto");
+        Button automatic = secondaryButton(SettingsTextCopy.automaticParetoLabel());
         automatic.setOnClickListener(v -> {
             WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
             store.saveAdaptiveLoadMode(request.mode);

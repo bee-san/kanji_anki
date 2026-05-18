@@ -430,6 +430,50 @@ public final class SettingsTextCopy {
         return "Note type saved. Sync again to rebuild practice.";
     }
 
+    public static String newCardSortTitle() {
+        return "New card sort";
+    }
+
+    public static String newCardSortBody() {
+        return "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.";
+    }
+
+    public static String saveNewCardSortLabel() {
+        return "Save new card sort";
+    }
+
+    public static String dailyWorkloadTitle() {
+        return "Daily workload";
+    }
+
+    public static String automaticWorkloadBody() {
+        return "Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.";
+    }
+
+    public static String saveMaximumLabel() {
+        return "Save maximum";
+    }
+
+    public static String manualWorkloadLabel() {
+        return "Use manual workload";
+    }
+
+    public static String manualWorkloadBody() {
+        return "Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.";
+    }
+
+    public static String[] workloadScaleLabels() {
+        return new String[]{"Very little", "Pareto", "Balanced", "More", "All kanji"};
+    }
+
+    public static String saveWorkloadLabel() {
+        return "Save workload";
+    }
+
+    public static String automaticParetoLabel() {
+        return "Use automatic Pareto";
+    }
+
     public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
         if (!configured) {
             return "Starts after first successful sync";
