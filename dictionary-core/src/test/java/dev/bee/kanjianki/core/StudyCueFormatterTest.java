@@ -143,6 +143,13 @@ public class StudyCueFormatterTest {
     }
 
     @Test
+    public void compactHandlesNullShortWordBoundariesAndHardLimit() {
+        assertEquals("", StudyCueFormatter.compact(null, 12));
+        assertEquals("short", StudyCueFormatter.compact("short", 12));
+        assertEquals("a very long s...", StudyCueFormatter.compact("a very long sentence that should be shortened", 16));
+    }
+
+    @Test
     public void hiraganaReadingHandlesNullEmptyKatakanaAndMixedText() {
         assertEquals("", StudyCueFormatter.hiraganaReading(null));
         assertEquals("", StudyCueFormatter.hiraganaReading(""));

@@ -178,7 +178,10 @@ public final class StudyCueFormatter {
         return MULTI_WHITESPACE_PATTERN.matcher(normalized).replaceAll(" ").trim();
     }
 
-    private static String compact(String value, int maxChars) {
+    public static String compact(String value, int maxChars) {
+        if (value == null) {
+            return "";
+        }
         if (value.length() <= maxChars) {
             return value;
         }

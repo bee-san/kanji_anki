@@ -35,6 +35,7 @@ import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
@@ -534,52 +535,31 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     String countText(int count, String singular, String plural) {
-        return count + " " + (count == 1 ? singular : plural);
+        return StudyTextCopy.countText(count, singular, plural);
     }
 
     String rowMeaning(RecordsImportModels.DashboardRow row) {
-        return cleanLearnerText(row.primaryMeaning, row.reasonCode, 72);
+        return StudyTextCopy.rowMeaning(row);
     }
 
     String sessionClue(RecordsSchedulerModels.StudySession session) {
-        String raw = session.row == null || session.row.primaryMeaning.isEmpty()
-                ? session.prompt
-                : session.row.primaryMeaning;
-        return canonicalKanjiMeaning(session == null ? "" : session.item.kanji, raw, 96);
+        return StudyTextCopy.sessionClue(currentDictionaryLookup(), session);
     }
 
     String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
-        DictionaryLookup.KanjiEntry entry = currentDictionaryLookup().lookupKanji(kanji);
-        if (entry != null) {
-            String meaning = StudyCueTexts.displayGlosses(entry.meanings, 2);
-            if (!meaning.isEmpty()) {
-                return compact(meaning, maxChars);
-            }
-        }
-        return cleanLearnerText(fallback, "Collection clue", maxChars);
+        return StudyTextCopy.canonicalKanjiMeaning(currentDictionaryLookup(), kanji, fallback, maxChars);
     }
 
     String wordPrompt(RecordsSchedulerModels.StudySession session) {
-        RecordsImportModels.Example example = session == null ? null : wordReadingExample(session.row);
-        if (example != null && !example.expression.isEmpty()) {
-            return example.expression;
-        }
-        return session == null ? "" : session.item.kanji;
+        return StudyTextCopy.wordPrompt(session);
     }
 
     String cleanLearnerText(String raw, String fallback, int maxChars) {
-        return StudyCueTexts.cleanFallbackMeaning(raw, fallback, maxChars);
+        return StudyTextCopy.cleanLearnerText(raw, fallback, maxChars);
     }
 
     String compact(String value, int maxChars) {
-        if (value == null || value.length() <= maxChars) {
-            return value == null ? "" : value;
-        }
-        int cut = value.lastIndexOf(' ', maxChars - 3);
-        if (cut < 32) {
-            cut = maxChars - 3;
-        }
-        return value.substring(0, cut).trim() + "...";
+        return StudyTextCopy.compact(value, maxChars);
     }
 
     void addSpace(int dp) {
