@@ -275,6 +275,14 @@ public final class HomeTextCopy {
         return "SUSPENDED";
     }
 
+    public static String relearningChipLabel() {
+        return "relearning";
+    }
+
+    public static String backToBrowseKanjiLabel() {
+        return "Back to Browse Kanji";
+    }
+
     public static String detailReasonTitle() {
         return "Why it is here";
     }

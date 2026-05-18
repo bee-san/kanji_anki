@@ -166,6 +166,8 @@ public final class HomeTextCopyTest {
         assertEquals("1 local source · 2 examples", HomeTextCopy.browseInventorySummary(1, 2));
         assertEquals("3 local sources · 1 example", HomeTextCopy.browseInventorySummary(3, 1));
         assertEquals("SUSPENDED", HomeTextCopy.suspendedChipLabel());
+        assertEquals("relearning", HomeTextCopy.relearningChipLabel());
+        assertEquals("Back to Browse Kanji", HomeTextCopy.backToBrowseKanjiLabel());
         assertThrows(NullPointerException.class, () -> HomeTextCopy.browseItemMeaning(null));
     }
 

@@ -667,7 +667,7 @@ abstract class MainActivityHome extends MainActivityBase {
         chips.setOrientation(LinearLayout.HORIZONTAL);
         chips.addView(chip(recognitionStageLabel(item), BLUE));
         if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
-            chips.addView(chip("relearning", CORAL));
+            chips.addView(chip(HomeTextCopy.relearningChipLabel(), CORAL));
         } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
             chips.addView(chip(STATE_LEARNING, TEAL));
         }
@@ -808,7 +808,7 @@ abstract class MainActivityHome extends MainActivityBase {
         glyph.setGravity(Gravity.CENTER);
         content.addView(glyph);
         if (fromBrowse) {
-            Button back = secondaryButton("Back to Browse Kanji");
+            Button back = secondaryButton(HomeTextCopy.backToBrowseKanjiLabel());
             back.setOnClickListener(v -> renderBrowseKanji(browseQuery));
             content.addView(back);
         }
