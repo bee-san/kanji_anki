@@ -518,6 +518,34 @@ public final class SettingsTextCopy {
         return "Study ahead saved.";
     }
 
+    public static String ladderThresholdsTitle() {
+        return "Ladder thresholds";
+    }
+
+    public static String ladderThresholdsBody() {
+        return "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.";
+    }
+
+    public static String fsrsDaysToGoUpLabel() {
+        return "FSRS days to go up";
+    }
+
+    public static String failsToGoDownLabel() {
+        return "Fails to go down";
+    }
+
+    public static String useDefaultLadderThresholdsLabel() {
+        return "Use 21 and 3";
+    }
+
+    public static String saveLadderThresholdsLabel() {
+        return "Save ladder thresholds";
+    }
+
+    public static String ladderThresholdsSavedToast() {
+        return "Ladder thresholds saved.";
+    }
+
     public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
         if (!configured) {
             return "Starts after first successful sync";

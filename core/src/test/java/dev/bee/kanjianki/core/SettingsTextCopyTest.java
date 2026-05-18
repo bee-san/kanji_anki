@@ -282,6 +282,16 @@ public final class SettingsTextCopyTest {
         assertEquals("Keep at least one always-available rung on.", SettingsTextCopy.keepAlwaysAvailableRungToast());
         assertEquals("Write kanji off.", SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, true));
         assertEquals("Write kanji on.", SettingsTextCopy.ladderRungToggleToast(RecordsBase.LadderRung.WRITE_KANJI, false));
+        assertEquals("Ladder thresholds", SettingsTextCopy.ladderThresholdsTitle());
+        assertEquals(
+                "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.",
+                SettingsTextCopy.ladderThresholdsBody()
+        );
+        assertEquals("FSRS days to go up", SettingsTextCopy.fsrsDaysToGoUpLabel());
+        assertEquals("Fails to go down", SettingsTextCopy.failsToGoDownLabel());
+        assertEquals("Use 21 and 3", SettingsTextCopy.useDefaultLadderThresholdsLabel());
+        assertEquals("Save ladder thresholds", SettingsTextCopy.saveLadderThresholdsLabel());
+        assertEquals("Ladder thresholds saved.", SettingsTextCopy.ladderThresholdsSavedToast());
         assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsLadderRungLabel(null));
     }
 

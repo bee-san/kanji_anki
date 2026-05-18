@@ -1236,24 +1236,24 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout ladderThresholdSettingsPanel() {
         RecordsSyncModels.Settings current = settings();
         LinearLayout box = settingsPanelBox();
-        box.addView(text("Ladder thresholds", 23, INK, true));
-        box.addView(text("Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.", 15, MUTED, false));
+        box.addView(text(SettingsTextCopy.ladderThresholdsTitle(), 23, INK, true));
+        box.addView(text(SettingsTextCopy.ladderThresholdsBody(), 15, MUTED, false));
 
         EditText promotionDays = thresholdInput(current.ladderPromotionIntervalDays);
         EditText failStreak = thresholdInput(current.ladderDemotionFailStreak);
-        box.addView(text("FSRS days to go up", 15, INK, true));
+        box.addView(text(SettingsTextCopy.fsrsDaysToGoUpLabel(), 15, INK, true));
         box.addView(promotionDays, new LinearLayout.LayoutParams(-1, dp(58)));
-        box.addView(text("Fails to go down", 15, INK, true));
+        box.addView(text(SettingsTextCopy.failsToGoDownLabel(), 15, INK, true));
         box.addView(failStreak, new LinearLayout.LayoutParams(-1, dp(58)));
 
-        Button defaults = secondaryButton("Use 21 and 3");
+        Button defaults = secondaryButton(SettingsTextCopy.useDefaultLadderThresholdsLabel());
         defaults.setOnClickListener(v -> {
             promotionDays.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
             failStreak.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
         });
         box.addView(defaults);
 
-        Button save = primaryButton("Save ladder thresholds", STUDY_PINK_DARK);
+        Button save = primaryButton(SettingsTextCopy.saveLadderThresholdsLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             StudyLadderThresholdPolicy.SaveResult request = StudyLadderThresholdPolicy.saveRequest(
                     promotionDays.getText().toString(),
@@ -1267,7 +1267,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, request.failStreak);
             store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, request.failStreak);
             store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, request.failStreak);
-            Toast.makeText(this, "Ladder thresholds saved.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(save);
