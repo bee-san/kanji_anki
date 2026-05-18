@@ -3,6 +3,8 @@ package dev.bee.kanjianki.core;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public final class StudyTaskCopyTest {
     @Test
@@ -52,9 +54,63 @@ public final class StudyTaskCopyTest {
         assertEquals("Recognise", StudyTaskCopy.studyModeLabel(null));
     }
 
+    @Test
+    public void taskPredicatesPreserveStudyUiClassificationRules() {
+        assertFalse(StudyTaskCopy.isTeachingTask(null));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("context_writing", false)));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("guided_writing", false)));
+        assertTrue(StudyTaskCopy.isTeachingTask(sessionWithLearningStep("targeted_writing", 1)));
+        assertFalse(StudyTaskCopy.isTeachingTask(sessionWithLearningStep("targeted_writing", 2)));
+        assertFalse(StudyTaskCopy.isTeachingTask(session(StudyTaskTypes.KANJI_MEANING, false)));
+
+        assertFalse(StudyTaskCopy.isRecallTask(null));
+        assertTrue(StudyTaskCopy.isRecallTask(session("blind_writing", true)));
+        assertTrue(StudyTaskCopy.isRecallTask(session("sampled_handwriting", true)));
+        assertFalse(StudyTaskCopy.isRecallTask(session("guided_writing", true)));
+
+        assertTrue(StudyTaskCopy.isFontRecognitionTask(session(StudyTaskTypes.FONT_MEANING, false)));
+        assertTrue(StudyTaskCopy.isFontRecognitionTask(session("font_recognition", false)));
+        assertFalse(StudyTaskCopy.isFontRecognitionTask(null));
+        assertTrue(StudyTaskCopy.isTypingMeaningTask(session(StudyTaskTypes.TYPING_MEANING, false)));
+        assertTrue(StudyTaskCopy.isTypingMeaningTask(session(StudyTaskTypes.TYPE_MEANING, false)));
+        assertFalse(StudyTaskCopy.isTypingMeaningTask(null));
+        assertTrue(StudyTaskCopy.isMeaningKanjiTask(session(StudyTaskTypes.MEANING_KANJI, false)));
+        assertFalse(StudyTaskCopy.isMeaningKanjiTask(null));
+        assertTrue(StudyTaskCopy.isWordReadingTask(session(StudyTaskTypes.WORD_READING, false)));
+        assertFalse(StudyTaskCopy.isWordReadingTask(null));
+    }
+
     private static RecordsSchedulerModels.StudySession session(String taskType, boolean writingRequired) {
+        return sessionWithLearningStep(taskType, writingRequired, 1);
+    }
+
+    private static RecordsSchedulerModels.StudySession sessionWithLearningStep(String taskType, int learningStep) {
+        return sessionWithLearningStep(taskType, true, learningStep);
+    }
+
+    private static RecordsSchedulerModels.StudySession sessionWithLearningStep(
+            String taskType,
+            boolean writingRequired,
+            int learningStep
+    ) {
         return new RecordsSchedulerModels.StudySession(
-                new RecordsStudyModels.StudyItem("x", "review", 0L, 1.0, 5.0, 1, 0, 0, 1, null, 0L),
+                new RecordsStudyModels.StudyItem(
+                        "x",
+                        "review",
+                        0L,
+                        1.0,
+                        5.0,
+                        1,
+                        0,
+                        learningStep,
+                        1,
+                        0,
+                        0,
+                        0L,
+                        false,
+                        null,
+                        0L
+                ),
                 null,
                 "token",
                 taskType,

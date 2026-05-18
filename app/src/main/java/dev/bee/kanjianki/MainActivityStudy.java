@@ -1656,12 +1656,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean isTeachingTask(RecordsSchedulerModels.StudySession session) {
-        if (session == null) {
-            return false;
-        }
-        return "context_writing".equals(session.taskType)
-                || "guided_writing".equals(session.taskType)
-                || (TASK_TARGETED_WRITING.equals(session.taskType) && session.item.learningStep < 2);
+        return StudyTaskCopy.isTeachingTask(session);
     }
 
     boolean canRevealMoreHelp() {
@@ -1775,28 +1770,23 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean isRecallTask(RecordsSchedulerModels.StudySession session) {
-        if (session == null) {
-            return false;
-        }
-        return "blind_writing".equals(session.taskType) || "sampled_handwriting".equals(session.taskType);
+        return StudyTaskCopy.isRecallTask(session);
     }
 
     boolean isFontRecognitionTask(RecordsSchedulerModels.StudySession session) {
-        return session != null && (TASK_FONT_MEANING.equals(session.taskType) || "font_recognition".equals(session.taskType));
+        return StudyTaskCopy.isFontRecognitionTask(session);
     }
 
     boolean isTypingMeaningTask(RecordsSchedulerModels.StudySession session) {
-        return session != null
-                && (TASK_TYPING_MEANING.equals(session.taskType)
-                || BridgeScheduler.TASK_TYPE_MEANING.equals(session.taskType));
+        return StudyTaskCopy.isTypingMeaningTask(session);
     }
 
     boolean isMeaningKanjiTask(RecordsSchedulerModels.StudySession session) {
-        return session != null && BridgeScheduler.TASK_MEANING_KANJI.equals(session.taskType);
+        return StudyTaskCopy.isMeaningKanjiTask(session);
     }
 
     boolean isWordReadingTask(RecordsSchedulerModels.StudySession session) {
-        return session != null && TASK_WORD_READING.equals(session.taskType);
+        return StudyTaskCopy.isWordReadingTask(session);
     }
 
     boolean canSubmitAnalysis(WritingAnalysis analysis) {

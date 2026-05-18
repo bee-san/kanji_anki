@@ -72,23 +72,39 @@ public final class StudyTaskCopy {
         return "Recognise";
     }
 
-    private static boolean isFontRecognitionTask(RecordsSchedulerModels.StudySession session) {
+    public static boolean isTeachingTask(RecordsSchedulerModels.StudySession session) {
+        if (session == null) {
+            return false;
+        }
+        return TASK_CONTEXT_WRITING.equals(session.taskType)
+                || TASK_GUIDED_WRITING.equals(session.taskType)
+                || (TASK_TARGETED_WRITING.equals(session.taskType) && session.item.learningStep < 2);
+    }
+
+    public static boolean isRecallTask(RecordsSchedulerModels.StudySession session) {
+        if (session == null) {
+            return false;
+        }
+        return TASK_BLIND_WRITING.equals(session.taskType) || TASK_SAMPLED_HANDWRITING.equals(session.taskType);
+    }
+
+    public static boolean isFontRecognitionTask(RecordsSchedulerModels.StudySession session) {
         return session != null
                 && (StudyTaskTypes.FONT_MEANING.equals(session.taskType)
                 || TASK_FONT_RECOGNITION.equals(session.taskType));
     }
 
-    private static boolean isTypingMeaningTask(RecordsSchedulerModels.StudySession session) {
+    public static boolean isTypingMeaningTask(RecordsSchedulerModels.StudySession session) {
         return session != null
                 && (StudyTaskTypes.TYPING_MEANING.equals(session.taskType)
                 || StudyTaskTypes.TYPE_MEANING.equals(session.taskType));
     }
 
-    private static boolean isMeaningKanjiTask(RecordsSchedulerModels.StudySession session) {
+    public static boolean isMeaningKanjiTask(RecordsSchedulerModels.StudySession session) {
         return session != null && StudyTaskTypes.MEANING_KANJI.equals(session.taskType);
     }
 
-    private static boolean isWordReadingTask(RecordsSchedulerModels.StudySession session) {
+    public static boolean isWordReadingTask(RecordsSchedulerModels.StudySession session) {
         return session != null && StudyTaskTypes.WORD_READING.equals(session.taskType);
     }
 }
