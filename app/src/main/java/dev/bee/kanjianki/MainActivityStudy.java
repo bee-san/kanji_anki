@@ -54,6 +54,7 @@ import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
+import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
@@ -309,7 +310,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void showStudyMoreNewCardsDialog(int availableAtOpen) {
-        int defaultCount = Math.max(1, Math.min(5, availableAtOpen));
+        int defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen);
         EditText countInput = thresholdInput(defaultCount);
         countInput.setHint(LABEL_NEW_CARDS);
         countInput.setContentDescription(LABEL_NEW_CARDS);
@@ -336,24 +337,18 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     int requestedStudyMoreNewCards(EditText countInput) {
-        int requested;
-        try {
-            requested = parseThresholdInput(countInput);
-        } catch (NumberFormatException error) {
-            Toast.makeText(this, "Use a whole number of new cards.", Toast.LENGTH_SHORT).show();
+        StudyMoreNewCardsPolicy.RequestDecision decision = StudyMoreNewCardsPolicy.requestedCount(countInput.getText().toString());
+        if (!decision.accepted()) {
+            Toast.makeText(this, decision.message(), Toast.LENGTH_SHORT).show();
             return -1;
         }
-        if (requested <= 0) {
-            Toast.makeText(this, "Use at least 1 new card.", Toast.LENGTH_SHORT).show();
-            return -1;
-        }
-        return requested;
+        return decision.requestedCount();
     }
 
     boolean startStudyMoreNewCards(int requestedCount) {
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
         if (rows.isEmpty()) {
-            Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
             return false;
         }
         long now = System.currentTimeMillis();
@@ -367,7 +362,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 studyLadderSettings()
         );
         if (!result.admittedAny()) {
-            Toast.makeText(this, "No new cards are available.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
             return false;
         }
         List<RecordsStudyModels.StudyItem> seeded = store.annotateSimilarKanjiAvailability(result.items);
@@ -378,7 +373,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         resetStudyRunProgress();
         studySessionTracker.setTargetCount(result.admittedCount);
         if (result.admittedCount < requestedCount) {
-            Toast.makeText(this, "Only " + countText(result.admittedCount, "new card was", "new cards were") + " available.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, StudyMoreNewCardsPolicy.partialAvailabilityMessage(result.admittedCount), Toast.LENGTH_SHORT).show();
         }
         renderStudy();
         return true;
