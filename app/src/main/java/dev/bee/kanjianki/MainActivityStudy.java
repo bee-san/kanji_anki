@@ -363,18 +363,33 @@ abstract class MainActivityStudy extends MainActivityStats {
             Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
             return false;
         }
-        List<RecordsStudyModels.StudyItem> seeded = store.annotateSimilarKanjiAvailability(result.items);
-        store.replaceStudyItems(seeded);
-        studyMoreNewCardKanji.clear();
-        studyMoreNewCardKanji.addAll(result.admittedKanji);
+        StudyMoreNewCardActions.AdmissionResult admission = StudyMoreNewCardActions.applyAdmission(
+                result,
+                studyMoreNewCardWriter(),
+                studyMoreNewCardKanji,
+                this::resetStudyRunProgress,
+                studySessionTracker::setTargetCount
+        );
         continueAllKanjiSession = false;
-        resetStudyRunProgress();
-        studySessionTracker.setTargetCount(result.admittedCount);
-        if (result.admittedCount < requestedCount) {
-            Toast.makeText(this, StudyMoreNewCardsPolicy.partialAvailabilityMessage(result.admittedCount), Toast.LENGTH_SHORT).show();
+        if (admission.admittedCount() < requestedCount) {
+            Toast.makeText(this, StudyMoreNewCardsPolicy.partialAvailabilityMessage(admission.admittedCount()), Toast.LENGTH_SHORT).show();
         }
         renderStudy();
         return true;
+    }
+
+    StudyMoreNewCardActions.StudyItemWriter studyMoreNewCardWriter() {
+        return new StudyMoreNewCardActions.StudyItemWriter() {
+            @Override
+            public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
+                return store.annotateSimilarKanjiAvailability(items);
+            }
+
+            @Override
+            public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
+                store.replaceStudyItems(items);
+            }
+        };
     }
 
     void startFocusedStudy() {
