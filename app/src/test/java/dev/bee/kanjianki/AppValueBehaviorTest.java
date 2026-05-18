@@ -5,8 +5,8 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
-import dev.bee.kanjianki.core.study.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 
 import org.junit.Test;
@@ -159,7 +159,8 @@ public final class AppValueBehaviorTest {
                 null
         );
 
-        StudyReviewRequestPolicy.MappedReview mapped = StudyReviewRequestPolicy.from(session, analysis, 2, "easy", false);
+        StudyReviewRequestPolicy.MappedReview mapped =
+                StudyReviewRequestPolicy.from(session, StudyReviewWritingOutcome.from(analysis), 2, "easy", false);
         RecordsSchedulerModels.ReviewRequest request = mapped.request();
 
         assertEquals("hard", mapped.ratingCode());
@@ -181,8 +182,10 @@ public final class AppValueBehaviorTest {
         RecordsSchedulerModels.StudySession writingSession = session("筆", true, BridgeScheduler.TASK_WRITE_KANJI);
         RecordsSchedulerModels.StudySession readingSession = session("読", false, BridgeScheduler.TASK_WORD_READING);
 
-        StudyReviewRequestPolicy.MappedReview override = StudyReviewRequestPolicy.from(writingSession, null, 0, "easy", true);
-        StudyReviewRequestPolicy.MappedReview nonWriting = StudyReviewRequestPolicy.from(readingSession, null, 0, "good", false);
+        StudyReviewRequestPolicy.MappedReview override =
+                StudyReviewRequestPolicy.from(writingSession, null, 0, "easy", true);
+        StudyReviewRequestPolicy.MappedReview nonWriting =
+                StudyReviewRequestPolicy.from(readingSession, null, 0, "good", false);
 
         assertEquals("easy", override.ratingCode());
         assertFalse(override.request().writingPassed);
@@ -212,8 +215,10 @@ public final class AppValueBehaviorTest {
                 null
         );
 
-        StudyReviewRequestPolicy.MappedReview clean = StudyReviewRequestPolicy.from(writingSession, cleanPass, 1, "good", false);
-        StudyReviewRequestPolicy.MappedReview fail = StudyReviewRequestPolicy.from(writingSession, failed, 3, "good", false);
+        StudyReviewRequestPolicy.MappedReview clean =
+                StudyReviewRequestPolicy.from(writingSession, StudyReviewWritingOutcome.from(cleanPass), 1, "good", false);
+        StudyReviewRequestPolicy.MappedReview fail =
+                StudyReviewRequestPolicy.from(writingSession, StudyReviewWritingOutcome.from(failed), 3, "good", false);
 
         assertTrue(clean.request().writingPassed);
         assertTrue(clean.request().writingClean);

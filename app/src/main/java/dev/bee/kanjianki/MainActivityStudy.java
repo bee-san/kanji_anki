@@ -56,6 +56,7 @@ import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
+import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -65,7 +66,6 @@ import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
-import dev.bee.kanjianki.core.study.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
@@ -1423,7 +1423,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         StudyReviewRequestPolicy.MappedReview mappedReview = StudyReviewRequestPolicy.from(
                 activeSession,
-                activeAnalysis,
+                StudyReviewWritingOutcome.from(activeAnalysis),
                 hintsUsed,
                 rating,
                 override

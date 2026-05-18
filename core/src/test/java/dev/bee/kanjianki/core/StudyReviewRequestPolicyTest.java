@@ -1,9 +1,4 @@
-package dev.bee.kanjianki.core.study;
-
-import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.RecordsImportModels;
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.RecordsStudyModels;
+package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
@@ -15,22 +10,20 @@ import static org.junit.Assert.assertTrue;
 
 public final class StudyReviewRequestPolicyTest {
     @Test
-    public void mapsWritingAnalysisIntoReviewPayload() {
+    public void mapsWritingOutcomeIntoReviewPayload() {
         RecordsSchedulerModels.StudySession session = session("書", true, BridgeScheduler.TASK_WRITE_KANJI);
-        WritingAnalysis analysis = new WritingAnalysis(
-                WritingAnalysis.Status.CLOSE,
-                "hard",
-                true,
-                "Close enough to pass, but not clean.",
-                Collections.emptyList(),
-                null
-        );
 
-        StudyReviewRequestPolicy.MappedReview mapped = StudyReviewRequestPolicy.from(session, analysis, 2, "easy", false);
+        StudyReviewRequestPolicy.MappedReview mapped = StudyReviewRequestPolicy.from(
+                session,
+                StudyReviewRequestPolicy.writingOutcome(true, false, StudyRatings.HARD),
+                2,
+                StudyRatings.EASY,
+                false
+        );
         RecordsSchedulerModels.ReviewRequest request = mapped.request();
 
-        assertEquals("hard", mapped.ratingCode());
-        assertEquals("hard", request.rating);
+        assertEquals(StudyRatings.HARD, mapped.ratingCode());
+        assertEquals(StudyRatings.HARD, request.rating);
         assertEquals("書", request.kanji);
         assertEquals("session-token", request.token);
         assertTrue(request.writingRequired);
@@ -49,49 +42,43 @@ public final class StudyReviewRequestPolicyTest {
         RecordsSchedulerModels.StudySession readingSession = session("読", false, BridgeScheduler.TASK_WORD_READING);
 
         StudyReviewRequestPolicy.MappedReview override =
-                StudyReviewRequestPolicy.from(writingSession, null, 0, "easy", true);
+                StudyReviewRequestPolicy.from(writingSession, null, 0, StudyRatings.EASY, true);
         StudyReviewRequestPolicy.MappedReview nonWriting =
-                StudyReviewRequestPolicy.from(readingSession, null, 0, "good", false);
+                StudyReviewRequestPolicy.from(readingSession, null, 0, StudyRatings.GOOD, false);
 
-        assertEquals("easy", override.ratingCode());
+        assertEquals(StudyRatings.EASY, override.ratingCode());
         assertFalse(override.request().writingPassed);
         assertTrue(override.request().manualOverride);
-        assertEquals("good", nonWriting.ratingCode());
+        assertEquals(StudyRatings.GOOD, nonWriting.ratingCode());
         assertTrue(nonWriting.request().writingPassed);
         assertFalse(nonWriting.request().writingClean);
     }
 
     @Test
-    public void distinguishesCleanPassAndFailedWritingAnalysis() {
+    public void distinguishesCleanPassAndFailedWritingOutcomes() {
         RecordsSchedulerModels.StudySession writingSession = session("清", true, BridgeScheduler.TASK_WRITE_KANJI);
-        WritingAnalysis cleanPass = new WritingAnalysis(
-                WritingAnalysis.Status.PASS,
-                "good",
-                true,
-                "Clean pass.",
-                Collections.singletonList(new RecognitionCandidate("清", 0.95f)),
-                null
-        );
-        WritingAnalysis failed = new WritingAnalysis(
-                WritingAnalysis.Status.WRONG,
-                "again",
-                false,
-                "Wrong shape.",
-                Collections.emptyList(),
-                null
-        );
 
-        StudyReviewRequestPolicy.MappedReview clean =
-                StudyReviewRequestPolicy.from(writingSession, cleanPass, 1, "good", false);
-        StudyReviewRequestPolicy.MappedReview fail =
-                StudyReviewRequestPolicy.from(writingSession, failed, 3, "good", false);
+        StudyReviewRequestPolicy.MappedReview clean = StudyReviewRequestPolicy.from(
+                writingSession,
+                StudyReviewRequestPolicy.writingOutcome(true, true, StudyRatings.GOOD),
+                1,
+                StudyRatings.GOOD,
+                false
+        );
+        StudyReviewRequestPolicy.MappedReview fail = StudyReviewRequestPolicy.from(
+                writingSession,
+                StudyReviewRequestPolicy.writingOutcome(false, false, StudyRatings.AGAIN),
+                3,
+                StudyRatings.GOOD,
+                false
+        );
 
         assertTrue(clean.request().writingPassed);
         assertTrue(clean.request().writingClean);
-        assertEquals("good", clean.ratingCode());
+        assertEquals(StudyRatings.GOOD, clean.ratingCode());
         assertFalse(fail.request().writingPassed);
         assertFalse(fail.request().writingClean);
-        assertEquals("again", fail.ratingCode());
+        assertEquals(StudyRatings.AGAIN, fail.ratingCode());
         assertEquals(3, fail.request().hintsUsed);
     }
 
@@ -102,10 +89,41 @@ public final class StudyReviewRequestPolicyTest {
         StudyReviewRequestPolicy.MappedReview mapped =
                 StudyReviewRequestPolicy.from(writingSession, null, 4, "not-a-rating", false);
 
-        assertEquals("again", mapped.ratingCode());
-        assertEquals("again", mapped.request().rating);
+        assertEquals(StudyRatings.AGAIN, mapped.ratingCode());
+        assertEquals(StudyRatings.AGAIN, mapped.request().rating);
         assertFalse(mapped.request().writingPassed);
         assertEquals(4, mapped.request().hintsUsed);
+    }
+
+    @Test
+    public void capsRequestedRatingAtWritingOutcomeCeiling() {
+        RecordsSchedulerModels.StudySession writingSession = session("線", true, BridgeScheduler.TASK_WRITE_KANJI);
+
+        StudyReviewRequestPolicy.MappedReview hardCap = StudyReviewRequestPolicy.from(
+                writingSession,
+                StudyReviewRequestPolicy.writingOutcome(true, false, StudyRatings.HARD),
+                0,
+                StudyRatings.EASY,
+                false
+        );
+        StudyReviewRequestPolicy.MappedReview goodCap = StudyReviewRequestPolicy.from(
+                writingSession,
+                StudyReviewRequestPolicy.writingOutcome(true, true, StudyRatings.GOOD),
+                0,
+                StudyRatings.EASY,
+                false
+        );
+        StudyReviewRequestPolicy.MappedReview easyCap = StudyReviewRequestPolicy.from(
+                writingSession,
+                StudyReviewRequestPolicy.writingOutcome(true, true, StudyRatings.EASY),
+                0,
+                StudyRatings.EASY,
+                false
+        );
+
+        assertEquals(StudyRatings.HARD, hardCap.ratingCode());
+        assertEquals(StudyRatings.GOOD, goodCap.ratingCode());
+        assertEquals(StudyRatings.EASY, easyCap.ratingCode());
     }
 
     private static RecordsSchedulerModels.StudySession session(String kanji, boolean writingRequired, String taskType) {
