@@ -5,6 +5,8 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 public final class KanjiGameCopyTest {
     @Test
@@ -13,7 +15,8 @@ public final class KanjiGameCopyTest {
         assertEquals("Pick meanings for kanji from your focus list.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.MEANING_POP, true));
         assertEquals("Pick readings from your source words.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.READING_RUSH, true));
         assertEquals("Choose between visually similar kanji.", KanjiGameCopy.modeBody(KanjiGameEngine.GameMode.CONFUSABLE_CLASH, true));
-        assertEquals("Pick meanings for kanji from your focus list.", KanjiGameCopy.modeBody(null, true));
+        assertEquals("Needs more local kanji data.", KanjiGameCopy.modeBody(null, false));
+        assertThrows(NullPointerException.class, () -> KanjiGameCopy.modeBody(null, true));
     }
 
     @Test
@@ -22,8 +25,10 @@ public final class KanjiGameCopyTest {
         KanjiGameEngine.GameQuestion meaning = question(KanjiGameEngine.GameMode.MEANING_POP, "a very long answer choice that needs to be shortened for the button layout");
 
         assertEquals("拉", KanjiGameCopy.choiceLabel(confusable, "拉"));
+        assertNull(KanjiGameCopy.choiceLabel(confusable, null));
         assertEquals("a very long answer choice that needs to be shortened...", KanjiGameCopy.choiceLabel(meaning, meaning.correctAnswer));
         assertEquals("", KanjiGameCopy.choiceLabel(meaning, null));
+        assertThrows(NullPointerException.class, () -> KanjiGameCopy.choiceLabel(null, "拉"));
     }
 
     @Test

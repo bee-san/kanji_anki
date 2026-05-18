@@ -13,8 +13,7 @@ public final class KanjiGameCopy {
         if (!available) {
             return "Needs more local kanji data.";
         }
-        KanjiGameEngine.GameMode safeMode = mode == null ? KanjiGameEngine.GameMode.MEANING_POP : mode;
-        return switch (safeMode) {
+        return switch (mode) {
             case MEANING_POP -> "Pick meanings for kanji from your focus list.";
             case READING_RUSH -> "Pick readings from your source words.";
             case CONFUSABLE_CLASH -> "Choose between visually similar kanji.";
@@ -22,8 +21,8 @@ public final class KanjiGameCopy {
     }
 
     public static String choiceLabel(KanjiGameEngine.GameQuestion question, String choice) {
-        if (question != null && question.mode == KanjiGameEngine.GameMode.CONFUSABLE_CLASH) {
-            return safe(choice);
+        if (question.mode == KanjiGameEngine.GameMode.CONFUSABLE_CLASH) {
+            return choice;
         }
         return StudyCueFormatter.compact(choice, 56);
     }
@@ -43,7 +42,4 @@ public final class KanjiGameCopy {
         return "Accuracy: " + KanjiGameRoundState.accuracyPercent(correct, answered) + "%";
     }
 
-    private static String safe(String value) {
-        return value == null ? "" : value;
-    }
 }
