@@ -40,6 +40,7 @@ public final class FsrsEngineReferenceTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void parametersValidateAndDefensivelyCopyValues() {
         FsrsParameters defaults = FsrsParameters.latestDefault();
         double[] values = defaults.toArray();
@@ -87,6 +88,21 @@ public final class FsrsEngineReferenceTest {
         double[] badDecay = FsrsParameters.latestDefaultValues();
         badDecay[20] = 0.0;
         expectIllegalArgument(() -> FsrsParameters.of(badDecay));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void deprecatedPublicDefaultArrayDoesNotBackCurrentDefaults() {
+        double original = FsrsParameters.LATEST_DEFAULT_VALUES[0];
+        try {
+            FsrsParameters.LATEST_DEFAULT_VALUES[0] = 99.0;
+
+            assertEquals(original, FsrsParameters.latestDefault().get(0), 0.0);
+            assertEquals(original, FsrsParameters.latestDefaultValues()[0], 0.0);
+            assertState(FsrsEngine.latestDefault().initialState(FsrsRating.AGAIN), original, 6.4133);
+        } finally {
+            FsrsParameters.LATEST_DEFAULT_VALUES[0] = original;
+        }
     }
 
     @Test
