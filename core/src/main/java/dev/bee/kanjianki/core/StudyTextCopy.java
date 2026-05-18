@@ -58,6 +58,23 @@ public final class StudyTextCopy {
         return session.row.primaryMeaning;
     }
 
+    public static String meaningKanjiChoiceQuestion(RecordsImportModels.MeaningKanjiChoiceCard card, String prompt) {
+        return "Which kanji means " + cleanLearnerText(card == null ? null : card.primaryMeaning, prompt, 96) + "?";
+    }
+
+    public static String meaningKanjiChoiceResult(
+            RecordsImportModels.MeaningKanjiChoiceCard card,
+            String prompt,
+            boolean correct
+    ) {
+        String targetKanji = card == null ? "" : card.targetKanji;
+        String meaning = cleanLearnerText(card == null ? null : card.primaryMeaning, prompt, 72);
+        if (correct) {
+            return "Correct. " + targetKanji + " means " + meaning + ".";
+        }
+        return "Answer: " + targetKanji + " \u00b7 " + meaning;
+    }
+
     public static String similarRepairPrompt(RecordsImportModels.SimilarKanjiWritingRepair repair) {
         StringBuilder prompt = new StringBuilder("Repair the shape mix-up");
         if (!repair.promptMeaning.isEmpty()) {

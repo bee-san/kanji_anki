@@ -474,7 +474,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         addStudyReasonLine(cardShell, session);
 
         LinearLayout box = softInsetPanel();
-        box.addView(text("Which kanji means " + cleanLearnerText(choiceCard.primaryMeaning, session.prompt, 96) + "?", 22, STUDY_PLUM, true));
+        box.addView(text(StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt), 22, STUDY_PLUM, true));
         View answerPanel = flashcardAnswerPanel(session);
         answerPanel.setVisibility(View.GONE);
         box.addView(meaningKanjiGrid(choiceCard, answerPanel));
@@ -536,9 +536,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyActionBar.removeAllViews();
         studyActionBar.setVisibility(View.VISIBLE);
         String prompt = activeSession == null ? "" : activeSession.prompt;
-        String status = correct
-                ? "Correct. " + card.targetKanji + " means " + cleanLearnerText(card.primaryMeaning, prompt, 72) + "."
-                : "Answer: " + card.targetKanji + " · " + cleanLearnerText(card.primaryMeaning, prompt, 72);
+        String status = StudyTextCopy.meaningKanjiChoiceResult(card, prompt, correct);
         resultStatus = text(status, 15, correct ? TEAL : CORAL, true);
         studyActionBar.addView(resultStatus);
         Button next = pinkPrimaryButton("Next");

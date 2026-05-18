@@ -87,6 +87,33 @@ public final class StudyTextCopyTest {
     }
 
     @Test
+    public void meaningKanjiChoiceCopyCleansLearnerMeaningAndPreservesResultBranches() {
+        RecordsImportModels.MeaningKanjiChoiceCard card = new RecordsImportModels.MeaningKanjiChoiceCard(
+                "静",
+                "(suru verb) quiet",
+                "しず",
+                Arrays.asList("静", "青", "清", "晴")
+        );
+
+        assertEquals(
+                "Which kanji means Quiet?",
+                StudyTextCopy.meaningKanjiChoiceQuestion(card, "fallback")
+        );
+        assertEquals(
+                "Correct. 静 means Quiet.",
+                StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", true)
+        );
+        assertEquals(
+                "Answer: 静 \u00b7 Quiet",
+                StudyTextCopy.meaningKanjiChoiceResult(card, "fallback", false)
+        );
+        assertEquals(
+                "Which kanji means Fallback clue?",
+                StudyTextCopy.meaningKanjiChoiceQuestion(null, "fallback clue")
+        );
+    }
+
+    @Test
     public void similarRepairPromptPreservesRepairCopyBranches() {
         assertEquals(
                 "Repair the shape mix-up for pull. You picked 提; write 拉.",
