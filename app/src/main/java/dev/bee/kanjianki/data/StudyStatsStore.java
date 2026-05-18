@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.LadderHealthPolicy;
 import dev.bee.kanjianki.core.RecentMistakePolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.StudyImpactPolicy;
 import dev.bee.kanjianki.core.StudyStreakPolicy;
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import android.database.Cursor;
@@ -116,14 +117,14 @@ public final class StudyStatsStore {
         );
         try {
             cursor.moveToFirst();
-            return new StudyImpactStats(
+            return StudyImpactStats.fromCore(StudyImpactPolicy.summarize(
                     cursor.getInt(0),
                     cursor.getInt(1),
                     cursor.getInt(2),
                     cursor.getInt(3),
                     cursor.getInt(4),
                     cursor.getInt(5)
-            );
+            ));
         } finally {
             cursor.close();
         }
@@ -434,12 +435,27 @@ public final class StudyStatsStore {
         public final int manualOverrides;
 
         public StudyImpactStats(int totalReviews, int distinctReviewedKanji, int writingRequired, int writingPassed, int writingFailed, int manualOverrides) {
-            this.totalReviews = totalReviews;
-            this.distinctReviewedKanji = distinctReviewedKanji;
-            this.writingRequired = writingRequired;
-            this.writingPassed = writingPassed;
-            this.writingFailed = writingFailed;
-            this.manualOverrides = manualOverrides;
+            this(StudyImpactPolicy.summarize(
+                    totalReviews,
+                    distinctReviewedKanji,
+                    writingRequired,
+                    writingPassed,
+                    writingFailed,
+                    manualOverrides
+            ));
+        }
+
+        private StudyImpactStats(StudyImpactPolicy.Impact impact) {
+            this.totalReviews = impact.totalReviews();
+            this.distinctReviewedKanji = impact.distinctReviewedKanji();
+            this.writingRequired = impact.writingRequired();
+            this.writingPassed = impact.writingPassed();
+            this.writingFailed = impact.writingFailed();
+            this.manualOverrides = impact.manualOverrides();
+        }
+
+        private static StudyImpactStats fromCore(StudyImpactPolicy.Impact impact) {
+            return new StudyImpactStats(impact);
         }
     }
 
