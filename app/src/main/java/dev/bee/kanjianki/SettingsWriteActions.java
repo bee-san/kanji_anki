@@ -1,15 +1,19 @@
 package dev.bee.kanjianki;
 
-import dev.bee.kanjianki.data.LocalStore;
-import dev.bee.kanjianki.core.SettingsImportPreset;
-import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
-import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
+import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
-import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
+import dev.bee.kanjianki.core.SettingsImportPreset;
+import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
+import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
+import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
+import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.SyncSettings;
+import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
 
 final class SettingsWriteActions {
     private SettingsWriteActions() {
@@ -55,6 +59,26 @@ final class SettingsWriteActions {
         writer.saveStudyLadderSettings(settings);
     }
 
+    static void saveWorkload(WorkloadSettingsPolicy.SaveRequest request, WorkloadSettingsWriter writer) {
+        writer.saveAdaptiveLoadMode(request.mode);
+        writer.saveAdaptiveLoadWorkPercent(request.workloadPercent);
+        writer.saveAdaptiveLoadMaxItems(request.maxItems);
+    }
+
+    static void saveStudyAhead(StudyAheadSettingsPolicy.SaveResult request, StudyAheadSettingsWriter writer) {
+        if (request == null || !request.valid) {
+            return;
+        }
+        writer.saveStudyAheadMinutes(request.minutes);
+    }
+
+    static void saveRetention(RetentionSettingsPolicy.SaveResult request, SchedulerParametersWriter writer) {
+        if (request == null || !request.valid) {
+            return;
+        }
+        writer.saveSchedulerParameters(request.parameters);
+    }
+
     static void moveStudyLadderRung(
             RecordsBase.StudyLadderSettings current,
             RecordsBase.LadderRung rung,
@@ -83,6 +107,10 @@ final class SettingsWriteActions {
 
     static void setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.ToggleResult result, AutoSyncSettingsWriter writer) {
         writer.setAutoSyncEnabled(result.enabled());
+    }
+
+    static void setAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.ToggleResult result, AutoUpdateSettingsWriter writer) {
+        writer.saveAutoUpdateEnabled(result.enabled());
     }
 
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
@@ -160,12 +188,32 @@ final class SettingsWriteActions {
         void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings);
     }
 
+    interface WorkloadSettingsWriter {
+        void saveAdaptiveLoadMode(String mode);
+
+        void saveAdaptiveLoadWorkPercent(int workloadPercent);
+
+        void saveAdaptiveLoadMaxItems(int maxItems);
+    }
+
+    interface StudyAheadSettingsWriter {
+        void saveStudyAheadMinutes(int minutes);
+    }
+
+    interface SchedulerParametersWriter {
+        void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters);
+    }
+
     interface ReminderSettingsWriter {
         void saveReminderSettings(LocalStore.ReminderSettings settings);
     }
 
     interface AutoSyncSettingsWriter {
         void setAutoSyncEnabled(boolean enabled);
+    }
+
+    interface AutoUpdateSettingsWriter {
+        void saveAutoUpdateEnabled(boolean enabled);
     }
 
     interface SettingWriter extends IntSettingWriter {

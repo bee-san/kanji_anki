@@ -148,7 +148,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button toggle = secondaryButton(SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled));
         toggle.setOnClickListener(v -> {
             AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
-            store.saveAutoUpdateEnabled(result.enabled());
+            SettingsWriteActions.setAutoUpdateEnabled(result, store::saveAutoUpdateEnabled);
             if (result.enabled()) {
                 AutoUpdateScheduler.schedule(this);
             } else {
@@ -981,7 +981,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button saveMax = primaryButton(SettingsTextCopy.saveMaximumLabel(), STUDY_PINK_DARK);
             saveMax.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
-                store.saveAdaptiveLoadMaxItems(request.maxItems);
+                SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
@@ -989,7 +989,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button manual = secondaryButton(SettingsTextCopy.manualWorkloadLabel());
             manual.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
-                store.saveAdaptiveLoadMode(request.mode);
+                SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
@@ -1037,9 +1037,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button save = primaryButton(SettingsTextCopy.saveWorkloadLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
-            store.saveAdaptiveLoadMode(request.mode);
-            store.saveAdaptiveLoadWorkPercent(request.workloadPercent);
-            store.saveAdaptiveLoadMaxItems(request.maxItems);
+            SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1047,12 +1045,31 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button automatic = secondaryButton(SettingsTextCopy.automaticParetoLabel());
         automatic.setOnClickListener(v -> {
             WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
-            store.saveAdaptiveLoadMode(request.mode);
+            SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(automatic);
         return box;
+    }
+
+    SettingsWriteActions.WorkloadSettingsWriter workloadSettingsWriter() {
+        return new SettingsWriteActions.WorkloadSettingsWriter() {
+            @Override
+            public void saveAdaptiveLoadMode(String mode) {
+                store.saveAdaptiveLoadMode(mode);
+            }
+
+            @Override
+            public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
+                store.saveAdaptiveLoadWorkPercent(workloadPercent);
+            }
+
+            @Override
+            public void saveAdaptiveLoadMaxItems(int maxItems) {
+                store.saveAdaptiveLoadMaxItems(maxItems);
+            }
+        };
     }
 
     void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
@@ -1167,7 +1184,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            store.saveStudyAheadMinutes(request.minutes);
+            SettingsWriteActions.saveStudyAhead(request, store::saveStudyAheadMinutes);
             Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1370,7 +1387,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
                 return;
             }
-            store.saveSchedulerParameters(request.parameters);
+            SettingsWriteActions.saveRetention(request, store::saveSchedulerParameters);
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });

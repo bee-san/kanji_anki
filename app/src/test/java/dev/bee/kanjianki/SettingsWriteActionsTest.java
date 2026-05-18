@@ -5,11 +5,16 @@ import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
+import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
+import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
+import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
+import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.SyncSettings;
+import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
 
 import org.junit.Test;
 
@@ -133,6 +138,46 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void saveWorkloadWritesAllAdaptiveLoadFields() {
+        RecordingWorkloadWriter writer = new RecordingWorkloadWriter();
+
+        SettingsWriteActions.saveWorkload(WorkloadSettingsPolicy.saveManualWorkload(84, 6), writer);
+
+        assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, writer.mode);
+        assertEquals(85, writer.workloadPercent);
+        assertEquals(6, writer.maxItems);
+    }
+
+    @Test
+    public void saveStudyAheadWritesValidMinutesOnly() {
+        RecordingStudyAheadWriter writer = new RecordingStudyAheadWriter();
+
+        SettingsWriteActions.saveStudyAhead(StudyAheadSettingsPolicy.saveRequest("25"), writer);
+        SettingsWriteActions.saveStudyAhead(StudyAheadSettingsPolicy.saveRequest("-1"), writer);
+
+        assertEquals(25, writer.minutes);
+        assertEquals(1, writer.writes);
+    }
+
+    @Test
+    public void saveRetentionWritesValidSchedulerParametersOnly() {
+        RecordingSchedulerParametersWriter writer = new RecordingSchedulerParametersWriter();
+        RecordsSchedulerModels.SchedulerParameters latest = RecordsSchedulerModels.SchedulerParameters.defaults();
+
+        SettingsWriteActions.saveRetention(
+                RetentionSettingsPolicy.saveRequest(95, false, "1-500=95%", latest),
+                writer
+        );
+        SettingsWriteActions.saveRetention(
+                RetentionSettingsPolicy.saveRequest(95, true, "500-1=95%", latest),
+                writer
+        );
+
+        assertEquals(1, writer.writes);
+        assertEquals(0.95, writer.parameters.targetRetention, 0.0);
+    }
+
+    @Test
     public void saveReminderBuildsAndWritesNormalizedFields() {
         RecordingReminderWriter writer = new RecordingReminderWriter();
         ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(true, 30, -4);
@@ -153,6 +198,17 @@ public final class SettingsWriteActionsTest {
         assertTrue(writer.enabled);
 
         SettingsWriteActions.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.disable(), writer);
+        assertEquals(false, writer.enabled);
+    }
+
+    @Test
+    public void setAutoUpdateEnabledWritesToggleResultFlag() {
+        RecordingAutoUpdateWriter writer = new RecordingAutoUpdateWriter();
+
+        SettingsWriteActions.setAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.toggle(false), writer);
+        assertTrue(writer.enabled);
+
+        SettingsWriteActions.setAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.toggle(true), writer);
         assertEquals(false, writer.enabled);
     }
 
@@ -258,6 +314,49 @@ public final class SettingsWriteActionsTest {
         }
     }
 
+    private static final class RecordingWorkloadWriter implements SettingsWriteActions.WorkloadSettingsWriter {
+        String mode;
+        int workloadPercent;
+        int maxItems;
+
+        @Override
+        public void saveAdaptiveLoadMode(String mode) {
+            this.mode = mode;
+        }
+
+        @Override
+        public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
+            this.workloadPercent = workloadPercent;
+        }
+
+        @Override
+        public void saveAdaptiveLoadMaxItems(int maxItems) {
+            this.maxItems = maxItems;
+        }
+    }
+
+    private static final class RecordingStudyAheadWriter implements SettingsWriteActions.StudyAheadSettingsWriter {
+        int minutes;
+        int writes;
+
+        @Override
+        public void saveStudyAheadMinutes(int minutes) {
+            this.minutes = minutes;
+            writes++;
+        }
+    }
+
+    private static final class RecordingSchedulerParametersWriter implements SettingsWriteActions.SchedulerParametersWriter {
+        RecordsSchedulerModels.SchedulerParameters parameters;
+        int writes;
+
+        @Override
+        public void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters) {
+            this.parameters = parameters;
+            writes++;
+        }
+    }
+
     private static final class RecordingReminderWriter implements SettingsWriteActions.ReminderSettingsWriter {
         LocalStore.ReminderSettings settings;
 
@@ -272,6 +371,15 @@ public final class SettingsWriteActionsTest {
 
         @Override
         public void setAutoSyncEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    private static final class RecordingAutoUpdateWriter implements SettingsWriteActions.AutoUpdateSettingsWriter {
+        boolean enabled;
+
+        @Override
+        public void saveAutoUpdateEnabled(boolean enabled) {
             this.enabled = enabled;
         }
     }
