@@ -174,9 +174,11 @@ final class HistoricalSyncStore {
                     lapses,
                     false,
                     mature,
-                    nullableDouble(cards, COLUMN_FSRS_STABILITY),
-                    nullableDouble(cards, COLUMN_FSRS_DIFFICULTY),
-                    nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY)
+                    new HistoricalKanjiAggregate.FsrsMemoryValues(
+                            nullableDouble(cards, COLUMN_FSRS_STABILITY),
+                            nullableDouble(cards, COLUMN_FSRS_DIFFICULTY),
+                            nullableDouble(cards, COLUMN_FSRS_RETRIEVABILITY)
+                    )
             );
         }
     }

@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.core;
 
 public final class HistoricalKanjiAggregate {
+    private static final FsrsMemoryValues EMPTY_FSRS = new FsrsMemoryValues(null, null, null);
+
     private final String kanji;
     private int activeCards;
     private int suspendedCards;
@@ -31,9 +33,7 @@ public final class HistoricalKanjiAggregate {
                 card.lapses,
                 card.suspended,
                 card.mature(matureDays),
-                card.fsrsStability,
-                card.fsrsDifficulty,
-                card.fsrsRetrievability
+                new FsrsMemoryValues(card.fsrsStability, card.fsrsDifficulty, card.fsrsRetrievability)
         );
     }
 
@@ -43,10 +43,9 @@ public final class HistoricalKanjiAggregate {
             int lapses,
             boolean suspended,
             boolean mature,
-            Double fsrsStability,
-            Double fsrsDifficulty,
-            Double fsrsRetrievability
+            FsrsMemoryValues fsrs
     ) {
+        FsrsMemoryValues memory = fsrs == null ? EMPTY_FSRS : fsrs;
         if (suspended) {
             suspendedCards++;
         } else {
@@ -59,16 +58,16 @@ public final class HistoricalKanjiAggregate {
         totalReps += Math.max(0, reps);
         intervalSum += Math.max(0, intervalDays);
         intervalCount++;
-        if (fsrsStability != null) {
-            stabilitySum += fsrsStability;
+        if (memory.stability() != null) {
+            stabilitySum += memory.stability();
             stabilityCount++;
         }
-        if (fsrsDifficulty != null) {
-            difficultySum += fsrsDifficulty;
+        if (memory.difficulty() != null) {
+            difficultySum += memory.difficulty();
             difficultyCount++;
         }
-        if (fsrsRetrievability != null) {
-            retrievabilitySum += fsrsRetrievability;
+        if (memory.retrievability() != null) {
+            retrievabilitySum += memory.retrievability();
             retrievabilityCount++;
         }
     }
@@ -81,7 +80,7 @@ public final class HistoricalKanjiAggregate {
             int rowMatureSupportCount
     ) {
         weaknessScore = rowWeaknessScore;
-        reasonCode = rowReasonCode;
+        reasonCode = rowReasonCode == null ? "" : rowReasonCode;
         activeExampleCount = Math.max(activeExampleCount, rowActiveExampleCount);
         suspendedExampleCount = Math.max(suspendedExampleCount, rowSuspendedExampleCount);
         matureSupportCount = Math.max(matureSupportCount, rowMatureSupportCount);
@@ -141,5 +140,8 @@ public final class HistoricalKanjiAggregate {
 
     public int suspendedExampleCount() {
         return suspendedExampleCount;
+    }
+
+    public record FsrsMemoryValues(Double stability, Double difficulty, Double retrievability) {
     }
 }

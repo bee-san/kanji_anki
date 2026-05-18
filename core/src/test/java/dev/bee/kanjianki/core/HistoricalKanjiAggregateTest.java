@@ -10,8 +10,8 @@ public final class HistoricalKanjiAggregateTest {
     public void cardMetricsClampNegativeCountsAndAverageOnlyPresentFsrsValues() {
         HistoricalKanjiAggregate aggregate = new HistoricalKanjiAggregate("拉");
 
-        aggregate.addCard(-10, -2, -3, false, false, 2.0, null, 0.5);
-        aggregate.addCard(30, 4, 1, true, true, 4.0, 8.0, null);
+        aggregate.addCard(-10, -2, -3, false, false, fsrs(2.0, null, 0.5));
+        aggregate.addCard(30, 4, 1, true, true, fsrs(4.0, 8.0, null));
 
         assertEquals("拉", aggregate.kanji());
         assertEquals(1, aggregate.activeCards());
@@ -43,15 +43,19 @@ public final class HistoricalKanjiAggregateTest {
     @Test
     public void dashboardEvidenceOverlaysWeaknessAndMaxSupportCounts() {
         HistoricalKanjiAggregate aggregate = new HistoricalKanjiAggregate("提");
-        aggregate.addCard(10, 1, 0, false, false, null, null, null);
+        aggregate.addCard(10, 1, 0, false, false, null);
 
         aggregate.mergeDashboardEvidence(44, "weak_fsrs", 3, 2, 4);
         aggregate.mergeDashboardEvidence(12, null, 1, 8, 2);
 
         assertEquals(12, aggregate.weaknessScore());
-        assertNull(aggregate.reasonCode());
+        assertEquals("", aggregate.reasonCode());
         assertEquals(3, aggregate.activeExampleCount());
         assertEquals(8, aggregate.suspendedExampleCount());
         assertEquals(4, aggregate.matureSupportCount());
+    }
+
+    private static HistoricalKanjiAggregate.FsrsMemoryValues fsrs(Double stability, Double difficulty, Double retrievability) {
+        return new HistoricalKanjiAggregate.FsrsMemoryValues(stability, difficulty, retrievability);
     }
 }
