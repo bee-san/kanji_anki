@@ -102,6 +102,10 @@ import java.util.concurrent.Executors;
 abstract class MainActivityStudy extends MainActivityStats {
     private static final String LABEL_CHOOSE_KANJI = "Choose the kanji";
 
+    interface KanjiChoiceClickHandler {
+        void onClick(String glyph, LinearLayout grid);
+    }
+
     private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
     private final Random meaningChoiceRandom = new Random();
 
@@ -501,29 +505,55 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     View meaningKanjiGrid(RecordsImportModels.MeaningKanjiChoiceCard card, View answerPanel) {
+        return kanjiChoiceGrid(
+                card.choices,
+                (glyph, grid) -> showMeaningKanjiChoiceResult(card, glyph, grid, answerPanel),
+                false
+        );
+    }
+
+    View kanjiChoiceGrid(List<String> choices, KanjiChoiceClickHandler clickHandler, boolean balanceLastRow) {
         LinearLayout grid = new LinearLayout(this);
         grid.setOrientation(LinearLayout.VERTICAL);
         LinearLayout row = null;
-        for (int i = 0; i < card.choices.size(); i++) {
+        for (int i = 0; i < choices.size(); i++) {
             if (i % 2 == 0) {
                 row = new LinearLayout(this);
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 grid.addView(row);
             }
-            String glyph = card.choices.get(i);
-            Button button = studySecondaryButton(glyph);
-            button.setTextColor(STUDY_PLUM);
-            button.setTextSize(34);
-            button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
-            button.setOnClickListener(v -> showMeaningKanjiChoiceResult(card, glyph, grid, answerPanel));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
-            lp.setMargins(dp(4), dp(8), dp(4), 0);
+            String glyph = choices.get(i);
+            Button button = kanjiChoiceButton(glyph);
+            button.setOnClickListener(v -> clickHandler.onClick(glyph, grid));
             if (row != null) {
-                row.addView(button, lp);
+                row.addView(button, kanjiChoiceLayoutParams());
             }
         }
+        if (balanceLastRow && choices.size() % 2 == 1 && grid.getChildCount() > 0) {
+            addKanjiChoiceSpacer(grid);
+        }
         return grid;
+    }
+
+    Button kanjiChoiceButton(String glyph) {
+        Button button = studySecondaryButton(glyph);
+        button.setTextColor(STUDY_PLUM);
+        button.setTextSize(34);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
+        return button;
+    }
+
+    LinearLayout.LayoutParams kanjiChoiceLayoutParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
+        lp.setMargins(dp(4), dp(8), dp(4), 0);
+        return lp;
+    }
+
+    void addKanjiChoiceSpacer(LinearLayout grid) {
+        LinearLayout lastRow = (LinearLayout) grid.getChildAt(grid.getChildCount() - 1);
+        SpaceView spacer = new SpaceView(this);
+        lastRow.addView(spacer, kanjiChoiceLayoutParams());
     }
 
     void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
@@ -607,36 +637,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout row = null;
-        for (int i = 0; i < choices.size(); i++) {
-            if (i % 2 == 0) {
-                row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                grid.addView(row);
-            }
-            String glyph = choices.get(i);
-            Button button = studySecondaryButton(glyph);
-            button.setTextColor(STUDY_PLUM);
-            button.setTextSize(34);
-            button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
-            button.setOnClickListener(v -> submitSimilarKanjiChoice(card, glyph));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
-            lp.setMargins(dp(4), dp(8), dp(4), 0);
-            if (row != null) {
-                row.addView(button, lp);
-            }
-        }
-        if (choices.size() % 2 == 1 && grid.getChildCount() > 0) {
-            LinearLayout lastRow = (LinearLayout) grid.getChildAt(grid.getChildCount() - 1);
-            SpaceView spacer = new SpaceView(this);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
-            lp.setMargins(dp(4), dp(8), dp(4), 0);
-            lastRow.addView(spacer, lp);
-        }
-        return grid;
+        return kanjiChoiceGrid(choices, (glyph, grid) -> submitSimilarKanjiChoice(card, glyph), true);
     }
 
     View similarKanjiGrid(List<String> choices, String correctKanji) {
