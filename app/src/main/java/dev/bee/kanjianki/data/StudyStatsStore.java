@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data;
 
+import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.database.Cursor;
@@ -8,7 +9,6 @@ import android.database.sqlite.SQLiteDatabase;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -355,24 +355,11 @@ public final class StudyStatsStore {
     }
 
     private static long localDayStart(long millis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(millis);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        return LocalDayPolicy.localDayStart(millis);
     }
 
     private static long moveLocalDays(long localDayStart, int days) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(localDayStart);
-        calendar.add(Calendar.DAY_OF_YEAR, days);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        return LocalDayPolicy.moveLocalDays(localDayStart, days);
     }
 
     private static String string(Cursor cursor, String column) {

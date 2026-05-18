@@ -48,13 +48,7 @@ public final class AutoSyncSchedulePolicy {
     }
 
     public static long localDayStart(long nowMillis) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(nowMillis);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTimeInMillis();
+        return LocalDayPolicy.localDayStart(nowMillis);
     }
 
     private static SchedulePlan planWithLatency(long triggerAtMillis, long minimumLatencyMillis) {

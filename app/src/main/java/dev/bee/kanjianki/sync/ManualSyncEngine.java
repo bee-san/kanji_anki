@@ -14,6 +14,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.JitenKanjiRanks;
 import dev.bee.kanjianki.core.KanjiAnalyzer;
 import dev.bee.kanjianki.core.KanjiImportSelector;
+import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.data.DictionaryStore;
 import dev.bee.kanjianki.data.LocalStore;
@@ -179,13 +180,7 @@ public final class ManualSyncEngine {
     }
 
     private long startOfDay(long now) {
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.setTimeInMillis(now);
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        return cal.getTimeInMillis();
+        return LocalDayPolicy.localDayStart(now);
     }
 
     private List<RecordsImportModels.SuspendedImport> mergeSuspendedImports(List<RecordsImportModels.SuspendedImport> stored, List<RecordsImportModels.SuspendedImport> current) {

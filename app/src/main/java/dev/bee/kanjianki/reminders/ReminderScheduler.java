@@ -18,6 +18,7 @@ import android.os.Build;
 import dev.bee.kanjianki.MainActivity;
 import dev.bee.kanjianki.R;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
+import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.ReminderCopyPolicy;
 import dev.bee.kanjianki.core.ReminderSchedulePolicy;
 import dev.bee.kanjianki.data.LocalStore;
@@ -285,12 +286,6 @@ public final class ReminderScheduler {
     }
 
     private static long startOfLocalDay(long nowMillis) {
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.setTimeInMillis(nowMillis);
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        return cal.getTimeInMillis();
+        return LocalDayPolicy.localDayStart(nowMillis);
     }
 }
