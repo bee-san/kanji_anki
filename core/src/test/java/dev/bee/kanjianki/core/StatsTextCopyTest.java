@@ -45,4 +45,27 @@ public final class StatsTextCopyTest {
                 StatsTextCopy.verdictBody(true, true, true, 1, 2, 3, 1, 4)
         );
     }
+
+    @Test
+    public void ladderHealthBodyPreservesThresholdAndEmptyCopy() {
+        assertEquals(
+                "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder.",
+                StatsTextCopy.ladderHealthBody(0, 0, 0, 0, 21, 3)
+        );
+        assertEquals(
+                "2 FSRS-mature review items · 1 demotion-risk review item · 1 at the demotion threshold. Thresholds: climb when FSRS schedules more than 21 days; demote after 3 real due-review fails.",
+                StatsTextCopy.ladderHealthBody(5, 2, 1, 1, 21, 3)
+        );
+    }
+
+    @Test
+    public void ladderDistributionRowsPreserveRungLabels() {
+        assertEquals("Write kanji: 2", StatsTextCopy.ladderDistributionRow(RecordsBase.LadderRung.WRITE_KANJI, 2));
+        assertEquals("Type meaning: 0", StatsTextCopy.ladderDistributionRow(RecordsBase.LadderRung.TYPE_MEANING, 0));
+        assertEquals("Similar kanji: 1", StatsTextCopy.ladderDistributionRow(RecordsBase.LadderRung.SIMILAR_KANJI, 1));
+        assertEquals("Meaning kanji", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.MEANING_KANJI));
+        assertEquals("Kanji meaning", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.KANJI_MEANING));
+        assertEquals("Font meaning", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.FONT_MEANING));
+        assertEquals("Word reading", StatsTextCopy.ladderRungLabel(RecordsBase.LadderRung.WORD_READING));
+    }
 }

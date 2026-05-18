@@ -176,41 +176,22 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     String ladderHealthBody(StudyStatsStore.LadderHealthMetric metric) {
-        if (metric.totalActiveItems == 0) {
-            return "No active ladder items yet. Sync AnkiDroid or study imported weak kanji to fill the ladder.";
-        }
-        String body = countText(metric.promotionReadyCount, "FSRS-mature review item", "FSRS-mature review items")
-                + " · "
-                + countText(metric.demotionRiskCount, "demotion-risk review item", "demotion-risk review items");
-        if (metric.demotionReadyCount > 0) {
-            body += " · " + countText(metric.demotionReadyCount, "at the demotion threshold", "at the demotion threshold");
-        }
-        return body
-                + ". Thresholds: climb when FSRS schedules more than "
-                + metric.ladderPromotionIntervalDays
-                + " days; demote after "
-                + metric.ladderDemotionFailStreak
-                + " real due-review fails.";
+        return StatsTextCopy.ladderHealthBody(
+                metric.totalActiveItems,
+                metric.promotionReadyCount,
+                metric.demotionRiskCount,
+                metric.demotionReadyCount,
+                metric.ladderPromotionIntervalDays,
+                metric.ladderDemotionFailStreak
+        );
     }
 
     List<String> ladderDistributionRows(StudyStatsStore.LadderHealthMetric metric) {
         List<String> rows = new ArrayList<>();
         for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
-            rows.add(ladderRungLabel(rung) + ": " + metric.countFor(rung));
+            rows.add(StatsTextCopy.ladderDistributionRow(rung, metric.countFor(rung)));
         }
         return rows;
-    }
-
-    String ladderRungLabel(RecordsBase.LadderRung rung) {
-        return switch (rung) {
-            case WRITE_KANJI -> "Write kanji";
-            case TYPE_MEANING -> "Type meaning";
-            case SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
-            case MEANING_KANJI -> "Meaning kanji";
-            case KANJI_MEANING -> "Kanji meaning";
-            case FONT_MEANING -> "Font meaning";
-            case WORD_READING -> "Word reading";
-        };
     }
 
     String weaknessImprovementBody(StudyStatsStore.WeakKanjiImprovedMetric metric) {
