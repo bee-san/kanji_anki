@@ -57,6 +57,7 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
+import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -1246,23 +1247,18 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button save = primaryButton("Save ladder thresholds", STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
-            int promotionDayCount;
-            int failCount;
-            try {
-                promotionDayCount = parseThresholdInput(promotionDays);
-                failCount = parseThresholdInput(failStreak);
-            } catch (NumberFormatException error) {
-                Toast.makeText(this, "Use positive whole numbers.", Toast.LENGTH_SHORT).show();
+            StudyLadderThresholdPolicy.SaveResult request = StudyLadderThresholdPolicy.saveRequest(
+                    promotionDays.getText().toString(),
+                    failStreak.getText().toString()
+            );
+            if (!request.valid) {
+                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (promotionDayCount < 1 || failCount < 1) {
-                Toast.makeText(this, "Use positive whole numbers.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, promotionDayCount);
-            store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, failCount);
-            store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, failCount);
-            store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, failCount);
+            store.putIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, request.promotionDays);
+            store.putIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, request.failStreak);
+            store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, request.failStreak);
+            store.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, request.failStreak);
             Toast.makeText(this, "Ladder thresholds saved.", Toast.LENGTH_SHORT).show();
             renderSettings();
         });
