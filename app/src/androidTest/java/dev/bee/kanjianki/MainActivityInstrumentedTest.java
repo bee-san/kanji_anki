@@ -299,7 +299,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
-        scenario.onActivity(activity -> editTextAfterLabel(activity, "Minutes (0-1440)").setText("45"));
+        scenario.onActivity(activity -> editTextAfterLabel(activity, MainActivitySettings.studyAheadMinutesLabel()).setText("45"));
     }
 
     private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {

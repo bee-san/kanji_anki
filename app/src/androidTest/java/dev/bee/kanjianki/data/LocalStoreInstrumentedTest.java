@@ -20,6 +20,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.KanjiInventoryBuilder;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -1018,7 +1019,7 @@ public final class LocalStoreInstrumentedTest {
         store.saveStudyAheadMinutes(-5);
         assertEquals(0, store.studyAheadMinutes());
         store.saveStudyAheadMinutes(99999);
-        assertEquals(1440, store.studyAheadMinutes());
+        assertEquals(SettingsInputRules.MAX_STUDY_AHEAD_MINUTES, store.studyAheadMinutes());
         store.saveStudyAheadMinutes(0);
         assertEquals(0, store.studyAheadMinutes());
 

@@ -1110,6 +1110,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout studyAheadSettingsPanel() {
         int currentMinutes = store.studyAheadMinutes();
+        int minMinutes = SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES;
+        int maxMinutes = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES;
+        String validRange = studyAheadMinutesRange();
         LinearLayout box = settingsPanelBox();
         box.addView(text("Study ahead", 23, INK, true));
         box.addView(text("Pull cards becoming due within this many minutes into the queue. Set 0 to disable. Learning step delays still apply normally (just like Anki).", 15, MUTED, false));
@@ -1120,7 +1123,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         minutesInput.setTextSize(20);
         minutesInput.setSingleLine(true);
         minutesInput.setSelectAllOnFocus(true);
-        box.addView(text("Minutes (0-1440)", 15, INK, true));
+        box.addView(text(studyAheadMinutesLabel(), 15, INK, true));
         box.addView(minutesInput, new LinearLayout.LayoutParams(-1, dp(58)));
 
         Button save = primaryButton("Save study ahead", STUDY_PINK_DARK);
@@ -1129,11 +1132,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
             try {
                 parsed = Integer.parseInt(minutesInput.getText().toString().trim());
             } catch (NumberFormatException ex) {
-                Toast.makeText(this, "Use a whole number of minutes (0-1440).", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, String.format(Locale.ROOT, "Use a whole number of minutes (%s).", validRange), Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (parsed < 0 || parsed > 1440) {
-                Toast.makeText(this, "Use 0 to disable, or up to 1440 minutes (24h).", Toast.LENGTH_SHORT).show();
+            if (parsed < minMinutes || parsed > maxMinutes) {
+                Toast.makeText(this, String.format(Locale.ROOT, "Use %d to disable, or up to %s.", minMinutes, studyAheadMaxDescription()), Toast.LENGTH_SHORT).show();
                 return;
             }
             store.saveStudyAheadMinutes(parsed);
@@ -1142,6 +1145,22 @@ abstract class MainActivitySettings extends MainActivityStudy {
         });
         box.addView(save);
         return box;
+    }
+
+    static String studyAheadMinutesLabel() {
+        return String.format(Locale.ROOT, "Minutes (%s)", studyAheadMinutesRange());
+    }
+
+    private static String studyAheadMinutesRange() {
+        return String.format(Locale.ROOT, "%d-%d", SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES, SettingsInputRules.MAX_STUDY_AHEAD_MINUTES);
+    }
+
+    private static String studyAheadMaxDescription() {
+        int maxMinutes = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES;
+        if (maxMinutes % 60 == 0) {
+            return String.format(Locale.ROOT, "%d minutes (%dh)", maxMinutes, maxMinutes / 60);
+        }
+        return String.format(Locale.ROOT, "%d minutes", maxMinutes);
     }
 
     LinearLayout studyLadderSettingsPanel() {
