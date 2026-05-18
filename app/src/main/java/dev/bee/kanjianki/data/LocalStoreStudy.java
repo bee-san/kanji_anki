@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import dev.bee.kanjianki.core.TextUtil;
 
 import java.util.ArrayList;
@@ -573,7 +574,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         values.put(COLUMN_TASK_TYPE, taskType == null ? "" : taskType);
         values.put(COLUMN_STARTED_AT, Math.max(0L, startedAt));
         values.put("answered_at", Math.max(0L, answeredAt));
-        values.put("active_elapsed_ms", Math.min(MAX_STUDY_TASK_ELAPSED_MS, Math.max(0L, activeElapsedMillis)));
+        values.put("active_elapsed_ms", StudyTaskTimingPolicy.boundedElapsed(activeElapsedMillis, MAX_STUDY_TASK_ELAPSED_MS));
         values.put("outcome", outcome == null ? "" : outcome);
         return getWritableDatabase().insertWithOnConflict(TABLE_STUDY_TASK_LOG, null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L;
     }

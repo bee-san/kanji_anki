@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.StudySessionProgressTracker;
+import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import android.os.SystemClock;
 
 import dev.bee.kanjianki.data.LocalStore;
@@ -152,14 +153,16 @@ final class StudySessionTracker {
             if (visibleSinceElapsedMillis <= 0L) {
                 return;
             }
-            activeElapsedMillis += Math.max(0L, nowElapsedMillis - visibleSinceElapsedMillis);
+            activeElapsedMillis = StudyTaskTimingPolicy.elapsedAfterPause(
+                    activeElapsedMillis,
+                    visibleSinceElapsedMillis,
+                    nowElapsedMillis
+            );
             visibleSinceElapsedMillis = 0L;
         }
 
         void resume(long nowElapsedMillis) {
-            if (visibleSinceElapsedMillis <= 0L) {
-                visibleSinceElapsedMillis = nowElapsedMillis;
-            }
+            visibleSinceElapsedMillis = StudyTaskTimingPolicy.visibleSinceAfterResume(visibleSinceElapsedMillis, nowElapsedMillis);
         }
     }
 }

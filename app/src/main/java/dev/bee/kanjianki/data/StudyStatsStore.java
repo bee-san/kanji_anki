@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.LadderHealthPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.StudyStreakPolicy;
+import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -32,20 +33,22 @@ public final class StudyStatsStore {
     }
 
     public StudyTaskTimeStats studyTaskTimeStats(long nowMillis) {
-        long today = localDayStart(nowMillis);
-        long tomorrow = moveLocalDays(today, 1);
-        long sevenDayStart = moveLocalDays(today, -6);
+        StudyTaskTimingPolicy.Window window = StudyTaskTimingPolicy.windowFor(nowMillis);
         Cursor cursor = db().rawQuery(
                 "SELECT "
                         + "COALESCE(SUM(CASE WHEN answered_at>=? THEN active_elapsed_ms ELSE 0 END), 0) AS today_elapsed, "
                         + "COALESCE(SUM(active_elapsed_ms), 0) AS week_elapsed, "
                         + "COUNT(*) AS week_tasks "
                         + "FROM study_task_log WHERE answered_at>=? AND answered_at<?",
-                new String[]{Long.toString(today), Long.toString(sevenDayStart), Long.toString(tomorrow)}
+                new String[]{
+                        Long.toString(window.todayStartMillis()),
+                        Long.toString(window.sevenDayStartMillis()),
+                        Long.toString(window.tomorrowStartMillis())
+                }
         );
         try {
             cursor.moveToFirst();
-            return new StudyTaskTimeStats(cursor.getLong(0), cursor.getLong(1), cursor.getInt(2));
+            return StudyTaskTimeStats.fromCore(StudyTaskTimingPolicy.summarize(cursor.getLong(0), cursor.getLong(1), cursor.getInt(2)));
         } finally {
             cursor.close();
         }
@@ -443,16 +446,22 @@ public final class StudyStatsStore {
         public final int answeredTasks;
 
         public StudyTaskTimeStats(long todayMillis, long lastSevenDaysMillis, int answeredTasks) {
-            this.todayMillis = Math.max(0L, todayMillis);
-            this.lastSevenDaysMillis = Math.max(0L, lastSevenDaysMillis);
-            this.answeredTasks = Math.max(0, answeredTasks);
+            this(StudyTaskTimingPolicy.summarize(todayMillis, lastSevenDaysMillis, answeredTasks));
+        }
+
+        private StudyTaskTimeStats(StudyTaskTimingPolicy.Summary summary) {
+            StudyTaskTimingPolicy.Summary safeSummary = summary == null ? StudyTaskTimingPolicy.summarize(0L, 0L, 0) : summary;
+            this.todayMillis = safeSummary.todayMillis();
+            this.lastSevenDaysMillis = safeSummary.lastSevenDaysMillis();
+            this.answeredTasks = safeSummary.answeredTasks();
+        }
+
+        private static StudyTaskTimeStats fromCore(StudyTaskTimingPolicy.Summary summary) {
+            return new StudyTaskTimeStats(summary);
         }
 
         public long averageMillisPerTask() {
-            if (answeredTasks == 0) {
-                return 0L;
-            }
-            return lastSevenDaysMillis / answeredTasks;
+            return StudyTaskTimingPolicy.summarize(todayMillis, lastSevenDaysMillis, answeredTasks).averageMillisPerTask();
         }
     }
 
