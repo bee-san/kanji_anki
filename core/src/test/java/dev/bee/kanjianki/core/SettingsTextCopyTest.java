@@ -40,6 +40,26 @@ public final class SettingsTextCopyTest {
         assertEquals("unknown version", SettingsTextCopy.versionText("  "));
         assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
         assertEquals("release-v0.4.33", SettingsTextCopy.versionText("release-v0.4.33"));
+        assertEquals("Anki source", SettingsTextCopy.settingsAnkiSourceTitle());
+        assertEquals(
+                "What Kani reads from AnkiDroid, and which cards become practice.",
+                SettingsTextCopy.settingsAnkiSourceBody()
+        );
+        assertEquals("Study behavior", SettingsTextCopy.settingsStudyBehaviorTitle());
+        assertEquals(
+                "How much appears today, how quickly repeats return, and when cards move rungs.",
+                SettingsTextCopy.settingsStudyBehaviorBody()
+        );
+        assertEquals("Automation", SettingsTextCopy.settingsAutomationTitle());
+        assertEquals(
+                "Background nudges, daily AnkiDroid refreshes, and app update checks.",
+                SettingsTextCopy.settingsAutomationBody()
+        );
+        assertEquals("Reference data", SettingsTextCopy.settingsReferenceDataTitle());
+        assertEquals(
+                "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.",
+                SettingsTextCopy.settingsReferenceDataBody()
+        );
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(false, true, "07:30"));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(true, true, "07:30"));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(true, false, "07:30"));

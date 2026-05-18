@@ -195,8 +195,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         addSpace(10);
 
         content.addView(settingsCategory(
-                "Anki source",
-                "What Kani reads from AnkiDroid, and which cards become practice.",
+                SettingsTextCopy.settingsAnkiSourceTitle(),
+                SettingsTextCopy.settingsAnkiSourceBody(),
                 R.drawable.ic_book_24,
                 settingsAnkiExpanded,
                 () -> {
@@ -208,8 +208,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 frequencyRangeSettingsPanel(current)
         ));
         content.addView(settingsCategory(
-                "Study behavior",
-                "How much appears today, how quickly repeats return, and when cards move rungs.",
+                SettingsTextCopy.settingsStudyBehaviorTitle(),
+                SettingsTextCopy.settingsStudyBehaviorBody(),
                 R.drawable.ic_study_24,
                 settingsStudyExpanded,
                 () -> {
@@ -225,8 +225,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 ladderThresholdSettingsPanel()
         ));
         content.addView(settingsCategory(
-                "Automation",
-                "Background nudges, daily AnkiDroid refreshes, and app update checks.",
+                SettingsTextCopy.settingsAutomationTitle(),
+                SettingsTextCopy.settingsAutomationBody(),
                 R.drawable.ic_sync_24,
                 settingsSyncExpanded,
                 () -> {
@@ -238,8 +238,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 updateSettingsPanel()
         ));
         content.addView(settingsCategory(
-                "Reference data",
-                "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.",
+                SettingsTextCopy.settingsReferenceDataTitle(),
+                SettingsTextCopy.settingsReferenceDataBody(),
                 R.drawable.ic_sparkle_24,
                 settingsAppExpanded,
                 () -> {

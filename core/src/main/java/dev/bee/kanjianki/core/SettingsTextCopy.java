@@ -77,6 +77,38 @@ public final class SettingsTextCopy {
         return version.replaceFirst("^v", "");
     }
 
+    public static String settingsAnkiSourceTitle() {
+        return "Anki source";
+    }
+
+    public static String settingsAnkiSourceBody() {
+        return "What Kani reads from AnkiDroid, and which cards become practice.";
+    }
+
+    public static String settingsStudyBehaviorTitle() {
+        return "Study behavior";
+    }
+
+    public static String settingsStudyBehaviorBody() {
+        return "How much appears today, how quickly repeats return, and when cards move rungs.";
+    }
+
+    public static String settingsAutomationTitle() {
+        return "Automation";
+    }
+
+    public static String settingsAutomationBody() {
+        return "Background nudges, daily AnkiDroid refreshes, and app update checks.";
+    }
+
+    public static String settingsReferenceDataTitle() {
+        return "Reference data";
+    }
+
+    public static String settingsReferenceDataBody() {
+        return "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.";
+    }
+
     public static String autoSyncStatus(boolean configured, boolean enabled, String displayTime) {
         if (!configured) {
             return "Starts after first successful sync";
