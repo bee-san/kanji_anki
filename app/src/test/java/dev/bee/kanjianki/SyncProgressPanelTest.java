@@ -6,6 +6,7 @@ import dev.bee.kanjianki.sync.SyncProgress;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public final class SyncProgressPanelTest {
     @Test
@@ -16,6 +17,6 @@ public final class SyncProgressPanelTest {
         assertEquals(SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS, SyncProgressPanel.coreStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
         assertEquals(SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE, SyncProgressPanel.coreStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
         assertEquals(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS, SyncProgressPanel.coreStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
-        assertEquals(null, SyncProgressPanel.coreStage(null));
+        assertNull(SyncProgressPanel.coreStage(null));
     }
 }
