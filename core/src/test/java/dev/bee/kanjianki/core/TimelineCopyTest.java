@@ -28,10 +28,10 @@ public final class TimelineCopyTest {
 
     @Test
     public void eventToneClassifiesKnownTimelineEvents() {
-        assertEquals(TimelineCopy.Tone.WARNING, TimelineCopy.eventTone("review_failed"));
+        assertEquals(TimelineCopy.Tone.WARNING, TimelineCopy.eventTone(TimelineCopy.EVENT_REVIEW_FAILED));
         assertEquals(TimelineCopy.Tone.WARNING, TimelineCopy.eventTone("support_dropped"));
-        assertEquals(TimelineCopy.Tone.WARNING, TimelineCopy.eventTone("reopened"));
-        assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone("review_passed"));
+        assertEquals(TimelineCopy.Tone.WARNING, TimelineCopy.eventTone(TimelineCopy.EVENT_REOPENED));
+        assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone(TimelineCopy.EVENT_REVIEW_PASSED));
         assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone("support_improved"));
         assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.eventTone("retired"));
         assertEquals(TimelineCopy.Tone.NEUTRAL, TimelineCopy.eventTone("sync"));
@@ -42,6 +42,48 @@ public final class TimelineCopyTest {
         assertEquals("", TimelineCopy.sourceLine(event("", "")));
         assertEquals("Source: expr", TimelineCopy.sourceLine(event("expr", "")));
         assertEquals("Source: expr  reading", TimelineCopy.sourceLine(event("expr", "reading")));
+    }
+
+    @Test
+    public void studyStateDetailPreservesRetiredAndReopenedCopy() {
+        assertEquals(
+                "No weak Anki evidence remained after sync, so Kani retired this repair.",
+                TimelineCopy.studyStateDetail(true, null, 3)
+        );
+        assertEquals(
+                "Kani reopened this kanji after sync found weak evidence again.",
+                TimelineCopy.studyStateDetail(false, null, 3)
+        );
+        assertEquals(
+                "Mature Anki support met the target: mature support 3 / target 3.",
+                TimelineCopy.studyStateDetail(true, 3, 3)
+        );
+        assertEquals(
+                "Mature Anki support fell below target: mature support 1 / target 3.",
+                TimelineCopy.studyStateDetail(false, 1, 3)
+        );
+    }
+
+    @Test
+    public void reviewEventPreservesTypeTitleAndDetailMapping() {
+        TimelineCopy.ReviewEvent manual = TimelineCopy.reviewEvent(review("good", false, false, true), "good");
+        TimelineCopy.ReviewEvent recallFail = TimelineCopy.reviewEvent(review("again", false, false, false), "again");
+        TimelineCopy.ReviewEvent writingMiss = TimelineCopy.reviewEvent(review("hard", true, false, false), "hard");
+        TimelineCopy.ReviewEvent writingPass = TimelineCopy.reviewEvent(review("good", true, true, false), "good");
+        TimelineCopy.ReviewEvent recallPass = TimelineCopy.reviewEvent(review("good", false, false, false), "good");
+
+        assertEquals(TimelineCopy.EVENT_MANUAL_OVERRIDE, manual.eventType());
+        assertEquals("Manual override", manual.title());
+        assertEquals("Saved as good after manual confirmation.", manual.detail());
+        assertEquals(TimelineCopy.EVENT_REVIEW_FAILED, recallFail.eventType());
+        assertEquals("Review failed", recallFail.title());
+        assertEquals("Recall missed; Kani scheduled another try.", recallFail.detail());
+        assertEquals(TimelineCopy.EVENT_REVIEW_FAILED, writingMiss.eventType());
+        assertEquals("Writing was not passed and was rated hard.", writingMiss.detail());
+        assertEquals(TimelineCopy.EVENT_REVIEW_PASSED, writingPass.eventType());
+        assertEquals("Review passed", writingPass.title());
+        assertEquals("Writing passed and was rated good.", writingPass.detail());
+        assertEquals("Recall review was rated good.", recallPass.detail());
     }
 
     private static RecordsStudyModels.KanjiRecoveryTimeline timeline(
@@ -90,6 +132,27 @@ public final class TimelineCopyTest {
                 0,
                 1L,
                 "key"
+        );
+    }
+
+    private static RecordsSchedulerModels.ReviewRequest review(
+            String rating,
+            boolean writingRequired,
+            boolean writingPassed,
+            boolean manualOverride
+    ) {
+        return new RecordsSchedulerModels.ReviewRequest(
+                "x",
+                "token",
+                rating,
+                writingRequired,
+                writingPassed,
+                true,
+                manualOverride,
+                0,
+                "task",
+                "signature",
+                "prompt"
         );
     }
 }

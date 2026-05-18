@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.TextUtil;
+import dev.bee.kanjianki.core.TimelineCopy;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -368,7 +369,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                 occurredAt,
                 retired ? STATE_RETIRED : "reopened",
                 retired ? "Retired by Anki support" : "Repair reopened",
-                studyStateTimelineDetail(retired, mature, target),
+                TimelineCopy.studyStateDetail(retired, mature, target),
                 source.expression,
                 source.reading,
                 "",
@@ -387,38 +388,20 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     String studyStateTimelineDetail(boolean retired, Integer mature, int target) {
-        if (retired) {
-            return mature == null
-                    ? "No weak Anki evidence remained after sync, so Kani retired this repair."
-                    : supportDetail("Mature Anki support met the target", mature, target);
-        }
-        return mature == null
-                ? "Kani reopened this kanji after sync found weak evidence again."
-                : supportDetail("Mature Anki support fell below target", mature, target);
+        return TimelineCopy.studyStateDetail(retired, mature, target);
     }
 
     void appendReviewTimelineEvent(SQLiteDatabase db, RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt, String dedupeKey) {
-        String eventType;
-        String title;
-        if (request.manualOverride) {
-            eventType = COLUMN_MANUAL_OVERRIDE;
-            title = "Manual override";
-        } else if (RATING_AGAIN.equals(appliedRating) || (request.writingRequired && !request.writingPassed)) {
-            eventType = "review_failed";
-            title = "Review failed";
-        } else {
-            eventType = "review_passed";
-            title = "Review passed";
-        }
+        TimelineCopy.ReviewEvent event = TimelineCopy.reviewEvent(request, appliedRating);
         SourceSnapshot source = firstExampleForKanji(db, request.kanji);
         RowSnapshot row = rowSnapshot(db, request.kanji);
         insertTimelineEvent(
                 db,
                 request.kanji,
                 reviewedAt,
-                eventType,
-                title,
-                reviewDetail(request, appliedRating),
+                event.eventType(),
+                event.title(),
+                event.detail(),
                 source.expression,
                 source.reading,
                 appliedRating,
@@ -433,24 +416,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     String reviewDetail(RecordsSchedulerModels.ReviewRequest request, String appliedRating) {
-        if (request.manualOverride) {
-            return "Saved as " + appliedRating + " after manual confirmation.";
-        }
-        if (RATING_AGAIN.equals(appliedRating)) {
-            return request.writingRequired
-                    ? "Writing missed; Kani scheduled another try."
-                    : "Recall missed; Kani scheduled another try.";
-        }
-        if (request.writingRequired) {
-            return request.writingPassed
-                    ? "Writing passed and was rated " + appliedRating + "."
-                    : "Writing was not passed and was rated " + appliedRating + ".";
-        }
-        return "Recall review was rated " + appliedRating + ".";
+        return TimelineCopy.reviewDetail(request, appliedRating);
     }
 
     String supportDetail(String prefix, int matureSupportCount, int target) {
-        return prefix + ": mature support " + matureSupportCount + " / target " + target + ".";
+        return TimelineCopy.supportDetail(prefix, matureSupportCount, target);
     }
 
     void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings) {
