@@ -7,6 +7,7 @@ import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import dev.bee.kanjianki.data.LocalStore;
+import dev.bee.kanjianki.updatecore.AutoUpdateRunPolicy;
 
 public final class AutoUpdateWorker extends Worker {
     static UpdateClientFactory updateClientFactory = GitHubUpdater::androidClient;
@@ -33,7 +34,7 @@ public final class AutoUpdateWorker extends Worker {
         Context appContext = context.getApplicationContext();
         try (LocalStore store = new LocalStore(appContext)) {
             LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
-            if (!status.enabled || status.hasPendingUpdate()) {
+            if (!AutoUpdateRunPolicy.shouldRun(status.enabled, status.hasPendingUpdate())) {
                 return Result.success();
             }
             return runAutoUpdate(true, false, checkerFactory.create(appContext));
@@ -41,7 +42,7 @@ public final class AutoUpdateWorker extends Worker {
     }
 
     static Result runAutoUpdate(boolean enabled, boolean hasPendingUpdate, UpdateChecker checker) {
-        if (!enabled || hasPendingUpdate) {
+        if (!AutoUpdateRunPolicy.shouldRun(enabled, hasPendingUpdate)) {
             return Result.success();
         }
         GitHubUpdater.UpdateResult result = checker.check();
