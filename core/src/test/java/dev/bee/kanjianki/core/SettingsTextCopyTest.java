@@ -30,6 +30,12 @@ public final class SettingsTextCopyTest {
         assertEquals("Verified APK ready", SettingsTextCopy.settingsUpdateSummary(true, false));
         assertEquals("Automatic checks on", SettingsTextCopy.settingsUpdateSummary(false, true));
         assertEquals("Manual checks", SettingsTextCopy.settingsUpdateSummary(false, false));
+        assertEquals(
+                "4 suspended cards archived, 2 rare kanji added; active cards optional",
+                SettingsTextCopy.syncStatusHeadline(true, "ignored", 4, 2)
+        );
+        assertEquals("Sync blocked: No provider", SettingsTextCopy.syncStatusHeadline(false, "No provider", 0, 0));
+        assertEquals("Sync blocked: null", SettingsTextCopy.syncStatusHeadline(false, null, 0, 0));
         assertEquals("unknown version", SettingsTextCopy.versionText(null));
         assertEquals("unknown version", SettingsTextCopy.versionText("  "));
         assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));

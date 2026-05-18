@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.HistoricalKanjiAggregate;
+import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy;
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy;
 import android.content.ContentValues;
@@ -23,7 +24,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -608,10 +608,7 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
         }
 
         public String headline() {
-            if (!STATUS_SUCCESS.equals(status)) {
-                return "Sync blocked: " + errorMessage;
-            }
-            return String.format(Locale.ROOT, "%d suspended cards archived, %d rare kanji added; active cards optional", suspendedCards, importedKanji);
+            return SettingsTextCopy.syncStatusHeadline(STATUS_SUCCESS.equals(status), errorMessage, suspendedCards, importedKanji);
         }
     }
 

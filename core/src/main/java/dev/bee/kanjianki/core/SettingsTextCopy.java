@@ -63,6 +63,13 @@ public final class SettingsTextCopy {
         return enabled ? "Automatic checks on" : "Manual checks";
     }
 
+    public static String syncStatusHeadline(boolean success, String errorMessage, int suspendedCards, int importedKanji) {
+        if (!success) {
+            return "Sync blocked: " + String.valueOf(errorMessage);
+        }
+        return String.format(Locale.ROOT, "%d suspended cards archived, %d rare kanji added; active cards optional", suspendedCards, importedKanji);
+    }
+
     public static String versionText(String version) {
         if (version == null || version.trim().isEmpty()) {
             return "unknown version";
