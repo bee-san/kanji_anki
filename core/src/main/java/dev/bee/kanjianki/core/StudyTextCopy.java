@@ -38,6 +38,37 @@ public final class StudyTextCopy {
         return session == null || session.item == null ? "" : session.item.kanji;
     }
 
+    public static String heroQuestion(RecordsSchedulerModels.StudySession session) {
+        if (session != null && StudyTaskTypes.WORD_READING.equals(session.taskType)) {
+            return "What is the reading?";
+        }
+        return "What does this kanji mean?";
+    }
+
+    public static String collectionMeaningForSession(RecordsSchedulerModels.StudySession session) {
+        if (session == null || session.row == null) {
+            return "";
+        }
+        RecordsImportModels.Example example = StudyExampleSelector.exampleForSession(session);
+        if (example != null && !example.meaning.isEmpty()) {
+            return example.meaning;
+        }
+        return session.row.primaryMeaning;
+    }
+
+    public static String similarRepairPrompt(RecordsImportModels.SimilarKanjiWritingRepair repair) {
+        StringBuilder prompt = new StringBuilder("Repair the shape mix-up");
+        if (!repair.promptMeaning.isEmpty()) {
+            prompt.append(" for ").append(repair.promptMeaning);
+        }
+        if (!repair.wrongSelection.isEmpty()) {
+            prompt.append(". You picked ").append(repair.wrongSelection).append("; write ").append(repair.repairKanji).append(".");
+        } else {
+            prompt.append(". Write ").append(repair.repairKanji).append(".");
+        }
+        return prompt.toString();
+    }
+
     public static String cleanLearnerText(String raw, String fallback, int maxChars) {
         return StudyCueFormatter.cleanFallbackMeaning(raw, fallback, maxChars);
     }

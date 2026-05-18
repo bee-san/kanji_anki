@@ -55,6 +55,7 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyTaskCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -779,10 +780,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String heroQuestion(RecordsSchedulerModels.StudySession session) {
-        if (isWordReadingTask(session)) {
-            return "What is the reading?";
-        }
-        return "What does this kanji mean?";
+        return StudyTextCopy.heroQuestion(session);
     }
 
     View recognitionPill(String label) {
@@ -938,16 +936,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String similarRepairPrompt(RecordsImportModels.SimilarKanjiWritingRepair repair) {
-        StringBuilder prompt = new StringBuilder("Repair the shape mix-up");
-        if (!repair.promptMeaning.isEmpty()) {
-            prompt.append(" for ").append(repair.promptMeaning);
-        }
-        if (!repair.wrongSelection.isEmpty()) {
-            prompt.append(". You picked ").append(repair.wrongSelection).append("; write ").append(repair.repairKanji).append(".");
-        } else {
-            prompt.append(". Write ").append(repair.repairKanji).append(".");
-        }
-        return prompt.toString();
+        return StudyTextCopy.similarRepairPrompt(repair);
     }
 
     void resetStudyRunProgress() {
@@ -1170,14 +1159,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String collectionMeaningForSession(RecordsSchedulerModels.StudySession session) {
-        if (session == null || session.row == null) {
-            return "";
-        }
-        RecordsImportModels.Example example = exampleForSession(session);
-        if (example != null && !example.meaning.isEmpty()) {
-            return example.meaning;
-        }
-        return session.row.primaryMeaning;
+        return StudyTextCopy.collectionMeaningForSession(session);
     }
 
     void expandFlashcardForAnswer() {

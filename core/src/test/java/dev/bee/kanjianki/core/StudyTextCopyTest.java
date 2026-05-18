@@ -65,12 +65,54 @@ public final class StudyTextCopyTest {
         assertEquals("", StudyTextCopy.wordPrompt(null));
     }
 
+    @Test
+    public void heroQuestionUsesWordReadingTaskOnly() {
+        assertEquals("What is the reading?", StudyTextCopy.heroQuestion(session(studyItem("語"), row("語", "language", "reason", Collections.emptyList()), "prompt", StudyTaskTypes.WORD_READING)));
+        assertEquals("What does this kanji mean?", StudyTextCopy.heroQuestion(session(studyItem("語"), row("語", "language", "reason", Collections.emptyList()), "prompt", StudyTaskTypes.KANJI_MEANING)));
+        assertEquals("What does this kanji mean?", StudyTextCopy.heroQuestion(null));
+    }
+
+    @Test
+    public void collectionMeaningForSessionUsesSelectedExampleThenRowMeaning() {
+        RecordsImportModels.Example active = example("active", "活動語", "active meaning");
+        RecordsImportModels.Example suspended = example("suspended", "休止語", "suspended meaning");
+        RecordsStudyModels.StudyItem item = studyItem("語");
+        RecordsImportModels.DashboardRow row = row("語", "language", "reason", Arrays.asList(active, suspended));
+
+        assertEquals("suspended meaning", StudyTextCopy.collectionMeaningForSession(session(item, row, "prompt", StudyTaskTypes.WORD_READING)));
+        assertEquals("active meaning", StudyTextCopy.collectionMeaningForSession(session(item, row, "prompt", StudyTaskTypes.KANJI_MEANING)));
+        assertEquals("language", StudyTextCopy.collectionMeaningForSession(session(item, row("語", "language", "reason", Collections.emptyList()), "prompt")));
+        assertEquals("", StudyTextCopy.collectionMeaningForSession(null));
+        assertEquals("", StudyTextCopy.collectionMeaningForSession(session(item, null, "prompt")));
+    }
+
+    @Test
+    public void similarRepairPromptPreservesRepairCopyBranches() {
+        assertEquals(
+                "Repair the shape mix-up for pull. You picked 提; write 拉.",
+                StudyTextCopy.similarRepairPrompt(repair("拉", "提", "pull"))
+        );
+        assertEquals(
+                "Repair the shape mix-up. Write 拉.",
+                StudyTextCopy.similarRepairPrompt(repair("拉", "", ""))
+        );
+    }
+
     private static RecordsSchedulerModels.StudySession session(
             RecordsStudyModels.StudyItem item,
             RecordsImportModels.DashboardRow row,
             String prompt
     ) {
-        return new RecordsSchedulerModels.StudySession(item, row, "token", StudyTaskTypes.KANJI_MEANING, false, prompt);
+        return session(item, row, prompt, StudyTaskTypes.KANJI_MEANING);
+    }
+
+    private static RecordsSchedulerModels.StudySession session(
+            RecordsStudyModels.StudyItem item,
+            RecordsImportModels.DashboardRow row,
+            String prompt,
+            String taskType
+    ) {
+        return new RecordsSchedulerModels.StudySession(item, row, "token", taskType, false, prompt);
     }
 
     private static RecordsStudyModels.StudyItem studyItem(String kanji) {
@@ -100,13 +142,17 @@ public final class StudyTextCopyTest {
     }
 
     private static RecordsImportModels.Example example(String sourceType, String expression) {
+        return example(sourceType, expression, "meaning");
+    }
+
+    private static RecordsImportModels.Example example(String sourceType, String expression, String meaning) {
         return new RecordsImportModels.Example(
                 sourceType,
                 1L,
                 2L,
                 expression,
                 "reading",
-                "meaning",
+                meaning,
                 "sentence",
                 false,
                 0,
@@ -115,6 +161,24 @@ public final class StudyTextCopyTest {
                 null,
                 null,
                 null
+        );
+    }
+
+    private static RecordsImportModels.SimilarKanjiWritingRepair repair(String repairKanji, String wrongSelection, String promptMeaning) {
+        return new RecordsImportModels.SimilarKanjiWritingRepair(
+                1L,
+                repairKanji,
+                repairKanji,
+                repairKanji + "|" + wrongSelection,
+                wrongSelection,
+                promptMeaning,
+                "pending",
+                0L,
+                "",
+                0,
+                0L,
+                0L,
+                0L
         );
     }
 
