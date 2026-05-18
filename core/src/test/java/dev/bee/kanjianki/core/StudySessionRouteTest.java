@@ -3,6 +3,8 @@ package dev.bee.kanjianki.core;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 public final class StudySessionRouteTest {
     @Test
@@ -35,7 +37,16 @@ public final class StudySessionRouteTest {
                 StudySessionRoute.Destination.FLASHCARD,
                 StudySessionRoute.destination(session(StudyTaskTypes.KANJI_MEANING, false))
         );
-        assertEquals(StudySessionRoute.Destination.FLASHCARD, StudySessionRoute.destination(null));
+    }
+
+    @Test
+    public void missingSessionIsUnsupported() {
+        try {
+            StudySessionRoute.destination(null);
+            fail("Expected NullPointerException");
+        } catch (NullPointerException expected) {
+            assertNotNull(expected.getMessage());
+        }
     }
 
     private static RecordsSchedulerModels.StudySession session(String taskType, boolean writingRequired) {

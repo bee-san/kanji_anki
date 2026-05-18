@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.core;
 
+import java.util.Objects;
+
 public final class StudySessionRoute {
     private StudySessionRoute() {
     }
@@ -12,9 +14,7 @@ public final class StudySessionRoute {
     }
 
     public static Destination destination(RecordsSchedulerModels.StudySession session) {
-        if (session == null) {
-            return Destination.FLASHCARD;
-        }
+        Objects.requireNonNull(session, "session");
         if (session.writingRequired) {
             return Destination.WRITING;
         }
