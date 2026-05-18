@@ -33,6 +33,7 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy;
+import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
@@ -585,28 +586,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     String labelForTask(String task) {
-        if (task == null) {
-            return LABEL_STUDY;
-        }
-        return switch (task) {
-            case "targeted_flashcard" -> "Focused recall";
-            case "kanji_meaning" -> "Kanji -> meaning";
-            case BridgeScheduler.TASK_MEANING_KANJI -> "Meaning -> kanji";
-            case TASK_TYPING_MEANING, BridgeScheduler.TASK_TYPE_MEANING -> "Type the meaning";
-            case TASK_FONT_MEANING -> "Font -> meaning";
-            case TASK_WORD_READING -> "Word -> reading";
-            case BridgeScheduler.TASK_WRITE_KANJI -> "Write kanji";
-            case BridgeScheduler.TASK_SIMILAR_KANJI -> LABEL_SIMILAR_KANJI;
-            case "meaning_flashcard" -> "Quick recall";
-            case "font_recognition" -> "Font check";
-            case TASK_REPAIR_WRITING -> "Write to repair";
-            case TASK_TARGETED_WRITING -> "Focused practice";
-            case "context_writing" -> "New problem kanji";
-            case "guided_writing" -> "Guided review";
-            case "blind_writing", "sampled_handwriting" -> "Memory check";
-            case "confusable_recognition" -> "Learn the shape";
-            default -> LABEL_STUDY;
-        };
+        return StudyTaskCopy.labelForTask(task);
     }
 
     String adaptiveFocusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {

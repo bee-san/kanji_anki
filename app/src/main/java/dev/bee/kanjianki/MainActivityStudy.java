@@ -54,6 +54,7 @@ import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
+import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -1034,32 +1035,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String flashcardTitle(RecordsSchedulerModels.StudySession session) {
-        if (isWordReadingTask(session)) {
-            return "Read this word";
-        }
-        if (isTypingMeaningTask(session)) {
-            return "Type the meaning";
-        }
-        if (isMeaningKanjiTask(session)) {
-            return LABEL_CHOOSE_KANJI;
-        }
-        return isFontRecognitionTask(session) ? "Recognise this kanji" : "Name this kanji";
+        return StudyTaskCopy.flashcardTitle(session);
     }
 
     String studyModeLabel(RecordsSchedulerModels.StudySession session) {
-        if (session != null && session.writingRequired) {
-            return LABEL_PRACTICE;
-        }
-        if (isWordReadingTask(session)) {
-            return "Read";
-        }
-        if (isTypingMeaningTask(session)) {
-            return "Type";
-        }
-        if (isMeaningKanjiTask(session)) {
-            return "Recall";
-        }
-        return "Recognise";
+        return StudyTaskCopy.studyModeLabel(session);
     }
 
     View typingAnswerField() {
