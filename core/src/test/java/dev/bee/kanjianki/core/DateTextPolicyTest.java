@@ -16,6 +16,7 @@ public final class DateTextPolicyTest {
     public void formatsDeterministicRelativeDurations() {
         long now = 1_000_000L;
 
+        assertEquals("date unknown", DateTextPolicy.humanSyncTime(0L));
         assertEquals("date unknown", DateTextPolicy.humanSyncTime(0L, now));
         assertEquals("due now", DateTextPolicy.dueText(now, now));
         assertEquals("due in 1 min", DateTextPolicy.dueText(now + 59_000L, now));
