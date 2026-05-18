@@ -234,20 +234,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         summary.addView(text("Today's focus: 0 items left / " + plan.target, 20, STUDY_PLUM, true));
         summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         card.addView(summary);
-        boolean canStudyMore = addStudyMoreNewCardsButton(card);
-        Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(v -> {
-            studyMoreNewCardKanji.clear();
-            continueAllKanjiSession = true;
-            renderStudy();
-        });
-        card.addView(keepGoing);
-        Button back = studySecondaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(v -> {
-            clearStudyModeOverrides();
-            renderHome();
-        });
-        card.addView(back);
+        addDoneStudyActions(card);
         content.addView(card);
     }
 
@@ -265,21 +252,29 @@ abstract class MainActivityStudy extends MainActivityStats {
             summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         }
         card.addView(summary);
+        addDoneStudyActions(card);
+        content.addView(card);
+    }
+
+    void addDoneStudyActions(LinearLayout card) {
         boolean canStudyMore = addStudyMoreNewCardsButton(card);
         Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(v -> {
-            studyMoreNewCardKanji.clear();
-            continueAllKanjiSession = true;
-            renderStudy();
-        });
+        keepGoing.setOnClickListener(v -> continueAllKanjiFromDoneScreen());
         card.addView(keepGoing);
         Button back = studySecondaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(v -> {
-            clearStudyModeOverrides();
-            renderHome();
-        });
+        back.setOnClickListener(v -> returnHomeFromDoneScreen());
         card.addView(back);
-        content.addView(card);
+    }
+
+    void continueAllKanjiFromDoneScreen() {
+        studyMoreNewCardKanji.clear();
+        continueAllKanjiSession = true;
+        renderStudy();
+    }
+
+    void returnHomeFromDoneScreen() {
+        clearStudyModeOverrides();
+        renderHome();
     }
 
     boolean addStudyMoreNewCardsButton(LinearLayout card) {
