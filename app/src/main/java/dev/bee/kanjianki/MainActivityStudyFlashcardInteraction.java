@@ -37,17 +37,17 @@ final class MainActivityStudyFlashcardInteraction {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         if (!revealed) {
             Button reveal = activity.pinkPrimaryButton("Reveal");
-            reveal.setOnClickListener(v -> revealFlashcardAnswer());
+            reveal.setOnClickListener(new RunnableClickListener(this::revealFlashcardAnswer));
             actions.addView(reveal, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
         } else {
             Button fail = activity.studyFailButton("Fail");
-            fail.setOnClickListener(v -> activity.submitReview(activity.RATING_AGAIN, false));
+            fail.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(activity.RATING_AGAIN, false)));
             LinearLayout.LayoutParams failParams = new LinearLayout.LayoutParams(0, activity.dp(62), 1);
             failParams.setMargins(0, 0, activity.dp(6), 0);
             actions.addView(fail, failParams);
 
             Button pass = activity.pinkPrimaryButton(activity.LABEL_PASS);
-            pass.setOnClickListener(v -> activity.submitReview(activity.RATING_GOOD, false));
+            pass.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(activity.RATING_GOOD, false)));
             LinearLayout.LayoutParams passParams = new LinearLayout.LayoutParams(0, activity.dp(62), 1);
             passParams.setMargins(activity.dp(6), 0, 0, 0);
             actions.addView(pass, passParams);
@@ -165,5 +165,18 @@ final class MainActivityStudyFlashcardInteraction {
             return false;
         }
         return bounds.contains((int) event.getRawX(), (int) event.getRawY());
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
