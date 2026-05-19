@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
+import dev.bee.kanjianki.core.study.HintState;
 
 import java.util.List;
 
@@ -28,7 +29,7 @@ final class MainActivityStudyFlashcard {
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
-        activity.resetFlashcardSession();
+        resetFlashcardSession();
 
         LinearLayout card = recognitionHeroCard(session);
         activity.flashcardCard = card;
@@ -38,6 +39,21 @@ final class MainActivityStudyFlashcard {
         cardLp.setMargins(0, 0, 0, activity.dp(14));
         activity.content.addView(card, cardLp);
         interaction.buildFlashcardActionBar(false);
+    }
+
+    void resetFlashcardSession() {
+        activity.prepareStudyContent(activity.activeStudyPlan, true);
+        activity.activeSimilarWritingRepair = null;
+        activity.activeAnalysis = null;
+        activity.checkingWriting = false;
+        activity.flashcardAnswerRevealed = false;
+        activity.flashcardTouchTracking = false;
+        activity.typingAnswerInput = null;
+        activity.hintsUsed = 0;
+        activity.setHintState(HintState.initial());
+        activity.drawingPad = null;
+        activity.flashcardHeroPanel = null;
+        activity.hideStudyActionBar();
     }
 
     LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {

@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
+import dev.bee.kanjianki.core.study.HintState;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,7 +27,7 @@ final class MainActivityStudyChoiceSessions {
     }
 
     void renderMeaningKanjiSession(RecordsSchedulerModels.StudySession session) {
-        home.resetChoiceSession(true);
+        resetChoiceSession(true);
 
         RecordsImportModels.MeaningKanjiChoiceCard choiceCard = meaningKanjiChoiceCardForSession(session);
         if (choiceCard == null || choiceCard.choices.size() < 4) {
@@ -67,7 +68,7 @@ final class MainActivityStudyChoiceSessions {
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {
-        home.resetChoiceSession(false);
+        resetChoiceSession(false);
 
         RecordsImportModels.SimilarKanjiChoiceCard choiceCard = similarChoiceCardForSession(session);
         List<String> choices = new ArrayList<>(choiceCard.choices);
@@ -110,5 +111,22 @@ final class MainActivityStudyChoiceSessions {
                 targetKanji,
                 home.store.similarPairsForKanji(targetKanji)
         );
+    }
+
+    void resetChoiceSession(boolean resetTouchTracking) {
+        home.prepareStudyContent(home.activeStudyPlan, true);
+        home.activeSimilarWritingRepair = null;
+        home.activeAnalysis = null;
+        home.checkingWriting = false;
+        home.flashcardAnswerRevealed = false;
+        if (resetTouchTracking) {
+            home.flashcardTouchTracking = false;
+        }
+        home.flashcardGestureArea = null;
+        home.typingAnswerInput = null;
+        home.drawingPad = null;
+        home.hintsUsed = 0;
+        home.setHintState(HintState.initial());
+        home.hideStudyActionBar();
     }
 }

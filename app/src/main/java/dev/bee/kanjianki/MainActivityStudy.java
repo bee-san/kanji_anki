@@ -396,38 +396,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         writingSession.renderWritingSession(session);
     }
 
-    void resetChoiceSession(boolean resetTouchTracking) {
-        prepareStudyContent(activeStudyPlan, true);
-        activeSimilarWritingRepair = null;
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardAnswerRevealed = false;
-        if (resetTouchTracking) {
-            flashcardTouchTracking = false;
-        }
-        flashcardGestureArea = null;
-        typingAnswerInput = null;
-        drawingPad = null;
-        hintsUsed = 0;
-        setHintState(HintState.initial());
-        hideStudyActionBar();
-    }
-
-    void resetFlashcardSession() {
-        prepareStudyContent(activeStudyPlan, true);
-        activeSimilarWritingRepair = null;
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardAnswerRevealed = false;
-        flashcardTouchTracking = false;
-        typingAnswerInput = null;
-        hintsUsed = 0;
-        setHintState(HintState.initial());
-        drawingPad = null;
-        flashcardHeroPanel = null;
-        hideStudyActionBar();
-    }
-
     void resetWritingSession(RecordsSchedulerModels.StudySession session) {
         writingSession.resetWritingSession(session);
     }
