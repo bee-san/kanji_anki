@@ -125,9 +125,9 @@ public final class MainActivityHelperInstrumentedTest {
     private static void assertCountAndCompactText(MainActivity activity) {
         assertEquals("1 item", activity.countText(1, "item", "items"));
         assertEquals("2 items", activity.countText(2, "item", "items"));
-        assertEquals("", activity.compact(null, 12));
-        assertEquals("short", activity.compact("short", 12));
-        assertEquals("a very long s...", activity.compact("a very long sentence that should be shortened", 16));
+        assertEquals("", StudyTextCopy.compact(null, 12));
+        assertEquals("short", StudyTextCopy.compact("short", 12));
+        assertEquals("a very long s...", StudyTextCopy.compact("a very long sentence that should be shortened", 16));
     }
 
     private static void assertStudyModeLabels(MainActivity activity) {

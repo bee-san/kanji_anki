@@ -516,10 +516,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return StudyTextCopy.countText(count, singular, plural);
     }
 
-    String compact(String value, int maxChars) {
-        return StudyTextCopy.compact(value, maxChars);
-    }
-
     void addSpace(int dp) {
         SpaceView space = new SpaceView(this);
         content.addView(space, new LinearLayout.LayoutParams(1, dp(dp)));

@@ -62,6 +62,7 @@ import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.TextUtil;
@@ -340,7 +341,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         labelView.setIncludeFontPadding(false);
         pill.addView(labelView);
 
-        TextView valueView = text(compact(value, 56), 17, valueColor, true);
+        TextView valueView = text(StudyTextCopy.compact(value, 56), 17, valueColor, true);
         valueView.setSingleLine(false);
         valueView.setMaxLines(2);
         valueView.setPadding(0, dp(3), 0, 0);

@@ -227,7 +227,7 @@ abstract class MainActivityHome extends MainActivityBase {
         card.addView(valueText);
 
         if (body != null && !body.isEmpty()) {
-            TextView bodyText = text(compact(body, 18), 11, MUTED, false);
+            TextView bodyText = text(StudyTextCopy.compact(body, 18), 11, MUTED, false);
             bodyText.setIncludeFontPadding(false);
             bodyText.setSingleLine(true);
             bodyText.setPadding(0, dp(3), 0, 0);
@@ -644,7 +644,7 @@ abstract class MainActivityHome extends MainActivityBase {
         copy.addView(text(StudyTextCopy.rowMeaning(row), 19, INK, true));
         copy.addView(text(sourceEvidenceText(row), 14, INK, true));
         copy.addView(text(focusReasonLine(row, item, now), 13, MUTED, false));
-        copy.addView(text(compact(queueCardBody(row), 72), 14, MUTED, false));
+        copy.addView(text(StudyTextCopy.compact(queueCardBody(row), 72), 14, MUTED, false));
         LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
         copyLp.setMargins(dp(14), 0, dp(6), 0);
         top.addView(copy, copyLp);
@@ -819,12 +819,12 @@ abstract class MainActivityHome extends MainActivityBase {
         if (row == null) {
             why.addView(text(HomeTextCopy.historicalReasonText(), 17, Color.WHITE, false));
             if (inventory != null && !inventory.browserSearch.isEmpty()) {
-                why.addView(text(HomeTextCopy.ankiBrowserLine(compact(inventory.browserSearch, 96)), 14, Color.WHITE, false));
+                why.addView(text(HomeTextCopy.ankiBrowserLine(StudyTextCopy.compact(inventory.browserSearch, 96)), 14, Color.WHITE, false));
             }
         } else {
             why.addView(text(HomeTextCopy.activeReasonText(row), 17, Color.WHITE, false));
             if (!row.browserSearch.isEmpty()) {
-                why.addView(text(HomeTextCopy.ankiBrowserLine(compact(row.browserSearch, 96)), 14, Color.WHITE, false));
+                why.addView(text(HomeTextCopy.ankiBrowserLine(StudyTextCopy.compact(row.browserSearch, 96)), 14, Color.WHITE, false));
             }
         }
         return why;
@@ -869,7 +869,7 @@ abstract class MainActivityHome extends MainActivityBase {
         box.addView(text(HomeTextCopy.localInventoryTitle(), 19, INK, true));
         box.addView(text(HomeTextCopy.localInventorySummary(inventory.sourceCount, inventory.exampleCount), 15, MUTED, false));
         if (!inventory.browserSearch.isEmpty()) {
-            box.addView(text(HomeTextCopy.localInventorySearchLine(compact(inventory.browserSearch, 96)), 14, MUTED, false));
+            box.addView(text(HomeTextCopy.localInventorySearchLine(StudyTextCopy.compact(inventory.browserSearch, 96)), 14, MUTED, false));
         }
         if (inventory.lastSeenAtMillis > 0L) {
             box.addView(text(HomeTextCopy.localInventoryLastSeenLine(inventory.lastSeenAtMillis), 14, MUTED, false));
