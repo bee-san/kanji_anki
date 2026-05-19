@@ -255,7 +255,13 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void addDoneStudyActions(LinearLayout card) {
-        boolean canStudyMore = addStudyMoreNewCardsButton(card);
+        int available = availableStudyMoreNewCards();
+        boolean canStudyMore = available > 0;
+        if (canStudyMore) {
+            Button studyMore = pinkPrimaryButton("Study more new cards");
+            studyMore.setOnClickListener(v -> showStudyMoreNewCardsDialog(available));
+            card.addView(studyMore);
+        }
         Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
         keepGoing.setOnClickListener(v -> {
             studyMoreNewCardKanji.clear();
@@ -269,17 +275,6 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderHome();
         });
         card.addView(back);
-    }
-
-    boolean addStudyMoreNewCardsButton(LinearLayout card) {
-        int available = availableStudyMoreNewCards();
-        if (available <= 0) {
-            return false;
-        }
-        Button studyMore = pinkPrimaryButton("Study more new cards");
-        studyMore.setOnClickListener(v -> showStudyMoreNewCardsDialog(available));
-        card.addView(studyMore);
-        return true;
     }
 
     int availableStudyMoreNewCards() {
