@@ -2285,6 +2285,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTwoColumnGrid(homeGrid, 3);
                 assertTrue(containsText(homeGrid, "Recent mistakes"));
                 assertTrue(containsText(homeGrid, "Settings"));
+                if (BuildConfig.DEBUG) {
+                    assertTrue(containsText(homeGrid, "Compose shell"));
+                }
 
                 Button time = new Button(activity);
                 int[] hour = new int[]{8};

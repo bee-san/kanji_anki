@@ -26,6 +26,9 @@ final class MainActivityHomeChrome {
         actions.add(pillButton(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, home::renderStats));
         actions.add(pillButton(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, home::renderGames));
         actions.add(pillButton(MainActivityBase.NAV_SETTINGS, R.drawable.ic_settings_24, home::renderSettings));
+        if (BuildConfig.DEBUG) {
+            actions.add(pillButton("Compose shell", R.drawable.ic_sparkle_24, home::openComposeShell));
+        }
         return home.twoColumnGrid(actions);
     }
 

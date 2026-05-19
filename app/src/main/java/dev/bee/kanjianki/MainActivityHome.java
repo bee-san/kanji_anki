@@ -224,6 +224,10 @@ abstract class MainActivityHome extends MainActivityBase {
         browseDetail.renderBrowseKanji(query);
     }
 
+    void openComposeShell() {
+        startActivity(ComposeShellActivity.intent(this));
+    }
+
     View browseKanjiRow(RecordsImportModels.KanjiInventoryItem item) {
         return browseDetail.browseKanjiRow(item);
     }

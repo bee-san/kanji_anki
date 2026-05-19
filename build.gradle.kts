@@ -3,6 +3,7 @@ import org.gradle.api.tasks.Exec
 plugins {
     id("com.android.application") version "9.1.0" apply false
     id("org.jetbrains.kotlin.jvm") version "2.0.21" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
     id("org.sonarqube") version "7.3.0.8198"
 }
 
@@ -24,6 +25,7 @@ val maybeSonarMainBinaries = listOf(
     rootPath("dictionary-core/build/classes"),
     rootPath("update-core/build/classes"),
     rootPath("app/build/intermediates/javac"),
+    rootPath("app/build/tmp/kotlin-classes/debug"),
 )
 val maybeSonarTestBinaries = listOf(
     rootPath("fsrs-java/build/classes"),
@@ -109,6 +111,7 @@ val fastCiTasks = listOf(
     ":update-core:test",
     ":update-core:jacocoTestReport",
     ":update-core:jacocoTestCoverageVerification",
+    ":app:compileDebugKotlin",
     ":app:testDebugUnitTest",
     ":app:jacocoDebugUnitTestReport",
     ":app:compileDebugAndroidTestJavaWithJavac",
@@ -134,6 +137,7 @@ tasks.register("ciQuality") {
         ":writing-core:jar",
         ":dictionary-core:jar",
         ":update-core:jar",
+        ":app:compileDebugKotlin",
         ":app:compileDebugJavaWithJavac",
     )
 }

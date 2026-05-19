@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
     jacoco
 }
 
@@ -62,6 +63,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
 
     compileOptions {
@@ -118,16 +120,26 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
     }
 
     classDirectories.setFrom(
-        fileTree(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes").get().asFile) {
-            exclude(
-                "**/R.class",
-                "**/R$*.class",
-                "**/BuildConfig.*",
-                "**/Manifest*.*",
-            )
-        }
+        files(
+            fileTree(layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes").get().asFile) {
+                exclude(
+                    "**/R.class",
+                    "**/R$*.class",
+                    "**/BuildConfig.*",
+                    "**/Manifest*.*",
+                )
+            },
+            fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug").get().asFile) {
+                exclude(
+                    "**/R.class",
+                    "**/R$*.class",
+                    "**/BuildConfig.*",
+                    "**/Manifest*.*",
+                )
+            }
+        )
     )
-    sourceDirectories.setFrom(files("src/main/java"))
+    sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
     executionData.setFrom(
         fileTree(layout.buildDirectory.get().asFile) {
             include(
@@ -139,15 +151,25 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
 }
 
 dependencies {
+    val composeBom = platform("androidx.compose:compose-bom:2026.04.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
     implementation(project(":core"))
     implementation(project(":dictionary-core"))
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui")
     implementation(project(":update-core"))
     implementation(project(":writing-core"))
     implementation("androidx.work:work-runtime:2.11.2")
     implementation("com.google.mlkit:digital-ink-recognition:19.0.0")
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
