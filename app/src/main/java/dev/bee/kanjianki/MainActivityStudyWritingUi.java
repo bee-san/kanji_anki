@@ -3,15 +3,9 @@ package dev.bee.kanjianki;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
 
-import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.StudyTaskCopy;
-import dev.bee.kanjianki.core.StudyTextCopy;
-import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.StrokeGuide;
-import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingActionPresentation;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingAnalysis;

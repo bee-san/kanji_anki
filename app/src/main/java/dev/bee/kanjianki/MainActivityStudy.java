@@ -132,6 +132,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         return new MainActivityStudyWritingUi(this);
     }
 
+    private MainActivityStudyWritingFlow writingFlow() {
+        return new MainActivityStudyWritingFlow(this);
+    }
+
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
@@ -922,34 +926,12 @@ abstract class MainActivityStudy extends MainActivityStats {
         writingUi().buildStudyActionBar();
     }
 
-    LinearLayout writingToolActions() {
-        return writingUi().writingToolActions();
-    }
-
-    LinearLayout writingPrimaryActions() {
-        return writingUi().writingPrimaryActions();
-    }
-
-    LinearLayout writingFallbackActions() {
-        return writingUi().writingFallbackActions();
-    }
-
     void eraseWritingPad() {
-        drawingPad.clear();
-        activeAnalysis = null;
-        setStudyStatus(WritingFeedbackCopy.guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)), MUTED);
-        updateResultActions();
+        writingFlow().eraseWritingPad();
     }
 
     void startGuidedWritingRetry() {
-        setHintState(HintState.initial());
-        hintsUsed++;
-        activeAnalysis = null;
-        drawingPad.clear();
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(WritingFeedbackCopy.freshGuidedTryStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
-        updateResultActions();
+        writingFlow().startGuidedWritingRetry();
     }
 
     int studyPadHeight() {
@@ -1025,18 +1007,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean showNoInkWhenNeeded() {
-        if (drawingPad != null && drawingPad.hasInk()) {
-            return false;
-        }
-        activeAnalysis = WritingAnalysisEngine.noInk(currentHintState.level(), hintsUsed);
-        showAnalysis(activeAnalysis);
-        return true;
+        return writingFlow().showNoInkWhenNeeded();
     }
 
     void showModelUnavailable(String message) {
-        activeAnalysis = WritingAnalysisEngine.modelUnavailable(message, currentHintState.level(), hintsUsed);
-        checkingWriting = false;
-        showAnalysis(activeAnalysis);
+        writingFlow().showModelUnavailable(message);
     }
 
     void recognizeWriting(WritingRecognizer recognizer, CapturedWriting captured, WritingSample sample, StrokeGuide guide, String target, String token) {
@@ -1174,45 +1149,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void showWritingHint() {
-        if (drawingPad == null || activeSession == null) {
-            return;
-        }
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setHintState(hintProgression.revealNext(currentHintState, guide));
-        hintsUsed++;
-        activeAnalysis = null;
-        drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(WritingFeedbackCopy.hintUsedStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
-        updateResultActions();
+        writingFlow().showWritingHint();
     }
 
     void showAnalysis(WritingAnalysis analysis) {
-        StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
-        if (WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis)) {
-            setHintState(hintProgression.afterWriting(currentHintState, analysis));
-        }
-        if (drawingPad != null && activeSession != null) {
-            drawingPad.setGuide(guide, currentHintState, true);
-            if (WritingFeedbackCopy.canReplayAnalysis(analysis, drawingPad != null && drawingPad.hasInk(), guide)) {
-                drawingPad.captureReplaySnapshot();
-                drawingPad.startReplay();
-            } else {
-                drawingPad.clearReplaySnapshot();
-            }
-        }
-        int color = analysis.writingPassed ? TEAL : CORAL;
-        String targetKanji = activeSession == null ? null : activeSession.item.kanji;
-        Integer activeWritingLevel = activeSession == null ? null : activeSession.item.writingLevel;
-        String message = WritingFeedbackCopy.resultMessage(
-                analysis,
-                targetKanji,
-                activeWritingLevel,
-                WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis),
-                diagnosisText(analysis)
-        );
-        setStudyStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide), MUTED);
-        setResultStatus(message, color);
-        updateResultActions();
+        writingFlow().showAnalysis(analysis);
     }
 
     void updateResultActions() {
@@ -1223,114 +1164,48 @@ abstract class MainActivityStudy extends MainActivityStats {
         return writingUi().writingActionPresentation();
     }
 
-    void updateCheckWritingButton(WritingActionPresentation presentation) {
-        writingUi().updateCheckWritingButton(presentation);
-    }
-
     void updateUndoStrokeButton() {
         writingUi().updateUndoStrokeButton();
     }
 
-    void updateUndoStrokeButton(WritingActionPresentation presentation) {
-        writingUi().updateUndoStrokeButton(presentation);
-    }
-
-    void updateDownloadModelButton(WritingActionPresentation presentation) {
-        writingUi().updateDownloadModelButton(presentation);
-    }
-
-    void updateNextAfterPassButton(WritingActionPresentation presentation) {
-        writingUi().updateNextAfterPassButton(presentation);
-    }
-
-    void updateFallbackActionButtons(WritingActionPresentation presentation) {
-        writingUi().updateFallbackActionButtons(presentation);
-    }
-
-    void updateHintAndAnswerVisibility(WritingActionPresentation presentation) {
-        writingUi().updateHintAndAnswerVisibility(presentation);
-    }
-
-    boolean canRevealMoreHelp() {
-        return writingUi().canRevealMoreHelp();
-    }
-
     void startCleanerRetry() {
-        if (drawingPad == null || activeSession == null) {
-            return;
-        }
-        clearWritingResult();
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        drawingPad.clear();
-        drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(WritingFeedbackCopy.cleanerRetryStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
-        updateResultActions();
+        writingFlow().startCleanerRetry();
     }
 
     void undoWritingStroke() {
-        if (drawingPad == null || activeSession == null || !drawingPad.undoLastStroke()) {
-            updateUndoStrokeButton();
-            return;
-        }
-        clearWritingResult();
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setStudyStatus(WritingFeedbackCopy.undoStrokeStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
-        updateResultActions();
+        writingFlow().undoWritingStroke();
     }
 
     void replayWritingAnalysis() {
-        if (drawingPad == null || activeSession == null) {
-            return;
-        }
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        if (WritingFeedbackCopy.canReplayAnalysis(activeAnalysis, drawingPad != null && drawingPad.hasInk(), guide)) {
-            drawingPad.setGuide(guide, currentHintState, true);
-            drawingPad.startReplay();
-        }
+        writingFlow().replayWritingAnalysis();
     }
 
     void handleDrawingEdited() {
-        updateUndoStrokeButton();
-        if (checkingWriting || activeAnalysis == null || activeSession == null || drawingPad == null) {
-            return;
-        }
-        clearWritingResult();
-        drawingPad.clearReplaySnapshot();
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setStudyStatus(WritingFeedbackCopy.updatedInkStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
-        updateResultActions();
+        writingFlow().handleDrawingEdited();
     }
 
     void clearWritingResult() {
-        activeAnalysis = null;
-        if (resultStatus != null) {
-            resultStatus.setVisibility(View.GONE);
-        }
+        writingFlow().clearWritingResult();
     }
 
     void handleDrawingBlocked(StrokeGuideGuard.Decision decision) {
-        if (activeSession == null || drawingPad == null) {
-            return;
-        }
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setStudyStatus(WritingFeedbackCopy.blockedStrokeStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide), decision), MUTED);
-        updateUndoStrokeButton();
+        writingFlow().handleDrawingBlocked(decision);
     }
 
     String diagnosisText(WritingAnalysis analysis) {
-        return StrokeDiagnosisFormatter.text(analysis);
+        return writingFlow().diagnosisText(analysis);
     }
 
     boolean canShowDiagnosis(WritingAnalysis analysis) {
-        return StrokeDiagnosisFormatter.canShow(analysis);
+        return writingFlow().canShowDiagnosis(analysis);
     }
 
     String diagnosisLine(StrokeDiagnosis.Entry entry) {
-        return StrokeDiagnosisFormatter.line(entry);
+        return writingFlow().diagnosisLine(entry);
     }
 
     String strokeDiagnosisText(StrokeDiagnosis.Entry entry, String label) {
-        return StrokeDiagnosisFormatter.strokeLine(entry, label);
+        return writingFlow().strokeDiagnosisText(entry, label);
     }
 
     void setStudyStatus(String value, int color) {
@@ -1339,6 +1214,10 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void setResultStatus(String value, int color) {
         writingUi().setResultStatus(value, color);
+    }
+
+    boolean canRevealMoreHelp() {
+        return writingUi().canRevealMoreHelp();
     }
 
     void refreshWritingModelStatus() {
@@ -1351,9 +1230,5 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void downloadWritingModel() {
         writingUi().downloadWritingModel();
-    }
-
-    void updateWritingModelAvailability(boolean downloaded) {
-        writingUi().updateWritingModelAvailability(downloaded);
     }
 }
