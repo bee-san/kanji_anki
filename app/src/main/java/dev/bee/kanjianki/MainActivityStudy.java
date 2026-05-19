@@ -200,13 +200,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderEmptyStudyQueue() {
-        prepareStudyContent(activeStudyPlan, false);
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Study practice", 32, STUDY_PLUM, true));
-        card.addView(text("Nothing to study yet", 22, STUDY_PLUM, true));
-        card.addView(text("Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.", 16, STUDY_MUTED, false));
-        content.addView(card);
+        doneActions.renderEmptyStudyQueue();
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {

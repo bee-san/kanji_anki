@@ -95,6 +95,16 @@ final class MainActivityStudyDoneActions {
         home.content.addView(card);
     }
 
+    void renderEmptyStudyQueue() {
+        home.prepareStudyContent(home.activeStudyPlan, false);
+        LinearLayout card = home.softStudyCard();
+        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
+        card.addView(home.text("Study practice", 32, home.STUDY_PLUM, true));
+        card.addView(home.text("Nothing to study yet", 22, home.STUDY_PLUM, true));
+        card.addView(home.text("Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.", 16, home.STUDY_MUTED, false));
+        home.content.addView(card);
+    }
+
     int availableStudyMoreNewCards() {
         List<RecordsImportModels.DashboardRow> rows = home.store.activeDashboardRows();
         if (rows.isEmpty()) {
