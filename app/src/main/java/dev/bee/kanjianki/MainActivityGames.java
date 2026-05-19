@@ -92,61 +92,30 @@ abstract class MainActivityGames extends MainActivityHome {
         emptyState(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY);
     }
 
-    private LinearLayout gameScorePanel(boolean awaitingAnswer) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBaselineAligned(false);
+    private View gameScorePanel(boolean awaitingAnswer) {
         int roundProgress = gameRound.progress(awaitingAnswer);
-        row.addView(gameMetric(KanjiGameCopy.LABEL_ROUND, roundProgress + "/" + gameRound.totalQuestions, BLUE));
-        row.addView(gameMetric(KanjiGameCopy.LABEL_SCORE, gameRound.correct + "/" + gameRound.totalQuestions, CORAL));
-        row.addView(gameMetric(KanjiGameCopy.LABEL_STREAK, Integer.toString(gameRound.streak), TEAL));
-        return row;
+        return MainActivityGamesCompose.gamesScorePanelView(
+                this,
+                new GamesScoreStripModel(
+                        KanjiGameCopy.LABEL_ROUND,
+                        roundProgress + "/" + gameRound.totalQuestions,
+                        KanjiGameCopy.LABEL_SCORE,
+                        gameRound.correct + "/" + gameRound.totalQuestions,
+                        KanjiGameCopy.LABEL_STREAK,
+                        Integer.toString(gameRound.streak)
+                )
+        );
     }
 
-    private View gameMetric(String label, String value, int color) {
-        LinearLayout box = panelBox(Color.WHITE, softened(color));
-        box.setPadding(dp(12), dp(10), dp(12), dp(10));
-        box.addView(text(label, 12, color, true));
-        box.addView(text(value, 20, INK, true));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
-        lp.setMargins(dp(3), dp(3), dp(3), dp(8));
-        box.setLayoutParams(lp);
-        return box;
-    }
-
-    private LinearLayout gameQuestionCard(KanjiGameEngine.GameQuestion question) {
-        int color = colorForGameMode(question.mode);
-        LinearLayout card = panelBox(Color.WHITE, softened(color));
-        card.addView(modePill(question.mode.label));
-        TextView prompt = text(question.prompt, KanjiGameCopy.promptTextSizeSp(question), INK, true);
-        prompt.setGravity(Gravity.CENTER);
-        prompt.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
-        prompt.setPadding(0, dp(6), 0, dp(6));
-        card.addView(prompt);
-        card.addView(text(question.promptDetail, 16, MUTED, false));
-        addGameChoices(card, question);
-        return card;
-    }
-
-    private void addGameChoices(LinearLayout card, KanjiGameEngine.GameQuestion question) {
-        for (String choice : question.choices) {
-            Button button = secondaryButton(KanjiGameCopy.choiceLabel(question, choice));
-            button.setTextSize(KanjiGameCopy.choiceTextSizeSp(question));
-            button.setMaxLines(2);
-            button.setOnClickListener(new RunnableClickListener(() -> answerGameQuestion(question, choice)));
-            if (KanjiGameCopy.choiceUsesKanjiTypography(question)) {
-                button.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
-                button.setTextColor(INK);
-                button.setLayoutParams(buttonLayout(dp(74)));
-            }
-            card.addView(button);
-        }
-    }
-
-    private LinearLayout.LayoutParams buttonLayout(int height) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, height);
-        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
-        return lp;
+    private View gameQuestionCard(KanjiGameEngine.GameQuestion question) {
+        return MainActivityGamesCompose.gamesQuestionCardView(
+                this,
+                question,
+                choice -> {
+                    answerGameQuestion(question, choice);
+                    return kotlin.Unit.INSTANCE;
+                }
+        );
     }
 
     private void answerGameQuestion(KanjiGameEngine.GameQuestion question, String selected) {

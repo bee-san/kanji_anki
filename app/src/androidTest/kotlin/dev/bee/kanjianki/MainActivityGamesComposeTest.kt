@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.KanjiGameCopy
+import dev.bee.kanjianki.core.KanjiGameEngine
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -89,6 +91,52 @@ class MainActivityGamesComposeTest {
 
         composeRule.runOnIdle {
             assertTrue(syncClicked)
+        }
+    }
+
+    @Test
+    fun rendersScoreStripAndGameQuestionChoices() {
+        var clickedChoice = ""
+        val question = KanjiGameEngine.GameQuestion(
+            KanjiGameEngine.GameMode.MEANING_POP,
+            "語",
+            "語",
+            "Pick the meaning",
+            "language",
+            listOf("language", "word"),
+            "語 = language"
+        )
+
+        composeRule.setContent {
+            androidx.compose.foundation.layout.Column {
+                GamesScoreStrip(
+                    model = GamesScoreStripModel(
+                        roundLabel = "Round",
+                        roundValue = "1/10",
+                        scoreLabel = "Score",
+                        scoreValue = "0/10",
+                        streakLabel = "Streak",
+                        streakValue = "3"
+                    )
+                )
+                GamesQuestionCard(
+                    question = question,
+                    onChoiceSelected = { clickedChoice = it }
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Round").assertIsDisplayed()
+        composeRule.onNodeWithText("1/10").assertIsDisplayed()
+        composeRule.onNodeWithText("Score").assertIsDisplayed()
+        composeRule.onNodeWithText("Streak").assertIsDisplayed()
+        composeRule.onNodeWithText("Pick the meaning").assertIsDisplayed()
+        composeRule.onNodeWithText("語").assertIsDisplayed()
+        composeRule.onNodeWithText("language").assertIsDisplayed()
+        composeRule.onNodeWithText(KanjiGameCopy.choiceLabel(question, "language")).performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(clickedChoice == "language")
         }
     }
 }
