@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -51,48 +52,99 @@ final class MainActivitySettingsAnkiSourceNoteType {
                 frequencySortField
         );
         Button choose = activity.secondaryButton(SettingsTextCopy.chooseFromAnkiDroidLabel());
-        choose.setOnClickListener(v -> NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldMappings));
+        choose.setOnClickListener(new RunnableClickListener(() -> NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldMappings)));
         box.addView(choose);
         Button kiku = activity.secondaryButton(SettingsTextCopy.useKikuLabel());
-        kiku.setOnClickListener(v -> {
-            noteType.setText(defaults.modelName);
-            expressionField.setText(defaults.expressionField);
-            readingField.setText(defaults.readingField);
-            meaningField.setText(defaults.meaningField);
-            sentenceField.setText(defaults.sentenceField);
-            frequencyField.setText(defaults.frequencyField);
-            frequencySortField.setText(defaults.frequencySortField);
-        });
+        kiku.setOnClickListener(new RunnableClickListener(() -> applyKikuDefaults(
+                noteType,
+                expressionField,
+                readingField,
+                meaningField,
+                sentenceField,
+                frequencyField,
+                frequencySortField,
+                defaults
+        )));
         box.addView(kiku);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveNoteTypeLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            String selectedNoteType = noteType.getText().toString().trim();
-            if (selectedNoteType.isEmpty()) {
-                Toast.makeText(activity, SettingsTextCopy.noteTypeRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            String selectedExpressionField = expressionField.getText().toString().trim();
-            if (selectedExpressionField.isEmpty()) {
-                Toast.makeText(activity, SettingsTextCopy.expressionFieldRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsWriteActions.saveNoteTypeFields(
-                    new SettingsWriteActions.NoteTypeFieldWriteRequest(
-                            selectedNoteType,
-                            selectedExpressionField,
-                            readingField.getText().toString().trim(),
-                            meaningField.getText().toString().trim(),
-                            sentenceField.getText().toString().trim(),
-                            frequencyField.getText().toString().trim(),
-                            frequencySortField.getText().toString().trim()
-                    ),
-                    activity.store::putStringSetting
-            );
-            Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveNoteTypeFields(
+                noteType,
+                expressionField,
+                readingField,
+                meaningField,
+                sentenceField,
+                frequencyField,
+                frequencySortField
+        )));
         box.addView(save);
         return box;
+    }
+
+    private void applyKikuDefaults(
+            EditText noteType,
+            EditText expressionField,
+            EditText readingField,
+            EditText meaningField,
+            EditText sentenceField,
+            EditText frequencyField,
+            EditText frequencySortField,
+            RecordsSyncModels.Settings defaults
+    ) {
+        noteType.setText(defaults.modelName);
+        expressionField.setText(defaults.expressionField);
+        readingField.setText(defaults.readingField);
+        meaningField.setText(defaults.meaningField);
+        sentenceField.setText(defaults.sentenceField);
+        frequencyField.setText(defaults.frequencyField);
+        frequencySortField.setText(defaults.frequencySortField);
+    }
+
+    private void saveNoteTypeFields(
+            EditText noteType,
+            EditText expressionField,
+            EditText readingField,
+            EditText meaningField,
+            EditText sentenceField,
+            EditText frequencyField,
+            EditText frequencySortField
+    ) {
+        String selectedNoteType = noteType.getText().toString().trim();
+        if (selectedNoteType.isEmpty()) {
+            Toast.makeText(activity, SettingsTextCopy.noteTypeRequiredToast(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String selectedExpressionField = expressionField.getText().toString().trim();
+        if (selectedExpressionField.isEmpty()) {
+            Toast.makeText(activity, SettingsTextCopy.expressionFieldRequiredToast(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        SettingsWriteActions.saveNoteTypeFields(
+                new SettingsWriteActions.NoteTypeFieldWriteRequest(
+                        selectedNoteType,
+                        selectedExpressionField,
+                        readingField.getText().toString().trim(),
+                        meaningField.getText().toString().trim(),
+                        sentenceField.getText().toString().trim(),
+                        frequencyField.getText().toString().trim(),
+                        frequencySortField.getText().toString().trim()
+                ),
+                activity.store::putStringSetting
+        );
+        Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
