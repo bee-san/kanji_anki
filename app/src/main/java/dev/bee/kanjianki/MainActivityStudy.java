@@ -500,7 +500,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             }
             String glyph = choices.get(i);
             Button button = kanjiChoiceButton(glyph);
-            button.setOnClickListener(new KanjiChoiceButtonClickListener(clickHandler, glyph, grid));
+            button.setOnClickListener(new ViewClickListener(v -> clickHandler.onClick(glyph, grid)));
             if (row != null) {
                 row.addView(button, kanjiChoiceLayoutParams());
             }
@@ -552,23 +552,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, dp(62)));
     }
 
-    private static final class KanjiChoiceButtonClickListener implements View.OnClickListener {
-        private final KanjiChoiceClickHandler clickHandler;
-        private final String glyph;
-        private final LinearLayout grid;
-
-        KanjiChoiceButtonClickListener(KanjiChoiceClickHandler clickHandler, String glyph, LinearLayout grid) {
-            this.clickHandler = clickHandler;
-            this.glyph = glyph;
-            this.grid = grid;
-        }
-
-        @Override
-        public void onClick(View v) {
-            clickHandler.onClick(glyph, grid);
-        }
-    }
-
     private static final class StudyMoreNewCardsDialogShowListener implements DialogInterface.OnShowListener {
         private final MainActivityStudy activity;
         private final AlertDialog dialog;
@@ -583,26 +566,11 @@ abstract class MainActivityStudy extends MainActivityStats {
         @Override
         public void onShow(DialogInterface opened) {
             dialog.getButton(DialogInterface.BUTTON_POSITIVE)
-                    .setOnClickListener(new StudyMoreNewCardsConfirmClickListener(activity, dialog, countInput));
-        }
-    }
-
-    private static final class StudyMoreNewCardsConfirmClickListener implements View.OnClickListener {
-        private final MainActivityStudy activity;
-        private final AlertDialog dialog;
-        private final EditText countInput;
-
-        StudyMoreNewCardsConfirmClickListener(MainActivityStudy activity, AlertDialog dialog, EditText countInput) {
-            this.activity = activity;
-            this.dialog = dialog;
-            this.countInput = countInput;
-        }
-
-        @Override
-        public void onClick(View v) {
-            if (activity.applyStudyMoreNewCardsRequest(countInput)) {
-                dialog.dismiss();
-            }
+                    .setOnClickListener(new RunnableClickListener(() -> {
+                        if (activity.applyStudyMoreNewCardsRequest(countInput)) {
+                            dialog.dismiss();
+                        }
+                    }));
         }
     }
 
