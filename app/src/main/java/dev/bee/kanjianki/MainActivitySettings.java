@@ -1170,7 +1170,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 return;
             }
-            SettingsWriteActions.saveStudyAhead(request, store::saveStudyAheadMinutes);
+            store.saveStudyAheadMinutes(request.minutes);
             Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1361,7 +1361,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
                 return;
             }
-            SettingsWriteActions.saveRetention(request, store::saveSchedulerParameters);
+            store.saveSchedulerParameters(request.parameters);
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });

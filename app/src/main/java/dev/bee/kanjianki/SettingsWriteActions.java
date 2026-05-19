@@ -3,9 +3,7 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
-import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
 import dev.bee.kanjianki.sync.SyncSettings;
@@ -54,20 +52,6 @@ final class SettingsWriteActions {
         }
     }
 
-    static void saveStudyAhead(StudyAheadSettingsPolicy.SaveResult request, StudyAheadSettingsWriter writer) {
-        if (request == null || !request.valid) {
-            return;
-        }
-        writer.saveStudyAheadMinutes(request.minutes);
-    }
-
-    static void saveRetention(RetentionSettingsPolicy.SaveResult request, SchedulerParametersWriter writer) {
-        if (request == null || !request.valid) {
-            return;
-        }
-        writer.saveSchedulerParameters(request.parameters);
-    }
-
     static void saveImportFilters(ImportFilterWriteRequest request, SettingWriter writer) {
         writer.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.activeCards()));
         writer.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.suspendedCards()));
@@ -99,14 +83,6 @@ final class SettingsWriteActions {
         void saveAdaptiveLoadWorkPercent(int workloadPercent);
 
         void saveAdaptiveLoadMaxItems(int maxItems);
-    }
-
-    interface StudyAheadSettingsWriter {
-        void saveStudyAheadMinutes(int minutes);
-    }
-
-    interface SchedulerParametersWriter {
-        void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters);
     }
 
     interface SettingWriter extends IntSettingWriter {

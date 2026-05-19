@@ -3,9 +3,7 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
-import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -142,35 +140,6 @@ public final class SettingsWriteActionsTest {
         assertEquals(0, autoOnly.workloadWrites);
         assertEquals(0, autoOnly.maxWrites);
         assertEquals(AdaptiveLoadPlanner.MODE_AUTO, autoOnly.mode);
-    }
-
-    @Test
-    public void saveStudyAheadWritesValidMinutesOnly() {
-        RecordingStudyAheadWriter writer = new RecordingStudyAheadWriter();
-
-        SettingsWriteActions.saveStudyAhead(StudyAheadSettingsPolicy.saveRequest("25"), writer);
-        SettingsWriteActions.saveStudyAhead(StudyAheadSettingsPolicy.saveRequest("-1"), writer);
-
-        assertEquals(25, writer.minutes);
-        assertEquals(1, writer.writes);
-    }
-
-    @Test
-    public void saveRetentionWritesValidSchedulerParametersOnly() {
-        RecordingSchedulerParametersWriter writer = new RecordingSchedulerParametersWriter();
-        RecordsSchedulerModels.SchedulerParameters latest = RecordsSchedulerModels.SchedulerParameters.defaults();
-
-        SettingsWriteActions.saveRetention(
-                RetentionSettingsPolicy.saveRequest(95, false, "1-500=95%", latest),
-                writer
-        );
-        SettingsWriteActions.saveRetention(
-                RetentionSettingsPolicy.saveRequest(95, true, "500-1=95%", latest),
-                writer
-        );
-
-        assertEquals(1, writer.writes);
-        assertEquals(0.95, writer.parameters.targetRetention, 0.0);
     }
 
     @Test
@@ -321,28 +290,6 @@ public final class SettingsWriteActionsTest {
         public void saveAdaptiveLoadMaxItems(int maxItems) {
             this.maxItems = maxItems;
             maxWrites++;
-        }
-    }
-
-    private static final class RecordingStudyAheadWriter implements SettingsWriteActions.StudyAheadSettingsWriter {
-        int minutes;
-        int writes;
-
-        @Override
-        public void saveStudyAheadMinutes(int minutes) {
-            this.minutes = minutes;
-            writes++;
-        }
-    }
-
-    private static final class RecordingSchedulerParametersWriter implements SettingsWriteActions.SchedulerParametersWriter {
-        RecordsSchedulerModels.SchedulerParameters parameters;
-        int writes;
-
-        @Override
-        public void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters) {
-            this.parameters = parameters;
-            writes++;
         }
     }
 
