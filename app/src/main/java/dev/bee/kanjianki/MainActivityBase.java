@@ -38,6 +38,7 @@ import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.StudyCollectionLookup;
+import dev.bee.kanjianki.core.StudyPlanSelectionPolicy;
 import dev.bee.kanjianki.core.StudySessionProgressTracker;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
@@ -58,6 +59,7 @@ import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -444,13 +446,21 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     RecordsSchedulerModels.AdaptiveLoadPlan studyPlanForMode(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        if (!studyMoreNewCardKanji.isEmpty()) {
-            return studyMoreNewCardsPlan(rows, items, now);
-        }
-        if (continueAllKanjiSession) {
-            return allCurrentProblemKanjiPlan(rows, items, now);
-        }
-        return adaptivePlan(rows, items, now);
+        Set<String> studiedToday = continueAllKanjiSession
+                ? store.studiedKanjiSince(startOfDay(now))
+                : Collections.emptySet();
+        RecordsSchedulerModels.AdaptiveLoadPlan adaptive = studyMoreNewCardKanji.isEmpty() && !continueAllKanjiSession
+                ? adaptivePlan(rows, items, now)
+                : null;
+        return StudyPlanSelectionPolicy.select(
+                studyMoreNewCardKanji,
+                continueAllKanjiSession,
+                rows,
+                items,
+                studiedToday,
+                now,
+                adaptive
+        );
     }
 
     RecordsSchedulerModels.AdaptiveLoadPlan studyMoreNewCardsPlan(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
