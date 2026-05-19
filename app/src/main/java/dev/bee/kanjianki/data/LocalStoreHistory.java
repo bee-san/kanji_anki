@@ -14,7 +14,6 @@ import android.database.sqlite.SQLiteDatabase;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarChoiceCodec;
-import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.SimilarKanjiRepairPolicy;
 import dev.bee.kanjianki.core.SimilarKanjiStorageKeys;
@@ -45,6 +44,10 @@ abstract class LocalStoreHistory extends LocalStoreBase {
 
     private LocalStoreInventoryMaintenance inventoryMaintenance() {
         return new LocalStoreInventoryMaintenance(this);
+    }
+
+    private LocalStoreSimilarKanjiMaintenance similarKanjiMaintenance() {
+        return new LocalStoreSimilarKanjiMaintenance(this);
     }
 
     void createTimelineTables(SQLiteDatabase db) {
@@ -378,35 +381,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     void rebuildSimilarKanjiPairs(SQLiteDatabase db, SimilarKanjiIndex similarIndex, long nowMillis) {
-        Map<String, Long> firstSeenByPair = similarPairFirstSeen(db);
-        List<SimilarKanjiIndex.Pair> localPairs = similarIndex.pairsWithin(localInventoryKanji(db));
-        db.delete(TABLE_SIMILAR_KANJI_PAIRS, null, null);
-        for (SimilarKanjiIndex.Pair pair : localPairs) {
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_KANJI_A, pair.kanjiA);
-            values.put(COLUMN_KANJI_B, pair.kanjiB);
-            values.put(COLUMN_SOURCE, pair.source);
-            values.put(COLUMN_FIRST_SEEN_AT, firstSeenByPair.getOrDefault(similarKey(pair.kanjiA, pair.kanjiB, pair.source), nowMillis));
-            values.put(COLUMN_LAST_SEEN_AT, nowMillis);
-            db.insertWithOnConflict(TABLE_SIMILAR_KANJI_PAIRS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-        }
+        similarKanjiMaintenance().rebuildSimilarKanjiPairs(db, similarIndex, nowMillis);
     }
 
     void rebuildSimilarKanjiChoiceStates(SQLiteDatabase db, long nowMillis) {
-        createSimilarKanjiPracticeTables(db);
-        Map<String, SimilarChoiceSnapshot> previous = similarChoiceSnapshots(db);
-        SimilarKanjiChoicePlanner planner = new SimilarKanjiChoicePlanner();
-        List<RecordsImportModels.SimilarKanjiChoiceCard> candidates = planner.buildCandidates(
-                allInventoryItems(db),
-                allSimilarPairs(db)
-        );
-        Set<String> currentKeys = new HashSet<>();
-        for (RecordsImportModels.SimilarKanjiChoiceCard card : candidates) {
-            String key = similarChoiceKey(card.targetKanji, card.choiceSignature);
-            currentKeys.add(key);
-            upsertSimilarKanjiChoiceState(db, card, previous.get(key), nowMillis);
-        }
-        deleteStaleSimilarChoiceStates(db, previous.keySet(), currentKeys);
+        similarKanjiMaintenance().rebuildSimilarKanjiChoiceStates(db, nowMillis);
     }
 
     void upsertSimilarKanjiChoiceState(
