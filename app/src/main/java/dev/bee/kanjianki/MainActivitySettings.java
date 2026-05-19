@@ -1177,7 +1177,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button up = secondaryButton(SettingsTextCopy.moveUpLabel());
             up.setEnabled(i > 0);
             up.setOnClickListener(v -> {
-                SettingsWriteActions.moveStudyLadderRung(studyLadderSettings(), rung, -1, store::saveStudyLadderSettings);
+                store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, -1));
                 renderSettings();
             });
             LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(0, dp(48), 1);
@@ -1187,7 +1187,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button down = secondaryButton(SettingsTextCopy.moveDownLabel());
             down.setEnabled(i < rungs.size() - 1);
             down.setOnClickListener(v -> {
-                SettingsWriteActions.moveStudyLadderRung(studyLadderSettings(), rung, 1, store::saveStudyLadderSettings);
+                store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, 1));
                 renderSettings();
             });
             LinearLayout.LayoutParams downLp = new LinearLayout.LayoutParams(0, dp(48), 1);
@@ -1199,7 +1199,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         Button reset = secondaryButton(SettingsTextCopy.restoreDefaultLadderLabel());
         reset.setOnClickListener(v -> {
-            SettingsWriteActions.restoreDefaultStudyLadder(store::saveStudyLadderSettings);
+            store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
             Toast.makeText(this, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1215,7 +1215,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Toast.makeText(this, SettingsTextCopy.keepAlwaysAvailableRungToast(), Toast.LENGTH_SHORT).show();
             return;
         }
-        SettingsWriteActions.saveStudyLadder(next, store::saveStudyLadderSettings);
+        store.saveStudyLadderSettings(next);
         Toast.makeText(this, SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled), Toast.LENGTH_SHORT).show();
         renderSettings();
     }

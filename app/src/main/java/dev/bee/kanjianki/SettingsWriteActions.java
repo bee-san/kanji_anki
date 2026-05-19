@@ -55,10 +55,6 @@ final class SettingsWriteActions {
         writer.saveLearningStepSettings(request.settings);
     }
 
-    static void saveStudyLadder(RecordsBase.StudyLadderSettings settings, StudyLadderSettingsWriter writer) {
-        writer.saveStudyLadderSettings(settings);
-    }
-
     static void saveWorkload(WorkloadSettingsPolicy.SaveRequest request, WorkloadSettingsWriter writer) {
         if (request.mode != null) {
             writer.saveAdaptiveLoadMode(request.mode);
@@ -83,19 +79,6 @@ final class SettingsWriteActions {
             return;
         }
         writer.saveSchedulerParameters(request.parameters);
-    }
-
-    static void moveStudyLadderRung(
-            RecordsBase.StudyLadderSettings current,
-            RecordsBase.LadderRung rung,
-            int delta,
-            StudyLadderSettingsWriter writer
-    ) {
-        saveStudyLadder(current.moveRung(rung, delta), writer);
-    }
-
-    static void restoreDefaultStudyLadder(StudyLadderSettingsWriter writer) {
-        saveStudyLadder(RecordsBase.StudyLadderSettings.defaults(), writer);
     }
 
     static LocalStore.ReminderSettings reminderSettings(ReminderSettingsSavePolicy.ReminderFields fields) {
@@ -156,10 +139,6 @@ final class SettingsWriteActions {
 
     interface LearningStepSettingsWriter {
         void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings);
-    }
-
-    interface StudyLadderSettingsWriter {
-        void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings);
     }
 
     interface WorkloadSettingsWriter {

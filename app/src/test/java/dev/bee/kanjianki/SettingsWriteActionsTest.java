@@ -126,14 +126,14 @@ public final class SettingsWriteActionsTest {
         RecordingStudyLadderWriter writer = new RecordingStudyLadderWriter();
         RecordsBase.StudyLadderSettings current = RecordsBase.StudyLadderSettings.defaults();
 
-        SettingsWriteActions.moveStudyLadderRung(current, RecordsBase.LadderRung.WORD_READING, -6, writer);
+        writer.saveStudyLadderSettings(current.moveRung(RecordsBase.LadderRung.WORD_READING, -6));
         assertEquals(current.moveRung(RecordsBase.LadderRung.WORD_READING, -6).orderText(), writer.settings.orderText());
 
-        SettingsWriteActions.restoreDefaultStudyLadder(writer);
+        writer.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
         assertEquals(RecordsBase.StudyLadderSettings.defaults().orderText(), writer.settings.orderText());
 
         RecordsBase.StudyLadderSettings disabled = current.withRungEnabled(RecordsBase.LadderRung.SIMILAR_KANJI, false);
-        SettingsWriteActions.saveStudyLadder(disabled, writer);
+        writer.saveStudyLadderSettings(disabled);
         assertEquals(disabled.enabledText(), writer.settings.enabledText());
     }
 
@@ -329,10 +329,9 @@ public final class SettingsWriteActionsTest {
         }
     }
 
-    private static final class RecordingStudyLadderWriter implements SettingsWriteActions.StudyLadderSettingsWriter {
+    private static final class RecordingStudyLadderWriter {
         RecordsBase.StudyLadderSettings settings;
 
-        @Override
         public void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings) {
             this.settings = settings;
         }
