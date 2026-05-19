@@ -197,39 +197,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().importFilterSettingsPanel(current);
     }
 
-    ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
-        return ankiSource().readImportThresholds(difficultyInput, lapses, minMatching);
-    }
-
-    boolean hasSelectedImportSource(
-            CheckBox activeCards,
-            CheckBox suspendedCards,
-            CheckBox taggedCards,
-            CheckBox weakCards,
-            CheckBox browserQueryCards,
-            List<String> parsedTags,
-            String queryText
-    ) {
-        return ankiSource().hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText);
-    }
-
     CheckBox importFilterCheckBox(String label, boolean checked) {
         return panelFactory().importFilterCheckBox(label, checked);
     }
 
     LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         return ankiSource().frequencyRangeSettingsPanel(current);
-    }
-
-    void bindRankSliders(
-            int[] selected,
-            TextView status,
-            EditText minInput,
-            EditText maxInput,
-            SeekBar minSlider,
-            SeekBar maxSlider
-    ) {
-        ankiSource().bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
     }
 
     LinearLayout dataLicenseSettingsPanel() {

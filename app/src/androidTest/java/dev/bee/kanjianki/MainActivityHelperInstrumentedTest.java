@@ -407,9 +407,10 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyImportSourceSummaries(MainActivity activity) {
+        MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
         assertTrue(SettingsInputRules.validImportThresholds(7.5, 3, 2));
         assertFalse(SettingsInputRules.validImportThresholds(0.5, 3, 2));
-        assertFalse(activity.hasSelectedImportSource(
+        assertFalse(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, false),
@@ -418,7 +419,7 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.emptyList(),
                 ""
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, true),
                 checked(activity, false),
@@ -427,7 +428,7 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.emptyList(),
                 ""
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, true),
                 null,
                 null,
@@ -436,7 +437,7 @@ public final class MainActivityHelperInstrumentedTest {
                 null,
                 null
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, true),
                 null,
@@ -445,7 +446,7 @@ public final class MainActivityHelperInstrumentedTest {
                 null,
                 null
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 null,
@@ -454,7 +455,7 @@ public final class MainActivityHelperInstrumentedTest {
                 null,
                 null
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, true),
@@ -463,7 +464,7 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.singletonList("leeches"),
                 ""
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, true),
@@ -472,7 +473,7 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.singletonList("leeches"),
                 null
         ));
-        assertTrue(activity.hasSelectedImportSource(
+        assertTrue(validation.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
                 checked(activity, false),
@@ -564,17 +565,18 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyImportThresholdReader(MainActivity activity) {
+        MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
         EditText difficulty = new EditText(activity);
         EditText lapses = new EditText(activity);
         EditText minMatching = new EditText(activity);
         difficulty.setText("not numeric");
         lapses.setText("3");
         minMatching.setText("2");
-        assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
+        assertNull(validation.readImportThresholds(difficulty, lapses, minMatching));
         difficulty.setText("0.5");
-        assertNull(activity.readImportThresholds(difficulty, lapses, minMatching));
+        assertNull(validation.readImportThresholds(difficulty, lapses, minMatching));
         difficulty.setText("7.5");
-        MainActivityBase.ImportThresholds thresholds = activity.readImportThresholds(difficulty, lapses, minMatching);
+        MainActivityBase.ImportThresholds thresholds = validation.readImportThresholds(difficulty, lapses, minMatching);
         assertNotNull(thresholds);
         assertEquals(7.5, thresholds.difficulty, 0.001);
         assertEquals(3, thresholds.lapseThreshold);
@@ -582,13 +584,14 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyRankAndMaxItemControls(MainActivity activity) {
+        MainActivitySettingsAnkiSourceInputs inputs = new MainActivitySettingsAnkiSourceInputs(activity);
         int[] selectedRanks = {10, 100};
         TextView rankStatus = new TextView(activity);
         EditText minRank = new EditText(activity);
         EditText maxRank = new EditText(activity);
         SeekBar minSlider = new SeekBar(activity);
         SeekBar maxSlider = new SeekBar(activity);
-        activity.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
+        inputs.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
         touchSeekBar(minSlider);
         touchSeekBar(maxSlider);
         minSlider.setProgress(SettingsInputRules.rankSliderProgress(50));
