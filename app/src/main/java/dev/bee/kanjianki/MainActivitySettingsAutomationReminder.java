@@ -40,17 +40,7 @@ final class MainActivitySettingsAutomationReminder {
         box.addView(activity.text(SettingsTextCopy.dailyReminderBody(), 15, activity.MUTED, false));
 
         Button time = activity.secondaryButton(SettingsTextCopy.reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
-        time.setOnClickListener(v -> new TimePickerDialog(
-                activity,
-                (view, hour, minute) -> {
-                    selectedHour[0] = hour;
-                    selectedMinute[0] = minute;
-                    time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
-                },
-                selectedHour[0],
-                selectedMinute[0],
-                true
-        ).show());
+        time.setOnClickListener(new RunnableClickListener(() -> showReminderTimePicker(selectedHour, selectedMinute, time)));
         box.addView(time);
 
         List<View> presets = new ArrayList<>();
@@ -61,18 +51,17 @@ final class MainActivitySettingsAutomationReminder {
         box.addView(activity.twoColumnGrid(presets));
 
         Button save = activity.primaryButton(reminder.enabled ? SettingsTextCopy.saveReminderLabel() : SettingsTextCopy.enableReminderLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true));
+        save.setOnClickListener(new RunnableClickListener(() -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true)));
         box.addView(save);
         if (reminder.enabled) {
             Button off = activity.secondaryButton(SettingsTextCopy.turnOffReminderLabel());
-            off.setOnClickListener(v -> actions.disableReminder(reminder));
+            off.setOnClickListener(new RunnableClickListener(() -> actions.disableReminder(reminder)));
             box.addView(off);
         }
         if (blocked) {
             box.addView(activity.text(SettingsTextCopy.notificationsBlockedBody(), 14, activity.CORAL, false));
             Button notificationSettings = activity.secondaryButton(SettingsTextCopy.openNotificationSettingsLabel());
-            notificationSettings.setOnClickListener(v -> activity.startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, activity.getPackageName())));
+            notificationSettings.setOnClickListener(new RunnableClickListener(this::openNotificationSettings));
             box.addView(notificationSettings);
         } else if (!activity.hasRuntimeNotificationPermissionForReminder()) {
             box.addView(activity.text(SettingsTextCopy.notificationPermissionBody(), 14, activity.CORAL, false));
@@ -88,11 +77,62 @@ final class MainActivitySettingsAutomationReminder {
         Button preset = activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel(label, hour, minute));
         preset.setTextSize(13);
         preset.setMinHeight(activity.dp(54));
-        preset.setOnClickListener(v -> {
+        preset.setOnClickListener(new ReminderPresetClickListener(hour, minute, selectedHour, selectedMinute, timeButton));
+        return preset;
+    }
+
+    private void showReminderTimePicker(int[] selectedHour, int[] selectedMinute, Button timeButton) {
+        new TimePickerDialog(
+                activity,
+                (view, hour, minute) -> {
+                    selectedHour[0] = hour;
+                    selectedMinute[0] = minute;
+                    timeButton.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
+                },
+                selectedHour[0],
+                selectedMinute[0],
+                true
+        ).show();
+    }
+
+    private void openNotificationSettings() {
+        activity.startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, activity.getPackageName()));
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
+    }
+
+    private static final class ReminderPresetClickListener implements View.OnClickListener {
+        private final int hour;
+        private final int minute;
+        private final int[] selectedHour;
+        private final int[] selectedMinute;
+        private final Button timeButton;
+
+        ReminderPresetClickListener(int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
+            this.hour = hour;
+            this.minute = minute;
+            this.selectedHour = selectedHour;
+            this.selectedMinute = selectedMinute;
+            this.timeButton = timeButton;
+        }
+
+        @Override
+        public void onClick(View v) {
             selectedHour[0] = hour;
             selectedMinute[0] = minute;
             timeButton.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
-        });
-        return preset;
+        }
     }
 }
