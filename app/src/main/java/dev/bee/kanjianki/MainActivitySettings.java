@@ -117,8 +117,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsStudySortPanel(this);
     }
 
-    private MainActivitySettingsWorkload workload() {
-        return new MainActivitySettingsWorkload(this);
+    private MainActivitySettingsWorkloadPanel workloadPanel() {
+        return new MainActivitySettingsWorkloadPanel(this);
     }
 
     private MainActivitySettingsLearning learning() {
@@ -285,7 +285,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout workloadSettingsPanel() {
-        return workload().workloadSettingsPanel();
+        return workloadPanel().workloadSettingsPanel();
     }
 
     LinearLayout learningStepsSettingsPanel() {
