@@ -15,35 +15,8 @@ import java.util.List;
 abstract class MainActivityStats extends MainActivityGames {
     void renderStats() {
         base("stats");
-        StudyStatsStore.KaniOutcomeStats stats = store.kaniOutcomeStats();
-        StudyStatsStore.StudyTaskTimeStats studyTime = store.studyTaskTimeStats(System.currentTimeMillis());
         content.addView(fullWidthHomeButton());
-        content.addView(text("Stats", 34, INK, true));
-        content.addView(statsVerdictPanel(stats));
-        content.addView(text("Kani does not replace Anki. It repairs weak kanji from your Anki reviews, then shows whether Anki evidence caught up afterward.", 16, MUTED, false));
-        addSpace(10);
-
-        content.addView(outcomePanel(
-                "Weakness Burn-Down",
-                StudyTextCopy.countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved"),
-                StatsTextCopy.weaknessImprovementBody(
-                        stats.weakKanjiImproved.improvedCount,
-                        stats.weakKanjiImproved.averageBeforeWeakness,
-                        stats.weakKanjiImproved.averageAfterWeakness
-                ),
-                weaknessImprovementExamples(stats.weakKanjiImproved),
-                TEAL
-        ));
-        content.addView(outcomePanel(
-                "Anki Support Conversion",
-                StudyTextCopy.countText(stats.matureSupportGained.matureSupportGained, "mature card gained", "mature cards gained"),
-                StudyTextCopy.countText(stats.matureSupportGained.firstSupportCount, "kanji gained first mature support", "kanji gained first mature support") + ".",
-                supportGainExamples(stats.matureSupportGained),
-                BLUE
-        ));
-        content.addView(notHelpingPanel(store.kanjiImpactReport()));
-        content.addView(ladderHealthPanel(stats.ladderHealth));
-        content.addView(studyTimePanel(studyTime));
+        content.addView(MainActivityStatsCompose.statsScreenView(this));
     }
 
     LinearLayout statsVerdictPanel(StudyStatsStore.KaniOutcomeStats stats) {

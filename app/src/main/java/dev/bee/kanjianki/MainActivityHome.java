@@ -143,10 +143,6 @@ abstract class MainActivityHome extends MainActivityBase {
         focusQueue.renderRecentMistakes();
     }
 
-    View recentMistakeRow(StudyStatsStore.RecentMistake mistake, RecordsImportModels.DashboardRow row) {
-        return focusQueue.recentMistakeRow(mistake, row);
-    }
-
     int streakAccent(StudyStatsStore.StudyStreak streak) {
         return focusQueue.streakAccent(streak);
     }

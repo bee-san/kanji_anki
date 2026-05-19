@@ -21,17 +21,7 @@ final class MainActivitySettingsUpdatePage {
 
     void renderUpdate() {
         activity.base(activity.NAV_SETTINGS_ROUTE);
-        activity.content.addView(activity.fullWidthHomeButton());
-        Button backButton = activity.secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        backButton.setOnClickListener(new RunnableClickListener(() -> activity.renderSettings(false)));
-        activity.content.addView(backButton);
-        activity.content.addView(activity.text(SettingsTextCopy.updatePageTitle(), 34, activity.INK, true));
-        activity.content.addView(activity.text(SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME), 16, activity.MUTED, false));
-        activity.content.addView(autoUpdatePanel(SettingsTextCopy.automaticUpdatesTitle()));
-
-        Button button = activity.primaryButton(SettingsTextCopy.checkForUpdateLabel(), activity.STUDY_PINK_DARK);
-        button.setOnClickListener(new RunnableClickListener(() -> activity.runUpdate(false)));
-        activity.content.addView(button);
+        activity.content.addView(MainActivitySettingsUpdatePageCompose.settingsUpdatePageView(activity));
     }
 
     LinearLayout autoUpdatePanel(String title) {

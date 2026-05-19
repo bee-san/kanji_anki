@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.HomeTextCopy;
@@ -47,30 +46,7 @@ final class MainActivityHomeFocusQueue {
             return;
         }
         List<RecordsImportModels.DashboardRow> rows = home.store.activeDashboardRows();
-        for (StudyStatsStore.RecentMistake mistake : mistakes) {
-            home.content.addView(recentMistakeRow(mistake, home.findRow(rows, mistake.kanji)));
-        }
-    }
-
-    View recentMistakeRow(StudyStatsStore.RecentMistake mistake, RecordsImportModels.DashboardRow row) {
-        LinearLayout box = home.panelBox(Color.WHITE, home.PINK_STROKE);
-        box.setOnClickListener(new RunnableClickListener(() -> home.renderDetail(mistake.kanji)));
-        LinearLayout top = new LinearLayout(home);
-        top.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        top.addView(home.kanjiTile(mistake.kanji, home.dp(70), 42));
-        LinearLayout copy = new LinearLayout(home);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(home.text(HomeTextCopy.recentMistakeTitle(row == null ? "" : StudyTextCopy.rowMeaning(row)), 19, home.INK, true));
-        copy.addView(home.text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, DateTextPolicy.timelineDate(mistake.reviewedAtMillis)), 14, home.MUTED, false));
-        if (row != null) {
-            copy.addView(home.text(FocusQueueCopy.sourceEvidenceText(row), 14, home.INK, true));
-        }
-        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
-        copyLp.setMargins(home.dp(12), 0, home.dp(6), 0);
-        top.addView(copy, copyLp);
-        top.addView(home.text(">", 34, home.CORAL, true));
-        box.addView(top);
-        return box;
+        home.content.addView(MainActivityHomeFocusQueueCompose.homeRecentMistakesContentView(home, mistakes, rows));
     }
 
     int streakAccent(StudyStatsStore.StudyStreak streak) {
