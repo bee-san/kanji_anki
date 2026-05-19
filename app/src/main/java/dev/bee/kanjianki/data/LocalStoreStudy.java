@@ -34,6 +34,10 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
         return new LocalStoreStudyLog(this);
     }
 
+    private LocalStoreStudyStatus studyStatus() {
+        return new LocalStoreStudyStatus((LocalStore) this);
+    }
+
     public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
         replaceStudyItems(items, null, 0L, null);
     }
@@ -137,46 +141,15 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public List<String> consumedTokens() {
-        List<String> tokens = new ArrayList<>();
-        try (Cursor cursor = getReadableDatabase().query(TABLE_REVIEW_LOG, new String[]{COLUMN_TOKEN}, null, null, null, null, null)) {
-            while (cursor.moveToNext()) {
-                tokens.add(string(cursor, COLUMN_TOKEN));
-            }
-        }
-        return tokens;
+        return studyStatus().consumedTokens();
     }
 
     public SyncStatus latestSync() {
-        try (Cursor cursor = getReadableDatabase().query(TABLE_SYNC_RUNS, null, null, null, null, null, ORDER_ID_DESC, "1")) {
-            if (!cursor.moveToFirst()) {
-                return null;
-            }
-            return new SyncStatus(new SyncStatusValues(
-                    string(cursor, COLUMN_STATUS),
-                    integer(cursor, COLUMN_ACTIVE_NOTES_COUNT),
-                    integer(cursor, COLUMN_ACTIVE_CARDS_COUNT),
-                    integer(cursor, COLUMN_SUSPENDED_CARDS_ARCHIVED_COUNT),
-                    integer(cursor, COLUMN_SUSPENDED_KANJI_IMPORTED_COUNT),
-                    longValue(cursor, COLUMN_FINISHED_AT),
-                    string(cursor, COLUMN_ERROR_MESSAGE),
-                    string(cursor, COLUMN_REMOVAL_MESSAGE)
-            ));
-        }
+        return studyStatus().latestSync();
     }
 
     public boolean hasSuccessfulSyncSince(long finishedAtMillis) {
-        try (Cursor cursor = getReadableDatabase().query(
-                TABLE_SYNC_RUNS,
-                new String[]{"id"},
-                "status=? AND finished_at>=?",
-                new String[]{STATUS_SUCCESS, Long.toString(finishedAtMillis)},
-                null,
-                null,
-                ORDER_ID_DESC,
-                "1"
-        )) {
-            return cursor.moveToFirst();
-        }
+        return studyStatus().hasSuccessfulSyncSince(finishedAtMillis);
     }
 
     public int getIntSetting(String key, int fallback) {
