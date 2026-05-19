@@ -935,6 +935,40 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void reviewTransitionFloorsFractionalElapsedDaysForFsrs() {
+        RecordingFsrsAdapter adapter = new RecordingFsrsAdapter(4L * BridgeScheduler.DAY);
+        BridgeScheduler scheduler = new BridgeScheduler(adapter);
+        long halfDay = BridgeScheduler.DAY / 2L;
+        long now = 40L * BridgeScheduler.DAY + halfDay;
+        long dueAt = now - 2L * BridgeScheduler.DAY - halfDay;
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .kanjiMeaningMemory(taskMemory)
+                .activeToken("fractional")
+                .build();
+
+        scheduler.applyReview(
+                item,
+                new RecordsSchedulerModels.ReviewRequest("裂", "fractional", "good", false, false, false, 0),
+                new HashSet<>(),
+                now
+        );
+
+        assertEquals(9, adapter.elapsedDays);
+    }
+
+    @Test
     public void relearningGraduationPreservesPostLapseStability() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long dueAt = 30L * BridgeScheduler.DAY;
