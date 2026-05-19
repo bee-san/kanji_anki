@@ -1421,11 +1421,11 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.AdaptiveLoadPlan complete = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 2, 0, Arrays.asList("裂", "語"), 0, false, "Done");
 
                 activity.renderFocusDone(complete);
-                assertNotNull(findButton(activity.content, "Study more new cards"));
-                performButtonClick(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
+                assertHasText(activity, "Study more new cards");
+                performClickableWithText(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderFocusDone(complete);
-                performButtonClick(activity.content, MainActivityBase.LABEL_BACK_HOME);
+                performClickableWithText(activity.content, MainActivityBase.LABEL_BACK_HOME);
                 assertFalse(activity.continueAllKanjiSession);
                 assertHasText(activity, "Kani");
 
@@ -1433,10 +1433,10 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.studySessionTracker.setTargetCount(2);
                 activity.markStudyTaskCompleted("continue:one");
                 activity.renderStudyRunDone(complete);
-                performButtonClick(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
+                performClickableWithText(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderStudyRunDone(null);
-                performButtonClick(activity.content, MainActivityBase.LABEL_BACK_HOME);
+                performClickableWithText(activity.content, MainActivityBase.LABEL_BACK_HOME);
                 assertFalse(activity.continueAllKanjiSession);
 
                 int available = activity.availableStudyMoreNewCards();

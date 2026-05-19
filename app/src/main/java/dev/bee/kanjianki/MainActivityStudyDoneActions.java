@@ -2,9 +2,8 @@ package dev.bee.kanjianki;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.EditText;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.RecordsImportModels;
@@ -13,6 +12,9 @@ import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 
 import java.util.List;
+
+import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyBackHomeButtonView;
+import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyDoneActionsView;
 
 final class MainActivityStudyDoneActions {
     private final MainActivityStudy home;
@@ -23,25 +25,20 @@ final class MainActivityStudyDoneActions {
 
     void addDoneStudyActions(LinearLayout card) {
         int available = availableStudyMoreNewCards();
-        boolean canStudyMore = available > 0;
-        if (canStudyMore) {
-            Button studyMore = home.pinkPrimaryButton("Study more new cards");
-            studyMore.setOnClickListener(new RunnableClickListener(() -> showStudyMoreNewCardsDialog(available)));
-            card.addView(studyMore);
-        }
-        Button keepGoing = canStudyMore ? home.studySecondaryButton(MainActivityBase.LABEL_CONTINUE_ALL_KANJI) : home.pinkPrimaryButton(MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(new RunnableClickListener(() -> {
-            home.studyMoreNewCardKanji.clear();
-            home.continueAllKanjiSession = true;
-            home.renderStudy();
-        }));
-        card.addView(keepGoing);
-        Button back = home.studySecondaryButton(MainActivityBase.LABEL_BACK_HOME);
-        back.setOnClickListener(new RunnableClickListener(() -> {
-            home.clearStudyModeOverrides();
-            home.renderHome();
-        }));
-        card.addView(back);
+        card.addView(studyDoneActionsView(
+                home,
+                available,
+                () -> showStudyMoreNewCardsDialog(available),
+                () -> {
+                    home.studyMoreNewCardKanji.clear();
+                    home.continueAllKanjiSession = true;
+                    home.renderStudy();
+                },
+                () -> {
+                    home.clearStudyModeOverrides();
+                    home.renderHome();
+                }
+        ));
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
@@ -54,12 +51,14 @@ final class MainActivityStudyDoneActions {
         card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
         card.addView(home.text("Nothing due now", 32, home.STUDY_PLUM, true));
         card.addView(home.text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 17, home.STUDY_MUTED, false));
-        Button back = home.pinkPrimaryButton(MainActivityBase.LABEL_BACK_HOME);
-        back.setOnClickListener(new RunnableClickListener(() -> {
-            home.clearStudyModeOverrides();
-            home.renderHome();
-        }));
-        card.addView(back);
+        card.addView(studyBackHomeButtonView(
+                home,
+                true,
+                () -> {
+                    home.clearStudyModeOverrides();
+                    home.renderHome();
+                }
+        ));
         home.content.addView(card);
     }
 
