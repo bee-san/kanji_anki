@@ -1,13 +1,13 @@
 # Kani Rewrite Continuation
 
-Last updated: 2026-05-18
+Last updated: 2026-05-19
 
 ## Branch and PR
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `e5ccd72c Extract study collection lookup`
-- Latest confirmed GitHub Actions run: `26056399662`, passed in about 2.5 minutes
+- Latest confirmed pushed commit before this note: `2f1cf8e6 Tighten study done-actions test coverage`
+- Latest confirmed PR state: draft, mergeable, head SHA `2f1cf8e643b23d0bd055a6a440f9f9e82a0388e8`
 
 If `/tmp` has been wiped, resume from a normal checkout:
 
@@ -24,6 +24,12 @@ If the branch does not exist locally:
 git switch --track origin/codex-android-architecture-20260518
 ```
 
+On 2026-05-19, the original checkout at `/home/bee/Documents/src/github/kanji_anki`
+had a read-only `.git` mount. Its working tree content matched the pushed branch,
+but `git reset --mixed origin/codex-android-architecture-20260518` could not create
+`.git/index.lock`. If that persists, either remount/fix `.git` first or continue
+from the writable clone/worktree and push from there.
+
 ## Current Rewrite State
 
 The rewrite branch is intentionally being moved in small, reviewable commits. The app still keeps the original Android package identity and is not ready to merge to `main` yet.
@@ -34,17 +40,19 @@ Completed foundations include:
 - FSRS is wired through the domain adapter path used by review transitions.
 - CI is split into fast deterministic jobs and currently finishes well under the 15-minute ceiling.
 - Several study/writing behaviors have been moved from activity code into core or writing-core policies.
-- Recent extracted slices include study answer details, practice message copy, captured writing attempts, writing model availability, writing action presentation, study session routing, and shared study collection lookup.
+- Kotlin and Compose are now wired into the Android app.
+- Real Compose surfaces now include Home header/actions/CTA/metrics, Home recent mistakes and browse-detail timeline, Stats, Settings update/reference/category/automation hero areas, Games question card, Study top bar, flashcard actions, and done actions.
+- Recent pushed slices include study flashcard actions, study done actions, and follow-up done-action test coverage.
 
 ## Verification Baseline
 
 The most recent focused local gate passed with:
 
 ```bash
-env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk GRADLE_USER_HOME=/tmp/gradle-kanji-review ./gradlew :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac
+./gradlew --no-daemon :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac :app:testDebugUnitTest :app:lintDebug
 ```
 
-The most recent pushed commit triggered GitHub Actions run `26056399662`, which passed:
+Earlier in this branch, GitHub Actions run `26056399662` passed:
 
 - App unit tests and coverage
 - JVM tests and coverage
@@ -62,30 +70,24 @@ When that happens, rerun the same Gradle command outside the sandbox via the app
 
 ## Review Agent State
 
-Reviewer agents have been used after each pushed commit. The last launched reviewer was for commit `e5ccd72c`; it reported no behavioral parity or compile-risk findings.
+Reviewer agents have been used after pushed commits. The latest actionable review covered the study done-actions Compose slice and found two coverage gaps:
 
 ```bash
-git show --stat --oneline e5ccd72c
-git show --check e5ccd72c
+git show --stat --oneline 2f1cf8e6
+git show --check 2f1cf8e6
 ```
 
-The reviewer confirmed:
-
-- `StudyCollectionLookup` preserves the previous "first matching kanji" behavior.
-- The added null tolerance appears safer rather than regressive.
-- `./gradlew :core:test --rerun-tasks` passed.
-- `git diff --check e5ccd72c^ e5ccd72c` passed.
-
-The reviewer could not run app compilation because its environment used `/opt/android-sdk`, which lacked accepted Android 36 licenses. This branch has already passed app Java compile and androidTest Java compile locally with the configured SDK, and GitHub CI passed the app compile/lint jobs on run `26056399662`.
+Commit `2f1cf8e6` closes those gaps by clicking `Study more new cards` in the helper test and covering both populated and empty extra-new-card states in the Compose test.
 
 ## Next Work
 
-Continue with small, behavior-preserving extractions before any broad cleanup. Good next slices:
+Continue with small, behavior-preserving Compose migrations before any broad cleanup. Good next slices:
 
-1. Use Semble to find the next duplicated pure policy or copy/rendering helper.
-2. Prefer extractions out of `MainActivityStudy` that can be tested in `core` or `writing-core`.
-3. Keep app methods as thin delegates when androidTest or package-visible tests still rely on them.
-4. After each slice, run the focused local gate, commit, push, dispatch a reviewer agent, and watch GitHub CI.
+1. Use Semble before choosing a slice.
+2. Finish the Home browse screen migration: move the search header, input, result heading, empty state, and result rows out of legacy Views into `MainActivityHomeBrowseDetailCompose.kt`.
+3. Keep `MainActivityHome.browseKanjiRow(...)` as a thin wrapper if tests still call it.
+4. Add or extend Compose tests in `MainActivityHomeBrowseDetailComposeTest.kt` for suspended rows, empty rows, and row click callbacks.
+5. After each slice, run the focused local gate, commit, push, dispatch a reviewer agent, and watch GitHub CI.
 
 Avoid starting the final merge until a parity audit has passed for:
 
@@ -103,7 +105,7 @@ Use this loop for the next session:
 ```bash
 git status --short --branch
 semble search "next duplicated study policy or activity helper" .
-env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk GRADLE_USER_HOME=/tmp/gradle-kanji-review ./gradlew :core:test :app:testDebugUnitTest :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac
+./gradlew --no-daemon :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac :app:testDebugUnitTest :app:lintDebug
 git diff --check
 git add <scoped files>
 git commit -m "<focused message>"
