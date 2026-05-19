@@ -274,7 +274,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout updateSettingsPanel() {
         LinearLayout box = autoUpdatePanel(SettingsTextCopy.appUpdatesTitle());
         Button update = primaryButton(SettingsTextCopy.openUpdaterLabel(), STUDY_PINK_DARK);
-        update.setOnClickListener(v -> renderUpdate());
+        update.setOnClickListener(new RunnableClickListener(this::renderUpdate));
         box.addView(update);
         return box;
     }
@@ -285,6 +285,19 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout indeterminateProgressRow(String label) {
         return updateFlow().indeterminateProgressRow(label);
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 
 }
