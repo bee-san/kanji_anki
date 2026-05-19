@@ -128,6 +128,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         return new MainActivityStudyFlashcard(this);
     }
 
+    private MainActivityStudyWritingUi writingUi() {
+        return new MainActivityStudyWritingUi(this);
+    }
+
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
@@ -915,65 +919,19 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void buildStudyActionBar() {
-        if (studyActionBar == null) {
-            return;
-        }
-        styleStudyActionBarShell();
-        studyActionBar.removeAllViews();
-        studyActionBar.setVisibility(View.VISIBLE);
-
-        studyActionBar.addView(writingToolActions());
-        studyActionBar.addView(writingPrimaryActions());
-        studyActionBar.addView(writingFallbackActions());
+        writingUi().buildStudyActionBar();
     }
 
     LinearLayout writingToolActions() {
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button clear = studySecondaryButton("Erase");
-        clear.setOnClickListener(v -> eraseWritingPad());
-        actions.addView(clear, new LinearLayout.LayoutParams(0, dp(58), 1));
-        undoStrokeButton = studySecondaryButton("Undo");
-        undoStrokeButton.setOnClickListener(v -> undoWritingStroke());
-        actions.addView(undoStrokeButton, new LinearLayout.LayoutParams(0, dp(58), 1));
-        hintButton = studySecondaryButton("Hint");
-        hintButton.setOnClickListener(v -> showWritingHint());
-        actions.addView(hintButton, new LinearLayout.LayoutParams(0, dp(58), 1));
-        return actions;
+        return writingUi().writingToolActions();
     }
 
     LinearLayout writingPrimaryActions() {
-        LinearLayout primaryActions = new LinearLayout(this);
-        primaryActions.setOrientation(LinearLayout.HORIZONTAL);
-        checkWritingButton = pinkPrimaryButton("Check");
-        checkWritingButton.setOnClickListener(v -> checkWriting());
-        primaryActions.addView(checkWritingButton, new LinearLayout.LayoutParams(0, dp(62), 1));
-
-        downloadModelButton = studySecondaryButton("Download checker");
-        downloadModelButton.setOnClickListener(v -> downloadWritingModel());
-        primaryActions.addView(downloadModelButton, new LinearLayout.LayoutParams(0, dp(62), 1));
-
-        nextAfterPassButton = pinkPrimaryButton(LABEL_PASS);
-        nextAfterPassButton.setOnClickListener(v -> submitReview(WritingFeedbackCopy.submitRating(activeAnalysis), false));
-        primaryActions.addView(nextAfterPassButton, new LinearLayout.LayoutParams(0, dp(62), 1));
-        return primaryActions;
+        return writingUi().writingPrimaryActions();
     }
 
     LinearLayout writingFallbackActions() {
-        LinearLayout fallbackActions = new LinearLayout(this);
-        fallbackActions.setOrientation(LinearLayout.HORIZONTAL);
-        replayButton = studySecondaryButton("Replay");
-        replayButton.setOnClickListener(v -> replayWritingAnalysis());
-        fallbackActions.addView(replayButton, new LinearLayout.LayoutParams(0, dp(56), 1));
-
-        manualOverrideButton = studySecondaryButton("Mark right anyway");
-        manualOverrideButton.setOnClickListener(v -> submitReview(RATING_GOOD, true));
-        fallbackActions.addView(manualOverrideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
-
-        practiceWithGuideButton = studySecondaryButton("Try again with full guide");
-        practiceWithGuideButton.setOnClickListener(v -> startGuidedWritingRetry());
-        fallbackActions.addView(practiceWithGuideButton, new LinearLayout.LayoutParams(0, dp(56), 1));
-        return fallbackActions;
+        return writingUi().writingFallbackActions();
     }
 
     void eraseWritingPad() {
@@ -1258,98 +1216,43 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void updateResultActions() {
-        WritingActionPresentation presentation = writingActionPresentation();
-        updateUndoStrokeButton(presentation);
-        updateCheckWritingButton(presentation);
-        updateDownloadModelButton(presentation);
-        updateNextAfterPassButton(presentation);
-        updateFallbackActionButtons(presentation);
-        updateHintAndAnswerVisibility(presentation);
-        if (resultStatus != null && !presentation.resultStatusVisible) {
-            resultStatus.setVisibility(View.GONE);
-        }
+        writingUi().updateResultActions();
     }
 
     WritingActionPresentation writingActionPresentation() {
-        WritingActionPresentation.Input input = new WritingActionPresentation.Input(activeAnalysis);
-        input.checkingWriting = checkingWriting;
-        input.canUndoStroke = drawingPad != null && drawingPad.canUndoStroke();
-        input.writingModelStatusKnown = writingModelStatusKnown;
-        input.writingModelDownloaded = writingModelDownloaded;
-        input.hasReplaySnapshot = drawingPad != null && drawingPad.hasReplaySnapshot();
-        input.hasInk = drawingPad != null && drawingPad.hasInk();
-        input.guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
-        input.canRevealMoreHelp = canRevealMoreHelp();
-        input.recallTask = activeSession != null && StudyTaskCopy.isRecallTask(activeSession);
-        input.teachingTask = activeSession != null && StudyTaskCopy.isTeachingTask(activeSession);
-        input.currentPracticeLevel = currentPracticeLevel;
-        return WritingActionPresentation.from(input);
+        return writingUi().writingActionPresentation();
     }
 
     void updateCheckWritingButton(WritingActionPresentation presentation) {
-        if (checkWritingButton != null) {
-            checkWritingButton.setVisibility(presentation.checkVisible ? View.VISIBLE : View.GONE);
-            checkWritingButton.setEnabled(presentation.checkEnabled);
-            checkWritingButton.setText(presentation.checkText);
-            checkWritingButton.setOnClickListener(presentation.messyPass ? v -> startCleanerRetry() : v -> checkWriting());
-        }
+        writingUi().updateCheckWritingButton(presentation);
     }
 
     void updateUndoStrokeButton() {
-        updateUndoStrokeButton(writingActionPresentation());
+        writingUi().updateUndoStrokeButton();
     }
 
     void updateUndoStrokeButton(WritingActionPresentation presentation) {
-        if (undoStrokeButton != null) {
-            undoStrokeButton.setVisibility(View.VISIBLE);
-            undoStrokeButton.setEnabled(presentation.undoEnabled);
-        }
+        writingUi().updateUndoStrokeButton(presentation);
     }
 
     void updateDownloadModelButton(WritingActionPresentation presentation) {
-        if (downloadModelButton != null) {
-            downloadModelButton.setVisibility(presentation.downloadVisible ? View.VISIBLE : View.GONE);
-        }
+        writingUi().updateDownloadModelButton(presentation);
     }
 
     void updateNextAfterPassButton(WritingActionPresentation presentation) {
-        if (nextAfterPassButton != null) {
-            nextAfterPassButton.setVisibility(presentation.nextVisible ? View.VISIBLE : View.GONE);
-            if (presentation.nextVisible) {
-                nextAfterPassButton.setText(presentation.nextLabel);
-                nextAfterPassButton.setOnClickListener(v -> submitReview(presentation.nextRating, false));
-            }
-        }
+        writingUi().updateNextAfterPassButton(presentation);
     }
 
     void updateFallbackActionButtons(WritingActionPresentation presentation) {
-        if (manualOverrideButton != null) {
-            manualOverrideButton.setVisibility(presentation.manualOverrideVisible ? View.VISIBLE : View.GONE);
-        }
-        if (practiceWithGuideButton != null) {
-            practiceWithGuideButton.setVisibility(presentation.practiceWithGuideVisible ? View.VISIBLE : View.GONE);
-        }
-        if (replayButton != null) {
-            replayButton.setVisibility(presentation.replayVisible ? View.VISIBLE : View.GONE);
-        }
+        writingUi().updateFallbackActionButtons(presentation);
     }
 
     void updateHintAndAnswerVisibility(WritingActionPresentation presentation) {
-        if (hintButton != null) {
-            hintButton.setVisibility(presentation.hintVisible ? View.VISIBLE : View.GONE);
-            hintButton.setText(presentation.hintText);
-        }
-        if (studyAnswerPanel != null) {
-            studyAnswerPanel.setVisibility(presentation.answerPanelVisible ? View.VISIBLE : View.GONE);
-        }
+        writingUi().updateHintAndAnswerVisibility(presentation);
     }
 
     boolean canRevealMoreHelp() {
-        if (activeSession == null) {
-            return false;
-        }
-        StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        return hintProgression.canRevealMoreHelp(currentHintState, guide);
+        return writingUi().canRevealMoreHelp();
     }
 
     void startCleanerRetry() {
@@ -1431,91 +1334,26 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void setStudyStatus(String value, int color) {
-        if (studyStatus != null) {
-            studyStatus.setText(value);
-            studyStatus.setTextColor(color);
-        }
-        if (resultStatus != null && activeAnalysis == null) {
-            resultStatus.setVisibility(View.GONE);
-        }
+        writingUi().setStudyStatus(value, color);
     }
 
     void setResultStatus(String value, int color) {
-        if (resultStatus != null) {
-            resultStatus.setText(value);
-            resultStatus.setTextColor(color);
-            resultStatus.setVisibility(View.VISIBLE);
-        }
+        writingUi().setResultStatus(value, color);
     }
 
     void refreshWritingModelStatus() {
-        writingModelStatusKnown = false;
-        writingModelDownloaded = false;
-        updateResultActions();
-        String token = activeSession == null ? null : activeSession.token;
-        WritingRecognizer recognizer = currentWritingRecognizer();
-        if (recognizer == null) {
-            updateWritingModelAvailability(false);
-            setStudyStatus(
-                    WritingFeedbackCopy.unavailableModelStatusMessage(
-                            WritingFeedbackCopy.guideLabel(currentHintState, strokeGuide(activeSession.item.kanji))
-                    ),
-                    CORAL
-            );
-            updateResultActions();
-            return;
-        }
-        recognizer.modelStatus().whenComplete((status, error) -> main.post(() -> {
-            if (token == null || !isActiveToken(token)) {
-                return;
-            }
-            updateWritingModelAvailability(error == null && status != null && status.downloaded);
-            updateResultActions();
-            if (activeAnalysis != null || checkingWriting) {
-                return;
-            }
-            setWritingModelStatusMessage(status, error);
-        }));
+        writingUi().refreshWritingModelStatus();
     }
 
     void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
-        String prefix = WritingFeedbackCopy.guideLabel(currentHintState, strokeGuide(activeSession.item.kanji));
-        if (error != null || status == null) {
-            setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, status != null, false, error != null), CORAL);
-            return;
-        }
-        if (!status.downloaded) {
-            setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, true, false, false), CORAL);
-            return;
-        }
-        setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, true, true, false), MUTED);
+        writingUi().setWritingModelStatusMessage(status, error);
     }
 
     void downloadWritingModel() {
-        String token = activeSession == null ? null : activeSession.token;
-        WritingRecognizer recognizer = currentWritingRecognizer();
-        if (recognizer == null) {
-            setStudyStatus("The handwriting checker is unavailable on this device.", CORAL);
-            return;
-        }
-        setStudyStatus("Downloading handwriting checker...", MUTED);
-        recognizer.downloadModel().whenComplete((status, error) -> main.post(() -> {
-            if (token != null && !isActiveToken(token)) {
-                return;
-            }
-            if (error != null) {
-                updateWritingModelAvailability(false);
-                setStudyStatus("Handwriting checker download failed: " + error.getMessage(), CORAL);
-            } else {
-                updateWritingModelAvailability(true);
-                setStudyStatus("Handwriting checker ready.", TEAL);
-            }
-            updateResultActions();
-        }));
+        writingUi().downloadWritingModel();
     }
 
     void updateWritingModelAvailability(boolean downloaded) {
-        writingModelStatusKnown = true;
-        writingModelDownloaded = downloaded;
+        writingUi().updateWritingModelAvailability(downloaded);
     }
 }
