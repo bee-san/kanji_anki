@@ -108,7 +108,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
-        content.addView(backToSettingsButton());
+        Button backButton = secondaryButton(SettingsTextCopy.backToSettingsLabel());
+        backButton.setOnClickListener(v -> renderSettings(false));
+        content.addView(backButton);
         content.addView(text(SettingsTextCopy.updatePageTitle(), 34, INK, true));
         content.addView(text(SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME), 16, MUTED, false));
         content.addView(autoUpdatePanel(SettingsTextCopy.automaticUpdatesTitle()));
@@ -171,12 +173,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
             return installPermissionForTests;
         }
         return getPackageManager().canRequestPackageInstalls();
-    }
-
-    Button backToSettingsButton() {
-        Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        back.setOnClickListener(v -> renderSettings(false));
-        return back;
     }
 
     void renderSettings() {
@@ -681,7 +677,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
     void renderDataSources() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
-        content.addView(backToSettingsButton());
+        Button backButton = secondaryButton(SettingsTextCopy.backToSettingsLabel());
+        backButton.setOnClickListener(v -> renderSettings(false));
+        content.addView(backButton);
         content.addView(text(SettingsTextCopy.dataLicensesTitle(), 34, INK, true));
         content.addView(text(SettingsTextCopy.dataLicensesBody(), 16, MUTED, false));
 
@@ -700,9 +698,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         fonts.addView(text(AttributionTexts.rawResourceText(this, R.raw.font_attribution), 14, MUTED, false));
         content.addView(fonts);
 
-        Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        back.setOnClickListener(v -> renderSettings(false));
-        content.addView(back);
     }
 
     LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
@@ -1540,7 +1535,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
         int updateUiRun = beginUpdateUiRun();
         UpdateRunScreenCopy.Copy copy = UpdateRunScreenCopy.forRun(cachedPending);
         content.addView(fullWidthHomeButton());
-        content.addView(backToSettingsButton());
+        Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
+        back.setOnClickListener(v -> renderSettings(false));
+        content.addView(back);
         content.addView(text(copy.title(), 32, INK, true));
         content.addView(text(copy.body(), 16, MUTED, false));
         content.addView(indeterminateProgressRow(copy.progressLabel()));
