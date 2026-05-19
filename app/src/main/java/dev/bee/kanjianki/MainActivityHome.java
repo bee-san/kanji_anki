@@ -85,6 +85,7 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
+    private final MainActivityHomeOverview overview = new MainActivityHomeOverview(this);
     private final MainActivityHomeChrome chrome = new MainActivityHomeChrome(this);
     private final MainActivityHomeFocusQueue focusQueue = new MainActivityHomeFocusQueue(this);
     private final MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(this);
@@ -141,178 +142,23 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     View homeHeader() {
-        LinearLayout header = new LinearLayout(this);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-
-        LinearLayout copy = new LinearLayout(this);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = text(HomeTextCopy.appTitle(), 48, INK, true);
-        title.setLetterSpacing(0);
-        copy.addView(title);
-        copy.addView(text(HomeTextCopy.appSubtitle(), 16, MUTED, true));
-        header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-
-        ImageView mascot = new ImageView(this);
-        mascot.setImageResource(R.mipmap.ic_launcher_foreground);
-        mascot.setAdjustViewBounds(true);
-        mascot.setBackgroundColor(Color.TRANSPARENT);
-        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(dp(110), dp(110));
-        mascotLp.setMargins(dp(10), 0, 0, 0);
-        header.addView(mascot, mascotLp);
-        return header;
+        return overview.homeHeader();
     }
 
     View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        LinearLayout row = new EqualHeightRow(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setBaselineAligned(false);
-        row.addView(metricCard(
-                R.drawable.ic_sync_24,
-                TEAL,
-                HomeTextCopy.syncMetricLabel(),
-                HomeTextCopy.homeSyncValue(sync == null ? null : sync.finishedAt),
-                HomeTextCopy.syncMetricStatus(provider.canSync && sync != null && "success".equals(sync.status)),
-                this::confirmSync
-        ));
-        row.addView(metricCard(
-                R.drawable.ic_flame_24,
-                streakAccent(streak),
-                HomeTextCopy.streakMetricLabel(),
-                HomeTextCopy.streakHeadline(streak == null ? 0 : streak.currentDays),
-                HomeTextCopy.streakMetricBody(streak != null && streak.studiedToday, streak == null ? 0 : streak.bestDays),
-                null
-        ));
-        row.addView(metricCard(
-                R.drawable.ic_target_24,
-                CORAL,
-                HomeTextCopy.focusMetricLabel(),
-                HomeTextCopy.focusHeadline(plan),
-                null,
-                null
-        ));
-        return row;
+        return overview.homeMetricRow(sync, provider, streak, plan);
     }
 
     View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
-        LinearLayout card = panelBox(Color.WHITE, softened(accent));
-        card.setPadding(dp(11), dp(11), dp(11), dp(11));
-        card.setGravity(Gravity.TOP);
-        card.setMinimumHeight(dp(136));
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(iconRes);
-        icon.setColorFilter(accent);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
-        iconLp.setMargins(0, 0, 0, dp(5));
-        card.addView(icon, iconLp);
-
-        TextView labelText = text(label, 12, accent, true);
-        labelText.setIncludeFontPadding(false);
-        labelText.setSingleLine(true);
-        card.addView(labelText);
-
-        TextView valueText = text(value, 14, INK, true);
-        valueText.setIncludeFontPadding(false);
-        valueText.setSingleLine(false);
-        valueText.setMaxLines(2);
-        valueText.setPadding(0, dp(5), 0, dp(2));
-        card.addView(valueText);
-
-        if (body != null && !body.isEmpty()) {
-            TextView bodyText = text(StudyTextCopy.compact(body, 18), 11, MUTED, false);
-            bodyText.setIncludeFontPadding(false);
-            bodyText.setSingleLine(true);
-            bodyText.setPadding(0, dp(3), 0, 0);
-            card.addView(bodyText);
-        }
-        if (action != null) {
-            card.setClickable(true);
-            card.setOnClickListener(new RunnableClickListener(action));
-        }
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
-        lp.setMargins(dp(4), 0, dp(4), 0);
-        card.setLayoutParams(lp);
-        return card;
+        return overview.metricCard(iconRes, accent, label, value, body, action);
     }
 
     View homeStudyCta() {
-        FrameLayout button = new FrameLayout(this);
-        GradientDrawable background = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[] { Color.rgb(255, 116, 156), Color.rgb(255, 58, 112) }
-        );
-        background.setCornerRadius(dp(24));
-        background.setStroke(dp(2), Color.rgb(255, 190, 214));
-        GradientDrawable mask = new GradientDrawable();
-        mask.setColor(Color.WHITE);
-        mask.setCornerRadius(dp(24));
-        button.setBackground(new RippleDrawable(
-                ColorStateList.valueOf(Color.argb(38, 255, 255, 255)),
-                background,
-                mask
-        ));
-        button.setClickable(true);
-        button.setFocusable(true);
-        button.setContentDescription(LABEL_STUDY_NOW);
-        button.setMinimumHeight(dp(94));
-        button.setElevation(dp(9));
-        button.setTranslationZ(dp(2));
-        button.setClipToOutline(true);
-
-        LinearLayout copy = new LinearLayout(this);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        copy.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text(LABEL_STUDY_NOW, 26, Color.WHITE, true);
-        title.setIncludeFontPadding(false);
-        title.setLetterSpacing(0);
-        copy.addView(title);
-        TextView support = text(HomeTextCopy.studySupportText(), 13, Color.rgb(255, 245, 250), true);
-        support.setIncludeFontPadding(false);
-        support.setSingleLine(true);
-        support.setPadding(0, dp(5), 0, 0);
-        copy.addView(support);
-        FrameLayout.LayoutParams copyLp = new FrameLayout.LayoutParams(-1, -1);
-        copyLp.setMargins(dp(26), 0, dp(92), 0);
-        button.addView(copy, copyLp);
-
-        FrameLayout arrowChip = new FrameLayout(this);
-        arrowChip.setBackground(panel(Color.WHITE, Color.WHITE, dp(25)));
-        arrowChip.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        ImageView arrow = new ImageView(this);
-        arrow.setImageResource(R.drawable.ic_arrow_forward_24);
-        arrow.setColorFilter(CORAL);
-        FrameLayout.LayoutParams arrowLp = new FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER);
-        arrowChip.addView(arrow, arrowLp);
-        FrameLayout.LayoutParams chipLp = new FrameLayout.LayoutParams(dp(50), dp(50), Gravity.END | Gravity.CENTER_VERTICAL);
-        chipLp.setMargins(0, 0, dp(22), 0);
-        button.addView(arrowChip, chipLp);
-
-        ImageView topSparkle = decorativeSparkle(Color.WHITE, 18);
-        FrameLayout.LayoutParams topSparkleLp = new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.TOP | Gravity.END);
-        topSparkleLp.setMargins(0, dp(10), dp(78), 0);
-        button.addView(topSparkle, topSparkleLp);
-
-        ImageView bottomSparkle = decorativeSparkle(GOLD, 14);
-        FrameLayout.LayoutParams bottomSparkleLp = new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.BOTTOM | Gravity.START);
-        bottomSparkleLp.setMargins(dp(15), 0, 0, dp(14));
-        button.addView(bottomSparkle, bottomSparkleLp);
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(94));
-        lp.setMargins(0, dp(20), 0, dp(16));
-        button.setLayoutParams(lp);
-        return button;
+        return overview.homeStudyCta();
     }
 
     ImageView decorativeSparkle(int tint, int sizeDp) {
-        ImageView sparkle = new ImageView(this);
-        sparkle.setImageResource(R.drawable.ic_sparkle_24);
-        sparkle.setColorFilter(tint);
-        sparkle.setAlpha(0.9f);
-        sparkle.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        sparkle.setMaxWidth(dp(sizeDp));
-        sparkle.setMaxHeight(dp(sizeDp));
-        return sparkle;
+        return overview.decorativeSparkle(tint, sizeDp);
     }
 
     View homeActionRow() {
