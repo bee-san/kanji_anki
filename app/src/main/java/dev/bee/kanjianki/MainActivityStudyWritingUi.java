@@ -8,14 +8,15 @@ import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.WritingActionPresentation;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
-import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.study.WritingRecognizer;
 
 final class MainActivityStudyWritingUi {
     private final MainActivityStudy activity;
+    private final MainActivityStudyWritingStatus writingStatus;
 
     MainActivityStudyWritingUi(MainActivityStudy activity) {
         this.activity = activity;
+        this.writingStatus = new MainActivityStudyWritingStatus(activity);
     }
 
     void buildStudyActionBar() {
@@ -194,73 +195,18 @@ final class MainActivityStudyWritingUi {
     }
 
     void refreshWritingModelStatus() {
-        activity.writingModelStatusKnown = false;
-        activity.writingModelDownloaded = false;
-        updateResultActions();
-        String token = activity.activeSession == null ? null : activity.activeSession.token;
-        WritingRecognizer recognizer = activity.currentWritingRecognizer();
-        if (recognizer == null) {
-            updateWritingModelAvailability(false);
-            setStudyStatus(
-                    WritingFeedbackCopy.unavailableModelStatusMessage(
-                            WritingFeedbackCopy.guideLabel(activity.currentHintState, activity.strokeGuide(activity.activeSession.item.kanji))
-                    ),
-                    activity.CORAL
-            );
-            updateResultActions();
-            return;
-        }
-        recognizer.modelStatus().whenComplete((status, error) -> activity.main.post(() -> {
-            if (token == null || !activity.isActiveToken(token)) {
-                return;
-            }
-            updateWritingModelAvailability(error == null && status != null && status.downloaded);
-            updateResultActions();
-            if (activity.activeAnalysis != null || activity.checkingWriting) {
-                return;
-            }
-            setWritingModelStatusMessage(status, error);
-        }));
+        writingStatus.refreshWritingModelStatus();
     }
 
     void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
-        String prefix = WritingFeedbackCopy.guideLabel(activity.currentHintState, activity.strokeGuide(activity.activeSession.item.kanji));
-        if (error != null || status == null) {
-            setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, status != null, false, error != null), activity.CORAL);
-            return;
-        }
-        if (!status.downloaded) {
-            setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, true, false, false), activity.CORAL);
-            return;
-        }
-        setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, true, true, false), activity.MUTED);
+        writingStatus.setWritingModelStatusMessage(status, error);
     }
 
     void downloadWritingModel() {
-        String token = activity.activeSession == null ? null : activity.activeSession.token;
-        WritingRecognizer recognizer = activity.currentWritingRecognizer();
-        if (recognizer == null) {
-            setStudyStatus("The handwriting checker is unavailable on this device.", activity.CORAL);
-            return;
-        }
-        setStudyStatus("Downloading handwriting checker...", activity.MUTED);
-        recognizer.downloadModel().whenComplete((status, error) -> activity.main.post(() -> {
-            if (token != null && !activity.isActiveToken(token)) {
-                return;
-            }
-            if (error != null) {
-                updateWritingModelAvailability(false);
-                setStudyStatus("Handwriting checker download failed: " + error.getMessage(), activity.CORAL);
-            } else {
-                updateWritingModelAvailability(true);
-                setStudyStatus("Handwriting checker ready.", activity.TEAL);
-            }
-            updateResultActions();
-        }));
+        writingStatus.downloadWritingModel();
     }
 
     void updateWritingModelAvailability(boolean downloaded) {
-        activity.writingModelStatusKnown = true;
-        activity.writingModelDownloaded = downloaded;
+        writingStatus.updateWritingModelAvailability(downloaded);
     }
 }
