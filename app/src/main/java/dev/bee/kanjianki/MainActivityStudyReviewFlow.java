@@ -7,7 +7,6 @@ import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
-import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.data.StudyStatsStore;
@@ -17,9 +16,11 @@ import java.util.Set;
 
 final class MainActivityStudyReviewFlow {
     private final MainActivityStudy activity;
+    private final StudyReviewActions.ReviewWriter reviewWriter;
 
     MainActivityStudyReviewFlow(MainActivityStudy activity) {
         this.activity = activity;
+        this.reviewWriter = new MainActivityStudyReviewWriter(activity);
     }
 
     void submitReview(String rating, boolean override) {
@@ -111,29 +112,9 @@ final class MainActivityStudyReviewFlow {
                 result,
                 activity.activeSession.item,
                 now,
-                reviewWriter(),
+                reviewWriter,
                 activity.studySessionTracker::recordReviewOutcome,
                 activity::markStudyRunPassed
         );
-    }
-
-    StudyReviewActions.ReviewWriter reviewWriter() {
-        return new StudyReviewActions.ReviewWriter() {
-            @Override
-            public void saveStudyItem(RecordsStudyModels.StudyItem item) {
-                activity.store.saveStudyItem(item);
-            }
-
-            @Override
-            public void saveReview(
-                    RecordsSchedulerModels.ReviewRequest request,
-                    String appliedRating,
-                    long reviewedAt,
-                    RecordsStudyModels.StudyItem beforeReview,
-                    RecordsStudyModels.StudyItem afterReview
-            ) {
-                activity.store.saveReview(request, appliedRating, reviewedAt, beforeReview, afterReview);
-            }
-        };
     }
 }
