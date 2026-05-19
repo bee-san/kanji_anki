@@ -42,8 +42,11 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     LinearLayout statsVerdictPanel(StudyStatsStore.KaniOutcomeStats stats) {
-        boolean working = statsWorking(stats);
-        boolean hasLadder = statsHasLadder(stats);
+        boolean working = stats != null && StatsTextCopy.verdictWorking(
+                stats.weakKanjiImproved.improvedCount,
+                stats.matureSupportGained.matureSupportGained
+        );
+        boolean hasLadder = stats != null && StatsTextCopy.verdictHasLadder(stats.ladderHealth.totalActiveItems);
         int stroke;
         int background;
         if (working) {
@@ -77,17 +80,6 @@ abstract class MainActivityStats extends MainActivityGames {
                 ladder.demotionRiskCount,
                 ladder.totalActiveItems
         );
-    }
-
-    boolean statsWorking(StudyStatsStore.KaniOutcomeStats stats) {
-        return stats != null && StatsTextCopy.verdictWorking(
-                stats.weakKanjiImproved.improvedCount,
-                stats.matureSupportGained.matureSupportGained
-        );
-    }
-
-    boolean statsHasLadder(StudyStatsStore.KaniOutcomeStats stats) {
-        return stats != null && StatsTextCopy.verdictHasLadder(stats.ladderHealth.totalActiveItems);
     }
 
     LinearLayout studyTimePanel(StudyStatsStore.StudyTaskTimeStats stats) {
