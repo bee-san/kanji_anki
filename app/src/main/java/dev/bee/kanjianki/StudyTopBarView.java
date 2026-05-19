@@ -73,7 +73,7 @@ final class StudyTopBarView extends LinearLayout {
         button.setFocusable(true);
         button.setContentDescription(description);
         button.setElevation(dp(3));
-        button.setOnClickListener(v -> action.run());
+        button.setOnClickListener(new RunnableClickListener(action));
         ImageView icon = new ImageView(context);
         icon.setImageResource(iconRes);
         icon.setColorFilter(STUDY_HERO_PINK_DARK);
@@ -103,5 +103,18 @@ final class StudyTopBarView extends LinearLayout {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
