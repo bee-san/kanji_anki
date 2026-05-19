@@ -110,6 +110,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsAutomation(this);
     }
 
+    private MainActivitySettingsAnkiSource ankiSource() {
+        return new MainActivitySettingsAnkiSource(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -363,159 +367,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.importFiltersTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.settingsImportSummary(current), 17, TEAL, true));
-        box.addView(text(SettingsTextCopy.importFiltersBody(), 15, MUTED, false));
-        addImportPresetButtons(box);
-
-        CheckBox activeCards = importFilterCheckBox(SettingsTextCopy.activeCardsLabel(), current.importActiveCards);
-        CheckBox suspendedCards = importFilterCheckBox(SettingsTextCopy.suspendedCardsLabel(), current.importSuspendedCards);
-        CheckBox taggedCards = importFilterCheckBox(SettingsTextCopy.taggedCardsLabel(), current.importTaggedCardsEnabled());
-        CheckBox weakCards = importFilterCheckBox(SettingsTextCopy.weakCardsLabel(), current.importWeakCards);
-        CheckBox browserQueryCards = importFilterCheckBox(SettingsTextCopy.browserQueryLabel(), current.importBrowserQueryCards);
-        box.addView(activeCards);
-        box.addView(suspendedCards);
-        box.addView(taggedCards);
-        box.addView(weakCards);
-        box.addView(browserQueryCards);
-
-        EditText browserQueryInput = fieldInput(current.importBrowserQuery);
-        browserQueryInput.setHint(SettingsTextCopy.ankiBrowserQueryHint());
-        addFieldMappingInput(box, SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput);
-
-        EditText tags = fieldInput(current.importTagsText());
-        tags.setHint(SettingsTextCopy.ankiNoteTagsHint());
-        addFieldMappingInput(box, SettingsTextCopy.ankiNoteTagsLabel(), tags);
-
-        LinearLayout thresholds = new LinearLayout(this);
-        thresholds.setOrientation(LinearLayout.HORIZONTAL);
-        EditText difficultyInput = decimalInput(current.importWeakFsrsDifficultyThreshold);
-        LinearLayout difficultyColumn = inputColumn(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 0);
-        EditText lapses = thresholdInput(current.importWeakLapsesThreshold);
-        LinearLayout lapsesColumn = inputColumn(SettingsTextCopy.lapsesLabel(), lapses, dp(10));
-        thresholds.addView(difficultyColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        thresholds.addView(lapsesColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(thresholds);
-
-        EditText minMatching = thresholdInput(current.importMinMatchingCardsPerKanji);
-        addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
-
-        Button save = primaryButton(SettingsTextCopy.saveImportFiltersLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
-            String queryText = browserQueryInput.getText().toString().trim();
-            if (browserQueryCards.isChecked() && queryText.isEmpty()) {
-                Toast.makeText(this, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
-                Toast.makeText(this, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
-            if (parsedThresholds == null) {
-                return;
-            }
-            SettingsWriteActions.saveImportFilters(
-                    new SettingsWriteActions.ImportFilterWriteRequest(
-                            activeCards.isChecked(),
-                            suspendedCards.isChecked(),
-                            taggedCards.isChecked(),
-                            String.join(" ", parsedTags),
-                            weakCards.isChecked(),
-                            parsedThresholds.difficulty,
-                            parsedThresholds.lapseThreshold,
-                            parsedThresholds.minCards,
-                            browserQueryCards.isChecked(),
-                            queryText
-                    ),
-                    new SettingsWriteActions.SettingWriter() {
-                        @Override
-                        public void putIntSetting(String key, int value) {
-                            store.putIntSetting(key, value);
-                        }
-
-                        @Override
-                        public void putStringSetting(String key, String value) {
-                            store.putStringSetting(key, value);
-                        }
-
-                        @Override
-                        public void putDoubleSetting(String key, double value) {
-                            store.putDoubleSetting(key, value);
-                        }
-                    }
-            );
-            Toast.makeText(this, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return ankiSource().importFilterSettingsPanel(current);
     }
 
     void addImportPresetButtons(LinearLayout box) {
-        box.addView(text(SettingsTextCopy.presetsTitle(), 17, INK, true));
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        for (SettingsImportPreset preset : SettingsImportPreset.defaults()) {
-            Button button = secondaryButton(preset.label());
-            button.setOnClickListener(v -> {
-                SettingsWriteActions.saveImportFilters(
-                        new SettingsWriteActions.ImportFilterWriteRequest(
-                                preset.activeCards(),
-                                preset.suspendedCards(),
-                                preset.taggedCards(),
-                                preset.tags(),
-                                preset.weakCards(),
-                                preset.weakDifficulty(),
-                                preset.weakLapses(),
-                                preset.minMatchingCards(),
-                                preset.browserQueryCards(),
-                                preset.browserQuery()
-                        ),
-                        new SettingsWriteActions.SettingWriter() {
-                            @Override
-                            public void putIntSetting(String key, int value) {
-                                store.putIntSetting(key, value);
-                            }
-
-                            @Override
-                            public void putStringSetting(String key, String value) {
-                                store.putStringSetting(key, value);
-                            }
-
-                            @Override
-                            public void putDoubleSetting(String key, double value) {
-                                store.putDoubleSetting(key, value);
-                            }
-                        }
-                );
-                Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
-                renderSettings();
-            });
-            grid.addView(button);
-        }
-        box.addView(grid);
+        ankiSource().addImportPresetButtons(box);
     }
 
     ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
-        double difficulty;
-        int lapseThreshold;
-        int minCards;
-        try {
-            difficulty = parseDecimalInput(difficultyInput);
-            lapseThreshold = parseThresholdInput(lapses);
-            minCards = parseThresholdInput(minMatching);
-        } catch (NumberFormatException error) {
-            Toast.makeText(this, SettingsTextCopy.numericImportThresholdsToast(), Toast.LENGTH_SHORT).show();
-            return null;
-        }
-        if (!SettingsInputRules.validImportThresholds(difficulty, lapseThreshold, minCards)) {
-            Toast.makeText(this, SettingsTextCopy.importThresholdRangeToast(), Toast.LENGTH_SHORT).show();
-            return null;
-        }
-        return new ImportThresholds(difficulty, lapseThreshold, minCards);
+        return ankiSource().readImportThresholds(difficultyInput, lapses, minMatching);
     }
 
     boolean hasSelectedImportSource(
@@ -527,27 +387,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             List<String> parsedTags,
             String queryText
     ) {
-        if (activeCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(true, false, false, false, false, null, null);
-        }
-        if (suspendedCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(false, true, false, false, false, null, null);
-        }
-        if (weakCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(false, false, false, true, false, null, null);
-        }
-        if (taggedCards.isChecked() && SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, parsedTags, "")) {
-            return true;
-        }
-        return SettingsInputRules.hasSelectedImportSource(
-                false,
-                false,
-                false,
-                false,
-                browserQueryCards.isChecked(),
-                Collections.emptyList(),
-                queryText
-        );
+        return ankiSource().hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText);
     }
 
     CheckBox importFilterCheckBox(String label, boolean checked) {
@@ -563,70 +403,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout inputColumn(String label, EditText input, int leftPadding) {
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(leftPadding, 0, 0, 0);
-        column.addView(text(label, 15, INK, true));
-        column.addView(input, new LinearLayout.LayoutParams(-1, dp(58)));
-        return column;
+        return ankiSource().inputColumn(label, input, leftPadding);
     }
 
     LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
-        LinearLayout box = settingsPanelBox();
-        final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
-        box.addView(text(SettingsTextCopy.frequencyRangeTitle(), 23, INK, true));
-        TextView status = text(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]), 17, TEAL, true);
-        box.addView(status);
-        box.addView(text(SettingsTextCopy.frequencyRangeBody(), 15, MUTED, false));
-
-        LinearLayout inputs = new LinearLayout(this);
-        inputs.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout minColumn = new LinearLayout(this);
-        minColumn.setOrientation(LinearLayout.VERTICAL);
-        minColumn.addView(text(SettingsTextCopy.minRankLabel(), 15, INK, true));
-        EditText minInput = rankInput(selected[0]);
-        minColumn.addView(minInput, new LinearLayout.LayoutParams(-1, dp(58)));
-        inputs.addView(minColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout maxColumn = new LinearLayout(this);
-        maxColumn.setOrientation(LinearLayout.VERTICAL);
-        maxColumn.setPadding(dp(10), 0, 0, 0);
-        maxColumn.addView(text(SettingsTextCopy.maxRankLabel(), 15, INK, true));
-        EditText maxInput = rankInput(selected[1]);
-        maxColumn.addView(maxInput, new LinearLayout.LayoutParams(-1, dp(58)));
-        inputs.addView(maxColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(inputs);
-
-        box.addView(text(SettingsTextCopy.minimumRankLabel(), 14, MUTED, true));
-        SeekBar minSlider = new SeekBar(this);
-        box.addView(minSlider, new LinearLayout.LayoutParams(-1, dp(56)));
-        box.addView(text(SettingsTextCopy.maximumRankLabel(), 14, MUTED, true));
-        SeekBar maxSlider = new SeekBar(this);
-        box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
-        bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
-
-        Button save = primaryButton(SettingsTextCopy.saveFrequencyRangeLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            int minRank;
-            int maxRank;
-            try {
-                minRank = parseRankInput(minInput);
-                maxRank = parseRankInput(maxInput);
-            } catch (NumberFormatException error) {
-                Toast.makeText(this, SettingsTextCopy.numericRanksToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!SettingsInputRules.validRank(minRank) || !SettingsInputRules.validRank(maxRank)) {
-                Toast.makeText(this, SettingsTextCopy.rankRangeToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
-            store.putIntSetting("suspended_rank_min", rankRange.minRank());
-            store.putIntSetting("suspended_rank_max", rankRange.maxRank());
-            Toast.makeText(this, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return ankiSource().frequencyRangeSettingsPanel(current);
     }
 
     LinearLayout dataLicenseSettingsPanel() {
@@ -666,127 +447,27 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
-        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.noteTypeFieldsTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.noteTypeUsingText(current.modelName), 17, TEAL, true));
-        box.addView(text(SettingsTextCopy.noteTypeFieldsBody(), 15, MUTED, false));
-
-        EditText noteType = noteTypeInput(current.modelName);
-        box.addView(noteType, new LinearLayout.LayoutParams(-1, dp(58)));
-        EditText expressionField = fieldInput(current.expressionField);
-        EditText readingField = fieldInput(current.readingField);
-        EditText meaningField = fieldInput(current.meaningField);
-        EditText sentenceField = fieldInput(current.sentenceField);
-        EditText frequencyField = fieldInput(current.frequencyField);
-        EditText frequencySortField = fieldInput(current.frequencySortField);
-        box.addView(text(SettingsTextCopy.requiredFieldsTitle(), 15, STUDY_PLUM, true));
-        box.addView(text(SettingsTextCopy.requiredFieldsBody(), 14, MUTED, false));
-        addFieldMappingInput(box, SettingsTextCopy.expressionFieldLabel(), expressionField);
-        addFieldMappingInput(box, SettingsTextCopy.readingFieldLabel(), readingField);
-        addFieldMappingInput(box, SettingsTextCopy.meaningFieldLabel(), meaningField);
-        addFieldMappingInput(box, SettingsTextCopy.sentenceFieldLabel(), sentenceField);
-        addFieldMappingInput(box, SettingsTextCopy.frequencyFieldLabel(), frequencyField);
-        addFieldMappingInput(box, SettingsTextCopy.frequencySortFieldLabel(), frequencySortField);
-
-        NoteTypeFieldMappings.Inputs fieldMappings = new NoteTypeFieldMappings.Inputs(
-                noteType,
-                expressionField,
-                readingField,
-                meaningField,
-                sentenceField,
-                frequencyField,
-                frequencySortField
-        );
-        Button choose = secondaryButton(SettingsTextCopy.chooseFromAnkiDroidLabel());
-        choose.setOnClickListener(v -> NoteTypeFieldMappings.choose(this, gateway, io, main, fieldMappings));
-        box.addView(choose);
-        Button kiku = secondaryButton(SettingsTextCopy.useKikuLabel());
-        kiku.setOnClickListener(v -> {
-            noteType.setText(defaults.modelName);
-            expressionField.setText(defaults.expressionField);
-            readingField.setText(defaults.readingField);
-            meaningField.setText(defaults.meaningField);
-            sentenceField.setText(defaults.sentenceField);
-            frequencyField.setText(defaults.frequencyField);
-            frequencySortField.setText(defaults.frequencySortField);
-        });
-        box.addView(kiku);
-
-        Button save = primaryButton(SettingsTextCopy.saveNoteTypeLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            String selected = noteType.getText().toString().trim();
-            if (selected.isEmpty()) {
-                Toast.makeText(this, SettingsTextCopy.noteTypeRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (expressionField.getText().toString().trim().isEmpty()) {
-                Toast.makeText(this, SettingsTextCopy.expressionFieldRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsWriteActions.saveNoteTypeFields(
-                    new SettingsWriteActions.NoteTypeFieldWriteRequest(
-                            selected,
-                            expressionField.getText().toString().trim(),
-                            readingField.getText().toString().trim(),
-                            meaningField.getText().toString().trim(),
-                            sentenceField.getText().toString().trim(),
-                            frequencyField.getText().toString().trim(),
-                            frequencySortField.getText().toString().trim()
-                    ),
-                    store::putStringSetting
-            );
-            Toast.makeText(this, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return ankiSource().noteTypeSettingsPanel(current);
     }
 
     EditText noteTypeInput(String value) {
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        input.setText(value == null || value.trim().isEmpty() ? RecordsSyncModels.Settings.kikuDefaults().modelName : value.trim());
-        input.setHint(RecordsSyncModels.Settings.kikuDefaults().modelName);
-        input.setTextSize(20);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
+        return ankiSource().noteTypeInput(value);
     }
 
     EditText fieldInput(String value) {
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        input.setText(value == null ? "" : value.trim());
-        input.setTextSize(18);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
+        return ankiSource().fieldInput(value);
     }
 
     void addFieldMappingInput(LinearLayout box, String label, EditText input) {
-        box.addView(text(label, 14, INK, true));
-        box.addView(input, new LinearLayout.LayoutParams(-1, dp(52)));
+        ankiSource().addFieldMappingInput(box, label, input);
     }
 
     EditText rankInput(int value) {
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        input.setText(String.format(Locale.ROOT, "%d", value));
-        input.setTextSize(22);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
+        return ankiSource().rankInput(value);
     }
 
     EditText decimalInput(double value) {
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setText(String.format(Locale.ROOT, "%.1f", value));
-        input.setTextSize(20);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
+        return ankiSource().decimalInput(value);
     }
 
     void bindRankSliders(
@@ -797,55 +478,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
             SeekBar minSlider,
             SeekBar maxSlider
     ) {
-        minSlider.setMax(19999);
-        maxSlider.setMax(19999);
-        minSlider.setProgress(SettingsInputRules.rankSliderProgress(selected[0]));
-        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(selected[1]));
-
-        minSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = Math.min(SettingsInputRules.rankFromSliderProgress(progress), selected[1]);
-                minInput.setText(String.format(Locale.ROOT, "%d", selected[0]));
-                status.setText(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(SettingsInputRules.rankSliderProgress(selected[0]));
-            }
-        });
-        maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[1] = Math.max(SettingsInputRules.rankFromSliderProgress(progress), selected[0]);
-                maxInput.setText(String.format(Locale.ROOT, "%d", selected[1]));
-                status.setText(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(SettingsInputRules.rankSliderProgress(selected[1]));
-            }
-        });
+        ankiSource().bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
     }
 
     int parseRankInput(EditText input) {
-        return Integer.parseInt(input.getText().toString().trim());
+        return ankiSource().parseRankInput(input);
     }
 
     double parseDecimalInput(EditText input) {
-        return Double.parseDouble(input.getText().toString().trim());
+        return ankiSource().parseDecimalInput(input);
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
