@@ -129,6 +129,58 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testInventoryMaintenanceSaveRowsPersistsDashboardRowsAndExamples() {
+        RecordsImportModels.Example example = new RecordsImportModels.Example(
+                "suspended",
+                20L,
+                2L,
+                "拉麺",
+                "らーめん",
+                "ramen",
+                "拉麺を食べた。",
+                false,
+                0,
+                10,
+                5,
+                18.5,
+                7.0,
+                0.48
+        );
+        RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
+                "拉",
+                3401,
+                "ramen radical gap",
+                "らーめん",
+                "deck:Kiku 拉",
+                93,
+                "suspended_archive",
+                "Imported from the local suspended archive.",
+                0,
+                1,
+                0,
+                Collections.singletonList(example)
+        );
+
+        SQLiteDatabase db = store.getWritableDatabase();
+        new LocalStoreInventoryMaintenance(store).saveRows(db, Collections.singletonList(row), 4242L);
+
+        assertEquals(1, count("dashboard_rows"));
+        assertEquals(1, count("kanji_examples"));
+        assertEquals(1, store.dashboardRows().size());
+        RecordsImportModels.DashboardRow stored = store.dashboardRows().get(0);
+        assertEquals("拉", stored.kanji);
+        assertEquals("ramen radical gap", stored.primaryMeaning);
+        assertEquals(1, stored.examples.size());
+        assertEquals("suspended", stored.examples.get(0).sourceType);
+        assertEquals("拉麺", stored.examples.get(0).expression);
+        assertEquals("ramen", stored.examples.get(0).meaning);
+        assertScalarLong("dashboard_rows", "rebuilt_at", "kanji=?", new String[]{"拉"}, 4242L);
+        assertScalarString("kanji_examples", "source_type", "kanji=?", new String[]{"拉"}, "suspended");
+        assertScalarString("kanji_examples", "expression", "kanji=?", new String[]{"拉"}, "拉麺");
+        assertScalarString("kanji_examples", "meaning", "kanji=?", new String[]{"拉"}, "ramen");
+    }
+
+    @Test
     public void testSyncPersistsNormalizedNoteArchiveAndHistoricalText() {
         RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         Map<String, String> activeFields = new LinkedHashMap<>();
