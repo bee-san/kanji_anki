@@ -1405,7 +1405,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         if (blocked) {
             box.addView(text(SettingsTextCopy.notificationsBlockedBody(), 14, CORAL, false));
             Button notificationSettings = secondaryButton(SettingsTextCopy.openNotificationSettingsLabel());
-            notificationSettings.setOnClickListener(v -> openNotificationSettings());
+            notificationSettings.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName())));
             box.addView(notificationSettings);
         } else if (!hasRuntimeNotificationPermissionForReminder()) {
             box.addView(text(SettingsTextCopy.notificationPermissionBody(), 14, CORAL, false));
@@ -1502,11 +1503,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         selectedHour[0] = hour;
         selectedMinute[0] = minute;
         time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
-    }
-
-    void openNotificationSettings() {
-        startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
     }
 
     int beginUpdateUiRun() {
