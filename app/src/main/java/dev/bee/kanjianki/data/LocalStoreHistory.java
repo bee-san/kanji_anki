@@ -276,59 +276,23 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     Map<String, Long> similarPairFirstSeen(SQLiteDatabase db) {
-        Map<String, Long> out = new HashMap<>();
-        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, new String[]{COLUMN_KANJI_A, COLUMN_KANJI_B, COLUMN_SOURCE, COLUMN_FIRST_SEEN_AT}, null, null, null, null, null)) {
-            while (cursor.moveToNext()) {
-                out.put(
-                        similarKey(string(cursor, COLUMN_KANJI_A), string(cursor, COLUMN_KANJI_B), string(cursor, COLUMN_SOURCE)),
-                        longValue(cursor, COLUMN_FIRST_SEEN_AT)
-                );
-            }
-        }
-        return out;
+        return similarKanjiData().similarPairFirstSeen(db);
     }
 
     Set<String> localInventoryKanji(SQLiteDatabase db) {
-        Set<String> out = new HashSet<>();
-        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, new String[]{COLUMN_KANJI}, null, null, null, null, null)) {
-            while (cursor.moveToNext()) {
-                String kanji = normalizeSingleKanji(string(cursor, COLUMN_KANJI));
-                if (!kanji.isEmpty()) {
-                    out.add(kanji);
-                }
-            }
-        }
-        return out;
+        return similarKanjiData().localInventoryKanji(db);
     }
 
     RecordsImportModels.SimilarKanjiPair readSimilarPair(Cursor cursor) {
-        return new RecordsImportModels.SimilarKanjiPair(
-                string(cursor, COLUMN_KANJI_A),
-                string(cursor, COLUMN_KANJI_B),
-                string(cursor, COLUMN_SOURCE),
-                longValue(cursor, COLUMN_FIRST_SEEN_AT),
-                longValue(cursor, COLUMN_LAST_SEEN_AT)
-        );
+        return similarKanjiData().readSimilarPair(cursor);
     }
 
     List<RecordsImportModels.SimilarKanjiPair> allSimilarPairs(SQLiteDatabase db) {
-        List<RecordsImportModels.SimilarKanjiPair> out = new ArrayList<>();
-        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, ORDER_SIMILAR_PAIR)) {
-            while (cursor.moveToNext()) {
-                out.add(readSimilarPair(cursor));
-            }
-        }
-        return out;
+        return similarKanjiData().allSimilarPairs(db);
     }
 
     List<RecordsImportModels.KanjiInventoryItem> allInventoryItems(SQLiteDatabase db) {
-        List<RecordsImportModels.KanjiInventoryItem> out = new ArrayList<>();
-        try (Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, null, null, null, null, ORDER_KANJI_ASC)) {
-            while (cursor.moveToNext()) {
-                out.add(readInventoryItem(db, cursor));
-            }
-        }
-        return out;
+        return similarKanjiData().allInventoryItems(db);
     }
 
     Map<String, SimilarChoiceSnapshot> similarChoiceSnapshots(SQLiteDatabase db) {

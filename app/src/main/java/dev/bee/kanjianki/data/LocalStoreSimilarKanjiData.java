@@ -7,8 +7,12 @@ import android.database.sqlite.SQLiteDatabase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.SimilarKanjiRepairPolicy;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 final class LocalStoreSimilarKanjiData {
     private final LocalStoreHistory activity;
@@ -34,6 +38,66 @@ final class LocalStoreSimilarKanjiData {
                                 LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_FIRST_SEEN_AT)
                         )
                 );
+            }
+        }
+        return out;
+    }
+
+    Map<String, Long> similarPairFirstSeen(SQLiteDatabase db) {
+        Map<String, Long> out = new HashMap<>();
+        try (Cursor cursor = db.query(LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS, new String[]{LocalStoreBase.COLUMN_KANJI_A, LocalStoreBase.COLUMN_KANJI_B, LocalStoreBase.COLUMN_SOURCE, LocalStoreBase.COLUMN_FIRST_SEEN_AT}, null, null, null, null, null)) {
+            while (cursor.moveToNext()) {
+                out.put(
+                        activity.similarKey(
+                                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI_A),
+                                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI_B),
+                                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_SOURCE)
+                        ),
+                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_FIRST_SEEN_AT)
+                );
+            }
+        }
+        return out;
+    }
+
+    Set<String> localInventoryKanji(SQLiteDatabase db) {
+        Set<String> out = new HashSet<>();
+        try (Cursor cursor = db.query(LocalStoreBase.TABLE_KANJI_INVENTORY, new String[]{LocalStoreBase.COLUMN_KANJI}, null, null, null, null, null)) {
+            while (cursor.moveToNext()) {
+                String kanji = activity.normalizeSingleKanji(LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI));
+                if (!kanji.isEmpty()) {
+                    out.add(kanji);
+                }
+            }
+        }
+        return out;
+    }
+
+    RecordsImportModels.SimilarKanjiPair readSimilarPair(Cursor cursor) {
+        return new RecordsImportModels.SimilarKanjiPair(
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI_A),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI_B),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_SOURCE),
+                LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_FIRST_SEEN_AT),
+                LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_LAST_SEEN_AT)
+        );
+    }
+
+    List<RecordsImportModels.SimilarKanjiPair> allSimilarPairs(SQLiteDatabase db) {
+        List<RecordsImportModels.SimilarKanjiPair> out = new ArrayList<>();
+        try (Cursor cursor = db.query(LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS, null, null, null, null, null, LocalStoreBase.ORDER_SIMILAR_PAIR)) {
+            while (cursor.moveToNext()) {
+                out.add(readSimilarPair(cursor));
+            }
+        }
+        return out;
+    }
+
+    List<RecordsImportModels.KanjiInventoryItem> allInventoryItems(SQLiteDatabase db) {
+        List<RecordsImportModels.KanjiInventoryItem> out = new ArrayList<>();
+        try (Cursor cursor = db.query(LocalStoreBase.TABLE_KANJI_INVENTORY, null, null, null, null, null, LocalStoreBase.ORDER_KANJI_ASC)) {
+            while (cursor.moveToNext()) {
+                out.add(activity.readInventoryItem(db, cursor));
             }
         }
         return out;
