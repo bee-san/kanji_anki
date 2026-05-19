@@ -188,7 +188,9 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void startFocusedStudy() {
-        studyScreen.startFocusedStudy();
+        clearStudyModeOverrides();
+        resetStudyRunProgress();
+        renderStudy();
     }
 
     void renderStudyForKanji(String kanji) {

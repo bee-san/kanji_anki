@@ -100,12 +100,6 @@ final class MainActivityStudyScreen {
         study.doneActions.renderStudyRunDone(plan);
     }
 
-    void startFocusedStudy() {
-        study.clearStudyModeOverrides();
-        study.resetStudyRunProgress();
-        renderStudy();
-    }
-
     void renderStudyForKanji(String kanji) {
         study.targetedLaunch.renderStudyForKanji(kanji);
     }
