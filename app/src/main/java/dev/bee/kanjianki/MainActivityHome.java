@@ -799,23 +799,72 @@ abstract class MainActivityHome extends MainActivityBase {
     void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
         if (row != null && !suspended) {
             Button practice = primaryButton(HomeTextCopy.reviewNowLabel(), CORAL);
-            practice.setOnClickListener(v -> renderStudyForKanji(row.kanji));
+            practice.setOnClickListener(new PracticeClickListener(this, row.kanji));
             content.addView(practice);
         }
         String browserSearch = HomeTextCopy.detailBrowserSearch(row, inventory);
         if (!browserSearch.isEmpty()) {
             Button copy = secondaryButton(HomeTextCopy.copyAnkiSearchLabel());
-            copy.setOnClickListener(v -> copyAnkiSearch(browserSearch, v));
+            copy.setOnClickListener(new CopyClickListener(this, browserSearch));
             content.addView(copy);
         }
         Button suspend = secondaryButton(HomeTextCopy.localSuspendButtonLabel(suspended));
-        suspend.setOnClickListener(v -> {
-            store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
-            String toast = HomeTextCopy.localSuspendToast(suspended);
-            Toast.makeText(this, toast, Toast.LENGTH_SHORT).show();
-            renderDetail(displayKanji, fromBrowse, browseQuery);
-        });
+        suspend.setOnClickListener(new SuspendClickListener(this, displayKanji, fromBrowse, browseQuery, suspended));
         content.addView(suspend);
+    }
+
+    private static final class PracticeClickListener implements View.OnClickListener {
+        private final MainActivityHome activity;
+        private final String kanji;
+
+        PracticeClickListener(MainActivityHome activity, String kanji) {
+            this.activity = activity;
+            this.kanji = kanji;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.renderStudyForKanji(kanji);
+        }
+    }
+
+    private static final class CopyClickListener implements View.OnClickListener {
+        private final MainActivityHome activity;
+        private final String browserSearch;
+
+        CopyClickListener(MainActivityHome activity, String browserSearch) {
+            this.activity = activity;
+            this.browserSearch = browserSearch;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.copyAnkiSearch(browserSearch, v);
+        }
+    }
+
+    private static final class SuspendClickListener implements View.OnClickListener {
+        private final MainActivityHome activity;
+        private final String displayKanji;
+        private final boolean fromBrowse;
+        private final String browseQuery;
+        private final boolean suspended;
+
+        SuspendClickListener(MainActivityHome activity, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
+            this.activity = activity;
+            this.displayKanji = displayKanji;
+            this.fromBrowse = fromBrowse;
+            this.browseQuery = browseQuery;
+            this.suspended = suspended;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
+            String toast = HomeTextCopy.localSuspendToast(suspended);
+            Toast.makeText(activity, toast, Toast.LENGTH_SHORT).show();
+            activity.renderDetail(displayKanji, fromBrowse, browseQuery);
+        }
     }
 
     void addDetailExamples(RecordsImportModels.DashboardRow row) {
