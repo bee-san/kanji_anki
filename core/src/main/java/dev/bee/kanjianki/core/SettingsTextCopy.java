@@ -430,43 +430,43 @@ public final class SettingsTextCopy {
     }
 
     public static String newCardSortTitle() {
-        return "New card sort";
+        return SettingsStudyPlanTextCopy.newCardSortTitle();
     }
 
     public static String newCardSortBody() {
-        return "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.";
+        return SettingsStudyPlanTextCopy.newCardSortBody();
     }
 
     public static String saveNewCardSortLabel() {
-        return "Save new card sort";
+        return SettingsStudyPlanTextCopy.saveNewCardSortLabel();
     }
 
     public static String fsrsRetentionTitle() {
-        return "FSRS retention";
+        return SettingsStudyPlanTextCopy.fsrsRetentionTitle();
     }
 
     public static String fsrsRetentionBody() {
-        return "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.";
+        return SettingsStudyPlanTextCopy.fsrsRetentionBody();
     }
 
     public static String useJitenRankRetentionRangesLabel() {
-        return "Use Jiten-rank retention ranges";
+        return SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel();
     }
 
     public static String jitenRankRetentionRangesBody() {
-        return "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.";
+        return SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody();
     }
 
     public static String useExampleRangesLabel() {
-        return "Use example ranges";
+        return SettingsStudyPlanTextCopy.useExampleRangesLabel();
     }
 
     public static String saveRetentionLabel() {
-        return "Save retention";
+        return SettingsStudyPlanTextCopy.saveRetentionLabel();
     }
 
     public static String retentionPresetLabel(int value) {
-        return value + "%";
+        return SettingsStudyPlanTextCopy.retentionPresetLabel(value);
     }
 
     public static String dailyWorkloadTitle() {

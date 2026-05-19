@@ -80,6 +80,46 @@ public final class SettingsStudyPlanTextCopy {
         return "Desired retention: " + retentionPercent + "%";
     }
 
+    public static String newCardSortTitle() {
+        return "New card sort";
+    }
+
+    public static String newCardSortBody() {
+        return "Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.";
+    }
+
+    public static String saveNewCardSortLabel() {
+        return "Save new card sort";
+    }
+
+    public static String fsrsRetentionTitle() {
+        return "FSRS retention";
+    }
+
+    public static String fsrsRetentionBody() {
+        return "Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.";
+    }
+
+    public static String useJitenRankRetentionRangesLabel() {
+        return "Use Jiten-rank retention ranges";
+    }
+
+    public static String jitenRankRetentionRangesBody() {
+        return "Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.";
+    }
+
+    public static String useExampleRangesLabel() {
+        return "Use example ranges";
+    }
+
+    public static String saveRetentionLabel() {
+        return "Save retention";
+    }
+
+    public static String retentionPresetLabel(int value) {
+        return value + "%";
+    }
+
     public static String studyLadderTitle() {
         return "Study ladder";
     }

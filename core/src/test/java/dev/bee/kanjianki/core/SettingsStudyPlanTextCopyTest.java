@@ -15,8 +15,18 @@ public final class SettingsStudyPlanTextCopyTest {
         assertEquals("Auto Pareto: waiting for problem kanji", SettingsStudyPlanTextCopy.autoWorkloadStatusText(null));
         assertEquals("Current: Frequency", SettingsStudyPlanTextCopy.newCardSortStatusText(RecordsBase.DEFAULT_NEW_CARD_SORT_MODE));
         assertEquals("Kani weakness", SettingsStudyPlanTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS));
+        assertEquals("New card sort", SettingsStudyPlanTextCopy.newCardSortTitle());
+        assertEquals("Choose how Kani admits and shows unseen new cards. Due reviews and learning repeats still keep their normal priority.", SettingsStudyPlanTextCopy.newCardSortBody());
+        assertEquals("Save new card sort", SettingsStudyPlanTextCopy.saveNewCardSortLabel());
         assertEquals("Jiten ranks 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000));
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95));
+        assertEquals("FSRS retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle());
+        assertEquals("Higher retention keeps intervals shorter. This changes Kani's internal FSRS intervals, not Anki's schedule.", SettingsStudyPlanTextCopy.fsrsRetentionBody());
+        assertEquals("Use Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel());
+        assertEquals("Optional: one inclusive Jiten rank range per line, such as 1-500=95%. Unmatched or unranked kanji use the global retention above.", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody());
+        assertEquals("Use example ranges", SettingsStudyPlanTextCopy.useExampleRangesLabel());
+        assertEquals("Save retention", SettingsStudyPlanTextCopy.saveRetentionLabel());
+        assertEquals("95%", SettingsStudyPlanTextCopy.retentionPresetLabel(95));
         assertEquals("Study ladder", SettingsStudyPlanTextCopy.studyLadderTitle());
         assertEquals("On", SettingsStudyPlanTextCopy.ladderToggleLabel(true));
         assertEquals("Off", SettingsStudyPlanTextCopy.ladderToggleLabel(false));
