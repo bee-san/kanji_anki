@@ -175,7 +175,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Write from memory, then check. Use Hint if you are stuck.", activity.guideLabel(HintState.fromWritingLevel(3), guide));
         assertEquals("Trace", WritingFeedbackCopy.stageLabel(HintLevel.TRACE));
         assertEquals("Blind", WritingFeedbackCopy.stageLabel(HintLevel.BLIND));
-        assertEquals("", activity.attemptProgressText(null));
+        assertEquals("", WritingFeedbackCopy.attemptProgressText(null, null, false));
         assertEquals("", WritingFeedbackCopy.targetRevealText(null, null));
     }
 
@@ -369,8 +369,8 @@ public final class MainActivityHelperInstrumentedTest {
                         false,
                         1
                 ));
-                assertTrue(activity.attemptProgressText(close).contains("Try cleaner"));
-                assertTrue(activity.attemptProgressText(pass).contains("less help"));
+                assertTrue(WritingFeedbackCopy.attemptProgressText(close, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, activity.shouldIncreaseSupportAfterAnalysis(close)).contains("Try cleaner"));
+                assertTrue(WritingFeedbackCopy.attemptProgressText(pass, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, activity.shouldIncreaseSupportAfterAnalysis(pass)).contains("less help"));
                 assertTrue(WritingFeedbackCopy.targetRevealText(wrong, activity.activeSession == null ? null : activity.activeSession.item.kanji).contains("Target: 裂"));
             });
         }

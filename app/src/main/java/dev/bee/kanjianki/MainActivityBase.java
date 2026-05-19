@@ -525,14 +525,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return WritingFeedbackCopy.guideLabel(state, guide);
     }
 
-    String attemptProgressText(WritingAnalysis analysis) {
-        if (analysis == null) {
-            return "";
-        }
-        Integer activeWritingLevel = activeSession == null ? null : activeSession.item.writingLevel;
-        return WritingFeedbackCopy.attemptProgressText(analysis, activeWritingLevel, shouldIncreaseSupportAfterAnalysis(analysis));
-    }
-
     long startOfDay(long now) {
         return LocalDayPolicy.localDayStart(now);
     }
