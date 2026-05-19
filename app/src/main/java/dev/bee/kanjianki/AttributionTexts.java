@@ -74,14 +74,6 @@ final class AttributionTexts {
         }
     }
 
-    static void appendSource(List<String> lines, JSONObject source) {
-        AttributionCopy.appendSource(lines, sourceFromJson(source));
-    }
-
-    static void appendNotes(List<String> lines, JSONArray notes) {
-        AttributionCopy.appendNotes(lines, notesFromJson(notes));
-    }
-
     private static List<AttributionCopy.Source> sourcesFromJson(JSONArray sources) throws Exception {
         List<AttributionCopy.Source> parsed = new ArrayList<>();
         for (int i = 0; i < sources.length(); i++) {
