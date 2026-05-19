@@ -1,19 +1,19 @@
 package dev.bee.kanjianki;
 
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.SettingsTextCopy;
-import dev.bee.kanjianki.sync.SyncSettings;
 
 final class MainActivitySettingsStudySortPanel {
     private final MainActivitySettings activity;
+    private final MainActivitySettingsStudySortActions actions;
 
     MainActivitySettingsStudySortPanel(MainActivitySettings activity) {
         this.activity = activity;
+        this.actions = new MainActivitySettingsStudySortActions(activity);
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
@@ -30,12 +30,7 @@ final class MainActivitySettingsStudySortPanel {
         addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS), RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
 
         android.widget.Button save = activity.primaryButton(SettingsTextCopy.saveNewCardSortLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            NewCardSortSettingsPolicy.SaveRequest request = NewCardSortSettingsPolicy.saveRequest(selected[0]);
-            activity.store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
-            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(v -> actions.saveNewCardSort(selected[0]));
         box.addView(save);
         return box;
     }
