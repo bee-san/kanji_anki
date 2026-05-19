@@ -185,7 +185,9 @@ abstract class MainActivityGames extends MainActivityHome {
             next.setOnClickListener(v -> renderGameQuestion(question.mode));
             result.addView(next);
         }
-        addGamesButton(result);
+        Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
+        games.setOnClickListener(v -> renderGames());
+        result.addView(games);
         content.addView(result);
     }
 
@@ -197,7 +199,9 @@ abstract class MainActivityGames extends MainActivityHome {
         result.addView(text(KanjiGameCopy.LABEL_ROUND_COMPLETE, 28, BLUE, true));
         addRoundSummary(result);
         addRoundActions(result, mode);
-        addGamesButton(result);
+        Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
+        games.setOnClickListener(v -> renderGames());
+        result.addView(games);
         content.addView(result);
     }
 
@@ -217,12 +221,6 @@ abstract class MainActivityGames extends MainActivityHome {
         Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(mode));
         newRound.setOnClickListener(v -> startGame(mode));
         result.addView(newRound);
-    }
-
-    private void addGamesButton(LinearLayout result) {
-        Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
-        games.setOnClickListener(v -> renderGames());
-        result.addView(games);
     }
 
     private boolean gameRoundComplete() {
