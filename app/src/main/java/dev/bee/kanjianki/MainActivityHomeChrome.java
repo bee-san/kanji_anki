@@ -21,19 +21,7 @@ final class MainActivityHomeChrome {
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
-        LinearLayout row = new LinearLayout(home);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView heading = home.sectionTitle(title);
-        heading.setPadding(0, home.dp(8), 0, home.dp(8));
-        row.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
-        if (actionLabel != null && action != null) {
-            TextView link = home.text(actionLabel + " >", 15, home.CORAL, true);
-            link.setGravity(Gravity.CENTER_VERTICAL);
-            link.setPadding(home.dp(12), home.dp(8), 0, home.dp(8));
-            link.setOnClickListener(new RunnableClickListener(action));
-            row.addView(link, new LinearLayout.LayoutParams(-2, -2));
-        }
-        return row;
+        return MainActivityHomeChromeCompose.homeSectionHeaderView(home, title, actionLabel, action);
     }
 
     View pillButton(String label, int iconRes, Runnable action) {
