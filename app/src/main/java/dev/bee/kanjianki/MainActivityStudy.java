@@ -207,10 +207,12 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void renderEmptyStudyQueue() {
         prepareStudyContent(activeStudyPlan, false);
-        content.addView(studyPracticeMessageCard(
-                "Nothing to study yet",
-                "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair."
-        ));
+        LinearLayout card = softStudyCard();
+        card.addView(modePill(LABEL_PRACTICE));
+        card.addView(text("Study practice", 32, STUDY_PLUM, true));
+        card.addView(text("Nothing to study yet", 22, STUDY_PLUM, true));
+        card.addView(text("Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.", 16, STUDY_MUTED, false));
+        content.addView(card);
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
@@ -416,19 +418,12 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void renderTargetKanjiUnavailable() {
         prepareStudyContent(activeStudyPlan, false);
-        content.addView(studyPracticeMessageCard(
-                "Kanji not available",
-                "This row may have changed after sync."
-        ));
-    }
-
-    LinearLayout studyPracticeMessageCard(String title, String body) {
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
         card.addView(text("Study practice", 32, STUDY_PLUM, true));
-        card.addView(text(title, 22, STUDY_PLUM, true));
-        card.addView(text(body, 16, STUDY_MUTED, false));
-        return card;
+        card.addView(text("Kanji not available", 22, STUDY_PLUM, true));
+        card.addView(text("This row may have changed after sync.", 16, STUDY_MUTED, false));
+        content.addView(card);
     }
 
     String activateStudySession(RecordsSchedulerModels.StudySession session, long now) {
