@@ -1366,7 +1366,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         box.addView(text(
                 SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime()),
                 17,
-                reminderStatusColor(reminder, blocked),
+                blocked ? CORAL : (reminder.enabled ? TEAL : MUTED),
                 true
         ));
         box.addView(text(SettingsTextCopy.dailyReminderBody(), 15, MUTED, false));
@@ -1411,13 +1411,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
             box.addView(text(SettingsTextCopy.notificationPermissionBody(), 14, CORAL, false));
         }
         return box;
-    }
-
-    int reminderStatusColor(LocalStore.ReminderSettings reminder, boolean blocked) {
-        if (blocked) {
-            return CORAL;
-        }
-        return reminder.enabled ? TEAL : MUTED;
     }
 
     LinearLayout autoSyncSettingsPanel() {
@@ -1512,12 +1505,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void openNotificationSettings() {
-        startActivity(notificationSettingsIntent());
-    }
-
-    Intent notificationSettingsIntent() {
-        return new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+        startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
     }
 
     int beginUpdateUiRun() {

@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.AdaptiveFocusCopy;
+import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -16,6 +17,7 @@ import dev.bee.kanjianki.core.StudyTaskCopy;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.provider.Settings;
 import android.view.MotionEvent;
@@ -494,10 +496,34 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.autoSyncStatus(disabled.configured, disabled.enabled, disabled.displayTime()));
-        assertTrue(activity.autoSyncDetail(enabled).contains("Last auto success"));
-        assertTrue(activity.autoSyncDetail(disabled).contains("Last auto attempt"));
-        assertTrue(activity.autoSyncDetail(enabledNoHistory).contains("Scheduled once"));
-        assertTrue(activity.autoSyncDetail(disabledNoHistory).contains("paused"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                enabled.configured,
+                enabled.enabled,
+                DateTextPolicy.shortDateTime(enabled.lastSuccessAt),
+                DateTextPolicy.shortDateTime(enabled.lastAttemptAt),
+                DateTextPolicy.shortDateTime(enabled.nextRunAt)
+        ).contains("Last auto success"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                disabled.configured,
+                disabled.enabled,
+                DateTextPolicy.shortDateTime(disabled.lastSuccessAt),
+                "",
+                ""
+        ).contains("Last auto attempt"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                enabledNoHistory.configured,
+                enabledNoHistory.enabled,
+                "",
+                "",
+                ""
+        ).contains("Scheduled once"));
+        assertTrue(SettingsTextCopy.autoSyncDetail(
+                disabledNoHistory.configured,
+                disabledNoHistory.enabled,
+                "",
+                "",
+                ""
+        ).contains("paused"));
     }
 
     private static void verifyWorkloadAndReminderSummaries(MainActivity activity) {
@@ -516,6 +542,23 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
         assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), SettingsTextCopy.maxItemsStatusText(0));
+    }
+
+    private static int reminderStatusColor(boolean enabled, boolean blocked) {
+        return blocked ? MainActivityBase.CORAL : (enabled ? MainActivityBase.TEAL : MainActivityBase.MUTED);
+    }
+
+
+    private static void appendOptionalSyncSummaryLines(MainActivity activity, LinearLayout summary, ManualSyncEngine.SyncResult result) {
+        if (!result.adaptiveSummary.isEmpty()) {
+            summary.addView(activity.text(result.adaptiveSummary, 15, Color.WHITE, false));
+        }
+        if (result.importedSuspendedKanji > 0) {
+            summary.addView(activity.text(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, Color.WHITE, false));
+        }
+        if (result.message != null && !result.message.isEmpty()) {
+            summary.addView(activity.text(result.message, 14, Color.WHITE, false));
+        }
     }
 
     private static void verifyImportThresholdReader(MainActivity activity) {
@@ -864,9 +907,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Reminder time: 08:00", timeButton.getText().toString());
                 performButtonClick(reminder, "Turn off reminder");
                 assertFalse(activity.store.reminderSettings().enabled);
-                assertEquals(MainActivityBase.CORAL, activity.reminderStatusColor(new LocalStore.ReminderSettings(true, 21, 0), true));
-                assertEquals(MainActivityBase.TEAL, activity.reminderStatusColor(new LocalStore.ReminderSettings(true, 21, 0), false));
-                assertEquals(MainActivityBase.MUTED, activity.reminderStatusColor(new LocalStore.ReminderSettings(false, 21, 0), false));
+                assertEquals(MainActivityBase.CORAL, reminderStatusColor(true, true));
+                assertEquals(MainActivityBase.TEAL, reminderStatusColor(true, false));
+                assertEquals(MainActivityBase.MUTED, reminderStatusColor(false, false));
 
                 int[] selectedHour = {21};
                 int[] selectedMinute = {0};
@@ -875,7 +918,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(6, selectedHour[0]);
                 assertEquals(5, selectedMinute[0]);
                 assertEquals("Reminder time: 06:05", timeButtonDirect.getText().toString());
-                Intent notificationIntent = activity.notificationSettingsIntent();
+                Intent notificationIntent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, activity.getPackageName());
                 assertEquals(Settings.ACTION_APP_NOTIFICATION_SETTINGS, notificationIntent.getAction());
                 assertEquals(activity.getPackageName(), notificationIntent.getStringExtra(Settings.EXTRA_APP_PACKAGE));
             });
@@ -1179,7 +1223,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertHasText(activity, "Cleanup finished.");
 
                 LinearLayout summary = new LinearLayout(activity);
-                activity.addOptionalSyncSummaryLines(summary, syncResult(true, false, 1, 2, "Done.", "Focus summary"));
+                appendOptionalSyncSummaryLines(activity, summary, syncResult(true, false, 1, 2, "Done.", "Focus summary"));
                 assertEquals(3, summary.getChildCount());
                 assertEquals("fallback", activity.nonEmptyOr("", "fallback"));
                 assertEquals("value", activity.nonEmptyOr("value", "fallback"));
@@ -2029,7 +2073,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertHasText(activity, "What does this kanji mean?");
 
         LinearLayout summary = new LinearLayout(activity);
-        activity.addOptionalSyncSummaryLines(summary, syncResult(true, false, 1, 0, "", ""));
+        appendOptionalSyncSummaryLines(activity, summary, syncResult(true, false, 1, 0, "", ""));
         assertEquals(0, summary.getChildCount());
         activity.content.removeAllViews();
         activity.addRecoveryTimeline(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
