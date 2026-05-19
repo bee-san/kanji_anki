@@ -104,6 +104,15 @@ final class MainActivitySettingsAutomation {
         hero.addView(topRow);
         hero.addView(bottomRow);
         hero.addView(automationRow);
+        hero.addView(activity.settingsStatusPill(
+                SettingsTextCopy.matchingCardsStatusLabel(),
+                SettingsTextCopy.matchingCardsSummary(current),
+                activity.STUDY_PLUM
+        ));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, activity.dp(8), 0, activity.dp(10));
+        hero.setLayoutParams(lp);
         return hero;
     }
 
