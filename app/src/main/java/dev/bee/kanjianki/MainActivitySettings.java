@@ -547,10 +547,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         };
     }
 
-    static int boolFlag(boolean value) {
-        return SettingsImportPreset.boolFlag(value);
-    }
-
     ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
         double difficulty;
         int lapseThreshold;
@@ -563,7 +559,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Toast.makeText(this, SettingsTextCopy.numericImportThresholdsToast(), Toast.LENGTH_SHORT).show();
             return null;
         }
-        if (!validImportThresholds(difficulty, lapseThreshold, minCards)) {
+        if (!SettingsInputRules.validImportThresholds(difficulty, lapseThreshold, minCards)) {
             Toast.makeText(this, SettingsTextCopy.importThresholdRangeToast(), Toast.LENGTH_SHORT).show();
             return null;
         }
@@ -600,10 +596,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Collections.emptyList(),
                 queryText
         );
-    }
-
-    boolean validImportThresholds(double difficulty, int lapseThreshold, int minCards) {
-        return SettingsInputRules.validImportThresholds(difficulty, lapseThreshold, minCards);
     }
 
     CheckBox importFilterCheckBox(String label, boolean checked) {
