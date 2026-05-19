@@ -568,22 +568,7 @@ public final class GitHubUpdater {
     }
 
     static InstallerBackend installerBackend(PackageInstaller installer) {
-        return new AndroidInstallerBackend(new PackageInstallerAccess() {
-            @Override
-            public int createSession(PackageInstaller.SessionParams params) throws IOException {
-                return installer.createSession(params);
-            }
-
-            @Override
-            public InstallerSession openSession(int sessionId) throws IOException {
-                return installerSession(installer.openSession(sessionId));
-            }
-
-            @Override
-            public void abandonSession(int sessionId) {
-                installer.abandonSession(sessionId);
-            }
-        });
+        return new AndroidInstallerBackend(new AndroidPackageInstallerAccess(installer));
     }
 
     static InstallerSession installerSession(PackageInstaller.Session session) {
@@ -596,27 +581,7 @@ public final class GitHubUpdater {
             SessionCommit commit,
             SessionClose close
     ) {
-        return new AndroidInstallerSession(new PackageInstallerSessionAccess() {
-            @Override
-            public OutputStream openWrite(String name, long offsetBytes, long lengthBytes) throws IOException {
-                return openWrite.openWrite(name, offsetBytes, lengthBytes);
-            }
-
-            @Override
-            public void fsync(OutputStream output) throws IOException {
-                fsync.fsync(output);
-            }
-
-            @Override
-            public void commit(IntentSender statusReceiver) {
-                commit.commit(statusReceiver);
-            }
-
-            @Override
-            public void close() {
-                close.close();
-            }
-        });
+        return new AndroidInstallerSession(new AndroidPackageInstallerSessionAccess(openWrite, fsync, commit, close));
     }
 
     interface SessionOpenWrite {
@@ -633,6 +598,68 @@ public final class GitHubUpdater {
 
     interface SessionClose {
         void close();
+    }
+
+    private static final class AndroidPackageInstallerAccess implements PackageInstallerAccess {
+        private final PackageInstaller installer;
+
+        AndroidPackageInstallerAccess(PackageInstaller installer) {
+            this.installer = installer;
+        }
+
+        @Override
+        public int createSession(PackageInstaller.SessionParams params) throws IOException {
+            return installer.createSession(params);
+        }
+
+        @Override
+        public InstallerSession openSession(int sessionId) throws IOException {
+            return installerSession(installer.openSession(sessionId));
+        }
+
+        @Override
+        public void abandonSession(int sessionId) {
+            installer.abandonSession(sessionId);
+        }
+    }
+
+    private static final class AndroidPackageInstallerSessionAccess implements PackageInstallerSessionAccess {
+        private final SessionOpenWrite openWrite;
+        private final SessionFsync fsync;
+        private final SessionCommit commit;
+        private final SessionClose close;
+
+        AndroidPackageInstallerSessionAccess(
+                SessionOpenWrite openWrite,
+                SessionFsync fsync,
+                SessionCommit commit,
+                SessionClose close
+        ) {
+            this.openWrite = openWrite;
+            this.fsync = fsync;
+            this.commit = commit;
+            this.close = close;
+        }
+
+        @Override
+        public OutputStream openWrite(String name, long offsetBytes, long lengthBytes) throws IOException {
+            return openWrite.openWrite(name, offsetBytes, lengthBytes);
+        }
+
+        @Override
+        public void fsync(OutputStream output) throws IOException {
+            fsync.fsync(output);
+        }
+
+        @Override
+        public void commit(IntentSender statusReceiver) {
+            commit.commit(statusReceiver);
+        }
+
+        @Override
+        public void close() {
+            close.close();
+        }
     }
 
     static final class AndroidInstallerBackend implements InstallerBackend {
