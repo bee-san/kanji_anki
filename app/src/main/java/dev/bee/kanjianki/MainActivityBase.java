@@ -38,6 +38,7 @@ import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.StudyCollectionLookup;
+import dev.bee.kanjianki.core.StudySessionProgressTracker;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -475,18 +476,11 @@ abstract class MainActivityBase extends MainActivityUiSupport {
 
     View studyTopBar(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         initializeSessionProgressTarget(plan);
-        int completed = studySessionTracker.completedCount();
-        int target = studySessionTracker.targetCount();
-        boolean activeTask = activeSession != null;
-        if (activeTask && target <= completed && continueAllKanjiSession) {
-            target = completed + 1;
-        }
-        if (activeTask) {
-            target = Math.max(1, target);
-        }
-        int visibleCompleted = Math.max(0, Math.min(target, completed));
-        float fraction = target <= 0 ? 0f : Math.max(0f, Math.min(1f, completed / (float) target));
-        return new StudyTopBarView(this, visibleCompleted, target, fraction, this::renderHome, this::renderSettings);
+        StudySessionProgressTracker.TopBarProgress progress = studySessionTracker.topBarProgress(
+                activeSession != null,
+                continueAllKanjiSession
+        );
+        return new StudyTopBarView(this, progress.completed, progress.target, progress.fraction, this::renderHome, this::renderSettings);
     }
 
     void styleStudyActionBarShell() {

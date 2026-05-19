@@ -58,6 +58,31 @@ public final class StudySessionProgressTrackerTest {
     }
 
     @Test
+    public void topBarProgressPreservesVisibleCountsAndFractions() {
+        StudySessionProgressTracker tracker = new StudySessionProgressTracker();
+
+        assertTopBar(tracker.topBarProgress(false, false), 0, 0, 0f);
+
+        tracker.setTargetCount(3);
+        tracker.markTaskCompleted("a");
+        assertTopBar(tracker.topBarProgress(false, false), 1, 3, 1f / 3f);
+
+        tracker.markTaskCompleted("b");
+        tracker.markTaskCompleted("c");
+        tracker.markTaskCompleted("d");
+        assertTopBar(tracker.topBarProgress(false, false), 4, 4, 1f);
+        assertTopBar(tracker.topBarProgress(true, false), 4, 4, 1f);
+        assertTopBar(tracker.topBarProgress(true, true), 4, 5, 0.8f);
+    }
+
+    @Test
+    public void topBarProgressKeepsActiveTaskVisibleBeforeTargetExists() {
+        StudySessionProgressTracker tracker = new StudySessionProgressTracker();
+
+        assertTopBar(tracker.topBarProgress(true, false), 0, 1, 0f);
+    }
+
+    @Test
     public void sessionAndRepairKeysAreStableAndNullSafe() {
         RecordsSchedulerModels.StudySession session = new RecordsSchedulerModels.StudySession(
                 item("裂", RecordsBase.LadderRung.KANJI_MEANING, 0, 0),
@@ -158,5 +183,11 @@ public final class StudySessionProgressTrackerTest {
                 .writingLevel(writingLevel)
                 .realPassStreak(realPassStreak)
                 .build();
+    }
+
+    private static void assertTopBar(StudySessionProgressTracker.TopBarProgress progress, int completed, int target, float fraction) {
+        assertEquals(completed, progress.completed);
+        assertEquals(target, progress.target);
+        assertEquals(fraction, progress.fraction, 0.0001f);
     }
 }

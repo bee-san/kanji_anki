@@ -49,6 +49,10 @@ final class StudySessionTracker {
         return progressTracker.atHardCap(continueAllKanjiSession);
     }
 
+    StudySessionProgressTracker.TopBarProgress topBarProgress(boolean activeTask, boolean continueAllKanjiSession) {
+        return progressTracker.topBarProgress(activeTask, continueAllKanjiSession);
+    }
+
     void registerTaskShown(String key) {
         progressTracker.registerTaskShown(key);
     }

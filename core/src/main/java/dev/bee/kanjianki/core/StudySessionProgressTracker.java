@@ -59,6 +59,20 @@ public final class StudySessionProgressTracker {
         return !continueAllKanjiSession && targetCount > 0 && completedCount >= targetCount;
     }
 
+    public TopBarProgress topBarProgress(boolean activeTask, boolean continueAllKanjiSession) {
+        int completed = completedCount;
+        int target = targetCount;
+        if (activeTask && target <= completed && continueAllKanjiSession) {
+            target = completed + 1;
+        }
+        if (activeTask) {
+            target = Math.max(1, target);
+        }
+        int visibleCompleted = Math.max(0, Math.min(target, completed));
+        float fraction = target <= 0 ? 0f : Math.max(0f, Math.min(1f, completed / (float) target));
+        return new TopBarProgress(visibleCompleted, target, fraction);
+    }
+
     public void registerTaskShown(String key) {
         if (isEmpty(key)) {
             return;
@@ -144,5 +158,17 @@ public final class StudySessionProgressTracker {
         }
         return after.writingLevel > before.writingLevel
                 || after.realPassStreak > before.realPassStreak;
+    }
+
+    public static final class TopBarProgress {
+        public final int completed;
+        public final int target;
+        public final float fraction;
+
+        TopBarProgress(int completed, int target, float fraction) {
+            this.completed = completed;
+            this.target = target;
+            this.fraction = fraction;
+        }
     }
 }
