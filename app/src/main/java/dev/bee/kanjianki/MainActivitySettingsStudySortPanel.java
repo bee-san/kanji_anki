@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
@@ -30,17 +31,45 @@ final class MainActivitySettingsStudySortPanel {
         addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS), RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
 
         android.widget.Button save = activity.primaryButton(SettingsTextCopy.saveNewCardSortLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> actions.saveNewCardSort(selected[0]));
+        save.setOnClickListener(new RunnableClickListener(() -> actions.saveNewCardSort(selected[0])));
         box.addView(save);
         return box;
     }
 
     private void addSortModeButton(LinearLayout box, String label, String mode, String[] selected, android.widget.TextView status) {
         android.widget.Button button = activity.secondaryButton(label);
-        button.setOnClickListener(v -> {
+        button.setOnClickListener(new SortModeClickListener(mode, selected, status));
+        box.addView(button);
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
+    }
+
+    private static final class SortModeClickListener implements View.OnClickListener {
+        private final String mode;
+        private final String[] selected;
+        private final android.widget.TextView status;
+
+        SortModeClickListener(String mode, String[] selected, android.widget.TextView status) {
+            this.mode = mode;
+            this.selected = selected;
+            this.status = status;
+        }
+
+        @Override
+        public void onClick(View v) {
             selected[0] = mode;
             status.setText(SettingsTextCopy.newCardSortStatusText(mode));
-        });
-        box.addView(button);
+        }
     }
 }
