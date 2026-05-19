@@ -50,13 +50,11 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FlashcardGesturePolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
-import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyLayoutPolicy;
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
 import dev.bee.kanjianki.core.StudySessionFocusPolicy;
 import dev.bee.kanjianki.core.StudySessionRoute;
-import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -67,7 +65,6 @@ import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingActionPresentation;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
-import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingHintPolicy;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
@@ -82,13 +79,10 @@ import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -115,6 +109,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
     private final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
+    private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -471,54 +466,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderWritingSession(RecordsSchedulerModels.StudySession session) {
-        resetWritingSession(session);
-
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Draw this kanji", 30, STUDY_PLUM, true));
-        card.addView(text(StudyTaskCopy.labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
-        addStudyReasonLine(card, session);
-        if (session.row != null) {
-            if (StudyTaskCopy.isRecallTask(session)) {
-                card.addView(text("Prompt: " + StudyTextCopy.sessionClue(currentDictionaryLookup(), session), 17, STUDY_PLUM, true));
-                if (!session.row.reading.isEmpty()) {
-                    card.addView(text("Reading: " + session.row.reading, 15, STUDY_MUTED, false));
-                }
-                card.addView(text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, STUDY_MUTED, false));
-            } else {
-                card.addView(text("Learn it from the reference, trace it, then check.", 15, STUDY_MUTED, false));
-            }
-        } else {
-            card.addView(text(session.prompt, 17, STUDY_MUTED, false));
-        }
-        studyAnswerPanel = learningPanel(session);
-        card.addView(studyAnswerPanel);
-
-        TextView writingTitle = sectionTitle("Writing");
-        writingTitle.setTextColor(STUDY_PLUM);
-        card.addView(writingTitle);
-        StrokeGuide guide = strokeGuide(session.item.kanji);
-        studyStatus = text(WritingFeedbackCopy.guideLabel(currentHintState, guide), 16, STUDY_MUTED, false);
-        card.addView(studyStatus);
-        drawingPad = new DrawingPadView(this);
-        drawingPad.setTarget(session.item.kanji);
-        drawingPad.setInkEditListener(this::handleDrawingEdited);
-        drawingPad.setStrokeBlockedListener(this::handleDrawingBlocked);
-        drawingPad.setGuide(guide, currentHintState, false);
-        LinearLayout padShell = softInsetPanel();
-        padShell.setPadding(dp(8), dp(8), dp(8), dp(8));
-        SquarePadFrame squarePad = new SquarePadFrame(this, studyPadHeight());
-        squarePad.addView(drawingPad);
-        padShell.addView(squarePad, new LinearLayout.LayoutParams(-1, -2));
-        card.addView(padShell);
-        resultStatus = text("", 16, STUDY_MUTED, false);
-        resultStatus.setVisibility(View.GONE);
-        card.addView(resultStatus);
-        content.addView(card);
-
-        buildStudyActionBar();
-        updateResultActions();
-        writingUi.refreshWritingModelStatus();
+        writingSession.renderWritingSession(session);
     }
 
     void resetChoiceSession(boolean resetTouchTracking) {
@@ -554,22 +502,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void resetWritingSession(RecordsSchedulerModels.StudySession session) {
-        prepareStudyContent(activeStudyPlan, false);
-        activeAnalysis = null;
-        checkingWriting = false;
-        flashcardGestureArea = null;
-        flashcardAnswerRevealed = false;
-        flashcardTouchTracking = false;
-        typingAnswerInput = null;
-        hintsUsed = 0;
-        setHintState(initialHintState(session));
+        writingSession.resetWritingSession(session);
     }
 
     void hideStudyActionBar() {
-        if (studyActionBar != null) {
-            studyActionBar.removeAllViews();
-            studyActionBar.setVisibility(View.GONE);
-        }
+        writingSession.hideStudyActionBar();
     }
 
     void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
@@ -585,22 +522,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
-        StudyRepairActions.ActiveRepair active = StudyRepairActions.activateSimilarWritingRepair(repair, now, store::saveSimilarWritingRepair);
-        RecordsImportModels.SimilarKanjiWritingRepair activeRepair = active.repair();
-        activeSimilarWritingRepair = activeRepair;
-        RecordsStudyModels.StudyItem item = new BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, studyLadderSettings());
-        activeSession = new RecordsSchedulerModels.StudySession(
-                item.withToken(active.token()),
-                null,
-                active.token(),
-                TASK_REPAIR_WRITING,
-                true,
-                StudyTextCopy.similarRepairPrompt(activeRepair)
-        );
-        activeStudyPlan = plan;
-        registerStudyTaskShown(active.progressKey());
-        startActiveStudyTask(active.studyTaskKey(), activeRepair.repairKanji, TASK_REPAIR_WRITING, now);
-        renderWritingSession(activeSession);
+        writingSession.renderSimilarWritingRepair(repair, plan, now);
     }
 
     void resetStudyRunProgress() {
@@ -720,6 +642,10 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void buildStudyActionBar() {
         writingUi.buildStudyActionBar();
+    }
+
+    void refreshWritingModelStatus() {
+        writingUi.refreshWritingModelStatus();
     }
 
     void eraseWritingPad() {
