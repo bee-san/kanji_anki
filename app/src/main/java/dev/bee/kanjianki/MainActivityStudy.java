@@ -53,7 +53,6 @@ import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyLayoutPolicy;
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
 import dev.bee.kanjianki.core.StudySessionFocusPolicy;
-import dev.bee.kanjianki.core.StudySessionRoute;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
@@ -111,6 +110,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
     private final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
     private final MainActivityStudyReasonLine reasonLine = new MainActivityStudyReasonLine(this);
+    private final MainActivityStudySessionRouter sessionRouter = new MainActivityStudySessionRouter(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -291,21 +291,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {
-        switch (StudySessionRoute.destination(session)) {
-            case WRITING:
-                renderWritingSession(session);
-                break;
-            case SIMILAR_KANJI:
-                renderSimilarKanjiSession(session);
-                break;
-            case MEANING_KANJI:
-                renderMeaningKanjiSession(session);
-                break;
-            case FLASHCARD:
-            default:
-                renderFlashcardSession(session);
-                break;
-        }
+        sessionRouter.renderSession(session);
     }
 
     void renderMeaningKanjiSession(RecordsSchedulerModels.StudySession session) {
