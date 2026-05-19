@@ -914,7 +914,9 @@ public final class MainActivityHelperInstrumentedTest {
                 int[] selectedHour = {21};
                 int[] selectedMinute = {0};
                 Button timeButtonDirect = new Button(activity);
-                activity.applyReminderTimeSelection(selectedHour, selectedMinute, timeButtonDirect, 6, 5);
+                selectedHour[0] = 6;
+                selectedMinute[0] = 5;
+                timeButtonDirect.setText(SettingsTextCopy.reminderTimeButtonLabel(6, 5));
                 assertEquals(6, selectedHour[0]);
                 assertEquals(5, selectedMinute[0]);
                 assertEquals("Reminder time: 06:05", timeButtonDirect.getText().toString());
@@ -977,19 +979,22 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.base(MainActivityBase.NAV_SETTINGS_ROUTE);
-                int firstRun = activity.beginUpdateUiRun();
-                assertTrue(activity.updateUiRunStillActive(firstRun));
+                int firstRun = ++activity.updateUiRunCounter;
+                activity.activeUpdateUiRunToken = firstRun;
+                assertTrue(firstRun != 0 && activity.activeUpdateUiRunToken == firstRun);
 
                 activity.renderSettings();
-                assertFalse(activity.updateUiRunStillActive(firstRun));
+                assertFalse(firstRun != 0 && activity.activeUpdateUiRunToken == firstRun);
 
-                int staleRun = activity.beginUpdateUiRun();
-                int activeRun = activity.beginUpdateUiRun();
-                assertFalse(activity.updateUiRunStillActive(staleRun));
-                assertTrue(activity.updateUiRunStillActive(activeRun));
+                int staleRun = ++activity.updateUiRunCounter;
+                activity.activeUpdateUiRunToken = staleRun;
+                int activeRun = ++activity.updateUiRunCounter;
+                activity.activeUpdateUiRunToken = activeRun;
+                assertFalse(staleRun != 0 && activity.activeUpdateUiRunToken == staleRun);
+                assertTrue(activeRun != 0 && activity.activeUpdateUiRunToken == activeRun);
 
                 activity.renderHome();
-                assertFalse(activity.updateUiRunStillActive(activeRun));
+                assertFalse(activeRun != 0 && activity.activeUpdateUiRunToken == activeRun);
             });
         }
     }

@@ -1374,7 +1374,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button time = secondaryButton(SettingsTextCopy.reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
         time.setOnClickListener(v -> new TimePickerDialog(
                 this,
-                (view, hour, minute) -> applyReminderTimeSelection(selectedHour, selectedMinute, time, hour, minute),
+                (view, hour, minute) -> {
+                    selectedHour[0] = hour;
+                    selectedMinute[0] = minute;
+                    time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
+                },
                 selectedHour[0],
                 selectedMinute[0],
                 true
@@ -1497,12 +1501,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         boolean allowed = notificationsAllowedForReminders();
         Toast.makeText(this, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
         renderSettings();
-    }
-
-    void applyReminderTimeSelection(int[] selectedHour, int[] selectedMinute, Button time, int hour, int minute) {
-        selectedHour[0] = hour;
-        selectedMinute[0] = minute;
-        time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
     }
 
     void runUpdate(boolean cachedPending) {
