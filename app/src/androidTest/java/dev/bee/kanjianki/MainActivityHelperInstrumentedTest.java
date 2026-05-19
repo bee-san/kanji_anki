@@ -1071,12 +1071,12 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyStudyTimeRankAndQueueText(MainActivity activity) {
-        assertEquals("0 sec", activity.formatStudyTime(-500L));
-        assertEquals("59 sec", activity.formatStudyTime(59_000L));
-        assertEquals("1 min", activity.formatStudyTime(60_000L));
-        assertEquals("1 min 5 sec", activity.formatStudyTime(65_000L));
-        assertEquals("1 hr", activity.formatStudyTime(3_600_000L));
-        assertEquals("1 hr 1 min", activity.formatStudyTime(3_660_000L));
+        assertEquals("0 sec", StatsTextCopy.formatStudyTime(-500L));
+        assertEquals("59 sec", StatsTextCopy.formatStudyTime(59_000L));
+        assertEquals("1 min", StatsTextCopy.formatStudyTime(60_000L));
+        assertEquals("1 min 5 sec", StatsTextCopy.formatStudyTime(65_000L));
+        assertEquals("1 hr", StatsTextCopy.formatStudyTime(3_600_000L));
+        assertEquals("1 hr 1 min", StatsTextCopy.formatStudyTime(3_660_000L));
         assertEquals("0.38", StatsTextCopy.formatWeakness(0.375));
 
         assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
@@ -2018,9 +2018,16 @@ public final class MainActivityHelperInstrumentedTest {
                 StudyStatsStore.MatureSupportGainedMetric.empty(),
                 ladderOnly
         );
-        assertTrue(activity.statsVerdictBody(null, false, false).contains("No Kani evidence"));
-        assertTrue(activity.statsVerdictBody(ladderStats, false, true).contains("Kani is tracking"));
-        assertTrue(activity.ladderHealthBody(ladderOnly).contains("more than 21 days"));
+        assertTrue(StatsTextCopy.verdictBody(false, false, false, 0, 0, 0, 0, 0).contains("No Kani evidence"));
+        assertTrue(StatsTextCopy.verdictBody(true, false, true, 0, 0, 1, 3, 1).contains("Kani is tracking"));
+        assertTrue(StatsTextCopy.ladderHealthBody(
+                ladderOnly.totalActiveItems,
+                ladderOnly.promotionReadyCount,
+                ladderOnly.demotionRiskCount,
+                ladderOnly.demotionReadyCount,
+                ladderOnly.ladderPromotionIntervalDays,
+                ladderOnly.ladderDemotionFailStreak
+        ).contains("more than 21 days"));
         assertTrue(containsText(activity.statsVerdictPanel(ladderStats), "Kani is not currently working for you"));
         verifyWorkingStatsVerdict(activity, activeRow);
     }
@@ -2057,12 +2064,28 @@ public final class MainActivityHelperInstrumentedTest {
                 ),
                 busyLadder
         );
-        String workingBody = activity.statsVerdictBody(workingStats, true, true);
+        String workingBody = StatsTextCopy.verdictBody(
+                true,
+                true,
+                true,
+                workingStats.weakKanjiImproved.improvedCount,
+                workingStats.matureSupportGained.matureSupportGained,
+                busyLadder.promotionReadyCount,
+                busyLadder.demotionRiskCount,
+                busyLadder.totalActiveItems
+        );
         assertTrue(workingBody.contains("weak kanji are burning down"));
         assertTrue(workingBody.contains("mature Anki cards have been gained"));
         assertTrue(workingBody.contains("review-phase item is ready to climb"));
         assertTrue(workingBody.contains("review-phase items with miss streaks"));
-        assertTrue(activity.ladderHealthBody(busyLadder).contains("at the demotion threshold"));
+        assertTrue(StatsTextCopy.ladderHealthBody(
+                busyLadder.totalActiveItems,
+                busyLadder.promotionReadyCount,
+                busyLadder.demotionRiskCount,
+                busyLadder.demotionReadyCount,
+                busyLadder.ladderPromotionIntervalDays,
+                busyLadder.ladderDemotionFailStreak
+        ).contains("at the demotion threshold"));
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size());
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
         assertTrue(activity.queuedEntries(

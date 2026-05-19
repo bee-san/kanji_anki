@@ -26,7 +26,11 @@ abstract class MainActivityStats extends MainActivityGames {
         content.addView(outcomePanel(
                 "Weakness Burn-Down",
                 StudyTextCopy.countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved"),
-                weaknessImprovementBody(stats.weakKanjiImproved),
+                StatsTextCopy.weaknessImprovementBody(
+                        stats.weakKanjiImproved.improvedCount,
+                        stats.weakKanjiImproved.averageBeforeWeakness,
+                        stats.weakKanjiImproved.averageAfterWeakness
+                ),
                 weaknessImprovementExamples(stats.weakKanjiImproved),
                 TEAL
         ));
@@ -62,34 +66,33 @@ abstract class MainActivityStats extends MainActivityGames {
         }
         LinearLayout box = panelBox(background, stroke);
         box.addView(text(StatsTextCopy.verdictTitle(working), 24, working ? TEAL : MUTED, true));
-        box.addView(text(statsVerdictBody(stats, working, hasLadder), 15, working ? INK : MUTED, false));
+        box.addView(text(
+                stats == null
+                        ? StatsTextCopy.verdictBody(false, working, hasLadder, 0, 0, 0, 0, 0)
+                        : StatsTextCopy.verdictBody(
+                                true,
+                                working,
+                                hasLadder,
+                                stats.weakKanjiImproved.improvedCount,
+                                stats.matureSupportGained.matureSupportGained,
+                                stats.ladderHealth.promotionReadyCount,
+                                stats.ladderHealth.demotionRiskCount,
+                                stats.ladderHealth.totalActiveItems
+                        ),
+                15,
+                working ? INK : MUTED,
+                false
+        ));
         return box;
-    }
-
-    String statsVerdictBody(StudyStatsStore.KaniOutcomeStats stats, boolean working, boolean hasLadder) {
-        if (stats == null) {
-            return StatsTextCopy.verdictBody(false, working, hasLadder, 0, 0, 0, 0, 0);
-        }
-        StudyStatsStore.LadderHealthMetric ladder = stats.ladderHealth;
-        return StatsTextCopy.verdictBody(
-                true,
-                working,
-                hasLadder,
-                stats.weakKanjiImproved.improvedCount,
-                stats.matureSupportGained.matureSupportGained,
-                ladder.promotionReadyCount,
-                ladder.demotionRiskCount,
-                ladder.totalActiveItems
-        );
     }
 
     LinearLayout studyTimePanel(StudyStatsStore.StudyTaskTimeStats stats) {
         LinearLayout box = panelBox(Color.WHITE, CORAL);
         box.addView(text("Answered study time", 18, MUTED, true));
-        box.addView(text("Today: " + formatStudyTime(stats.todayMillis), 24, INK, true));
-        box.addView(text("Last 7 days: " + formatStudyTime(stats.lastSevenDaysMillis), 16, MUTED, false));
+        box.addView(text("Today: " + StatsTextCopy.formatStudyTime(stats.todayMillis), 24, INK, true));
+        box.addView(text("Last 7 days: " + StatsTextCopy.formatStudyTime(stats.lastSevenDaysMillis), 16, MUTED, false));
         box.addView(text("Answered tasks: " + stats.answeredTasks, 16, MUTED, false));
-        box.addView(text("Avg / task: " + formatStudyTime(stats.averageMillisPerTask()), 16, MUTED, false));
+        box.addView(text("Avg / task: " + StatsTextCopy.formatStudyTime(stats.averageMillisPerTask()), 16, MUTED, false));
         return box;
     }
 
@@ -105,7 +108,14 @@ abstract class MainActivityStats extends MainActivityGames {
         LinearLayout box = statPanel(
                 "Ladder Health",
                 StudyTextCopy.countText(metric.totalActiveItems, "active kanji on the ladder", "active kanji on the ladder"),
-                ladderHealthBody(metric),
+                StatsTextCopy.ladderHealthBody(
+                        metric.totalActiveItems,
+                        metric.promotionReadyCount,
+                        metric.demotionRiskCount,
+                        metric.demotionReadyCount,
+                        metric.ladderPromotionIntervalDays,
+                        metric.ladderDemotionFailStreak
+                ),
                 GOLD
         );
         for (String row : ladderDistributionRows(metric)) {
@@ -119,13 +129,24 @@ abstract class MainActivityStats extends MainActivityGames {
         LinearLayout box = statPanel(
                 "Kani Not Helping Yet",
                 StudyTextCopy.countText(rows.size(), "kanji with enough evidence", "kanji with enough evidence"),
-                notHelpingBody(report, rows),
+                StatsTextCopy.notHelpingBody(report == null || report.empty(), !rows.isEmpty()),
                 CORAL
         );
         int maxRows = Math.min(5, rows.size());
         for (int i = 0; i < maxRows; i++) {
             KanjiImpactAnalyzer.Row row = rows.get(i);
-            box.addView(text(notHelpingRowText(row), 16, INK, true));
+            box.addView(text(
+                    StatsTextCopy.notHelpingRowText(
+                            row.kanji,
+                            row.reviewCount,
+                            row.sameCardCount,
+                            row.retentionDelta,
+                            row.difficultyDelta
+                    ),
+                    16,
+                    INK,
+                    true
+            ));
         }
         if (report != null && report.needsMoreCardsCount > 0) {
             box.addView(text(StudyTextCopy.countText(report.needsMoreCardsCount, "kanji still needs more Anki evidence", "kanji still need more Anki evidence") + ".", 15, MUTED, false));
@@ -137,39 +158,12 @@ abstract class MainActivityStats extends MainActivityGames {
         return KanjiImpactAnalyzer.notHelpingRows(report);
     }
 
-    String notHelpingBody(KanjiImpactAnalyzer.Report report, List<KanjiImpactAnalyzer.Row> rows) {
-        return StatsTextCopy.notHelpingBody(report == null || report.empty(), !rows.isEmpty());
-    }
-
-    String notHelpingRowText(KanjiImpactAnalyzer.Row row) {
-        return StatsTextCopy.notHelpingRowText(row.kanji, row.reviewCount, row.sameCardCount, row.retentionDelta, row.difficultyDelta);
-    }
-
-    String ladderHealthBody(StudyStatsStore.LadderHealthMetric metric) {
-        return StatsTextCopy.ladderHealthBody(
-                metric.totalActiveItems,
-                metric.promotionReadyCount,
-                metric.demotionRiskCount,
-                metric.demotionReadyCount,
-                metric.ladderPromotionIntervalDays,
-                metric.ladderDemotionFailStreak
-        );
-    }
-
     List<String> ladderDistributionRows(StudyStatsStore.LadderHealthMetric metric) {
         List<String> rows = new ArrayList<>();
         for (RecordsBase.LadderRung rung : RecordsBase.LadderRung.values()) {
             rows.add(StatsTextCopy.ladderDistributionRow(rung, metric.countFor(rung)));
         }
         return rows;
-    }
-
-    String weaknessImprovementBody(StudyStatsStore.WeakKanjiImprovedMetric metric) {
-        return StatsTextCopy.weaknessImprovementBody(
-                metric.improvedCount,
-                metric.averageBeforeWeakness,
-                metric.averageAfterWeakness
-        );
     }
 
     List<String> weaknessImprovementExamples(StudyStatsStore.WeakKanjiImprovedMetric metric) {
@@ -188,10 +182,6 @@ abstract class MainActivityStats extends MainActivityGames {
             examples.add(StatsTextCopy.supportGainExample(example.kanji, example.beforeMatureSupport, example.afterMatureSupport));
         }
         return examples;
-    }
-
-    String formatStudyTime(long millis) {
-        return StatsTextCopy.formatStudyTime(millis);
     }
 
     LinearLayout statPanel(String title, String value, String body, int stroke) {
