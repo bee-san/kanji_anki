@@ -34,22 +34,7 @@ final class MainActivitySettingsAnkiSourcePresets {
                                 preset.browserQueryCards(),
                                 preset.browserQuery()
                         ),
-                        new SettingsWriteActions.SettingWriter() {
-                            @Override
-                            public void putIntSetting(String key, int value) {
-                                activity.store.putIntSetting(key, value);
-                            }
-
-                            @Override
-                            public void putStringSetting(String key, String value) {
-                                activity.store.putStringSetting(key, value);
-                            }
-
-                            @Override
-                            public void putDoubleSetting(String key, double value) {
-                                activity.store.putDoubleSetting(key, value);
-                            }
-                        }
+                        new MainActivitySettingsAnkiSourceWriter(activity)
                 );
                 Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
                 activity.renderSettings();

@@ -98,22 +98,7 @@ final class MainActivitySettingsAnkiSourceImportFilters {
                             browserQueryCards.isChecked(),
                             queryText
                     ),
-                    new SettingsWriteActions.SettingWriter() {
-                        @Override
-                        public void putIntSetting(String key, int value) {
-                            activity.store.putIntSetting(key, value);
-                        }
-
-                        @Override
-                        public void putStringSetting(String key, String value) {
-                            activity.store.putStringSetting(key, value);
-                        }
-
-                        @Override
-                        public void putDoubleSetting(String key, double value) {
-                            activity.store.putDoubleSetting(key, value);
-                        }
-                    }
+                    new MainActivitySettingsAnkiSourceWriter(activity)
             );
             Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
             activity.renderSettings();
