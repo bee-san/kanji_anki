@@ -120,6 +120,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyWritingFlow writingFlow = new MainActivityStudyWritingFlow(this);
     private final MainActivityStudyWritingCheck writingCheck = new MainActivityStudyWritingCheck(this);
     private final MainActivityStudyReviewFlow writingReview = new MainActivityStudyReviewFlow(this);
+    private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -481,75 +482,27 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     View meaningKanjiGrid(RecordsImportModels.MeaningKanjiChoiceCard card, View answerPanel) {
-        return kanjiChoiceGrid(
-                card.choices,
-                (glyph, grid) -> showMeaningKanjiChoiceResult(card, glyph, grid, answerPanel),
-                false
-        );
+        return choiceGrid.meaningKanjiGrid(card, answerPanel);
     }
 
     View kanjiChoiceGrid(List<String> choices, KanjiChoiceClickHandler clickHandler, boolean balanceLastRow) {
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout row = null;
-        for (int i = 0; i < choices.size(); i++) {
-            if (i % 2 == 0) {
-                row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                grid.addView(row);
-            }
-            String glyph = choices.get(i);
-            Button button = kanjiChoiceButton(glyph);
-            button.setOnClickListener(new ViewClickListener(v -> clickHandler.onClick(glyph, grid)));
-            if (row != null) {
-                row.addView(button, kanjiChoiceLayoutParams());
-            }
-        }
-        if (balanceLastRow && choices.size() % 2 == 1 && grid.getChildCount() > 0) {
-            addKanjiChoiceSpacer(grid);
-        }
-        return grid;
+        return choiceGrid.kanjiChoiceGrid(choices, clickHandler, balanceLastRow);
     }
 
     Button kanjiChoiceButton(String glyph) {
-        Button button = studySecondaryButton(glyph);
-        button.setTextColor(STUDY_PLUM);
-        button.setTextSize(34);
-        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setBackground(panel(Color.rgb(255, 245, 250), STUDY_BORDER, dp(20)));
-        return button;
+        return choiceGrid.kanjiChoiceButton(glyph);
     }
 
     LinearLayout.LayoutParams kanjiChoiceLayoutParams() {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1);
-        lp.setMargins(dp(4), dp(8), dp(4), 0);
-        return lp;
+        return choiceGrid.kanjiChoiceLayoutParams();
     }
 
     void addKanjiChoiceSpacer(LinearLayout grid) {
-        LinearLayout lastRow = (LinearLayout) grid.getChildAt(grid.getChildCount() - 1);
-        SpaceView spacer = new SpaceView(this);
-        lastRow.addView(spacer, kanjiChoiceLayoutParams());
+        choiceGrid.addKanjiChoiceSpacer(grid);
     }
 
     void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
-        boolean correct = card.isCorrect(selectedKanji);
-        disableChoiceButtons(grid);
-        answerPanel.setVisibility(View.VISIBLE);
-        if (studyActionBar == null) {
-            submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
-            return;
-        }
-        styleStudyActionBarShell();
-        studyActionBar.removeAllViews();
-        studyActionBar.setVisibility(View.VISIBLE);
-        String prompt = activeSession == null ? "" : activeSession.prompt;
-        String status = StudyTextCopy.meaningKanjiChoiceResult(card, prompt, correct);
-        resultStatus = text(status, 15, correct ? TEAL : CORAL, true);
-        studyActionBar.addView(resultStatus);
-        Button next = pinkPrimaryButton("Next");
-        next.setOnClickListener(new RunnableClickListener(() -> submitReview(correct ? RATING_GOOD : RATING_AGAIN, false)));
-        studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, dp(62)));
+        choiceGrid.showMeaningKanjiChoiceResult(card, selectedKanji, grid, answerPanel);
     }
 
     private static final class StudyMoreNewCardsDialogShowListener implements DialogInterface.OnShowListener {
@@ -635,19 +588,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
-        return kanjiChoiceGrid(choices, (glyph, grid) -> submitSimilarKanjiChoice(card, glyph), true);
+        return choiceGrid.similarKanjiGrid(choices, card);
     }
 
     View similarKanjiGrid(List<String> choices, String correctKanji) {
-        return similarKanjiGrid(
-                choices,
-                new RecordsImportModels.SimilarKanjiChoiceCard(
-                        correctKanji,
-                        "",
-                        choices,
-                        SimilarKanjiChoicePlanner.choiceSignature(choices)
-                )
-        );
+        return choiceGrid.similarKanjiGrid(choices, correctKanji);
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
