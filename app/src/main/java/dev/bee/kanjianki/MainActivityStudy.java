@@ -193,7 +193,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             }
         }
         if (studySessionTracker.atHardCap(continueAllKanjiSession)) {
-            renderStudyRunDone(plan);
+            doneActions.renderStudyRunDone(plan);
             return true;
         }
         return false;
@@ -210,54 +210,15 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
-        if (!continueAllKanjiSession && seededPlan.focusComplete()) {
-            renderFocusDone(seededPlan);
-            return;
-        }
-        prepareStudyContent(seededPlan, false);
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Nothing due now", 32, STUDY_PLUM, true));
-        card.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 17, STUDY_MUTED, false));
-        Button back = pinkPrimaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(new RunnableClickListener(() -> {
-            clearStudyModeOverrides();
-            renderHome();
-        }));
-        card.addView(back);
-        content.addView(card);
+        doneActions.renderNoStudySession(seededPlan);
     }
 
     void renderFocusDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        prepareStudyContent(plan, false);
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text(StudyTextCopy.studyDoneTitle(), 32, STUDY_PLUM, true));
-        card.addView(text(StudyTextCopy.adaptiveFocusDoneBody(), 17, STUDY_MUTED, false));
-        LinearLayout summary = softInsetPanel();
-        summary.addView(text(StudyTextCopy.adaptiveFocusDoneSummary(plan.target), 20, STUDY_PLUM, true));
-        summary.addView(text(plan.status, 15, STUDY_MUTED, false));
-        card.addView(summary);
-        addDoneStudyActions(card);
-        content.addView(card);
+        doneActions.renderFocusDone(plan);
     }
 
     void renderStudyRunDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        prepareStudyContent(plan, false);
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text(StudyTextCopy.studyDoneTitle(), 32, STUDY_PLUM, true));
-        card.addView(text(StudyTextCopy.studyRunDoneBody(), 17, STUDY_MUTED, false));
-        LinearLayout summary = softInsetPanel();
-        summary.addView(text(StudyTextCopy.movedForwardSummary(studySessionTracker.movedForwardCount()), 20, STUDY_PLUM, true));
-        summary.addView(text(StudyTextCopy.missedSummary(studySessionTracker.missedCount()), 16, STUDY_MUTED, false));
-        summary.addView(text(StudyTextCopy.completedTaskSummary(studySessionTracker.completedCount()), 16, STUDY_MUTED, false));
-        if (plan != null && !plan.status.isEmpty()) {
-            summary.addView(text(plan.status, 15, STUDY_MUTED, false));
-        }
-        card.addView(summary);
-        addDoneStudyActions(card);
-        content.addView(card);
+        doneActions.renderStudyRunDone(plan);
     }
 
     void addDoneStudyActions(LinearLayout card) {
