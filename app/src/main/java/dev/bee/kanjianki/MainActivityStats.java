@@ -6,6 +6,7 @@ import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.StatsTextCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.data.StudyStatsStore;
 
 import java.util.ArrayList;
@@ -24,15 +25,15 @@ abstract class MainActivityStats extends MainActivityGames {
 
         content.addView(outcomePanel(
                 "Weakness Burn-Down",
-                countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved"),
+                StudyTextCopy.countText(stats.weakKanjiImproved.improvedCount, "weak kanji improved", "weak kanji improved"),
                 weaknessImprovementBody(stats.weakKanjiImproved),
                 weaknessImprovementExamples(stats.weakKanjiImproved),
                 TEAL
         ));
         content.addView(outcomePanel(
                 "Anki Support Conversion",
-                countText(stats.matureSupportGained.matureSupportGained, "mature card gained", "mature cards gained"),
-                countText(stats.matureSupportGained.firstSupportCount, "kanji gained first mature support", "kanji gained first mature support") + ".",
+                StudyTextCopy.countText(stats.matureSupportGained.matureSupportGained, "mature card gained", "mature cards gained"),
+                StudyTextCopy.countText(stats.matureSupportGained.firstSupportCount, "kanji gained first mature support", "kanji gained first mature support") + ".",
                 supportGainExamples(stats.matureSupportGained),
                 BLUE
         ));
@@ -103,7 +104,7 @@ abstract class MainActivityStats extends MainActivityGames {
     LinearLayout ladderHealthPanel(StudyStatsStore.LadderHealthMetric metric) {
         LinearLayout box = statPanel(
                 "Ladder Health",
-                countText(metric.totalActiveItems, "active kanji on the ladder", "active kanji on the ladder"),
+                StudyTextCopy.countText(metric.totalActiveItems, "active kanji on the ladder", "active kanji on the ladder"),
                 ladderHealthBody(metric),
                 GOLD
         );
@@ -117,7 +118,7 @@ abstract class MainActivityStats extends MainActivityGames {
         List<KanjiImpactAnalyzer.Row> rows = notHelpingRows(report);
         LinearLayout box = statPanel(
                 "Kani Not Helping Yet",
-                countText(rows.size(), "kanji with enough evidence", "kanji with enough evidence"),
+                StudyTextCopy.countText(rows.size(), "kanji with enough evidence", "kanji with enough evidence"),
                 notHelpingBody(report, rows),
                 CORAL
         );
@@ -127,7 +128,7 @@ abstract class MainActivityStats extends MainActivityGames {
             box.addView(text(notHelpingRowText(row), 16, INK, true));
         }
         if (report != null && report.needsMoreCardsCount > 0) {
-            box.addView(text(countText(report.needsMoreCardsCount, "kanji still needs more Anki evidence", "kanji still need more Anki evidence") + ".", 15, MUTED, false));
+            box.addView(text(StudyTextCopy.countText(report.needsMoreCardsCount, "kanji still needs more Anki evidence", "kanji still need more Anki evidence") + ".", 15, MUTED, false));
         }
         return box;
     }

@@ -123,8 +123,8 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void assertCountAndCompactText(MainActivity activity) {
-        assertEquals("1 item", activity.countText(1, "item", "items"));
-        assertEquals("2 items", activity.countText(2, "item", "items"));
+        assertEquals("1 item", StudyTextCopy.countText(1, "item", "items"));
+        assertEquals("2 items", StudyTextCopy.countText(2, "item", "items"));
         assertEquals("", StudyTextCopy.compact(null, 12));
         assertEquals("short", StudyTextCopy.compact("short", 12));
         assertEquals("a very long s...", StudyTextCopy.compact("a very long sentence that should be shortened", 16));
@@ -542,7 +542,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));
         assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
-        assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), SettingsTextCopy.maxItemsStatusText(0));
+        assertEquals("Maximum: " + StudyTextCopy.countText(normalizedMax, "item", "items"), SettingsTextCopy.maxItemsStatusText(0));
     }
 
     private static int reminderStatusColor(boolean enabled, boolean blocked) {

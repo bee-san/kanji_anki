@@ -512,10 +512,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         content.addView(empty);
     }
 
-    String countText(int count, String singular, String plural) {
-        return StudyTextCopy.countText(count, singular, plural);
-    }
-
     void addSpace(int dp) {
         SpaceView space = new SpaceView(this);
         content.addView(space, new LinearLayout.LayoutParams(1, dp(dp)));
