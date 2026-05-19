@@ -473,9 +473,9 @@ public final class MainActivityHelperInstrumentedTest {
                 Collections.emptyList(),
                 "deck:Kiku"
         ));
-        assertEquals("3 matching cards per kanji", activity.matchingCardsSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")));
-        assertTrue(activity.settingsImportSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")).contains("tagged"));
-        assertEquals("No sources", activity.settingsImportSummary(settings(false, false, false, Collections.emptyList(), false, false, "")));
+        assertEquals("3 matching cards per kanji", SettingsTextCopy.matchingCardsSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")));
+        assertTrue(SettingsTextCopy.settingsImportSummary(settings(true, true, true, Arrays.asList("leeches"), true, true, "deck:Kiku")).contains("tagged"));
+        assertEquals("No sources", SettingsTextCopy.settingsImportSummary(settings(false, false, false, Collections.emptyList(), false, false, "")));
     }
 
     private static void verifyAutoSyncSummaries(MainActivity activity) {
@@ -484,9 +484,9 @@ public final class MainActivityHelperInstrumentedTest {
         LocalStore.AutoSyncSettings disabled = new LocalStore.AutoSyncSettings(true, false, 7, 30, 1000L, 0L, 0L);
         LocalStore.AutoSyncSettings enabledNoHistory = new LocalStore.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L);
         LocalStore.AutoSyncSettings disabledNoHistory = new LocalStore.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L);
-        assertEquals("After first sync", activity.settingsAutoSyncSummary(unconfigured));
-        assertEquals("07:30", activity.settingsAutoSyncSummary(enabled));
-        assertEquals("Off", activity.settingsAutoSyncSummary(disabled));
+        assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
+        assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
         assertEquals("Starts after first successful sync", activity.autoSyncStatus(unconfigured));
         assertEquals("On around 07:30", activity.autoSyncStatus(enabled));
         assertEquals("Off", activity.autoSyncStatus(disabled));

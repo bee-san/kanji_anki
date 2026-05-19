@@ -276,20 +276,28 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         LinearLayout topRow = settingsStatusRow(
                 settingsStatusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, STUDY_PLUM),
-                settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), settingsImportSummary(current), TEAL)
+                settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), SettingsTextCopy.settingsImportSummary(current), TEAL)
         );
         LinearLayout bottomRow = settingsStatusRow(
                 settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL),
                 settingsStatusPill(SettingsTextCopy.reminderStatusLabel(), settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED)
         );
         LinearLayout automationRow = settingsStatusRow(
-                settingsStatusPill(SettingsTextCopy.dailySyncStatusLabel(), settingsAutoSyncSummary(autoSync), autoSync.enabled ? TEAL : MUTED),
-                settingsStatusPill(SettingsTextCopy.updatesStatusLabel(), settingsUpdateSummary(autoUpdate), autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK)
+                settingsStatusPill(
+                        SettingsTextCopy.dailySyncStatusLabel(),
+                        SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime()),
+                        autoSync.enabled ? TEAL : MUTED
+                ),
+                settingsStatusPill(
+                        SettingsTextCopy.updatesStatusLabel(),
+                        SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled),
+                        autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK
+                )
         );
         hero.addView(topRow);
         hero.addView(bottomRow);
         hero.addView(automationRow);
-        hero.addView(settingsStatusPill(SettingsTextCopy.matchingCardsStatusLabel(), matchingCardsSummary(current), STUDY_PLUM));
+        hero.addView(settingsStatusPill(SettingsTextCopy.matchingCardsStatusLabel(), SettingsTextCopy.matchingCardsSummary(current), STUDY_PLUM));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, dp(8), 0, dp(10));
@@ -335,22 +343,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
     String settingsReminderSummary(LocalStore.ReminderSettings reminder) {
         boolean blocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(this);
         return SettingsTextCopy.settingsReminderSummary(reminder.enabled, blocked, reminder.displayTime());
-    }
-
-    String settingsAutoSyncSummary(LocalStore.AutoSyncSettings autoSync) {
-        return SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime());
-    }
-
-    String settingsUpdateSummary(LocalStore.AutoUpdateStatus autoUpdate) {
-        return SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled);
-    }
-
-    String settingsImportSummary(RecordsSyncModels.Settings settings) {
-        return SettingsTextCopy.settingsImportSummary(settings);
-    }
-
-    String matchingCardsSummary(RecordsSyncModels.Settings settings) {
-        return SettingsTextCopy.matchingCardsSummary(settings);
     }
 
     LinearLayout settingsCategory(
@@ -436,7 +428,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         LinearLayout box = settingsPanelBox();
         box.addView(text(SettingsTextCopy.importFiltersTitle(), 23, INK, true));
-        box.addView(text(settingsImportSummary(current), 17, TEAL, true));
+        box.addView(text(SettingsTextCopy.settingsImportSummary(current), 17, TEAL, true));
         box.addView(text(SettingsTextCopy.importFiltersBody(), 15, MUTED, false));
         addImportPresetButtons(box);
 
