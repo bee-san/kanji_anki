@@ -178,7 +178,13 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderNoStudySession(seededPlan);
             return;
         }
-        activateStudySession(activeSession, now);
+        StudySessionActions.activateStudySession(
+                activeSession,
+                now,
+                store::saveStudyItem,
+                this::registerStudyTaskShown,
+                this::startActiveStudyTask
+        );
         renderSession(activeSession);
     }
 
@@ -412,7 +418,13 @@ abstract class MainActivityStudy extends MainActivityStats {
                 now,
                 studyLadderSettings()
         );
-        activateStudySession(activeSession, now);
+        StudySessionActions.activateStudySession(
+                activeSession,
+                now,
+                store::saveStudyItem,
+                this::registerStudyTaskShown,
+                this::startActiveStudyTask
+        );
         renderSession(activeSession);
     }
 
@@ -424,16 +436,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(text("Kanji not available", 22, STUDY_PLUM, true));
         card.addView(text("This row may have changed after sync.", 16, STUDY_MUTED, false));
         content.addView(card);
-    }
-
-    String activateStudySession(RecordsSchedulerModels.StudySession session, long now) {
-        return StudySessionActions.activateStudySession(
-                session,
-                now,
-                store::saveStudyItem,
-                this::registerStudyTaskShown,
-                this::startActiveStudyTask
-        );
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {
