@@ -1135,7 +1135,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         minutesInput.setTextSize(20);
         minutesInput.setSingleLine(true);
         minutesInput.setSelectAllOnFocus(true);
-        box.addView(text(studyAheadMinutesLabel(), 15, INK, true));
+        box.addView(text(SettingsTextCopy.studyAheadMinutesLabel(), 15, INK, true));
         box.addView(minutesInput, new LinearLayout.LayoutParams(-1, dp(58)));
 
         Button save = primaryButton(SettingsTextCopy.saveStudyAheadLabel(), STUDY_PINK_DARK);
@@ -1153,10 +1153,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return box;
     }
 
-    static String studyAheadMinutesLabel() {
-        return SettingsTextCopy.studyAheadMinutesLabel();
-    }
-
     LinearLayout studyLadderSettingsPanel() {
         RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
         LinearLayout box = settingsPanelBox();
@@ -1167,8 +1163,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         for (int i = 0; i < rungs.size(); i++) {
             RecordsBase.LadderRung rung = rungs.get(i);
             LinearLayout row = softInsetPanel();
-            row.addView(text(ladderRungLabel(rung), 19, STUDY_PLUM, true));
-            row.addView(text(ladderRungSubtitle(ladder, rung), 13, MUTED, false));
+            row.addView(text(SettingsTextCopy.settingsLadderRungLabel(rung), 19, STUDY_PLUM, true));
+            row.addView(text(SettingsTextCopy.ladderRungSubtitle(ladder, rung), 13, MUTED, false));
 
             LinearLayout controls = new LinearLayout(this);
             controls.setOrientation(LinearLayout.HORIZONTAL);
@@ -1220,14 +1216,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         SettingsWriteActions.saveStudyLadder(next, store::saveStudyLadderSettings);
         Toast.makeText(this, SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled), Toast.LENGTH_SHORT).show();
         renderSettings();
-    }
-
-    String ladderRungSubtitle(RecordsBase.StudyLadderSettings ladder, RecordsBase.LadderRung rung) {
-        return SettingsTextCopy.ladderRungSubtitle(ladder, rung);
-    }
-
-    String ladderRungLabel(RecordsBase.LadderRung rung) {
-        return SettingsTextCopy.settingsLadderRungLabel(rung);
     }
 
     LinearLayout ladderThresholdSettingsPanel() {

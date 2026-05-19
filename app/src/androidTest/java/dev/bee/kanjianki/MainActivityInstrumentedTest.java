@@ -40,6 +40,7 @@ import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
@@ -299,7 +300,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
-        scenario.onActivity(activity -> editTextAfterLabel(activity, MainActivitySettings.studyAheadMinutesLabel()).setText("45"));
+        scenario.onActivity(activity -> editTextAfterLabel(activity, SettingsTextCopy.studyAheadMinutesLabel()).setText("45"));
     }
 
     private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
