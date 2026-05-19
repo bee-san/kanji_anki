@@ -4,16 +4,13 @@ import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
-import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.TimePickerDialog;
 import android.content.res.ColorStateList;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -26,7 +23,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -48,7 +44,6 @@ import androidx.core.widget.TextViewCompat;
 
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
-import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
@@ -78,9 +73,7 @@ import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
 import dev.bee.kanjianki.study.WritingRecognizer;
-import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
-import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.update.AutoUpdateScheduler;
 import dev.bee.kanjianki.update.GitHubUpdater;
 
@@ -97,6 +90,7 @@ import java.util.concurrent.Executors;
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
     private final MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(this);
+    private final MainActivityHomeSync syncFlow = new MainActivityHomeSync(this);
 
     abstract void renderStats();
     abstract void renderGames();
@@ -462,103 +456,27 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void confirmSync() {
-        RecordsSyncModels.Settings current = settings();
-        new AlertDialog.Builder(this)
-                .setTitle(HomeTextCopy.syncDialogTitle())
-                .setMessage(HomeTextCopy.syncDialogMessage(current))
-                .setPositiveButton(HomeTextCopy.syncDialogPositiveLabel(), (dialog, which) -> runSync())
-                .setNegativeButton(HomeTextCopy.cancelLabel(), null)
-                .show();
+        syncFlow.confirmSync();
     }
 
     void runSync() {
-        base("home");
-        content.addView(text(HomeTextCopy.syncingTitle(), 34, INK, true));
-        SyncProgressPanel progressView = new SyncProgressPanel(this);
-        content.addView(progressView);
-        CollectionGateway syncGateway = collectionGatewayForTests == null ? gateway : collectionGatewayForTests;
-        ManualSyncCoordinator coordinator = new ManualSyncCoordinator(
-                io,
-                main::post,
-                progress -> new ManualSyncEngine(
-                        this,
-                        store,
-                        syncGateway,
-                        settings(),
-                        progress
-                ).run(),
-                () -> {
-                    store.activateAutoSyncAfterFirstSuccess();
-                    AutoSyncScheduler.schedule(this);
-                },
-                this::renderSyncResult
-        );
-        coordinator.start(update -> main.post(() -> progressView.render(update)));
+        syncFlow.runSync();
     }
 
     void renderSyncResult(ManualSyncEngine.SyncResult result) {
-        base("home");
-        if (result.skipped) {
-            renderSkippedSyncResult(result);
-        } else if (result.success) {
-            renderSuccessfulSyncResult(result);
-        } else {
-            renderFailedSyncResult(result);
-        }
+        syncFlow.renderSyncResult(result);
     }
 
     void renderSkippedSyncResult(ManualSyncEngine.SyncResult result) {
-        content.addView(text(HomeTextCopy.syncAlreadyRunningTitle(), 34, INK, true));
-        LinearLayout info = band(BLUE);
-        info.addView(text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncAlreadyRunningFallback() : result.message, 17, Color.WHITE, false));
-        content.addView(info);
-        Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(new RunnableClickListener(this::renderHome));
-        content.addView(home);
+        syncFlow.renderSkippedSyncResult(result);
     }
 
     void renderSuccessfulSyncResult(ManualSyncEngine.SyncResult result) {
-        content.addView(text(HomeTextCopy.syncCompleteTitle(), 34, INK, true));
-        LinearLayout summary = band(TEAL);
-        long now = System.currentTimeMillis();
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> items = store.studyItems();
-        RecordsSchedulerModels.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
-        List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
-        summary.addView(text(HomeTextCopy.syncReadyCountText(entries.size()), 24, Color.WHITE, true));
-        summary.addView(text(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)), 16, Color.WHITE, false));
-        if (!result.adaptiveSummary.isEmpty()) {
-            summary.addView(text(result.adaptiveSummary, 15, Color.WHITE, false));
-        }
-        if (result.importedSuspendedKanji > 0) {
-            summary.addView(text(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, Color.WHITE, false));
-        }
-        if (result.message != null && !result.message.isEmpty()) {
-            summary.addView(text(result.message, 14, Color.WHITE, false));
-        }
-        content.addView(summary);
-        if (result.dashboardRows > 0) {
-            Button study = primaryButton(LABEL_STUDY_NOW, CORAL);
-            study.setOnClickListener(new RunnableClickListener(this::startFocusedStudy));
-            content.addView(study);
-        }
-        Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(new RunnableClickListener(this::renderHome));
-        content.addView(home);
+        syncFlow.renderSuccessfulSyncResult(result);
     }
 
     void renderFailedSyncResult(ManualSyncEngine.SyncResult result) {
-        content.addView(text(HomeTextCopy.syncNeedsAttentionTitle(), 34, INK, true));
-        LinearLayout error = band(CORAL);
-        error.addView(text(HomeTextCopy.syncReadErrorTitle(), 24, Color.WHITE, true));
-        error.addView(text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncFailureFallback() : result.message, 16, Color.WHITE, false));
-        content.addView(error);
-        Button retry = primaryButton(HomeTextCopy.trySyncAgainLabel(), TEAL);
-        retry.setOnClickListener(new RunnableClickListener(this::confirmSync));
-        content.addView(retry);
-        Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(new RunnableClickListener(this::renderHome));
-        content.addView(home);
+        syncFlow.renderFailedSyncResult(result);
     }
 
     long studyAheadMillis() {
