@@ -12,9 +12,11 @@ import java.util.Locale;
 
 final class MainActivitySettingsAnkiSourceInputs {
     private final MainActivitySettings activity;
+    private final MainActivitySettingsAnkiSourceRankSliders rankSliders;
 
     MainActivitySettingsAnkiSourceInputs(MainActivitySettings activity) {
         this.activity = activity;
+        this.rankSliders = new MainActivitySettingsAnkiSourceRankSliders(activity);
     }
 
     EditText noteTypeInput(String value) {
@@ -80,46 +82,6 @@ final class MainActivitySettingsAnkiSourceInputs {
             SeekBar minSlider,
             SeekBar maxSlider
     ) {
-        minSlider.setMax(19999);
-        maxSlider.setMax(19999);
-        minSlider.setProgress(SettingsInputRules.rankSliderProgress(selected[0]));
-        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(selected[1]));
-
-        minSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = Math.min(SettingsInputRules.rankFromSliderProgress(progress), selected[1]);
-                minInput.setText(String.format(Locale.ROOT, "%d", selected[0]));
-                status.setText(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(SettingsInputRules.rankSliderProgress(selected[0]));
-            }
-        });
-        maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[1] = Math.max(SettingsInputRules.rankFromSliderProgress(progress), selected[0]);
-                maxInput.setText(String.format(Locale.ROOT, "%d", selected[1]));
-                status.setText(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(SettingsInputRules.rankSliderProgress(selected[1]));
-            }
-        });
+        rankSliders.bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
     }
 }
