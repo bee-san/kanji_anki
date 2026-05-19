@@ -28,7 +28,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
-import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -338,18 +337,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
         choiceGrid.showMeaningKanjiChoiceResult(card, selectedKanji, grid, answerPanel);
-    }
-
-    void disableChoiceButtons(View view) {
-        if (view instanceof Button button) {
-            button.setEnabled(false);
-            return;
-        }
-        if (view instanceof ViewGroup group) {
-            for (int i = 0; i < group.getChildCount(); i++) {
-                disableChoiceButtons(group.getChildAt(i));
-            }
-        }
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {

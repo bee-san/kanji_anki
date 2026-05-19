@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
@@ -74,7 +75,7 @@ final class MainActivityStudyChoiceGrid {
 
     void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
         boolean correct = card.isCorrect(selectedKanji);
-        home.disableChoiceButtons(grid);
+        disableChoiceButtons(grid);
         answerPanel.setVisibility(View.VISIBLE);
         if (home.studyActionBar == null) {
             home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false);
@@ -90,6 +91,18 @@ final class MainActivityStudyChoiceGrid {
         Button next = home.pinkPrimaryButton("Next");
         next.setOnClickListener(new RunnableClickListener(() -> home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false)));
         home.studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, home.dp(62)));
+    }
+
+    void disableChoiceButtons(View view) {
+        if (view instanceof Button button) {
+            button.setEnabled(false);
+            return;
+        }
+        if (view instanceof ViewGroup group) {
+            for (int i = 0; i < group.getChildCount(); i++) {
+                disableChoiceButtons(group.getChildAt(i));
+            }
+        }
     }
 
     View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
