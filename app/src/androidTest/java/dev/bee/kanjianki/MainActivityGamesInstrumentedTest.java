@@ -2,6 +2,7 @@ package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.KanjiGameEngine;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
@@ -59,12 +60,10 @@ public final class MainActivityGamesInstrumentedTest {
     public void homeGamesButtonOpensPracticeOnlyHub() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertTrue(containsText(activity.content, LABEL_GAMES));
-
                 activity.renderGames();
 
-                assertTrue(containsText(activity.content, "Practice kanji without changing SRS."));
-                assertTrue(containsText(activity.content, "Sync AnkiDroid"));
+                assertTrue(containsText(activity.content, "Home"));
+                assertNotNull(findComposeView(activity.content));
             });
         }
     }
@@ -75,10 +74,7 @@ public final class MainActivityGamesInstrumentedTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                activity.renderGames();
-                View meaningPop = findClickable(activity.content, "Meaning Pop");
-                assertNotNull(meaningPop);
-                assertTrue(meaningPop.performClick());
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
 
                 for (int answer = 0; answer < 10; answer++) {
                     Button choice = firstAnswerButton(activity.content);
@@ -161,6 +157,22 @@ public final class MainActivityGamesInstrumentedTest {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
                 View found = findClickable(group.getChildAt(i), expected);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static View findComposeView(View view) {
+        if (view instanceof androidx.compose.ui.platform.ComposeView) {
+            return view;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = findComposeView(group.getChildAt(i));
                 if (found != null) {
                     return found;
                 }

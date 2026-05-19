@@ -28,49 +28,43 @@ abstract class MainActivityGames extends MainActivityHome {
         clearGameSession();
         base("home");
         content.addView(fullWidthHomeButton());
-        content.addView(text(KanjiGameCopy.LABEL_GAMES, 34, INK, true));
-        content.addView(text(KanjiGameCopy.GAMES_SUBTITLE, 16, MUTED, false));
-        addSpace(8);
-
-        GameData data = gameData();
-        if (!data.hasKanji()) {
-            emptyState(KanjiGameCopy.EMPTY_NO_KANJI_TITLE, KanjiGameCopy.EMPTY_NO_KANJI_BODY);
-            Button sync = primaryButton(KanjiGameCopy.LABEL_SYNC_ANKIDROID, CORAL);
-            sync.setOnClickListener(new RunnableClickListener(this::confirmSync));
-            content.addView(sync);
-            return;
-        }
-
-        List<KanjiGameEngine.GameMode> available = gameEngine.availableModes(data.rows, data.inventory, data.pairs);
-        for (KanjiGameEngine.GameMode mode : KanjiGameEngine.GameMode.values()) {
-            content.addView(gameModeCard(mode, available.contains(mode)));
-        }
+        content.addView(MainActivityGamesCompose.gamesScreenView(this, gamesScreenModel()));
     }
 
     private void clearGameSession() {
         gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS);
     }
 
-    private View gameModeCard(KanjiGameEngine.GameMode mode, boolean available) {
-        int color = available ? colorForGameMode(mode) : Color.rgb(178, 178, 186);
-        LinearLayout box = panelBox(Color.WHITE, softened(color));
-        box.setPadding(dp(14), dp(13), dp(14), dp(13));
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView title = text(mode.title, 22, available ? INK : MUTED, true);
-        top.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        top.addView(chip(available ? KanjiGameCopy.LABEL_PLAY : KanjiGameCopy.LABEL_LOCKED, color));
-        box.addView(top);
-        box.addView(text(mode.label, 15, color, true));
-        box.addView(text(KanjiGameCopy.modeBody(mode, available), 14, MUTED, false));
-        box.setClickable(available);
-        if (available) {
-            box.setOnClickListener(new RunnableClickListener(() -> startGame(mode)));
+    GamesScreenModel gamesScreenModel() {
+        GameData data = gameData();
+        List<GamesModeCardModel> cards = new ArrayList<>();
+        if (data.hasKanji()) {
+            List<KanjiGameEngine.GameMode> available = gameEngine.availableModes(data.rows, data.inventory, data.pairs);
+            for (KanjiGameEngine.GameMode mode : KanjiGameEngine.GameMode.values()) {
+                boolean modeAvailable = available.contains(mode);
+                cards.add(new GamesModeCardModel(
+                        mode.title,
+                        mode.label,
+                        KanjiGameCopy.modeBody(mode, modeAvailable),
+                        colorForGameMode(mode),
+                        modeAvailable,
+                        modeAvailable ? KanjiGameCopy.LABEL_PLAY : KanjiGameCopy.LABEL_LOCKED,
+                        modeAvailable ? () -> startGame(mode) : () -> { }
+                ));
+            }
         }
-        return box;
+        return new GamesScreenModel(
+                KanjiGameCopy.LABEL_GAMES,
+                KanjiGameCopy.GAMES_SUBTITLE,
+                data.hasKanji() ? null : KanjiGameCopy.EMPTY_NO_KANJI_TITLE,
+                data.hasKanji() ? null : KanjiGameCopy.EMPTY_NO_KANJI_BODY,
+                !data.hasKanji(),
+                this::confirmSync,
+                cards
+        );
     }
 
-    private void startGame(KanjiGameEngine.GameMode mode) {
+    void startGame(KanjiGameEngine.GameMode mode) {
         gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS);
         renderGameQuestion(mode);
     }
