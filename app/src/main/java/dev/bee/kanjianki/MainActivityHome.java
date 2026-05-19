@@ -85,6 +85,7 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
+    private final MainActivityHomeChrome chrome = new MainActivityHomeChrome(this);
     private final MainActivityHomeFocusQueue focusQueue = new MainActivityHomeFocusQueue(this);
     private final MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(this);
     private final MainActivityHomeSync syncFlow = new MainActivityHomeSync(this);
@@ -315,74 +316,19 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     View homeActionRow() {
-        List<View> actions = new ArrayList<>();
-        actions.add(pillButton(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, () -> renderBrowseKanji("")));
-        actions.add(pillButton(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, this::renderRecentMistakes));
-        actions.add(pillButton(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, this::renderStats));
-        actions.add(pillButton(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, this::renderGames));
-        actions.add(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
-        return twoColumnGrid(actions);
+        return chrome.homeActionRow();
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        TextView heading = sectionTitle(title);
-        heading.setPadding(0, dp(8), 0, dp(8));
-        row.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
-        if (actionLabel != null && action != null) {
-            TextView link = text(actionLabel + " >", 15, CORAL, true);
-            link.setGravity(Gravity.CENTER_VERTICAL);
-            link.setPadding(dp(12), dp(8), 0, dp(8));
-            link.setOnClickListener(new RunnableClickListener(action));
-            row.addView(link, new LinearLayout.LayoutParams(-2, -2));
-        }
-        return row;
+        return chrome.homeSectionHeader(title, actionLabel, action);
     }
 
     View pillButton(String label, int iconRes, Runnable action) {
-        LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.HORIZONTAL);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(8), 0, dp(8), 0);
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(iconRes);
-        icon.setColorFilter(INK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
-        iconLp.setMargins(0, 0, dp(7), 0);
-        button.addView(icon, iconLp);
-        TextView text = text(label, 13, INK, true);
-        text.setGravity(Gravity.CENTER);
-        text.setSingleLine(false);
-        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
-        button.setClickable(true);
-        button.setOnClickListener(new RunnableClickListener(action));
-        button.setMinimumHeight(dp(62));
-        return button;
+        return chrome.pillButton(label, iconRes, action);
     }
 
     View fullWidthHomeButton() {
-        LinearLayout button = new LinearLayout(this);
-        button.setOrientation(LinearLayout.HORIZONTAL);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(dp(12), 0, dp(12), 0);
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(R.drawable.ic_home_24);
-        icon.setColorFilter(INK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
-        iconLp.setMargins(0, 0, dp(8), 0);
-        button.addView(icon, iconLp);
-        TextView text = text(HomeTextCopy.homeLabel(), 15, INK, true);
-        text.setGravity(Gravity.CENTER);
-        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
-        button.setClickable(true);
-        button.setOnClickListener(new RunnableClickListener(this::renderHome));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(56));
-        lp.setMargins(0, 0, 0, dp(10));
-        button.setLayoutParams(lp);
-        return button;
+        return chrome.fullWidthHomeButton();
     }
 
     void renderFocusQueue() {
