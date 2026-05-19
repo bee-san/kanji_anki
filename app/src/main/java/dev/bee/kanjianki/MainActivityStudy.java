@@ -110,6 +110,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
     private final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
+    private final MainActivityStudyReasonLine reasonLine = new MainActivityStudyReasonLine(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -392,15 +393,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
-        String reason = StudyTextCopy.studyReasonLine(
-                activeSimilarWritingRepair != null,
-                session,
-                settings().matureSupportThreshold,
-                System.currentTimeMillis()
-        );
-        if (!reason.isEmpty()) {
-            card.addView(text(reason, 14, STUDY_MUTED, false));
-        }
+        reasonLine.addStudyReasonLine(card, session);
     }
 
     void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
