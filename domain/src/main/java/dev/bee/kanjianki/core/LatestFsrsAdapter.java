@@ -87,14 +87,14 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
     }
 
     private static double safeRetention(double targetRetention) {
-        if (!Double.isFinite(targetRetention)) {
+        if (Double.isNaN(targetRetention)) {
             return DEFAULT_RETENTION;
         }
         return Math.max(0.01, Math.min(0.99, targetRetention));
     }
 
     private static double safeDifficulty(double difficulty) {
-        if (!Double.isFinite(difficulty)) {
+        if (Double.isNaN(difficulty)) {
             return DEFAULT_DIFFICULTY;
         }
         return Math.max(Fsrs.MIN_DIFFICULTY, Math.min(Fsrs.MAX_DIFFICULTY, difficulty));

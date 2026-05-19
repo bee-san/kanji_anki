@@ -45,8 +45,7 @@ public final class KaniFsrsAdapterTest {
                 false
         );
         assertTrue(relearning.stability >= 0.001);
-        assertTrue(relearning.difficulty >= 1.0);
-        assertTrue(relearning.difficulty <= 10.0);
+        assertEquals(9.985228369297, relearning.difficulty, 0.000001);
         assertTrue(relearning.intervalDays() >= 1);
 
         KaniFsrsReviewResult review = adapter.review(
@@ -57,9 +56,24 @@ public final class KaniFsrsAdapterTest {
                 Double.POSITIVE_INFINITY
         );
         assertTrue(review.stability >= 0.001);
-        assertTrue(review.difficulty >= 1.0);
-        assertTrue(review.difficulty <= 10.0);
-        assertTrue(review.intervalDays() >= 1);
+        assertEquals(6.665995369297, review.difficulty, 0.000001);
+        assertEquals(1, review.intervalDays());
+
+        KaniFsrsReviewResult clampedReview = adapter.review(
+                5.0,
+                Double.NEGATIVE_INFINITY,
+                StudyRatings.GOOD,
+                7,
+                Double.NEGATIVE_INFINITY
+        );
+        assertEquals(1.0, clampedReview.difficulty, 0.000001);
+        assertEquals(1, adapter.review(
+                5.0,
+                Double.POSITIVE_INFINITY,
+                StudyRatings.EASY,
+                7,
+                Double.POSITIVE_INFINITY
+        ).intervalDays());
     }
 
     @Test
