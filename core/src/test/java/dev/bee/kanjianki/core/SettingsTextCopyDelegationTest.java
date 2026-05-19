@@ -35,6 +35,10 @@ public final class SettingsTextCopyDelegationTest {
         assertEquals(SettingsStudyPlanTextCopy.newCardSortTitle(), SettingsTextCopy.newCardSortTitle());
         assertEquals(SettingsStudyPlanTextCopy.fsrsRetentionTitle(), SettingsTextCopy.fsrsRetentionTitle());
         assertEquals(SettingsStudyPlanTextCopy.studyLadderTitle(), SettingsTextCopy.studyLadderTitle());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadTitle(), SettingsTextCopy.studyAheadTitle());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadBody(), SettingsTextCopy.studyAheadBody());
+        assertEquals(SettingsStudyAheadTextCopy.saveStudyAheadLabel(), SettingsTextCopy.saveStudyAheadLabel());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadSavedToast(), SettingsTextCopy.studyAheadSavedToast());
         assertEquals(SettingsNoteTypeTextCopy.noteTypeFieldsTitle(), SettingsTextCopy.noteTypeFieldsTitle());
         assertEquals(SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"), SettingsTextCopy.noteTypeUsingText("Kiku"));
         assertEquals(SettingsNoteTypeTextCopy.noteTypeFieldsBody(), SettingsTextCopy.noteTypeFieldsBody());
