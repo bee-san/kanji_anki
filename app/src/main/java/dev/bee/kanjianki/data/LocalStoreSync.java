@@ -10,7 +10,6 @@ import android.database.sqlite.SQLiteDatabase;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
-import dev.bee.kanjianki.core.TextUtil;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,6 +31,10 @@ abstract class LocalStoreSync extends LocalStoreInventory {
 
     private LocalStoreSyncImportAuditStore importAuditStore() {
         return new LocalStoreSyncImportAuditStore();
+    }
+
+    private LocalStoreSyncSourceStore sourceStore() {
+        return new LocalStoreSyncSourceStore();
     }
 
     public long saveSuccessfulSync(
@@ -93,8 +96,8 @@ abstract class LocalStoreSync extends LocalStoreInventory {
             Map<Long, RecordsSyncModels.Note> notesById = snapshot.notesById();
             appendHistoricalSyncSnapshots(db, snapshot, notesById, rows, settings, syncId, timing);
             clearSyncMirrorTables(db);
-            saveSourceNotes(db, snapshot.notes, activeIndex, settings, syncId);
-            saveSourceCardsAndArchive(db, snapshot.cards, notesById, selectedSuspendedCardIds, settings, timing.finishedAt, syncId);
+            sourceStore().saveSourceNotes(db, snapshot.notes, activeIndex, settings, syncId);
+            sourceStore().saveSourceCardsAndArchive(db, snapshot.cards, notesById, selectedSuspendedCardIds, settings, timing.finishedAt, syncId);
             saveSuspendedImports(db, imports, timing.finishedAt, syncId);
             saveImportAudit(db, decisionImports, settings, timing.finishedAt, syncId);
 
@@ -127,97 +130,6 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         db.delete(TABLE_SOURCE_NOTES, null, null);
         db.delete(TABLE_DASHBOARD_ROWS, null, null);
         db.delete(TABLE_KANJI_EXAMPLES, null, null);
-    }
-
-    void saveSourceNotes(
-            SQLiteDatabase db,
-            List<RecordsSyncModels.Note> notes,
-            ActiveCardIndex activeIndex,
-            RecordsSyncModels.Settings settings,
-            long syncId
-    ) {
-        for (RecordsSyncModels.Note note : notes) {
-            if (!activeIndex.noteIds.contains(note.noteId)) {
-                continue;
-            }
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_NOTE_ID, note.noteId);
-            values.put(COLUMN_MODEL_NAME, note.modelName);
-            values.put(COLUMN_EXPRESSION, TextUtil.normalizeJapanese(note.expression(settings)));
-            values.put(COLUMN_READING, TextUtil.normalizeJapanese(note.reading(settings)));
-            values.put(COLUMN_MEANING, TextUtil.firstMeaningLine(note.meaning(settings)));
-            values.put(COLUMN_SENTENCE, TextUtil.normalizeJapanese(note.sentence(settings)));
-            values.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
-            values.put(COLUMN_TAGS, String.join(" ", note.tags));
-            values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
-            db.insertWithOnConflict(TABLE_SOURCE_NOTES, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-        }
-    }
-
-    void saveSourceCardsAndArchive(
-            SQLiteDatabase db,
-            List<RecordsSyncModels.Card> cards,
-            Map<Long, RecordsSyncModels.Note> notesById,
-            Set<Long> selectedSuspendedCardIds,
-            RecordsSyncModels.Settings settings,
-            long finishedAt,
-            long syncId
-    ) {
-        for (RecordsSyncModels.Card card : cards) {
-            RecordsSyncModels.Note note = notesById.get(card.noteId);
-            if (note == null) {
-                continue;
-            }
-            if (card.suspended) {
-                if (selectedSuspendedCardIds.contains(card.cardId)) {
-                    saveSuspendedArchiveCard(db, card, note, settings, finishedAt, syncId);
-                }
-            } else {
-                saveSourceCard(db, card, syncId);
-            }
-        }
-    }
-
-    void saveSuspendedArchiveCard(
-            SQLiteDatabase db,
-            RecordsSyncModels.Card card,
-            RecordsSyncModels.Note note,
-            RecordsSyncModels.Settings settings,
-            long finishedAt,
-            long syncId
-    ) {
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_CARD_ID, card.cardId);
-        values.put(COLUMN_NOTE_ID, card.noteId);
-        values.put(COLUMN_DECK_NAME, card.deckName);
-        values.put(COLUMN_MODEL_NAME, note.modelName);
-        values.put(COLUMN_EXPRESSION, TextUtil.normalizeJapanese(note.expression(settings)));
-        values.put(COLUMN_READING, TextUtil.normalizeJapanese(note.reading(settings)));
-        values.put(COLUMN_MEANING, TextUtil.firstMeaningLine(note.meaning(settings)));
-        values.put(COLUMN_SENTENCE, TextUtil.normalizeJapanese(note.sentence(settings)));
-        values.put(COLUMN_FIELDS_JSON, fieldsJson(note.fields));
-        values.put("archived_at", finishedAt);
-        values.put("archived_sync_id", syncId);
-        db.insertWithOnConflict(TABLE_SUSPENDED_ARCHIVE, null, values, SQLiteDatabase.CONFLICT_IGNORE);
-    }
-
-    void saveSourceCard(SQLiteDatabase db, RecordsSyncModels.Card card, long syncId) {
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_CARD_ID, card.cardId);
-        values.put(COLUMN_NOTE_ID, card.noteId);
-        values.put(COLUMN_DECK_NAME, card.deckName);
-        values.put("ord", card.ord);
-        values.put(COLUMN_QUEUE, card.queue);
-        values.put("type", card.type);
-        values.put("due", card.due);
-        values.put(COLUMN_INTERVAL_DAYS, card.intervalDays);
-        values.put(COLUMN_REPS, card.reps);
-        values.put(COLUMN_LAPSES, card.lapses);
-        putNullableDouble(values, COLUMN_FSRS_STABILITY, card.fsrsStability);
-        putNullableDouble(values, COLUMN_FSRS_DIFFICULTY, card.fsrsDifficulty);
-        putNullableDouble(values, COLUMN_FSRS_RETRIEVABILITY, card.fsrsRetrievability);
-        values.put(COLUMN_LAST_SEEN_SYNC_ID, syncId);
-        db.insertWithOnConflict(TABLE_SOURCE_CARDS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     void saveSuspendedImports(
