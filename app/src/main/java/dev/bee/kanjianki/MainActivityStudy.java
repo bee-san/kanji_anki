@@ -164,7 +164,15 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
             return;
         }
-        activeSession = nextActiveSession(rows, seeded, seededPlan, now);
+        activeSession = new BridgeScheduler().nextSession(
+                seeded,
+                rows,
+                now,
+                studyAheadMillis(),
+                StudySessionFocusPolicy.allowedKanji(seededPlan, continueAllKanjiSession),
+                settings(),
+                studyLadderSettings()
+        );
         activeSimilarWritingRepair = null;
         if (activeSession == null) {
             renderNoStudySession(seededPlan);
@@ -199,11 +207,6 @@ abstract class MainActivityStudy extends MainActivityStats {
                 "Nothing to study yet",
                 "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair."
         ));
-    }
-
-    RecordsSchedulerModels.StudySession nextActiveSession(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> seeded, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
-        Set<String> focus = StudySessionFocusPolicy.allowedKanji(plan, continueAllKanjiSession);
-        return new BridgeScheduler().nextSession(seeded, rows, now, studyAheadMillis(), focus, settings(), studyLadderSettings());
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
