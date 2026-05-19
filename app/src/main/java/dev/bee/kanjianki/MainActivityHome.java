@@ -564,6 +564,13 @@ abstract class MainActivityHome extends MainActivityBase {
         return store.studyAheadMinutes() * 60_000L;
     }
 
+    String nonEmptyOr(String value, String fallback) {
+        if (value == null || value.isEmpty()) {
+            return fallback;
+        }
+        return value;
+    }
+
     List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         BridgeScheduler scheduler = new BridgeScheduler();
         return HomeStudyQueueActions.studyQueue(new HomeStudyQueueActions.StudyQueueRequest(

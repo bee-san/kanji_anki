@@ -106,6 +106,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivitySettings extends MainActivityStudy {
+    private MainActivitySettingsAutomation automation() {
+        return new MainActivitySettingsAutomation(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -253,79 +257,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             LocalStore.AutoSyncSettings autoSync,
             LocalStore.AutoUpdateStatus autoUpdate
     ) {
-        LinearLayout hero = new LinearLayout(this);
-        hero.setOrientation(LinearLayout.VERTICAL);
-        hero.setPadding(dp(20), dp(20), dp(20), dp(18));
-        hero.setBackground(panel(Color.rgb(255, 248, 252), STUDY_BORDER, dp(30)));
-        hero.setElevation(dp(6));
-
-        TextView pill = text(SettingsTextCopy.settingsCockpitLabel(), 13, STUDY_PINK_DARK, true);
-        pill.setGravity(Gravity.CENTER);
-        pill.setIncludeFontPadding(false);
-        pill.setPadding(dp(12), dp(7), dp(12), dp(7));
-        pill.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
-        hero.addView(pill, new LinearLayout.LayoutParams(-2, -2));
-
-        TextView title = text(NAV_SETTINGS, 34, STUDY_PLUM, true);
-        title.setPadding(0, dp(12), 0, dp(4));
-        hero.addView(title);
-        hero.addView(text(SettingsTextCopy.settingsHeroBody(), 16, STUDY_MUTED, false));
-
-        LinearLayout topRow = new LinearLayout(this);
-        topRow.setOrientation(LinearLayout.HORIZONTAL);
-        topRow.setPadding(0, dp(12), 0, 0);
-        LinearLayout.LayoutParams topFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
-        topFirstLp.setMargins(0, 0, dp(6), 0);
-        topRow.addView(settingsStatusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, STUDY_PLUM), topFirstLp);
-        LinearLayout.LayoutParams topSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
-        topSecondLp.setMargins(dp(6), 0, 0, 0);
-        topRow.addView(settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), SettingsTextCopy.settingsImportSummary(current), TEAL), topSecondLp);
-
-        LinearLayout bottomRow = new LinearLayout(this);
-        bottomRow.setOrientation(LinearLayout.HORIZONTAL);
-        bottomRow.setPadding(0, dp(12), 0, 0);
-        LinearLayout.LayoutParams bottomFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
-        bottomFirstLp.setMargins(0, 0, dp(6), 0);
-        bottomRow.addView(settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL), bottomFirstLp);
-        LinearLayout.LayoutParams bottomSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
-        bottomSecondLp.setMargins(dp(6), 0, 0, 0);
-        bottomRow.addView(settingsStatusPill(
-                SettingsTextCopy.reminderStatusLabel(),
-                SettingsTextCopy.settingsReminderSummary(
-                        reminder.enabled,
-                        reminder.enabled && !ReminderScheduler.notificationsAllowed(this),
-                        reminder.displayTime()
-                ),
-                reminder.enabled ? TEAL : MUTED
-        ), bottomSecondLp);
-
-        LinearLayout automationRow = new LinearLayout(this);
-        automationRow.setOrientation(LinearLayout.HORIZONTAL);
-        automationRow.setPadding(0, dp(12), 0, 0);
-        LinearLayout.LayoutParams automationFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
-        automationFirstLp.setMargins(0, 0, dp(6), 0);
-        automationRow.addView(settingsStatusPill(
-                SettingsTextCopy.dailySyncStatusLabel(),
-                SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime()),
-                autoSync.enabled ? TEAL : MUTED
-        ), automationFirstLp);
-        LinearLayout.LayoutParams automationSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
-        automationSecondLp.setMargins(dp(6), 0, 0, 0);
-        automationRow.addView(settingsStatusPill(
-                SettingsTextCopy.updatesStatusLabel(),
-                SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled),
-                autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK
-        ), automationSecondLp);
-
-        hero.addView(topRow);
-        hero.addView(bottomRow);
-        hero.addView(automationRow);
-        hero.addView(settingsStatusPill(SettingsTextCopy.matchingCardsStatusLabel(), SettingsTextCopy.matchingCardsSummary(current), STUDY_PLUM));
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, dp(8), 0, dp(10));
-        hero.setLayoutParams(lp);
-        return hero;
+        return automation().settingsHero(current, reminder, autoSync, autoUpdate);
     }
 
     LinearLayout settingsStatusPill(String label, String value, int valueColor) {
@@ -1382,152 +1314,23 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout reminderSettingsPanel() {
-        LocalStore.ReminderSettings reminder = store.reminderSettings();
-        boolean notificationsAllowed = notificationsAllowedForReminders();
-        boolean blocked = reminder.enabled && !notificationsAllowed;
-        int[] selectedHour = new int[]{reminder.hour};
-        int[] selectedMinute = new int[]{reminder.minute};
-
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.dailyReminderTitle(), 23, INK, true));
-        box.addView(text(
-                SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime()),
-                17,
-                blocked ? CORAL : (reminder.enabled ? TEAL : MUTED),
-                true
-        ));
-        box.addView(text(SettingsTextCopy.dailyReminderBody(), 15, MUTED, false));
-
-        Button time = secondaryButton(SettingsTextCopy.reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
-        time.setOnClickListener(v -> new TimePickerDialog(
-                this,
-                (view, hour, minute) -> {
-                    selectedHour[0] = hour;
-                    selectedMinute[0] = minute;
-                    time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
-                },
-                selectedHour[0],
-                selectedMinute[0],
-                true
-        ).show());
-        box.addView(time);
-
-        List<View> presets = new ArrayList<>();
-        presets.add(reminderPresetButton(SettingsTextCopy.morningReminderPresetLabel(), 8, 0, selectedHour, selectedMinute, time));
-        presets.add(reminderPresetButton(SettingsTextCopy.lunchReminderPresetLabel(), 12, 30, selectedHour, selectedMinute, time));
-        presets.add(reminderPresetButton(SettingsTextCopy.eveningReminderPresetLabel(), 19, 0, selectedHour, selectedMinute, time));
-        presets.add(reminderPresetButton(SettingsTextCopy.nightReminderPresetLabel(), 21, 0, selectedHour, selectedMinute, time));
-        box.addView(twoColumnGrid(presets));
-
-        Button save = primaryButton(reminder.enabled ? SettingsTextCopy.saveReminderLabel() : SettingsTextCopy.enableReminderLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true));
-        box.addView(save);
-        if (reminder.enabled) {
-            Button off = secondaryButton(SettingsTextCopy.turnOffReminderLabel());
-            off.setOnClickListener(v -> {
-                ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute);
-                store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
-                ReminderScheduler.cancel(this);
-                Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
-                renderSettings();
-            });
-            box.addView(off);
-        }
-        if (blocked) {
-            box.addView(text(SettingsTextCopy.notificationsBlockedBody(), 14, CORAL, false));
-            Button notificationSettings = secondaryButton(SettingsTextCopy.openNotificationSettingsLabel());
-            notificationSettings.setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName())));
-            box.addView(notificationSettings);
-        } else if (!hasRuntimeNotificationPermissionForReminder()) {
-            box.addView(text(SettingsTextCopy.notificationPermissionBody(), 14, CORAL, false));
-        }
-        return box;
+        return automation().reminderSettingsPanel();
     }
 
     LinearLayout autoSyncSettingsPanel() {
-        LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.dailyAnkiSyncTitle(), 23, INK, true));
-        box.addView(text(
-                SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime()),
-                17,
-                auto.enabled ? TEAL : MUTED,
-                true
-        ));
-        String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
-        String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
-                ? DateTextPolicy.shortDateTime(auto.lastAttemptAt)
-                : "";
-        String nextRun = auto.nextRunAt > 0L ? DateTextPolicy.shortDateTime(auto.nextRunAt) : "";
-        box.addView(text(SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun), 15, MUTED, false));
-        if (auto.configured) {
-            if (auto.enabled) {
-                Button off = secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
-                off.setOnClickListener(v -> {
-                    AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
-                    store.setAutoSyncEnabled(result.enabled());
-                    AutoSyncScheduler.cancel(this);
-                    Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
-                    renderSettings();
-                });
-                box.addView(off);
-            } else {
-                Button on = primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), STUDY_PINK_DARK);
-                on.setOnClickListener(v -> {
-                    AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
-                    store.setAutoSyncEnabled(result.enabled());
-                    AutoSyncScheduler.schedule(this);
-                    Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
-                    renderSettings();
-                });
-                box.addView(on);
-            }
-        }
-        return box;
+        return automation().autoSyncSettingsPanel();
     }
 
     LinearLayout updateSettingsPanel() {
-        LinearLayout box = autoUpdatePanel(SettingsTextCopy.appUpdatesTitle());
-        Button update = primaryButton(SettingsTextCopy.openUpdaterLabel(), STUDY_PINK_DARK);
-        update.setOnClickListener(v -> renderUpdate());
-        box.addView(update);
-        return box;
+        return automation().updateSettingsPanel();
     }
 
     Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
-        Button preset = secondaryButton(SettingsTextCopy.reminderPresetButtonLabel(label, hour, minute));
-        preset.setTextSize(13);
-        preset.setMinHeight(dp(54));
-        preset.setOnClickListener(v -> {
-            selectedHour[0] = hour;
-            selectedMinute[0] = minute;
-            timeButton.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
-        });
-        return preset;
+        return automation().reminderPresetButton(label, hour, minute, selectedHour, selectedMinute, timeButton);
     }
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
-        ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute);
-        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
-        if (!enabled) {
-            store.saveReminderSettings(reminder);
-            ReminderScheduler.cancel(this);
-            Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
-            renderSettings();
-            return;
-        }
-        ReminderScheduler.ensureNotificationChannel(this);
-        if (!hasRuntimeNotificationPermissionForReminder()) {
-            pendingReminderSettings = reminder;
-            requestPermissions(new String[]{PERMISSION_POST_NOTIFICATIONS}, REQUEST_POST_NOTIFICATIONS);
-            return;
-        }
-        store.saveReminderSettings(reminder);
-        ReminderScheduler.schedule(this, reminder);
-        boolean allowed = notificationsAllowedForReminders();
-        Toast.makeText(this, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
-        renderSettings();
+        automation().saveReminderFromSelection(hour, minute, enabled);
     }
 
     void runUpdate(boolean cachedPending) {
