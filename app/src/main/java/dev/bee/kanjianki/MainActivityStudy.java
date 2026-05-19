@@ -194,7 +194,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             renderSimilarWritingRepair(repair, plan, now);
             return true;
         }
-        if (studyRunAtHardCap()) {
+        if (studySessionTracker.atHardCap(continueAllKanjiSession)) {
             renderStudyRunDone(plan);
             return true;
         }
@@ -948,10 +948,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         for (RecordsImportModels.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
             studySessionTracker.includePendingTask(similarRepairProgressKey(repair));
         }
-    }
-
-    boolean studyRunAtHardCap() {
-        return studySessionTracker.atHardCap(continueAllKanjiSession);
     }
 
     void registerStudyTaskShown(String key) {

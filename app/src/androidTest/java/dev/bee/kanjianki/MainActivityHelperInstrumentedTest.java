@@ -1306,14 +1306,14 @@ public final class MainActivityHelperInstrumentedTest {
         activity.resetStudyRunProgress();
         assertEquals(0, activity.studySessionTracker.completedCount());
         assertEquals(0, activity.studySessionTracker.targetCount());
-        assertFalse(activity.studyRunAtHardCap());
+        assertFalse(activity.studySessionTracker.atHardCap(activity.continueAllKanjiSession));
         activity.initializeSessionProgressTarget(dueLater);
         assertEquals(2, activity.studySessionTracker.targetCount());
         activity.markStudyTaskCompleted("cap:one");
         activity.markStudyTaskCompleted("cap:two");
-        assertTrue(activity.studyRunAtHardCap());
+        assertTrue(activity.studySessionTracker.atHardCap(activity.continueAllKanjiSession));
         activity.continueAllKanjiSession = true;
-        assertFalse(activity.studyRunAtHardCap());
+        assertFalse(activity.studySessionTracker.atHardCap(activity.continueAllKanjiSession));
         activity.clearStudyModeOverrides();
         assertFalse(activity.continueAllKanjiSession);
 
