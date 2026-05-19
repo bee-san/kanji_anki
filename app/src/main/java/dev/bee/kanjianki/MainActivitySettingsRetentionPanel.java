@@ -17,9 +17,11 @@ import dev.bee.kanjianki.core.SettingsTextCopy;
 
 final class MainActivitySettingsRetentionPanel {
     private final MainActivitySettings activity;
+    private final MainActivitySettingsRetentionSlider retentionSlider;
 
     MainActivitySettingsRetentionPanel(MainActivitySettings activity) {
         this.activity = activity;
+        this.retentionSlider = new MainActivitySettingsRetentionSlider(activity);
     }
 
     LinearLayout retentionSettingsPanel() {
@@ -32,25 +34,7 @@ final class MainActivitySettingsRetentionPanel {
         box.addView(activity.text(SettingsTextCopy.fsrsRetentionBody(), 15, activity.MUTED, false));
 
         SeekBar slider = new SeekBar(activity);
-        slider.setMax(17);
-        slider.setProgress(selected[0] - 80);
-        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = 80 + progress;
-                status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                // Drag-stop has no side effects; selected retention is already updated.
-            }
-        });
+        retentionSlider.bindRetentionSlider(selected, status, slider);
         box.addView(slider, new LinearLayout.LayoutParams(-1, activity.dp(56)));
 
         LinearLayout quick = new LinearLayout(activity);
