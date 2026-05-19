@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -33,17 +34,32 @@ final class MainActivitySettingsStudyAheadPanel {
         box.addView(minutesInput, new LinearLayout.LayoutParams(-1, activity.dp(58)));
 
         Button save = activity.primaryButton(SettingsTextCopy.saveStudyAheadLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesInput.getText().toString());
-            if (!request.valid) {
-                Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            activity.store.saveStudyAheadMinutes(request.minutes);
-            Toast.makeText(activity, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveStudyAhead(minutesInput)));
         box.addView(save);
         return box;
+    }
+
+    private void saveStudyAhead(EditText minutesInput) {
+        StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesInput.getText().toString());
+        if (!request.valid) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        activity.store.saveStudyAheadMinutes(request.minutes);
+        Toast.makeText(activity, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
