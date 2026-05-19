@@ -366,17 +366,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         StudyMoreNewCardActions.AdmissionResult admission = StudyMoreNewCardActions.applyAdmission(
                 result,
-                new StudyMoreNewCardActions.StudyItemWriter() {
-                    @Override
-                    public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
-                        return store.annotateSimilarKanjiAvailability(items);
-                    }
-
-                    @Override
-                    public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
-                        store.replaceStudyItems(items);
-                    }
-                },
+                new MainActivityStudyMoreNewCardWriter(this),
                 studyMoreNewCardKanji,
                 this::resetStudyRunProgress,
                 studySessionTracker::setTargetCount
