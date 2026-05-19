@@ -118,6 +118,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsRetention(this);
     }
 
+    private MainActivitySettingsStudyTuning studyTuning() {
+        return new MainActivitySettingsStudyTuning(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -726,33 +730,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout studyAheadSettingsPanel() {
-        int currentMinutes = store.studyAheadMinutes();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.studyAheadTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.studyAheadBody(), 15, MUTED, false));
-
-        EditText minutesInput = new EditText(this);
-        minutesInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        minutesInput.setText(String.format(Locale.ROOT, "%d", currentMinutes));
-        minutesInput.setTextSize(20);
-        minutesInput.setSingleLine(true);
-        minutesInput.setSelectAllOnFocus(true);
-        box.addView(text(SettingsTextCopy.studyAheadMinutesLabel(), 15, INK, true));
-        box.addView(minutesInput, new LinearLayout.LayoutParams(-1, dp(58)));
-
-        Button save = primaryButton(SettingsTextCopy.saveStudyAheadLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesInput.getText().toString());
-            if (!request.valid) {
-                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            store.saveStudyAheadMinutes(request.minutes);
-            Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return studyTuning().studyAheadSettingsPanel();
     }
 
     LinearLayout studyLadderSettingsPanel() {
@@ -821,41 +799,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout ladderThresholdSettingsPanel() {
-        RecordsSyncModels.Settings current = settings();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.ladderThresholdsTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.ladderThresholdsBody(), 15, MUTED, false));
-
-        EditText promotionDays = thresholdInput(current.ladderPromotionIntervalDays);
-        EditText failStreak = thresholdInput(current.ladderDemotionFailStreak);
-        box.addView(text(SettingsTextCopy.fsrsDaysToGoUpLabel(), 15, INK, true));
-        box.addView(promotionDays, new LinearLayout.LayoutParams(-1, dp(58)));
-        box.addView(text(SettingsTextCopy.failsToGoDownLabel(), 15, INK, true));
-        box.addView(failStreak, new LinearLayout.LayoutParams(-1, dp(58)));
-
-        Button defaults = secondaryButton(SettingsTextCopy.useDefaultLadderThresholdsLabel());
-        defaults.setOnClickListener(v -> {
-            promotionDays.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
-            failStreak.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
-        });
-        box.addView(defaults);
-
-        Button save = primaryButton(SettingsTextCopy.saveLadderThresholdsLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            StudyLadderThresholdPolicy.SaveResult request = StudyLadderThresholdPolicy.saveRequest(
-                    promotionDays.getText().toString(),
-                    failStreak.getText().toString()
-            );
-            if (!request.valid) {
-                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsWriteActions.saveLadderThresholds(request, store::putIntSetting);
-            Toast.makeText(this, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return studyTuning().ladderThresholdSettingsPanel();
     }
 
     EditText thresholdInput(int value) {
