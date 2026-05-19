@@ -287,17 +287,4 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return updateFlow().indeterminateProgressRow(label);
     }
 
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
-    }
-
 }

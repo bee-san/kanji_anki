@@ -370,19 +370,6 @@ abstract class MainActivityHome extends MainActivityBase {
         return button;
     }
 
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
-    }
-
     View fullWidthHomeButton() {
         LinearLayout button = new LinearLayout(this);
         button.setOrientation(LinearLayout.HORIZONTAL);
