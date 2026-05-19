@@ -55,6 +55,7 @@ import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
+import dev.bee.kanjianki.core.StudyLayoutPolicy;
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.StudySessionFocusPolicy;
@@ -1323,13 +1324,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     int studyPadHeightForScreenDp(int screenDp) {
-        if (screenDp < 700) {
-            return dp(300);
-        }
-        if (screenDp < 820) {
-            return dp(340);
-        }
-        return dp(390);
+        return dp(StudyLayoutPolicy.writingPadHeightDp(screenDp));
     }
 
     void checkWriting() {
