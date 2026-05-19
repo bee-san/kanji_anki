@@ -124,6 +124,10 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
     private final Random meaningChoiceRandom = new Random();
 
+    private MainActivityStudyFlashcard flashcardUi() {
+        return new MainActivityStudyFlashcard(this);
+    }
+
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
         box.addView(text("Reference", 19, STUDY_PLUM, true));
@@ -643,124 +647,23 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
-        resetFlashcardSession();
-
-        LinearLayout card = recognitionHeroCard(session);
-        flashcardCard = card;
-        flashcardGestureArea = card;
-
-        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
-        cardLp.setMargins(0, 0, 0, dp(14));
-        content.addView(card, cardLp);
-        buildFlashcardActionBar(false);
+        flashcardUi().renderFlashcardSession(session);
     }
 
     LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(18), dp(18), dp(18), dp(18));
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setBackground(panel(Color.WHITE, Color.TRANSPARENT, dp(32)));
-        card.setElevation(dp(8));
-        card.setClickable(true);
-        card.setFocusable(true);
-
-        card.addView(recognitionPill(StudyTaskCopy.studyModeLabel(session)));
-
-        TextView title = text(StudyTaskCopy.flashcardTitle(session), 21, STUDY_HERO_PLUM, true);
-        title.setGravity(Gravity.CENTER);
-        title.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
-        titleLp.setMargins(0, dp(14), 0, 0);
-        card.addView(title, titleLp);
-
-        TextView question = text(StudyTextCopy.heroQuestion(session), 27, STUDY_HERO_PLUM, true);
-        question.setGravity(Gravity.CENTER);
-        question.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams questionLp = new LinearLayout.LayoutParams(-1, -2);
-        questionLp.setMargins(0, dp(8), 0, 0);
-        card.addView(question, questionLp);
-
-        TextView hiddenHint = text("Answer hidden until reveal", 14, STUDY_HERO_MUTED, false);
-        hiddenHint.setGravity(Gravity.CENTER);
-        hiddenHint.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
-        hintLp.setMargins(0, dp(6), 0, 0);
-        card.addView(hiddenHint, hintLp);
-        addStudyReasonLine(card, session);
-
-        flashcardHeroPanel = heroKanjiPanel(session);
-        card.addView(flashcardHeroPanel);
-
-        if (StudyTaskCopy.isTypingMeaningTask(session)) {
-            TextView label = text(LABEL_MEANING, 15, STUDY_HERO_MUTED, true);
-            label.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-1, -2);
-            labelLp.setMargins(0, dp(14), 0, dp(8));
-            card.addView(label, labelLp);
-            card.addView(typingAnswerField());
-        }
-
-        studyAnswerPanel = flashcardAnswerPanel(session);
-        studyAnswerPanel.setVisibility(View.GONE);
-        card.addView(studyAnswerPanel);
-
-        return card;
+        return flashcardUi().recognitionHeroCard(session);
     }
 
     View recognitionPill(String label) {
-        LinearLayout pill = new LinearLayout(this);
-        pill.setOrientation(LinearLayout.HORIZONTAL);
-        pill.setGravity(Gravity.CENTER);
-        pill.setPadding(dp(18), 0, dp(18), 0);
-        pill.setMinimumHeight(dp(44));
-        pill.setBackground(panel(Color.rgb(253, 239, 246), Color.TRANSPARENT, dp(24)));
-
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(R.drawable.ic_eye_24);
-        icon.setColorFilter(STUDY_HERO_PINK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(dp(22), dp(22));
-        iconLp.setMargins(0, 0, dp(10), 0);
-        pill.addView(icon, iconLp);
-
-        TextView text = text(label, 18, STUDY_HERO_PINK, true);
-        text.setIncludeFontPadding(false);
-        pill.addView(text);
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(44));
-        lp.gravity = Gravity.CENTER_HORIZONTAL;
-        pill.setLayoutParams(lp);
-        return pill;
+        return flashcardUi().recognitionPill(label);
     }
 
     View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {
-        FrameLayout panel = new FrameLayout(this);
-        panel.setBackground(panel(STUDY_HERO_PANEL, STUDY_BORDER, dp(28)));
-        panel.setPadding(dp(10), dp(10), dp(10), dp(10));
-
-        TextView glyph = text(
-                StudyTaskCopy.isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
-                StudyTaskCopy.isWordReadingTask(session) ? 44 : 116,
-                STUDY_HERO_PLUM,
-                true
-        );
-        if (StudyTaskCopy.isFontRecognitionTask(session)) {
-            glyph.setTypeface(randomFontVariantTypeface(), Typeface.BOLD);
-        } else {
-            glyph.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        }
-        glyph.setGravity(Gravity.CENTER);
-        glyph.setIncludeFontPadding(false);
-        panel.addView(glyph, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(210));
-        lp.setMargins(0, dp(16), 0, 0);
-        panel.setLayoutParams(lp);
-        return panel;
+        return flashcardUi().heroKanjiPanel(session);
     }
 
     Typeface randomFontVariantTypeface() {
-        return StudyFontVariants.random(this);
+        return flashcardUi().randomFontVariantTypeface();
     }
 
     void renderWritingSession(RecordsSchedulerModels.StudySession session) {
@@ -961,67 +864,23 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     View typingAnswerField() {
-        typingAnswerInput = new EditText(this);
-        typingAnswerInput.setSingleLine(true);
-        typingAnswerInput.setTextSize(20);
-        typingAnswerInput.setTextColor(STUDY_PLUM);
-        typingAnswerInput.setHintTextColor(STUDY_MUTED);
-        typingAnswerInput.setHint(LABEL_MEANING);
-        typingAnswerInput.setPadding(dp(16), 0, dp(16), 0);
-        typingAnswerInput.setBackground(panel(Color.WHITE, STUDY_BORDER, dp(18)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(58));
-        lp.setMargins(0, dp(4), 0, dp(4));
-        typingAnswerInput.setLayoutParams(lp);
-        return typingAnswerInput;
+        return flashcardUi().typingAnswerField();
     }
 
     Typeface fontResource(int fontRes, Typeface fallback) {
-        try {
-            return getResources().getFont(fontRes);
-        } catch (RuntimeException e) {
-            return fallback;
-        }
+        return flashcardUi().fontResource(fontRes, fallback);
     }
 
     View flashcardAnswerPanel(RecordsSchedulerModels.StudySession session) {
-        LinearLayout box = softInsetPanel();
-        box.addView(text("Answer", 19, STUDY_PLUM, true));
-        box.addView(studyAnswerDetailsRow(session, 76));
-        return box;
+        return flashcardUi().flashcardAnswerPanel(session);
     }
 
     LinearLayout studyAnswerDetailsRow(RecordsSchedulerModels.StudySession session, int glyphSize) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView glyph = text(session.item.kanji, glyphSize, STUDY_PLUM, true);
-        glyph.setGravity(Gravity.CENTER);
-        row.addView(glyph, new LinearLayout.LayoutParams(dp(118), dp(108)));
-
-        LinearLayout details = new LinearLayout(this);
-        details.setOrientation(LinearLayout.VERTICAL);
-        if (session.row != null) {
-            addStudyCueLines(details, session);
-        } else {
-            details.addView(text(session.prompt, 15, MUTED, false));
-        }
-        row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
-        return row;
+        return flashcardUi().studyAnswerDetailsRow(session, glyphSize);
     }
 
     void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
-        List<String> lines = StudyCueTexts.answerLines(
-                currentDictionaryLookup(),
-                session,
-                exampleForSession(session),
-                StudyTaskCopy.isWordReadingTask(session)
-        );
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            int color = line.startsWith("Reading:") ? STUDY_PINK_DARK : STUDY_PLUM;
-            details.addView(text(line, i == 0 ? 17 : 15, color, true));
-        }
+        flashcardUi().addStudyCueLines(details, session);
     }
 
     DictionaryLookup currentDictionaryLookup() {
@@ -1032,149 +891,27 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void buildFlashcardActionBar(boolean revealed) {
-        if (studyActionBar == null) {
-            return;
-        }
-        styleStudyActionBarShell();
-        studyActionBar.removeAllViews();
-        studyActionBar.setVisibility(View.VISIBLE);
-
-        resultStatus = text("", 15, STUDY_MUTED, false);
-        resultStatus.setVisibility(View.GONE);
-        studyActionBar.addView(resultStatus);
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        if (!revealed) {
-            Button reveal = pinkPrimaryButton("Reveal");
-            reveal.setOnClickListener(v -> revealFlashcardAnswer());
-            actions.addView(reveal, new LinearLayout.LayoutParams(0, dp(62), 1));
-        } else {
-            Button fail = studyFailButton("Fail");
-            fail.setOnClickListener(v -> submitReview(RATING_AGAIN, false));
-            LinearLayout.LayoutParams failParams = new LinearLayout.LayoutParams(0, dp(62), 1);
-            failParams.setMargins(0, 0, dp(6), 0);
-            actions.addView(fail, failParams);
-
-            Button pass = pinkPrimaryButton(LABEL_PASS);
-            pass.setOnClickListener(v -> submitReview(RATING_GOOD, false));
-            LinearLayout.LayoutParams passParams = new LinearLayout.LayoutParams(0, dp(62), 1);
-            passParams.setMargins(dp(6), 0, 0, 0);
-            actions.addView(pass, passParams);
-        }
-        studyActionBar.addView(actions);
+        flashcardUi().buildFlashcardActionBar(revealed);
     }
 
     void revealFlashcardAnswer() {
-        if (flashcardAnswerRevealed) {
-            return;
-        }
-        if (StudyTaskCopy.isTypingMeaningTask(activeSession)
-                && TypingAnswerMatcher.matches(
-                currentDictionaryLookup(),
-                activeSession.item.kanji,
-                typingAnswerInput == null ? "" : typingAnswerInput.getText().toString(),
-                StudyTextCopy.collectionMeaningForSession(activeSession))) {
-            Toast.makeText(this, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show();
-            submitReview(RATING_GOOD, false);
-            return;
-        }
-        flashcardAnswerRevealed = true;
-        if (flashcardHeroPanel != null) {
-            flashcardHeroPanel.setVisibility(View.GONE);
-        }
-        expandFlashcardForAnswer();
-        if (studyAnswerPanel != null) {
-            studyAnswerPanel.setVisibility(View.VISIBLE);
-        }
-        buildFlashcardActionBar(true);
+        flashcardUi().revealFlashcardAnswer();
     }
 
     void expandFlashcardForAnswer() {
-        if (flashcardCard == null) {
-            return;
-        }
-        int currentFullHeight = flashcardCard.getHeight();
-        if (currentFullHeight > 0) {
-            flashcardCard.setMinimumHeight(currentFullHeight);
-        }
-        ViewGroup.LayoutParams params = flashcardCard.getLayoutParams();
-        if (params instanceof LinearLayout.LayoutParams linearParams) {
-            linearParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            linearParams.weight = 0f;
-            flashcardCard.setLayoutParams(linearParams);
-            flashcardCard.requestLayout();
-        }
+        flashcardUi().expandFlashcardForAnswer();
     }
 
     boolean handleFlashcardGesture(MotionEvent event) {
-        if (activeSession == null || activeSession.writingRequired || flashcardGestureArea == null) {
-            flashcardTouchTracking = false;
-            return false;
-        }
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                if (StudyTaskCopy.isTypingMeaningTask(activeSession)
-                        && typingAnswerInput != null
-                        && isTouchInsideView(typingAnswerInput, event)) {
-                    flashcardTouchTracking = false;
-                    return false;
-                }
-                flashcardTouchTracking = isTouchInsideView(flashcardGestureArea, event);
-                if (flashcardTouchTracking) {
-                    flashcardTouchStartX = event.getRawX();
-                    flashcardTouchStartY = event.getRawY();
-                }
-                return false;
-            case MotionEvent.ACTION_UP:
-                if (!flashcardTouchTracking) {
-                    return false;
-                }
-                flashcardTouchTracking = false;
-                if (!isTouchInsideView(flashcardGestureArea, event)) {
-                    return false;
-                }
-                return handleFlashcardRelease(event);
-            case MotionEvent.ACTION_CANCEL:
-                flashcardTouchTracking = false;
-                return false;
-            default:
-                return false;
-        }
+        return flashcardUi().handleFlashcardGesture(event);
     }
 
     boolean handleFlashcardRelease(MotionEvent event) {
-        int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
-        FlashcardGesturePolicy.Decision decision = FlashcardGesturePolicy.release(
-                flashcardTouchStartX,
-                flashcardTouchStartY,
-                event.getRawX(),
-                event.getRawY(),
-                touchSlop,
-                dp(72),
-                flashcardAnswerRevealed
-        );
-        switch (decision.action) {
-            case REVEAL:
-                revealFlashcardAnswer();
-                return true;
-            case REVIEW:
-                submitReview(decision.rating, false);
-                return true;
-            default:
-                return false;
-        }
+        return flashcardUi().handleFlashcardRelease(event);
     }
 
     boolean isTouchInsideView(View view, MotionEvent event) {
-        if (view == null || !view.isShown()) {
-            return false;
-        }
-        Rect bounds = new Rect();
-        if (!view.getGlobalVisibleRect(bounds)) {
-            return false;
-        }
-        return bounds.contains((int) event.getRawX(), (int) event.getRawY());
+        return flashcardUi().isTouchInsideView(view, event);
     }
 
     void buildStudyActionBar() {
