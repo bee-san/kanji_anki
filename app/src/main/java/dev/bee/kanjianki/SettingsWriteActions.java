@@ -150,30 +150,6 @@ final class SettingsWriteActions {
         writer.putStringSetting(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY, request.browserQuery());
     }
 
-    static void applyImportPreset(
-            SettingsImportPreset preset,
-            IntSettingWriter intWriter,
-            StringSettingWriter stringWriter,
-            DoubleSettingWriter doubleWriter
-    ) {
-        applyImportPreset(preset, new SettingWriter() {
-            @Override
-            public void putIntSetting(String key, int value) {
-                intWriter.putIntSetting(key, value);
-            }
-
-            @Override
-            public void putStringSetting(String key, String value) {
-                stringWriter.putStringSetting(key, value);
-            }
-
-            @Override
-            public void putDoubleSetting(String key, double value) {
-                doubleWriter.putDoubleSetting(key, value);
-            }
-        });
-    }
-
     interface IntSettingWriter {
         void putIntSetting(String key, int value);
     }
