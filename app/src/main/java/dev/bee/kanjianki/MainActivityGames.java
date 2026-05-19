@@ -179,7 +179,9 @@ abstract class MainActivityGames extends MainActivityHome {
         }
         result.addView(text(question.explanation, 15, MUTED, false));
         if (roundComplete) {
-            addRoundActions(result, question.mode);
+            Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(question.mode));
+            newRound.setOnClickListener(v -> startGame(question.mode));
+            result.addView(newRound);
         } else {
             Button next = primaryButton(KanjiGameCopy.LABEL_NEXT, colorForGameMode(question.mode));
             next.setOnClickListener(v -> renderGameQuestion(question.mode));
@@ -198,7 +200,9 @@ abstract class MainActivityGames extends MainActivityHome {
         LinearLayout result = panelBox(Color.WHITE, softened(BLUE));
         result.addView(text(KanjiGameCopy.LABEL_ROUND_COMPLETE, 28, BLUE, true));
         addRoundSummary(result);
-        addRoundActions(result, mode);
+        Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(mode));
+        newRound.setOnClickListener(v -> startGame(mode));
+        result.addView(newRound);
         Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
         games.setOnClickListener(v -> renderGames());
         result.addView(games);
@@ -215,12 +219,6 @@ abstract class MainActivityGames extends MainActivityHome {
             return BLUE;
         }
         return correct ? TEAL : CORAL;
-    }
-
-    private void addRoundActions(LinearLayout result, KanjiGameEngine.GameMode mode) {
-        Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(mode));
-        newRound.setOnClickListener(v -> startGame(mode));
-        result.addView(newRound);
     }
 
     private boolean gameRoundComplete() {
