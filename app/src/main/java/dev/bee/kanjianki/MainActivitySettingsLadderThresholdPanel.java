@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -33,27 +34,44 @@ final class MainActivitySettingsLadderThresholdPanel {
         box.addView(failStreak, new LinearLayout.LayoutParams(-1, activity.dp(58)));
 
         Button defaults = activity.secondaryButton(SettingsTextCopy.useDefaultLadderThresholdsLabel());
-        defaults.setOnClickListener(v -> {
-            promotionDays.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
-            failStreak.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
-        });
+        defaults.setOnClickListener(new RunnableClickListener(() -> applyDefaultThresholds(promotionDays, failStreak)));
         box.addView(defaults);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveLadderThresholdsLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            StudyLadderThresholdPolicy.SaveResult request = StudyLadderThresholdPolicy.saveRequest(
-                    promotionDays.getText().toString(),
-                    failStreak.getText().toString()
-            );
-            if (!request.valid) {
-                Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting);
-            Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveLadderThresholds(promotionDays, failStreak)));
         box.addView(save);
         return box;
+    }
+
+    private void applyDefaultThresholds(EditText promotionDays, EditText failStreak) {
+        promotionDays.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
+        failStreak.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
+    }
+
+    private void saveLadderThresholds(EditText promotionDays, EditText failStreak) {
+        StudyLadderThresholdPolicy.SaveResult request = StudyLadderThresholdPolicy.saveRequest(
+                promotionDays.getText().toString(),
+                failStreak.getText().toString()
+        );
+        if (!request.valid) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting);
+        Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
