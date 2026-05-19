@@ -32,35 +32,15 @@ final class MainActivitySettingsLearningPanel {
         LinearLayout presets = new LinearLayout(activity);
         presets.setOrientation(LinearLayout.HORIZONTAL);
         Button ankiDefault = activity.secondaryButton(SettingsTextCopy.ankiDefaultLabel());
-        ankiDefault.setOnClickListener(v -> {
-            RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-            newSteps.setText(defaults.newStepsText());
-            reviewSteps.setText(defaults.reviewStepsText());
-        });
+        ankiDefault.setOnClickListener(new RunnableClickListener(() -> applyLearningStepDefaults(newSteps, reviewSteps, false)));
         presets.addView(ankiDefault, new LinearLayout.LayoutParams(0, activity.dp(54), 1));
         Button sameSteps = activity.secondaryButton(SettingsTextCopy.sameLearningStepsLabel());
-        sameSteps.setOnClickListener(v -> {
-            RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-            newSteps.setText(defaults.newStepsText());
-            reviewSteps.setText(defaults.newStepsText());
-        });
+        sameSteps.setOnClickListener(new RunnableClickListener(() -> applyLearningStepDefaults(newSteps, reviewSteps, true)));
         presets.addView(sameSteps, new LinearLayout.LayoutParams(0, activity.dp(54), 1));
         box.addView(presets);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveLearningStepsLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            LearningStepsSettingsPolicy.SaveResult request = LearningStepsSettingsPolicy.saveRequest(
-                    newSteps.getText().toString(),
-                    reviewSteps.getText().toString()
-            );
-            if (!request.valid) {
-                Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsWriteActions.saveLearningSteps(request, activity.store::saveLearningStepSettings);
-            Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveLearningSteps(newSteps, reviewSteps)));
         box.addView(save);
         return box;
     }
@@ -73,5 +53,38 @@ final class MainActivitySettingsLearningPanel {
         input.setSingleLine(true);
         input.setSelectAllOnFocus(true);
         return input;
+    }
+
+    private void applyLearningStepDefaults(EditText newSteps, EditText reviewSteps, boolean useSameSteps) {
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
+        newSteps.setText(defaults.newStepsText());
+        reviewSteps.setText(useSameSteps ? defaults.newStepsText() : defaults.reviewStepsText());
+    }
+
+    private void saveLearningSteps(EditText newSteps, EditText reviewSteps) {
+        LearningStepsSettingsPolicy.SaveResult request = LearningStepsSettingsPolicy.saveRequest(
+                newSteps.getText().toString(),
+                reviewSteps.getText().toString()
+        );
+        if (!request.valid) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        SettingsWriteActions.saveLearningSteps(request, activity.store::saveLearningStepSettings);
+        Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements android.view.View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(android.view.View v) {
+            action.run();
+        }
     }
 }
