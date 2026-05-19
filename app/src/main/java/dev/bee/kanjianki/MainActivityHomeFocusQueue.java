@@ -2,13 +2,11 @@ package dev.bee.kanjianki;
 
 import android.graphics.Color;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.FocusQueueCopy;
@@ -37,22 +35,7 @@ final class MainActivityHomeFocusQueue {
         List<MainActivityBase.QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
 
         home.content.addView(home.homeSectionHeader(HomeTextCopy.focusQueueTitle(), HomeTextCopy.homeLabel(), home::renderHome));
-        home.content.addView(home.text(AdaptiveFocusCopy.adaptiveFocusText(plan), 16, home.MUTED, false));
-        home.addSpace(8);
-        if (rows.isEmpty()) {
-            home.emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.focusQueueNoKanjiQueuedBody());
-            Button syncButton = home.primaryButton(HomeTextCopy.syncAnkiDroidLabel(), home.CORAL);
-            syncButton.setOnClickListener(new RunnableClickListener(home::confirmSync));
-            home.content.addView(syncButton);
-            return;
-        }
-        if (entries.isEmpty()) {
-            home.emptyState(MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE, MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY);
-            return;
-        }
-        for (MainActivityBase.QueueEntry entry : entries) {
-            home.content.addView(queueRowView(entry, now));
-        }
+        home.content.addView(MainActivityHomeFocusQueueCompose.homeFocusQueueContentView(home, rows, entries, now, plan));
     }
 
     void renderRecentMistakes() {
