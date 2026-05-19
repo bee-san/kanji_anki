@@ -1010,11 +1010,11 @@ public final class MainActivityHelperInstrumentedTest {
         StudyStatsStore.StudyStreak none = new StudyStatsStore.StudyStreak(0, 0, false, 0, 0L);
         StudyStatsStore.StudyStreak doneToday = new StudyStatsStore.StudyStreak(2, 5, true, 3, 1000L);
         StudyStatsStore.StudyStreak doneNoBest = new StudyStatsStore.StudyStreak(1, 0, true, 1, 1000L);
-        assertEquals("No streak yet", activity.streakHeadline(none));
-        assertEquals("2-day streak", activity.streakHeadline(doneToday));
-        assertEquals("Not done today", activity.streakMetricBody(none));
-        assertEquals("Best: 5 days", activity.streakMetricBody(doneToday));
-        assertEquals("Done today", activity.streakMetricBody(doneNoBest));
+        assertEquals("No streak yet", HomeTextCopy.streakHeadline(none.currentDays));
+        assertEquals("2-day streak", HomeTextCopy.streakHeadline(doneToday.currentDays));
+        assertEquals("Not done today", HomeTextCopy.streakMetricBody(none.studiedToday, none.bestDays));
+        assertEquals("Best: 5 days", HomeTextCopy.streakMetricBody(doneToday.studiedToday, doneToday.bestDays));
+        assertEquals("Done today", HomeTextCopy.streakMetricBody(doneNoBest.studiedToday, doneNoBest.bestDays));
         assertEquals("1 day", HomeTextCopy.streakDayCount(1));
         assertEquals("3 days", HomeTextCopy.streakDayCount(3));
     }

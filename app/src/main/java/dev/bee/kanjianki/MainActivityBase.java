@@ -173,7 +173,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     abstract void resumeActiveStudyTask();
     abstract void abandonActiveStudyTask();
     abstract boolean handleFlashcardGesture(MotionEvent event);
-    abstract String streakHeadline(StudyStatsStore.StudyStreak streak);
     abstract void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan);
     abstract DictionaryLookup currentDictionaryLookup();
     abstract RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row);

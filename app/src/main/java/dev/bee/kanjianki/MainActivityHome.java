@@ -186,8 +186,8 @@ abstract class MainActivityHome extends MainActivityBase {
                 R.drawable.ic_flame_24,
                 streakAccent(streak),
                 HomeTextCopy.streakMetricLabel(),
-                streakHeadline(streak),
-                streakMetricBody(streak),
+                HomeTextCopy.streakHeadline(streak == null ? 0 : streak.currentDays),
+                HomeTextCopy.streakMetricBody(streak != null && streak.studiedToday, streak == null ? 0 : streak.bestDays),
                 null
         ));
         row.addView(metricCard(
@@ -459,16 +459,8 @@ abstract class MainActivityHome extends MainActivityBase {
         return box;
     }
 
-    String streakHeadline(StudyStatsStore.StudyStreak streak) {
-        return HomeTextCopy.streakHeadline(streak.currentDays);
-    }
-
     int streakAccent(StudyStatsStore.StudyStreak streak) {
         return streak != null && streak.studiedToday ? Color.rgb(247, 159, 0) : Color.rgb(160, 160, 166);
-    }
-
-    String streakMetricBody(StudyStatsStore.StudyStreak streak) {
-        return HomeTextCopy.streakMetricBody(streak != null && streak.studiedToday, streak == null ? 0 : streak.bestDays);
     }
 
     void confirmSync() {
