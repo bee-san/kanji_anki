@@ -5,6 +5,8 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.SettingsImportPreset;
+import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.StatsTextCopy;
 import android.content.Context;
@@ -384,8 +386,8 @@ public final class MainActivityHelperInstrumentedTest {
     private static void verifyVersionRankAndRetentionText(MainActivity activity) {
         assertEquals("unknown version", SettingsTextCopy.versionText(""));
         assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
-        assertEquals(1, MainActivitySettings.boolFlag(true));
-        assertEquals(0, MainActivitySettings.boolFlag(false));
+        assertEquals(1, SettingsImportPreset.boolFlag(true));
+        assertEquals(0, SettingsImportPreset.boolFlag(false));
         assertEquals(0, activity.rankSliderProgress(-20));
         assertEquals(19999, activity.rankSliderProgress(50_000));
         assertEquals(1, activity.rankFromSliderProgress(-4));
@@ -397,8 +399,8 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyImportSourceSummaries(MainActivity activity) {
-        assertTrue(activity.validImportThresholds(7.5, 3, 2));
-        assertFalse(activity.validImportThresholds(0.5, 3, 2));
+        assertTrue(SettingsInputRules.validImportThresholds(7.5, 3, 2));
+        assertFalse(SettingsInputRules.validImportThresholds(0.5, 3, 2));
         assertFalse(activity.hasSelectedImportSource(
                 checked(activity, false),
                 checked(activity, false),
