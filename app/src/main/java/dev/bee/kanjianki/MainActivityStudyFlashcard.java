@@ -1,35 +1,30 @@
 package dev.bee.kanjianki;
 
 import android.graphics.Color;
-import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
-import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import dev.bee.kanjianki.core.FlashcardGesturePolicy;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
-import dev.bee.kanjianki.core.TypingAnswerMatcher;
 
 import java.util.List;
 
 final class MainActivityStudyFlashcard {
     private final MainActivityStudy activity;
+    private final MainActivityStudyFlashcardInteraction interaction;
 
     MainActivityStudyFlashcard(MainActivityStudy activity) {
         this.activity = activity;
+        this.interaction = new MainActivityStudyFlashcardInteraction(activity);
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
@@ -42,7 +37,7 @@ final class MainActivityStudyFlashcard {
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
         cardLp.setMargins(0, 0, 0, activity.dp(14));
         activity.content.addView(card, cardLp);
-        buildFlashcardActionBar(false);
+        interaction.buildFlashcardActionBar(false);
     }
 
     LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
@@ -218,148 +213,26 @@ final class MainActivityStudyFlashcard {
     }
 
     void buildFlashcardActionBar(boolean revealed) {
-        if (activity.studyActionBar == null) {
-            return;
-        }
-        activity.styleStudyActionBarShell();
-        activity.studyActionBar.removeAllViews();
-        activity.studyActionBar.setVisibility(View.VISIBLE);
-
-        activity.resultStatus = activity.text("", 15, activity.STUDY_MUTED, false);
-        activity.resultStatus.setVisibility(View.GONE);
-        activity.studyActionBar.addView(activity.resultStatus);
-
-        LinearLayout actions = new LinearLayout(activity);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        if (!revealed) {
-            Button reveal = activity.pinkPrimaryButton("Reveal");
-            reveal.setOnClickListener(v -> revealFlashcardAnswer());
-            actions.addView(reveal, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
-        } else {
-            Button fail = activity.studyFailButton("Fail");
-            fail.setOnClickListener(v -> activity.submitReview(activity.RATING_AGAIN, false));
-            LinearLayout.LayoutParams failParams = new LinearLayout.LayoutParams(0, activity.dp(62), 1);
-            failParams.setMargins(0, 0, activity.dp(6), 0);
-            actions.addView(fail, failParams);
-
-            Button pass = activity.pinkPrimaryButton(activity.LABEL_PASS);
-            pass.setOnClickListener(v -> activity.submitReview(activity.RATING_GOOD, false));
-            LinearLayout.LayoutParams passParams = new LinearLayout.LayoutParams(0, activity.dp(62), 1);
-            passParams.setMargins(activity.dp(6), 0, 0, 0);
-            actions.addView(pass, passParams);
-        }
-        activity.studyActionBar.addView(actions);
+        interaction.buildFlashcardActionBar(revealed);
     }
 
     void revealFlashcardAnswer() {
-        if (activity.flashcardAnswerRevealed) {
-            return;
-        }
-        if (StudyTaskCopy.isTypingMeaningTask(activity.activeSession)
-                && TypingAnswerMatcher.matches(
-                activity.currentDictionaryLookup(),
-                activity.activeSession.item.kanji,
-                activity.typingAnswerInput == null ? "" : activity.typingAnswerInput.getText().toString(),
-                StudyTextCopy.collectionMeaningForSession(activity.activeSession))) {
-            Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show();
-            activity.submitReview(activity.RATING_GOOD, false);
-            return;
-        }
-        activity.flashcardAnswerRevealed = true;
-        if (activity.flashcardHeroPanel != null) {
-            activity.flashcardHeroPanel.setVisibility(View.GONE);
-        }
-        expandFlashcardForAnswer();
-        if (activity.studyAnswerPanel != null) {
-            activity.studyAnswerPanel.setVisibility(View.VISIBLE);
-        }
-        buildFlashcardActionBar(true);
+        interaction.revealFlashcardAnswer();
     }
 
     void expandFlashcardForAnswer() {
-        if (activity.flashcardCard == null) {
-            return;
-        }
-        int currentFullHeight = activity.flashcardCard.getHeight();
-        if (currentFullHeight > 0) {
-            activity.flashcardCard.setMinimumHeight(currentFullHeight);
-        }
-        ViewGroup.LayoutParams params = activity.flashcardCard.getLayoutParams();
-        if (params instanceof LinearLayout.LayoutParams linearParams) {
-            linearParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-            linearParams.weight = 0f;
-            activity.flashcardCard.setLayoutParams(linearParams);
-            activity.flashcardCard.requestLayout();
-        }
+        interaction.expandFlashcardForAnswer();
     }
 
     boolean handleFlashcardGesture(MotionEvent event) {
-        if (activity.activeSession == null || activity.activeSession.writingRequired || activity.flashcardGestureArea == null) {
-            activity.flashcardTouchTracking = false;
-            return false;
-        }
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                if (StudyTaskCopy.isTypingMeaningTask(activity.activeSession)
-                        && activity.typingAnswerInput != null
-                        && isTouchInsideView(activity.typingAnswerInput, event)) {
-                    activity.flashcardTouchTracking = false;
-                    return false;
-                }
-                activity.flashcardTouchTracking = isTouchInsideView(activity.flashcardGestureArea, event);
-                if (activity.flashcardTouchTracking) {
-                    activity.flashcardTouchStartX = event.getRawX();
-                    activity.flashcardTouchStartY = event.getRawY();
-                }
-                return false;
-            case MotionEvent.ACTION_UP:
-                if (!activity.flashcardTouchTracking) {
-                    return false;
-                }
-                activity.flashcardTouchTracking = false;
-                if (!isTouchInsideView(activity.flashcardGestureArea, event)) {
-                    return false;
-                }
-                return handleFlashcardRelease(event);
-            case MotionEvent.ACTION_CANCEL:
-                activity.flashcardTouchTracking = false;
-                return false;
-            default:
-                return false;
-        }
+        return interaction.handleFlashcardGesture(event);
     }
 
     boolean handleFlashcardRelease(MotionEvent event) {
-        int touchSlop = ViewConfiguration.get(activity).getScaledTouchSlop();
-        FlashcardGesturePolicy.Decision decision = FlashcardGesturePolicy.release(
-                activity.flashcardTouchStartX,
-                activity.flashcardTouchStartY,
-                event.getRawX(),
-                event.getRawY(),
-                touchSlop,
-                activity.dp(72),
-                activity.flashcardAnswerRevealed
-        );
-        switch (decision.action) {
-            case REVEAL:
-                revealFlashcardAnswer();
-                return true;
-            case REVIEW:
-                activity.submitReview(decision.rating, false);
-                return true;
-            default:
-                return false;
-        }
+        return interaction.handleFlashcardRelease(event);
     }
 
     boolean isTouchInsideView(View view, MotionEvent event) {
-        if (view == null || !view.isShown()) {
-            return false;
-        }
-        Rect bounds = new Rect();
-        if (!view.getGlobalVisibleRect(bounds)) {
-            return false;
-        }
-        return bounds.contains((int) event.getRawX(), (int) event.getRawY());
+        return interaction.isTouchInsideView(view, event);
     }
 }
