@@ -232,7 +232,7 @@ public final class MainActivityHelperInstrumentedTest {
                         "Fallback prompt",
                         StudyTextCopy.sessionClue(activity.currentDictionaryLookup(), new RecordsSchedulerModels.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
                 );
-                assertEquals("Fallback", activity.canonicalKanjiMeaning("?", "fallback", 40));
+                assertEquals("Fallback", StudyTextCopy.canonicalKanjiMeaning(activity.currentDictionaryLookup(), "?", "fallback", 40));
                 FakeWritingRecognizer cachedRecognizer = new FakeWritingRecognizer(
                         CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready")),
                         CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready")),

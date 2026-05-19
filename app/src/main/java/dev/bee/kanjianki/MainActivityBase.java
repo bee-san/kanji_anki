@@ -516,10 +516,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return StudyTextCopy.countText(count, singular, plural);
     }
 
-    String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
-        return StudyTextCopy.canonicalKanjiMeaning(currentDictionaryLookup(), kanji, fallback, maxChars);
-    }
-
     String compact(String value, int maxChars) {
         return StudyTextCopy.compact(value, maxChars);
     }
