@@ -1365,10 +1365,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
         LinearLayout box = settingsPanelBox();
         box.addView(text(SettingsTextCopy.dailyReminderTitle(), 23, INK, true));
-        box.addView(text(reminderStatus(reminder, blocked), 17, reminderStatusColor(reminder, blocked), true));
+        box.addView(text(
+                SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime()),
+                17,
+                reminderStatusColor(reminder, blocked),
+                true
+        ));
         box.addView(text(SettingsTextCopy.dailyReminderBody(), 15, MUTED, false));
 
-        Button time = secondaryButton(reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
+        Button time = secondaryButton(SettingsTextCopy.reminderTimeButtonLabel(selectedHour[0], selectedMinute[0]));
         time.setOnClickListener(v -> new TimePickerDialog(
                 this,
                 (view, hour, minute) -> applyReminderTimeSelection(selectedHour, selectedMinute, time, hour, minute),
@@ -1421,7 +1426,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
         LinearLayout box = settingsPanelBox();
         box.addView(text(SettingsTextCopy.dailyAnkiSyncTitle(), 23, INK, true));
-        box.addView(text(autoSyncStatus(auto), 17, auto.enabled ? TEAL : MUTED, true));
+        box.addView(text(
+                SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime()),
+                17,
+                auto.enabled ? TEAL : MUTED,
+                true
+        ));
         box.addView(text(autoSyncDetail(auto), 15, MUTED, false));
         if (auto.configured) {
             if (auto.enabled) {
@@ -1449,10 +1459,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return box;
     }
 
-    String autoSyncStatus(LocalStore.AutoSyncSettings auto) {
-        return SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime());
-    }
-
     String autoSyncDetail(LocalStore.AutoSyncSettings auto) {
         String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
         String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
@@ -1470,18 +1476,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return box;
     }
 
-    String reminderStatus(LocalStore.ReminderSettings reminder, boolean blocked) {
-        return SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime());
-    }
-
-    String reminderTime(int hour, int minute) {
-        return SettingsTextCopy.reminderTime(hour, minute);
-    }
-
-    String reminderTimeButtonLabel(int hour, int minute) {
-        return SettingsTextCopy.reminderTimeButtonLabel(hour, minute);
-    }
-
     Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
         Button preset = secondaryButton(SettingsTextCopy.reminderPresetButtonLabel(label, hour, minute));
         preset.setTextSize(13);
@@ -1489,7 +1483,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         preset.setOnClickListener(v -> {
             selectedHour[0] = hour;
             selectedMinute[0] = minute;
-            timeButton.setText(reminderTimeButtonLabel(hour, minute));
+            timeButton.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
         });
         return preset;
     }
@@ -1520,7 +1514,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     void applyReminderTimeSelection(int[] selectedHour, int[] selectedMinute, Button time, int hour, int minute) {
         selectedHour[0] = hour;
         selectedMinute[0] = minute;
-        time.setText(reminderTimeButtonLabel(hour, minute));
+        time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
     }
 
     void openNotificationSettings() {

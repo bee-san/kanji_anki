@@ -487,9 +487,9 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("After first sync", SettingsTextCopy.settingsAutoSyncSummary(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
         assertEquals("07:30", SettingsTextCopy.settingsAutoSyncSummary(enabled.configured, enabled.enabled, enabled.displayTime()));
         assertEquals("Off", SettingsTextCopy.settingsAutoSyncSummary(disabled.configured, disabled.enabled, disabled.displayTime()));
-        assertEquals("Starts after first successful sync", activity.autoSyncStatus(unconfigured));
-        assertEquals("On around 07:30", activity.autoSyncStatus(enabled));
-        assertEquals("Off", activity.autoSyncStatus(disabled));
+        assertEquals("Starts after first successful sync", SettingsTextCopy.autoSyncStatus(unconfigured.configured, unconfigured.enabled, unconfigured.displayTime()));
+        assertEquals("On around 07:30", SettingsTextCopy.autoSyncStatus(enabled.configured, enabled.enabled, enabled.displayTime()));
+        assertEquals("Off", SettingsTextCopy.autoSyncStatus(disabled.configured, disabled.enabled, disabled.displayTime()));
         assertTrue(activity.autoSyncDetail(enabled).contains("Last auto success"));
         assertTrue(activity.autoSyncDetail(disabled).contains("Last auto attempt"));
         assertTrue(activity.autoSyncDetail(enabledNoHistory).contains("Scheduled once"));
@@ -505,11 +505,11 @@ public final class MainActivityHelperInstrumentedTest {
                 "Auto Pareto: 2 items today",
                 SettingsTextCopy.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
         );
-        assertEquals("Blocked: notifications off", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), true));
-        assertEquals("Daily around 21:05", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), false));
-        assertEquals("Off", activity.reminderStatus(new LocalStore.ReminderSettings(false, 21, 5), false));
-        assertEquals("21:05", activity.reminderTime(21, 5));
-        assertEquals("Reminder time: 21:05", activity.reminderTimeButtonLabel(21, 5));
+        assertEquals("Blocked: notifications off", SettingsTextCopy.reminderStatus(true, true, "21:05"));
+        assertEquals("Daily around 21:05", SettingsTextCopy.reminderStatus(true, false, "21:05"));
+        assertEquals("Off", SettingsTextCopy.reminderStatus(false, false, "21:05"));
+        assertEquals("21:05", SettingsTextCopy.reminderTime(21, 5));
+        assertEquals("Reminder time: 21:05", SettingsTextCopy.reminderTimeButtonLabel(21, 5));
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
         assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), SettingsTextCopy.maxItemsStatusText(0));
     }
