@@ -538,7 +538,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             }
             String glyph = choices.get(i);
             Button button = kanjiChoiceButton(glyph);
-            button.setOnClickListener(v -> clickHandler.onClick(glyph, grid));
+            button.setOnClickListener(new KanjiChoiceButtonClickListener(clickHandler, glyph, grid));
             if (row != null) {
                 row.addView(button, kanjiChoiceLayoutParams());
             }
@@ -586,8 +586,40 @@ abstract class MainActivityStudy extends MainActivityStats {
         resultStatus = text(status, 15, correct ? TEAL : CORAL, true);
         studyActionBar.addView(resultStatus);
         Button next = pinkPrimaryButton("Next");
-        next.setOnClickListener(v -> submitReview(correct ? RATING_GOOD : RATING_AGAIN, false));
+        next.setOnClickListener(new StudyReviewNextClickListener(this, correct));
         studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, dp(62)));
+    }
+
+    private static final class KanjiChoiceButtonClickListener implements View.OnClickListener {
+        private final KanjiChoiceClickHandler clickHandler;
+        private final String glyph;
+        private final LinearLayout grid;
+
+        KanjiChoiceButtonClickListener(KanjiChoiceClickHandler clickHandler, String glyph, LinearLayout grid) {
+            this.clickHandler = clickHandler;
+            this.glyph = glyph;
+            this.grid = grid;
+        }
+
+        @Override
+        public void onClick(View v) {
+            clickHandler.onClick(glyph, grid);
+        }
+    }
+
+    private static final class StudyReviewNextClickListener implements View.OnClickListener {
+        private final MainActivityStudy activity;
+        private final boolean correct;
+
+        StudyReviewNextClickListener(MainActivityStudy activity, boolean correct) {
+            this.activity = activity;
+            this.correct = correct;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
+        }
     }
 
     void disableChoiceButtons(View view) {
