@@ -197,10 +197,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().importFilterSettingsPanel(current);
     }
 
-    void addImportPresetButtons(LinearLayout box) {
-        ankiSource().addImportPresetButtons(box);
-    }
-
     ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
         return ankiSource().readImportThresholds(difficultyInput, lapses, minMatching);
     }
@@ -221,44 +217,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return panelFactory().importFilterCheckBox(label, checked);
     }
 
-    LinearLayout inputColumn(String label, EditText input, int leftPadding) {
-        return ankiSource().inputColumn(label, input, leftPadding);
-    }
-
     LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         return ankiSource().frequencyRangeSettingsPanel(current);
-    }
-
-    LinearLayout dataLicenseSettingsPanel() {
-        return referenceData().dataLicenseSettingsPanel();
-    }
-
-    void renderDataSources() {
-        referenceData().renderDataSources();
-    }
-
-    LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
-        return ankiSource().noteTypeSettingsPanel(current);
-    }
-
-    EditText noteTypeInput(String value) {
-        return ankiSource().noteTypeInput(value);
-    }
-
-    EditText fieldInput(String value) {
-        return ankiSource().fieldInput(value);
-    }
-
-    void addFieldMappingInput(LinearLayout box, String label, EditText input) {
-        ankiSource().addFieldMappingInput(box, label, input);
-    }
-
-    EditText rankInput(int value) {
-        return ankiSource().rankInput(value);
-    }
-
-    EditText decimalInput(double value) {
-        return ankiSource().decimalInput(value);
     }
 
     void bindRankSliders(
@@ -272,12 +232,16 @@ abstract class MainActivitySettings extends MainActivityStudy {
         ankiSource().bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
     }
 
-    int parseRankInput(EditText input) {
-        return ankiSource().parseRankInput(input);
+    LinearLayout dataLicenseSettingsPanel() {
+        return referenceData().dataLicenseSettingsPanel();
     }
 
-    double parseDecimalInput(EditText input) {
-        return ankiSource().parseDecimalInput(input);
+    void renderDataSources() {
+        referenceData().renderDataSources();
+    }
+
+    LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
+        return ankiSource().noteTypeSettingsPanel(current);
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {

@@ -10,11 +10,11 @@ import dev.bee.kanjianki.core.SettingsTextCopy;
 
 final class MainActivitySettingsAnkiSourceNoteType {
     private final MainActivitySettings activity;
-    private final MainActivitySettingsAnkiSource source;
+    private final MainActivitySettingsAnkiSourceInputs inputs;
 
-    MainActivitySettingsAnkiSourceNoteType(MainActivitySettings activity, MainActivitySettingsAnkiSource source) {
+    MainActivitySettingsAnkiSourceNoteType(MainActivitySettings activity, MainActivitySettingsAnkiSourceInputs inputs) {
         this.activity = activity;
-        this.source = source;
+        this.inputs = inputs;
     }
 
     LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
@@ -24,22 +24,22 @@ final class MainActivitySettingsAnkiSourceNoteType {
         box.addView(activity.text(SettingsTextCopy.noteTypeUsingText(current.modelName), 17, activity.TEAL, true));
         box.addView(activity.text(SettingsTextCopy.noteTypeFieldsBody(), 15, activity.MUTED, false));
 
-        EditText noteType = source.noteTypeInput(current.modelName);
+        EditText noteType = inputs.noteTypeInput(current.modelName);
         box.addView(noteType, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-        EditText expressionField = source.fieldInput(current.expressionField);
-        EditText readingField = source.fieldInput(current.readingField);
-        EditText meaningField = source.fieldInput(current.meaningField);
-        EditText sentenceField = source.fieldInput(current.sentenceField);
-        EditText frequencyField = source.fieldInput(current.frequencyField);
-        EditText frequencySortField = source.fieldInput(current.frequencySortField);
+        EditText expressionField = inputs.fieldInput(current.expressionField);
+        EditText readingField = inputs.fieldInput(current.readingField);
+        EditText meaningField = inputs.fieldInput(current.meaningField);
+        EditText sentenceField = inputs.fieldInput(current.sentenceField);
+        EditText frequencyField = inputs.fieldInput(current.frequencyField);
+        EditText frequencySortField = inputs.fieldInput(current.frequencySortField);
         box.addView(activity.text(SettingsTextCopy.requiredFieldsTitle(), 15, activity.STUDY_PLUM, true));
         box.addView(activity.text(SettingsTextCopy.requiredFieldsBody(), 14, activity.MUTED, false));
-        source.addFieldMappingInput(box, SettingsTextCopy.expressionFieldLabel(), expressionField);
-        source.addFieldMappingInput(box, SettingsTextCopy.readingFieldLabel(), readingField);
-        source.addFieldMappingInput(box, SettingsTextCopy.meaningFieldLabel(), meaningField);
-        source.addFieldMappingInput(box, SettingsTextCopy.sentenceFieldLabel(), sentenceField);
-        source.addFieldMappingInput(box, SettingsTextCopy.frequencyFieldLabel(), frequencyField);
-        source.addFieldMappingInput(box, SettingsTextCopy.frequencySortFieldLabel(), frequencySortField);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.expressionFieldLabel(), expressionField);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.readingFieldLabel(), readingField);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.meaningFieldLabel(), meaningField);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.sentenceFieldLabel(), sentenceField);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.frequencyFieldLabel(), frequencyField);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.frequencySortFieldLabel(), frequencySortField);
 
         NoteTypeFieldMappings.Inputs fieldMappings = new NoteTypeFieldMappings.Inputs(
                 noteType,

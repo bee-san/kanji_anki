@@ -14,11 +14,20 @@ import java.util.List;
 
 final class MainActivitySettingsAnkiSourceImportFilters {
     private final MainActivitySettings activity;
-    private final MainActivitySettingsAnkiSource source;
+    private final MainActivitySettingsAnkiSourceInputs inputs;
+    private final MainActivitySettingsAnkiSourceValidation validation;
+    private final MainActivitySettingsAnkiSourcePresets presets;
 
-    MainActivitySettingsAnkiSourceImportFilters(MainActivitySettings activity, MainActivitySettingsAnkiSource source) {
+    MainActivitySettingsAnkiSourceImportFilters(
+            MainActivitySettings activity,
+            MainActivitySettingsAnkiSourceInputs inputs,
+            MainActivitySettingsAnkiSourceValidation validation,
+            MainActivitySettingsAnkiSourcePresets presets
+    ) {
         this.activity = activity;
-        this.source = source;
+        this.inputs = inputs;
+        this.validation = validation;
+        this.presets = presets;
     }
 
     LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
@@ -26,7 +35,7 @@ final class MainActivitySettingsAnkiSourceImportFilters {
         box.addView(activity.text(SettingsTextCopy.importFiltersTitle(), 23, activity.INK, true));
         box.addView(activity.text(SettingsTextCopy.settingsImportSummary(current), 17, activity.TEAL, true));
         box.addView(activity.text(SettingsTextCopy.importFiltersBody(), 15, activity.MUTED, false));
-        source.addImportPresetButtons(box);
+        presets.addImportPresetButtons(box);
 
         CheckBox activeCards = activity.importFilterCheckBox(SettingsTextCopy.activeCardsLabel(), current.importActiveCards);
         CheckBox suspendedCards = activity.importFilterCheckBox(SettingsTextCopy.suspendedCardsLabel(), current.importSuspendedCards);
@@ -39,26 +48,26 @@ final class MainActivitySettingsAnkiSourceImportFilters {
         box.addView(weakCards);
         box.addView(browserQueryCards);
 
-        EditText browserQueryInput = source.fieldInput(current.importBrowserQuery);
+        EditText browserQueryInput = inputs.fieldInput(current.importBrowserQuery);
         browserQueryInput.setHint(SettingsTextCopy.ankiBrowserQueryHint());
-        source.addFieldMappingInput(box, SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput);
 
-        EditText tags = source.fieldInput(current.importTagsText());
+        EditText tags = inputs.fieldInput(current.importTagsText());
         tags.setHint(SettingsTextCopy.ankiNoteTagsHint());
-        source.addFieldMappingInput(box, SettingsTextCopy.ankiNoteTagsLabel(), tags);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.ankiNoteTagsLabel(), tags);
 
         LinearLayout thresholds = new LinearLayout(activity);
         thresholds.setOrientation(LinearLayout.HORIZONTAL);
-        EditText difficultyInput = source.decimalInput(current.importWeakFsrsDifficultyThreshold);
-        LinearLayout difficultyColumn = source.inputColumn(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 0);
+        EditText difficultyInput = inputs.decimalInput(current.importWeakFsrsDifficultyThreshold);
+        LinearLayout difficultyColumn = inputs.inputColumn(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 0);
         EditText lapses = activity.thresholdInput(current.importWeakLapsesThreshold);
-        LinearLayout lapsesColumn = source.inputColumn(SettingsTextCopy.lapsesLabel(), lapses, activity.dp(10));
+        LinearLayout lapsesColumn = inputs.inputColumn(SettingsTextCopy.lapsesLabel(), lapses, activity.dp(10));
         thresholds.addView(difficultyColumn, new LinearLayout.LayoutParams(0, -2, 1));
         thresholds.addView(lapsesColumn, new LinearLayout.LayoutParams(0, -2, 1));
         box.addView(thresholds);
 
         EditText minMatching = activity.thresholdInput(current.importMinMatchingCardsPerKanji);
-        source.addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
+        inputs.addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveImportFiltersLabel(), activity.STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
@@ -68,11 +77,11 @@ final class MainActivitySettingsAnkiSourceImportFilters {
                 Toast.makeText(activity, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (!source.hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
+            if (!validation.hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
                 Toast.makeText(activity, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
                 return;
             }
-            MainActivityBase.ImportThresholds parsedThresholds = source.readImportThresholds(difficultyInput, lapses, minMatching);
+            MainActivityBase.ImportThresholds parsedThresholds = validation.readImportThresholds(difficultyInput, lapses, minMatching);
             if (parsedThresholds == null) {
                 return;
             }
