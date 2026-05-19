@@ -7,17 +7,14 @@ import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.TimePickerDialog;
-import android.content.res.ColorStateList;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Rect;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
@@ -59,10 +56,8 @@ import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.SchedulerTuner;
-import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
-import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.TextUtil;
@@ -87,10 +82,7 @@ import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.AutoSyncScheduler;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
 import dev.bee.kanjianki.sync.SyncSettings;
-import dev.bee.kanjianki.update.AutoUpdateScheduler;
-import dev.bee.kanjianki.update.GitHubUpdater;
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
-import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -158,6 +150,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsUpdateFlow(this);
     }
 
+    private MainActivitySettingsPanelFactory panelFactory() {
+        return new MainActivitySettingsPanelFactory(this);
+    }
+
     void renderUpdate() {
         updatePage().renderUpdate();
     }
@@ -202,15 +198,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout settingsPanelBox() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(18), dp(17), dp(18), dp(18));
-        box.setBackground(panel(Color.rgb(255, 253, 254), STUDY_BORDER, dp(24)));
-        box.setElevation(dp(2));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, dp(8), 0, dp(6));
-        box.setLayoutParams(lp);
-        return box;
+        return panelFactory().settingsPanelBox();
     }
 
     LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
@@ -238,15 +226,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     CheckBox importFilterCheckBox(String label, boolean checked) {
-        CheckBox box = new CheckBox(this);
-        box.setText(label);
-        box.setTextColor(INK);
-        box.setTextSize(17);
-        box.setTypeface(Typeface.DEFAULT_BOLD);
-        box.setChecked(checked);
-        box.setButtonTintList(ColorStateList.valueOf(STUDY_PINK_DARK));
-        box.setPadding(0, dp(4), 0, dp(4));
-        return box;
+        return panelFactory().importFilterCheckBox(label, checked);
     }
 
     LinearLayout inputColumn(String label, EditText input, int leftPadding) {
