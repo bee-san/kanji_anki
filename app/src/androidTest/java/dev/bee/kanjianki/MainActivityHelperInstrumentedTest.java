@@ -308,11 +308,11 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
                 assertEquals("", StudyTextCopy.collectionMeaningForSession(null));
 
-                assertTrue(activity.isWordReadingTask(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertTrue(activity.isTypingMeaningTask(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertTrue(activity.isFontRecognitionTask(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
-                assertTrue(activity.isRecallTask(session("語", "blind_writing", row)));
-                assertFalse(activity.isRecallTask(null));
+                assertTrue(StudyTaskCopy.isWordReadingTask(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertTrue(StudyTaskCopy.isTypingMeaningTask(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
+                assertTrue(StudyTaskCopy.isFontRecognitionTask(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
+                assertTrue(StudyTaskCopy.isRecallTask(session("語", "blind_writing", row)));
+                assertFalse(StudyTaskCopy.isRecallTask(null));
             });
         }
     }
@@ -1683,9 +1683,9 @@ public final class MainActivityHelperInstrumentedTest {
 
         RecordsStudyModels.StudyItem item = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L);
         StudyStatsStore.StudyStreak streak = new StudyStatsStore.StudyStreak(2, 2, true, 1, 1000L);
-        assertEquals("Already saved.", activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, "duplicate", true, "dup"), streak));
-        assertTrue(activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, MainActivityBase.RATING_AGAIN, false, "again"), streak).contains("2-day streak"));
-        assertEquals("Saved.", activity.reviewToast(new RecordsSchedulerModels.ReviewResult(item, MainActivityBase.RATING_GOOD, false, "good"), null));
+        assertEquals("Already saved.", HomeTextCopy.reviewToast(true, "duplicate", streak.currentDays));
+        assertTrue(HomeTextCopy.reviewToast(false, MainActivityBase.RATING_AGAIN, streak.currentDays).contains("2-day streak"));
+        assertEquals("Saved.", HomeTextCopy.reviewToast(false, MainActivityBase.RATING_GOOD, 0));
     }
 
     private static void verifyFlashcardActionBarAndGestureBranches(

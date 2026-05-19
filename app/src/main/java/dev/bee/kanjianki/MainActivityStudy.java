@@ -51,6 +51,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FlashcardGesturePolicy;
+import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
@@ -691,7 +692,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         flashcardHeroPanel = heroKanjiPanel(session);
         card.addView(flashcardHeroPanel);
 
-        if (isTypingMeaningTask(session)) {
+        if (StudyTaskCopy.isTypingMeaningTask(session)) {
             TextView label = text(LABEL_MEANING, 15, STUDY_HERO_MUTED, true);
             label.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-1, -2);
@@ -738,12 +739,12 @@ abstract class MainActivityStudy extends MainActivityStats {
         panel.setPadding(dp(10), dp(10), dp(10), dp(10));
 
         TextView glyph = text(
-                isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
-                isWordReadingTask(session) ? 44 : 116,
+                StudyTaskCopy.isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
+                StudyTaskCopy.isWordReadingTask(session) ? 44 : 116,
                 STUDY_HERO_PLUM,
                 true
         );
-        if (isFontRecognitionTask(session)) {
+        if (StudyTaskCopy.isFontRecognitionTask(session)) {
             glyph.setTypeface(randomFontVariantTypeface(), Typeface.BOLD);
         } else {
             glyph.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -771,7 +772,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(text(StudyTaskCopy.labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
         addStudyReasonLine(card, session);
         if (session.row != null) {
-            if (isRecallTask(session)) {
+            if (StudyTaskCopy.isRecallTask(session)) {
                 card.addView(text("Prompt: " + StudyTextCopy.sessionClue(currentDictionaryLookup(), session), 17, STUDY_PLUM, true));
                 if (!session.row.reading.isEmpty()) {
                     card.addView(text("Reading: " + session.row.reading, 15, STUDY_MUTED, false));
@@ -1014,7 +1015,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 currentDictionaryLookup(),
                 session,
                 exampleForSession(session),
-                isWordReadingTask(session)
+                StudyTaskCopy.isWordReadingTask(session)
         );
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
@@ -1068,7 +1069,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (flashcardAnswerRevealed) {
             return;
         }
-        if (isTypingMeaningTask(activeSession)
+        if (StudyTaskCopy.isTypingMeaningTask(activeSession)
                 && TypingAnswerMatcher.matches(
                 currentDictionaryLookup(),
                 activeSession.item.kanji,
@@ -1113,7 +1114,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                if (isTypingMeaningTask(activeSession)
+                if (StudyTaskCopy.isTypingMeaningTask(activeSession)
                         && typingAnswerInput != null
                         && isTouchInsideView(typingAnswerInput, event)) {
                     flashcardTouchTracking = false;
@@ -1421,7 +1422,8 @@ abstract class MainActivityStudy extends MainActivityStats {
             streak = store.studyStreak(now);
             tuneSchedulerIfNeeded(parameters, now);
         }
-        Toast.makeText(this, reviewToast(result, streak), Toast.LENGTH_SHORT).show();
+        int currentStreakDays = streak == null ? 0 : streak.currentDays;
+        Toast.makeText(this, HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays), Toast.LENGTH_SHORT).show();
         renderStudy();
     }
 
@@ -1545,7 +1547,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         input.hasInk = drawingPad != null && drawingPad.hasInk();
         input.guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
         input.canRevealMoreHelp = canRevealMoreHelp();
-        input.recallTask = activeSession != null && isRecallTask(activeSession);
+        input.recallTask = activeSession != null && StudyTaskCopy.isRecallTask(activeSession);
         input.teachingTask = activeSession != null && isTeachingTask(activeSession);
         input.currentPracticeLevel = currentPracticeLevel;
         return WritingActionPresentation.from(input);
@@ -1701,26 +1703,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     String strokeDiagnosisText(StrokeDiagnosis.Entry entry, String label) {
         return StrokeDiagnosisFormatter.strokeLine(entry, label);
-    }
-
-    boolean isRecallTask(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.isRecallTask(session);
-    }
-
-    boolean isFontRecognitionTask(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.isFontRecognitionTask(session);
-    }
-
-    boolean isTypingMeaningTask(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.isTypingMeaningTask(session);
-    }
-
-    boolean isMeaningKanjiTask(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.isMeaningKanjiTask(session);
-    }
-
-    boolean isWordReadingTask(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.isWordReadingTask(session);
     }
 
     void setStudyStatus(String value, int color) {

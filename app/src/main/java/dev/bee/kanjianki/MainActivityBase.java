@@ -355,11 +355,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return activeSession != null && activeSession.token.equals(token);
     }
 
-    String reviewToast(RecordsSchedulerModels.ReviewResult result, StudyStatsStore.StudyStreak streak) {
-        int currentStreakDays = streak == null ? 0 : streak.currentDays;
-        return HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays);
-    }
-
     WritingRecognizer currentWritingRecognizer() {
         if (writingRecognizerForTests != null) {
             return writingRecognizerForTests;
