@@ -230,7 +230,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(text("Nothing due now", 32, STUDY_PLUM, true));
         card.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 17, STUDY_MUTED, false));
         Button back = pinkPrimaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(v -> renderHome());
+        back.setOnClickListener(new BackHomeClickListener(this));
         card.addView(back);
         content.addView(card);
     }
@@ -358,11 +358,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 .setPositiveButton(LABEL_STUDY, null)
                 .setNegativeButton("Cancel", null)
                 .create();
-        dialog.setOnShowListener(opened -> dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
-            if (applyStudyMoreNewCardsRequest(countInput)) {
-                dialog.dismiss();
-            }
-        }));
+        dialog.setOnShowListener(new StudyMoreNewCardsDialogShowListener(this, dialog, countInput));
         dialog.show();
         countInput.requestFocus();
     }
@@ -619,6 +615,43 @@ abstract class MainActivityStudy extends MainActivityStats {
         @Override
         public void onClick(View v) {
             activity.submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
+        }
+    }
+
+    private static final class StudyMoreNewCardsDialogShowListener implements DialogInterface.OnShowListener {
+        private final MainActivityStudy activity;
+        private final AlertDialog dialog;
+        private final EditText countInput;
+
+        StudyMoreNewCardsDialogShowListener(MainActivityStudy activity, AlertDialog dialog, EditText countInput) {
+            this.activity = activity;
+            this.dialog = dialog;
+            this.countInput = countInput;
+        }
+
+        @Override
+        public void onShow(DialogInterface opened) {
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE)
+                    .setOnClickListener(new StudyMoreNewCardsConfirmClickListener(activity, dialog, countInput));
+        }
+    }
+
+    private static final class StudyMoreNewCardsConfirmClickListener implements View.OnClickListener {
+        private final MainActivityStudy activity;
+        private final AlertDialog dialog;
+        private final EditText countInput;
+
+        StudyMoreNewCardsConfirmClickListener(MainActivityStudy activity, AlertDialog dialog, EditText countInput) {
+            this.activity = activity;
+            this.dialog = dialog;
+            this.countInput = countInput;
+        }
+
+        @Override
+        public void onClick(View v) {
+            if (activity.applyStudyMoreNewCardsRequest(countInput)) {
+                dialog.dismiss();
+            }
         }
     }
 
