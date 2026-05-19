@@ -298,7 +298,15 @@ abstract class MainActivityStudy extends MainActivityStats {
             return 0;
         }
         long now = System.currentTimeMillis();
-        BridgeScheduler.ExtraNewCardsResult result = seedExtraNewCards(rows, now, Integer.MAX_VALUE);
+        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
+                rows,
+                store.studyItems(),
+                settings(),
+                now,
+                startOfDay(now),
+                Integer.MAX_VALUE,
+                studyLadderSettings()
+        );
         return result.availableCount;
     }
 
@@ -345,14 +353,32 @@ abstract class MainActivityStudy extends MainActivityStats {
             return false;
         }
         long now = System.currentTimeMillis();
-        BridgeScheduler.ExtraNewCardsResult result = seedExtraNewCards(rows, now, requestedCount);
+        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
+                rows,
+                store.studyItems(),
+                settings(),
+                now,
+                startOfDay(now),
+                requestedCount,
+                studyLadderSettings()
+        );
         if (!result.admittedAny()) {
             Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
             return false;
         }
         StudyMoreNewCardActions.AdmissionResult admission = StudyMoreNewCardActions.applyAdmission(
                 result,
-                studyMoreNewCardWriter(),
+                new StudyMoreNewCardActions.StudyItemWriter() {
+                    @Override
+                    public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
+                        return store.annotateSimilarKanjiAvailability(items);
+                    }
+
+                    @Override
+                    public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
+                        store.replaceStudyItems(items);
+                    }
+                },
                 studyMoreNewCardKanji,
                 this::resetStudyRunProgress,
                 studySessionTracker::setTargetCount
@@ -363,32 +389,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         renderStudy();
         return true;
-    }
-
-    BridgeScheduler.ExtraNewCardsResult seedExtraNewCards(List<RecordsImportModels.DashboardRow> rows, long now, int requestedCount) {
-        return new BridgeScheduler().seedExtraNewCards(
-                rows,
-                store.studyItems(),
-                settings(),
-                now,
-                startOfDay(now),
-                requestedCount,
-                studyLadderSettings()
-        );
-    }
-
-    StudyMoreNewCardActions.StudyItemWriter studyMoreNewCardWriter() {
-        return new StudyMoreNewCardActions.StudyItemWriter() {
-            @Override
-            public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
-                return store.annotateSimilarKanjiAvailability(items);
-            }
-
-            @Override
-            public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
-                store.replaceStudyItems(items);
-            }
-        };
     }
 
     void startFocusedStudy() {
