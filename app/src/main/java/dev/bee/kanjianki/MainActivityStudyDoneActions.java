@@ -105,6 +105,16 @@ final class MainActivityStudyDoneActions {
         home.content.addView(card);
     }
 
+    void renderStudyForKanjiNotAvailable() {
+        home.prepareStudyContent(home.activeStudyPlan, false);
+        LinearLayout card = home.softStudyCard();
+        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
+        card.addView(home.text("Study practice", 32, home.STUDY_PLUM, true));
+        card.addView(home.text("Kanji not available", 22, home.STUDY_PLUM, true));
+        card.addView(home.text("This row may have changed after sync.", 16, home.STUDY_MUTED, false));
+        home.content.addView(card);
+    }
+
     int availableStudyMoreNewCards() {
         List<RecordsImportModels.DashboardRow> rows = home.store.activeDashboardRows();
         if (rows.isEmpty()) {
