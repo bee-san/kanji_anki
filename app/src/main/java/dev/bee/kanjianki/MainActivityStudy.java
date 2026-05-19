@@ -257,22 +257,18 @@ abstract class MainActivityStudy extends MainActivityStats {
     void addDoneStudyActions(LinearLayout card) {
         boolean canStudyMore = addStudyMoreNewCardsButton(card);
         Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(v -> continueAllKanjiFromDoneScreen());
+        keepGoing.setOnClickListener(v -> {
+            studyMoreNewCardKanji.clear();
+            continueAllKanjiSession = true;
+            renderStudy();
+        });
         card.addView(keepGoing);
         Button back = studySecondaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(v -> returnHomeFromDoneScreen());
+        back.setOnClickListener(v -> {
+            clearStudyModeOverrides();
+            renderHome();
+        });
         card.addView(back);
-    }
-
-    void continueAllKanjiFromDoneScreen() {
-        studyMoreNewCardKanji.clear();
-        continueAllKanjiSession = true;
-        renderStudy();
-    }
-
-    void returnHomeFromDoneScreen() {
-        clearStudyModeOverrides();
-        renderHome();
     }
 
     boolean addStudyMoreNewCardsButton(LinearLayout card) {
