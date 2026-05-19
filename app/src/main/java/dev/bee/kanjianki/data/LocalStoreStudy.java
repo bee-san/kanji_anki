@@ -17,9 +17,7 @@ import dev.bee.kanjianki.core.TextUtil;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -381,32 +379,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public RecordsSchedulerModels.ReviewStats reviewStatsSince(long sinceMillis) {
-        Cursor cursor = getReadableDatabase().rawQuery(
-                "SELECT "
-                        + "COUNT(*) AS total, "
-                        + "COALESCE(SUM(CASE WHEN rating='again' THEN 1 ELSE 0 END), 0) AS again_count, "
-                        + "COALESCE(SUM(CASE WHEN rating='hard' THEN 1 ELSE 0 END), 0) AS hard_count, "
-                        + "COALESCE(SUM(CASE WHEN rating='easy' THEN 1 ELSE 0 END), 0) AS easy_count, "
-                        + "COALESCE(SUM(CASE WHEN rating NOT IN ('again', 'hard', 'easy') THEN 1 ELSE 0 END), 0) AS good_count, "
-                        + "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, "
-                        + "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count "
-                        + "FROM " + TABLE_REVIEW_LOG + " WHERE reviewed_at>=?",
-                new String[]{Long.toString(sinceMillis)}
-        );
-        try {
-            cursor.moveToFirst();
-            return new RecordsSchedulerModels.ReviewStats(
-                    cursor.getInt(0),
-                    cursor.getInt(1),
-                    cursor.getInt(2),
-                    cursor.getInt(4),
-                    cursor.getInt(3),
-                    cursor.getInt(5),
-                    cursor.getInt(6)
-            );
-        } finally {
-            cursor.close();
-        }
+        return new StudyStatsStore((LocalStore) this).reviewStatsSince(sinceMillis);
     }
 
     public boolean recordStudyTaskAnswered(String taskKey, String kanji, String taskType, long startedAt, long answeredAt, long activeElapsedMillis, String outcome) {
@@ -449,26 +422,7 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public Set<String> studiedKanjiSince(long sinceMillis) {
-        Cursor cursor = getReadableDatabase().query(
-                true,
-                TABLE_REVIEW_LOG,
-                new String[]{COLUMN_KANJI},
-                "reviewed_at>=?",
-                new String[]{Long.toString(sinceMillis)},
-                null,
-                null,
-                null,
-                null
-        );
-        Set<String> kanji = new HashSet<>();
-        try {
-            while (cursor.moveToNext()) {
-                kanji.add(string(cursor, COLUMN_KANJI));
-            }
-        } finally {
-            cursor.close();
-        }
-        return kanji;
+        return new StudyStatsStore((LocalStore) this).studiedKanjiSince(sinceMillis);
     }
 
     private static long localDayStart(long millis) {

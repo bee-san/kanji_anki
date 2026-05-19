@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.RecentMistakePolicy;
 import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.StudyImpactPolicy;
 import dev.bee.kanjianki.core.StudyStreakPolicy;
@@ -14,6 +15,8 @@ import dev.bee.kanjianki.sync.SyncSettings;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 final class StudyStatsQueries {
     private static final String TABLE_REVIEW_LOG = "review_log";
@@ -136,6 +139,58 @@ final class StudyStatsQueries {
                 promotionDays,
                 failStreak
         );
+    }
+
+    RecordsSchedulerModels.ReviewStats reviewStatsSince(long sinceMillis) {
+        Cursor cursor = db().rawQuery(
+                "SELECT "
+                        + "COUNT(*) AS total, "
+                        + "COALESCE(SUM(CASE WHEN rating='again' THEN 1 ELSE 0 END), 0) AS again_count, "
+                        + "COALESCE(SUM(CASE WHEN rating='hard' THEN 1 ELSE 0 END), 0) AS hard_count, "
+                        + "COALESCE(SUM(CASE WHEN rating='easy' THEN 1 ELSE 0 END), 0) AS easy_count, "
+                        + "COALESCE(SUM(CASE WHEN rating NOT IN ('again', 'hard', 'easy') THEN 1 ELSE 0 END), 0) AS good_count, "
+                        + "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, "
+                        + "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count "
+                        + "FROM " + TABLE_REVIEW_LOG + " WHERE reviewed_at>=?",
+                new String[]{Long.toString(sinceMillis)}
+        );
+        try {
+            cursor.moveToFirst();
+            return new RecordsSchedulerModels.ReviewStats(
+                    cursor.getInt(0),
+                    cursor.getInt(1),
+                    cursor.getInt(2),
+                    cursor.getInt(4),
+                    cursor.getInt(3),
+                    cursor.getInt(5),
+                    cursor.getInt(6)
+            );
+        } finally {
+            cursor.close();
+        }
+    }
+
+    Set<String> studiedKanjiSince(long sinceMillis) {
+        Cursor cursor = db().query(
+                true,
+                TABLE_REVIEW_LOG,
+                new String[]{COLUMN_KANJI},
+                "reviewed_at>=?",
+                new String[]{Long.toString(sinceMillis)},
+                null,
+                null,
+                null,
+                null
+        );
+        Set<String> kanji = new HashSet<>();
+        try {
+            while (cursor.moveToNext()) {
+                kanji.add(string(cursor, COLUMN_KANJI));
+            }
+        } finally {
+            cursor.close();
+        }
+        return kanji;
     }
 
     private SQLiteDatabase db() {

@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.KaniOutcomePolicy;
 import dev.bee.kanjianki.core.LadderHealthPolicy;
 import dev.bee.kanjianki.core.RecentMistakePolicy;
 import dev.bee.kanjianki.core.RecordsBase;
+import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.StudyImpactPolicy;
 import dev.bee.kanjianki.core.StudyStreakPolicy;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class StudyStatsStore {
     private final StudyStatsQueries queries;
@@ -41,6 +43,14 @@ public final class StudyStatsStore {
 
     public KaniOutcomeStats kaniOutcomeStats() {
         return queries.kaniOutcomeStats();
+    }
+
+    public RecordsSchedulerModels.ReviewStats reviewStatsSince(long sinceMillis) {
+        return queries.reviewStatsSince(sinceMillis);
+    }
+
+    public Set<String> studiedKanjiSince(long sinceMillis) {
+        return queries.studiedKanjiSince(sinceMillis);
     }
 
     static KaniOutcomeStats calculateKaniOutcomeStats(List<OutcomeEvidence> outcomeEvidence, List<LadderItemEvidence> ladderItems, int realDueReviewsToMove) {
