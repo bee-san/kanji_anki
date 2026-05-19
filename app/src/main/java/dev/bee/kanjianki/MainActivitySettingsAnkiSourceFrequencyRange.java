@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -62,24 +63,39 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
         inputs.bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveFrequencyRangeLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            int minRank;
-            int maxRank;
-            try {
-                minRank = validation.parseRankInput(minInput);
-                maxRank = validation.parseRankInput(maxInput);
-            } catch (NumberFormatException error) {
-                Toast.makeText(activity, SettingsTextCopy.numericRanksToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!SettingsInputRules.validRank(minRank) || !SettingsInputRules.validRank(maxRank)) {
-                Toast.makeText(activity, SettingsTextCopy.rankRangeToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
-            actions.saveFrequencyRange(rankRange);
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveFrequencyRange(minInput, maxInput)));
         box.addView(save);
         return box;
+    }
+
+    private void saveFrequencyRange(EditText minInput, EditText maxInput) {
+        int minRank;
+        int maxRank;
+        try {
+            minRank = validation.parseRankInput(minInput);
+            maxRank = validation.parseRankInput(maxInput);
+        } catch (NumberFormatException error) {
+            Toast.makeText(activity, SettingsTextCopy.numericRanksToast(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!SettingsInputRules.validRank(minRank) || !SettingsInputRules.validRank(maxRank)) {
+            Toast.makeText(activity, SettingsTextCopy.rankRangeToast(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
+        actions.saveFrequencyRange(rankRange);
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
