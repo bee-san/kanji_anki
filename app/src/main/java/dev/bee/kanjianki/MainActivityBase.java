@@ -533,15 +533,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return WritingFeedbackCopy.attemptProgressText(analysis, activeWritingLevel, shouldIncreaseSupportAfterAnalysis(analysis));
     }
 
-    String stageLabel(HintLevel level) {
-        return WritingFeedbackCopy.stageLabel(level);
-    }
-
-    String targetRevealText(WritingAnalysis analysis) {
-        String targetKanji = activeSession == null ? null : activeSession.item.kanji;
-        return WritingFeedbackCopy.targetRevealText(analysis, targetKanji);
-    }
-
     long startOfDay(long now) {
         return LocalDayPolicy.localDayStart(now);
     }

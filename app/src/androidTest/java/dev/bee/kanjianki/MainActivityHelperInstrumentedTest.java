@@ -173,10 +173,10 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Copy the faint outline; the current stroke is emphasized.", activity.guideLabel(HintState.fromWritingLevel(1), guide));
         assertEquals("Write with only the current stroke hinted, then check.", activity.guideLabel(HintState.fromWritingLevel(2), guide));
         assertEquals("Write from memory, then check. Use Hint if you are stuck.", activity.guideLabel(HintState.fromWritingLevel(3), guide));
-        assertEquals("Trace", activity.stageLabel(HintLevel.TRACE));
-        assertEquals("Blind", activity.stageLabel(HintLevel.BLIND));
+        assertEquals("Trace", WritingFeedbackCopy.stageLabel(HintLevel.TRACE));
+        assertEquals("Blind", WritingFeedbackCopy.stageLabel(HintLevel.BLIND));
         assertEquals("", activity.attemptProgressText(null));
-        assertEquals("", activity.targetRevealText(null));
+        assertEquals("", WritingFeedbackCopy.targetRevealText(null, null));
     }
 
     @Test
@@ -371,7 +371,7 @@ public final class MainActivityHelperInstrumentedTest {
                 ));
                 assertTrue(activity.attemptProgressText(close).contains("Try cleaner"));
                 assertTrue(activity.attemptProgressText(pass).contains("less help"));
-                assertTrue(activity.targetRevealText(wrong).contains("Target: 裂"));
+                assertTrue(WritingFeedbackCopy.targetRevealText(wrong, activity.activeSession == null ? null : activity.activeSession.item.kanji).contains("Target: 裂"));
             });
         }
     }
