@@ -63,17 +63,10 @@ public final class ReminderReceiver extends BroadcastReceiver {
         @Override
         public void handleDailyReminder() {
             try (LocalStore store = new LocalStore(context)) {
-                ReminderReceiver.handleDailyReminder(store.reminderSettings(), new DailyReminderActions() {
-                    @Override
-                    public void showReminderNotification() {
-                        ReminderScheduler.showReminderNotification(context);
-                    }
-
-                    @Override
-                    public void schedule(LocalStore.ReminderSettings settings) {
-                        ReminderScheduler.schedule(context, settings);
-                    }
-                });
+                ReminderReceiver.handleDailyReminder(
+                        store.reminderSettings(),
+                        new ReminderReceiverDailyActions(context)
+                );
             }
         }
     }
