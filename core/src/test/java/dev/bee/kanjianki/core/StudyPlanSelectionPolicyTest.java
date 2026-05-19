@@ -30,6 +30,23 @@ public final class StudyPlanSelectionPolicyTest {
     }
 
     @Test
+    public void extraNewCardsOverrideContinueAllMode() {
+        RecordsSchedulerModels.AdaptiveLoadPlan result = StudyPlanSelectionPolicy.select(
+                Collections.singletonList("裂"),
+                true,
+                Arrays.asList(row("裂"), row("語")),
+                Collections.singletonList(item("裂", StudyLadderRules.STATE_REVIEW, 0L, 1)),
+                Collections.singleton("語"),
+                100L,
+                null
+        );
+
+        assertEquals(Collections.singletonList("裂"), result.focusKanji);
+        assertEquals(1, result.remaining);
+        assertTrue(result.status.contains("extra new card"));
+    }
+
+    @Test
     public void continueAllOverridesAdaptivePlanWhenNoExtraCardsRequested() {
         RecordsSchedulerModels.AdaptiveLoadPlan result = StudyPlanSelectionPolicy.select(
                 Collections.emptyList(),
@@ -61,6 +78,19 @@ public final class StudyPlanSelectionPolicyTest {
         );
 
         assertSame(adaptive, result);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void adaptivePlanIsRequiredForDefaultMode() {
+        StudyPlanSelectionPolicy.select(
+                Collections.emptyList(),
+                false,
+                Collections.singletonList(row("裂")),
+                Collections.singletonList(item("裂", StudyLadderRules.STATE_REVIEW, 0L, 1)),
+                Collections.emptySet(),
+                100L,
+                null
+        );
     }
 
     private static RecordsSchedulerModels.AdaptiveLoadPlan adaptivePlan() {

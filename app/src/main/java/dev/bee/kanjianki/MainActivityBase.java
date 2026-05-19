@@ -446,12 +446,15 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     RecordsSchedulerModels.AdaptiveLoadPlan studyPlanForMode(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        Set<String> studiedToday = continueAllKanjiSession
-                ? store.studiedKanjiSince(startOfDay(now))
-                : Collections.emptySet();
-        RecordsSchedulerModels.AdaptiveLoadPlan adaptive = studyMoreNewCardKanji.isEmpty() && !continueAllKanjiSession
-                ? adaptivePlan(rows, items, now)
-                : null;
+        Set<String> studiedToday = Collections.emptySet();
+        RecordsSchedulerModels.AdaptiveLoadPlan adaptive = null;
+        if (studyMoreNewCardKanji.isEmpty()) {
+            if (continueAllKanjiSession) {
+                studiedToday = store.studiedKanjiSince(startOfDay(now));
+            } else {
+                adaptive = adaptivePlan(rows, items, now);
+            }
+        }
         return StudyPlanSelectionPolicy.select(
                 studyMoreNewCardKanji,
                 continueAllKanjiSession,

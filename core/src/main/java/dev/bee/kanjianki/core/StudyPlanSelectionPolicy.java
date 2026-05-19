@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public final class StudyPlanSelectionPolicy {
@@ -24,6 +25,6 @@ public final class StudyPlanSelectionPolicy {
         if (continueAllKanjiSession) {
             return FocusedStudyPlanPolicy.allCurrentProblemKanjiPlan(rows, items, studiedToday, nowMillis);
         }
-        return adaptivePlan;
+        return Objects.requireNonNull(adaptivePlan, "adaptivePlan");
     }
 }
