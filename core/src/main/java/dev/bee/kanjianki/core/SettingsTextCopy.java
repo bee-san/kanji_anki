@@ -290,75 +290,75 @@ public final class SettingsTextCopy {
     }
 
     public static String frequencyRangeTitle() {
-        return "Frequency range";
+        return SettingsReferenceDataTextCopy.frequencyRangeTitle();
     }
 
     public static String frequencyRangeBody() {
-        return "Suspended cards are imported only when the kanji has a known Jiten rank inside this range. Lower ranks are more common. Default: 100-3000.";
+        return SettingsReferenceDataTextCopy.frequencyRangeBody();
     }
 
     public static String minRankLabel() {
-        return "Min rank";
+        return SettingsReferenceDataTextCopy.minRankLabel();
     }
 
     public static String maxRankLabel() {
-        return "Max rank";
+        return SettingsReferenceDataTextCopy.maxRankLabel();
     }
 
     public static String minimumRankLabel() {
-        return "Minimum rank";
+        return SettingsReferenceDataTextCopy.minimumRankLabel();
     }
 
     public static String maximumRankLabel() {
-        return "Maximum rank";
+        return SettingsReferenceDataTextCopy.maximumRankLabel();
     }
 
     public static String saveFrequencyRangeLabel() {
-        return "Save frequency range";
+        return SettingsReferenceDataTextCopy.saveFrequencyRangeLabel();
     }
 
     public static String numericRanksToast() {
-        return "Enter numeric ranks.";
+        return SettingsReferenceDataTextCopy.numericRanksToast();
     }
 
     public static String rankRangeToast() {
-        return "Use ranks from 1 to 20000.";
+        return SettingsReferenceDataTextCopy.rankRangeToast();
     }
 
     public static String frequencyRangeSavedToast() {
-        return "Frequency range saved. Sync again to rebuild practice.";
+        return SettingsReferenceDataTextCopy.frequencyRangeSavedToast();
     }
 
     public static String offlineDataLicensesTitle() {
-        return "Offline data & licenses";
+        return SettingsReferenceDataTextCopy.offlineDataLicensesTitle();
     }
 
     public static String offlineDataLicensesBody() {
-        return "One reference page covers KANJIDIC2, Jiten rank data, KanjiVG stroke order, and bundled font attribution.";
+        return SettingsReferenceDataTextCopy.offlineDataLicensesBody();
     }
 
     public static String openDataLicensesLabel() {
-        return "Open data licenses";
+        return SettingsReferenceDataTextCopy.openDataLicensesLabel();
     }
 
     public static String dataLicensesTitle() {
-        return "Data licenses";
+        return SettingsReferenceDataTextCopy.dataLicensesTitle();
     }
 
     public static String dataLicensesBody() {
-        return "Dictionary and stroke-order data bundled for offline study.";
+        return SettingsReferenceDataTextCopy.dataLicensesBody();
     }
 
     public static String dictionaryDataTitle() {
-        return "Dictionary data";
+        return SettingsReferenceDataTextCopy.dictionaryDataTitle();
     }
 
     public static String strokeDataTitle() {
-        return "Stroke data";
+        return SettingsReferenceDataTextCopy.strokeDataTitle();
     }
 
     public static String fontsTitle() {
-        return "Fonts";
+        return SettingsReferenceDataTextCopy.fontsTitle();
     }
 
     public static String noteTypeFieldsTitle() {
