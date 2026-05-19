@@ -110,6 +110,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyProgress studyProgress = new MainActivityStudyProgress(this);
     private final MainActivityStudyScreen studyScreen = new MainActivityStudyScreen(this);
     private final MainActivityStudyMoreNewCards moreNewCards = new MainActivityStudyMoreNewCards(this);
+    private final MainActivityStudyState studyState = new MainActivityStudyState(this);
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
     final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
     private final MainActivityStudyReasonLine reasonLine = new MainActivityStudyReasonLine(this);
@@ -455,26 +456,19 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void completeActiveRepairStudyTask(String key, String outcome, long answeredAt) {
-        studySessionTracker.completeActiveTask(store, key, outcome, answeredAt, false);
+        studyState.completeActiveRepairStudyTask(key, outcome, answeredAt);
     }
 
     void tuneSchedulerIfNeeded(RecordsSchedulerModels.SchedulerParameters parameters, long now) {
-        RecordsSchedulerModels.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
-        StudyReviewActions.saveTunedSchedulerIfChanged(parameters, tuned, store::saveSchedulerParameters);
+        studyState.tuneSchedulerIfNeeded(parameters, now);
     }
 
     HintState initialHintState(RecordsSchedulerModels.StudySession session) {
-        return WritingHintPolicy.initialHintState(
-                session.item.writingLevel,
-                session.item.totalReviews,
-                session.item.learningStep,
-                TASK_TARGETED_WRITING.equals(session.taskType)
-        );
+        return studyState.initialHintState(session);
     }
 
     void setHintState(HintState state) {
-        currentHintState = state == null ? HintState.initial() : state;
-        currentPracticeLevel = currentHintState.level().writingLevel();
+        studyState.setHintState(state);
     }
 
     void showWritingHint() {
