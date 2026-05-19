@@ -1478,10 +1478,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         currentPracticeLevel = currentHintState.level().writingLevel();
     }
 
-    String guideStatusPrefix(StrokeGuide guide) {
-        return WritingFeedbackCopy.guideLabel(currentHintState, guide);
-    }
-
     void showWritingHint() {
         if (drawingPad == null || activeSession == null) {
             return;
@@ -1502,7 +1498,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         if (drawingPad != null && activeSession != null) {
             drawingPad.setGuide(guide, currentHintState, true);
-            if (canReplayAnalysis(analysis, guide)) {
+            if (WritingFeedbackCopy.canReplayAnalysis(analysis, drawingPad != null && drawingPad.hasInk(), guide)) {
                 drawingPad.captureReplaySnapshot();
                 drawingPad.startReplay();
             } else {
@@ -1548,7 +1544,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         input.guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
         input.canRevealMoreHelp = canRevealMoreHelp();
         input.recallTask = activeSession != null && StudyTaskCopy.isRecallTask(activeSession);
-        input.teachingTask = activeSession != null && isTeachingTask(activeSession);
+        input.teachingTask = activeSession != null && StudyTaskCopy.isTeachingTask(activeSession);
         input.currentPracticeLevel = currentPracticeLevel;
         return WritingActionPresentation.from(input);
     }
@@ -1611,10 +1607,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    boolean isTeachingTask(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.isTeachingTask(session);
-    }
-
     boolean canRevealMoreHelp() {
         if (activeSession == null) {
             return false;
@@ -1651,7 +1643,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             return;
         }
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        if (canReplayAnalysis(activeAnalysis, guide)) {
+        if (WritingFeedbackCopy.canReplayAnalysis(activeAnalysis, drawingPad != null && drawingPad.hasInk(), guide)) {
             drawingPad.setGuide(guide, currentHintState, true);
             drawingPad.startReplay();
         }
@@ -1683,10 +1675,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         setStudyStatus(WritingFeedbackCopy.blockedStrokeStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide), decision), MUTED);
         updateUndoStrokeButton();
-    }
-
-    boolean canReplayAnalysis(WritingAnalysis analysis, StrokeGuide guide) {
-        return WritingFeedbackCopy.canReplayAnalysis(analysis, drawingPad != null && drawingPad.hasInk(), guide);
     }
 
     String diagnosisText(WritingAnalysis analysis) {
@@ -1732,7 +1720,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         if (recognizer == null) {
             updateWritingModelAvailability(false);
             setStudyStatus(
-                    WritingFeedbackCopy.unavailableModelStatusMessage(guideStatusPrefix(strokeGuide(activeSession.item.kanji))),
+                    WritingFeedbackCopy.unavailableModelStatusMessage(
+                            WritingFeedbackCopy.guideLabel(currentHintState, strokeGuide(activeSession.item.kanji))
+                    ),
                     CORAL
             );
             updateResultActions();
@@ -1752,7 +1742,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
-        String prefix = guideStatusPrefix(strokeGuide(activeSession.item.kanji));
+        String prefix = WritingFeedbackCopy.guideLabel(currentHintState, strokeGuide(activeSession.item.kanji));
         if (error != null || status == null) {
             setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, status != null, false, error != null), CORAL);
             return;

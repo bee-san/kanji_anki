@@ -1772,11 +1772,11 @@ public final class MainActivityHelperInstrumentedTest {
         activity.activeAnalysis = null;
         assertTrue(activity.showNoInkWhenNeeded());
         assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
-        assertFalse(activity.isTeachingTask(null));
-        assertTrue(activity.isTeachingTask(session("裂", "context_writing", row)));
-        assertTrue(activity.isTeachingTask(session("裂", "guided_writing", row)));
-        assertTrue(activity.isTeachingTask(session("裂", MainActivityBase.TASK_TARGETED_WRITING, row)));
-        assertFalse(activity.isTeachingTask(new RecordsSchedulerModels.StudySession(
+        assertFalse(StudyTaskCopy.isTeachingTask(null));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("裂", "context_writing", row)));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("裂", "guided_writing", row)));
+        assertTrue(StudyTaskCopy.isTeachingTask(session("裂", MainActivityBase.TASK_TARGETED_WRITING, row)));
+        assertFalse(StudyTaskCopy.isTeachingTask(new RecordsSchedulerModels.StudySession(
                 studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L).copyBuilder().learningStep(3).build(),
                 row,
                 "tok-target-done",
@@ -2135,17 +2135,37 @@ public final class MainActivityHelperInstrumentedTest {
                         .evaluate(guide("裂"), sample())
                         .withDiagnosis(StrokeDiagnosis.builder().add(StrokeDiagnosis.Label.WRONG_DIRECTION, 1).build());
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
-                assertTrue(activity.canReplayAnalysis(activity.activeAnalysis, guide("裂")));
+                assertTrue(WritingFeedbackCopy.canReplayAnalysis(
+                        activity.activeAnalysis,
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        guide("裂")
+                ));
                 activity.resultStatus.setText("Previous result");
                 activity.resultStatus.setVisibility(View.VISIBLE);
                 activity.handleDrawingEdited();
                 assertNull(activity.activeAnalysis);
                 assertTrue(activity.studyStatus.getText().toString().contains("Updated ink"));
                 assertEquals(View.GONE, activity.resultStatus.getVisibility());
-                assertFalse(activity.canReplayAnalysis(analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, order), guide("裂")));
-                assertFalse(activity.canReplayAnalysis(activity.activeAnalysis, guide("裂")));
-                assertFalse(activity.canReplayAnalysis(analysis(WritingAnalysis.Status.WRONG, false, order), null));
-                assertFalse(activity.canReplayAnalysis(analysis(WritingAnalysis.Status.WRONG, false, order), new StrokeGuide("裂", Collections.emptyList())));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, order),
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        guide("裂")
+                ));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        activity.activeAnalysis,
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        guide("裂")
+                ));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        analysis(WritingAnalysis.Status.WRONG, false, order),
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        null
+                ));
+                assertFalse(WritingFeedbackCopy.canReplayAnalysis(
+                        analysis(WritingAnalysis.Status.WRONG, false, order),
+                        activity.drawingPad != null && activity.drawingPad.hasInk(),
+                        new StrokeGuide("裂", Collections.emptyList())
+                ));
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
                 activity.resultStatus.setText("Messy pass");
