@@ -1505,18 +1505,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         time.setText(SettingsTextCopy.reminderTimeButtonLabel(hour, minute));
     }
 
-    int beginUpdateUiRun() {
-        activeUpdateUiRunToken = ++updateUiRunCounter;
-        return activeUpdateUiRunToken;
-    }
-
-    boolean updateUiRunStillActive(int token) {
-        return token != 0 && activeUpdateUiRunToken == token;
-    }
-
     void runUpdate(boolean cachedPending) {
         base(NAV_SETTINGS_ROUTE);
-        int updateUiRun = beginUpdateUiRun();
+        int updateUiRun = ++updateUiRunCounter;
+        activeUpdateUiRunToken = updateUiRun;
         UpdateRunScreenCopy.Copy copy = UpdateRunScreenCopy.forRun(cachedPending);
         content.addView(fullWidthHomeButton());
         Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
@@ -1531,7 +1523,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                     ? updater.installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
                     : updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL);
             main.post(() -> {
-                if (!updateUiRunStillActive(updateUiRun)) {
+                if (activeUpdateUiRunToken != updateUiRun) {
                     return;
                 }
                 Toast.makeText(this, result.message, Toast.LENGTH_LONG).show();
