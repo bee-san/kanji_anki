@@ -470,35 +470,35 @@ public final class SettingsTextCopy {
     }
 
     public static String dailyWorkloadTitle() {
-        return "Daily workload";
+        return SettingsStudyPlanTextCopy.dailyWorkloadTitle();
     }
 
     public static String automaticWorkloadBody() {
-        return "Kani automatically chooses where today's problem-kanji priority curve drops off. This changes how much it admits today, not Anki's schedule.";
+        return SettingsStudyPlanTextCopy.automaticWorkloadBody();
     }
 
     public static String saveMaximumLabel() {
-        return "Save maximum";
+        return SettingsStudyPlanTextCopy.saveMaximumLabel();
     }
 
     public static String manualWorkloadLabel() {
-        return "Use manual workload";
+        return SettingsStudyPlanTextCopy.manualWorkloadLabel();
     }
 
     public static String manualWorkloadBody() {
-        return "Manual workload overrides the automatic Pareto drop-off. This changes how much Kani admits today, not Anki's schedule.";
+        return SettingsStudyPlanTextCopy.manualWorkloadBody();
     }
 
     public static String[] workloadScaleLabels() {
-        return new String[]{"Very little", "Pareto", "Balanced", "More", "All kanji"};
+        return SettingsStudyPlanTextCopy.workloadScaleLabels();
     }
 
     public static String saveWorkloadLabel() {
-        return "Save workload";
+        return SettingsStudyPlanTextCopy.saveWorkloadLabel();
     }
 
     public static String automaticParetoLabel() {
-        return "Use automatic Pareto";
+        return SettingsStudyPlanTextCopy.automaticParetoLabel();
     }
 
     public static String learningStepsTitle() {
@@ -608,99 +608,75 @@ public final class SettingsTextCopy {
     }
 
     public static String workloadStatusText(int percent, int maxItems) {
-        int snapped = AdaptiveLoadPlanner.snapWorkloadPercent(percent);
-        int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(maxItems);
-        String label = AdaptiveLoadPlanner.workloadLabel(snapped);
-        if (snapped >= 100) {
-            return label + ": up to " + normalizedMax + " items";
-        }
-        return label + ": up to " + Math.min(AdaptiveLoadPlanner.targetCeiling(snapped), normalizedMax) + " items";
+        return SettingsStudyPlanTextCopy.workloadStatusText(percent, maxItems);
     }
 
     public static String maxItemsStatusText(int maxItems) {
-        return "Maximum: " + StudyTextCopy.countText(AdaptiveLoadPlanner.normalizeMaxItems(maxItems), "item", "items");
+        return SettingsStudyPlanTextCopy.maxItemsStatusText(maxItems);
     }
 
     public static String autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        if (plan == null || plan.target <= 0) {
-            return "Auto Pareto: waiting for problem kanji";
-        }
-        return "Auto Pareto: " + StudyTextCopy.countText(plan.target, "item", "items") + " today";
+        return SettingsStudyPlanTextCopy.autoWorkloadStatusText(plan);
     }
 
     public static String newCardSortStatusText(String mode) {
-        return "Current: " + newCardSortLabel(mode);
+        return SettingsStudyPlanTextCopy.newCardSortStatusText(mode);
     }
 
     public static String newCardSortLabel(String mode) {
-        return switch (RecordsSyncModels.Settings.normalizeNewCardSortMode(mode)) {
-            case RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY -> "Anki difficulty";
-            case RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK -> "Retrievability risk";
-            case RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS -> "Kani weakness";
-            default -> "Frequency";
-        };
+        return SettingsStudyPlanTextCopy.newCardSortLabel(mode);
     }
 
     public static String frequencyRangeStatusText(int minRank, int maxRank) {
-        return String.format(Locale.ROOT, "Jiten ranks %d-%d", minRank, maxRank);
+        return SettingsStudyPlanTextCopy.frequencyRangeStatusText(minRank, maxRank);
     }
 
     public static String retentionStatusText(int retentionPercent) {
-        return "Desired retention: " + retentionPercent + "%";
+        return SettingsStudyPlanTextCopy.retentionStatusText(retentionPercent);
     }
 
     public static String studyLadderTitle() {
-        return "Study ladder";
+        return SettingsStudyPlanTextCopy.studyLadderTitle();
     }
 
     public static String studyLadderBody() {
-        return "Turn rungs off or move them up and down. At least one always-available rung stays on.";
+        return SettingsStudyPlanTextCopy.studyLadderBody();
     }
 
     public static String ladderToggleLabel(boolean enabled) {
-        return enabled ? "On" : "Off";
+        return SettingsStudyPlanTextCopy.ladderToggleLabel(enabled);
     }
 
     public static String moveUpLabel() {
-        return "Up";
+        return SettingsStudyPlanTextCopy.moveUpLabel();
     }
 
     public static String moveDownLabel() {
-        return "Down";
+        return SettingsStudyPlanTextCopy.moveDownLabel();
     }
 
     public static String restoreDefaultLadderLabel() {
-        return "Restore default ladder";
+        return SettingsStudyPlanTextCopy.restoreDefaultLadderLabel();
     }
 
     public static String studyLadderRestoredToast() {
-        return "Study ladder restored.";
+        return SettingsStudyPlanTextCopy.studyLadderRestoredToast();
     }
 
     public static String keepAlwaysAvailableRungToast() {
-        return "Keep at least one always-available rung on.";
+        return SettingsStudyPlanTextCopy.keepAlwaysAvailableRungToast();
     }
 
     public static String ladderRungToggleToast(RecordsBase.LadderRung rung, boolean wasEnabled) {
-        return settingsLadderRungLabel(rung) + (wasEnabled ? " off." : " on.");
+        return SettingsStudyPlanTextCopy.ladderRungToggleToast(rung, wasEnabled);
     }
 
     public static String ladderRungSubtitle(RecordsBase.StudyLadderSettings ladder, RecordsBase.LadderRung rung) {
-        String status = ladder.isEnabled(rung) ? "Enabled" : "Disabled";
-        String kind = rung == RecordsBase.LadderRung.SIMILAR_KANJI ? "conditional" : "always available";
-        return status + " " + kind + " rung";
+        return SettingsStudyPlanTextCopy.ladderRungSubtitle(ladder, rung);
     }
 
     public static String settingsLadderRungLabel(RecordsBase.LadderRung rung) {
-        return switch (rung) {
-            case WRITE_KANJI -> "Write kanji";
-            case SIMILAR_KANJI -> "Similar kanji";
-            case TYPE_MEANING -> "Type the meaning";
-            case MEANING_KANJI -> "Meaning -> kanji";
-            case KANJI_MEANING -> "Kanji -> meaning";
-            case FONT_MEANING -> "Font -> meaning";
-            case WORD_READING -> "Word -> reading";
-        };
+        return SettingsStudyPlanTextCopy.settingsLadderRungLabel(rung);
     }
 
     public static String reminderStatus(boolean enabled, boolean blocked, String displayTime) {
