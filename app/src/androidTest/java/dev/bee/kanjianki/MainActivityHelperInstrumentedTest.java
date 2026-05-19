@@ -166,13 +166,13 @@ public final class MainActivityHelperInstrumentedTest {
     private static void assertWritingGuideText(MainActivity activity) {
         StrokeGuide emptyGuide = new StrokeGuide("裂", Collections.emptyList());
         StrokeGuide guide = guide("裂");
-        assertTrue(activity.guideLabel(3, emptyGuide).startsWith("Write from memory"));
-        assertTrue(activity.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
-        assertTrue(activity.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
-        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", activity.guideLabel(HintState.fromWritingLevel(0), guide));
-        assertEquals("Copy the faint outline; the current stroke is emphasized.", activity.guideLabel(HintState.fromWritingLevel(1), guide));
-        assertEquals("Write with only the current stroke hinted, then check.", activity.guideLabel(HintState.fromWritingLevel(2), guide));
-        assertEquals("Write from memory, then check. Use Hint if you are stuck.", activity.guideLabel(HintState.fromWritingLevel(3), guide));
+        assertTrue(WritingFeedbackCopy.guideLabel(3, emptyGuide).startsWith("Write from memory"));
+        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), emptyGuide).startsWith("Write from memory"));
+        assertTrue(WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), emptyGuide).startsWith("No numbered stroke guide"));
+        assertEquals("Trace the numbered strokes, then check. This is a learning attempt.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide));
+        assertEquals("Copy the faint outline; the current stroke is emphasized.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(1), guide));
+        assertEquals("Write with only the current stroke hinted, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide));
+        assertEquals("Write from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), guide));
         assertEquals("Trace", WritingFeedbackCopy.stageLabel(HintLevel.TRACE));
         assertEquals("Blind", WritingFeedbackCopy.stageLabel(HintLevel.BLIND));
         assertEquals("", WritingFeedbackCopy.attemptProgressText(null, null, false));

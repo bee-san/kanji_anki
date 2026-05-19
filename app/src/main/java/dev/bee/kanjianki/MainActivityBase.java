@@ -517,14 +517,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         content.addView(space, new LinearLayout.LayoutParams(1, dp(dp)));
     }
 
-    String guideLabel(int level, StrokeGuide guide) {
-        return WritingFeedbackCopy.guideLabel(level, guide);
-    }
-
-    String guideLabel(HintState state, StrokeGuide guide) {
-        return WritingFeedbackCopy.guideLabel(state, guide);
-    }
-
     long startOfDay(long now) {
         return LocalDayPolicy.localDayStart(now);
     }

@@ -790,7 +790,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         writingTitle.setTextColor(STUDY_PLUM);
         card.addView(writingTitle);
         StrokeGuide guide = strokeGuide(session.item.kanji);
-        studyStatus = text(guideLabel(currentHintState, guide), 16, STUDY_MUTED, false);
+        studyStatus = text(WritingFeedbackCopy.guideLabel(currentHintState, guide), 16, STUDY_MUTED, false);
         card.addView(studyStatus);
         drawingPad = new DrawingPadView(this);
         drawingPad.setTarget(session.item.kanji);
@@ -1241,7 +1241,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     void eraseWritingPad() {
         drawingPad.clear();
         activeAnalysis = null;
-        setStudyStatus(guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)), MUTED);
+        setStudyStatus(WritingFeedbackCopy.guideLabel(currentHintState, strokeGuide(activeSession.item.kanji)), MUTED);
         updateResultActions();
     }
 
@@ -1252,7 +1252,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         drawingPad.clear();
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(WritingFeedbackCopy.freshGuidedTryStatus(guideLabel(currentHintState, guide)), MUTED);
+        setStudyStatus(WritingFeedbackCopy.freshGuidedTryStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
         updateResultActions();
     }
 
@@ -1477,7 +1477,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     String guideStatusPrefix(StrokeGuide guide) {
-        return guideLabel(currentHintState, guide);
+        return WritingFeedbackCopy.guideLabel(currentHintState, guide);
     }
 
     void showWritingHint() {
@@ -1489,7 +1489,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         hintsUsed++;
         activeAnalysis = null;
         drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(WritingFeedbackCopy.hintUsedStatus(guideLabel(currentHintState, guide)), MUTED);
+        setStudyStatus(WritingFeedbackCopy.hintUsedStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
         updateResultActions();
     }
 
@@ -1517,7 +1517,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 shouldIncreaseSupportAfterAnalysis(analysis),
                 diagnosisText(analysis)
         );
-        setStudyStatus(guideLabel(currentHintState, guide), MUTED);
+        setStudyStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide), MUTED);
         setResultStatus(message, color);
         updateResultActions();
     }
@@ -1633,7 +1633,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         drawingPad.clear();
         drawingPad.setGuide(guide, currentHintState, false);
-        setStudyStatus(WritingFeedbackCopy.cleanerRetryStatus(guideLabel(currentHintState, guide)), MUTED);
+        setStudyStatus(WritingFeedbackCopy.cleanerRetryStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
         updateResultActions();
     }
 
@@ -1644,7 +1644,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         clearWritingResult();
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setStudyStatus(WritingFeedbackCopy.undoStrokeStatus(guideLabel(currentHintState, guide)), MUTED);
+        setStudyStatus(WritingFeedbackCopy.undoStrokeStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
         updateResultActions();
     }
 
@@ -1667,7 +1667,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         clearWritingResult();
         drawingPad.clearReplaySnapshot();
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setStudyStatus(WritingFeedbackCopy.updatedInkStatus(guideLabel(currentHintState, guide)), MUTED);
+        setStudyStatus(WritingFeedbackCopy.updatedInkStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide)), MUTED);
         updateResultActions();
     }
 
@@ -1683,7 +1683,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             return;
         }
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
-        setStudyStatus(WritingFeedbackCopy.blockedStrokeStatus(guideLabel(currentHintState, guide), decision), MUTED);
+        setStudyStatus(WritingFeedbackCopy.blockedStrokeStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide), decision), MUTED);
         updateUndoStrokeButton();
     }
 
