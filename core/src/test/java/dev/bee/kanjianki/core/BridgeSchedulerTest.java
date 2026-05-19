@@ -896,6 +896,45 @@ public class BridgeSchedulerTest {
     }
 
     @Test
+    public void reviewTransitionPassesOverdueElapsedDaysToFsrs() {
+        RecordingFsrsAdapter adapter = new RecordingFsrsAdapter(3L * BridgeScheduler.DAY);
+        BridgeScheduler scheduler = new BridgeScheduler(adapter);
+        long now = 40L * BridgeScheduler.DAY;
+        long dueAt = now - 2L * BridgeScheduler.DAY;
+        RecordsStudyModels.TaskMemory taskMemory = new RecordsStudyModels.TaskMemory(
+                "review",
+                dueAt,
+                5.0,
+                6.0,
+                4,
+                0,
+                0,
+                "good",
+                7
+        );
+        RecordsStudyModels.StudyItem item = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueAt)
+                .copyBuilder()
+                .stability(5.0)
+                .difficulty(6.0)
+                .totalReviews(4)
+                .matureIntervalDays(7)
+                .kanjiMeaningMemory(taskMemory)
+                .activeToken("overdue")
+                .build();
+
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
+                item,
+                new RecordsSchedulerModels.ReviewRequest("裂", "overdue", "good", false, false, false, 0),
+                new HashSet<>(),
+                now
+        );
+
+        assertEquals(9, adapter.elapsedDays);
+        assertEquals(now + 3L * BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(3, result.item.matureIntervalDays);
+    }
+
+    @Test
     public void relearningGraduationPreservesPostLapseStability() {
         BridgeScheduler scheduler = new BridgeScheduler();
         long dueAt = 30L * BridgeScheduler.DAY;
@@ -1934,6 +1973,38 @@ public class BridgeSchedulerTest {
                 int elapsedDays,
                 double targetRetention
         ) {
+            return new KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis);
+        }
+    }
+
+    private static final class RecordingFsrsAdapter implements KaniFsrsAdapter {
+        private final long reviewIntervalMillis;
+        private int elapsedDays = -1;
+
+        RecordingFsrsAdapter(long reviewIntervalMillis) {
+            this.reviewIntervalMillis = reviewIntervalMillis;
+        }
+
+        @Override
+        public KaniFsrsReviewResult initialReview(
+                String rating,
+                double currentStability,
+                double currentDifficulty,
+                double targetRetention,
+                boolean isNewLearning
+        ) {
+            return new KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY);
+        }
+
+        @Override
+        public KaniFsrsReviewResult review(
+                double stability,
+                double difficulty,
+                String rating,
+                int elapsedDays,
+                double targetRetention
+        ) {
+            this.elapsedDays = elapsedDays;
             return new KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis);
         }
     }
