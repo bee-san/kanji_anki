@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -307,7 +308,15 @@ public final class SettingsTextCopyTest {
         );
         assertEquals("FSRS days to go up", SettingsTextCopy.fsrsDaysToGoUpLabel());
         assertEquals("Fails to go down", SettingsTextCopy.failsToGoDownLabel());
-        assertEquals("Use 21 and 3", SettingsTextCopy.useDefaultLadderThresholdsLabel());
+        assertEquals(
+                String.format(
+                        Locale.ROOT,
+                        "Use %d and %d",
+                        RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                        RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+                ),
+                SettingsTextCopy.useDefaultLadderThresholdsLabel()
+        );
         assertEquals("Save ladder thresholds", SettingsTextCopy.saveLadderThresholdsLabel());
         assertEquals("Ladder thresholds saved.", SettingsTextCopy.ladderThresholdsSavedToast());
         assertThrows(NullPointerException.class, () -> SettingsTextCopy.settingsLadderRungLabel(null));
