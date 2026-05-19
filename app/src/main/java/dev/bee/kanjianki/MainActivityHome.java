@@ -447,7 +447,7 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(HomeTextCopy.recentMistakeTitle(row == null ? "" : rowMeaning(row)), 19, INK, true));
-        copy.addView(text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, timelineDate(mistake.reviewedAtMillis)), 14, MUTED, false));
+        copy.addView(text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, DateTextPolicy.timelineDate(mistake.reviewedAtMillis)), 14, MUTED, false));
         if (row != null) {
             copy.addView(text(sourceEvidenceText(row), 14, INK, true));
         }
@@ -924,12 +924,12 @@ abstract class MainActivityHome extends MainActivityBase {
 
     View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
         LinearLayout box = panelBox(Color.WHITE, timelineEventColor(event.eventType));
-        box.addView(text(timelineDate(event.occurredAtMillis), 13, MUTED, false));
+        box.addView(text(DateTextPolicy.timelineDate(event.occurredAtMillis), 13, MUTED, false));
         box.addView(text(event.title, 18, INK, true));
         if (!event.detail.isEmpty()) {
             box.addView(text(event.detail, 15, MUTED, false));
         }
-        String source = timelineSourceLine(event);
+        String source = TimelineCopy.sourceLine(event);
         if (!source.isEmpty()) {
             box.addView(text(source, 14, INK, true));
         }
@@ -948,14 +948,6 @@ abstract class MainActivityHome extends MainActivityBase {
             return CORAL;
         }
         return BLUE;
-    }
-
-    String timelineDate(long occurredAt) {
-        return DateTextPolicy.timelineDate(occurredAt);
-    }
-
-    String timelineSourceLine(RecordsImportModels.KanjiTimelineEvent event) {
-        return TimelineCopy.sourceLine(event);
     }
 
     View exampleView(RecordsImportModels.Example example) {

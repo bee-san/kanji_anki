@@ -11,6 +11,7 @@ import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.StatsTextCopy;
+import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import android.content.Context;
 import android.content.Intent;
@@ -1085,9 +1086,9 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals(MainActivityBase.CORAL, activity.timelineEventColor("review_failed"));
         assertEquals(MainActivityBase.TEAL, activity.timelineEventColor("review_passed"));
         assertEquals(MainActivityBase.BLUE, activity.timelineEventColor("sync"));
-        assertEquals("", activity.timelineSourceLine(event("", "")));
-        assertEquals("Source: 活動語", activity.timelineSourceLine(event("活動語", "")));
-        assertEquals("Source: 活動語  カツドウゴ", activity.timelineSourceLine(event("活動語", "カツドウゴ")));
+        assertEquals("", TimelineCopy.sourceLine(event("", "")));
+        assertEquals("Source: 活動語", TimelineCopy.sourceLine(event("活動語", "")));
+        assertEquals("Source: 活動語  カツドウゴ", TimelineCopy.sourceLine(event("活動語", "カツドウゴ")));
     }
 
     private static void verifyDetailPanels(
