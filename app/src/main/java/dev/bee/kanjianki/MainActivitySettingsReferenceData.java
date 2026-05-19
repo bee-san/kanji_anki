@@ -1,6 +1,5 @@
 package dev.bee.kanjianki;
 
-import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -32,21 +31,18 @@ final class MainActivitySettingsReferenceData {
         activity.content.addView(backButton);
         activity.content.addView(activity.text(SettingsTextCopy.dataLicensesTitle(), 34, activity.INK, true));
         activity.content.addView(activity.text(SettingsTextCopy.dataLicensesBody(), 16, activity.MUTED, false));
+        activity.content.addView(MainActivitySettingsReferenceDataCompose.dataSourcesPanelsView(activity, dataSourcesModel()));
+    }
 
-        LinearLayout dictionary = activity.panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        dictionary.addView(activity.text(SettingsTextCopy.dictionaryDataTitle(), 23, activity.INK, true));
-        dictionary.addView(activity.text(AttributionTexts.dictionarySources(activity), 14, activity.MUTED, false));
-        activity.content.addView(dictionary);
-
-        LinearLayout stroke = activity.panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        stroke.addView(activity.text(SettingsTextCopy.strokeDataTitle(), 23, activity.INK, true));
-        stroke.addView(activity.text(AttributionTexts.kanjiVg(activity), 14, activity.MUTED, false));
-        activity.content.addView(stroke);
-
-        LinearLayout fonts = activity.panelBox(Color.WHITE, Color.rgb(255, 247, 220));
-        fonts.addView(activity.text(SettingsTextCopy.fontsTitle(), 23, activity.INK, true));
-        fonts.addView(activity.text(AttributionTexts.rawResourceText(activity, R.raw.font_attribution), 14, activity.MUTED, false));
-        activity.content.addView(fonts);
+    SettingsReferenceDataModel dataSourcesModel() {
+        return new SettingsReferenceDataModel(
+                SettingsTextCopy.dictionaryDataTitle(),
+                AttributionTexts.dictionarySources(activity),
+                SettingsTextCopy.strokeDataTitle(),
+                AttributionTexts.kanjiVg(activity),
+                SettingsTextCopy.fontsTitle(),
+                AttributionTexts.rawResourceText(activity, R.raw.font_attribution)
+        );
     }
 
     private static final class RunnableClickListener implements View.OnClickListener {
