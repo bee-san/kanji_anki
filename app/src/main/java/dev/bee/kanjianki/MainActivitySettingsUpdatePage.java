@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -22,14 +23,14 @@ final class MainActivitySettingsUpdatePage {
         activity.base(activity.NAV_SETTINGS_ROUTE);
         activity.content.addView(activity.fullWidthHomeButton());
         Button backButton = activity.secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        backButton.setOnClickListener(v -> activity.renderSettings(false));
+        backButton.setOnClickListener(new RunnableClickListener(() -> activity.renderSettings(false)));
         activity.content.addView(backButton);
         activity.content.addView(activity.text(SettingsTextCopy.updatePageTitle(), 34, activity.INK, true));
         activity.content.addView(activity.text(SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME), 16, activity.MUTED, false));
         activity.content.addView(autoUpdatePanel(SettingsTextCopy.automaticUpdatesTitle()));
 
         Button button = activity.primaryButton(SettingsTextCopy.checkForUpdateLabel(), activity.STUDY_PINK_DARK);
-        button.setOnClickListener(v -> activity.runUpdate(false));
+        button.setOnClickListener(new RunnableClickListener(() -> activity.runUpdate(false)));
         activity.content.addView(button);
     }
 
@@ -54,29 +55,19 @@ final class MainActivitySettingsUpdatePage {
             box.addView(activity.text(pending, 15, activity.MUTED, false));
             if (canInstall) {
                 Button install = activity.primaryButton(SettingsTextCopy.installVerifiedUpdateLabel(), activity.CORAL);
-                install.setOnClickListener(v -> activity.runUpdate(true));
+                install.setOnClickListener(new RunnableClickListener(() -> activity.runUpdate(true)));
                 box.addView(install);
             }
         }
 
         if (!canInstall) {
             Button permission = activity.secondaryButton(SettingsTextCopy.setupAppInstallsLabel());
-            permission.setOnClickListener(v -> activity.startActivity(GitHubUpdater.installPermissionIntent(activity)));
+            permission.setOnClickListener(new RunnableClickListener(() -> activity.startActivity(GitHubUpdater.installPermissionIntent(activity))));
             box.addView(permission);
         }
 
         Button toggle = activity.secondaryButton(SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled));
-        toggle.setOnClickListener(v -> {
-            AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
-            activity.store.saveAutoUpdateEnabled(result.enabled());
-            if (result.enabled()) {
-                AutoUpdateScheduler.schedule(activity);
-            } else {
-                AutoUpdateScheduler.cancel(activity);
-            }
-            Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
-            activity.renderUpdate();
-        });
+        toggle.setOnClickListener(new AutoUpdateToggleClickListener(status.enabled));
         box.addView(toggle);
         return box;
     }
@@ -86,5 +77,39 @@ final class MainActivitySettingsUpdatePage {
             return MainActivityBase.installPermissionForTests;
         }
         return activity.getPackageManager().canRequestPackageInstalls();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
+    }
+
+    private final class AutoUpdateToggleClickListener implements View.OnClickListener {
+        private final boolean enabled;
+
+        AutoUpdateToggleClickListener(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        @Override
+        public void onClick(View v) {
+            AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(enabled);
+            activity.store.saveAutoUpdateEnabled(result.enabled());
+            if (result.enabled()) {
+                AutoUpdateScheduler.schedule(activity);
+            } else {
+                AutoUpdateScheduler.cancel(activity);
+            }
+            Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
+            activity.renderUpdate();
+        }
     }
 }
