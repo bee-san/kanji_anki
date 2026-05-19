@@ -127,10 +127,6 @@ abstract class MainActivityHome extends MainActivityBase {
         return chrome.homeSectionHeader(title, actionLabel, action);
     }
 
-    View pillButton(String label, int iconRes, Runnable action) {
-        return chrome.pillButton(label, iconRes, action);
-    }
-
     View fullWidthHomeButton() {
         return chrome.fullWidthHomeButton();
     }
