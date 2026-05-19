@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -34,25 +35,19 @@ final class MainActivitySettingsStudyLadderPanel {
             LinearLayout controls = new LinearLayout(activity);
             controls.setOrientation(LinearLayout.HORIZONTAL);
             Button toggle = activity.secondaryButton(SettingsTextCopy.ladderToggleLabel(ladder.isEnabled(rung)));
-            toggle.setOnClickListener(v -> source.toggleLadderRung(rung));
+            toggle.setOnClickListener(new RunnableClickListener(() -> source.toggleLadderRung(rung)));
             controls.addView(toggle, new LinearLayout.LayoutParams(0, activity.dp(48), 1));
 
             Button up = activity.secondaryButton(SettingsTextCopy.moveUpLabel());
             up.setEnabled(i > 0);
-            up.setOnClickListener(v -> {
-                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(rung, -1));
-                activity.renderSettings();
-            });
+            up.setOnClickListener(new RunnableClickListener(() -> moveRung(rung, -1)));
             LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(0, activity.dp(48), 1);
             upLp.setMargins(activity.dp(8), 0, 0, 0);
             controls.addView(up, upLp);
 
             Button down = activity.secondaryButton(SettingsTextCopy.moveDownLabel());
             down.setEnabled(i < rungs.size() - 1);
-            down.setOnClickListener(v -> {
-                activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(rung, 1));
-                activity.renderSettings();
-            });
+            down.setOnClickListener(new RunnableClickListener(() -> moveRung(rung, 1)));
             LinearLayout.LayoutParams downLp = new LinearLayout.LayoutParams(0, activity.dp(48), 1);
             downLp.setMargins(activity.dp(8), 0, 0, 0);
             controls.addView(down, downLp);
@@ -61,12 +56,32 @@ final class MainActivitySettingsStudyLadderPanel {
         }
 
         Button reset = activity.secondaryButton(SettingsTextCopy.restoreDefaultLadderLabel());
-        reset.setOnClickListener(v -> {
-            activity.store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
-            Toast.makeText(activity, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        reset.setOnClickListener(new RunnableClickListener(this::restoreDefaultLadderSettings));
         box.addView(reset);
         return box;
+    }
+
+    private void moveRung(RecordsBase.LadderRung rung, int direction) {
+        activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(rung, direction));
+        activity.renderSettings();
+    }
+
+    private void restoreDefaultLadderSettings() {
+        activity.store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
+        Toast.makeText(activity, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
