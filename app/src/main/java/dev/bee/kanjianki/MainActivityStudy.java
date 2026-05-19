@@ -437,14 +437,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         );
     }
 
-    RecordsStudyModels.StudyItem studyItemForTargetedKanji(List<RecordsStudyModels.StudyItem> seeded, String kanji, long now) {
-        return new BridgeScheduler().targetedStudyItem(seeded, kanji, now, studyLadderSettings());
-    }
-
-    RecordsStudyModels.StudyItem newTargetedStudyItem(String kanji, long now) {
-        return new BridgeScheduler().newTargetedStudyItem(kanji, now, studyLadderSettings());
-    }
-
     void renderSession(RecordsSchedulerModels.StudySession session) {
         switch (StudySessionRoute.destination(session)) {
             case WRITING:
@@ -899,7 +891,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         StudyRepairActions.ActiveRepair active = StudyRepairActions.activateSimilarWritingRepair(repair, now, store::saveSimilarWritingRepair);
         RecordsImportModels.SimilarKanjiWritingRepair activeRepair = active.repair();
         activeSimilarWritingRepair = activeRepair;
-        RecordsStudyModels.StudyItem item = newTargetedStudyItem(activeRepair.repairKanji, now);
+        RecordsStudyModels.StudyItem item = new BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, studyLadderSettings());
         activeSession = new RecordsSchedulerModels.StudySession(
                 item.withToken(active.token()),
                 null,

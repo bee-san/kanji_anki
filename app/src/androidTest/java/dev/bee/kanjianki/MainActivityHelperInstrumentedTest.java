@@ -1360,13 +1360,13 @@ public final class MainActivityHelperInstrumentedTest {
     ) {
         View grid = activity.similarKanjiGrid(Arrays.asList("裂", "列", "烈"), "裂");
         assertEquals(2, ((ViewGroup) grid).getChildCount());
-        RecordsStudyModels.StudyItem targeted = activity.newTargetedStudyItem("謎", 1234L);
+        RecordsStudyModels.StudyItem targeted = new BridgeScheduler().newTargetedStudyItem("謎", 1234L, activity.studyLadderSettings());
         assertEquals("謎", targeted.kanji);
         assertEquals("new", targeted.state);
         assertEquals(1234L, targeted.dueAtMillis);
         RecordsStudyModels.StudyItem existingTarget = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
-        assertSame(existingTarget, activity.studyItemForTargetedKanji(Collections.singletonList(existingTarget), session.item.kanji, now));
-        assertEquals("new", activity.studyItemForTargetedKanji(Collections.emptyList(), "謎", 1234L).state);
+        assertSame(existingTarget, new BridgeScheduler().targetedStudyItem(Collections.singletonList(existingTarget), session.item.kanji, now, activity.studyLadderSettings()));
+        assertEquals("new", new BridgeScheduler().targetedStudyItem(Collections.emptyList(), "謎", 1234L, activity.studyLadderSettings()).state);
         assertEquals(activity.dp(300), activity.studyPadHeightForScreenDp(699));
         assertEquals(activity.dp(340), activity.studyPadHeightForScreenDp(700));
         assertEquals(activity.dp(390), activity.studyPadHeightForScreenDp(820));
