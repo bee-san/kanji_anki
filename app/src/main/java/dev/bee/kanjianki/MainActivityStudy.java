@@ -49,7 +49,6 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FlashcardGesturePolicy;
-import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
@@ -85,7 +84,6 @@ import dev.bee.kanjianki.update.GitHubUpdater;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -95,8 +93,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivityStudy extends MainActivityStats {
-    private static final String LABEL_CHOOSE_KANJI = "Choose the kanji";
-
     interface KanjiChoiceClickHandler {
         void onClick(String glyph, LinearLayout grid);
     }
@@ -111,8 +107,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
-    private final Random meaningChoiceRandom = new Random();
     private final MainActivityStudyFlashcard flashcardUi = new MainActivityStudyFlashcard(this);
     private final MainActivityStudyWritingUi writingUi = new MainActivityStudyWritingUi(this);
     private final MainActivityStudyWritingFlow writingFlow = new MainActivityStudyWritingFlow(this);
@@ -120,6 +114,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyReviewFlow writingReview = new MainActivityStudyReviewFlow(this);
     private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
     private final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
+    private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -392,44 +387,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderMeaningKanjiSession(RecordsSchedulerModels.StudySession session) {
-        resetChoiceSession(true);
-
-        RecordsImportModels.MeaningKanjiChoiceCard choiceCard = meaningKanjiChoiceCardForSession(session);
-        if (choiceCard == null || choiceCard.choices.size() < 4) {
-            renderFlashcardSession(session);
-            return;
-        }
-
-        LinearLayout cardShell = softStudyCard();
-        cardShell.addView(modePill("Recall"));
-        cardShell.addView(text(LABEL_CHOOSE_KANJI, 30, STUDY_PLUM, true));
-        cardShell.addView(text(StudyTaskCopy.labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
-        cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
-        addStudyReasonLine(cardShell, session);
-
-        LinearLayout box = softInsetPanel();
-        box.addView(text(StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt), 22, STUDY_PLUM, true));
-        View answerPanel = flashcardAnswerPanel(session);
-        answerPanel.setVisibility(View.GONE);
-        box.addView(meaningKanjiGrid(choiceCard, answerPanel));
-        box.addView(answerPanel);
-        cardShell.addView(box);
-
-        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
-        cardLp.setMargins(0, dp(6), 0, dp(12));
-        content.addView(cardShell, cardLp);
+        choiceSessions.renderMeaningKanjiSession(session);
     }
 
     RecordsImportModels.MeaningKanjiChoiceCard meaningKanjiChoiceCardForSession(RecordsSchedulerModels.StudySession session) {
-        if (session == null || session.row == null) {
-            return null;
-        }
-        return meaningKanjiChoicePlanner.buildChoiceCard(
-                session.row,
-                store.activeDashboardRows(),
-                store.searchKanjiInventory(""),
-                meaningChoiceRandom
-        );
+        return choiceSessions.meaningKanjiChoiceCardForSession(session);
     }
 
     View meaningKanjiGrid(RecordsImportModels.MeaningKanjiChoiceCard card, View answerPanel) {
@@ -469,51 +431,15 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {
-        resetChoiceSession(false);
-
-        RecordsImportModels.SimilarKanjiChoiceCard choiceCard = similarChoiceCardForSession(session);
-        List<String> choices = new ArrayList<>(choiceCard.choices);
-        if (choices.size() < 2) {
-            // Not enough similar kanji to show a choice — fall back to
-            // standard flashcard for this card.
-            renderFlashcardSession(session);
-            return;
-        }
-        Collections.shuffle(choices);
-
-        LinearLayout cardShell = softStudyCard();
-        cardShell.addView(modePill("Recognise"));
-        cardShell.addView(text(LABEL_CHOOSE_KANJI, 30, STUDY_PLUM, true));
-        cardShell.addView(text(LABEL_SIMILAR_KANJI, 16, STUDY_PINK_DARK, true));
-        cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
-        addStudyReasonLine(cardShell, session);
-        LinearLayout box = softInsetPanel();
-        String meaning = choiceCard.primaryMeaning;
-        box.addView(text("Which kanji means " + meaning + "?", 22, STUDY_PLUM, true));
-        box.addView(similarKanjiGrid(choices, choiceCard));
-        cardShell.addView(box);
-        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
-        cardLp.setMargins(0, dp(6), 0, dp(12));
-        content.addView(cardShell, cardLp);
+        choiceSessions.renderSimilarKanjiSession(session);
     }
 
     RecordsImportModels.SimilarKanjiChoiceCard similarChoiceCardForSession(RecordsSchedulerModels.StudySession session) {
-        long now = System.currentTimeMillis();
-        RecordsImportModels.SimilarKanjiChoiceCard stored = store.dueSimilarChoiceForActiveTarget(session.item.kanji, now);
-        String meaning = session.row == null ? "" : StudyTextCopy.rowMeaning(session.row);
-        return SimilarKanjiChoicePlanner.choiceCardForSession(
-                stored,
-                session.item.kanji,
-                meaning,
-                store.similarPairsForKanji(session.item.kanji)
-        );
+        return choiceSessions.similarChoiceCardForSession(session);
     }
 
     List<String> buildSimilarKanjiChoices(String targetKanji) {
-        return SimilarKanjiChoicePlanner.fallbackChoices(
-                targetKanji,
-                store.similarPairsForKanji(targetKanji)
-        );
+        return choiceSessions.buildSimilarKanjiChoices(targetKanji);
     }
 
     View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
