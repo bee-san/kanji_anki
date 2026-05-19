@@ -69,12 +69,10 @@ import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
-import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingActionPresentation;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
-import dev.bee.kanjianki.core.study.WritingAnalysisEngine;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingHintPolicy;
 import dev.bee.kanjianki.core.study.WritingSample;
@@ -134,6 +132,10 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     private MainActivityStudyWritingFlow writingFlow() {
         return new MainActivityStudyWritingFlow(this);
+    }
+
+    private MainActivityStudyWritingCheck writingCheck() {
+        return new MainActivityStudyWritingCheck(this);
     }
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
@@ -945,54 +947,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void checkWriting() {
-        if (activeSession == null) {
-            return;
-        }
-        if (showNoInkWhenNeeded()) {
-            return;
-        }
-        if (checkingWriting) {
-            return;
-        }
-        RecordsSchedulerModels.StudySession session = activeSession;
-        String token = session.token;
-        String target = session.item.kanji;
-        CapturedWritingAttempt attempt;
-        try {
-            attempt = capturedWritingAttempt();
-        } catch (IllegalArgumentException error) {
-            activeAnalysis = WritingAnalysisEngine.noInk(currentHintState.level(), hintsUsed);
-            showAnalysis(activeAnalysis);
-            return;
-        }
-        StrokeGuide guide = strokeGuide(target);
-        checkingWriting = true;
-        checkWritingButton.setEnabled(false);
-        updateResultActions();
-        setStudyStatus("Checking handwriting...", MUTED);
-        WritingRecognizer recognizer = currentWritingRecognizer();
-        if (recognizer == null) {
-            showModelUnavailable("The handwriting checker is unavailable on this device.");
-            return;
-        }
-        recognizer.modelStatus().whenComplete((status, statusError) -> {
-            if (statusError != null || status == null || !status.downloaded) {
-                main.post(() -> {
-                    if (!isActiveToken(token)) {
-                        return;
-                    }
-                    writingModelDownloaded = false;
-                    writingModelStatusKnown = true;
-                    showModelUnavailable("Download the handwriting checker before automatic checks.");
-                });
-                return;
-            }
-            recognizeWriting(recognizer, attempt.captured, attempt.sample, guide, target, token);
-        });
-    }
-
-    CapturedWritingAttempt capturedWritingAttempt() {
-        return new CapturedWritingAttempt(drawingPad.capturedWriting(), drawingPad.writingSample());
+        writingCheck().checkWriting();
     }
 
     void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
@@ -1015,18 +970,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void recognizeWriting(WritingRecognizer recognizer, CapturedWriting captured, WritingSample sample, StrokeGuide guide, String target, String token) {
-        recognizer.recognize(captured).whenComplete((result, error) -> main.post(() -> {
-            if (!isActiveToken(token)) {
-                return;
-            }
-            checkingWriting = false;
-            if (error != null) {
-                activeAnalysis = WritingAnalysisEngine.recognitionError(currentHintState.level(), hintsUsed);
-            } else {
-                activeAnalysis = WritingAnalysisEngine.analyze(target, sample, guide, candidates(result), currentHintState.level(), hintsUsed);
-            }
-            showAnalysis(activeAnalysis);
-        }));
+        writingCheck().recognizeWriting(recognizer, captured, sample, guide, target, token);
     }
 
     void submitReview(String rating, boolean override) {
