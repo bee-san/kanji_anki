@@ -388,14 +388,14 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
         assertEquals(1, SettingsImportPreset.boolFlag(true));
         assertEquals(0, SettingsImportPreset.boolFlag(false));
-        assertEquals(0, activity.rankSliderProgress(-20));
-        assertEquals(19999, activity.rankSliderProgress(50_000));
-        assertEquals(1, activity.rankFromSliderProgress(-4));
-        assertEquals(20000, activity.rankFromSliderProgress(50_000));
-        assertEquals("Jiten ranks 10-25", activity.frequencyRangeStatusText(10, 25));
-        assertEquals(80, activity.retentionPercent(0.1));
-        assertEquals(97, activity.retentionPercent(1.0));
-        assertEquals("Desired retention: 90%", activity.retentionStatusText(90));
+        assertEquals(0, SettingsInputRules.rankSliderProgress(-20));
+        assertEquals(19999, SettingsInputRules.rankSliderProgress(50_000));
+        assertEquals(1, SettingsInputRules.rankFromSliderProgress(-4));
+        assertEquals(20000, SettingsInputRules.rankFromSliderProgress(50_000));
+        assertEquals("Jiten ranks 10-25", SettingsTextCopy.frequencyRangeStatusText(10, 25));
+        assertEquals(80, SettingsInputRules.retentionPercent(0.1));
+        assertEquals(97, SettingsInputRules.retentionPercent(1.0));
+        assertEquals("Desired retention: 90%", SettingsTextCopy.retentionStatusText(90));
     }
 
     private static void verifyImportSourceSummaries(MainActivity activity) {
@@ -542,13 +542,13 @@ public final class MainActivityHelperInstrumentedTest {
         activity.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
         touchSeekBar(minSlider);
         touchSeekBar(maxSlider);
-        minSlider.setProgress(activity.rankSliderProgress(50));
-        maxSlider.setProgress(activity.rankSliderProgress(80));
+        minSlider.setProgress(SettingsInputRules.rankSliderProgress(50));
+        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(80));
         assertEquals(50, selectedRanks[0]);
         assertEquals(80, selectedRanks[1]);
-        minSlider.setProgress(activity.rankSliderProgress(90));
+        minSlider.setProgress(SettingsInputRules.rankSliderProgress(90));
         assertEquals(80, selectedRanks[0]);
-        maxSlider.setProgress(activity.rankSliderProgress(70));
+        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(70));
         assertEquals(80, selectedRanks[1]);
         assertTrue(rankStatus.getText().toString().contains("Jiten ranks"));
         verifyMaxItemControls(activity);

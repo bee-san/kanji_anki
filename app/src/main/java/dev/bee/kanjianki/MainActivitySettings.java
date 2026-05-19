@@ -615,7 +615,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         LinearLayout box = settingsPanelBox();
         final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
         box.addView(text(SettingsTextCopy.frequencyRangeTitle(), 23, INK, true));
-        TextView status = text(frequencyRangeStatusText(selected[0], selected[1]), 17, TEAL, true);
+        TextView status = text(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]), 17, TEAL, true);
         box.addView(status);
         box.addView(text(SettingsTextCopy.frequencyRangeBody(), 15, MUTED, false));
 
@@ -839,15 +839,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
     ) {
         minSlider.setMax(19999);
         maxSlider.setMax(19999);
-        minSlider.setProgress(rankSliderProgress(selected[0]));
-        maxSlider.setProgress(rankSliderProgress(selected[1]));
+        minSlider.setProgress(SettingsInputRules.rankSliderProgress(selected[0]));
+        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(selected[1]));
 
         minSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = Math.min(rankFromSliderProgress(progress), selected[1]);
+                selected[0] = Math.min(SettingsInputRules.rankFromSliderProgress(progress), selected[1]);
                 minInput.setText(String.format(Locale.ROOT, "%d", selected[0]));
-                status.setText(frequencyRangeStatusText(selected[0], selected[1]));
+                status.setText(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]));
             }
 
             @Override
@@ -857,15 +857,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(rankSliderProgress(selected[0]));
+                seekBar.setProgress(SettingsInputRules.rankSliderProgress(selected[0]));
             }
         });
         maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[1] = Math.max(rankFromSliderProgress(progress), selected[0]);
+                selected[1] = Math.max(SettingsInputRules.rankFromSliderProgress(progress), selected[0]);
                 maxInput.setText(String.format(Locale.ROOT, "%d", selected[1]));
-                status.setText(frequencyRangeStatusText(selected[0], selected[1]));
+                status.setText(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]));
             }
 
             @Override
@@ -875,7 +875,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(rankSliderProgress(selected[1]));
+                seekBar.setProgress(SettingsInputRules.rankSliderProgress(selected[1]));
             }
         });
     }
@@ -886,18 +886,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     double parseDecimalInput(EditText input) {
         return Double.parseDouble(input.getText().toString().trim());
-    }
-
-    int rankSliderProgress(int rank) {
-        return SettingsInputRules.rankSliderProgress(rank);
-    }
-
-    int rankFromSliderProgress(int progress) {
-        return SettingsInputRules.rankFromSliderProgress(progress);
-    }
-
-    String frequencyRangeStatusText(int minRank, int maxRank) {
-        return SettingsTextCopy.frequencyRangeStatusText(minRank, maxRank);
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
@@ -1296,10 +1284,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout retentionSettingsPanel() {
         RecordsSchedulerModels.SchedulerParameters current = store.schedulerParameters();
-        final int[] selected = new int[]{retentionPercent(current.targetRetention)};
+        final int[] selected = new int[]{SettingsInputRules.retentionPercent(current.targetRetention)};
         LinearLayout box = settingsPanelBox();
         box.addView(text(SettingsTextCopy.fsrsRetentionTitle(), 23, INK, true));
-        TextView status = text(retentionStatusText(selected[0]), 17, TEAL, true);
+        TextView status = text(SettingsTextCopy.retentionStatusText(selected[0]), 17, TEAL, true);
         box.addView(status);
         box.addView(text(SettingsTextCopy.fsrsRetentionBody(), 15, MUTED, false));
 
@@ -1310,7 +1298,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 selected[0] = 80 + progress;
-                status.setText(retentionStatusText(selected[0]));
+                status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
             }
 
             @Override
@@ -1332,7 +1320,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             preset.setOnClickListener(v -> {
                 selected[0] = value;
                 slider.setProgress(value - 80);
-                status.setText(retentionStatusText(selected[0]));
+                status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
             });
             quick.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
         }
@@ -1378,14 +1366,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         input.setGravity(Gravity.TOP | Gravity.START);
         input.setSelectAllOnFocus(false);
         return input;
-    }
-
-    int retentionPercent(double retention) {
-        return SettingsInputRules.retentionPercent(retention);
-    }
-
-    String retentionStatusText(int retentionPercent) {
-        return SettingsTextCopy.retentionStatusText(retentionPercent);
     }
 
     LinearLayout reminderSettingsPanel() {
