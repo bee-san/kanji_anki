@@ -154,6 +154,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsScreen(this);
     }
 
+    private MainActivitySettingsUpdateFlow updateFlow() {
+        return new MainActivitySettingsUpdateFlow(this);
+    }
+
     void renderUpdate() {
         updatePage().renderUpdate();
     }
@@ -409,47 +413,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void runUpdate(boolean cachedPending) {
-        base(NAV_SETTINGS_ROUTE);
-        int updateUiRun = ++updateUiRunCounter;
-        activeUpdateUiRunToken = updateUiRun;
-        UpdateRunScreenCopy.Copy copy = UpdateRunScreenCopy.forRun(cachedPending);
-        content.addView(fullWidthHomeButton());
-        Button back = secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        back.setOnClickListener(v -> renderSettings(false));
-        content.addView(back);
-        content.addView(text(copy.title(), 32, INK, true));
-        content.addView(text(copy.body(), 16, MUTED, false));
-        content.addView(indeterminateProgressRow(copy.progressLabel()));
-        io.execute(() -> {
-            GitHubUpdater updater = new GitHubUpdater(this);
-            GitHubUpdater.UpdateResult result = cachedPending
-                    ? updater.installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
-                    : updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL);
-            main.post(() -> {
-                if (activeUpdateUiRunToken != updateUiRun) {
-                    return;
-                }
-                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show();
-                if (result.intent != null) {
-                    startActivity(result.intent);
-                }
-                renderUpdate();
-            });
-        });
+        updateFlow().runUpdate(cachedPending);
     }
 
     LinearLayout indeterminateProgressRow(String label) {
-        LinearLayout row = panelBox(Color.WHITE, STUDY_BORDER);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        ProgressBar progress = new ProgressBar(this);
-        progress.setIndeterminate(true);
-        progress.setContentDescription(label);
-        LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(dp(36), dp(36));
-        progressLp.setMargins(0, 0, dp(12), 0);
-        row.addView(progress, progressLp);
-        row.addView(text(label, 16, STUDY_PLUM, true), new LinearLayout.LayoutParams(0, -2, 1));
-        return row;
+        return updateFlow().indeterminateProgressRow(label);
     }
 
 }
