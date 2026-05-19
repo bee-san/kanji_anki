@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.DateTextPolicy;
+import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
@@ -1083,28 +1084,28 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
         assertNotEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 2000L), 1000L));
 
-        assertEquals("Needs focused kanji practice.", activity.queueCardBody(rowWithReason("裂", "", "", "", Collections.emptyList())));
+        assertEquals("Needs focused kanji practice.", FocusQueueCopy.queueCardBody(rowWithReason("裂", "", "", "", Collections.emptyList())));
         assertEquals(
                 "Shape mix-up made this a writing-practice target.",
-                activity.queueCardBody(rowWithReason("裂", "shape", "レツ", "similar-kanji miss", Collections.emptyList()))
+                FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "similar-kanji miss", Collections.emptyList()))
         );
-        assertEquals("custom evidence", activity.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", Collections.emptyList())));
+        assertEquals("custom evidence", FocusQueueCopy.queueCardBody(rowWithReason("裂", "shape", "レツ", "custom evidence", Collections.emptyList())));
 
-        assertEquals("write kanji", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L)));
-        assertEquals("type meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.TYPE_MEANING, "review", 0L)));
-        assertEquals("similar kanji", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.SIMILAR_KANJI, "review", 0L)));
-        assertEquals("font -> meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.FONT_MEANING, "review", 0L)));
-        assertEquals("word -> reading", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WORD_READING, "review", 0L)));
-        assertEquals("kanji -> meaning", activity.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)));
+        assertEquals("write kanji", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L)));
+        assertEquals("type meaning", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.TYPE_MEANING, "review", 0L)));
+        assertEquals("similar kanji", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.SIMILAR_KANJI, "review", 0L)));
+        assertEquals("font -> meaning", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.FONT_MEANING, "review", 0L)));
+        assertEquals("word -> reading", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.WORD_READING, "review", 0L)));
+        assertEquals("kanji -> meaning", FocusQueueCopy.recognitionStageLabel(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)));
     }
 
     private static void verifySourceEvidenceAndEmptyQueue(MainActivity activity) {
         RecordsImportModels.Example active = example("活動語", "カツドウゴ", "active", MainActivityBase.SOURCE_ACTIVE);
         RecordsImportModels.Example suspended = example("停止語", "テイシゴ", "suspended", MainActivityBase.SOURCE_SUSPENDED);
-        assertEquals("From 活動語 · missed 停止語", activity.sourceEvidenceText(row("語", "language", "ゴ", Arrays.asList(active, suspended))));
-        assertEquals("From 活動語", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(active))));
-        assertEquals("Missed 停止語", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(suspended))));
-        assertEquals("From your AnkiDroid sync", activity.sourceEvidenceText(row("語", "language", "ゴ", Collections.emptyList())));
+        assertEquals("From 活動語 · missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Arrays.asList(active, suspended))));
+        assertEquals("From 活動語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(active))));
+        assertEquals("Missed 停止語", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Collections.singletonList(suspended))));
+        assertEquals("From your AnkiDroid sync", FocusQueueCopy.sourceEvidenceText(row("語", "language", "ゴ", Collections.emptyList())));
         seedRows(activity, Collections.singletonList(row("空", "empty", "クウ", Collections.emptyList())));
         activity.renderFocusQueue();
         assertHasText(activity, MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE);
@@ -1126,16 +1127,16 @@ public final class MainActivityHelperInstrumentedTest {
         RecordsStudyModels.KanjiRecoveryTimeline restingTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline retiredTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "retired", 0L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline noRowTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, null, Collections.emptyList());
-        assertEquals("Active repair", activity.timelineStatusText(activeTimeline));
-        assertEquals("Resting until review", activity.timelineStatusText(restingTimeline));
-        assertEquals("Retired by Anki support", activity.timelineStatusText(retiredTimeline));
-        assertEquals("Retired by Anki support", activity.timelineStatusText(noRowTimeline));
-        assertEquals(MainActivityBase.TEAL, activity.timelineStatusColor(retiredTimeline));
-        assertEquals(MainActivityBase.BLUE, activity.timelineStatusColor(restingTimeline));
-        assertEquals(MainActivityBase.CORAL, activity.timelineStatusColor(activeTimeline));
-        assertEquals(MainActivityBase.CORAL, activity.timelineEventColor("review_failed"));
-        assertEquals(MainActivityBase.TEAL, activity.timelineEventColor("review_passed"));
-        assertEquals(MainActivityBase.BLUE, activity.timelineEventColor("sync"));
+        assertEquals("Active repair", TimelineCopy.statusText(activeTimeline, System.currentTimeMillis()));
+        assertEquals("Resting until review", TimelineCopy.statusText(restingTimeline, System.currentTimeMillis()));
+        assertEquals("Retired by Anki support", TimelineCopy.statusText(retiredTimeline, System.currentTimeMillis()));
+        assertEquals("Retired by Anki support", TimelineCopy.statusText(noRowTimeline, System.currentTimeMillis()));
+        assertEquals(MainActivityBase.TEAL, activity.timelineToneColor(TimelineCopy.statusTone(retiredTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.BLUE, activity.timelineToneColor(TimelineCopy.statusTone(restingTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.CORAL, activity.timelineToneColor(TimelineCopy.statusTone(activeTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.CORAL, activity.timelineToneColor(TimelineCopy.eventTone("review_failed")));
+        assertEquals(MainActivityBase.TEAL, activity.timelineToneColor(TimelineCopy.eventTone("review_passed")));
+        assertEquals(MainActivityBase.BLUE, activity.timelineToneColor(TimelineCopy.eventTone("sync")));
         assertEquals("", TimelineCopy.sourceLine(event("", "")));
         assertEquals("Source: 活動語", TimelineCopy.sourceLine(event("活動語", "")));
         assertEquals("Source: 活動語  カツドウゴ", TimelineCopy.sourceLine(event("活動語", "カツドウゴ")));

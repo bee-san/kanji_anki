@@ -450,7 +450,7 @@ abstract class MainActivityHome extends MainActivityBase {
         copy.addView(text(HomeTextCopy.recentMistakeTitle(row == null ? "" : StudyTextCopy.rowMeaning(row)), 19, INK, true));
         copy.addView(text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, DateTextPolicy.timelineDate(mistake.reviewedAtMillis)), 14, MUTED, false));
         if (row != null) {
-            copy.addView(text(sourceEvidenceText(row), 14, INK, true));
+            copy.addView(text(FocusQueueCopy.sourceEvidenceText(row), 14, INK, true));
         }
         LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
         copyLp.setMargins(dp(12), 0, dp(6), 0);
@@ -642,9 +642,9 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(StudyTextCopy.rowMeaning(row), 19, INK, true));
-        copy.addView(text(sourceEvidenceText(row), 14, INK, true));
-        copy.addView(text(focusReasonLine(row, item, now), 13, MUTED, false));
-        copy.addView(text(StudyTextCopy.compact(queueCardBody(row), 72), 14, MUTED, false));
+        copy.addView(text(FocusQueueCopy.sourceEvidenceText(row), 14, INK, true));
+        copy.addView(text(FocusQueueCopy.focusReasonLine(row, item, now, settings().matureSupportThreshold), 13, MUTED, false));
+        copy.addView(text(StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72), 14, MUTED, false));
         LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
         copyLp.setMargins(dp(14), 0, dp(6), 0);
         top.addView(copy, copyLp);
@@ -652,7 +652,7 @@ abstract class MainActivityHome extends MainActivityBase {
         box.addView(top);
         LinearLayout chips = new LinearLayout(this);
         chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.addView(chip(recognitionStageLabel(item), BLUE));
+        chips.addView(chip(FocusQueueCopy.recognitionStageLabel(item), BLUE));
         if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
             chips.addView(chip(HomeTextCopy.relearningChipLabel(), CORAL));
         } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
@@ -660,14 +660,6 @@ abstract class MainActivityHome extends MainActivityBase {
         }
         box.addView(chips);
         return box;
-    }
-
-    String queueCardBody(RecordsImportModels.DashboardRow row) {
-        return FocusQueueCopy.queueCardBody(row);
-    }
-
-    String focusReasonLine(RecordsImportModels.DashboardRow row, RecordsStudyModels.StudyItem item, long now) {
-        return FocusQueueCopy.focusReasonLine(row, item, now, settings().matureSupportThreshold);
     }
 
     TextView kanjiTile(String value, int sizePx, int textSp) {
@@ -678,14 +670,6 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(sizePx, sizePx);
         kanji.setLayoutParams(lp);
         return kanji;
-    }
-
-    String recognitionStageLabel(RecordsStudyModels.StudyItem item) {
-        return FocusQueueCopy.recognitionStageLabel(item);
-    }
-
-    String sourceEvidenceText(RecordsImportModels.DashboardRow row) {
-        return FocusQueueCopy.sourceEvidenceText(row);
     }
 
     void renderDetail(String kanji) {
@@ -899,9 +883,9 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        int color = timelineStatusColor(timeline);
+        int color = timelineToneColor(TimelineCopy.statusTone(timeline, System.currentTimeMillis()));
         LinearLayout box = panelBox(Color.WHITE, color);
-        box.addView(text(timelineStatusText(timeline), 20, INK, true));
+        box.addView(text(TimelineCopy.statusText(timeline, System.currentTimeMillis()), 20, INK, true));
         RecordsImportModels.DashboardRow row = timeline.currentRow;
         if (row != null) {
             box.addView(text(HomeTextCopy.matureSupportTargetText(row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
@@ -911,16 +895,8 @@ abstract class MainActivityHome extends MainActivityBase {
         return box;
     }
 
-    String timelineStatusText(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        return TimelineCopy.statusText(timeline, System.currentTimeMillis());
-    }
-
-    int timelineStatusColor(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        return timelineToneColor(TimelineCopy.statusTone(timeline, System.currentTimeMillis()));
-    }
-
     View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
-        LinearLayout box = panelBox(Color.WHITE, timelineEventColor(event.eventType));
+        LinearLayout box = panelBox(Color.WHITE, timelineToneColor(TimelineCopy.eventTone(event.eventType)));
         box.addView(text(DateTextPolicy.timelineDate(event.occurredAtMillis), 13, MUTED, false));
         box.addView(text(event.title, 18, INK, true));
         if (!event.detail.isEmpty()) {
@@ -931,10 +907,6 @@ abstract class MainActivityHome extends MainActivityBase {
             box.addView(text(source, 14, INK, true));
         }
         return box;
-    }
-
-    int timelineEventColor(String eventType) {
-        return timelineToneColor(TimelineCopy.eventTone(eventType));
     }
 
     int timelineToneColor(TimelineCopy.Tone tone) {
