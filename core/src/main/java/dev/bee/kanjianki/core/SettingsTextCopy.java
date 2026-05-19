@@ -66,35 +66,35 @@ public final class SettingsTextCopy {
     }
 
     public static String settingsAnkiSourceTitle() {
-        return "Anki source";
+        return SettingsSectionTextCopy.settingsAnkiSourceTitle();
     }
 
     public static String settingsAnkiSourceBody() {
-        return "What Kani reads from AnkiDroid, and which cards become practice.";
+        return SettingsSectionTextCopy.settingsAnkiSourceBody();
     }
 
     public static String settingsStudyBehaviorTitle() {
-        return "Study behavior";
+        return SettingsSectionTextCopy.settingsStudyBehaviorTitle();
     }
 
     public static String settingsStudyBehaviorBody() {
-        return "How much appears today, how quickly repeats return, and when cards move rungs.";
+        return SettingsSectionTextCopy.settingsStudyBehaviorBody();
     }
 
     public static String settingsAutomationTitle() {
-        return "Automation";
+        return SettingsSectionTextCopy.settingsAutomationTitle();
     }
 
     public static String settingsAutomationBody() {
-        return "Background nudges, daily AnkiDroid refreshes, and app update checks.";
+        return SettingsSectionTextCopy.settingsAutomationBody();
     }
 
     public static String settingsReferenceDataTitle() {
-        return "Reference data";
+        return SettingsSectionTextCopy.settingsReferenceDataTitle();
     }
 
     public static String settingsReferenceDataBody() {
-        return "Offline dictionaries, frequency ranks, stroke data, fonts, and attribution.";
+        return SettingsSectionTextCopy.settingsReferenceDataBody();
     }
 
     public static String updatePageTitle() {
@@ -154,51 +154,51 @@ public final class SettingsTextCopy {
     }
 
     public static String settingsCockpitLabel() {
-        return "Settings cockpit";
+        return SettingsSectionTextCopy.settingsCockpitLabel();
     }
 
     public static String settingsHeroBody() {
-        return "Grouped by outcome: source data, study behavior, automation, and offline references. Each setting appears once, next to the thing it changes.";
+        return SettingsSectionTextCopy.settingsHeroBody();
     }
 
     public static String noteTypeStatusLabel() {
-        return "Note type";
+        return SettingsSectionTextCopy.noteTypeStatusLabel();
     }
 
     public static String importFiltersStatusLabel() {
-        return "Import filters";
+        return SettingsSectionTextCopy.importFiltersStatusLabel();
     }
 
     public static String importRanksStatusLabel() {
-        return "Import ranks";
+        return SettingsSectionTextCopy.importRanksStatusLabel();
     }
 
     public static String reminderStatusLabel() {
-        return "Reminder";
+        return SettingsSectionTextCopy.reminderStatusLabel();
     }
 
     public static String dailySyncStatusLabel() {
-        return "Daily sync";
+        return SettingsSectionTextCopy.dailySyncStatusLabel();
     }
 
     public static String updatesStatusLabel() {
-        return "Updates";
+        return SettingsSectionTextCopy.updatesStatusLabel();
     }
 
     public static String matchingCardsStatusLabel() {
-        return "Matching cards";
+        return SettingsSectionTextCopy.matchingCardsStatusLabel();
     }
 
     public static String statusPillDescription(String label, String value) {
-        return label + ": " + value;
+        return SettingsSectionTextCopy.statusPillDescription(label, value);
     }
 
     public static String categoryToggleDescription(boolean expanded, String title) {
-        return (expanded ? "Collapse " : "Expand ") + title;
+        return SettingsSectionTextCopy.categoryToggleDescription(expanded, title);
     }
 
     public static String settingsCategoryPanelCount(int panels) {
-        return panels + (panels == 1 ? " card" : " cards");
+        return SettingsSectionTextCopy.settingsCategoryPanelCount(panels);
     }
 
     public static String importFiltersTitle() {
