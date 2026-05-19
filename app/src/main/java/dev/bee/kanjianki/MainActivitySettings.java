@@ -284,10 +284,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return studySort().newCardSortSettingsPanel(current);
     }
 
-    void addSortModeButton(LinearLayout box, String label, String mode, String[] selected, TextView status) {
-        studySort().addSortModeButton(box, label, mode, selected, status);
-    }
-
     LinearLayout workloadSettingsPanel() {
         return workload().workloadSettingsPanel();
     }
