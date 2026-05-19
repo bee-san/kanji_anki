@@ -105,12 +105,16 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsAnkiSource(this);
     }
 
-    private MainActivitySettingsRetention retention() {
-        return new MainActivitySettingsRetention(this);
+    private MainActivitySettingsRetentionPanel retentionPanel() {
+        return new MainActivitySettingsRetentionPanel(this);
     }
 
-    private MainActivitySettingsStudyTuning studyTuning() {
-        return new MainActivitySettingsStudyTuning(this);
+    private MainActivitySettingsStudyAheadPanel studyAheadPanel() {
+        return new MainActivitySettingsStudyAheadPanel(this);
+    }
+
+    private MainActivitySettingsLadderThresholdPanel ladderThresholdPanel() {
+        return new MainActivitySettingsLadderThresholdPanel(this);
     }
 
     private MainActivitySettingsStudySortPanel studySortPanel() {
@@ -293,7 +297,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout studyAheadSettingsPanel() {
-        return studyTuning().studyAheadSettingsPanel();
+        return studyAheadPanel().studyAheadSettingsPanel();
     }
 
     LinearLayout studyLadderSettingsPanel() {
@@ -305,7 +309,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout ladderThresholdSettingsPanel() {
-        return studyTuning().ladderThresholdSettingsPanel();
+        return ladderThresholdPanel().ladderThresholdSettingsPanel();
     }
 
     EditText thresholdInput(int value) {
@@ -323,11 +327,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout retentionSettingsPanel() {
-        return retention().retentionSettingsPanel();
-    }
-
-    EditText rankRetentionRangesInput(String value) {
-        return retention().rankRetentionRangesInput(value);
+        return retentionPanel().retentionSettingsPanel();
     }
 
     LinearLayout reminderSettingsPanel() {
