@@ -76,7 +76,7 @@ abstract class MainActivityGames extends MainActivityHome {
     }
 
     private void renderGameQuestion(KanjiGameEngine.GameMode mode) {
-        if (gameRoundComplete()) {
+        if (gameRound.roundComplete()) {
             renderGameRoundComplete(mode);
             return;
         }
@@ -166,8 +166,8 @@ abstract class MainActivityGames extends MainActivityHome {
         content.addView(homeSectionHeader(question.mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
         content.addView(gameScorePanel(false));
 
-        boolean roundComplete = gameRoundComplete();
-        int color = gameResultColor(roundComplete, correct);
+        boolean roundComplete = gameRound.roundComplete();
+        int color = roundComplete ? BLUE : (correct ? TEAL : CORAL);
         LinearLayout result = panelBox(Color.WHITE, softened(color));
         result.addView(text(KanjiGameCopy.resultTitle(roundComplete, correct), 28, color, true));
         if (roundComplete) {
@@ -212,17 +212,6 @@ abstract class MainActivityGames extends MainActivityHome {
     private void addRoundSummary(LinearLayout result) {
         result.addView(text(KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions), 20, INK, true));
         result.addView(text(KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered), 15, MUTED, false));
-    }
-
-    private int gameResultColor(boolean roundComplete, boolean correct) {
-        if (roundComplete) {
-            return BLUE;
-        }
-        return correct ? TEAL : CORAL;
-    }
-
-    private boolean gameRoundComplete() {
-        return gameRound.roundComplete();
     }
 
     private int colorForGameMode(KanjiGameEngine.GameMode mode) {
