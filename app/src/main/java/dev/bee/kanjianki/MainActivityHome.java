@@ -8,8 +8,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.TimePickerDialog;
 import android.content.res.ColorStateList;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -28,7 +26,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
-import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -39,7 +36,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.core.widget.TextViewCompat;
 
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
@@ -89,6 +85,7 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
+    private final MainActivityHomeFocusQueue focusQueue = new MainActivityHomeFocusQueue(this);
     private final MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(this);
     private final MainActivityHomeSync syncFlow = new MainActivityHomeSync(this);
 
@@ -389,70 +386,19 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void renderFocusQueue() {
-        base("home");
-        long now = System.currentTimeMillis();
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> items = studyQueue(rows, now, false, null);
-        RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
-        List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
-
-        content.addView(homeSectionHeader(HomeTextCopy.focusQueueTitle(), HomeTextCopy.homeLabel(), this::renderHome));
-        content.addView(text(AdaptiveFocusCopy.adaptiveFocusText(plan), 16, MUTED, false));
-        addSpace(8);
-        if (rows.isEmpty()) {
-            emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.focusQueueNoKanjiQueuedBody());
-            Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
-            syncButton.setOnClickListener(new RunnableClickListener(this::confirmSync));
-            content.addView(syncButton);
-            return;
-        }
-        if (entries.isEmpty()) {
-            emptyState(EMPTY_ACTIVE_PRACTICE_TITLE, EMPTY_ACTIVE_PRACTICE_BODY);
-            return;
-        }
-        for (QueueEntry entry : entries) {
-            content.addView(queueRowView(entry, now));
-        }
+        focusQueue.renderFocusQueue();
     }
 
     void renderRecentMistakes() {
-        base("home");
-        content.addView(homeSectionHeader(HomeTextCopy.recentMistakesTitle(), HomeTextCopy.homeLabel(), this::renderHome));
-        List<StudyStatsStore.RecentMistake> mistakes = store.recentMistakes(12);
-        if (mistakes.isEmpty()) {
-            emptyState(HomeTextCopy.noRecentMistakesTitle(), HomeTextCopy.noRecentMistakesBody());
-            return;
-        }
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        for (StudyStatsStore.RecentMistake mistake : mistakes) {
-            content.addView(recentMistakeRow(mistake, findRow(rows, mistake.kanji)));
-        }
+        focusQueue.renderRecentMistakes();
     }
 
     View recentMistakeRow(StudyStatsStore.RecentMistake mistake, RecordsImportModels.DashboardRow row) {
-        LinearLayout box = panelBox(Color.WHITE, PINK_STROKE);
-        box.setOnClickListener(new RunnableClickListener(() -> renderDetail(mistake.kanji)));
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        TextView kanji = kanjiTile(mistake.kanji, dp(70), 42);
-        top.addView(kanji);
-        LinearLayout copy = new LinearLayout(this);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(HomeTextCopy.recentMistakeTitle(row == null ? "" : StudyTextCopy.rowMeaning(row)), 19, INK, true));
-        copy.addView(text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, DateTextPolicy.timelineDate(mistake.reviewedAtMillis)), 14, MUTED, false));
-        if (row != null) {
-            copy.addView(text(FocusQueueCopy.sourceEvidenceText(row), 14, INK, true));
-        }
-        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
-        copyLp.setMargins(dp(12), 0, dp(6), 0);
-        top.addView(copy, copyLp);
-        top.addView(text(">", 34, CORAL, true));
-        box.addView(top);
-        return box;
+        return focusQueue.recentMistakeRow(mistake, row);
     }
 
     int streakAccent(StudyStatsStore.StudyStreak streak) {
-        return streak != null && streak.studiedToday ? Color.rgb(247, 159, 0) : Color.rgb(160, 160, 166);
+        return focusQueue.streakAccent(streak);
     }
 
     void confirmSync() {
@@ -480,7 +426,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     long studyAheadMillis() {
-        return store.studyAheadMinutes() * 60_000L;
+        return focusQueue.studyAheadMillis();
     }
 
     String nonEmptyOr(String value, String fallback) {
@@ -491,76 +437,23 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        return HomeStudyQueueActions.studyQueue(new HomeStudyQueueActions.StudyQueueRequest(
-                rows,
-                now,
-                persist,
-                plan,
-                store::studyItems,
-                this::settings,
-                this::startOfDay,
-                this::studyLadderSettings,
-                this::adaptivePlan,
-                scheduler::seedQueue,
-                new MainActivityHomeStudyItemsWriter(this)
-        ));
+        return focusQueue.studyQueue(rows, now, persist, plan);
     }
 
     List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        List<FocusQueuePolicy.QueueEntry> coreEntries = FocusQueuePolicy.queuedEntries(rows, items, now, store.studyAheadMinutes() * 60_000L, plan, studyLadderSettings());
-        List<QueueEntry> entries = new ArrayList<>(coreEntries.size());
-        for (FocusQueuePolicy.QueueEntry entry : coreEntries) {
-            entries.add(new QueueEntry(entry.row, entry.item));
-        }
-        return entries;
+        return focusQueue.queuedEntries(rows, items, now, plan);
     }
 
     List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        return queuedEntries(rows, items, now, null);
+        return focusQueue.queuedEntries(rows, items, now, null);
     }
 
     int rowColor(RecordsStudyModels.StudyItem item, long now) {
-        FocusQueuePolicy.QueueTone tone = FocusQueuePolicy.rowTone(item, now);
-        if (tone == FocusQueuePolicy.QueueTone.DUE) {
-            return CORAL;
-        }
-        if (tone == FocusQueuePolicy.QueueTone.LEARNING) {
-            return BLUE;
-        }
-        return Color.rgb(246, 202, 225);
+        return focusQueue.rowColor(item, now);
     }
 
     View queueRowView(QueueEntry entry, long now) {
-        RecordsImportModels.DashboardRow row = entry.row;
-        RecordsStudyModels.StudyItem item = entry.item;
-        LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
-        box.setPadding(dp(12), dp(12), dp(12), dp(12));
-        box.setOnClickListener(new RunnableClickListener(() -> renderDetail(row.kanji)));
-        LinearLayout top = new LinearLayout(this);
-        top.setGravity(Gravity.CENTER_VERTICAL);
-        top.addView(kanjiTile(row.kanji, dp(90), 52));
-        LinearLayout copy = new LinearLayout(this);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(StudyTextCopy.rowMeaning(row), 19, INK, true));
-        copy.addView(text(FocusQueueCopy.sourceEvidenceText(row), 14, INK, true));
-        copy.addView(text(FocusQueueCopy.focusReasonLine(row, item, now, settings().matureSupportThreshold), 13, MUTED, false));
-        copy.addView(text(StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72), 14, MUTED, false));
-        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
-        copyLp.setMargins(dp(14), 0, dp(6), 0);
-        top.addView(copy, copyLp);
-        top.addView(text(">", 34, CORAL, true));
-        box.addView(top);
-        LinearLayout chips = new LinearLayout(this);
-        chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.addView(chip(FocusQueueCopy.recognitionStageLabel(item), BLUE));
-        if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
-            chips.addView(chip(HomeTextCopy.relearningChipLabel(), CORAL));
-        } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-            chips.addView(chip(STATE_LEARNING, TEAL));
-        }
-        box.addView(chips);
-        return box;
+        return focusQueue.queueRowView(entry, now);
     }
 
     TextView kanjiTile(String value, int sizePx, int textSp) {
@@ -617,75 +510,27 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void copyAnkiSearch(String browserSearch, View v) {
-        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        clipboard.setPrimaryClip(ClipData.newPlainText(HomeTextCopy.ankiSearchClipLabel(), browserSearch));
-        if (v instanceof Button button) {
-            button.setText(R.string.copied_anki_search);
-        }
-        Toast.makeText(this, HomeTextCopy.ankiSearchCopiedToast(), Toast.LENGTH_SHORT).show();
+        browseDetail.copyAnkiSearch(browserSearch, v);
     }
 
     void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        content.addView(sectionTitle(HomeTextCopy.recoveryTimelineTitle()));
-        content.addView(timelineStatusCard(timeline));
-        if (timeline.events.isEmpty()) {
-            content.addView(text(HomeTextCopy.timelineEmptyText(), 15, MUTED, false));
-            return;
-        }
-        for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
-            content.addView(timelineEventView(event));
-        }
+        browseDetail.addRecoveryTimeline(timeline);
     }
 
     View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        int color = timelineToneColor(TimelineCopy.statusTone(timeline, System.currentTimeMillis()));
-        LinearLayout box = panelBox(Color.WHITE, color);
-        box.addView(text(TimelineCopy.statusText(timeline, System.currentTimeMillis()), 20, INK, true));
-        RecordsImportModels.DashboardRow row = timeline.currentRow;
-        if (row != null) {
-            box.addView(text(HomeTextCopy.matureSupportTargetText(row.matureSupportCount, settings().matureSupportThreshold), 15, MUTED, false));
-        } else {
-            box.addView(text(HomeTextCopy.noActiveEvidenceText(), 15, MUTED, false));
-        }
-        return box;
+        return browseDetail.timelineStatusCard(timeline);
     }
 
     View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
-        LinearLayout box = panelBox(Color.WHITE, timelineToneColor(TimelineCopy.eventTone(event.eventType)));
-        box.addView(text(DateTextPolicy.timelineDate(event.occurredAtMillis), 13, MUTED, false));
-        box.addView(text(event.title, 18, INK, true));
-        if (!event.detail.isEmpty()) {
-            box.addView(text(event.detail, 15, MUTED, false));
-        }
-        String source = TimelineCopy.sourceLine(event);
-        if (!source.isEmpty()) {
-            box.addView(text(source, 14, INK, true));
-        }
-        return box;
+        return browseDetail.timelineEventView(event);
     }
 
     int timelineToneColor(TimelineCopy.Tone tone) {
-        if (tone == TimelineCopy.Tone.POSITIVE) {
-            return TEAL;
-        }
-        if (tone == TimelineCopy.Tone.WARNING) {
-            return CORAL;
-        }
-        return BLUE;
+        return browseDetail.timelineToneColor(tone);
     }
 
     View exampleView(RecordsImportModels.Example example) {
-        int color = SOURCE_SUSPENDED.equals(example.sourceType) ? CORAL : TEAL;
-        LinearLayout box = panelBox(Color.WHITE, color);
-        box.addView(chip(HomeTextCopy.exampleSourceLabel(example), color));
-        box.addView(text(HomeTextCopy.exampleExpressionLine(example), 22, INK, true));
-        if (!example.sentence.isEmpty()) {
-            box.addView(text(example.sentence, 16, MUTED, false));
-        }
-        String meaning = HomeTextCopy.exampleMeaningLine(example);
-        if (!meaning.isEmpty()) {
-            box.addView(text(meaning, 15, MUTED, false));
-        }
-        return box;
+        return browseDetail.exampleView(example);
     }
+
 }

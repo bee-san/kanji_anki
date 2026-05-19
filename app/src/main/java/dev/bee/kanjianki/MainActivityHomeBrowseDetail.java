@@ -1,11 +1,14 @@
 package dev.bee.kanjianki;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.FocusQueueCopy;
@@ -110,7 +113,7 @@ final class MainActivityHomeBrowseDetail {
         }
         addDetailActions(row, inventory, displayKanji, fromBrowse, browseQuery, suspended);
         home.addSpace(12);
-        home.addRecoveryTimeline(timeline);
+        addRecoveryTimeline(timeline);
         if (row != null) {
             addDetailExamples(row);
         }
@@ -176,7 +179,7 @@ final class MainActivityHomeBrowseDetail {
         String browserSearch = HomeTextCopy.detailBrowserSearch(row, inventory);
         if (!browserSearch.isEmpty()) {
             Button copy = home.secondaryButton(HomeTextCopy.copyAnkiSearchLabel());
-            copy.setOnClickListener(new ViewClickListener(v -> home.copyAnkiSearch(browserSearch, v)));
+            copy.setOnClickListener(new ViewClickListener(v -> copyAnkiSearch(browserSearch, v)));
             home.content.addView(copy);
         }
         Button suspend = home.secondaryButton(HomeTextCopy.localSuspendButtonLabel(suspended));
@@ -193,7 +196,7 @@ final class MainActivityHomeBrowseDetail {
         home.addSpace(12);
         home.content.addView(home.sectionTitle(HomeTextCopy.examplesTitle()));
         for (RecordsImportModels.Example example : row.examples) {
-            home.content.addView(home.exampleView(example));
+            home.content.addView(exampleView(example));
         }
     }
 
@@ -206,6 +209,79 @@ final class MainActivityHomeBrowseDetail {
         }
         if (inventory.lastSeenAtMillis > 0L) {
             box.addView(home.text(HomeTextCopy.localInventoryLastSeenLine(inventory.lastSeenAtMillis), 14, home.MUTED, false));
+        }
+        return box;
+    }
+
+    void copyAnkiSearch(String browserSearch, View v) {
+        ClipboardManager clipboard = (ClipboardManager) home.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText(HomeTextCopy.ankiSearchClipLabel(), browserSearch));
+        if (v instanceof Button button) {
+            button.setText(R.string.copied_anki_search);
+        }
+        Toast.makeText(home, HomeTextCopy.ankiSearchCopiedToast(), Toast.LENGTH_SHORT).show();
+    }
+
+    void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
+        home.content.addView(home.sectionTitle(HomeTextCopy.recoveryTimelineTitle()));
+        home.content.addView(timelineStatusCard(timeline));
+        if (timeline.events.isEmpty()) {
+            home.content.addView(home.text(HomeTextCopy.timelineEmptyText(), 15, home.MUTED, false));
+            return;
+        }
+        for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
+            home.content.addView(timelineEventView(event));
+        }
+    }
+
+    View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
+        int color = timelineToneColor(TimelineCopy.statusTone(timeline, System.currentTimeMillis()));
+        LinearLayout box = home.panelBox(Color.WHITE, color);
+        box.addView(home.text(TimelineCopy.statusText(timeline, System.currentTimeMillis()), 20, home.INK, true));
+        RecordsImportModels.DashboardRow row = timeline.currentRow;
+        if (row != null) {
+            box.addView(home.text(HomeTextCopy.matureSupportTargetText(row.matureSupportCount, home.settings().matureSupportThreshold), 15, home.MUTED, false));
+        } else {
+            box.addView(home.text(HomeTextCopy.noActiveEvidenceText(), 15, home.MUTED, false));
+        }
+        return box;
+    }
+
+    View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
+        LinearLayout box = home.panelBox(Color.WHITE, timelineToneColor(TimelineCopy.eventTone(event.eventType)));
+        box.addView(home.text(DateTextPolicy.timelineDate(event.occurredAtMillis), 13, home.MUTED, false));
+        box.addView(home.text(event.title, 18, home.INK, true));
+        if (!event.detail.isEmpty()) {
+            box.addView(home.text(event.detail, 15, home.MUTED, false));
+        }
+        String source = TimelineCopy.sourceLine(event);
+        if (!source.isEmpty()) {
+            box.addView(home.text(source, 14, home.INK, true));
+        }
+        return box;
+    }
+
+    int timelineToneColor(TimelineCopy.Tone tone) {
+        if (tone == TimelineCopy.Tone.POSITIVE) {
+            return home.TEAL;
+        }
+        if (tone == TimelineCopy.Tone.WARNING) {
+            return home.CORAL;
+        }
+        return home.BLUE;
+    }
+
+    View exampleView(RecordsImportModels.Example example) {
+        int color = MainActivityHome.SOURCE_SUSPENDED.equals(example.sourceType) ? home.CORAL : home.TEAL;
+        LinearLayout box = home.panelBox(Color.WHITE, color);
+        box.addView(home.chip(HomeTextCopy.exampleSourceLabel(example), color));
+        box.addView(home.text(HomeTextCopy.exampleExpressionLine(example), 22, home.INK, true));
+        if (!example.sentence.isEmpty()) {
+            box.addView(home.text(example.sentence, 16, home.MUTED, false));
+        }
+        String meaning = HomeTextCopy.exampleMeaningLine(example);
+        if (!meaning.isEmpty()) {
+            box.addView(home.text(meaning, 15, home.MUTED, false));
         }
         return box;
     }
