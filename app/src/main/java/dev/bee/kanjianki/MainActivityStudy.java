@@ -1621,19 +1621,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void updateCheckWritingButton(boolean passed, boolean messyPass) {
-        if (checkWritingButton != null) {
-            checkWritingButton.setVisibility(!passed || messyPass ? View.VISIBLE : View.GONE);
-            checkWritingButton.setEnabled(!checkingWriting);
-            checkWritingButton.setText(checkWritingButtonText(messyPass));
-            checkWritingButton.setOnClickListener(messyPass ? v -> startCleanerRetry() : v -> checkWriting());
-        }
-    }
-
-    String checkWritingButtonText(boolean messyPass) {
-        return WritingFeedbackCopy.checkWritingButtonText(checkingWriting, messyPass);
-    }
-
     void updateUndoStrokeButton() {
         updateUndoStrokeButton(writingActionPresentation());
     }
@@ -1651,26 +1638,12 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
     }
 
-    void updateDownloadModelButton() {
-        updateDownloadModelButton(writingActionPresentation());
-    }
-
     void updateNextAfterPassButton(WritingActionPresentation presentation) {
         if (nextAfterPassButton != null) {
             nextAfterPassButton.setVisibility(presentation.nextVisible ? View.VISIBLE : View.GONE);
             if (presentation.nextVisible) {
                 nextAfterPassButton.setText(presentation.nextLabel);
                 nextAfterPassButton.setOnClickListener(v -> submitReview(presentation.nextRating, false));
-            }
-        }
-    }
-
-    void updateNextAfterPassButton(boolean submittable) {
-        if (nextAfterPassButton != null) {
-            nextAfterPassButton.setVisibility(submittable ? View.VISIBLE : View.GONE);
-            if (submittable) {
-                nextAfterPassButton.setText(WritingFeedbackCopy.submitLabel(activeAnalysis));
-                nextAfterPassButton.setOnClickListener(v -> submitReview(WritingFeedbackCopy.submitRating(activeAnalysis), false));
             }
         }
     }
@@ -1684,18 +1657,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         if (replayButton != null) {
             replayButton.setVisibility(presentation.replayVisible ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    void updateFallbackActionButtons(boolean hasResult, boolean passed, StrokeGuide guide) {
-        if (manualOverrideButton != null) {
-            manualOverrideButton.setVisibility(hasResult && canManualOverride(activeAnalysis) ? View.VISIBLE : View.GONE);
-        }
-        if (practiceWithGuideButton != null) {
-            practiceWithGuideButton.setVisibility(hasResult && !passed && canPracticeAfterAnalysis(activeAnalysis) ? View.VISIBLE : View.GONE);
-        }
-        if (replayButton != null) {
-            replayButton.setVisibility(hasResult && drawingPad != null && drawingPad.hasReplaySnapshot() && canReplayAnalysis(activeAnalysis, guide) ? View.VISIBLE : View.GONE);
         }
     }
 

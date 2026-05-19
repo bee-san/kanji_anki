@@ -1663,22 +1663,29 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static void verifyWritingButtonAndModelStatus(MainActivity activity, WritingAnalysis wrong) {
         activity.checkingWriting = true;
-        assertEquals("Checking...", activity.checkWritingButtonText(false));
+        activity.updateResultActions();
+        assertEquals("Checking...", activity.checkWritingButton.getText().toString());
         activity.checkingWriting = false;
-        assertEquals("Try cleaner", activity.checkWritingButtonText(true));
-        activity.updateCheckWritingButton(false, true);
+        activity.activeAnalysis = new WritingAnalysis(
+                WritingAnalysis.Status.CLOSE,
+                MainActivityBase.RATING_HARD,
+                true,
+                "Messy",
+                Collections.emptyList(),
+                wrong.strokeOrder
+        );
+        activity.updateResultActions();
         assertEquals("Try cleaner", activity.checkWritingButton.getText().toString());
 
         activity.writingModelStatusKnown = true;
         activity.writingModelDownloaded = true;
-        activity.updateDownloadModelButton();
+        activity.updateResultActions();
         assertEquals(View.GONE, activity.downloadModelButton.getVisibility());
-        activity.updateNextAfterPassButton(true);
-        assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
-        assertEquals(MainActivityBase.LABEL_PASS, activity.nextAfterPassButton.getText().toString());
-
         activity.activeAnalysis = wrong;
-        activity.updateFallbackActionButtons(true, false, guide("裂"));
+        activity.updateResultActions();
+        assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
+        assertEquals("Fail", activity.nextAfterPassButton.getText().toString());
+
         assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
         assertEquals(View.VISIBLE, activity.practiceWithGuideButton.getVisibility());
         activity.showModelUnavailable("checker unavailable");
