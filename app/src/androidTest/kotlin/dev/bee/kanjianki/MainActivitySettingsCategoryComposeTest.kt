@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.assertIsDisplayed
@@ -22,7 +23,8 @@ class MainActivitySettingsCategoryComposeTest {
     fun rendersAndTogglesCategoryHeaderDescription() {
         composeRule.setContent {
             MaterialTheme {
-                var expanded by mutableStateOf(false)
+                val expandedState = remember { mutableStateOf(false) }
+                var expanded by expandedState
                 SettingsCategoryHeader(
                     title = "Study behavior",
                     summary = "How much appears today, how quickly repeats return, and when cards move rungs.",

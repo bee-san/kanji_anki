@@ -25,6 +25,7 @@ import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -36,6 +37,10 @@ import android.widget.TextView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -73,6 +78,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
@@ -2740,7 +2746,8 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void assertHasText(MainActivity activity, String text) {
-        if (!containsText(activity.findViewById(android.R.id.content), text)) {
+        View root = activity.findViewById(android.R.id.content);
+        if (!containsText(root, text) && findDeviceTextNow(text) == null) {
             throw new AssertionError("Missing text: " + text);
         }
     }
@@ -2753,6 +2760,9 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static boolean containsText(View view, String expected) {
         if (view instanceof TextView textView && expected.contentEquals(textView.getText())) {
+            return true;
+        }
+        if (view instanceof androidx.compose.ui.platform.ComposeView composeView && containsAccessibilityText(composeView.createAccessibilityNodeInfo(), expected)) {
             return true;
         }
         if (!(view instanceof ViewGroup group)) {
@@ -2768,6 +2778,9 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static boolean containsTextContaining(View view, String expected) {
         if (view instanceof TextView textView && textView.getText().toString().contains(expected)) {
+            return true;
+        }
+        if (view instanceof androidx.compose.ui.platform.ComposeView composeView && containsAccessibilityTextContaining(composeView.createAccessibilityNodeInfo(), expected)) {
             return true;
         }
         if (!(view instanceof ViewGroup group)) {
@@ -2792,7 +2805,13 @@ public final class MainActivityHelperInstrumentedTest {
     private static void performClickableWithText(View root, String label) {
         View clickable = findClickableWithText(root, label);
         if (clickable == null) {
-            throw new AssertionError("Missing clickable text: " + label);
+            UiObject2 object = findDeviceTextNow(label);
+            if (object == null) {
+                throw new AssertionError("Missing clickable text: " + label);
+            }
+            object.click();
+            UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+            return;
         }
         clickable.performClick();
     }
@@ -2811,6 +2830,91 @@ public final class MainActivityHelperInstrumentedTest {
             }
         }
         return null;
+    }
+
+    private static UiObject2 findDeviceTextNow(String label) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 object = firstMatch(device.findObjects(By.text(label)));
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.textContains(label)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.text(label.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.textContains(label.toUpperCase(Locale.ROOT))));
+        }
+        return object;
+    }
+
+    private static UiObject2 firstMatch(List<UiObject2> objects) {
+        return objects.isEmpty() ? null : objects.get(0);
+    }
+
+    private static boolean containsAccessibilityText(AccessibilityNodeInfo node, String expected) {
+        if (node == null) {
+            return false;
+        }
+        try {
+            CharSequence value = node.getText();
+            if (value != null && expected.contentEquals(value)) {
+                return true;
+            }
+            CharSequence description = node.getContentDescription();
+            if (description != null && expected.contentEquals(description)) {
+                return true;
+            }
+            int childCount = node.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                if (child == null) {
+                    continue;
+                }
+                try {
+                    if (containsAccessibilityText(child, expected)) {
+                        return true;
+                    }
+                } finally {
+                    child.recycle();
+                }
+            }
+            return false;
+        } finally {
+            node.recycle();
+        }
+    }
+
+    private static boolean containsAccessibilityTextContaining(AccessibilityNodeInfo node, String expected) {
+        if (node == null) {
+            return false;
+        }
+        try {
+            CharSequence value = node.getText();
+            if (value != null && value.toString().contains(expected)) {
+                return true;
+            }
+            CharSequence description = node.getContentDescription();
+            if (description != null && description.toString().contains(expected)) {
+                return true;
+            }
+            int childCount = node.getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                if (child == null) {
+                    continue;
+                }
+                try {
+                    if (containsAccessibilityTextContaining(child, expected)) {
+                        return true;
+                    }
+                } finally {
+                    child.recycle();
+                }
+            }
+            return false;
+        } finally {
+            node.recycle();
+        }
     }
 
     private static Button findButton(View view, String label) {

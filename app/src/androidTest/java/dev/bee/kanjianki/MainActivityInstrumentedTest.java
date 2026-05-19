@@ -2278,6 +2278,24 @@ public final class MainActivityInstrumentedTest {
         return object;
     }
 
+    private static UiObject2 findDeviceTextNow(UiDevice device, String text) {
+        UiObject2 object = firstMatch(device.findObjects(By.text(text)));
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.text(text.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.textContains(text)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.textContains(text.toUpperCase(Locale.ROOT))));
+        }
+        return object;
+    }
+
+    private static UiObject2 firstMatch(List<UiObject2> objects) {
+        return objects.isEmpty() ? null : objects.get(0);
+    }
+
     private static String deviceVisibleText(UiDevice device) {
         List<String> texts = new ArrayList<>();
         for (UiObject2 object : device.findObjects(By.clazz(TextView.class.getName()))) {
@@ -2296,8 +2314,9 @@ public final class MainActivityInstrumentedTest {
     private static void waitForText(ActivityScenario<MainActivity> scenario, String text, long timeoutMillis) {
         long deadline = SystemClock.uptimeMillis() + timeoutMillis;
         boolean[] found = new boolean[]{false};
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         while (SystemClock.uptimeMillis() < deadline) {
-            scenario.onActivity(activity -> found[0] = findText(activity.findViewById(android.R.id.content), text) != null);
+            scenario.onActivity(activity -> found[0] = hasText(activity, text, device));
             if (found[0]) {
                 return;
             }
@@ -2549,7 +2568,8 @@ public final class MainActivityInstrumentedTest {
 
     private static void assertHasText(MainActivity activity, String text) {
         View root = activity.findViewById(android.R.id.content);
-        assertNotNull("Missing text: " + text + "\nVisible text: " + visibleText(root), findText(root, text));
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        assertTrue("Missing text: " + text + "\nVisible text: " + visibleText(root), hasText(activity, text, device));
     }
 
     private static void assertHasTexts(MainActivity activity, String... texts) {
@@ -2559,10 +2579,15 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void assertNoText(MainActivity activity, String text) {
-        View found = findText(activity.findViewById(android.R.id.content), text);
-        if (found != null) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        if (hasText(activity, text, device)) {
             throw new AssertionError("Unexpected text before reveal: " + text);
         }
+    }
+
+    private static boolean hasText(MainActivity activity, String text, UiDevice device) {
+        View root = activity.findViewById(android.R.id.content);
+        return findText(root, text) != null || findDeviceTextNow(device, text) != null;
     }
 
     private static String visibleText(View root) {
