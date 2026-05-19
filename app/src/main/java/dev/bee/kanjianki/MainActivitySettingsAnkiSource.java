@@ -23,11 +23,13 @@ final class MainActivitySettingsAnkiSource {
     private final MainActivitySettings activity;
     private final MainActivitySettingsAnkiSourceFrequencyRange frequencyRange;
     private final MainActivitySettingsAnkiSourceNoteType noteType;
+    private final MainActivitySettingsAnkiSourceImportFilters importFilters;
 
     MainActivitySettingsAnkiSource(MainActivitySettings activity) {
         this.activity = activity;
         this.frequencyRange = new MainActivitySettingsAnkiSourceFrequencyRange(activity, this);
         this.noteType = new MainActivitySettingsAnkiSourceNoteType(activity, this);
+        this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this);
     }
 
     LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
@@ -61,95 +63,7 @@ final class MainActivitySettingsAnkiSource {
     }
 
     LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.importFiltersTitle(), 23, activity.INK, true));
-        box.addView(activity.text(SettingsTextCopy.settingsImportSummary(current), 17, activity.TEAL, true));
-        box.addView(activity.text(SettingsTextCopy.importFiltersBody(), 15, activity.MUTED, false));
-        addImportPresetButtons(box);
-
-        CheckBox activeCards = activity.importFilterCheckBox(SettingsTextCopy.activeCardsLabel(), current.importActiveCards);
-        CheckBox suspendedCards = activity.importFilterCheckBox(SettingsTextCopy.suspendedCardsLabel(), current.importSuspendedCards);
-        CheckBox taggedCards = activity.importFilterCheckBox(SettingsTextCopy.taggedCardsLabel(), current.importTaggedCardsEnabled());
-        CheckBox weakCards = activity.importFilterCheckBox(SettingsTextCopy.weakCardsLabel(), current.importWeakCards);
-        CheckBox browserQueryCards = activity.importFilterCheckBox(SettingsTextCopy.browserQueryLabel(), current.importBrowserQueryCards);
-        box.addView(activeCards);
-        box.addView(suspendedCards);
-        box.addView(taggedCards);
-        box.addView(weakCards);
-        box.addView(browserQueryCards);
-
-        EditText browserQueryInput = fieldInput(current.importBrowserQuery);
-        browserQueryInput.setHint(SettingsTextCopy.ankiBrowserQueryHint());
-        addFieldMappingInput(box, SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput);
-
-        EditText tags = fieldInput(current.importTagsText());
-        tags.setHint(SettingsTextCopy.ankiNoteTagsHint());
-        addFieldMappingInput(box, SettingsTextCopy.ankiNoteTagsLabel(), tags);
-
-        LinearLayout thresholds = new LinearLayout(activity);
-        thresholds.setOrientation(LinearLayout.HORIZONTAL);
-        EditText difficultyInput = decimalInput(current.importWeakFsrsDifficultyThreshold);
-        LinearLayout difficultyColumn = inputColumn(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 0);
-        EditText lapses = activity.thresholdInput(current.importWeakLapsesThreshold);
-        LinearLayout lapsesColumn = inputColumn(SettingsTextCopy.lapsesLabel(), lapses, activity.dp(10));
-        thresholds.addView(difficultyColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        thresholds.addView(lapsesColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(thresholds);
-
-        EditText minMatching = activity.thresholdInput(current.importMinMatchingCardsPerKanji);
-        addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
-
-        Button save = activity.primaryButton(SettingsTextCopy.saveImportFiltersLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
-            String queryText = browserQueryInput.getText().toString().trim();
-            if (browserQueryCards.isChecked() && queryText.isEmpty()) {
-                Toast.makeText(activity, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
-                Toast.makeText(activity, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            MainActivityBase.ImportThresholds parsedThresholds = readImportThresholds(difficultyInput, lapses, minMatching);
-            if (parsedThresholds == null) {
-                return;
-            }
-            SettingsWriteActions.saveImportFilters(
-                    new SettingsWriteActions.ImportFilterWriteRequest(
-                            activeCards.isChecked(),
-                            suspendedCards.isChecked(),
-                            taggedCards.isChecked(),
-                            String.join(" ", parsedTags),
-                            weakCards.isChecked(),
-                            parsedThresholds.difficulty,
-                            parsedThresholds.lapseThreshold,
-                            parsedThresholds.minCards,
-                            browserQueryCards.isChecked(),
-                            queryText
-                    ),
-                    new SettingsWriteActions.SettingWriter() {
-                        @Override
-                        public void putIntSetting(String key, int value) {
-                            activity.store.putIntSetting(key, value);
-                        }
-
-                        @Override
-                        public void putStringSetting(String key, String value) {
-                            activity.store.putStringSetting(key, value);
-                        }
-
-                        @Override
-                        public void putDoubleSetting(String key, double value) {
-                            activity.store.putDoubleSetting(key, value);
-                        }
-                    }
-            );
-            Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
-            activity.renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return importFilters.importFilterSettingsPanel(current);
     }
 
     void addImportPresetButtons(LinearLayout box) {
