@@ -270,34 +270,52 @@ abstract class MainActivitySettings extends MainActivityStudy {
         hero.addView(title);
         hero.addView(text(SettingsTextCopy.settingsHeroBody(), 16, STUDY_MUTED, false));
 
-        LinearLayout topRow = settingsStatusRow(
-                settingsStatusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, STUDY_PLUM),
-                settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), SettingsTextCopy.settingsImportSummary(current), TEAL)
-        );
-        LinearLayout bottomRow = settingsStatusRow(
-                settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL),
-                settingsStatusPill(
-                        SettingsTextCopy.reminderStatusLabel(),
-                        SettingsTextCopy.settingsReminderSummary(
-                                reminder.enabled,
-                                reminder.enabled && !ReminderScheduler.notificationsAllowed(this),
-                                reminder.displayTime()
-                        ),
-                        reminder.enabled ? TEAL : MUTED
-                )
-        );
-        LinearLayout automationRow = settingsStatusRow(
-                settingsStatusPill(
-                        SettingsTextCopy.dailySyncStatusLabel(),
-                        SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime()),
-                        autoSync.enabled ? TEAL : MUTED
+        LinearLayout topRow = new LinearLayout(this);
+        topRow.setOrientation(LinearLayout.HORIZONTAL);
+        topRow.setPadding(0, dp(12), 0, 0);
+        LinearLayout.LayoutParams topFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
+        topFirstLp.setMargins(0, 0, dp(6), 0);
+        topRow.addView(settingsStatusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, STUDY_PLUM), topFirstLp);
+        LinearLayout.LayoutParams topSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
+        topSecondLp.setMargins(dp(6), 0, 0, 0);
+        topRow.addView(settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), SettingsTextCopy.settingsImportSummary(current), TEAL), topSecondLp);
+
+        LinearLayout bottomRow = new LinearLayout(this);
+        bottomRow.setOrientation(LinearLayout.HORIZONTAL);
+        bottomRow.setPadding(0, dp(12), 0, 0);
+        LinearLayout.LayoutParams bottomFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
+        bottomFirstLp.setMargins(0, 0, dp(6), 0);
+        bottomRow.addView(settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL), bottomFirstLp);
+        LinearLayout.LayoutParams bottomSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
+        bottomSecondLp.setMargins(dp(6), 0, 0, 0);
+        bottomRow.addView(settingsStatusPill(
+                SettingsTextCopy.reminderStatusLabel(),
+                SettingsTextCopy.settingsReminderSummary(
+                        reminder.enabled,
+                        reminder.enabled && !ReminderScheduler.notificationsAllowed(this),
+                        reminder.displayTime()
                 ),
-                settingsStatusPill(
-                        SettingsTextCopy.updatesStatusLabel(),
-                        SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled),
-                        autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK
-                )
-        );
+                reminder.enabled ? TEAL : MUTED
+        ), bottomSecondLp);
+
+        LinearLayout automationRow = new LinearLayout(this);
+        automationRow.setOrientation(LinearLayout.HORIZONTAL);
+        automationRow.setPadding(0, dp(12), 0, 0);
+        LinearLayout.LayoutParams automationFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
+        automationFirstLp.setMargins(0, 0, dp(6), 0);
+        automationRow.addView(settingsStatusPill(
+                SettingsTextCopy.dailySyncStatusLabel(),
+                SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime()),
+                autoSync.enabled ? TEAL : MUTED
+        ), automationFirstLp);
+        LinearLayout.LayoutParams automationSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
+        automationSecondLp.setMargins(dp(6), 0, 0, 0);
+        automationRow.addView(settingsStatusPill(
+                SettingsTextCopy.updatesStatusLabel(),
+                SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled),
+                autoUpdate.hasPendingUpdate() ? CORAL : STUDY_PINK_DARK
+        ), automationSecondLp);
+
         hero.addView(topRow);
         hero.addView(bottomRow);
         hero.addView(automationRow);
@@ -307,19 +325,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         lp.setMargins(0, dp(8), 0, dp(10));
         hero.setLayoutParams(lp);
         return hero;
-    }
-
-    LinearLayout settingsStatusRow(View first, View second) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, dp(12), 0, 0);
-        LinearLayout.LayoutParams firstLp = new LinearLayout.LayoutParams(0, -2, 1);
-        firstLp.setMargins(0, 0, dp(6), 0);
-        row.addView(first, firstLp);
-        LinearLayout.LayoutParams secondLp = new LinearLayout.LayoutParams(0, -2, 1);
-        secondLp.setMargins(dp(6), 0, 0, 0);
-        row.addView(second, secondLp);
-        return row;
     }
 
     LinearLayout settingsStatusPill(String label, String value, int valueColor) {
