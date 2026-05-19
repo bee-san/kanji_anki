@@ -150,6 +150,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsCategory(this);
     }
 
+    private MainActivitySettingsScreen settingsScreen() {
+        return new MainActivitySettingsScreen(this);
+    }
+
     void renderUpdate() {
         updatePage().renderUpdate();
     }
@@ -170,70 +174,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void renderSettings(boolean preserveScroll) {
-        int scrollY = preserveScroll && contentScroll != null ? contentScroll.getScrollY() : 0;
-        base(NAV_SETTINGS_ROUTE);
-        RecordsSyncModels.Settings current = settings();
-        content.addView(fullWidthHomeButton());
-        content.addView(settingsHero(current, store.reminderSettings(), store.autoSyncSettings(), store.autoUpdateStatus()));
-        addSpace(10);
-
-        content.addView(settingsCategory(
-                SettingsTextCopy.settingsAnkiSourceTitle(),
-                SettingsTextCopy.settingsAnkiSourceBody(),
-                R.drawable.ic_book_24,
-                settingsAnkiExpanded,
-                () -> {
-                    settingsAnkiExpanded = !settingsAnkiExpanded;
-                    renderSettings(true);
-                },
-                noteTypeSettingsPanel(current),
-                importFilterSettingsPanel(current),
-                frequencyRangeSettingsPanel(current)
-        ));
-        content.addView(settingsCategory(
-                SettingsTextCopy.settingsStudyBehaviorTitle(),
-                SettingsTextCopy.settingsStudyBehaviorBody(),
-                R.drawable.ic_study_24,
-                settingsStudyExpanded,
-                () -> {
-                    settingsStudyExpanded = !settingsStudyExpanded;
-                    renderSettings(true);
-                },
-                newCardSortSettingsPanel(current),
-                workloadSettingsPanel(),
-                retentionSettingsPanel(),
-                learningStepsSettingsPanel(),
-                studyAheadSettingsPanel(),
-                studyLadderSettingsPanel(),
-                ladderThresholdSettingsPanel()
-        ));
-        content.addView(settingsCategory(
-                SettingsTextCopy.settingsAutomationTitle(),
-                SettingsTextCopy.settingsAutomationBody(),
-                R.drawable.ic_sync_24,
-                settingsSyncExpanded,
-                () -> {
-                    settingsSyncExpanded = !settingsSyncExpanded;
-                    renderSettings(true);
-                },
-                reminderSettingsPanel(),
-                autoSyncSettingsPanel(),
-                updateSettingsPanel()
-        ));
-        content.addView(settingsCategory(
-                SettingsTextCopy.settingsReferenceDataTitle(),
-                SettingsTextCopy.settingsReferenceDataBody(),
-                R.drawable.ic_sparkle_24,
-                settingsAppExpanded,
-                () -> {
-                    settingsAppExpanded = !settingsAppExpanded;
-                    renderSettings(true);
-                },
-                dataLicenseSettingsPanel()
-        ));
-        if (preserveScroll) {
-            contentScroll.post(() -> contentScroll.scrollTo(0, scrollY));
-        }
+        settingsScreen().renderSettings(preserveScroll);
     }
 
     View settingsHero(
