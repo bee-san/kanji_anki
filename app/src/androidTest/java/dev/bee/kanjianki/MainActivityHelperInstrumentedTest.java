@@ -2130,7 +2130,8 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals(0, summary.getChildCount());
         activity.content.removeAllViews();
         activity.addRecoveryTimeline(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
-        assertTrue(containsText(activity.content, "Timeline will fill in after the next sync or review."));
+        assertEquals(1, activity.content.getChildCount());
+        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
     }
 
     @Test

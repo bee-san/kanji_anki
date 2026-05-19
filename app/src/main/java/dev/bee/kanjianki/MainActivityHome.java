@@ -264,7 +264,10 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        browseDetail.addRecoveryTimeline(timeline);
+        content.addView(MainActivityHomeBrowseDetailCompose.recoveryTimelinePanelsView(
+                browseDetail,
+                browseDetail.recoveryTimelineModel(timeline)
+        ));
     }
 
     View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {

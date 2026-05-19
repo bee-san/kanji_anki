@@ -21,11 +21,15 @@ import dev.bee.kanjianki.core.TimelineCopy;
 
 import java.util.List;
 
-final class MainActivityHomeBrowseDetail {
+public final class MainActivityHomeBrowseDetail {
     private final MainActivityHome home;
 
     MainActivityHomeBrowseDetail(MainActivityHome home) {
         this.home = home;
+    }
+
+    MainActivityHome home() {
+        return home;
     }
 
     void renderBrowseKanji(String query) {
@@ -113,7 +117,7 @@ final class MainActivityHomeBrowseDetail {
         }
         addDetailActions(row, inventory, displayKanji, fromBrowse, browseQuery, suspended);
         home.addSpace(12);
-        addRecoveryTimeline(timeline);
+        home.content.addView(MainActivityHomeBrowseDetailCompose.recoveryTimelinePanelsView(this, recoveryTimelineModel(timeline)));
         if (row != null) {
             addDetailExamples(row);
         }
@@ -222,16 +226,29 @@ final class MainActivityHomeBrowseDetail {
         Toast.makeText(home, HomeTextCopy.ankiSearchCopiedToast(), Toast.LENGTH_SHORT).show();
     }
 
-    void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        home.content.addView(home.sectionTitle(HomeTextCopy.recoveryTimelineTitle()));
-        home.content.addView(timelineStatusCard(timeline));
-        if (timeline.events.isEmpty()) {
-            home.content.addView(home.text(HomeTextCopy.timelineEmptyText(), 15, home.MUTED, false));
-            return;
-        }
+    BrowseTimelinePanelsModel recoveryTimelineModel(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
+        RecordsImportModels.DashboardRow row = timeline.currentRow;
+        long now = System.currentTimeMillis();
+        List<BrowseTimelineEventModel> events = new java.util.ArrayList<>();
         for (RecordsImportModels.KanjiTimelineEvent event : timeline.events) {
-            home.content.addView(timelineEventView(event));
+            events.add(new BrowseTimelineEventModel(
+                    DateTextPolicy.timelineDate(event.occurredAtMillis),
+                    event.title,
+                    event.detail,
+                    TimelineCopy.sourceLine(event),
+                    timelineToneColor(TimelineCopy.eventTone(event.eventType))
+            ));
         }
+        return new BrowseTimelinePanelsModel(
+                HomeTextCopy.recoveryTimelineTitle(),
+                TimelineCopy.statusText(timeline, now),
+                timelineToneColor(TimelineCopy.statusTone(timeline, now)),
+                row != null
+                        ? HomeTextCopy.matureSupportTargetText(row.matureSupportCount, home.settings().matureSupportThreshold)
+                        : HomeTextCopy.noActiveEvidenceText(),
+                events,
+                timeline.events.isEmpty() ? HomeTextCopy.timelineEmptyText() : null
+        );
     }
 
     View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
@@ -269,6 +286,40 @@ final class MainActivityHomeBrowseDetail {
             return home.CORAL;
         }
         return home.BLUE;
+    }
+
+    public static final class BrowseTimelinePanelsModel {
+        final String title;
+        final String statusText;
+        final int statusColor;
+        final String supportText;
+        final List<BrowseTimelineEventModel> events;
+        final String emptyText;
+
+        BrowseTimelinePanelsModel(String title, String statusText, int statusColor, String supportText, List<BrowseTimelineEventModel> events, String emptyText) {
+            this.title = title;
+            this.statusText = statusText;
+            this.statusColor = statusColor;
+            this.supportText = supportText;
+            this.events = events == null ? new java.util.ArrayList<>() : events;
+            this.emptyText = emptyText;
+        }
+    }
+
+    public static final class BrowseTimelineEventModel {
+        final String dateText;
+        final String title;
+        final String detail;
+        final String sourceLine;
+        final int color;
+
+        BrowseTimelineEventModel(String dateText, String title, String detail, String sourceLine, int color) {
+            this.dateText = dateText == null ? "" : dateText;
+            this.title = title == null ? "" : title;
+            this.detail = detail == null ? "" : detail;
+            this.sourceLine = sourceLine == null ? "" : sourceLine;
+            this.color = color;
+        }
     }
 
     View exampleView(RecordsImportModels.Example example) {
