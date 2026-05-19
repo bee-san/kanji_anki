@@ -1,45 +1,15 @@
 package dev.bee.kanjianki.core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-
 public final class SettingsTextCopy {
-    private static final String SOURCE_ACTIVE = "active";
-    private static final String SOURCE_SUSPENDED = "suspended";
-
     private SettingsTextCopy() {
     }
 
     public static String settingsImportSummary(RecordsSyncModels.Settings settings) {
-        RecordsSyncModels.Settings safeSettings = Objects.requireNonNull(settings, "settings");
-        List<String> sources = new ArrayList<>();
-        if (safeSettings.importActiveCards) {
-            sources.add(SOURCE_ACTIVE);
-        }
-        if (safeSettings.importSuspendedCards) {
-            sources.add(SOURCE_SUSPENDED);
-        }
-        if (safeSettings.importTaggedCardsEnabled()) {
-            sources.add("tagged");
-        }
-        if (safeSettings.importWeakCards) {
-            sources.add("weak");
-        }
-        if (safeSettings.browserQueryImportEnabled()) {
-            sources.add("query");
-        }
-        if (sources.isEmpty()) {
-            return "No sources";
-        }
-        return String.join(" + ", sources) + "; " + matchingCardsSummary(safeSettings);
+        return SettingsSummaryTextCopy.settingsImportSummary(settings);
     }
 
     public static String matchingCardsSummary(RecordsSyncModels.Settings settings) {
-        RecordsSyncModels.Settings safeSettings = Objects.requireNonNull(settings, "settings");
-        int count = safeSettings.importMinMatchingCardsPerKanji;
-        return count + (count == 1 ? " matching card per kanji" : " matching cards per kanji");
+        return SettingsSummaryTextCopy.matchingCardsSummary(settings);
     }
 
     public static String settingsReminderSummary(boolean enabled, boolean blocked, String displayTime) {
@@ -55,10 +25,7 @@ public final class SettingsTextCopy {
     }
 
     public static String syncStatusHeadline(boolean success, String errorMessage, int suspendedCards, int importedKanji) {
-        if (!success) {
-            return "Sync blocked: " + String.valueOf(errorMessage);
-        }
-        return String.format(Locale.ROOT, "%d suspended cards archived, %d rare kanji added; active cards optional", suspendedCards, importedKanji);
+        return SettingsSummaryTextCopy.syncStatusHeadline(success, errorMessage, suspendedCards, importedKanji);
     }
 
     public static String versionText(String version) {
