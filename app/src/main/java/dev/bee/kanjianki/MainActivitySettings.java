@@ -126,6 +126,18 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsStudySort(this);
     }
 
+    private MainActivitySettingsWorkload workload() {
+        return new MainActivitySettingsWorkload(this);
+    }
+
+    private MainActivitySettingsLearning learning() {
+        return new MainActivitySettingsLearning(this);
+    }
+
+    private MainActivitySettingsStudyLadder studyLadderUi() {
+        return new MainActivitySettingsStudyLadder(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -510,202 +522,19 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout workloadSettingsPanel() {
-        int current = store.adaptiveLoadWorkPercent();
-        int currentMax = store.adaptiveLoadMaxItems();
-        boolean autoMode = AdaptiveLoadPlanner.isAutoMode(store.adaptiveLoadMode());
-        final int[] selected = new int[]{current};
-        final int[] selectedMax = new int[]{currentMax};
-        SettingsWriteActions.WorkloadSettingsWriter writer = new SettingsWriteActions.WorkloadSettingsWriter() {
-            @Override
-            public void saveAdaptiveLoadMode(String mode) {
-                store.saveAdaptiveLoadMode(mode);
-            }
-
-            @Override
-            public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
-                store.saveAdaptiveLoadWorkPercent(workloadPercent);
-            }
-
-            @Override
-            public void saveAdaptiveLoadMaxItems(int maxItems) {
-                store.saveAdaptiveLoadMaxItems(maxItems);
-            }
-        };
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.dailyWorkloadTitle(), 23, INK, true));
-
-        if (autoMode) {
-            long now = System.currentTimeMillis();
-            List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-            RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty()
-                    ? null
-                    : adaptivePlan(rows, store.studyItems(), now);
-            box.addView(text(SettingsTextCopy.autoWorkloadStatusText(plan), 17, TEAL, true));
-            box.addView(text(SettingsTextCopy.automaticWorkloadBody(), 15, MUTED, false));
-            addMaxItemsControl(box, selectedMax, null, null);
-            Button saveMax = primaryButton(SettingsTextCopy.saveMaximumLabel(), STUDY_PINK_DARK);
-            saveMax.setOnClickListener(v -> {
-                WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
-                SettingsWriteActions.saveWorkload(request, writer);
-                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-                renderSettings();
-            });
-            box.addView(saveMax);
-            Button manual = secondaryButton(SettingsTextCopy.manualWorkloadLabel());
-            manual.setOnClickListener(v -> {
-                WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
-                SettingsWriteActions.saveWorkload(request, writer);
-                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-                renderSettings();
-            });
-            box.addView(manual);
-            return box;
-        }
-
-        TextView status = text(SettingsTextCopy.workloadStatusText(selected[0], selectedMax[0]), 17, TEAL, true);
-        box.addView(status);
-        box.addView(text(SettingsTextCopy.manualWorkloadBody(), 15, MUTED, false));
-
-        SeekBar slider = new SeekBar(this);
-        slider.setMax(100);
-        slider.setProgress(current);
-        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = AdaptiveLoadPlanner.snapWorkloadPercent(progress);
-                status.setText(SettingsTextCopy.workloadStatusText(selected[0], selectedMax[0]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(selected[0]);
-            }
-        });
-        box.addView(slider, new LinearLayout.LayoutParams(-1, dp(56)));
-
-        LinearLayout labels = new LinearLayout(this);
-        labels.setOrientation(LinearLayout.HORIZONTAL);
-        for (String label : SettingsTextCopy.workloadScaleLabels()) {
-            TextView item = text(label, 11, MUTED, false);
-            item.setGravity(Gravity.CENTER);
-            labels.addView(item, new LinearLayout.LayoutParams(0, -2, 1));
-        }
-        box.addView(labels);
-
-        addMaxItemsControl(box, selectedMax, status, selected);
-
-        Button save = primaryButton(SettingsTextCopy.saveWorkloadLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
-            SettingsWriteActions.saveWorkload(request, writer);
-            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(save);
-        Button automatic = secondaryButton(SettingsTextCopy.automaticParetoLabel());
-        automatic.setOnClickListener(v -> {
-            WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
-            SettingsWriteActions.saveWorkload(request, writer);
-            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(automatic);
-        return box;
+        return workload().workloadSettingsPanel();
     }
 
     void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
-        TextView maxStatus = text(SettingsTextCopy.maxItemsStatusText(selectedMax[0]), 17, TEAL, true);
-        maxStatus.setPadding(0, dp(8), 0, 0);
-        box.addView(maxStatus);
-
-        SeekBar maxSlider = new SeekBar(this);
-        maxSlider.setMax(AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
-        maxSlider.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
-        maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selectedMax[0] = AdaptiveLoadPlanner.normalizeMaxItems(progress + AdaptiveLoadPlanner.MIN_MAX_ITEMS);
-                maxStatus.setText(SettingsTextCopy.maxItemsStatusText(selectedMax[0]));
-                if (workloadStatus != null && selectedWorkload != null) {
-                    workloadStatus.setText(SettingsTextCopy.workloadStatusText(selectedWorkload[0], selectedMax[0]));
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                seekBar.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
-            }
-        });
-        box.addView(maxSlider, new LinearLayout.LayoutParams(-1, dp(56)));
+        workload().addMaxItemsControl(box, selectedMax, workloadStatus, selectedWorkload);
     }
 
     LinearLayout learningStepsSettingsPanel() {
-        RecordsSchedulerModels.LearningStepSettings current = store.learningStepSettings();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.learningStepsTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.learningStepsBody(), 15, MUTED, false));
-
-        EditText newSteps = stepInput(current.newStepsText());
-        EditText reviewSteps = stepInput(current.reviewStepsText());
-        box.addView(text(LABEL_NEW_CARDS, 15, INK, true));
-        box.addView(newSteps, new LinearLayout.LayoutParams(-1, dp(58)));
-        box.addView(text(SettingsTextCopy.reviewMissesLabel(), 15, INK, true));
-        box.addView(reviewSteps, new LinearLayout.LayoutParams(-1, dp(58)));
-
-        LinearLayout presets = new LinearLayout(this);
-        presets.setOrientation(LinearLayout.HORIZONTAL);
-        Button ankiDefault = secondaryButton(SettingsTextCopy.ankiDefaultLabel());
-        ankiDefault.setOnClickListener(v -> {
-            RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-            newSteps.setText(defaults.newStepsText());
-            reviewSteps.setText(defaults.reviewStepsText());
-        });
-        presets.addView(ankiDefault, new LinearLayout.LayoutParams(0, dp(54), 1));
-        Button sameSteps = secondaryButton(SettingsTextCopy.sameLearningStepsLabel());
-        sameSteps.setOnClickListener(v -> {
-            RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-            newSteps.setText(defaults.newStepsText());
-            reviewSteps.setText(defaults.newStepsText());
-        });
-        presets.addView(sameSteps, new LinearLayout.LayoutParams(0, dp(54), 1));
-        box.addView(presets);
-
-        Button save = primaryButton(SettingsTextCopy.saveLearningStepsLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            LearningStepsSettingsPolicy.SaveResult request = LearningStepsSettingsPolicy.saveRequest(
-                    newSteps.getText().toString(),
-                    reviewSteps.getText().toString()
-            );
-            if (!request.valid) {
-                Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SettingsWriteActions.saveLearningSteps(request, store::saveLearningStepSettings);
-            Toast.makeText(this, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return learning().learningStepsSettingsPanel();
     }
 
     EditText stepInput(String value) {
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        input.setText(value);
-        input.setTextSize(20);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
+        return learning().stepInput(value);
     }
 
     LinearLayout studyAheadSettingsPanel() {
@@ -713,68 +542,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout studyLadderSettingsPanel() {
-        RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.studyLadderTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.studyLadderBody(), 15, MUTED, false));
-
-        List<RecordsBase.LadderRung> rungs = ladder.orderedRungs;
-        for (int i = 0; i < rungs.size(); i++) {
-            RecordsBase.LadderRung rung = rungs.get(i);
-            LinearLayout row = softInsetPanel();
-            row.addView(text(SettingsTextCopy.settingsLadderRungLabel(rung), 19, STUDY_PLUM, true));
-            row.addView(text(SettingsTextCopy.ladderRungSubtitle(ladder, rung), 13, MUTED, false));
-
-            LinearLayout controls = new LinearLayout(this);
-            controls.setOrientation(LinearLayout.HORIZONTAL);
-            Button toggle = secondaryButton(SettingsTextCopy.ladderToggleLabel(ladder.isEnabled(rung)));
-            toggle.setOnClickListener(v -> toggleLadderRung(rung));
-            controls.addView(toggle, new LinearLayout.LayoutParams(0, dp(48), 1));
-
-            Button up = secondaryButton(SettingsTextCopy.moveUpLabel());
-            up.setEnabled(i > 0);
-            up.setOnClickListener(v -> {
-                store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, -1));
-                renderSettings();
-            });
-            LinearLayout.LayoutParams upLp = new LinearLayout.LayoutParams(0, dp(48), 1);
-            upLp.setMargins(dp(8), 0, 0, 0);
-            controls.addView(up, upLp);
-
-            Button down = secondaryButton(SettingsTextCopy.moveDownLabel());
-            down.setEnabled(i < rungs.size() - 1);
-            down.setOnClickListener(v -> {
-                store.saveStudyLadderSettings(studyLadderSettings().moveRung(rung, 1));
-                renderSettings();
-            });
-            LinearLayout.LayoutParams downLp = new LinearLayout.LayoutParams(0, dp(48), 1);
-            downLp.setMargins(dp(8), 0, 0, 0);
-            controls.addView(down, downLp);
-            row.addView(controls);
-            box.addView(row);
-        }
-
-        Button reset = secondaryButton(SettingsTextCopy.restoreDefaultLadderLabel());
-        reset.setOnClickListener(v -> {
-            store.saveStudyLadderSettings(RecordsBase.StudyLadderSettings.defaults());
-            Toast.makeText(this, SettingsTextCopy.studyLadderRestoredToast(), Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(reset);
-        return box;
+        return studyLadderUi().studyLadderSettingsPanel();
     }
 
     void toggleLadderRung(RecordsBase.LadderRung rung) {
-        RecordsBase.StudyLadderSettings current = studyLadderSettings();
-        boolean wasEnabled = current.isEnabled(rung);
-        RecordsBase.StudyLadderSettings next = current.withRungEnabled(rung, !wasEnabled);
-        if (wasEnabled && next.enabledText().equals(current.enabledText())) {
-            Toast.makeText(this, SettingsTextCopy.keepAlwaysAvailableRungToast(), Toast.LENGTH_SHORT).show();
-            return;
-        }
-        store.saveStudyLadderSettings(next);
-        Toast.makeText(this, SettingsTextCopy.ladderRungToggleToast(rung, wasEnabled), Toast.LENGTH_SHORT).show();
-        renderSettings();
+        studyLadderUi().toggleLadderRung(rung);
     }
 
     LinearLayout ladderThresholdSettingsPanel() {
