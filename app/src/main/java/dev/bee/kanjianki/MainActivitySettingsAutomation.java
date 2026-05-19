@@ -11,17 +11,18 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 final class MainActivitySettingsAutomation {
     private final MainActivitySettings activity;
     private final MainActivitySettingsAutomationReminder reminder;
     private final MainActivitySettingsAutomationAutoSync autoSync;
+    private final MainActivitySettingsAutomationUpdate update;
 
     MainActivitySettingsAutomation(MainActivitySettings activity) {
         this.activity = activity;
         this.reminder = new MainActivitySettingsAutomationReminder(activity);
         this.autoSync = new MainActivitySettingsAutomationAutoSync(activity);
+        this.update = new MainActivitySettingsAutomationUpdate(activity);
     }
 
     View settingsHero(
@@ -118,11 +119,7 @@ final class MainActivitySettingsAutomation {
     }
 
     LinearLayout updateSettingsPanel() {
-        LinearLayout box = activity.autoUpdatePanel(SettingsTextCopy.appUpdatesTitle());
-        Button update = activity.primaryButton(SettingsTextCopy.openUpdaterLabel(), activity.STUDY_PINK_DARK);
-        update.setOnClickListener(v -> activity.renderUpdate());
-        box.addView(update);
-        return box;
+        return update.updateSettingsPanel();
     }
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
