@@ -2279,17 +2279,22 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static UiObject2 findDeviceTextNow(UiDevice device, String text) {
-        UiObject2 object = firstMatch(device.findObjects(By.text(text)));
+        String pkg = appPackage();
+        UiObject2 object = firstMatch(device.findObjects(By.pkg(pkg).text(text)));
         if (object == null) {
-            object = firstMatch(device.findObjects(By.text(text.toUpperCase(Locale.ROOT))));
+            object = firstMatch(device.findObjects(By.pkg(pkg).text(text.toUpperCase(Locale.ROOT))));
         }
         if (object == null) {
-            object = firstMatch(device.findObjects(By.textContains(text)));
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(text)));
         }
         if (object == null) {
-            object = firstMatch(device.findObjects(By.textContains(text.toUpperCase(Locale.ROOT))));
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(text.toUpperCase(Locale.ROOT))));
         }
         return object;
+    }
+
+    private static String appPackage() {
+        return InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName();
     }
 
     private static UiObject2 firstMatch(List<UiObject2> objects) {

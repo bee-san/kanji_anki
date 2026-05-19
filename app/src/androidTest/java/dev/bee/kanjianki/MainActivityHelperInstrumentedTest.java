@@ -40,7 +40,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
-import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -2805,7 +2804,7 @@ public final class MainActivityHelperInstrumentedTest {
     private static void performClickableWithText(View root, String label) {
         View clickable = findClickableWithText(root, label);
         if (clickable == null) {
-            UiObject2 object = findDeviceTextNow(label);
+            UiObject2 object = findDeviceClickableTextNow(label);
             if (object == null) {
                 throw new AssertionError("Missing clickable text: " + label);
             }
@@ -2834,17 +2833,54 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static UiObject2 findDeviceTextNow(String label) {
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        UiObject2 object = firstMatch(device.findObjects(By.text(label)));
+        String pkg = appPackage();
+        UiObject2 object = firstMatch(device.findObjects(By.pkg(pkg).text(label)));
         if (object == null) {
-            object = firstMatch(device.findObjects(By.textContains(label)));
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(label)));
         }
         if (object == null) {
-            object = firstMatch(device.findObjects(By.text(label.toUpperCase(Locale.ROOT))));
+            object = firstMatch(device.findObjects(By.pkg(pkg).text(label.toUpperCase(Locale.ROOT))));
         }
         if (object == null) {
-            object = firstMatch(device.findObjects(By.textContains(label.toUpperCase(Locale.ROOT))));
+            object = firstMatch(device.findObjects(By.pkg(pkg).textContains(label.toUpperCase(Locale.ROOT))));
         }
         return object;
+    }
+
+    private static UiObject2 findDeviceClickableTextNow(String label) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        String pkg = appPackage();
+        UiObject2 object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).text(label)));
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).textContains(label)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).text(label.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).textContains(label.toUpperCase(Locale.ROOT))));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).desc(label)));
+        }
+        if (object == null) {
+            object = firstMatch(device.findObjects(By.pkg(pkg).clickable(true).descContains(label)));
+        }
+        if (object != null && !object.isClickable()) {
+            UiObject2 parent = object.getParent();
+            while (parent != null && parent != object && !parent.isClickable()) {
+                object = parent;
+                parent = object.getParent();
+            }
+            if (parent != null && parent.isClickable()) {
+                object = parent;
+            }
+        }
+        return object != null && object.isClickable() ? object : null;
+    }
+
+    private static String appPackage() {
+        return InstrumentationRegistry.getInstrumentation().getTargetContext().getPackageName();
     }
 
     private static UiObject2 firstMatch(List<UiObject2> objects) {
@@ -2875,7 +2911,7 @@ public final class MainActivityHelperInstrumentedTest {
                         return true;
                     }
                 } finally {
-                    child.recycle();
+                    // The recursive call owns the child node lifecycle.
                 }
             }
             return false;
@@ -2908,7 +2944,7 @@ public final class MainActivityHelperInstrumentedTest {
                         return true;
                     }
                 } finally {
-                    child.recycle();
+                    // The recursive call owns the child node lifecycle.
                 }
             }
             return false;
