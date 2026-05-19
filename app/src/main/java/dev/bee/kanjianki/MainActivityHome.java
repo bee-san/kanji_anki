@@ -235,7 +235,7 @@ abstract class MainActivityHome extends MainActivityBase {
         }
         if (action != null) {
             card.setClickable(true);
-            card.setOnClickListener(v -> action.run());
+            card.setOnClickListener(new RunnableClickListener(action));
         }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
         lp.setMargins(dp(4), 0, dp(4), 0);
@@ -342,7 +342,7 @@ abstract class MainActivityHome extends MainActivityBase {
             TextView link = text(actionLabel + " >", 15, CORAL, true);
             link.setGravity(Gravity.CENTER_VERTICAL);
             link.setPadding(dp(12), dp(8), 0, dp(8));
-            link.setOnClickListener(v -> action.run());
+            link.setOnClickListener(new RunnableClickListener(action));
             row.addView(link, new LinearLayout.LayoutParams(-2, -2));
         }
         return row;
@@ -365,9 +365,22 @@ abstract class MainActivityHome extends MainActivityBase {
         button.addView(text, new LinearLayout.LayoutParams(-2, -2));
         button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
         button.setClickable(true);
-        button.setOnClickListener(v -> action.run());
+        button.setOnClickListener(new RunnableClickListener(action));
         button.setMinimumHeight(dp(62));
         return button;
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 
     View fullWidthHomeButton() {
