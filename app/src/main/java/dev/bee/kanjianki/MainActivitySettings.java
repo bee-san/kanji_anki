@@ -190,28 +190,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return automation().settingsHero(current, reminder, autoSync, autoUpdate);
     }
 
-    LinearLayout settingsStatusPill(String label, String value, int valueColor) {
-        LinearLayout pill = new LinearLayout(this);
-        pill.setOrientation(LinearLayout.VERTICAL);
-        pill.setPadding(dp(13), dp(10), dp(13), dp(10));
-        pill.setBackground(panel(Color.WHITE, Color.rgb(249, 207, 226), dp(20)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.setMargins(0, dp(12), 0, 0);
-        pill.setLayoutParams(lp);
-
-        TextView labelView = text(label, 12, STUDY_MUTED, true);
-        labelView.setIncludeFontPadding(false);
-        pill.addView(labelView);
-
-        TextView valueView = text(StudyTextCopy.compact(value, 56), 17, valueColor, true);
-        valueView.setSingleLine(false);
-        valueView.setMaxLines(2);
-        valueView.setPadding(0, dp(3), 0, 0);
-        pill.addView(valueView);
-        pill.setContentDescription(SettingsTextCopy.statusPillDescription(label, value));
-        return pill;
-    }
-
     LinearLayout settingsCategory(
             String title,
             String summary,

@@ -8,6 +8,7 @@ import android.widget.TextView;
 
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.SettingsTextCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 
@@ -47,20 +48,20 @@ final class MainActivitySettingsAutomationHero {
         topRow.setPadding(0, activity.dp(12), 0, 0);
         LinearLayout.LayoutParams topFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
         topFirstLp.setMargins(0, 0, activity.dp(6), 0);
-        topRow.addView(activity.settingsStatusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, activity.STUDY_PLUM), topFirstLp);
+        topRow.addView(statusPill(SettingsTextCopy.noteTypeStatusLabel(), current.modelName, activity.STUDY_PLUM), topFirstLp);
         LinearLayout.LayoutParams topSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
         topSecondLp.setMargins(activity.dp(6), 0, 0, 0);
-        topRow.addView(activity.settingsStatusPill(SettingsTextCopy.importFiltersStatusLabel(), SettingsTextCopy.settingsImportSummary(current), activity.TEAL), topSecondLp);
+        topRow.addView(statusPill(SettingsTextCopy.importFiltersStatusLabel(), SettingsTextCopy.settingsImportSummary(current), activity.TEAL), topSecondLp);
 
         LinearLayout bottomRow = new LinearLayout(activity);
         bottomRow.setOrientation(LinearLayout.HORIZONTAL);
         bottomRow.setPadding(0, activity.dp(12), 0, 0);
         LinearLayout.LayoutParams bottomFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
         bottomFirstLp.setMargins(0, 0, activity.dp(6), 0);
-        bottomRow.addView(activity.settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, activity.TEAL), bottomFirstLp);
+        bottomRow.addView(statusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, activity.TEAL), bottomFirstLp);
         LinearLayout.LayoutParams bottomSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
         bottomSecondLp.setMargins(activity.dp(6), 0, 0, 0);
-        bottomRow.addView(activity.settingsStatusPill(
+        bottomRow.addView(statusPill(
                 SettingsTextCopy.reminderStatusLabel(),
                 SettingsTextCopy.settingsReminderSummary(
                         reminder.enabled,
@@ -75,14 +76,14 @@ final class MainActivitySettingsAutomationHero {
         automationRow.setPadding(0, activity.dp(12), 0, 0);
         LinearLayout.LayoutParams automationFirstLp = new LinearLayout.LayoutParams(0, -2, 1);
         automationFirstLp.setMargins(0, 0, activity.dp(6), 0);
-        automationRow.addView(activity.settingsStatusPill(
+        automationRow.addView(statusPill(
                 SettingsTextCopy.dailySyncStatusLabel(),
                 SettingsTextCopy.settingsAutoSyncSummary(autoSync.configured, autoSync.enabled, autoSync.displayTime()),
                 autoSync.enabled ? activity.TEAL : activity.MUTED
         ), automationFirstLp);
         LinearLayout.LayoutParams automationSecondLp = new LinearLayout.LayoutParams(0, -2, 1);
         automationSecondLp.setMargins(activity.dp(6), 0, 0, 0);
-        automationRow.addView(activity.settingsStatusPill(
+        automationRow.addView(statusPill(
                 SettingsTextCopy.updatesStatusLabel(),
                 SettingsTextCopy.settingsUpdateSummary(autoUpdate.hasPendingUpdate(), autoUpdate.enabled),
                 autoUpdate.hasPendingUpdate() ? activity.CORAL : activity.STUDY_PINK_DARK
@@ -91,7 +92,7 @@ final class MainActivitySettingsAutomationHero {
         hero.addView(topRow);
         hero.addView(bottomRow);
         hero.addView(automationRow);
-        hero.addView(activity.settingsStatusPill(
+        hero.addView(statusPill(
                 SettingsTextCopy.matchingCardsStatusLabel(),
                 SettingsTextCopy.matchingCardsSummary(current),
                 activity.STUDY_PLUM
@@ -101,5 +102,27 @@ final class MainActivitySettingsAutomationHero {
         lp.setMargins(0, activity.dp(8), 0, activity.dp(10));
         hero.setLayoutParams(lp);
         return hero;
+    }
+
+    LinearLayout statusPill(String label, String value, int valueColor) {
+        LinearLayout pill = new LinearLayout(activity);
+        pill.setOrientation(LinearLayout.VERTICAL);
+        pill.setPadding(activity.dp(13), activity.dp(10), activity.dp(13), activity.dp(10));
+        pill.setBackground(activity.panel(Color.WHITE, Color.rgb(249, 207, 226), activity.dp(20)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, activity.dp(12), 0, 0);
+        pill.setLayoutParams(lp);
+
+        TextView labelView = activity.text(label, 12, activity.STUDY_MUTED, true);
+        labelView.setIncludeFontPadding(false);
+        pill.addView(labelView);
+
+        TextView valueView = activity.text(StudyTextCopy.compact(value, 56), 17, valueColor, true);
+        valueView.setSingleLine(false);
+        valueView.setMaxLines(2);
+        valueView.setPadding(0, activity.dp(3), 0, 0);
+        pill.addView(valueView);
+        pill.setContentDescription(SettingsTextCopy.statusPillDescription(label, value));
+        return pill;
     }
 }
