@@ -272,7 +272,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout updateSettingsPanel() {
-        return new MainActivitySettingsAutomationUpdate(this).updateSettingsPanel();
+        LinearLayout box = autoUpdatePanel(SettingsTextCopy.appUpdatesTitle());
+        Button update = primaryButton(SettingsTextCopy.openUpdaterLabel(), STUDY_PINK_DARK);
+        update.setOnClickListener(v -> renderUpdate());
+        box.addView(update);
+        return box;
     }
 
     void runUpdate(boolean cachedPending) {
