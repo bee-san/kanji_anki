@@ -60,6 +60,7 @@ import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
 import dev.bee.kanjianki.core.TimelineCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -446,7 +447,7 @@ abstract class MainActivityHome extends MainActivityBase {
         top.addView(kanji);
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(HomeTextCopy.recentMistakeTitle(row == null ? "" : rowMeaning(row)), 19, INK, true));
+        copy.addView(text(HomeTextCopy.recentMistakeTitle(row == null ? "" : StudyTextCopy.rowMeaning(row)), 19, INK, true));
         copy.addView(text(HomeTextCopy.recentMistakeSubtitle(mistake.rating, DateTextPolicy.timelineDate(mistake.reviewedAtMillis)), 14, MUTED, false));
         if (row != null) {
             copy.addView(text(sourceEvidenceText(row), 14, INK, true));
@@ -640,7 +641,7 @@ abstract class MainActivityHome extends MainActivityBase {
         top.addView(kanjiTile(row.kanji, dp(90), 52));
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(text(rowMeaning(row), 19, INK, true));
+        copy.addView(text(StudyTextCopy.rowMeaning(row), 19, INK, true));
         copy.addView(text(sourceEvidenceText(row), 14, INK, true));
         copy.addView(text(focusReasonLine(row, item, now), 13, MUTED, false));
         copy.addView(text(compact(queueCardBody(row), 72), 14, MUTED, false));
@@ -805,7 +806,7 @@ abstract class MainActivityHome extends MainActivityBase {
                 content.addView(text(inventory.readings, 20, TEAL, true));
             }
         } else {
-            content.addView(text(rowMeaning(row), 25, INK, true));
+            content.addView(text(StudyTextCopy.rowMeaning(row), 25, INK, true));
             if (!row.reading.isEmpty()) {
                 content.addView(text(row.reading, 20, TEAL, true));
             }

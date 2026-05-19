@@ -609,7 +609,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     RecordsImportModels.SimilarKanjiChoiceCard similarChoiceCardForSession(RecordsSchedulerModels.StudySession session) {
         long now = System.currentTimeMillis();
         RecordsImportModels.SimilarKanjiChoiceCard stored = store.dueSimilarChoiceForActiveTarget(session.item.kanji, now);
-        String meaning = session.row == null ? "" : rowMeaning(session.row);
+        String meaning = session.row == null ? "" : StudyTextCopy.rowMeaning(session.row);
         return SimilarKanjiChoicePlanner.choiceCardForSession(
                 stored,
                 session.item.kanji,

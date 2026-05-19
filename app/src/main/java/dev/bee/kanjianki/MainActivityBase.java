@@ -516,10 +516,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return StudyTextCopy.countText(count, singular, plural);
     }
 
-    String rowMeaning(RecordsImportModels.DashboardRow row) {
-        return StudyTextCopy.rowMeaning(row);
-    }
-
     String sessionClue(RecordsSchedulerModels.StudySession session) {
         return StudyTextCopy.sessionClue(currentDictionaryLookup(), session);
     }
