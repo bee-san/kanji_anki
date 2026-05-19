@@ -107,6 +107,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
     private final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
+    private final MainActivityStudyProgress studyProgress = new MainActivityStudyProgress(this);
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
     private final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
     private final MainActivityStudyReasonLine reasonLine = new MainActivityStudyReasonLine(this);
@@ -387,67 +388,59 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void resetStudyRunProgress() {
-        activeSimilarWritingRepair = null;
-        studySessionTracker.resetProgress();
+        studyProgress.resetStudyRunProgress();
     }
 
     void clearStudyModeOverrides() {
-        continueAllKanjiSession = false;
-        studyMoreNewCardKanji.clear();
+        studyProgress.clearStudyModeOverrides();
     }
 
     void markStudyRunPassed(String kanji) {
-        if (activeSession != null) {
-            markStudyTaskCompleted(sessionTaskKey(activeSession));
-            return;
-        }
-        if (kanji != null && !kanji.isEmpty()) {
-            markStudyTaskCompleted("kanji:" + kanji);
-        }
+        studyProgress.markStudyRunPassed(kanji);
     }
 
     void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        studySessionTracker.initializeTarget(plan);
+        studyProgress.initializeSessionProgressTarget(plan);
     }
 
     void registerStudyTaskShown(String key) {
-        studySessionTracker.registerTaskShown(key);
+        studyProgress.registerStudyTaskShown(key);
     }
 
     void markStudyTaskCompleted(String key) {
-        studySessionTracker.markTaskCompleted(key);
+        studyProgress.markStudyTaskCompleted(key);
     }
 
     String sessionTaskKey(RecordsSchedulerModels.StudySession session) {
-        return StudySessionTracker.sessionTaskKey(session);
+        return studyProgress.sessionTaskKey(session);
     }
 
     String similarRepairProgressKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
-        return StudySessionTracker.similarRepairProgressKey(repair);
+        return studyProgress.similarRepairProgressKey(repair);
     }
 
     String similarRepairStudyTaskKey(RecordsImportModels.SimilarKanjiWritingRepair repair) {
-        return StudySessionTracker.similarRepairStudyTaskKey(repair);
+        return studyProgress.similarRepairStudyTaskKey(repair);
     }
 
     void startActiveStudyTask(String key, String kanji, String taskType, long startedAt) {
-        studySessionTracker.startActiveTask(key, kanji, taskType, startedAt, !activityPaused);
+        studyProgress.startActiveStudyTask(key, kanji, taskType, startedAt);
     }
 
     void completeActiveStudyTask(String key, String outcome, long answeredAt) {
-        studySessionTracker.completeActiveTask(store, key, outcome, answeredAt, true);
+        studyProgress.completeActiveStudyTask(key, outcome, answeredAt);
     }
 
     void pauseActiveStudyTask() {
-        studySessionTracker.pauseActiveTask();
+        studyProgress.pauseActiveStudyTask();
     }
 
     void resumeActiveStudyTask() {
-        studySessionTracker.resumeActiveTask();
+        studyProgress.resumeActiveStudyTask();
     }
 
     void abandonActiveStudyTask() {
-        studySessionTracker.abandonActiveTask();
+        studyProgress.abandonActiveStudyTask();
     }
 
     View typingAnswerField() {
