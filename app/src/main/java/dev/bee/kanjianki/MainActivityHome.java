@@ -513,7 +513,7 @@ abstract class MainActivityHome extends MainActivityBase {
     void renderSkippedSyncResult(ManualSyncEngine.SyncResult result) {
         content.addView(text(HomeTextCopy.syncAlreadyRunningTitle(), 34, INK, true));
         LinearLayout info = band(BLUE);
-        info.addView(text(nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback()), 17, Color.WHITE, false));
+        info.addView(text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncAlreadyRunningFallback() : result.message, 17, Color.WHITE, false));
         content.addView(info);
         Button home = secondaryButton(LABEL_BACK_HOME);
         home.setOnClickListener(v -> renderHome());
@@ -554,7 +554,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(text(HomeTextCopy.syncNeedsAttentionTitle(), 34, INK, true));
         LinearLayout error = band(CORAL);
         error.addView(text(HomeTextCopy.syncReadErrorTitle(), 24, Color.WHITE, true));
-        error.addView(text(nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback()), 16, Color.WHITE, false));
+        error.addView(text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncFailureFallback() : result.message, 16, Color.WHITE, false));
         content.addView(error);
         Button retry = primaryButton(HomeTextCopy.trySyncAgainLabel(), TEAL);
         retry.setOnClickListener(v -> confirmSync());
@@ -562,13 +562,6 @@ abstract class MainActivityHome extends MainActivityBase {
         Button home = secondaryButton(LABEL_BACK_HOME);
         home.setOnClickListener(v -> renderHome());
         content.addView(home);
-    }
-
-    String nonEmptyOr(String value, String fallback) {
-        if (value == null || value.isEmpty()) {
-            return fallback;
-        }
-        return value;
     }
 
     long studyAheadMillis() {
@@ -607,7 +600,7 @@ abstract class MainActivityHome extends MainActivityBase {
     }
 
     List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        List<FocusQueuePolicy.QueueEntry> coreEntries = FocusQueuePolicy.queuedEntries(rows, items, now, studyAheadMillis(), plan, studyLadderSettings());
+        List<FocusQueuePolicy.QueueEntry> coreEntries = FocusQueuePolicy.queuedEntries(rows, items, now, store.studyAheadMinutes() * 60_000L, plan, studyLadderSettings());
         List<QueueEntry> entries = new ArrayList<>(coreEntries.size());
         for (FocusQueuePolicy.QueueEntry entry : coreEntries) {
             entries.add(new QueueEntry(entry.row, entry.item));

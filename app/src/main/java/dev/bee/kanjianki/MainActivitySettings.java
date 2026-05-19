@@ -498,7 +498,22 @@ abstract class MainActivitySettings extends MainActivityStudy {
                             browserQueryCards.isChecked(),
                             queryText
                     ),
-                    importFilterWriter()
+                    new SettingsWriteActions.SettingWriter() {
+                        @Override
+                        public void putIntSetting(String key, int value) {
+                            store.putIntSetting(key, value);
+                        }
+
+                        @Override
+                        public void putStringSetting(String key, String value) {
+                            store.putStringSetting(key, value);
+                        }
+
+                        @Override
+                        public void putDoubleSetting(String key, double value) {
+                            store.putDoubleSetting(key, value);
+                        }
+                    }
             );
             Toast.makeText(this, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
@@ -527,7 +542,22 @@ abstract class MainActivitySettings extends MainActivityStudy {
                                 preset.browserQueryCards(),
                                 preset.browserQuery()
                         ),
-                        importFilterWriter()
+                        new SettingsWriteActions.SettingWriter() {
+                            @Override
+                            public void putIntSetting(String key, int value) {
+                                store.putIntSetting(key, value);
+                            }
+
+                            @Override
+                            public void putStringSetting(String key, String value) {
+                                store.putStringSetting(key, value);
+                            }
+
+                            @Override
+                            public void putDoubleSetting(String key, double value) {
+                                store.putDoubleSetting(key, value);
+                            }
+                        }
                 );
                 Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
                 renderSettings();
@@ -535,25 +565,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
             grid.addView(button);
         }
         box.addView(grid);
-    }
-
-    SettingsWriteActions.SettingWriter importFilterWriter() {
-        return new SettingsWriteActions.SettingWriter() {
-            @Override
-            public void putIntSetting(String key, int value) {
-                store.putIntSetting(key, value);
-            }
-
-            @Override
-            public void putStringSetting(String key, String value) {
-                store.putStringSetting(key, value);
-            }
-
-            @Override
-            public void putDoubleSetting(String key, double value) {
-                store.putDoubleSetting(key, value);
-            }
-        };
     }
 
     ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
@@ -943,6 +954,22 @@ abstract class MainActivitySettings extends MainActivityStudy {
         boolean autoMode = AdaptiveLoadPlanner.isAutoMode(store.adaptiveLoadMode());
         final int[] selected = new int[]{current};
         final int[] selectedMax = new int[]{currentMax};
+        SettingsWriteActions.WorkloadSettingsWriter writer = new SettingsWriteActions.WorkloadSettingsWriter() {
+            @Override
+            public void saveAdaptiveLoadMode(String mode) {
+                store.saveAdaptiveLoadMode(mode);
+            }
+
+            @Override
+            public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
+                store.saveAdaptiveLoadWorkPercent(workloadPercent);
+            }
+
+            @Override
+            public void saveAdaptiveLoadMaxItems(int maxItems) {
+                store.saveAdaptiveLoadMaxItems(maxItems);
+            }
+        };
         LinearLayout box = settingsPanelBox();
         box.addView(text(SettingsTextCopy.dailyWorkloadTitle(), 23, INK, true));
 
@@ -958,7 +985,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button saveMax = primaryButton(SettingsTextCopy.saveMaximumLabel(), STUDY_PINK_DARK);
             saveMax.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
-                SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
+                SettingsWriteActions.saveWorkload(request, writer);
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
@@ -966,7 +993,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button manual = secondaryButton(SettingsTextCopy.manualWorkloadLabel());
             manual.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
-                SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
+                SettingsWriteActions.saveWorkload(request, writer);
                 Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
                 renderSettings();
             });
@@ -1014,7 +1041,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button save = primaryButton(SettingsTextCopy.saveWorkloadLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
-            SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
+            SettingsWriteActions.saveWorkload(request, writer);
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
@@ -1022,31 +1049,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button automatic = secondaryButton(SettingsTextCopy.automaticParetoLabel());
         automatic.setOnClickListener(v -> {
             WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
-            SettingsWriteActions.saveWorkload(request, workloadSettingsWriter());
+            SettingsWriteActions.saveWorkload(request, writer);
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });
         box.addView(automatic);
         return box;
-    }
-
-    SettingsWriteActions.WorkloadSettingsWriter workloadSettingsWriter() {
-        return new SettingsWriteActions.WorkloadSettingsWriter() {
-            @Override
-            public void saveAdaptiveLoadMode(String mode) {
-                store.saveAdaptiveLoadMode(mode);
-            }
-
-            @Override
-            public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
-                store.saveAdaptiveLoadWorkPercent(workloadPercent);
-            }
-
-            @Override
-            public void saveAdaptiveLoadMaxItems(int maxItems) {
-                store.saveAdaptiveLoadMaxItems(maxItems);
-            }
-        };
     }
 
     void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
