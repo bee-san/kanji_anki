@@ -110,6 +110,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
+    private final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -282,34 +283,11 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderStudyForKanji(String kanji) {
-        clearStudyModeOverrides();
-        resetStudyRunProgress();
-        base(NAV_STUDY);
-        activeSimilarWritingRepair = null;
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        long now = System.currentTimeMillis();
-        activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
-        RecordsImportModels.DashboardRow row = findRow(rows, kanji);
-        if (row == null) {
-            doneActions.renderStudyForKanjiNotAvailable();
-            return;
-        }
-        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true, activeStudyPlan);
-        activeStudyPlan = adaptivePlan(rows, seeded, now);
-        activeSession = new BridgeScheduler().targetedSession(
-                seeded,
-                row,
-                now,
-                studyLadderSettings()
-        );
-        StudySessionActions.activateStudySession(
-                activeSession,
-                now,
-                store::saveStudyItem,
-                this::registerStudyTaskShown,
-                this::startActiveStudyTask
-        );
-        renderSession(activeSession);
+        targetedLaunch.renderStudyForKanji(kanji);
+    }
+
+    void renderStudyForKanjiNotAvailable() {
+        doneActions.renderStudyForKanjiNotAvailable();
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {
