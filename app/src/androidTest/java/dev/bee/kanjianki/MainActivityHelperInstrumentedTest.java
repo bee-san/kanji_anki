@@ -506,8 +506,8 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(SettingsTextCopy.autoSyncDetail(
                 disabled.configured,
                 disabled.enabled,
-                DateTextPolicy.shortDateTime(disabled.lastSuccessAt),
                 "",
+                DateTextPolicy.shortDateTime(disabled.lastAttemptAt),
                 ""
         ).contains("Last auto attempt"));
         assertTrue(SettingsTextCopy.autoSyncDetail(
