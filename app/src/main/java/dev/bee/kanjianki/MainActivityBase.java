@@ -516,16 +516,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return StudyTextCopy.countText(count, singular, plural);
     }
 
-    String sessionClue(RecordsSchedulerModels.StudySession session) {
-        return StudyTextCopy.sessionClue(currentDictionaryLookup(), session);
-    }
-
     String canonicalKanjiMeaning(String kanji, String fallback, int maxChars) {
         return StudyTextCopy.canonicalKanjiMeaning(currentDictionaryLookup(), kanji, fallback, maxChars);
-    }
-
-    String wordPrompt(RecordsSchedulerModels.StudySession session) {
-        return StudyTextCopy.wordPrompt(session);
     }
 
     String compact(String value, int maxChars) {

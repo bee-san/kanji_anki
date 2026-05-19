@@ -738,7 +738,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         panel.setPadding(dp(10), dp(10), dp(10), dp(10));
 
         TextView glyph = text(
-                isWordReadingTask(session) ? wordPrompt(session) : session.item.kanji,
+                isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
                 isWordReadingTask(session) ? 44 : 116,
                 STUDY_HERO_PLUM,
                 true
@@ -772,7 +772,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         addStudyReasonLine(card, session);
         if (session.row != null) {
             if (isRecallTask(session)) {
-                card.addView(text("Prompt: " + sessionClue(session), 17, STUDY_PLUM, true));
+                card.addView(text("Prompt: " + StudyTextCopy.sessionClue(currentDictionaryLookup(), session), 17, STUDY_PLUM, true));
                 if (!session.row.reading.isEmpty()) {
                     card.addView(text("Reading: " + session.row.reading, 15, STUDY_MUTED, false));
                 }

@@ -230,7 +230,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsStudyModels.StudyItem clueItem = studyItem("?", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
                 assertEquals(
                         "Fallback prompt",
-                        activity.sessionClue(new RecordsSchedulerModels.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
+                        StudyTextCopy.sessionClue(activity.currentDictionaryLookup(), new RecordsSchedulerModels.StudySession(clueItem, null, "tok", BridgeScheduler.TASK_KANJI_MEANING, false, "fallback prompt"))
                 );
                 assertEquals("Fallback", activity.canonicalKanjiMeaning("?", "fallback", 40));
                 FakeWritingRecognizer cachedRecognizer = new FakeWritingRecognizer(
@@ -302,8 +302,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Read", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals("Type", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
                 assertEquals("Recognise", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("活動語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
-                assertEquals("語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.emptyList()))));
+                assertEquals("活動語", StudyTextCopy.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
+                assertEquals("語", StudyTextCopy.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.emptyList()))));
                 assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
                 assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
                 assertEquals("", StudyTextCopy.collectionMeaningForSession(null));
