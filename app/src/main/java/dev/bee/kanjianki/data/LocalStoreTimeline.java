@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data;
 
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -40,7 +41,7 @@ final class LocalStoreTimeline {
                 String kanji = LocalStoreBase.string(imports, LocalStoreBase.COLUMN_KANJI);
                 LocalStoreHistory.SourceSnapshot source = activity.firstSuspendedSourceForKanji(db, kanji);
                 long importedAt = LocalStoreBase.longValue(imports, LocalStoreBase.COLUMN_FIRST_IMPORTED_AT);
-                activity.insertTimelineEvent(
+                insertTimelineEvent(
                         db,
                         kanji,
                         importedAt == 0L ? System.currentTimeMillis() : importedAt,
@@ -66,7 +67,7 @@ final class LocalStoreTimeline {
 
     void backfillRowTimeline(SQLiteDatabase db, Map<String, LocalStoreHistory.RowSnapshot> rows) {
         for (LocalStoreHistory.RowSnapshot row : rows.values()) {
-            activity.insertTimelineEvent(
+            insertTimelineEvent(
                     db,
                     row.kanji,
                     row.rebuiltAt == 0L ? System.currentTimeMillis() : row.rebuiltAt,
@@ -84,7 +85,7 @@ final class LocalStoreTimeline {
                     null,
                     LocalStoreBase.TIMELINE_FIRST_SEEN_KEY_PREFIX + row.kanji
             );
-            activity.insertTimelineEvent(
+            insertTimelineEvent(
                     db,
                     row.kanji,
                     row.rebuiltAt == 0L ? System.currentTimeMillis() : row.rebuiltAt,
@@ -122,7 +123,7 @@ final class LocalStoreTimeline {
         LocalStoreHistory.RowSnapshot row = rows.get(kanji);
         LocalStoreHistory.SourceSnapshot source = row == null ? activity.firstExampleForKanji(db, kanji) : row.source;
         if (row == null) {
-            activity.insertTimelineEvent(
+            insertTimelineEvent(
                     db,
                     kanji,
                     occurredAt,
@@ -143,7 +144,7 @@ final class LocalStoreTimeline {
         }
         if (LocalStoreBase.STATE_RETIRED.equals(LocalStoreBase.string(study, LocalStoreBase.COLUMN_STATE))) {
             Integer mature = row == null ? null : row.matureSupportCount;
-            activity.insertTimelineEvent(
+            insertTimelineEvent(
                     db,
                     kanji,
                     occurredAt,
@@ -198,7 +199,7 @@ final class LocalStoreTimeline {
         int target = settings == null ? RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
         for (RecordsImportModels.SuspendedImport imported : imports) {
             LocalStoreHistory.SourceSnapshot source = activity.sourceFromImport(imported);
-            activity.insertTimelineEvent(
+            insertTimelineEvent(
                     db,
                     imported.kanji,
                     occurredAt,
@@ -221,7 +222,7 @@ final class LocalStoreTimeline {
         for (RecordsImportModels.DashboardRow row : rows) {
             LocalStoreHistory.RowSnapshot previous = previousRows.get(row.kanji);
             LocalStoreHistory.SourceSnapshot source = activity.sourceForRow(row);
-            activity.insertTimelineEvent(
+            insertTimelineEvent(
                     db,
                     row.kanji,
                     occurredAt,
@@ -240,7 +241,7 @@ final class LocalStoreTimeline {
                     LocalStoreBase.TIMELINE_FIRST_SEEN_KEY_PREFIX + row.kanji
             );
             if (previous == null) {
-                activity.insertTimelineEvent(
+                insertTimelineEvent(
                         db,
                         row.kanji,
                         occurredAt,
@@ -259,7 +260,7 @@ final class LocalStoreTimeline {
                         "weak_support_seen:" + row.kanji + ":" + syncId
                 );
             } else if (row.matureSupportCount > previous.matureSupportCount) {
-                activity.insertTimelineEvent(
+                insertTimelineEvent(
                         db,
                         row.kanji,
                         occurredAt,
@@ -278,7 +279,7 @@ final class LocalStoreTimeline {
                         "support_improved:" + row.kanji + ":" + syncId + ":" + previous.matureSupportCount + "-" + row.matureSupportCount
                 );
             } else if (row.matureSupportCount < previous.matureSupportCount) {
-                activity.insertTimelineEvent(
+                insertTimelineEvent(
                         db,
                         row.kanji,
                         occurredAt,
@@ -332,7 +333,7 @@ final class LocalStoreTimeline {
         LocalStoreHistory.SourceSnapshot source = row == null ? activity.firstExampleForKanji(db, item.kanji) : row.source;
         Integer mature = row == null ? null : row.matureSupportCount;
         boolean retired = LocalStoreBase.STATE_RETIRED.equals(item.state);
-        activity.insertTimelineEvent(
+        insertTimelineEvent(
                 db,
                 item.kanji,
                 occurredAt,
@@ -356,7 +357,7 @@ final class LocalStoreTimeline {
         TimelineCopy.ReviewEvent event = TimelineCopy.reviewEvent(request, appliedRating);
         LocalStoreHistory.SourceSnapshot source = activity.firstExampleForKanji(db, request.kanji);
         LocalStoreHistory.RowSnapshot row = activity.rowSnapshot(db, request.kanji);
-        activity.insertTimelineEvent(
+        insertTimelineEvent(
                 db,
                 request.kanji,
                 reviewedAt,
@@ -374,6 +375,65 @@ final class LocalStoreTimeline {
                 null,
                 dedupeKey
         );
+    }
+
+    RecordsImportModels.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
+        return new RecordsImportModels.KanjiTimelineEvent(
+                LocalStoreBase.longValue(cursor, "id"),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI),
+                LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_OCCURRED_AT),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_EVENT_TYPE),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_TITLE),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_DETAIL),
+                LocalStoreBase.string(cursor, "source_expression"),
+                LocalStoreBase.string(cursor, "source_reading"),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_RATING),
+                LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_WRITING_REQUIRED) == 1,
+                LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_WRITING_PASSED) == 1,
+                LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_MANUAL_OVERRIDE) == 1,
+                LocalStoreBase.nullableInt(cursor, LocalStoreBase.COLUMN_WEAKNESS_SCORE),
+                LocalStoreBase.nullableInt(cursor, LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT),
+                LocalStoreBase.nullableLong(cursor, LocalStoreBase.COLUMN_SYNC_ID),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_DEDUPE_KEY)
+        );
+    }
+
+    void insertTimelineEvent(
+            SQLiteDatabase db,
+            String kanji,
+            long occurredAt,
+            String eventType,
+            String title,
+            String detail,
+            Object... eventValues
+    ) {
+        ContentValues values = new ContentValues();
+        values.put(LocalStoreBase.COLUMN_KANJI, kanji);
+        values.put(LocalStoreBase.COLUMN_OCCURRED_AT, occurredAt);
+        values.put(LocalStoreBase.COLUMN_EVENT_TYPE, eventType == null ? "" : eventType);
+        values.put(LocalStoreBase.COLUMN_TITLE, title == null ? "" : title);
+        values.put(LocalStoreBase.COLUMN_DETAIL, detail == null ? "" : detail);
+        String sourceExpression = activity.stringValueAt(eventValues, 0);
+        String sourceReading = activity.stringValueAt(eventValues, 1);
+        String rating = activity.stringValueAt(eventValues, 2);
+        boolean writingRequired = activity.booleanValueAt(eventValues, 3);
+        boolean writingPassed = activity.booleanValueAt(eventValues, 4);
+        boolean manualOverride = activity.booleanValueAt(eventValues, 5);
+        Integer weaknessScore = activity.integerValueAt(eventValues, 6);
+        Integer matureSupportCount = activity.integerValueAt(eventValues, 7);
+        Long syncId = activity.longValueAt(eventValues, 8);
+        String dedupeKey = activity.stringValueAt(eventValues, 9);
+        values.put("source_expression", sourceExpression);
+        values.put("source_reading", sourceReading);
+        values.put(LocalStoreBase.COLUMN_RATING, rating);
+        values.put(LocalStoreBase.COLUMN_WRITING_REQUIRED, writingRequired ? 1 : 0);
+        values.put(LocalStoreBase.COLUMN_WRITING_PASSED, writingPassed ? 1 : 0);
+        values.put(LocalStoreBase.COLUMN_MANUAL_OVERRIDE, manualOverride ? 1 : 0);
+        values.put(LocalStoreBase.COLUMN_WEAKNESS_SCORE, weaknessScore);
+        values.put(LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT, matureSupportCount);
+        values.put(LocalStoreBase.COLUMN_SYNC_ID, syncId);
+        values.put(LocalStoreBase.COLUMN_DEDUPE_KEY, dedupeKey == null ? "" : dedupeKey);
+        db.insertWithOnConflict(LocalStoreBase.TABLE_KANJI_TIMELINE_EVENTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     long defaultTimelineTime(long occurredAt) {

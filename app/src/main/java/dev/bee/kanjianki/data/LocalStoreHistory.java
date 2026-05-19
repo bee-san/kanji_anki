@@ -472,24 +472,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     RecordsImportModels.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
-        return new RecordsImportModels.KanjiTimelineEvent(
-                longValue(cursor, "id"),
-                string(cursor, COLUMN_KANJI),
-                longValue(cursor, COLUMN_OCCURRED_AT),
-                string(cursor, COLUMN_EVENT_TYPE),
-                string(cursor, COLUMN_TITLE),
-                string(cursor, COLUMN_DETAIL),
-                string(cursor, "source_expression"),
-                string(cursor, "source_reading"),
-                string(cursor, COLUMN_RATING),
-                integer(cursor, COLUMN_WRITING_REQUIRED) == 1,
-                integer(cursor, COLUMN_WRITING_PASSED) == 1,
-                integer(cursor, COLUMN_MANUAL_OVERRIDE) == 1,
-                nullableInt(cursor, COLUMN_WEAKNESS_SCORE),
-                nullableInt(cursor, COLUMN_MATURE_SUPPORT_COUNT),
-                nullableLong(cursor, COLUMN_SYNC_ID),
-                string(cursor, COLUMN_DEDUPE_KEY)
-        );
+        return timeline().readTimelineEvent(cursor);
     }
 
     void insertTimelineEvent(
@@ -501,45 +484,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             String detail,
             Object... eventValues
     ) {
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_KANJI, kanji);
-        values.put(COLUMN_OCCURRED_AT, occurredAt);
-        values.put(COLUMN_EVENT_TYPE, eventType == null ? "" : eventType);
-        values.put(COLUMN_TITLE, title == null ? "" : title);
-        values.put(COLUMN_DETAIL, detail == null ? "" : detail);
-        String sourceExpression = stringValueAt(eventValues, 0);
-        String sourceReading = stringValueAt(eventValues, 1);
-        String rating = stringValueAt(eventValues, 2);
-        boolean writingRequired = booleanValueAt(eventValues, 3);
-        boolean writingPassed = booleanValueAt(eventValues, 4);
-        boolean manualOverride = booleanValueAt(eventValues, 5);
-        Integer weaknessScore = integerValueAt(eventValues, 6);
-        Integer matureSupportCount = integerValueAt(eventValues, 7);
-        Long syncId = longValueAt(eventValues, 8);
-        String dedupeKey = stringValueAt(eventValues, 9);
-        values.put("source_expression", sourceExpression);
-        values.put("source_reading", sourceReading);
-        values.put(COLUMN_RATING, rating);
-        values.put(COLUMN_WRITING_REQUIRED, writingRequired ? 1 : 0);
-        values.put(COLUMN_WRITING_PASSED, writingPassed ? 1 : 0);
-        values.put(COLUMN_MANUAL_OVERRIDE, manualOverride ? 1 : 0);
-        if (weaknessScore == null) {
-            values.putNull(COLUMN_WEAKNESS_SCORE);
-        } else {
-            values.put(COLUMN_WEAKNESS_SCORE, weaknessScore);
-        }
-        if (matureSupportCount == null) {
-            values.putNull(COLUMN_MATURE_SUPPORT_COUNT);
-        } else {
-            values.put(COLUMN_MATURE_SUPPORT_COUNT, matureSupportCount);
-        }
-        if (syncId == null) {
-            values.putNull(COLUMN_SYNC_ID);
-        } else {
-            values.put(COLUMN_SYNC_ID, syncId);
-        }
-        values.put(COLUMN_DEDUPE_KEY, dedupeKey);
-        db.insertWithOnConflict(TABLE_KANJI_TIMELINE_EVENTS, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        timeline().insertTimelineEvent(db, kanji, occurredAt, eventType, title, detail, eventValues);
     }
 
     static String stringValueAt(Object[] values, int index) {
