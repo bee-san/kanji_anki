@@ -584,17 +584,7 @@ abstract class MainActivityHome extends MainActivityBase {
                 this::studyLadderSettings,
                 this::adaptivePlan,
                 scheduler::seedQueue,
-                new HomeStudyQueueActions.StudyItemsWriter() {
-                    @Override
-                    public List<RecordsStudyModels.StudyItem> annotateSimilarKanjiAvailability(List<RecordsStudyModels.StudyItem> items) {
-                        return store.annotateSimilarKanjiAvailability(items);
-                    }
-
-                    @Override
-                    public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
-                        store.replaceStudyItems(items);
-                    }
-                }
+                new MainActivityHomeStudyItemsWriter(this)
         ));
     }
 
