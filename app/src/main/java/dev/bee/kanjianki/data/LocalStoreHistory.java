@@ -548,23 +548,6 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return fallback == null ? SourceSnapshot.EMPTY : new SourceSnapshot(fallback.expression, fallback.reading);
     }
 
-    long insertSyncRun(SQLiteDatabase db, SyncRunInsert syncRun) {
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_STARTED_AT, syncRun.startedAt());
-        values.put(COLUMN_FINISHED_AT, syncRun.finishedAt());
-        values.put(COLUMN_STATUS, syncRun.status());
-        values.put(COLUMN_ACTIVE_NOTES_COUNT, syncRun.activeIndex().noteIds.size());
-        values.put(COLUMN_ACTIVE_CARDS_COUNT, syncRun.activeIndex().activeCardCount);
-        values.put(COLUMN_SUSPENDED_CARDS_ARCHIVED_COUNT, syncRun.archivedSuspendedCardCount());
-        values.put(COLUMN_SUSPENDED_KANJI_IMPORTED_COUNT, syncRun.importCount());
-        values.put("deleted_notes_count", syncRun.deletedNotes());
-        values.put("deleted_cards_count", syncRun.deletedCards());
-        values.put("error_code", syncRun.errorCode());
-        values.put(COLUMN_ERROR_MESSAGE, syncRun.errorMessage());
-        values.put(COLUMN_REMOVAL_MESSAGE, syncRun.removalMessage());
-        return db.insert(TABLE_SYNC_RUNS, null, values);
-    }
-
     void saveRows(SQLiteDatabase db, List<RecordsImportModels.DashboardRow> rows, long rebuiltAt) {
         for (RecordsImportModels.DashboardRow row : rows) {
             ContentValues values = new ContentValues();

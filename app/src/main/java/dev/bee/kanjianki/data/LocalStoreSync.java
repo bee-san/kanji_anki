@@ -29,6 +29,10 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         super(context);
     }
 
+    private LocalStoreSyncRunStore syncRunStore() {
+        return new LocalStoreSyncRunStore(this);
+    }
+
     public long saveSuccessfulSync(
             RecordsSyncModels.CollectionSnapshot snapshot,
             List<RecordsImportModels.SuspendedImport> imports,
@@ -72,7 +76,7 @@ abstract class LocalStoreSync extends LocalStoreInventory {
             Set<Long> selectedSuspendedCardIds = selectedSuspendedCardIds(imports);
             int deletedNotes = countDeletedExisting(db, TABLE_SOURCE_NOTES, COLUMN_NOTE_ID, activeIndex.noteIds);
             int deletedCards = countDeletedExisting(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID, activeIndex.cardIds);
-            long syncId = insertSyncRun(db, new SyncRunInsert(
+            long syncId = syncRunStore().insertSyncRun(db, new SyncRunInsert(
                     timing.startedAt,
                     timing.finishedAt,
                     STATUS_SUCCESS,
@@ -168,6 +172,32 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         values.put(COLUMN_SOURCE_NOTE_IDS, decision.sourceNoteIds());
         values.put(COLUMN_CREATED_AT, finishedAt);
         db.insertWithOnConflict(TABLE_IMPORT_DECISIONS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    private ImportAuditBuilder.ImportCandidate importCandidate(RecordsImportModels.SuspendedImport imported) {
+        List<ImportAuditBuilder.ImportSource> sources = new ArrayList<>();
+        for (RecordsImportModels.SuspendedSource source : imported.sources) {
+            sources.add(new ImportAuditBuilder.ImportSource(source.cardId, source.noteId, source.sourceType, source.ruleTypes));
+        }
+        return new ImportAuditBuilder.ImportCandidate(imported.kanji, imported.jitenRank, imported.rankKnown, sources);
+    }
+
+    private ImportAuditBuilder.SettingsSnapshot importSettings(RecordsSyncModels.Settings settings) {
+        return new ImportAuditBuilder.SettingsSnapshot(
+                settings.modelName,
+                settings.importActiveCards,
+                settings.importSuspendedCards,
+                settings.importTaggedCardsEnabled(),
+                settings.importTags,
+                settings.importWeakCards,
+                settings.importWeakFsrsDifficultyThreshold,
+                settings.importWeakLapsesThreshold,
+                settings.importMinMatchingCardsPerKanji,
+                settings.importBrowserQueryCards,
+                settings.normalizedBrowserQuery(),
+                settings.suspendedRankMin,
+                settings.suspendedRankMax
+        );
     }
 
     void clearSyncMirrorTables(SQLiteDatabase db) {
@@ -309,53 +339,11 @@ abstract class LocalStoreSync extends LocalStoreInventory {
         }
     }
 
-    private ImportAuditBuilder.ImportCandidate importCandidate(RecordsImportModels.SuspendedImport imported) {
-        List<ImportAuditBuilder.ImportSource> sources = new ArrayList<>();
-        for (RecordsImportModels.SuspendedSource source : imported.sources) {
-            sources.add(new ImportAuditBuilder.ImportSource(source.cardId, source.noteId, source.sourceType, source.ruleTypes));
-        }
-        return new ImportAuditBuilder.ImportCandidate(imported.kanji, imported.jitenRank, imported.rankKnown, sources);
-    }
-
-    private ImportAuditBuilder.SettingsSnapshot importSettings(RecordsSyncModels.Settings settings) {
-        return new ImportAuditBuilder.SettingsSnapshot(
-                settings.modelName,
-                settings.importActiveCards,
-                settings.importSuspendedCards,
-                settings.importTaggedCardsEnabled(),
-                settings.importTags,
-                settings.importWeakCards,
-                settings.importWeakFsrsDifficultyThreshold,
-                settings.importWeakLapsesThreshold,
-                settings.importMinMatchingCardsPerKanji,
-                settings.importBrowserQueryCards,
-                settings.normalizedBrowserQuery(),
-                settings.suspendedRankMin,
-                settings.suspendedRankMax
-        );
-    }
-
     public void saveFailedSync(long startedAt, long finishedAt, String status, String errorCode, String errorMessage) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_STARTED_AT, startedAt);
-        values.put(COLUMN_FINISHED_AT, finishedAt);
-        values.put(COLUMN_STATUS, status);
-        values.put(COLUMN_ACTIVE_NOTES_COUNT, 0);
-        values.put(COLUMN_ACTIVE_CARDS_COUNT, 0);
-        values.put(COLUMN_SUSPENDED_CARDS_ARCHIVED_COUNT, 0);
-        values.put(COLUMN_SUSPENDED_KANJI_IMPORTED_COUNT, 0);
-        values.put("deleted_notes_count", 0);
-        values.put("deleted_cards_count", 0);
-        values.put("error_code", errorCode);
-        values.put(COLUMN_ERROR_MESSAGE, errorMessage);
-        values.put(COLUMN_REMOVAL_MESSAGE, "");
-        db.insert(TABLE_SYNC_RUNS, null, values);
+        syncRunStore().saveFailedSync(startedAt, finishedAt, status, errorCode, errorMessage);
     }
 
     public void updateSyncRemovalMessage(long syncId, String message) {
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_REMOVAL_MESSAGE, message == null ? "" : message);
-        getWritableDatabase().update(TABLE_SYNC_RUNS, values, "id=?", new String[]{Long.toString(syncId)});
+        syncRunStore().updateSyncRemovalMessage(syncId, message);
     }
 }
