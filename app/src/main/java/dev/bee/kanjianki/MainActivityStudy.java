@@ -407,7 +407,13 @@ abstract class MainActivityStudy extends MainActivityStats {
         activeStudyPlan = rows.isEmpty() ? null : adaptivePlan(rows, store.studyItems(), now);
         RecordsImportModels.DashboardRow row = findRow(rows, kanji);
         if (row == null) {
-            renderTargetKanjiUnavailable();
+            prepareStudyContent(activeStudyPlan, false);
+            LinearLayout card = softStudyCard();
+            card.addView(modePill(LABEL_PRACTICE));
+            card.addView(text("Study practice", 32, STUDY_PLUM, true));
+            card.addView(text("Kanji not available", 22, STUDY_PLUM, true));
+            card.addView(text("This row may have changed after sync.", 16, STUDY_MUTED, false));
+            content.addView(card);
             return;
         }
         List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true);
@@ -426,16 +432,6 @@ abstract class MainActivityStudy extends MainActivityStats {
                 this::startActiveStudyTask
         );
         renderSession(activeSession);
-    }
-
-    void renderTargetKanjiUnavailable() {
-        prepareStudyContent(activeStudyPlan, false);
-        LinearLayout card = softStudyCard();
-        card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Study practice", 32, STUDY_PLUM, true));
-        card.addView(text("Kanji not available", 22, STUDY_PLUM, true));
-        card.addView(text("This row may have changed after sync.", 16, STUDY_MUTED, false));
-        content.addView(card);
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {
