@@ -433,7 +433,7 @@ final class LocalStoreTimeline {
         values.put(LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT, matureSupportCount);
         values.put(LocalStoreBase.COLUMN_SYNC_ID, syncId);
         values.put(LocalStoreBase.COLUMN_DEDUPE_KEY, dedupeKey == null ? "" : dedupeKey);
-        db.insertWithOnConflict(LocalStoreBase.TABLE_KANJI_TIMELINE_EVENTS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        db.insertWithOnConflict(LocalStoreBase.TABLE_KANJI_TIMELINE_EVENTS, null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
     long defaultTimelineTime(long occurredAt) {
