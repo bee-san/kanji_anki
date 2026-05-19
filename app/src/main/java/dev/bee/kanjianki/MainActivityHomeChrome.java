@@ -7,9 +7,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import dev.bee.kanjianki.core.HomeTextCopy;
 
 final class MainActivityHomeChrome {
@@ -20,16 +17,7 @@ final class MainActivityHomeChrome {
     }
 
     View homeActionRow() {
-        List<View> actions = new ArrayList<>();
-        actions.add(pillButton(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, () -> home.renderBrowseKanji("")));
-        actions.add(pillButton(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, home::renderRecentMistakes));
-        actions.add(pillButton(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, home::renderStats));
-        actions.add(pillButton(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, home::renderGames));
-        actions.add(pillButton(MainActivityBase.NAV_SETTINGS, R.drawable.ic_settings_24, home::renderSettings));
-        if (BuildConfig.DEBUG) {
-            actions.add(pillButton("Compose shell", R.drawable.ic_sparkle_24, home::openComposeShell));
-        }
-        return home.twoColumnGrid(actions);
+        return MainActivityHomeChromeCompose.homeActionRowView(home);
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {

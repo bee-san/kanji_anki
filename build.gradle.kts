@@ -114,6 +114,7 @@ val fastCiTasks = listOf(
     ":app:compileDebugKotlin",
     ":app:testDebugUnitTest",
     ":app:jacocoDebugUnitTestReport",
+    ":app:compileDebugAndroidTestKotlin",
     ":app:compileDebugAndroidTestJavaWithJavac",
     ":app:lintDebug",
     "testDictionaryAssets",
