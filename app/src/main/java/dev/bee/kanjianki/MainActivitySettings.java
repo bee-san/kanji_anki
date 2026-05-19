@@ -342,14 +342,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return automation().updateSettingsPanel();
     }
 
-    Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
-        return automation().reminderPresetButton(label, hour, minute, selectedHour, selectedMinute, timeButton);
-    }
-
-    void saveReminderFromSelection(int hour, int minute, boolean enabled) {
-        automation().saveReminderFromSelection(hour, minute, enabled);
-    }
-
     void runUpdate(boolean cachedPending) {
         updateFlow().runUpdate(cachedPending);
     }

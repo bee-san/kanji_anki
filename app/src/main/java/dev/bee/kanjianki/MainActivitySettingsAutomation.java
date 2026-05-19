@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.RecordsSyncModels;
@@ -41,13 +40,5 @@ final class MainActivitySettingsAutomation {
 
     LinearLayout updateSettingsPanel() {
         return update.updateSettingsPanel();
-    }
-
-    void saveReminderFromSelection(int hour, int minute, boolean enabled) {
-        reminder.saveReminderFromSelection(hour, minute, enabled);
-    }
-
-    Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
-        return reminder.reminderPresetButton(label, hour, minute, selectedHour, selectedMinute, timeButton);
     }
 }

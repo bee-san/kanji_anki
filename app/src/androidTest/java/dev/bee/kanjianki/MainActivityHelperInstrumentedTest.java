@@ -936,6 +936,7 @@ public final class MainActivityHelperInstrumentedTest {
         MainActivity.setInstallPermissionForTests(false);
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
+                MainActivitySettingsAutomationReminder reminderHelper = new MainActivitySettingsAutomationReminder(activity);
                 activity.store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 6, 45, 1000L, 1000L, 2000L));
                 LinearLayout syncOn = activity.autoSyncSettingsPanel();
                 performButtonClick(syncOn, "Turn off daily sync");
@@ -965,7 +966,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.store.autoUpdateStatus().enabled);
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 22, 45));
-                activity.saveReminderFromSelection(6, 15, false);
+                reminderHelper.saveReminderFromSelection(6, 15, false);
                 LocalStore.ReminderSettings reminder = activity.store.reminderSettings();
                 assertFalse(reminder.enabled);
                 assertEquals(6, reminder.hour);
@@ -1006,15 +1007,16 @@ public final class MainActivityHelperInstrumentedTest {
     public void reminderSavingCoversPermissionRequestsAndBlockedNotifications() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
+                MainActivitySettingsAutomationReminder reminder = new MainActivitySettingsAutomationReminder(activity);
                 MainActivity.setRuntimeNotificationPermissionForTests(false);
-                activity.saveReminderFromSelection(7, 45, true);
+                reminder.saveReminderFromSelection(7, 45, true);
                 assertTrue(activity.pendingReminderSettings.enabled);
                 assertEquals(7, activity.pendingReminderSettings.hour);
                 assertEquals(45, activity.pendingReminderSettings.minute);
 
                 MainActivity.setRuntimeNotificationPermissionForTests(true);
                 MainActivity.setNotificationsAllowedForTests(false);
-                activity.saveReminderFromSelection(8, 15, true);
+                reminder.saveReminderFromSelection(8, 15, true);
                 LocalStore.ReminderSettings saved = activity.store.reminderSettings();
                 assertTrue(saved.enabled);
                 assertEquals(8, saved.hour);
@@ -2257,6 +2259,7 @@ public final class MainActivityHelperInstrumentedTest {
     public void homeAndReminderActionGridsUseTwoColumnsWithWrappingHeights() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
+                MainActivitySettingsAutomationReminder reminder = new MainActivitySettingsAutomationReminder(activity);
                 View homeGrid = activity.homeActionRow();
                 measureAtWidth(homeGrid, 320);
                 assertTwoColumnGrid(homeGrid, 3);
@@ -2267,10 +2270,10 @@ public final class MainActivityHelperInstrumentedTest {
                 int[] hour = new int[]{8};
                 int[] minute = new int[]{0};
                 List<View> presets = Arrays.asList(
-                        activity.reminderPresetButton("Morning", 8, 0, hour, minute, time),
-                        activity.reminderPresetButton("Lunch", 12, 30, hour, minute, time),
-                        activity.reminderPresetButton("Evening", 19, 0, hour, minute, time),
-                        activity.reminderPresetButton("Night", 21, 0, hour, minute, time)
+                        reminder.reminderPresetButton("Morning", 8, 0, hour, minute, time),
+                        reminder.reminderPresetButton("Lunch", 12, 30, hour, minute, time),
+                        reminder.reminderPresetButton("Evening", 19, 0, hour, minute, time),
+                        reminder.reminderPresetButton("Night", 21, 0, hour, minute, time)
                 );
                 View reminderGrid = activity.twoColumnGrid(presets);
                 measureAtWidth(reminderGrid, 320);
