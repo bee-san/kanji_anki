@@ -197,18 +197,6 @@ abstract class MainActivityStats extends MainActivityGames {
         return examples;
     }
 
-    String formatWeakness(double weakness) {
-        return StatsTextCopy.formatWeakness(weakness);
-    }
-
-    String formatSignedPercent(double value) {
-        return StatsTextCopy.formatSignedPercent(value);
-    }
-
-    String formatSignedDecimal(double value) {
-        return StatsTextCopy.formatSignedDecimal(value);
-    }
-
     String formatStudyTime(long millis) {
         return StatsTextCopy.formatStudyTime(millis);
     }

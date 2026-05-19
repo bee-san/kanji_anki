@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.StatsTextCopy;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -1019,7 +1020,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("1 min 5 sec", activity.formatStudyTime(65_000L));
         assertEquals("1 hr", activity.formatStudyTime(3_600_000L));
         assertEquals("1 hr 1 min", activity.formatStudyTime(3_660_000L));
-        assertEquals("0.38", activity.formatWeakness(0.375));
+        assertEquals("0.38", StatsTextCopy.formatWeakness(0.375));
 
         assertEquals(MainActivityBase.CORAL, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), 1000L));
         assertEquals(MainActivityBase.BLUE, activity.rowColor(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "learning", 2000L), 1000L));
