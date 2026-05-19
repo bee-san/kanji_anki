@@ -142,67 +142,16 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsReferenceData(this);
     }
 
-    void renderUpdate() {
-        base(NAV_SETTINGS_ROUTE);
-        content.addView(fullWidthHomeButton());
-        Button backButton = secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        backButton.setOnClickListener(v -> renderSettings(false));
-        content.addView(backButton);
-        content.addView(text(SettingsTextCopy.updatePageTitle(), 34, INK, true));
-        content.addView(text(SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME), 16, MUTED, false));
-        content.addView(autoUpdatePanel(SettingsTextCopy.automaticUpdatesTitle()));
+    private MainActivitySettingsUpdatePage updatePage() {
+        return new MainActivitySettingsUpdatePage(this);
+    }
 
-        Button button = primaryButton(SettingsTextCopy.checkForUpdateLabel(), STUDY_PINK_DARK);
-        button.setOnClickListener(v -> runUpdate(false));
-        content.addView(button);
+    void renderUpdate() {
+        updatePage().renderUpdate();
     }
 
     LinearLayout autoUpdatePanel(String title) {
-        LocalStore.AutoUpdateStatus status = store.autoUpdateStatus();
-        boolean canInstall = canInstallUpdates();
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(title, 23, INK, true));
-        box.addView(text(SettingsTextCopy.autoUpdatePanelStatus(status.enabled), 18, status.enabled ? TEAL : MUTED, true));
-        box.addView(text(
-                SettingsTextCopy.autoUpdateLastCheckLine(DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)),
-                15,
-                MUTED,
-                false
-        ));
-        box.addView(text(SettingsTextCopy.autoUpdateLastResultLine(status.lastResult), 15, MUTED, false));
-        box.addView(text(SettingsTextCopy.installPermissionLine(canInstall), 15, canInstall ? TEAL : CORAL, true));
-
-        if (status.hasPendingUpdate()) {
-            box.addView(text(SettingsTextCopy.verifiedApkReadyLine(status.lastVersion), 18, CORAL, true));
-            String pending = status.pendingMessage.isEmpty() ? SettingsTextCopy.pendingUpdateFallback() : status.pendingMessage;
-            box.addView(text(pending, 15, MUTED, false));
-            if (canInstall) {
-                Button install = primaryButton(SettingsTextCopy.installVerifiedUpdateLabel(), CORAL);
-                install.setOnClickListener(v -> runUpdate(true));
-                box.addView(install);
-            }
-        }
-
-        if (!canInstall) {
-            Button permission = secondaryButton(SettingsTextCopy.setupAppInstallsLabel());
-            permission.setOnClickListener(v -> startActivity(GitHubUpdater.installPermissionIntent(this)));
-            box.addView(permission);
-        }
-
-            Button toggle = secondaryButton(SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled));
-            toggle.setOnClickListener(v -> {
-                AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
-                store.saveAutoUpdateEnabled(result.enabled());
-                if (result.enabled()) {
-                    AutoUpdateScheduler.schedule(this);
-                } else {
-                AutoUpdateScheduler.cancel(this);
-            }
-            Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
-            renderUpdate();
-        });
-        box.addView(toggle);
-        return box;
+        return updatePage().autoUpdatePanel(title);
     }
 
     boolean canInstallUpdates() {
