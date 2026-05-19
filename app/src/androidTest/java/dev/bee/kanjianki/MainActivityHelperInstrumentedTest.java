@@ -1921,10 +1921,10 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(failSession);
-                performButtonClick(activity.studyActionBar, "Reveal");
+                performClickableWithText(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
                 assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
-                performButtonClick(activity.studyActionBar, "Fail");
+                performClickableWithText(activity.studyActionBar, "Fail");
                 RecordsSchedulerModels.ReviewStats failStats = activity.store.reviewStatsSince(0L);
                 assertEquals(1, failStats.total);
                 assertEquals(1, failStats.again);
@@ -1933,8 +1933,8 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = passSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(passSession);
-                performButtonClick(activity.studyActionBar, "Reveal");
-                performButtonClick(activity.studyActionBar, MainActivityBase.LABEL_PASS);
+                performClickableWithText(activity.studyActionBar, "Reveal");
+                performClickableWithText(activity.studyActionBar, MainActivityBase.LABEL_PASS);
                 RecordsSchedulerModels.ReviewStats passStats = activity.store.reviewStatsSince(0L);
                 assertEquals(2, passStats.total);
                 assertEquals(1, passStats.good);

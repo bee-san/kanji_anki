@@ -5,7 +5,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -13,6 +12,8 @@ import dev.bee.kanjianki.core.FlashcardGesturePolicy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
+
+import static dev.bee.kanjianki.MainActivityStudyFlashcardCompose.studyFlashcardActionBarView;
 
 final class MainActivityStudyFlashcardInteraction {
     private final MainActivityStudy activity;
@@ -32,27 +33,13 @@ final class MainActivityStudyFlashcardInteraction {
         activity.resultStatus = activity.text("", 15, activity.STUDY_MUTED, false);
         activity.resultStatus.setVisibility(View.GONE);
         activity.studyActionBar.addView(activity.resultStatus);
-
-        LinearLayout actions = new LinearLayout(activity);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        if (!revealed) {
-            Button reveal = activity.pinkPrimaryButton("Reveal");
-            reveal.setOnClickListener(new RunnableClickListener(this::revealFlashcardAnswer));
-            actions.addView(reveal, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
-        } else {
-            Button fail = activity.studyFailButton("Fail");
-            fail.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(activity.RATING_AGAIN, false)));
-            LinearLayout.LayoutParams failParams = new LinearLayout.LayoutParams(0, activity.dp(62), 1);
-            failParams.setMargins(0, 0, activity.dp(6), 0);
-            actions.addView(fail, failParams);
-
-            Button pass = activity.pinkPrimaryButton(activity.LABEL_PASS);
-            pass.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(activity.RATING_GOOD, false)));
-            LinearLayout.LayoutParams passParams = new LinearLayout.LayoutParams(0, activity.dp(62), 1);
-            passParams.setMargins(activity.dp(6), 0, 0, 0);
-            actions.addView(pass, passParams);
-        }
-        activity.studyActionBar.addView(actions);
+        activity.studyActionBar.addView(studyFlashcardActionBarView(
+                activity,
+                revealed,
+                this::revealFlashcardAnswer,
+                () -> activity.submitReview(activity.RATING_AGAIN, false),
+                () -> activity.submitReview(activity.RATING_GOOD, false)
+        ));
     }
 
     void revealFlashcardAnswer() {
@@ -165,18 +152,5 @@ final class MainActivityStudyFlashcardInteraction {
             return false;
         }
         return bounds.contains((int) event.getRawX(), (int) event.getRawY());
-    }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
     }
 }
