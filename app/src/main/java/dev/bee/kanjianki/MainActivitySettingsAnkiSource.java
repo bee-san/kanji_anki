@@ -1,26 +1,23 @@
 package dev.bee.kanjianki;
 
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
-import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.CheckBox;
 
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.SettingsImportPreset;
-import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 final class MainActivitySettingsAnkiSource {
     private final MainActivitySettings activity;
     private final MainActivitySettingsAnkiSourceInputs inputs;
+    private final MainActivitySettingsAnkiSourceValidation validation;
     private final MainActivitySettingsAnkiSourceFrequencyRange frequencyRange;
     private final MainActivitySettingsAnkiSourceNoteType noteType;
     private final MainActivitySettingsAnkiSourceImportFilters importFilters;
@@ -28,6 +25,7 @@ final class MainActivitySettingsAnkiSource {
     MainActivitySettingsAnkiSource(MainActivitySettings activity) {
         this.activity = activity;
         this.inputs = new MainActivitySettingsAnkiSourceInputs(activity);
+        this.validation = new MainActivitySettingsAnkiSourceValidation(activity);
         this.frequencyRange = new MainActivitySettingsAnkiSourceFrequencyRange(activity, this);
         this.noteType = new MainActivitySettingsAnkiSourceNoteType(activity, this);
         this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this);
@@ -99,22 +97,7 @@ final class MainActivitySettingsAnkiSource {
     }
 
     MainActivityBase.ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
-        double difficulty;
-        int lapseThreshold;
-        int minCards;
-        try {
-            difficulty = parseDecimalInput(difficultyInput);
-            lapseThreshold = activity.parseThresholdInput(lapses);
-            minCards = activity.parseThresholdInput(minMatching);
-        } catch (NumberFormatException error) {
-            Toast.makeText(activity, SettingsTextCopy.numericImportThresholdsToast(), Toast.LENGTH_SHORT).show();
-            return null;
-        }
-        if (!SettingsInputRules.validImportThresholds(difficulty, lapseThreshold, minCards)) {
-            Toast.makeText(activity, SettingsTextCopy.importThresholdRangeToast(), Toast.LENGTH_SHORT).show();
-            return null;
-        }
-        return new MainActivityBase.ImportThresholds(difficulty, lapseThreshold, minCards);
+        return validation.readImportThresholds(difficultyInput, lapses, minMatching);
     }
 
     boolean hasSelectedImportSource(
@@ -126,27 +109,7 @@ final class MainActivitySettingsAnkiSource {
             List<String> parsedTags,
             String queryText
     ) {
-        if (activeCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(true, false, false, false, false, null, null);
-        }
-        if (suspendedCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(false, true, false, false, false, null, null);
-        }
-        if (weakCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(false, false, false, true, false, null, null);
-        }
-        if (taggedCards.isChecked() && SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, parsedTags, "")) {
-            return true;
-        }
-        return SettingsInputRules.hasSelectedImportSource(
-                false,
-                false,
-                false,
-                false,
-                browserQueryCards.isChecked(),
-                Collections.emptyList(),
-                queryText
-        );
+        return validation.hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText);
     }
 
     LinearLayout inputColumn(String label, EditText input, int leftPadding) {
@@ -167,20 +130,20 @@ final class MainActivitySettingsAnkiSource {
 
     void bindRankSliders(
             int[] selected,
-            TextView status,
+            android.widget.TextView status,
             EditText minInput,
             EditText maxInput,
-            SeekBar minSlider,
-            SeekBar maxSlider
+            android.widget.SeekBar minSlider,
+            android.widget.SeekBar maxSlider
     ) {
         inputs.bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
     }
 
     int parseRankInput(EditText input) {
-        return Integer.parseInt(input.getText().toString().trim());
+        return validation.parseRankInput(input);
     }
 
     double parseDecimalInput(EditText input) {
-        return Double.parseDouble(input.getText().toString().trim());
+        return validation.parseDecimalInput(input);
     }
 }
