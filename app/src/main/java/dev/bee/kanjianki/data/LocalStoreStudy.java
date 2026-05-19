@@ -8,18 +8,11 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.LocalDayPolicy;
-import dev.bee.kanjianki.core.SettingsInputRules;
-import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
-import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import dev.bee.kanjianki.core.TextUtil;
-import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy;
-import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,11 +25,12 @@ import java.util.Map;
 import java.util.Set;
 
 abstract class LocalStoreStudy extends LocalStoreHistory {
-    private static final String KEY_STUDY_LADDER_ORDER = "study_ladder_order";
-    private static final String KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled";
-
     LocalStoreStudy(Context context) {
         super(context);
+    }
+
+    private LocalStoreStudySettings studySettings() {
+        return new LocalStoreStudySettings(this);
     }
 
     public void replaceStudyItems(List<RecordsStudyModels.StudyItem> items) {
@@ -185,286 +179,139 @@ abstract class LocalStoreStudy extends LocalStoreHistory {
     }
 
     public int getIntSetting(String key, int fallback) {
-        return settingsRepository().getInt(key, fallback);
+        return studySettings().getIntSetting(key, fallback);
     }
 
     public long getLongSetting(String key, long fallback) {
-        return settingsRepository().getLong(key, fallback);
+        return studySettings().getLongSetting(key, fallback);
     }
 
     public String getStringSetting(String key, String fallback) {
-        return settingsRepository().getString(key, fallback);
+        return studySettings().getStringSetting(key, fallback);
     }
 
     public double getDoubleSetting(String key, double fallback) {
-        return settingsRepository().getDouble(key, fallback);
+        return studySettings().getDoubleSetting(key, fallback);
     }
 
     public void putIntSetting(String key, int value) {
-        settingsRepository().putInt(key, value);
+        studySettings().putIntSetting(key, value);
     }
 
     public void putLongSetting(String key, long value) {
-        settingsRepository().putLong(key, value);
+        studySettings().putLongSetting(key, value);
     }
 
     public void putStringSetting(String key, String value) {
-        settingsRepository().putString(key, value);
+        studySettings().putStringSetting(key, value);
     }
 
     public void putDoubleSetting(String key, double value) {
-        settingsRepository().putDouble(key, value);
+        studySettings().putDoubleSetting(key, value);
     }
 
     public int adaptiveLoadWorkPercent() {
-        return AdaptiveLoadPlanner.snapWorkloadPercent(getIntSetting(
-                AdaptiveLoadPlanner.SETTING_KEY,
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT
-        ));
+        return studySettings().adaptiveLoadWorkPercent();
     }
 
     public void saveAdaptiveLoadWorkPercent(int percent) {
-        putIntSetting(AdaptiveLoadPlanner.SETTING_KEY, AdaptiveLoadPlanner.snapWorkloadPercent(percent));
+        studySettings().saveAdaptiveLoadWorkPercent(percent);
     }
 
     public int studyAheadMinutes() {
-        return SettingsInputRules.normalizeStudyAheadMinutes(getIntSetting(
-                SETTING_STUDY_AHEAD_MINUTES,
-                SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES
-        ));
+        return studySettings().studyAheadMinutes();
     }
 
     public void saveStudyAheadMinutes(int minutes) {
-        putIntSetting(SETTING_STUDY_AHEAD_MINUTES, SettingsInputRules.normalizeStudyAheadMinutes(minutes));
+        studySettings().saveStudyAheadMinutes(minutes);
     }
 
     public RecordsBase.StudyLadderSettings studyLadderSettings() {
-        return RecordsBase.StudyLadderSettings.fromStored(
-                getStringSetting(KEY_STUDY_LADDER_ORDER, ""),
-                getStringSetting(KEY_STUDY_LADDER_ENABLED, "")
-        );
+        return studySettings().studyLadderSettings();
     }
 
     public void saveStudyLadderSettings(RecordsBase.StudyLadderSettings settings) {
-        RecordsBase.StudyLadderSettings normalized = settings == null ? RecordsBase.StudyLadderSettings.defaults() : settings;
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putStringSetting(KEY_STUDY_LADDER_ORDER, normalized.orderText());
-            putStringSetting(KEY_STUDY_LADDER_ENABLED, normalized.enabledText());
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().saveStudyLadderSettings(settings);
     }
 
     public int adaptiveLoadMaxItems() {
-        return AdaptiveLoadPlanner.normalizeMaxItems(getIntSetting(
-                "adaptive_load_max_items",
-                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
-        ));
+        return studySettings().adaptiveLoadMaxItems();
     }
 
     public void saveAdaptiveLoadMaxItems(int maxItems) {
-        putIntSetting("adaptive_load_max_items", AdaptiveLoadPlanner.normalizeMaxItems(maxItems));
+        studySettings().saveAdaptiveLoadMaxItems(maxItems);
     }
 
     public String adaptiveLoadMode() {
-        return AdaptiveLoadPlanner.normalizeWorkloadMode(getStringSetting(
-                AdaptiveLoadPlanner.MODE_SETTING_KEY,
-                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_MODE
-        ));
+        return studySettings().adaptiveLoadMode();
     }
 
     public void saveAdaptiveLoadMode(String mode) {
-        putStringSetting(AdaptiveLoadPlanner.MODE_SETTING_KEY, AdaptiveLoadPlanner.normalizeWorkloadMode(mode));
+        studySettings().saveAdaptiveLoadMode(mode);
     }
 
     public ReminderSettings reminderSettings() {
-        return new ReminderSettings(
-                getIntSetting("reminder_enabled", 0) == 1,
-                getIntSetting("reminder_hour", TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR),
-                getIntSetting("reminder_minute", TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE)
-        ).normalized();
+        return studySettings().reminderSettings();
     }
 
     public void saveReminderSettings(ReminderSettings settings) {
-        ReminderSettings normalized = settings.normalized();
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putIntSetting("reminder_enabled", normalized.enabled ? 1 : 0);
-            putIntSetting("reminder_hour", normalized.hour);
-            putIntSetting("reminder_minute", normalized.minute);
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().saveReminderSettings(settings);
     }
 
     public AutoSyncSettings autoSyncSettings() {
-        return new AutoSyncSettings(
-                getIntSetting("auto_sync_configured", 0) == 1,
-                getIntSetting("auto_sync_enabled", 0) == 1,
-                getIntSetting("auto_sync_hour", TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_HOUR),
-                getIntSetting("auto_sync_minute", TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_MINUTE),
-                getLongSetting(KEY_AUTO_SYNC_LAST_ATTEMPT_AT, 0L),
-                getLongSetting(KEY_AUTO_SYNC_LAST_SUCCESS_AT, 0L),
-                getLongSetting(KEY_AUTO_SYNC_NEXT_RUN_AT, 0L)
-        ).normalized();
+        return studySettings().autoSyncSettings();
     }
 
     public boolean activateAutoSyncAfterFirstSuccess() {
-        AutoSyncSettings current = autoSyncSettings();
-        if (current.configured) {
-            return false;
-        }
-        saveAutoSyncSettings(new AutoSyncSettings(true, true, current.hour, current.minute, current.lastAttemptAt, current.lastSuccessAt, current.nextRunAt));
-        return true;
+        return studySettings().activateAutoSyncAfterFirstSuccess();
     }
 
     public void setAutoSyncEnabled(boolean enabled) {
-        AutoSyncSettings current = autoSyncSettings();
-        saveAutoSyncSettings(new AutoSyncSettings(true, enabled, current.hour, current.minute, current.lastAttemptAt, current.lastSuccessAt, current.nextRunAt));
+        studySettings().setAutoSyncEnabled(enabled);
     }
 
     public void markAutoSyncScheduled(long nextRunAt) {
-        putLongSetting(KEY_AUTO_SYNC_NEXT_RUN_AT, nextRunAt);
+        studySettings().markAutoSyncScheduled(nextRunAt);
     }
 
     public void recordAutoSyncAttempt(long attemptedAt, boolean success) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putLongSetting(KEY_AUTO_SYNC_LAST_ATTEMPT_AT, attemptedAt);
-            if (success) {
-                putLongSetting(KEY_AUTO_SYNC_LAST_SUCCESS_AT, attemptedAt);
-            }
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().recordAutoSyncAttempt(attemptedAt, success);
     }
 
     public void saveAutoSyncSettings(AutoSyncSettings settings) {
-        AutoSyncSettings normalized = settings.normalized();
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putIntSetting("auto_sync_configured", normalized.configured ? 1 : 0);
-            putIntSetting("auto_sync_enabled", normalized.enabled ? 1 : 0);
-            putIntSetting("auto_sync_hour", normalized.hour);
-            putIntSetting("auto_sync_minute", normalized.minute);
-            putLongSetting(KEY_AUTO_SYNC_LAST_ATTEMPT_AT, normalized.lastAttemptAt);
-            putLongSetting(KEY_AUTO_SYNC_LAST_SUCCESS_AT, normalized.lastSuccessAt);
-            putLongSetting(KEY_AUTO_SYNC_NEXT_RUN_AT, normalized.nextRunAt);
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().saveAutoSyncSettings(settings);
     }
 
     public AutoUpdateStatus autoUpdateStatus() {
-        return new AutoUpdateStatus(
-                getIntSetting(KEY_AUTO_UPDATE_ENABLED, 1) == 1,
-                getLongSetting(KEY_AUTO_UPDATE_LAST_CHECK_AT, 0L),
-                getStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.DEFAULT_LAST_RESULT),
-                getStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, ""),
-                getStringSetting(KEY_AUTO_UPDATE_PENDING_APK, ""),
-                getStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, "")
-        );
+        return studySettings().autoUpdateStatus();
     }
 
     public void saveAutoUpdateEnabled(boolean enabled) {
-        putIntSetting(KEY_AUTO_UPDATE_ENABLED, enabled ? 1 : 0);
+        studySettings().saveAutoUpdateEnabled(enabled);
     }
 
     public void recordAutoUpdateResult(long checkedAt, String result, String version, String pendingApkName, String pendingMessage) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putLongSetting(KEY_AUTO_UPDATE_LAST_CHECK_AT, checkedAt);
-            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result));
-            putStringSetting(KEY_AUTO_UPDATE_LAST_VERSION, AutoUpdateStatusPolicy.text(version));
-            putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, AutoUpdateStatusPolicy.text(pendingApkName));
-            putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, AutoUpdateStatusPolicy.text(pendingMessage));
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().recordAutoUpdateResult(checkedAt, result, version, pendingApkName, pendingMessage);
     }
 
     public void clearPendingAutoUpdate(String result) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putStringSetting(KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result));
-            putStringSetting(KEY_AUTO_UPDATE_PENDING_APK, "");
-            putStringSetting(KEY_AUTO_UPDATE_PENDING_MESSAGE, "");
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().clearPendingAutoUpdate(result);
     }
 
     public RecordsSchedulerModels.SchedulerParameters schedulerParameters() {
-        RecordsSchedulerModels.SchedulerParameters defaults = RecordsSchedulerModels.SchedulerParameters.defaults();
-        return new RecordsSchedulerModels.SchedulerParameters(
-                getDoubleSetting("scheduler_target_retention", defaults.targetRetention),
-                getDoubleSetting("scheduler_again_multiplier", defaults.againMultiplier),
-                getDoubleSetting("scheduler_hard_multiplier", defaults.hardMultiplier),
-                getDoubleSetting("scheduler_good_multiplier", defaults.goodMultiplier),
-                getDoubleSetting("scheduler_easy_multiplier", defaults.easyMultiplier),
-                getLongSetting("scheduler_last_adjusted_at", defaults.lastAdjustedAtMillis),
-                getIntSetting("scheduler_last_adjustment_review_count", defaults.lastAdjustmentReviewCount)
-        ).withFrequencyRetention(
-                getIntSetting("scheduler_frequency_retention_enabled", defaults.frequencyRetentionEnabled ? 1 : 0) == 1,
-                getStringSetting("scheduler_frequency_retention_ranges", defaults.frequencyRetentionRanges));
+        return studySettings().schedulerParameters();
     }
 
     public void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters) {
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putDoubleSetting("scheduler_target_retention", parameters.targetRetention);
-            putDoubleSetting("scheduler_again_multiplier", parameters.againMultiplier);
-            putDoubleSetting("scheduler_hard_multiplier", parameters.hardMultiplier);
-            putDoubleSetting("scheduler_good_multiplier", parameters.goodMultiplier);
-            putDoubleSetting("scheduler_easy_multiplier", parameters.easyMultiplier);
-            putLongSetting("scheduler_last_adjusted_at", parameters.lastAdjustedAtMillis);
-            putIntSetting("scheduler_last_adjustment_review_count", parameters.lastAdjustmentReviewCount);
-            putIntSetting("scheduler_frequency_retention_enabled", parameters.frequencyRetentionEnabled ? 1 : 0);
-            putStringSetting("scheduler_frequency_retention_ranges", parameters.frequencyRetentionRanges);
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().saveSchedulerParameters(parameters);
     }
 
     public RecordsSchedulerModels.LearningStepSettings learningStepSettings() {
-        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-        List<Integer> newSteps = RecordsSchedulerModels.LearningStepSettings.parseSteps(
-                getStringSetting("new_learning_steps_minutes", defaults.newStepsText()),
-                defaults.newStepsMinutes
-        );
-        List<Integer> reviewSteps = RecordsSchedulerModels.LearningStepSettings.parseSteps(
-                getStringSetting("review_relearning_steps_minutes", defaults.reviewStepsText()),
-                defaults.reviewStepsMinutes
-        );
-        return new RecordsSchedulerModels.LearningStepSettings(newSteps, reviewSteps);
+        return studySettings().learningStepSettings();
     }
 
     public void saveLearningStepSettings(RecordsSchedulerModels.LearningStepSettings settings) {
-        RecordsSchedulerModels.LearningStepSettings normalized = settings == null ? RecordsSchedulerModels.LearningStepSettings.defaults() : settings;
-        SQLiteDatabase db = getWritableDatabase();
-        db.beginTransaction();
-        try {
-            putStringSetting("new_learning_steps_minutes", normalized.newStepsText());
-            putStringSetting("review_relearning_steps_minutes", normalized.reviewStepsText());
-            db.setTransactionSuccessful();
-        } finally {
-            db.endTransaction();
-        }
+        studySettings().saveLearningStepSettings(settings);
     }
 
     public void saveLearningRepeat(RecordsSchedulerModels.LearningRepeat repeat) {
