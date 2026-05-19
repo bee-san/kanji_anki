@@ -42,6 +42,8 @@ public final class SettingsAutomationTextCopyTest {
         assertEquals("Blocked: notifications off", SettingsAutomationTextCopy.reminderStatus(true, true, "21:05"));
         assertEquals("Daily reminder", SettingsAutomationTextCopy.dailyReminderTitle());
         assertEquals("Morning", SettingsAutomationTextCopy.morningReminderPresetLabel());
+        assertEquals("Lunch", SettingsAutomationTextCopy.lunchReminderPresetLabel());
+        assertEquals("Evening", SettingsAutomationTextCopy.eveningReminderPresetLabel());
         assertEquals("Night", SettingsAutomationTextCopy.nightReminderPresetLabel());
         assertEquals("Save reminder", SettingsAutomationTextCopy.saveReminderLabel());
         assertEquals("Enable reminder", SettingsAutomationTextCopy.enableReminderLabel());
