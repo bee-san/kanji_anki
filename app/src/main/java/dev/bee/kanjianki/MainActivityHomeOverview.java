@@ -26,27 +26,7 @@ final class MainActivityHomeOverview {
     }
 
     View homeHeader() {
-        LinearLayout header = new LinearLayout(home);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-
-        LinearLayout copy = new LinearLayout(home);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = home.text(HomeTextCopy.appTitle(), 48, home.INK, true);
-        title.setLetterSpacing(0);
-        copy.addView(title);
-        copy.addView(home.text(HomeTextCopy.appSubtitle(), 16, home.MUTED, true));
-        header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-
-        ImageView mascot = new ImageView(home);
-        mascot.setImageResource(R.mipmap.ic_launcher_foreground);
-        mascot.setAdjustViewBounds(true);
-        mascot.setBackgroundColor(Color.TRANSPARENT);
-        mascot.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams mascotLp = new LinearLayout.LayoutParams(home.dp(110), home.dp(110));
-        mascotLp.setMargins(home.dp(10), 0, 0, 0);
-        header.addView(mascot, mascotLp);
-        return header;
+        return MainActivityHomeOverviewCompose.homeHeaderView(home);
     }
 
     View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
