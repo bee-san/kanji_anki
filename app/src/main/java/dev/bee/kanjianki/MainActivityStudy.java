@@ -58,7 +58,6 @@ import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
 import dev.bee.kanjianki.core.StudyExampleSelector;
 import dev.bee.kanjianki.core.StudyLayoutPolicy;
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy;
-import dev.bee.kanjianki.core.StudyReviewRequestPolicy;
 import dev.bee.kanjianki.core.StudySessionFocusPolicy;
 import dev.bee.kanjianki.core.StudySessionRoute;
 import dev.bee.kanjianki.core.StudyTaskCopy;
@@ -78,7 +77,6 @@ import dev.bee.kanjianki.core.study.WritingHintPolicy;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.DictionaryAssets;
 import dev.bee.kanjianki.data.LocalStore;
-import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer;
@@ -93,12 +91,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -136,6 +132,10 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     private MainActivityStudyWritingCheck writingCheck() {
         return new MainActivityStudyWritingCheck(this);
+    }
+
+    private MainActivityStudyReviewFlow writingReview() {
+        return new MainActivityStudyReviewFlow(this);
     }
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
@@ -974,108 +974,16 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void submitReview(String rating, boolean override) {
-        if (activeSession == null) {
-            return;
-        }
-        if (activeSimilarWritingRepair != null) {
-            submitSimilarWritingRepair(rating);
-            return;
-        }
-        StudyReviewRequestPolicy.MappedReview mappedReview = StudyReviewRequestPolicy.from(
-                activeSession,
-                StudyReviewWritingOutcome.from(activeAnalysis),
-                hintsUsed,
-                rating,
-                override
-        );
-        RecordsSchedulerModels.ReviewRequest request = mappedReview.request();
-        submitNormalReview(request);
-    }
-
-    void submitSimilarWritingRepair(String rating) {
-        RecordsImportModels.SimilarKanjiWritingRepair repair = activeSimilarWritingRepair;
-        if (repair == null) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        completeActiveRepairStudyTask(similarRepairStudyTaskKey(repair), rating, now);
-        StudyRepairActions.RepairCompletion completion = StudyRepairActions.completeSimilarWritingRepair(
-                repair,
-                rating,
-                now,
-                store::finishSimilarWritingRepair,
-                studySessionTracker::recordRepairOutcome,
-                this::markStudyTaskCompleted
-        );
-        Toast.makeText(
-                this,
-                StudyTextCopy.similarWritingRepairSavedToast(completion.passed()),
-                Toast.LENGTH_SHORT
-        ).show();
-        activeSimilarWritingRepair = null;
-        renderStudy();
+        writingReview().submitReview(rating, override);
     }
 
     void completeActiveRepairStudyTask(String key, String outcome, long answeredAt) {
         studySessionTracker.completeActiveTask(store, key, outcome, answeredAt, false);
     }
 
-    void submitNormalReview(RecordsSchedulerModels.ReviewRequest request) {
-        BridgeScheduler scheduler = new BridgeScheduler();
-        Set<String> consumed = new HashSet<>(store.consumedTokens());
-        long now = System.currentTimeMillis();
-        RecordsSchedulerModels.SchedulerParameters parameters = store.schedulerParameters();
-        RecordsSchedulerModels.SchedulerParameters effectiveParameters = parameters.withTargetRetention(
-                parameters.targetRetentionForRank(activeSession.row.jitenRank)
-        );
-        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(activeSession.item, request, consumed, now, effectiveParameters, settings(), studyLadderSettings());
-        completeActiveStudyTask(sessionTaskKey(activeSession), result.appliedRating, now);
-        StudyStatsStore.StudyStreak streak = null;
-        if (!result.duplicate) {
-            saveAppliedReview(request, result, now);
-            streak = store.studyStreak(now);
-            tuneSchedulerIfNeeded(parameters, now);
-        }
-        int currentStreakDays = streak == null ? 0 : streak.currentDays;
-        Toast.makeText(this, HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays), Toast.LENGTH_SHORT).show();
-        renderStudy();
-    }
-
-    void saveAppliedReview(RecordsSchedulerModels.ReviewRequest request, RecordsSchedulerModels.ReviewResult result, long now) {
-        StudyReviewActions.saveAppliedReview(
-                request,
-                result,
-                activeSession.item,
-                now,
-                reviewWriter(),
-                studySessionTracker::recordReviewOutcome,
-                this::markStudyRunPassed
-        );
-    }
-
     void tuneSchedulerIfNeeded(RecordsSchedulerModels.SchedulerParameters parameters, long now) {
         RecordsSchedulerModels.SchedulerParameters tuned = new SchedulerTuner().maybeTune(parameters, store.reviewStatsSince(now - SchedulerTuner.MONTH_MILLIS), now);
         StudyReviewActions.saveTunedSchedulerIfChanged(parameters, tuned, store::saveSchedulerParameters);
-    }
-
-    StudyReviewActions.ReviewWriter reviewWriter() {
-        return new StudyReviewActions.ReviewWriter() {
-            @Override
-            public void saveStudyItem(RecordsStudyModels.StudyItem item) {
-                store.saveStudyItem(item);
-            }
-
-            @Override
-            public void saveReview(
-                    RecordsSchedulerModels.ReviewRequest request,
-                    String appliedRating,
-                    long reviewedAt,
-                    RecordsStudyModels.StudyItem beforeReview,
-                    RecordsStudyModels.StudyItem afterReview
-            ) {
-                store.saveReview(request, appliedRating, reviewedAt, beforeReview, afterReview);
-            }
-        };
     }
 
     HintState initialHintState(RecordsSchedulerModels.StudySession session) {
