@@ -6,13 +6,11 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.TimePickerDialog;
 import android.content.res.ColorStateList;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -121,6 +119,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyWritingCheck writingCheck = new MainActivityStudyWritingCheck(this);
     private final MainActivityStudyReviewFlow writingReview = new MainActivityStudyReviewFlow(this);
     private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
+    private final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -272,67 +271,19 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void addDoneStudyActions(LinearLayout card) {
-        int available = availableStudyMoreNewCards();
-        boolean canStudyMore = available > 0;
-        if (canStudyMore) {
-            Button studyMore = pinkPrimaryButton("Study more new cards");
-            studyMore.setOnClickListener(new RunnableClickListener(() -> showStudyMoreNewCardsDialog(available)));
-            card.addView(studyMore);
-        }
-        Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(new RunnableClickListener(() -> {
-            studyMoreNewCardKanji.clear();
-            continueAllKanjiSession = true;
-            renderStudy();
-        }));
-        card.addView(keepGoing);
-        Button back = studySecondaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(new RunnableClickListener(() -> {
-            clearStudyModeOverrides();
-            renderHome();
-        }));
-        card.addView(back);
+        doneActions.addDoneStudyActions(card);
     }
 
     int availableStudyMoreNewCards() {
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        if (rows.isEmpty()) {
-            return 0;
-        }
-        long now = System.currentTimeMillis();
-        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
-                rows,
-                store.studyItems(),
-                settings(),
-                now,
-                startOfDay(now),
-                Integer.MAX_VALUE,
-                studyLadderSettings()
-        );
-        return result.availableCount;
+        return doneActions.availableStudyMoreNewCards();
     }
 
     void showStudyMoreNewCardsDialog(int availableAtOpen) {
-        int defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen);
-        EditText countInput = thresholdInput(defaultCount);
-        countInput.setHint(LABEL_NEW_CARDS);
-        countInput.setContentDescription(LABEL_NEW_CARDS);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Study more new cards")
-                .setMessage("How many extra new cards do you want to study now?")
-                .setView(countInput)
-                .setPositiveButton(LABEL_STUDY, null)
-                .setNegativeButton("Cancel", null)
-                .create();
-        dialog.setOnShowListener(new StudyMoreNewCardsDialogShowListener(this, dialog, countInput));
-        dialog.show();
-        countInput.requestFocus();
+        doneActions.showStudyMoreNewCardsDialog(availableAtOpen);
     }
 
     boolean applyStudyMoreNewCardsRequest(EditText countInput) {
-        int requested = requestedStudyMoreNewCards(countInput);
-        return requested > 0 && startStudyMoreNewCards(requested);
+        return doneActions.applyStudyMoreNewCardsRequest(countInput);
     }
 
     int requestedStudyMoreNewCards(EditText countInput) {
@@ -503,28 +454,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
         choiceGrid.showMeaningKanjiChoiceResult(card, selectedKanji, grid, answerPanel);
-    }
-
-    private static final class StudyMoreNewCardsDialogShowListener implements DialogInterface.OnShowListener {
-        private final MainActivityStudy activity;
-        private final AlertDialog dialog;
-        private final EditText countInput;
-
-        StudyMoreNewCardsDialogShowListener(MainActivityStudy activity, AlertDialog dialog, EditText countInput) {
-            this.activity = activity;
-            this.dialog = dialog;
-            this.countInput = countInput;
-        }
-
-        @Override
-        public void onShow(DialogInterface opened) {
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE)
-                    .setOnClickListener(new RunnableClickListener(() -> {
-                        if (activity.applyStudyMoreNewCardsRequest(countInput)) {
-                            dialog.dismiss();
-                        }
-                    }));
-        }
     }
 
     void disableChoiceButtons(View view) {
