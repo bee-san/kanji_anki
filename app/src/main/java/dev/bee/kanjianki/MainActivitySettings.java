@@ -276,7 +276,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
         );
         LinearLayout bottomRow = settingsStatusRow(
                 settingsStatusPill(SettingsTextCopy.importRanksStatusLabel(), current.suspendedRankMin + "-" + current.suspendedRankMax, TEAL),
-                settingsStatusPill(SettingsTextCopy.reminderStatusLabel(), settingsReminderSummary(reminder), reminder.enabled ? TEAL : MUTED)
+                settingsStatusPill(
+                        SettingsTextCopy.reminderStatusLabel(),
+                        SettingsTextCopy.settingsReminderSummary(
+                                reminder.enabled,
+                                reminder.enabled && !ReminderScheduler.notificationsAllowed(this),
+                                reminder.displayTime()
+                        ),
+                        reminder.enabled ? TEAL : MUTED
+                )
         );
         LinearLayout automationRow = settingsStatusRow(
                 settingsStatusPill(
@@ -334,11 +342,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         pill.addView(valueView);
         pill.setContentDescription(SettingsTextCopy.statusPillDescription(label, value));
         return pill;
-    }
-
-    String settingsReminderSummary(LocalStore.ReminderSettings reminder) {
-        boolean blocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(this);
-        return SettingsTextCopy.settingsReminderSummary(reminder.enabled, blocked, reminder.displayTime());
     }
 
     LinearLayout settingsCategory(
@@ -1427,7 +1430,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 auto.enabled ? TEAL : MUTED,
                 true
         ));
-        box.addView(text(autoSyncDetail(auto), 15, MUTED, false));
+        String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
+        String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
+                ? DateTextPolicy.shortDateTime(auto.lastAttemptAt)
+                : "";
+        String nextRun = auto.nextRunAt > 0L ? DateTextPolicy.shortDateTime(auto.nextRunAt) : "";
+        box.addView(text(SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun), 15, MUTED, false));
         if (auto.configured) {
             if (auto.enabled) {
                 Button off = secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
@@ -1452,15 +1460,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
             }
         }
         return box;
-    }
-
-    String autoSyncDetail(LocalStore.AutoSyncSettings auto) {
-        String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
-        String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
-                ? DateTextPolicy.shortDateTime(auto.lastAttemptAt)
-                : "";
-        String nextRun = auto.nextRunAt > 0L ? DateTextPolicy.shortDateTime(auto.nextRunAt) : "";
-        return SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun);
     }
 
     LinearLayout updateSettingsPanel() {
