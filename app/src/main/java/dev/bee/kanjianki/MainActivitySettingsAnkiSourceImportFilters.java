@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -70,40 +71,77 @@ final class MainActivitySettingsAnkiSourceImportFilters {
         inputs.addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveImportFiltersLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
-            String queryText = browserQueryInput.getText().toString().trim();
-            if (browserQueryCards.isChecked() && queryText.isEmpty()) {
-                Toast.makeText(activity, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (!validation.hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
-                Toast.makeText(activity, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            MainActivityBase.ImportThresholds parsedThresholds = validation.readImportThresholds(difficultyInput, lapses, minMatching);
-            if (parsedThresholds == null) {
-                return;
-            }
-            SettingsWriteActions.saveImportFilters(
-                    new SettingsWriteActions.ImportFilterWriteRequest(
-                            activeCards.isChecked(),
-                            suspendedCards.isChecked(),
-                            taggedCards.isChecked(),
-                            String.join(" ", parsedTags),
-                            weakCards.isChecked(),
-                            parsedThresholds.difficulty,
-                            parsedThresholds.lapseThreshold,
-                            parsedThresholds.minCards,
-                            browserQueryCards.isChecked(),
-                            queryText
-                    ),
-                    new MainActivitySettingsAnkiSourceWriter(activity)
-            );
-            Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveImportFilters(
+                activeCards,
+                suspendedCards,
+                taggedCards,
+                weakCards,
+                browserQueryCards,
+                tags,
+                browserQueryInput,
+                difficultyInput,
+                lapses,
+                minMatching
+        )));
         box.addView(save);
         return box;
+    }
+
+    private void saveImportFilters(
+            CheckBox activeCards,
+            CheckBox suspendedCards,
+            CheckBox taggedCards,
+            CheckBox weakCards,
+            CheckBox browserQueryCards,
+            EditText tags,
+            EditText browserQueryInput,
+            EditText difficultyInput,
+            EditText lapses,
+            EditText minMatching
+    ) {
+        List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
+        String queryText = browserQueryInput.getText().toString().trim();
+        if (browserQueryCards.isChecked() && queryText.isEmpty()) {
+            Toast.makeText(activity, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!validation.hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
+            Toast.makeText(activity, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        MainActivityBase.ImportThresholds parsedThresholds = validation.readImportThresholds(difficultyInput, lapses, minMatching);
+        if (parsedThresholds == null) {
+            return;
+        }
+        SettingsWriteActions.saveImportFilters(
+                new SettingsWriteActions.ImportFilterWriteRequest(
+                        activeCards.isChecked(),
+                        suspendedCards.isChecked(),
+                        taggedCards.isChecked(),
+                        String.join(" ", parsedTags),
+                        weakCards.isChecked(),
+                        parsedThresholds.difficulty,
+                        parsedThresholds.lapseThreshold,
+                        parsedThresholds.minCards,
+                        browserQueryCards.isChecked(),
+                        queryText
+                ),
+                new MainActivitySettingsAnkiSourceWriter(activity)
+        );
+        Toast.makeText(activity, SettingsTextCopy.importFiltersSavedToast(), Toast.LENGTH_LONG).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
