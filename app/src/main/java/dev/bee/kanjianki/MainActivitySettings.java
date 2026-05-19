@@ -138,6 +138,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsStudyLadder(this);
     }
 
+    private MainActivitySettingsReferenceData referenceData() {
+        return new MainActivitySettingsReferenceData(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -435,39 +439,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout dataLicenseSettingsPanel() {
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.offlineDataLicensesTitle(), 23, INK, true));
-        box.addView(text(SettingsTextCopy.offlineDataLicensesBody(), 15, MUTED, false));
-        Button open = secondaryButton(SettingsTextCopy.openDataLicensesLabel());
-        open.setOnClickListener(v -> renderDataSources());
-        box.addView(open);
-        return box;
+        return referenceData().dataLicenseSettingsPanel();
     }
 
     void renderDataSources() {
-        base(NAV_SETTINGS_ROUTE);
-        content.addView(fullWidthHomeButton());
-        Button backButton = secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        backButton.setOnClickListener(v -> renderSettings(false));
-        content.addView(backButton);
-        content.addView(text(SettingsTextCopy.dataLicensesTitle(), 34, INK, true));
-        content.addView(text(SettingsTextCopy.dataLicensesBody(), 16, MUTED, false));
-
-        LinearLayout dictionary = panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        dictionary.addView(text(SettingsTextCopy.dictionaryDataTitle(), 23, INK, true));
-        dictionary.addView(text(AttributionTexts.dictionarySources(this), 14, MUTED, false));
-        content.addView(dictionary);
-
-        LinearLayout stroke = panelBox(Color.WHITE, Color.rgb(246, 202, 225));
-        stroke.addView(text(SettingsTextCopy.strokeDataTitle(), 23, INK, true));
-        stroke.addView(text(AttributionTexts.kanjiVg(this), 14, MUTED, false));
-        content.addView(stroke);
-
-        LinearLayout fonts = panelBox(Color.WHITE, Color.rgb(255, 247, 220));
-        fonts.addView(text(SettingsTextCopy.fontsTitle(), 23, INK, true));
-        fonts.addView(text(AttributionTexts.rawResourceText(this, R.raw.font_attribution), 14, MUTED, false));
-        content.addView(fonts);
-
+        referenceData().renderDataSources();
     }
 
     LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
