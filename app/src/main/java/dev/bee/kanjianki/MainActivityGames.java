@@ -36,7 +36,7 @@ abstract class MainActivityGames extends MainActivityHome {
         if (!data.hasKanji()) {
             emptyState(KanjiGameCopy.EMPTY_NO_KANJI_TITLE, KanjiGameCopy.EMPTY_NO_KANJI_BODY);
             Button sync = primaryButton(KanjiGameCopy.LABEL_SYNC_ANKIDROID, CORAL);
-            sync.setOnClickListener(v -> confirmSync());
+            sync.setOnClickListener(new RunnableClickListener(this::confirmSync));
             content.addView(sync);
             return;
         }
@@ -65,7 +65,7 @@ abstract class MainActivityGames extends MainActivityHome {
         box.addView(text(KanjiGameCopy.modeBody(mode, available), 14, MUTED, false));
         box.setClickable(available);
         if (available) {
-            box.setOnClickListener(v -> startGame(mode));
+            box.setOnClickListener(new RunnableClickListener(() -> startGame(mode)));
         }
         return box;
     }
@@ -139,7 +139,7 @@ abstract class MainActivityGames extends MainActivityHome {
             Button button = secondaryButton(KanjiGameCopy.choiceLabel(question, choice));
             button.setTextSize(KanjiGameCopy.choiceTextSizeSp(question));
             button.setMaxLines(2);
-            button.setOnClickListener(v -> answerGameQuestion(question, choice));
+            button.setOnClickListener(new RunnableClickListener(() -> answerGameQuestion(question, choice)));
             if (KanjiGameCopy.choiceUsesKanjiTypography(question)) {
                 button.setTypeface(fontResource(R.font.kaisei_tokumin_regular, Typeface.SERIF), Typeface.BOLD);
                 button.setTextColor(INK);
@@ -180,15 +180,15 @@ abstract class MainActivityGames extends MainActivityHome {
         result.addView(text(question.explanation, 15, MUTED, false));
         if (roundComplete) {
             Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(question.mode));
-            newRound.setOnClickListener(v -> startGame(question.mode));
+            newRound.setOnClickListener(new RunnableClickListener(() -> startGame(question.mode)));
             result.addView(newRound);
         } else {
             Button next = primaryButton(KanjiGameCopy.LABEL_NEXT, colorForGameMode(question.mode));
-            next.setOnClickListener(v -> renderGameQuestion(question.mode));
+            next.setOnClickListener(new RunnableClickListener(() -> renderGameQuestion(question.mode)));
             result.addView(next);
         }
         Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
-        games.setOnClickListener(v -> renderGames());
+        games.setOnClickListener(new RunnableClickListener(this::renderGames));
         result.addView(games);
         content.addView(result);
     }
@@ -201,10 +201,10 @@ abstract class MainActivityGames extends MainActivityHome {
         result.addView(text(KanjiGameCopy.LABEL_ROUND_COMPLETE, 28, BLUE, true));
         addRoundSummary(result);
         Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(mode));
-        newRound.setOnClickListener(v -> startGame(mode));
+        newRound.setOnClickListener(new RunnableClickListener(() -> startGame(mode)));
         result.addView(newRound);
         Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
-        games.setOnClickListener(v -> renderGames());
+        games.setOnClickListener(new RunnableClickListener(this::renderGames));
         result.addView(games);
         content.addView(result);
     }
@@ -246,6 +246,19 @@ abstract class MainActivityGames extends MainActivityHome {
 
         boolean hasKanji() {
             return !rows.isEmpty() || !inventory.isEmpty();
+        }
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
         }
     }
 }
