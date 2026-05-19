@@ -175,7 +175,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             LocalStore.AutoSyncSettings autoSync,
             LocalStore.AutoUpdateStatus autoUpdate
     ) {
-        return new MainActivitySettingsAutomationHero(this).settingsHero(current, reminder, autoSync, autoUpdate);
+        return MainActivitySettingsAutomationHeroCompose.settingsAutomationHeroView(this, current, reminder, autoSync, autoUpdate);
     }
 
     LinearLayout settingsCategory(

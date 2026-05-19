@@ -657,7 +657,7 @@ public final class MainActivityHelperInstrumentedTest {
                 performButtonClick(activity.content, "Open data licenses");
                 assertHasText(activity, "Data licenses");
                 performButtonClick(activity.content, "Back to settings");
-                assertHasText(activity, "Settings cockpit");
+                assertHasText(activity, "Automation");
             });
         }
     }
@@ -1208,7 +1208,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertHasText(activity, "Stats");
 
                 performClickableWithText(activity.homeActionRow(), "Settings");
-                assertHasText(activity, "Settings cockpit");
+                assertHasText(activity, "Automation");
 
                 activity.fullWidthHomeButton().performClick();
                 assertHasText(activity, "Kani");
