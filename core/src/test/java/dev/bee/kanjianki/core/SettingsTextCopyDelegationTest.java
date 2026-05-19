@@ -43,6 +43,11 @@ public final class SettingsTextCopyDelegationTest {
         assertEquals(SettingsStudyAheadTextCopy.studyAheadBody(), SettingsTextCopy.studyAheadBody());
         assertEquals(SettingsStudyAheadTextCopy.saveStudyAheadLabel(), SettingsTextCopy.saveStudyAheadLabel());
         assertEquals(SettingsStudyAheadTextCopy.studyAheadSavedToast(), SettingsTextCopy.studyAheadSavedToast());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadMinutesLabel(), SettingsTextCopy.studyAheadMinutesLabel());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadMinutesRange(), SettingsTextCopy.studyAheadMinutesRange());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadWholeNumberErrorText(), SettingsTextCopy.studyAheadWholeNumberErrorText());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadOutOfRangeErrorText(), SettingsTextCopy.studyAheadOutOfRangeErrorText());
+        assertEquals(SettingsStudyAheadTextCopy.studyAheadMaxDescription(), SettingsTextCopy.studyAheadMaxDescription());
         assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsTitle(), SettingsTextCopy.ladderThresholdsTitle());
         assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsBody(), SettingsTextCopy.ladderThresholdsBody());
         assertEquals(SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel(), SettingsTextCopy.fsrsDaysToGoUpLabel());

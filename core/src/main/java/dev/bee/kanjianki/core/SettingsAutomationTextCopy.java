@@ -217,30 +217,6 @@ public final class SettingsAutomationTextCopy {
         return label + " " + reminderTime(hour, minute);
     }
 
-    public static String studyAheadMinutesLabel() {
-        return String.format(Locale.ROOT, "Minutes (%s)", studyAheadMinutesRange());
-    }
-
-    public static String studyAheadMinutesRange() {
-        return String.format(Locale.ROOT, "%d-%d", SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES, SettingsInputRules.MAX_STUDY_AHEAD_MINUTES);
-    }
-
-    public static String studyAheadWholeNumberErrorText() {
-        return String.format(Locale.ROOT, "Use a whole number of minutes (%s).", studyAheadMinutesRange());
-    }
-
-    public static String studyAheadOutOfRangeErrorText() {
-        return String.format(Locale.ROOT, "Use %d to disable, or up to %s.", SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES, studyAheadMaxDescription());
-    }
-
-    public static String studyAheadMaxDescription() {
-        int maxMinutes = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES;
-        if (maxMinutes % 60 == 0) {
-            return String.format(Locale.ROOT, "%d minutes (%dh)", maxMinutes, maxMinutes / 60);
-        }
-        return String.format(Locale.ROOT, "%d minutes", maxMinutes);
-    }
-
     private static void addDetail(List<String> details, String prefix, String value) {
         if (value != null && !value.isEmpty()) {
             details.add(prefix + value);

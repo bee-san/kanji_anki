@@ -54,10 +54,5 @@ public final class SettingsAutomationTextCopyTest {
         assertEquals("21:05", SettingsAutomationTextCopy.reminderTime(21, 5));
         assertEquals("Reminder time: 21:05", SettingsAutomationTextCopy.reminderTimeButtonLabel(21, 5));
         assertEquals("Night 21:05", SettingsAutomationTextCopy.reminderPresetButtonLabel("Night", 21, 5));
-        assertEquals("Minutes (0-1440)", SettingsAutomationTextCopy.studyAheadMinutesLabel());
-        assertEquals("0-1440", SettingsAutomationTextCopy.studyAheadMinutesRange());
-        assertEquals("1440 minutes (24h)", SettingsAutomationTextCopy.studyAheadMaxDescription());
-        assertEquals("Use a whole number of minutes (0-1440).", SettingsAutomationTextCopy.studyAheadWholeNumberErrorText());
-        assertEquals("Use 0 to disable, or up to 1440 minutes (24h).", SettingsAutomationTextCopy.studyAheadOutOfRangeErrorText());
     }
 }

@@ -711,22 +711,22 @@ public final class SettingsTextCopy {
     }
 
     public static String studyAheadMinutesLabel() {
-        return SettingsAutomationTextCopy.studyAheadMinutesLabel();
+        return SettingsStudyAheadTextCopy.studyAheadMinutesLabel();
     }
 
     public static String studyAheadMinutesRange() {
-        return SettingsAutomationTextCopy.studyAheadMinutesRange();
+        return SettingsStudyAheadTextCopy.studyAheadMinutesRange();
     }
 
     public static String studyAheadWholeNumberErrorText() {
-        return SettingsAutomationTextCopy.studyAheadWholeNumberErrorText();
+        return SettingsStudyAheadTextCopy.studyAheadWholeNumberErrorText();
     }
 
     public static String studyAheadOutOfRangeErrorText() {
-        return SettingsAutomationTextCopy.studyAheadOutOfRangeErrorText();
+        return SettingsStudyAheadTextCopy.studyAheadOutOfRangeErrorText();
     }
 
     public static String studyAheadMaxDescription() {
-        return SettingsAutomationTextCopy.studyAheadMaxDescription();
+        return SettingsStudyAheadTextCopy.studyAheadMaxDescription();
     }
 }
