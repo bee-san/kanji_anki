@@ -38,7 +38,7 @@ final class MainActivitySettingsCategory {
         header.setClickable(true);
         header.setFocusable(true);
         header.setContentDescription(SettingsTextCopy.categoryToggleDescription(expanded, title));
-        header.setOnClickListener(v -> toggle.run());
+        header.setOnClickListener(new RunnableClickListener(toggle));
         header.setElevation(activity.dp(3));
 
         ImageView icon = new ImageView(activity);
@@ -82,5 +82,18 @@ final class MainActivitySettingsCategory {
             }
         }
         return category;
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
