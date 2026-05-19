@@ -514,7 +514,21 @@ abstract class MainActivitySettings extends MainActivityStudy {
         for (SettingsImportPreset preset : SettingsImportPreset.defaults()) {
             Button button = secondaryButton(preset.label());
             button.setOnClickListener(v -> {
-                SettingsWriteActions.applyImportPreset(preset, importFilterWriter());
+                SettingsWriteActions.saveImportFilters(
+                        new SettingsWriteActions.ImportFilterWriteRequest(
+                                preset.activeCards(),
+                                preset.suspendedCards(),
+                                preset.taggedCards(),
+                                preset.tags(),
+                                preset.weakCards(),
+                                preset.weakDifficulty(),
+                                preset.weakLapses(),
+                                preset.minMatchingCards(),
+                                preset.browserQueryCards(),
+                                preset.browserQuery()
+                        ),
+                        importFilterWriter()
+                );
                 Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
                 renderSettings();
             });
@@ -1486,7 +1500,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
         ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute);
-        LocalStore.ReminderSettings reminder = SettingsWriteActions.reminderSettings(fields);
+        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
         if (!enabled) {
             SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
             ReminderScheduler.cancel(this);

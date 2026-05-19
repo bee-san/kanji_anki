@@ -1,6 +1,5 @@
 package dev.bee.kanjianki;
 
-import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
@@ -237,23 +236,24 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
-    public void applyImportPresetWritesEveryImportSetting() {
+    public void saveImportFiltersWritesEveryImportSetting() {
         RecordingSettingsWriter writer = new RecordingSettingsWriter();
-        SettingsImportPreset preset = new SettingsImportPreset(
-                "Custom",
-                true,
-                false,
-                true,
-                "kani leech",
-                true,
-                8.5,
-                4,
-                2,
-                true,
-                "deck:Mining"
-        );
 
-        SettingsWriteActions.applyImportPreset(preset, writer);
+        SettingsWriteActions.saveImportFilters(
+                new SettingsWriteActions.ImportFilterWriteRequest(
+                        true,
+                        false,
+                        true,
+                        "kani leech",
+                        true,
+                        8.5,
+                        4,
+                        2,
+                        true,
+                        "deck:Mining"
+                ),
+                writer
+        );
 
         assertEquals(10, writer.settings.size());
         assertEquals(1, writer.settings.get(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY));

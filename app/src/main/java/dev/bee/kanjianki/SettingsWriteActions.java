@@ -3,7 +3,6 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
-import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
@@ -81,35 +80,13 @@ final class SettingsWriteActions {
         writer.saveSchedulerParameters(request.parameters);
     }
 
-    static LocalStore.ReminderSettings reminderSettings(ReminderSettingsSavePolicy.ReminderFields fields) {
-        return new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
-    }
-
     static LocalStore.ReminderSettings saveReminder(
             ReminderSettingsSavePolicy.ReminderFields fields,
             ReminderSettingsWriter writer
     ) {
-        LocalStore.ReminderSettings settings = reminderSettings(fields);
+        LocalStore.ReminderSettings settings = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
         writer.saveReminderSettings(settings);
         return settings;
-    }
-
-    static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
-        saveImportFilters(
-                new ImportFilterWriteRequest(
-                        preset.activeCards(),
-                        preset.suspendedCards(),
-                        preset.taggedCards(),
-                        preset.tags(),
-                        preset.weakCards(),
-                        preset.weakDifficulty(),
-                        preset.weakLapses(),
-                        preset.minMatchingCards(),
-                        preset.browserQueryCards(),
-                        preset.browserQuery()
-                ),
-                writer
-        );
     }
 
     static void saveImportFilters(ImportFilterWriteRequest request, SettingWriter writer) {
@@ -131,10 +108,6 @@ final class SettingsWriteActions {
 
     interface StringSettingWriter {
         void putStringSetting(String key, String value);
-    }
-
-    interface DoubleSettingWriter {
-        void putDoubleSetting(String key, double value);
     }
 
     interface LearningStepSettingsWriter {
