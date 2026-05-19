@@ -4,10 +4,12 @@ package dev.bee.kanjianki
 
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -81,6 +83,25 @@ internal fun homeSectionHeaderView(
                         title = title,
                         actionLabel = actionLabel,
                         onAction = action?.let { { it.run() } }
+                    )
+                }
+            }
+        }
+    }
+}
+
+internal fun fullWidthHomeButtonView(home: MainActivityHome): View {
+    return ComposeView(home).apply {
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, home.dp(56)).apply {
+            setMargins(0, 0, 0, home.dp(10))
+        }
+        setOnClickListener { home.renderHome() }
+        setContent {
+            MaterialTheme {
+                Surface {
+                    HomeFullWidthHomeButton(
+                        label = HomeTextCopy.homeLabel(),
+                        onClick = home::renderHome
                     )
                 }
             }
@@ -179,5 +200,37 @@ fun HomeSectionHeader(
                     .clickable(onClick = onAction)
             )
         }
+    }
+}
+
+@Composable
+fun HomeFullWidthHomeButton(
+    label: String,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(22.dp)
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        shape = shape,
+        border = BorderStroke(1.dp, Color(0xFFEBD6E4)),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = Color.White,
+            contentColor = Color(0xFF1E1E28)
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_home_24),
+            contentDescription = null,
+            tint = Color(0xFF1E1E28)
+        )
+        androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }

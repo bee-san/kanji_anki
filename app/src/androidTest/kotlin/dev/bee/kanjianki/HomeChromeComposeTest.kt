@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.HomeTextCopy
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -44,6 +45,22 @@ class HomeChromeComposeTest {
         composeRule.onNodeWithText("Focus queue").assertIsDisplayed()
         composeRule.onNodeWithText("View all >").assertIsDisplayed()
         composeRule.onNodeWithText("View all >").performClick()
+        assertTrue(clicked)
+    }
+
+    @Test
+    fun rendersHomeButtonAndInvokesAction() {
+        var clicked = false
+
+        composeRule.setContent {
+            HomeFullWidthHomeButton(
+                label = HomeTextCopy.homeLabel(),
+                onClick = { clicked = true }
+            )
+        }
+
+        composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.homeLabel()).performClick()
         assertTrue(clicked)
     }
 }

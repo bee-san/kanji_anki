@@ -47,25 +47,6 @@ final class MainActivityHomeChrome {
     }
 
     View fullWidthHomeButton() {
-        LinearLayout button = new LinearLayout(home);
-        button.setOrientation(LinearLayout.HORIZONTAL);
-        button.setGravity(Gravity.CENTER);
-        button.setPadding(home.dp(12), 0, home.dp(12), 0);
-        ImageView icon = new ImageView(home);
-        icon.setImageResource(R.drawable.ic_home_24);
-        icon.setColorFilter(home.INK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(home.dp(22), home.dp(22));
-        iconLp.setMargins(0, 0, home.dp(8), 0);
-        button.addView(icon, iconLp);
-        TextView text = home.text(HomeTextCopy.homeLabel(), 15, home.INK, true);
-        text.setGravity(Gravity.CENTER);
-        button.addView(text, new LinearLayout.LayoutParams(-2, -2));
-        button.setBackground(home.panel(Color.WHITE, Color.rgb(235, 214, 228), home.dp(22)));
-        button.setClickable(true);
-        button.setOnClickListener(new RunnableClickListener(home::renderHome));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, home.dp(56));
-        lp.setMargins(0, 0, 0, home.dp(10));
-        button.setLayoutParams(lp);
-        return button;
+        return MainActivityHomeChromeCompose.fullWidthHomeButtonView(home);
     }
 }
