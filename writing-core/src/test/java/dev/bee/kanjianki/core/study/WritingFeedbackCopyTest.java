@@ -82,6 +82,34 @@ public final class WritingFeedbackCopyTest {
     }
 
     @Test
+    public void resultMessageCombinesProgressTargetCandidatesAndDiagnosis() {
+        WritingAnalysis analysis = new WritingAnalysis(
+                WritingAnalysis.Status.WRONG,
+                "again",
+                false,
+                "Try again.",
+                Arrays.asList(new RecognitionCandidate("拉", 0.9f), new RecognitionCandidate("拡", 0.7f)),
+                null,
+                HintLevel.BLIND,
+                0
+        );
+
+        assertEquals(
+                "Try again.\nNext try will use more support: Minimal.\nTarget: 裂\nIt saw: 拉, 拡\nStroke 1: too short",
+                WritingFeedbackCopy.resultMessage(analysis, "裂", 3, true, "Stroke 1: too short")
+        );
+    }
+
+    @Test
+    public void resultMessageHandlesNullAndEmptyOptionalText() {
+        assertEquals("", WritingFeedbackCopy.resultMessage(null, "裂", 3, true, "diagnosis"));
+        assertEquals(
+                "NO_INK",
+                WritingFeedbackCopy.resultMessage(analysis(WritingAnalysis.Status.NO_INK, false, HintLevel.BLIND, 0), "裂", null, false, null)
+        );
+    }
+
+    @Test
     public void writingActionCopyPreservesButtonAndRatingChoices() {
         assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, false));
         assertEquals("Checking...", WritingFeedbackCopy.checkWritingButtonText(true, true));

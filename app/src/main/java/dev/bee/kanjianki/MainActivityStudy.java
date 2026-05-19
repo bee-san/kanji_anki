@@ -1574,12 +1574,15 @@ abstract class MainActivityStudy extends MainActivityStats {
             }
         }
         int color = analysis.writingPassed ? TEAL : CORAL;
-        String candidates = candidateText(analysis.candidates);
-        String message = analysis.message + attemptProgressText(analysis) + targetRevealText(analysis) + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates);
-        String diagnosis = diagnosisText(analysis);
-        if (!diagnosis.isEmpty()) {
-            message += "\n" + diagnosis;
-        }
+        String targetKanji = activeSession == null ? null : activeSession.item.kanji;
+        Integer activeWritingLevel = activeSession == null ? null : activeSession.item.writingLevel;
+        String message = WritingFeedbackCopy.resultMessage(
+                analysis,
+                targetKanji,
+                activeWritingLevel,
+                shouldIncreaseSupportAfterAnalysis(analysis),
+                diagnosisText(analysis)
+        );
         setStudyStatus(guideLabel(currentHintState, guide), MUTED);
         setResultStatus(message, color);
         updateResultActions();

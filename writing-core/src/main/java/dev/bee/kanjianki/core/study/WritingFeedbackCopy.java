@@ -94,6 +94,28 @@ public final class WritingFeedbackCopy {
         return String.join(", ", values);
     }
 
+    public static String resultMessage(
+            WritingAnalysis analysis,
+            String targetKanji,
+            Integer activeWritingLevel,
+            boolean increaseSupportAfterAnalysis,
+            String diagnosis
+    ) {
+        if (analysis == null) {
+            return "";
+        }
+        String candidates = candidateText(analysis.candidates);
+        String message = analysis.message
+                + attemptProgressText(analysis, activeWritingLevel, increaseSupportAfterAnalysis)
+                + targetRevealText(analysis, targetKanji)
+                + (candidates.isEmpty() ? "" : "\nIt saw: " + candidates);
+        String safeDiagnosis = diagnosis == null ? "" : diagnosis;
+        if (!safeDiagnosis.isEmpty()) {
+            message += "\n" + safeDiagnosis;
+        }
+        return message;
+    }
+
     public static String checkWritingButtonText(boolean checkingWriting, boolean messyPass) {
         if (checkingWriting) {
             return "Checking...";
