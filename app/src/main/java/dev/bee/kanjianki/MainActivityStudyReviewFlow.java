@@ -41,17 +41,6 @@ final class MainActivityStudyReviewFlow {
         submitNormalReview(request);
     }
 
-    void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
-        long now = System.currentTimeMillis();
-        RecordsImportModels.SimilarKanjiChoiceResult result = activity.store.submitSimilarChoice(
-                card,
-                selectedKanji,
-                now,
-                activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
-        );
-        submitReview(result.correct ? activity.RATING_GOOD : activity.RATING_AGAIN, false);
-    }
-
     void submitSimilarWritingRepair(String rating) {
         RecordsImportModels.SimilarKanjiWritingRepair repair = activity.activeSimilarWritingRepair;
         if (repair == null) {
@@ -74,6 +63,17 @@ final class MainActivityStudyReviewFlow {
         ).show();
         activity.activeSimilarWritingRepair = null;
         activity.renderStudy();
+    }
+
+    void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
+        long now = System.currentTimeMillis();
+        RecordsImportModels.SimilarKanjiChoiceResult result = activity.store.submitSimilarChoice(
+                card,
+                selectedKanji,
+                now,
+                activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
+        );
+        submitReview(result.correct ? activity.RATING_GOOD : activity.RATING_AGAIN, false);
     }
 
     void submitNormalReview(RecordsSchedulerModels.ReviewRequest request) {

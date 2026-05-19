@@ -51,7 +51,6 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.FlashcardGesturePolicy;
-import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
