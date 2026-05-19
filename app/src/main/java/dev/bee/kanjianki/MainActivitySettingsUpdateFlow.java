@@ -2,6 +2,7 @@ package dev.bee.kanjianki;
 
 import android.graphics.Color;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -25,7 +26,7 @@ final class MainActivitySettingsUpdateFlow {
         UpdateRunScreenCopy.Copy copy = UpdateRunScreenCopy.forRun(cachedPending);
         activity.content.addView(activity.fullWidthHomeButton());
         Button back = activity.secondaryButton(SettingsTextCopy.backToSettingsLabel());
-        back.setOnClickListener(v -> activity.renderSettings(false));
+        back.setOnClickListener(new RunnableClickListener(() -> activity.renderSettings(false)));
         activity.content.addView(back);
         activity.content.addView(activity.text(copy.title(), 32, activity.INK, true));
         activity.content.addView(activity.text(copy.body(), 16, activity.MUTED, false));
@@ -60,5 +61,18 @@ final class MainActivitySettingsUpdateFlow {
         row.addView(progress, progressLp);
         row.addView(activity.text(label, 16, activity.STUDY_PLUM, true), new LinearLayout.LayoutParams(0, -2, 1));
         return row;
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
