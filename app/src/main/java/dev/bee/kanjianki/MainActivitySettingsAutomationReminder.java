@@ -6,21 +6,20 @@ import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
-import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.data.LocalStore;
-import dev.bee.kanjianki.reminders.ReminderScheduler;
 
 import java.util.ArrayList;
 import java.util.List;
 
 final class MainActivitySettingsAutomationReminder {
     private final MainActivitySettings activity;
+    private final MainActivitySettingsAutomationReminderActions actions;
 
     MainActivitySettingsAutomationReminder(MainActivitySettings activity) {
         this.activity = activity;
+        this.actions = new MainActivitySettingsAutomationReminderActions(activity);
     }
 
     LinearLayout reminderSettingsPanel() {
@@ -66,13 +65,7 @@ final class MainActivitySettingsAutomationReminder {
         box.addView(save);
         if (reminder.enabled) {
             Button off = activity.secondaryButton(SettingsTextCopy.turnOffReminderLabel());
-            off.setOnClickListener(v -> {
-                ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute);
-                activity.store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
-                ReminderScheduler.cancel(activity);
-                Toast.makeText(activity, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
-                activity.renderSettings();
-            });
+            off.setOnClickListener(v -> actions.disableReminder(reminder));
             box.addView(off);
         }
         if (blocked) {
@@ -88,26 +81,7 @@ final class MainActivitySettingsAutomationReminder {
     }
 
     void saveReminderFromSelection(int hour, int minute, boolean enabled) {
-        ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute);
-        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
-        if (!enabled) {
-            activity.store.saveReminderSettings(reminder);
-            ReminderScheduler.cancel(activity);
-            Toast.makeText(activity, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-            return;
-        }
-        ReminderScheduler.ensureNotificationChannel(activity);
-        if (!activity.hasRuntimeNotificationPermissionForReminder()) {
-            activity.pendingReminderSettings = reminder;
-            activity.requestPermissions(new String[]{MainActivityBase.PERMISSION_POST_NOTIFICATIONS}, MainActivityBase.REQUEST_POST_NOTIFICATIONS);
-            return;
-        }
-        activity.store.saveReminderSettings(reminder);
-        ReminderScheduler.schedule(activity, reminder);
-        boolean allowed = activity.notificationsAllowedForReminders();
-        Toast.makeText(activity, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
-        activity.renderSettings();
+        actions.saveReminderFromSelection(hour, minute, enabled);
     }
 
     Button reminderPresetButton(String label, int hour, int minute, int[] selectedHour, int[] selectedMinute, Button timeButton) {
