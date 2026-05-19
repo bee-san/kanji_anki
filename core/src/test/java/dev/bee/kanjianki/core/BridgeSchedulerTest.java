@@ -958,7 +958,7 @@ public class BridgeSchedulerTest {
                 .activeToken("fractional")
                 .build();
 
-        scheduler.applyReview(
+        RecordsSchedulerModels.ReviewResult result = scheduler.applyReview(
                 item,
                 new RecordsSchedulerModels.ReviewRequest("裂", "fractional", "good", false, false, false, 0),
                 new HashSet<>(),
@@ -966,6 +966,8 @@ public class BridgeSchedulerTest {
         );
 
         assertEquals(9, adapter.elapsedDays);
+        assertEquals(now + 4L * BridgeScheduler.DAY, result.item.dueAtMillis);
+        assertEquals(4, result.item.matureIntervalDays);
     }
 
     @Test
