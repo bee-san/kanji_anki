@@ -497,13 +497,13 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyWorkloadAndReminderSummaries(MainActivity activity) {
-        assertEquals("Pareto: up to 5 items", activity.workloadStatusText(20, 5));
-        assertEquals("All kanji: up to 9 items", activity.workloadStatusText(100, 9));
-        assertEquals("Maximum: 1 item", activity.maxItemsStatusText(1));
-        assertEquals("Auto Pareto: waiting for problem kanji", activity.autoWorkloadStatusText(null));
+        assertEquals("Pareto: up to 5 items", SettingsTextCopy.workloadStatusText(20, 5));
+        assertEquals("All kanji: up to 9 items", SettingsTextCopy.workloadStatusText(100, 9));
+        assertEquals("Maximum: 1 item", SettingsTextCopy.maxItemsStatusText(1));
+        assertEquals("Auto Pareto: waiting for problem kanji", SettingsTextCopy.autoWorkloadStatusText(null));
         assertEquals(
                 "Auto Pareto: 2 items today",
-                activity.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
+                SettingsTextCopy.autoWorkloadStatusText(new RecordsSchedulerModels.AdaptiveLoadPlan(true, 20, 2, 1, Arrays.asList("裂", "語"), 0, false, "auto"))
         );
         assertEquals("Blocked: notifications off", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), true));
         assertEquals("Daily around 21:05", activity.reminderStatus(new LocalStore.ReminderSettings(true, 21, 5), false));
@@ -511,7 +511,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("21:05", activity.reminderTime(21, 5));
         assertEquals("Reminder time: 21:05", activity.reminderTimeButtonLabel(21, 5));
         int normalizedMax = AdaptiveLoadPlanner.normalizeMaxItems(0);
-        assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), activity.maxItemsStatusText(0));
+        assertEquals("Maximum: " + activity.countText(normalizedMax, "item", "items"), SettingsTextCopy.maxItemsStatusText(0));
     }
 
     private static void verifyImportThresholdReader(MainActivity activity) {

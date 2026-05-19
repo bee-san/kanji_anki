@@ -912,14 +912,14 @@ abstract class MainActivitySettings extends MainActivityStudy {
         final String[] selected = new String[]{current.newCardSortMode};
         LinearLayout box = settingsPanelBox();
         box.addView(text(SettingsTextCopy.newCardSortTitle(), 23, INK, true));
-        TextView status = text(newCardSortStatusText(selected[0]), 17, TEAL, true);
+        TextView status = text(SettingsTextCopy.newCardSortStatusText(selected[0]), 17, TEAL, true);
         box.addView(status);
         box.addView(text(SettingsTextCopy.newCardSortBody(), 15, MUTED, false));
 
-        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY), RecordsBase.NEW_CARD_SORT_FREQUENCY, selected, status);
-        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY), RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
-        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK), RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
-        addSortModeButton(box, newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS), RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
+        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY), RecordsBase.NEW_CARD_SORT_FREQUENCY, selected, status);
+        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY), RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
+        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK), RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
+        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS), RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
 
         Button save = primaryButton(SettingsTextCopy.saveNewCardSortLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
@@ -936,17 +936,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button button = secondaryButton(label);
         button.setOnClickListener(v -> {
             selected[0] = mode;
-            status.setText(newCardSortStatusText(mode));
+            status.setText(SettingsTextCopy.newCardSortStatusText(mode));
         });
         box.addView(button);
-    }
-
-    String newCardSortStatusText(String mode) {
-        return SettingsTextCopy.newCardSortStatusText(mode);
-    }
-
-    String newCardSortLabel(String mode) {
-        return SettingsTextCopy.newCardSortLabel(mode);
     }
 
     LinearLayout workloadSettingsPanel() {
@@ -964,7 +956,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty()
                     ? null
                     : adaptivePlan(rows, store.studyItems(), now);
-            box.addView(text(autoWorkloadStatusText(plan), 17, TEAL, true));
+            box.addView(text(SettingsTextCopy.autoWorkloadStatusText(plan), 17, TEAL, true));
             box.addView(text(SettingsTextCopy.automaticWorkloadBody(), 15, MUTED, false));
             addMaxItemsControl(box, selectedMax, null, null);
             Button saveMax = primaryButton(SettingsTextCopy.saveMaximumLabel(), STUDY_PINK_DARK);
@@ -986,7 +978,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             return box;
         }
 
-        TextView status = text(workloadStatusText(selected[0], selectedMax[0]), 17, TEAL, true);
+        TextView status = text(SettingsTextCopy.workloadStatusText(selected[0], selectedMax[0]), 17, TEAL, true);
         box.addView(status);
         box.addView(text(SettingsTextCopy.manualWorkloadBody(), 15, MUTED, false));
 
@@ -997,7 +989,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 selected[0] = AdaptiveLoadPlanner.snapWorkloadPercent(progress);
-                status.setText(workloadStatusText(selected[0], selectedMax[0]));
+                status.setText(SettingsTextCopy.workloadStatusText(selected[0], selectedMax[0]));
             }
 
             @Override
@@ -1062,7 +1054,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
-        TextView maxStatus = text(maxItemsStatusText(selectedMax[0]), 17, TEAL, true);
+        TextView maxStatus = text(SettingsTextCopy.maxItemsStatusText(selectedMax[0]), 17, TEAL, true);
         maxStatus.setPadding(0, dp(8), 0, 0);
         box.addView(maxStatus);
 
@@ -1073,9 +1065,9 @@ abstract class MainActivitySettings extends MainActivityStudy {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 selectedMax[0] = AdaptiveLoadPlanner.normalizeMaxItems(progress + AdaptiveLoadPlanner.MIN_MAX_ITEMS);
-                maxStatus.setText(maxItemsStatusText(selectedMax[0]));
+                maxStatus.setText(SettingsTextCopy.maxItemsStatusText(selectedMax[0]));
                 if (workloadStatus != null && selectedWorkload != null) {
-                    workloadStatus.setText(workloadStatusText(selectedWorkload[0], selectedMax[0]));
+                    workloadStatus.setText(SettingsTextCopy.workloadStatusText(selectedWorkload[0], selectedMax[0]));
                 }
             }
 
@@ -1508,18 +1500,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 : "";
         String nextRun = auto.nextRunAt > 0L ? DateTextPolicy.shortDateTime(auto.nextRunAt) : "";
         return SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun);
-    }
-
-    String workloadStatusText(int percent, int maxItems) {
-        return SettingsTextCopy.workloadStatusText(percent, maxItems);
-    }
-
-    String maxItemsStatusText(int maxItems) {
-        return SettingsTextCopy.maxItemsStatusText(maxItems);
-    }
-
-    String autoWorkloadStatusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        return SettingsTextCopy.autoWorkloadStatusText(plan);
     }
 
     LinearLayout updateSettingsPanel() {
