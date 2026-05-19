@@ -1797,18 +1797,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         return StudyTaskCopy.isWordReadingTask(session);
     }
 
-    boolean canSubmitAnalysis(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.canSubmitAnalysis(analysis);
-    }
-
-    boolean canManualOverride(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.canManualOverride(analysis);
-    }
-
-    boolean canPracticeAfterAnalysis(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.canPracticeAfterAnalysis(analysis);
-    }
-
     void setStudyStatus(String value, int color) {
         if (studyStatus != null) {
             studyStatus.setText(value);

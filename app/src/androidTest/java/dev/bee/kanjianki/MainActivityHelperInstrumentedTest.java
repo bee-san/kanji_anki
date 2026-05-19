@@ -38,6 +38,7 @@ import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeOrderEvaluator;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
+import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.data.StudyStatsStore;
@@ -343,11 +344,11 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.canShowDiagnosis(wrong));
                 assertFalse(activity.canShowDiagnosis(analysis(WritingAnalysis.Status.NO_INK, false, order)));
 
-                assertTrue(activity.canSubmitAnalysis(wrong));
-                assertTrue(activity.canManualOverride(wrong));
-                assertTrue(activity.canPracticeAfterAnalysis(wrong));
-                assertFalse(activity.canSubmitAnalysis(null));
-                assertFalse(activity.canManualOverride(close));
+                assertTrue(WritingFeedbackCopy.canSubmitAnalysis(wrong));
+                assertTrue(WritingFeedbackCopy.canManualOverride(wrong));
+                assertTrue(WritingFeedbackCopy.canPracticeAfterAnalysis(wrong));
+                assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
+                assertFalse(WritingFeedbackCopy.canManualOverride(close));
                 assertTrue(activity.shouldIncreaseSupportAfterAnalysis(wrong));
                 assertFalse(activity.shouldIncreaseSupportAfterAnalysis(close));
                 assertTrue(activity.shouldShowLearningPanel(wrong));
@@ -1762,9 +1763,9 @@ public final class MainActivityHelperInstrumentedTest {
         assertFalse(activity.shouldShowLearningPanel(null));
         assertTrue(activity.shouldShowLearningPanel(analysis(WritingAnalysis.Status.PASS, true, order)));
         assertFalse(activity.shouldIncreaseSupportAfterAnalysis(null));
-        assertFalse(activity.canManualOverride(null));
-        assertFalse(activity.canPracticeAfterAnalysis(null));
-        assertFalse(activity.canSubmitAnalysis(null));
+        assertFalse(WritingFeedbackCopy.canManualOverride(null));
+        assertFalse(WritingFeedbackCopy.canPracticeAfterAnalysis(null));
+        assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
     }
 
     @Test
