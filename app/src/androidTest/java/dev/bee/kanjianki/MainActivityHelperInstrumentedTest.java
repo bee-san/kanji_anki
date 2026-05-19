@@ -1360,6 +1360,12 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(activity.studySessionTracker.hasActiveTask());
         activity.completeActiveStudyTask("task:active", "passed", 2000L);
         assertFalse(activity.studySessionTracker.hasActiveTask());
+        int completedBeforeRepair = activity.studySessionTracker.completedCount();
+        activity.startActiveStudyTask("repair:active", "裂", BridgeScheduler.TASK_KANJI_MEANING, 3000L);
+        assertTrue(activity.studySessionTracker.hasActiveTask());
+        activity.completeActiveRepairStudyTask("repair:active", "passed", 4000L);
+        assertFalse(activity.studySessionTracker.hasActiveTask());
+        assertEquals(completedBeforeRepair, activity.studySessionTracker.completedCount());
         activity.abandonActiveStudyTask();
     }
 
