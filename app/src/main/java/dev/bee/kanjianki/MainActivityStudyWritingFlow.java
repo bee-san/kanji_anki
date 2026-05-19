@@ -3,7 +3,6 @@ package dev.bee.kanjianki;
 import android.view.View;
 
 import dev.bee.kanjianki.core.study.HintState;
-import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
@@ -99,7 +98,7 @@ final class MainActivityStudyWritingFlow {
                 targetKanji,
                 activeWritingLevel,
                 WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis),
-                diagnosisText(analysis)
+                StrokeDiagnosisFormatter.text(analysis)
         );
         activity.setStudyStatus(WritingFeedbackCopy.guideLabel(activity.currentHintState, guide), activity.MUTED);
         activity.setResultStatus(message, color);
@@ -180,19 +179,4 @@ final class MainActivityStudyWritingFlow {
         activity.updateUndoStrokeButton();
     }
 
-    String diagnosisText(WritingAnalysis analysis) {
-        return StrokeDiagnosisFormatter.text(analysis);
-    }
-
-    boolean canShowDiagnosis(WritingAnalysis analysis) {
-        return StrokeDiagnosisFormatter.canShow(analysis);
-    }
-
-    String diagnosisLine(StrokeDiagnosis.Entry entry) {
-        return StrokeDiagnosisFormatter.line(entry);
-    }
-
-    String strokeDiagnosisText(StrokeDiagnosis.Entry entry, String label) {
-        return StrokeDiagnosisFormatter.strokeLine(entry, label);
-    }
 }

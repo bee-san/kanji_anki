@@ -8,7 +8,6 @@ import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.WritingActionPresentation;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
-import dev.bee.kanjianki.study.WritingRecognizer;
 
 final class MainActivityStudyWritingUi {
     private final MainActivityStudy activity;
@@ -55,7 +54,7 @@ final class MainActivityStudyWritingUi {
         primaryActions.addView(activity.checkWritingButton, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
 
         activity.downloadModelButton = activity.studySecondaryButton("Download checker");
-        activity.downloadModelButton.setOnClickListener(v -> activity.downloadWritingModel());
+        activity.downloadModelButton.setOnClickListener(v -> writingStatus.downloadWritingModel());
         primaryActions.addView(activity.downloadModelButton, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
 
         activity.nextAfterPassButton = activity.pinkPrimaryButton(activity.LABEL_PASS);
@@ -92,6 +91,10 @@ final class MainActivityStudyWritingUi {
         if (activity.resultStatus != null && !presentation.resultStatusVisible) {
             activity.resultStatus.setVisibility(View.GONE);
         }
+    }
+
+    void refreshWritingModelStatus() {
+        writingStatus.refreshWritingModelStatus();
     }
 
     WritingActionPresentation writingActionPresentation() {
@@ -194,19 +197,4 @@ final class MainActivityStudyWritingUi {
         }
     }
 
-    void refreshWritingModelStatus() {
-        writingStatus.refreshWritingModelStatus();
-    }
-
-    void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
-        writingStatus.setWritingModelStatusMessage(status, error);
-    }
-
-    void downloadWritingModel() {
-        writingStatus.downloadWritingModel();
-    }
-
-    void updateWritingModelAvailability(boolean downloaded) {
-        writingStatus.updateWritingModelAvailability(downloaded);
-    }
 }

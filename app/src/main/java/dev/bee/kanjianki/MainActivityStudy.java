@@ -66,7 +66,6 @@ import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintProgression;
 import dev.bee.kanjianki.core.study.HintState;
 import dev.bee.kanjianki.core.study.RecognitionCandidate;
-import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeGuideGuard;
 import dev.bee.kanjianki.core.study.WritingActionPresentation;
@@ -708,7 +707,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
         buildStudyActionBar();
         updateResultActions();
-        refreshWritingModelStatus();
+        writingUi.refreshWritingModelStatus();
     }
 
     void resetChoiceSession(boolean resetTouchTracking) {
@@ -1021,22 +1020,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         writingFlow.handleDrawingBlocked(decision);
     }
 
-    String diagnosisText(WritingAnalysis analysis) {
-        return writingFlow.diagnosisText(analysis);
-    }
-
-    boolean canShowDiagnosis(WritingAnalysis analysis) {
-        return writingFlow.canShowDiagnosis(analysis);
-    }
-
-    String diagnosisLine(StrokeDiagnosis.Entry entry) {
-        return writingFlow.diagnosisLine(entry);
-    }
-
-    String strokeDiagnosisText(StrokeDiagnosis.Entry entry, String label) {
-        return writingFlow.strokeDiagnosisText(entry, label);
-    }
-
     void setStudyStatus(String value, int color) {
         writingUi.setStudyStatus(value, color);
     }
@@ -1049,15 +1032,4 @@ abstract class MainActivityStudy extends MainActivityStats {
         return writingUi.canRevealMoreHelp();
     }
 
-    void refreshWritingModelStatus() {
-        writingUi.refreshWritingModelStatus();
-    }
-
-    void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
-        writingUi.setWritingModelStatusMessage(status, error);
-    }
-
-    void downloadWritingModel() {
-        writingUi.downloadWritingModel();
-    }
 }

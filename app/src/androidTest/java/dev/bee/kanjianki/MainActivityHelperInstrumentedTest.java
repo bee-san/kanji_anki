@@ -49,6 +49,7 @@ import dev.bee.kanjianki.core.study.RecognitionCandidate;
 import dev.bee.kanjianki.core.study.StrokeDiagnosis;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.StrokeOrderEvaluator;
+import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.WritingSample;
@@ -58,6 +59,7 @@ import dev.bee.kanjianki.study.CapturedStroke;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.ManualSyncEngine;
+import dev.bee.kanjianki.MainActivityStudyWritingStatus;
 
 import org.junit.After;
 import org.junit.Before;
@@ -348,13 +350,13 @@ public final class MainActivityHelperInstrumentedTest {
                         0
                 );
 
-                assertTrue(activity.diagnosisText(wrong).contains("Stroke 1: likely wrong order"));
-                assertTrue(activity.diagnosisText(wrong).contains("Recognized, but the stroke path was messy"));
-                assertEquals("Stroke 2: likely wrong direction", activity.diagnosisLine(diagnosis.entries.get(1)));
-                assertEquals("Stroke 3: may be missing", activity.diagnosisLine(diagnosis.entries.get(2)));
-                assertEquals("Stroke 4: shape looks rough", activity.diagnosisLine(diagnosis.entries.get(3)));
-                assertTrue(activity.canShowDiagnosis(wrong));
-                assertFalse(activity.canShowDiagnosis(analysis(WritingAnalysis.Status.NO_INK, false, order)));
+                assertTrue(StrokeDiagnosisFormatter.text(wrong).contains("Stroke 1: likely wrong order"));
+                assertTrue(StrokeDiagnosisFormatter.text(wrong).contains("Recognized, but the stroke path was messy"));
+                assertEquals("Stroke 2: likely wrong direction", StrokeDiagnosisFormatter.line(diagnosis.entries.get(1)));
+                assertEquals("Stroke 3: may be missing", StrokeDiagnosisFormatter.line(diagnosis.entries.get(2)));
+                assertEquals("Stroke 4: shape looks rough", StrokeDiagnosisFormatter.line(diagnosis.entries.get(3)));
+                assertTrue(StrokeDiagnosisFormatter.canShow(wrong));
+                assertFalse(StrokeDiagnosisFormatter.canShow(analysis(WritingAnalysis.Status.NO_INK, false, order)));
 
                 assertTrue(WritingFeedbackCopy.canSubmitAnalysis(wrong));
                 assertTrue(WritingFeedbackCopy.canManualOverride(wrong));
@@ -1504,7 +1506,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.currentHintState = HintState.fromWritingLevel(2);
                 activity.studyStatus = new TextView(activity);
                 activity.downloadModelButton = new Button(activity);
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
             scenario.onActivity(activity -> assertTrue(activity.studyStatus.getText().toString().contains("download failed")));
         } finally {
@@ -1548,7 +1550,7 @@ public final class MainActivityHelperInstrumentedTest {
                 MainActivity.setWritingRecognizerForTests(staleRecognizer);
                 activity.activeSession = sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "current-token");
                 activity.recognizeWriting(staleRecognizer, capturedWriting(), sample(), guide("裂"), "裂", "stale-token");
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
                 activity.activeSession = sessionWithToken("裂", BridgeScheduler.TASK_WRITE_KANJI, row, "changed-token");
             });
             scenario.onActivity(activity -> {
@@ -1597,9 +1599,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(WritingAnalysis.Status.MODEL_UNAVAILABLE, activity.activeAnalysis.status);
 
                 activity.activeAnalysis = null;
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 assertTrue(activity.studyStatus.getText().toString().contains("Automatic handwriting checks are unavailable"));
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
                 assertTrue(activity.studyStatus.getText().toString().contains("unavailable on this device"));
 
                 MainActivity.setWritingRecognizerFactoryForTests(executor -> {
@@ -1733,6 +1735,7 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyWritingButtonAndModelStatus(MainActivity activity, WritingAnalysis wrong) {
+        MainActivityStudyWritingStatus writingStatus = new MainActivityStudyWritingStatus(activity);
         activity.checkingWriting = true;
         activity.updateResultActions();
         assertEquals("Checking...", activity.checkWritingButton.getText().toString());
@@ -1762,11 +1765,11 @@ public final class MainActivityHelperInstrumentedTest {
         activity.showModelUnavailable("checker unavailable");
         assertTrue(activity.resultStatus.getText().toString().contains("checker unavailable"));
 
-        activity.setWritingModelStatusMessage(null, new RuntimeException("offline"));
+        writingStatus.setWritingModelStatusMessage(null, new RuntimeException("offline"));
         assertTrue(activity.studyStatus.getText().toString().contains("Unable to read"));
-        activity.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", false, "missing"), null);
+        writingStatus.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", false, "missing"), null);
         assertTrue(activity.studyStatus.getText().toString().contains("Download the handwriting checker"));
-        activity.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready"), null);
+        writingStatus.setWritingModelStatusMessage(new WritingRecognizer.ModelStatus("ja", "ja-JP", true, "ready"), null);
         assertTrue(activity.studyStatus.getText().toString().contains("Handwriting checker ready"));
     }
 
@@ -2349,10 +2352,10 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.studyStatus = new TextView(activity);
                 activity.downloadModelButton = new Button(activity);
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(2);
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
             });
             scenario.onActivity(activity -> {
                 assertTrue(activity.writingModelStatusKnown);
@@ -2364,12 +2367,12 @@ public final class MainActivityHelperInstrumentedTest {
                         .withDiagnosis(StrokeDiagnosis.builder().add(StrokeDiagnosis.Label.WRONG_ORDER, 1).build());
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
                 activity.studyStatus.setText("Existing analysis message");
-                activity.refreshWritingModelStatus();
+                new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
             });
             scenario.onActivity(activity -> {
                 assertEquals("Existing analysis message", activity.studyStatus.getText().toString());
                 activity.activeAnalysis = null;
-                activity.downloadWritingModel();
+                new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
             scenario.onActivity(activity -> {
                 assertTrue(activity.writingModelDownloaded);
