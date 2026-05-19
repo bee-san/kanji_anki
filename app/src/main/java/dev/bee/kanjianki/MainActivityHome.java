@@ -119,11 +119,11 @@ abstract class MainActivityHome extends MainActivityBase {
 
         if (rows.isEmpty()) {
             Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
-            syncButton.setOnClickListener(v -> confirmSync());
+            syncButton.setOnClickListener(new SyncHomeClickListener(this));
             content.addView(syncButton);
         } else {
             View studyButton = homeStudyCta();
-            studyButton.setOnClickListener(v -> startFocusedStudy());
+            studyButton.setOnClickListener(new StudyHomeClickListener(this));
             content.addView(studyButton);
 
         }
@@ -864,6 +864,32 @@ abstract class MainActivityHome extends MainActivityBase {
             String toast = HomeTextCopy.localSuspendToast(suspended);
             Toast.makeText(activity, toast, Toast.LENGTH_SHORT).show();
             activity.renderDetail(displayKanji, fromBrowse, browseQuery);
+        }
+    }
+
+    private static final class SyncHomeClickListener implements View.OnClickListener {
+        private final MainActivityHome activity;
+
+        SyncHomeClickListener(MainActivityHome activity) {
+            this.activity = activity;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.confirmSync();
+        }
+    }
+
+    private static final class StudyHomeClickListener implements View.OnClickListener {
+        private final MainActivityHome activity;
+
+        StudyHomeClickListener(MainActivityHome activity) {
+            this.activity = activity;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.startFocusedStudy();
         }
     }
 
