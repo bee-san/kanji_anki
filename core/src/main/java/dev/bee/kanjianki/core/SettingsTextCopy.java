@@ -202,91 +202,91 @@ public final class SettingsTextCopy {
     }
 
     public static String importFiltersTitle() {
-        return "Import filters";
+        return SettingsImportFiltersTextCopy.importFiltersTitle();
     }
 
     public static String importFiltersBody() {
-        return "Suspended AnkiDroid cards are the default source for Kani practice. Turn on active, tagged, or weak cards only when you want those sources included.";
+        return SettingsImportFiltersTextCopy.importFiltersBody();
     }
 
     public static String activeCardsLabel() {
-        return "Active cards";
+        return SettingsImportFiltersTextCopy.activeCardsLabel();
     }
 
     public static String suspendedCardsLabel() {
-        return "Suspended cards";
+        return SettingsImportFiltersTextCopy.suspendedCardsLabel();
     }
 
     public static String taggedCardsLabel() {
-        return "Tagged cards";
+        return SettingsImportFiltersTextCopy.taggedCardsLabel();
     }
 
     public static String weakCardsLabel() {
-        return "Weak cards";
+        return SettingsImportFiltersTextCopy.weakCardsLabel();
     }
 
     public static String browserQueryLabel() {
-        return "Browser query";
+        return SettingsImportFiltersTextCopy.browserQueryLabel();
     }
 
     public static String ankiBrowserQueryHint() {
-        return "deck:Japanese tag:kani";
+        return SettingsImportFiltersTextCopy.ankiBrowserQueryHint();
     }
 
     public static String ankiBrowserQueryLabel() {
-        return "Anki browser query";
+        return SettingsImportFiltersTextCopy.ankiBrowserQueryLabel();
     }
 
     public static String ankiNoteTagsHint() {
-        return "tag1, tag2";
+        return SettingsImportFiltersTextCopy.ankiNoteTagsHint();
     }
 
     public static String ankiNoteTagsLabel() {
-        return "Anki note tags";
+        return SettingsImportFiltersTextCopy.ankiNoteTagsLabel();
     }
 
     public static String fsrsDifficultyLabel() {
-        return "FSRS difficulty";
+        return SettingsImportFiltersTextCopy.fsrsDifficultyLabel();
     }
 
     public static String lapsesLabel() {
-        return "Lapses";
+        return SettingsImportFiltersTextCopy.lapsesLabel();
     }
 
     public static String minimumMatchingCardsLabel() {
-        return "Minimum matching cards per kanji";
+        return SettingsImportFiltersTextCopy.minimumMatchingCardsLabel();
     }
 
     public static String saveImportFiltersLabel() {
-        return "Save import filters";
+        return SettingsImportFiltersTextCopy.saveImportFiltersLabel();
     }
 
     public static String browserQueryRequiredToast() {
-        return "Enter an Anki browser query or turn off Browser query.";
+        return SettingsImportFiltersTextCopy.browserQueryRequiredToast();
     }
 
     public static String importSourceRequiredToast() {
-        return "Turn on at least one import source.";
+        return SettingsImportFiltersTextCopy.importSourceRequiredToast();
     }
 
     public static String importFiltersSavedToast() {
-        return "Import filters saved. Sync again to rebuild practice.";
+        return SettingsImportFiltersTextCopy.importFiltersSavedToast();
     }
 
     public static String presetsTitle() {
-        return "Presets";
+        return SettingsImportFiltersTextCopy.presetsTitle();
     }
 
     public static String importPresetSavedToast() {
-        return "Import preset saved. Sync again to rebuild practice.";
+        return SettingsImportFiltersTextCopy.importPresetSavedToast();
     }
 
     public static String numericImportThresholdsToast() {
-        return "Use numeric import thresholds.";
+        return SettingsImportFiltersTextCopy.numericImportThresholdsToast();
     }
 
     public static String importThresholdRangeToast() {
-        return "Use difficulty 1-10, lapses 1-100, and cards 1-1000.";
+        return SettingsImportFiltersTextCopy.importThresholdRangeToast();
     }
 
     public static String frequencyRangeTitle() {
