@@ -951,14 +951,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
-        long now = System.currentTimeMillis();
-        RecordsImportModels.SimilarKanjiChoiceResult result = store.submitSimilarChoice(
-                card,
-                selectedKanji,
-                now,
-                studyLadderSettings().isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
-        );
-        submitReview(result.correct ? RATING_GOOD : RATING_AGAIN, false);
+        writingReview().submitSimilarKanjiChoice(card, selectedKanji);
     }
 
     boolean showNoInkWhenNeeded() {
