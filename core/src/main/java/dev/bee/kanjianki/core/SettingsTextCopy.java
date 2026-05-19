@@ -362,71 +362,71 @@ public final class SettingsTextCopy {
     }
 
     public static String noteTypeFieldsTitle() {
-        return "Note type & clue fields";
+        return SettingsNoteTypeTextCopy.noteTypeFieldsTitle();
     }
 
     public static String noteTypeUsingText(String modelName) {
-        return "Using " + String.valueOf(modelName);
+        return SettingsNoteTypeTextCopy.noteTypeUsingText(modelName);
     }
 
     public static String noteTypeFieldsBody() {
-        return "Default: Kiku. This single card owns the note type and all field mapping so clue configuration is not repeated elsewhere.";
+        return SettingsNoteTypeTextCopy.noteTypeFieldsBody();
     }
 
     public static String requiredFieldsTitle() {
-        return "Required fields";
+        return SettingsNoteTypeTextCopy.requiredFieldsTitle();
     }
 
     public static String requiredFieldsBody() {
-        return "Expression = kanji source, ExpressionReading = reading, MainDefinition = meaning, Sentence = context, Frequency/FreqSort = metadata.";
+        return SettingsNoteTypeTextCopy.requiredFieldsBody();
     }
 
     public static String expressionFieldLabel() {
-        return "Expression field";
+        return SettingsNoteTypeTextCopy.expressionFieldLabel();
     }
 
     public static String readingFieldLabel() {
-        return "Reading field";
+        return SettingsNoteTypeTextCopy.readingFieldLabel();
     }
 
     public static String meaningFieldLabel() {
-        return "Meaning field";
+        return SettingsNoteTypeTextCopy.meaningFieldLabel();
     }
 
     public static String sentenceFieldLabel() {
-        return "Sentence field";
+        return SettingsNoteTypeTextCopy.sentenceFieldLabel();
     }
 
     public static String frequencyFieldLabel() {
-        return "Frequency field";
+        return SettingsNoteTypeTextCopy.frequencyFieldLabel();
     }
 
     public static String frequencySortFieldLabel() {
-        return "Frequency sort field";
+        return SettingsNoteTypeTextCopy.frequencySortFieldLabel();
     }
 
     public static String chooseFromAnkiDroidLabel() {
-        return "Choose from AnkiDroid";
+        return SettingsNoteTypeTextCopy.chooseFromAnkiDroidLabel();
     }
 
     public static String useKikuLabel() {
-        return "Use Kiku";
+        return SettingsNoteTypeTextCopy.useKikuLabel();
     }
 
     public static String saveNoteTypeLabel() {
-        return "Save note type";
+        return SettingsNoteTypeTextCopy.saveNoteTypeLabel();
     }
 
     public static String noteTypeRequiredToast() {
-        return "Enter a note type name.";
+        return SettingsNoteTypeTextCopy.noteTypeRequiredToast();
     }
 
     public static String expressionFieldRequiredToast() {
-        return "Choose the field that contains kanji.";
+        return SettingsNoteTypeTextCopy.expressionFieldRequiredToast();
     }
 
     public static String noteTypeSavedToast() {
-        return "Note type saved. Sync again to rebuild practice.";
+        return SettingsNoteTypeTextCopy.noteTypeSavedToast();
     }
 
     public static String newCardSortTitle() {
