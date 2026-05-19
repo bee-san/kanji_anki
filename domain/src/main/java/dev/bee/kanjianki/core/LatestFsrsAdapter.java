@@ -7,8 +7,12 @@ import dev.bee.fsrs.FsrsRating;
 import dev.bee.fsrs.FsrsReviewInput;
 import dev.bee.fsrs.FsrsReviewOutput;
 
+import java.util.Objects;
+
 final class LatestFsrsAdapter implements KaniFsrsAdapter {
     private static final int MAXIMUM_INTERVAL_DAYS = 36_500;
+    private static final double DEFAULT_DIFFICULTY = 5.0;
+    private static final double DEFAULT_RETENTION = 0.9;
 
     private final FsrsEngine engine;
 
@@ -17,7 +21,7 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
     }
 
     LatestFsrsAdapter(FsrsEngine engine) {
-        this.engine = engine;
+        this.engine = Objects.requireNonNull(engine);
     }
 
     @Override
@@ -32,11 +36,11 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
         FsrsMemoryState state = engine.initialState(fsrsRating);
         if (!isNewLearning) {
             state = new FsrsMemoryState(
-                    Math.max(currentStability, Fsrs.STABILITY_MIN),
-                    engine.nextDifficulty(clampDifficulty(currentDifficulty), fsrsRating)
+                    safeStability(currentStability),
+                    engine.nextDifficulty(safeDifficulty(currentDifficulty), fsrsRating)
             );
         }
-        int intervalDays = engine.nextIntervalDays(state.stability(), retention(targetRetention), MAXIMUM_INTERVAL_DAYS);
+        int intervalDays = engine.nextIntervalDays(state.stability(), safeRetention(targetRetention), MAXIMUM_INTERVAL_DAYS);
         return result(state, intervalDays);
     }
 
@@ -49,10 +53,10 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
             double targetRetention
     ) {
         FsrsReviewOutput output = engine.review(new FsrsReviewInput(
-                new FsrsMemoryState(Math.max(stability, Fsrs.STABILITY_MIN), clampDifficulty(difficulty)),
+                new FsrsMemoryState(safeStability(stability), safeDifficulty(difficulty)),
                 toRating(rating),
                 elapsedDays,
-                retention(targetRetention),
+                safeRetention(targetRetention),
                 MAXIMUM_INTERVAL_DAYS
         ));
         return result(output.nextState(), output.nextIntervalDays());
@@ -75,11 +79,24 @@ final class LatestFsrsAdapter implements KaniFsrsAdapter {
         return FsrsRating.AGAIN;
     }
 
-    private static double retention(double targetRetention) {
+    private static double safeStability(double stability) {
+        if (!Double.isFinite(stability) || stability <= 0.0) {
+            return Fsrs.STABILITY_MIN;
+        }
+        return Math.max(stability, Fsrs.STABILITY_MIN);
+    }
+
+    private static double safeRetention(double targetRetention) {
+        if (!Double.isFinite(targetRetention)) {
+            return DEFAULT_RETENTION;
+        }
         return Math.max(0.01, Math.min(0.99, targetRetention));
     }
 
-    private static double clampDifficulty(double difficulty) {
+    private static double safeDifficulty(double difficulty) {
+        if (!Double.isFinite(difficulty)) {
+            return DEFAULT_DIFFICULTY;
+        }
         return Math.max(Fsrs.MIN_DIFFICULTY, Math.min(Fsrs.MAX_DIFFICULTY, difficulty));
     }
 }

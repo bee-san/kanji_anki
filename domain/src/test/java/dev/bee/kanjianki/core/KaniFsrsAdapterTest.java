@@ -34,6 +34,35 @@ public final class KaniFsrsAdapterTest {
     }
 
     @Test
+    public void latestAdapterNormalizesNonFiniteImportedStateAtTheAppBoundary() {
+        LatestFsrsAdapter adapter = new LatestFsrsAdapter();
+
+        KaniFsrsReviewResult relearning = adapter.initialReview(
+                StudyRatings.GOOD,
+                Double.NaN,
+                Double.POSITIVE_INFINITY,
+                Double.NaN,
+                false
+        );
+        assertTrue(relearning.stability >= 0.001);
+        assertTrue(relearning.difficulty >= 1.0);
+        assertTrue(relearning.difficulty <= 10.0);
+        assertTrue(relearning.intervalDays() >= 1);
+
+        KaniFsrsReviewResult review = adapter.review(
+                Double.NEGATIVE_INFINITY,
+                Double.NaN,
+                StudyRatings.HARD,
+                0,
+                Double.POSITIVE_INFINITY
+        );
+        assertTrue(review.stability >= 0.001);
+        assertTrue(review.difficulty >= 1.0);
+        assertTrue(review.difficulty <= 10.0);
+        assertTrue(review.intervalDays() >= 1);
+    }
+
+    @Test
     public void resultCeilsIntervalsToAtLeastOneDay() {
         KaniFsrsReviewResult result = new KaniFsrsReviewResult(1.0, 2.0, 1L);
 
