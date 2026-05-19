@@ -230,7 +230,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(text("Nothing due now", 32, STUDY_PLUM, true));
         card.addView(text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 17, STUDY_MUTED, false));
         Button back = pinkPrimaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(new BackHomeClickListener(this));
+        back.setOnClickListener(new RunnableClickListener(() -> {
+            clearStudyModeOverrides();
+            renderHome();
+        }));
         card.addView(back);
         content.addView(card);
     }
@@ -272,59 +275,22 @@ abstract class MainActivityStudy extends MainActivityStats {
         boolean canStudyMore = available > 0;
         if (canStudyMore) {
             Button studyMore = pinkPrimaryButton("Study more new cards");
-            studyMore.setOnClickListener(new StudyMoreNewCardsClickListener(this, available));
+            studyMore.setOnClickListener(new RunnableClickListener(() -> showStudyMoreNewCardsDialog(available)));
             card.addView(studyMore);
         }
         Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(new ContinueAllKanjiClickListener(this));
+        keepGoing.setOnClickListener(new RunnableClickListener(() -> {
+            studyMoreNewCardKanji.clear();
+            continueAllKanjiSession = true;
+            renderStudy();
+        }));
         card.addView(keepGoing);
         Button back = studySecondaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(new BackHomeClickListener(this));
+        back.setOnClickListener(new RunnableClickListener(() -> {
+            clearStudyModeOverrides();
+            renderHome();
+        }));
         card.addView(back);
-    }
-
-    private static final class StudyMoreNewCardsClickListener implements View.OnClickListener {
-        private final MainActivityStudy activity;
-        private final int availableAtOpen;
-
-        StudyMoreNewCardsClickListener(MainActivityStudy activity, int availableAtOpen) {
-            this.activity = activity;
-            this.availableAtOpen = availableAtOpen;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.showStudyMoreNewCardsDialog(availableAtOpen);
-        }
-    }
-
-    private static final class ContinueAllKanjiClickListener implements View.OnClickListener {
-        private final MainActivityStudy activity;
-
-        ContinueAllKanjiClickListener(MainActivityStudy activity) {
-            this.activity = activity;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.studyMoreNewCardKanji.clear();
-            activity.continueAllKanjiSession = true;
-            activity.renderStudy();
-        }
-    }
-
-    private static final class BackHomeClickListener implements View.OnClickListener {
-        private final MainActivityStudy activity;
-
-        BackHomeClickListener(MainActivityStudy activity) {
-            this.activity = activity;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.clearStudyModeOverrides();
-            activity.renderHome();
-        }
     }
 
     int availableStudyMoreNewCards() {
@@ -582,7 +548,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         resultStatus = text(status, 15, correct ? TEAL : CORAL, true);
         studyActionBar.addView(resultStatus);
         Button next = pinkPrimaryButton("Next");
-        next.setOnClickListener(new StudyReviewNextClickListener(this, correct));
+        next.setOnClickListener(new RunnableClickListener(() -> submitReview(correct ? RATING_GOOD : RATING_AGAIN, false)));
         studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, dp(62)));
     }
 
@@ -600,21 +566,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         @Override
         public void onClick(View v) {
             clickHandler.onClick(glyph, grid);
-        }
-    }
-
-    private static final class StudyReviewNextClickListener implements View.OnClickListener {
-        private final MainActivityStudy activity;
-        private final boolean correct;
-
-        StudyReviewNextClickListener(MainActivityStudy activity, boolean correct) {
-            this.activity = activity;
-            this.correct = correct;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.submitReview(correct ? RATING_GOOD : RATING_AGAIN, false);
         }
     }
 

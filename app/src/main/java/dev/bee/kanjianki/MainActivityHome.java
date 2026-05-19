@@ -119,11 +119,11 @@ abstract class MainActivityHome extends MainActivityBase {
 
         if (rows.isEmpty()) {
             Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
-            syncButton.setOnClickListener(new SyncHomeClickListener(this));
+            syncButton.setOnClickListener(new RunnableClickListener(this::confirmSync));
             content.addView(syncButton);
         } else {
             View studyButton = homeStudyCta();
-            studyButton.setOnClickListener(new StudyHomeClickListener(this));
+            studyButton.setOnClickListener(new RunnableClickListener(this::startFocusedStudy));
             content.addView(studyButton);
 
         }
@@ -799,7 +799,7 @@ abstract class MainActivityHome extends MainActivityBase {
     void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
         if (row != null && !suspended) {
             Button practice = primaryButton(HomeTextCopy.reviewNowLabel(), CORAL);
-            practice.setOnClickListener(new PracticeClickListener(this, row.kanji));
+            practice.setOnClickListener(new RunnableClickListener(() -> renderStudyForKanji(row.kanji)));
             content.addView(practice);
         }
         String browserSearch = HomeTextCopy.detailBrowserSearch(row, inventory);
@@ -809,23 +809,13 @@ abstract class MainActivityHome extends MainActivityBase {
             content.addView(copy);
         }
         Button suspend = secondaryButton(HomeTextCopy.localSuspendButtonLabel(suspended));
-        suspend.setOnClickListener(new SuspendClickListener(this, displayKanji, fromBrowse, browseQuery, suspended));
+        suspend.setOnClickListener(new RunnableClickListener(() -> {
+            store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
+            String toast = HomeTextCopy.localSuspendToast(suspended);
+            Toast.makeText(MainActivityHome.this, toast, Toast.LENGTH_SHORT).show();
+            renderDetail(displayKanji, fromBrowse, browseQuery);
+        }));
         content.addView(suspend);
-    }
-
-    private static final class PracticeClickListener implements View.OnClickListener {
-        private final MainActivityHome activity;
-        private final String kanji;
-
-        PracticeClickListener(MainActivityHome activity, String kanji) {
-            this.activity = activity;
-            this.kanji = kanji;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.renderStudyForKanji(kanji);
-        }
     }
 
     private static final class CopyClickListener implements View.OnClickListener {
@@ -843,55 +833,6 @@ abstract class MainActivityHome extends MainActivityBase {
         }
     }
 
-    private static final class SuspendClickListener implements View.OnClickListener {
-        private final MainActivityHome activity;
-        private final String displayKanji;
-        private final boolean fromBrowse;
-        private final String browseQuery;
-        private final boolean suspended;
-
-        SuspendClickListener(MainActivityHome activity, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
-            this.activity = activity;
-            this.displayKanji = displayKanji;
-            this.fromBrowse = fromBrowse;
-            this.browseQuery = browseQuery;
-            this.suspended = suspended;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
-            String toast = HomeTextCopy.localSuspendToast(suspended);
-            Toast.makeText(activity, toast, Toast.LENGTH_SHORT).show();
-            activity.renderDetail(displayKanji, fromBrowse, browseQuery);
-        }
-    }
-
-    private static final class SyncHomeClickListener implements View.OnClickListener {
-        private final MainActivityHome activity;
-
-        SyncHomeClickListener(MainActivityHome activity) {
-            this.activity = activity;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.confirmSync();
-        }
-    }
-
-    private static final class StudyHomeClickListener implements View.OnClickListener {
-        private final MainActivityHome activity;
-
-        StudyHomeClickListener(MainActivityHome activity) {
-            this.activity = activity;
-        }
-
-        @Override
-        public void onClick(View v) {
-            activity.startFocusedStudy();
-        }
-    }
 
     void addDetailExamples(RecordsImportModels.DashboardRow row) {
         addSpace(12);
