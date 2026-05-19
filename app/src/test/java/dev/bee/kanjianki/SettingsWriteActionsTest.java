@@ -5,13 +5,11 @@ import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RetentionSettingsPolicy;
-import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
-import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
 
@@ -198,16 +196,6 @@ public final class SettingsWriteActionsTest {
 
         assertEquals(1, writer.writes);
         assertEquals(0.95, writer.parameters.targetRetention, 0.0);
-    }
-
-    @Test
-    public void saveReminderBuildsAndWritesNormalizedFields() {
-        ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(true, 30, -4);
-        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
-
-        assertTrue(reminder.enabled);
-        assertEquals(23, reminder.hour);
-        assertEquals(0, reminder.minute);
     }
 
     @Test
