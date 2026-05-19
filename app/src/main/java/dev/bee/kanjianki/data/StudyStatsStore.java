@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.data;
 
 import dev.bee.kanjianki.core.KaniOutcomePolicy;
-import dev.bee.kanjianki.core.LocalDayPolicy;
 import dev.bee.kanjianki.core.LadderHealthPolicy;
 import dev.bee.kanjianki.core.RecentMistakePolicy;
 import dev.bee.kanjianki.core.RecordsBase;
@@ -12,129 +11,36 @@ import dev.bee.kanjianki.core.StudyTaskTimingPolicy;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
-import dev.bee.kanjianki.sync.SyncSettings;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public final class StudyStatsStore {
-    private static final String TABLE_REVIEW_LOG = "review_log";
-    private static final String TABLE_SYNC_KANJI_SNAPSHOTS = "sync_kanji_snapshots";
-    private static final String TABLE_STUDY_ITEMS = "study_items";
-    private static final String COLUMN_KANJI = "kanji";
-    private static final String COLUMN_RATING = "rating";
-    private static final String COLUMN_REVIEWED_AT = "reviewed_at";
-    private static final String STATE_RETIRED = "retired";
-    private final LocalStore store;
+    private final StudyStatsQueries queries;
 
     public StudyStatsStore(LocalStore store) {
-        this.store = store;
+        this.queries = new StudyStatsQueries(store);
     }
 
     public StudyTaskTimeStats studyTaskTimeStats(long nowMillis) {
-        StudyTaskTimingPolicy.Window window = StudyTaskTimingPolicy.windowFor(nowMillis);
-        Cursor cursor = db().rawQuery(
-                "SELECT "
-                        + "COALESCE(SUM(CASE WHEN answered_at>=? THEN active_elapsed_ms ELSE 0 END), 0) AS today_elapsed, "
-                        + "COALESCE(SUM(active_elapsed_ms), 0) AS week_elapsed, "
-                        + "COUNT(*) AS week_tasks "
-                        + "FROM study_task_log WHERE answered_at>=? AND answered_at<?",
-                new String[]{
-                        Long.toString(window.todayStartMillis()),
-                        Long.toString(window.sevenDayStartMillis()),
-                        Long.toString(window.tomorrowStartMillis())
-                }
-        );
-        try {
-            cursor.moveToFirst();
-            return StudyTaskTimeStats.fromCore(StudyTaskTimingPolicy.summarize(
-                    cursor.getLong(0),
-                    cursor.getLong(1),
-                    cursor.getInt(2)
-            ));
-        } finally {
-            cursor.close();
-        }
+        return queries.studyTaskTimeStats(nowMillis);
     }
 
     public List<RecentMistake> recentMistakes(int limit) {
-        Cursor cursor = db().query(
-                TABLE_REVIEW_LOG,
-                new String[]{COLUMN_KANJI, COLUMN_RATING, COLUMN_REVIEWED_AT},
-                "rating IN (?, ?)",
-                RecentMistakePolicy.mistakeRatings(),
-                null,
-                null,
-                "reviewed_at DESC, id DESC",
-                Integer.toString(RecentMistakePolicy.boundedLimit(limit))
-        );
-        List<RecentMistake> mistakes = new ArrayList<>();
-        try {
-            while (cursor.moveToNext()) {
-                mistakes.add(RecentMistake.fromCore(RecentMistakePolicy.mistake(
-                        string(cursor, COLUMN_KANJI),
-                        string(cursor, COLUMN_RATING),
-                        longValue(cursor, COLUMN_REVIEWED_AT)
-                )));
-            }
-        } finally {
-            cursor.close();
-        }
-        return mistakes;
+        return queries.recentMistakes(limit);
     }
 
     public StudyStreak studyStreak(long nowMillis) {
-        long today = localDayStart(nowMillis);
-        StudyDays studyDays = studyDays(today);
-        StudyStreakPolicy.Streak streak = StudyStreakPolicy.summarize(
-                studyDays.days,
-                today,
-                studyDays.reviewsToday,
-                studyDays.lastStudyAt
-        );
-        return new StudyStreak(
-                streak.currentDays(),
-                streak.bestDays(),
-                streak.studiedToday(),
-                streak.reviewsToday(),
-                streak.lastStudyAtMillis()
-        );
+        return queries.studyStreak(nowMillis);
     }
 
     public StudyImpactStats studyImpactStats() {
-        Cursor cursor = db().rawQuery(
-                "SELECT "
-                        + "COUNT(*) AS total_reviews, "
-                        + "COUNT(DISTINCT kanji) AS distinct_kanji, "
-                        + "COALESCE(SUM(CASE WHEN writing_required=1 THEN 1 ELSE 0 END), 0) AS writing_required_count, "
-                        + "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=1 THEN 1 ELSE 0 END), 0) AS writing_passed_count, "
-                        + "COALESCE(SUM(CASE WHEN writing_required=1 AND writing_passed=0 AND manual_override=0 THEN 1 ELSE 0 END), 0) AS writing_failed_count, "
-                        + "COALESCE(SUM(CASE WHEN manual_override=1 THEN 1 ELSE 0 END), 0) AS manual_override_count "
-                        + "FROM " + TABLE_REVIEW_LOG,
-                null
-        );
-        try {
-            cursor.moveToFirst();
-            return StudyImpactStats.fromCore(StudyImpactPolicy.summarize(
-                    cursor.getInt(0),
-                    cursor.getInt(1),
-                    cursor.getInt(2),
-                    cursor.getInt(3),
-                    cursor.getInt(4),
-                    cursor.getInt(5)
-            ));
-        } finally {
-            cursor.close();
-        }
+        return queries.studyImpactStats();
     }
 
     public KaniOutcomeStats kaniOutcomeStats() {
-        SQLiteDatabase db = db();
-        int promotionDays = Math.max(1, ladderPromotionIntervalDays());
-        int failStreak = Math.max(1, ladderDemotionFailStreak());
-        return calculateKaniOutcomeStats(outcomeEvidence(db), ladderHealth(db, promotionDays, failStreak));
+        return queries.kaniOutcomeStats();
     }
 
     static KaniOutcomeStats calculateKaniOutcomeStats(List<OutcomeEvidence> outcomeEvidence, List<LadderItemEvidence> ladderItems, int realDueReviewsToMove) {
@@ -157,125 +63,7 @@ public final class StudyStatsStore {
         return toAppOutcomeStats(KaniOutcomePolicy.summarize(toCoreOutcomeEvidence(outcomeEvidence), toCoreMetric(ladderHealth)));
     }
 
-    private SQLiteDatabase db() {
-        return store.getReadableDatabase();
-    }
-
-    private StudyDays studyDays(long today) {
-        Cursor cursor = db().rawQuery(
-                "SELECT review_day_start, COUNT(*) AS review_count, MAX(reviewed_at) AS last_reviewed_at "
-                        + "FROM " + TABLE_REVIEW_LOG + " WHERE review_day_start>0 "
-                        + "GROUP BY review_day_start ORDER BY review_day_start DESC",
-                null
-        );
-        List<Long> days = new ArrayList<>();
-        int reviewsToday = 0;
-        long lastStudyAt = 0L;
-        try {
-            while (cursor.moveToNext()) {
-                long day = cursor.getLong(0);
-                if (lastStudyAt == 0L) {
-                    lastStudyAt = cursor.getLong(2);
-                }
-                if (day == today) {
-                    reviewsToday = cursor.getInt(1);
-                }
-                days.add(day);
-            }
-        } finally {
-            cursor.close();
-        }
-        return new StudyDays(days, reviewsToday, lastStudyAt);
-    }
-
-    private List<OutcomeEvidence> outcomeEvidence(SQLiteDatabase db) {
-        Cursor cursor = db.rawQuery(
-                "SELECT rw.kanji, "
-                        + "(SELECT s.weakness_score FROM " + TABLE_SYNC_KANJI_SNAPSHOTS + " s WHERE s.kanji=rw.kanji AND s.finished_at<rw.first_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS before_weakness, "
-                        + "(SELECT s.mature_support_count FROM " + TABLE_SYNC_KANJI_SNAPSHOTS + " s WHERE s.kanji=rw.kanji AND s.finished_at<rw.first_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS before_support, "
-                        + "(SELECT s.weakness_score FROM " + TABLE_SYNC_KANJI_SNAPSHOTS + " s WHERE s.kanji=rw.kanji AND s.finished_at>rw.last_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS after_weakness, "
-                        + "(SELECT s.mature_support_count FROM " + TABLE_SYNC_KANJI_SNAPSHOTS + " s WHERE s.kanji=rw.kanji AND s.finished_at>rw.last_reviewed_at ORDER BY s.finished_at DESC, s.sync_id DESC LIMIT 1) AS after_support "
-                        + "FROM (SELECT kanji, MIN(reviewed_at) AS first_reviewed_at, MAX(reviewed_at) AS last_reviewed_at "
-                        + "FROM " + TABLE_REVIEW_LOG + " WHERE kanji<>'' GROUP BY kanji) rw",
-                null
-        );
-        List<OutcomeEvidence> out = new ArrayList<>();
-        try {
-            while (cursor.moveToNext()) {
-                String kanji = string(cursor, COLUMN_KANJI);
-                out.add(new OutcomeEvidence(
-                        kanji,
-                        outcomeSnapshot(cursor, 1, 2),
-                        outcomeSnapshot(cursor, 3, 4)
-                ));
-            }
-        } finally {
-            cursor.close();
-        }
-        return out;
-    }
-
-    private LadderHealthMetric ladderHealth(SQLiteDatabase db, int promotionDays, int failStreak) {
-        Cursor cursor = db.rawQuery(
-                "SELECT rung, "
-                        + "COUNT(*) AS total_count, "
-                        + "SUM(CASE WHEN phase='review' AND mature_interval_days>? THEN 1 ELSE 0 END) AS promotion_ready, "
-                        + "SUM(CASE WHEN phase='review' AND real_again_streak>0 THEN 1 ELSE 0 END) AS demotion_risk, "
-                        + "SUM(CASE WHEN phase='review' AND real_again_streak>=? THEN 1 ELSE 0 END) AS demotion_ready "
-                        + "FROM " + TABLE_STUDY_ITEMS + " WHERE state<>? GROUP BY rung",
-                new String[]{Integer.toString(Math.max(1, promotionDays)), Integer.toString(Math.max(1, failStreak)), STATE_RETIRED}
-        );
-        Map<RecordsBase.LadderRung, Integer> distribution = emptyRungDistribution();
-        int total = 0;
-        int promotionReady = 0;
-        int demotionRisk = 0;
-        int demotionReady = 0;
-        try {
-            while (cursor.moveToNext()) {
-                RecordsBase.LadderRung rung = RecordsBase.LadderRung.fromWireName(cursor.getString(0));
-                int count = cursor.getInt(1);
-                distribution.put(rung, distribution.get(rung) + count);
-                total += count;
-                promotionReady += cursor.getInt(2);
-                demotionRisk += cursor.getInt(3);
-                demotionReady += cursor.getInt(4);
-            }
-        } finally {
-            cursor.close();
-        }
-        return toAppMetric(LadderHealthPolicy.fromCounts(
-                distribution,
-                total,
-                promotionDays,
-                failStreak,
-                promotionReady,
-                demotionRisk,
-                demotionReady
-        ));
-    }
-
-    private int realDueReviewsToMove() {
-        return store.getIntSetting(
-                SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY,
-                RecordsSyncModels.Settings.kikuDefaults().realDueReviewsToMove
-        );
-    }
-
-    private int ladderPromotionIntervalDays() {
-        return store.getIntSetting(
-                SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
-                RecordsSyncModels.Settings.kikuDefaults().ladderPromotionIntervalDays
-        );
-    }
-
-    private int ladderDemotionFailStreak() {
-        return store.getIntSetting(
-                SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
-                realDueReviewsToMove()
-        );
-    }
-
-    private static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int ladderPromotionIntervalDays, int ladderDemotionFailStreak) {
+    static LadderHealthMetric ladderHealth(List<LadderItemEvidence> items, int ladderPromotionIntervalDays, int ladderDemotionFailStreak) {
         return toAppMetric(LadderHealthPolicy.summarize(toCoreLadderItems(items), ladderPromotionIntervalDays, ladderDemotionFailStreak));
     }
 
@@ -394,14 +182,6 @@ public final class StudyStatsStore {
         return new OutcomeSnapshot(cursor.getInt(weaknessColumnIndex), cursor.getInt(supportColumnIndex));
     }
 
-    private static long localDayStart(long millis) {
-        return LocalDayPolicy.localDayStart(millis);
-    }
-
-    private static long moveLocalDays(long localDayStart, int days) {
-        return LocalDayPolicy.moveLocalDays(localDayStart, days);
-    }
-
     private static String string(Cursor cursor, String column) {
         return cursor.getString(cursor.getColumnIndexOrThrow(column));
     }
@@ -454,9 +234,6 @@ public final class StudyStatsStore {
             this.manualOverrides = impact.manualOverrides();
         }
 
-        private static StudyImpactStats fromCore(StudyImpactPolicy.Impact impact) {
-            return new StudyImpactStats(impact);
-        }
     }
 
     public static final class StudyTaskTimeStats {
@@ -475,10 +252,6 @@ public final class StudyStatsStore {
             this.todayMillis = safeSummary.todayMillis();
             this.lastSevenDaysMillis = safeSummary.lastSevenDaysMillis();
             this.answeredTasks = safeSummary.answeredTasks();
-        }
-
-        private static StudyTaskTimeStats fromCore(StudyTaskTimingPolicy.Summary summary) {
-            return new StudyTaskTimeStats(summary);
         }
 
         public long averageMillisPerTask() {
@@ -664,12 +437,6 @@ public final class StudyStatsStore {
             this.reviewedAtMillis = mistake.reviewedAtMillis();
         }
 
-        private static RecentMistake fromCore(RecentMistakePolicy.RecentMistake mistake) {
-            return new RecentMistake(mistake);
-        }
-    }
-
-    private record StudyDays(List<Long> days, int reviewsToday, long lastStudyAt) {
     }
 
     record OutcomeSnapshot(int weaknessScore, int matureSupportCount) {
