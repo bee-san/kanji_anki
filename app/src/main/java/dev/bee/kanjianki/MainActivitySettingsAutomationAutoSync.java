@@ -35,26 +35,30 @@ final class MainActivitySettingsAutomationAutoSync {
         if (auto.configured) {
             if (auto.enabled) {
                 Button off = activity.secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
-                off.setOnClickListener(v -> {
-                    AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
-                    activity.store.setAutoSyncEnabled(result.enabled());
-                    AutoSyncScheduler.cancel(activity);
-                    Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
-                    activity.renderSettings();
-                });
+                off.setOnClickListener(v -> disableAutoSync());
                 box.addView(off);
             } else {
                 Button on = activity.primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), activity.STUDY_PINK_DARK);
-                on.setOnClickListener(v -> {
-                    AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
-                    activity.store.setAutoSyncEnabled(result.enabled());
-                    AutoSyncScheduler.schedule(activity);
-                    Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
-                    activity.renderSettings();
-                });
+                on.setOnClickListener(v -> enableAutoSync());
                 box.addView(on);
             }
         }
         return box;
+    }
+
+    private void enableAutoSync() {
+        AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
+        activity.store.setAutoSyncEnabled(result.enabled());
+        AutoSyncScheduler.schedule(activity);
+        Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private void disableAutoSync() {
+        AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
+        activity.store.setAutoSyncEnabled(result.enabled());
+        AutoSyncScheduler.cancel(activity);
+        Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
     }
 }
