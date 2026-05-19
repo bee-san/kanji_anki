@@ -85,6 +85,7 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
+    private final MainActivityHomeScreen homeScreen = new MainActivityHomeScreen(this);
     private final MainActivityHomeOverview overview = new MainActivityHomeOverview(this);
     private final MainActivityHomeChrome chrome = new MainActivityHomeChrome(this);
     private final MainActivityHomeFocusQueue focusQueue = new MainActivityHomeFocusQueue(this);
@@ -95,50 +96,7 @@ abstract class MainActivityHome extends MainActivityBase {
     abstract void renderGames();
 
     void renderHome() {
-        clearStudyModeOverrides();
-        base("home");
-        long now = System.currentTimeMillis();
-        LocalStore.SyncStatus sync = store.latestSync();
-        StudyStatsStore.StudyStreak streak = store.studyStreak(now);
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, now, false, null);
-        RecordsSchedulerModels.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
-        List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
-        AnkiDroidGateway.ProviderStatus provider = gateway.status();
-
-        content.addView(homeHeader());
-        addSpace(12);
-        content.addView(homeMetricRow(sync, provider, streak, homePlan));
-        addSpace(14);
-
-        if (rows.isEmpty()) {
-            Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
-            syncButton.setOnClickListener(new RunnableClickListener(this::confirmSync));
-            content.addView(syncButton);
-        } else {
-            View studyButton = homeStudyCta();
-            studyButton.setOnClickListener(new RunnableClickListener(this::startFocusedStudy));
-            content.addView(studyButton);
-
-        }
-        content.addView(homeActionRow());
-
-        addSpace(16);
-        content.addView(homeSectionHeader(
-                HomeTextCopy.focusQueueTitle(),
-                rows.isEmpty() ? null : HomeTextCopy.viewAllLabel(),
-                rows.isEmpty() ? null : this::renderFocusQueue
-        ));
-        if (rows.isEmpty()) {
-            emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.homeNoKanjiQueuedBody());
-        } else {
-            if (entries.isEmpty()) {
-                emptyState(EMPTY_ACTIVE_PRACTICE_TITLE, EMPTY_ACTIVE_PRACTICE_BODY);
-            }
-            for (int i = 0; i < Math.min(3, entries.size()); i++) {
-                content.addView(queueRowView(entries.get(i), now));
-            }
-        }
+        homeScreen.renderHome();
     }
 
     View homeHeader() {
