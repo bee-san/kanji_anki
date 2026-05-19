@@ -532,10 +532,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return StudyTextCopy.wordPrompt(session);
     }
 
-    String cleanLearnerText(String raw, String fallback, int maxChars) {
-        return StudyTextCopy.cleanLearnerText(raw, fallback, maxChars);
-    }
-
     String compact(String value, int maxChars) {
         return StudyTextCopy.compact(value, maxChars);
     }
