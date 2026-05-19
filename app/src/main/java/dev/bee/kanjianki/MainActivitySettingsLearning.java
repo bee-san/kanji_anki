@@ -1,6 +1,5 @@
 package dev.bee.kanjianki;
 
-import android.widget.EditText;
 import android.widget.LinearLayout;
 
 final class MainActivitySettingsLearning {
@@ -16,7 +15,4 @@ final class MainActivitySettingsLearning {
         return learningPanel.learningStepsSettingsPanel();
     }
 
-    EditText stepInput(String value) {
-        return learningPanel.stepInput(value);
-    }
 }

@@ -300,10 +300,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return learning().learningStepsSettingsPanel();
     }
 
-    EditText stepInput(String value) {
-        return learning().stepInput(value);
-    }
-
     LinearLayout studyAheadSettingsPanel() {
         return studyTuning().studyAheadSettingsPanel();
     }
