@@ -513,31 +513,31 @@ public final class SettingsTextCopy {
     }
 
     public static String ladderThresholdsTitle() {
-        return "Ladder thresholds";
+        return SettingsLadderThresholdTextCopy.ladderThresholdsTitle();
     }
 
     public static String ladderThresholdsBody() {
-        return "Recognition rungs climb when a real FSRS-due pass schedules the next review beyond the day threshold. Learning-step repeats stay practice-only.";
+        return SettingsLadderThresholdTextCopy.ladderThresholdsBody();
     }
 
     public static String fsrsDaysToGoUpLabel() {
-        return "FSRS days to go up";
+        return SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel();
     }
 
     public static String failsToGoDownLabel() {
-        return "Fails to go down";
+        return SettingsLadderThresholdTextCopy.failsToGoDownLabel();
     }
 
     public static String useDefaultLadderThresholdsLabel() {
-        return "Use 21 and 3";
+        return SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel();
     }
 
     public static String saveLadderThresholdsLabel() {
-        return "Save ladder thresholds";
+        return SettingsLadderThresholdTextCopy.saveLadderThresholdsLabel();
     }
 
     public static String ladderThresholdsSavedToast() {
-        return "Ladder thresholds saved.";
+        return SettingsLadderThresholdTextCopy.ladderThresholdsSavedToast();
     }
 
     public static String dailyAnkiSyncTitle() {

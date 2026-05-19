@@ -43,6 +43,13 @@ public final class SettingsTextCopyDelegationTest {
         assertEquals(SettingsStudyAheadTextCopy.studyAheadBody(), SettingsTextCopy.studyAheadBody());
         assertEquals(SettingsStudyAheadTextCopy.saveStudyAheadLabel(), SettingsTextCopy.saveStudyAheadLabel());
         assertEquals(SettingsStudyAheadTextCopy.studyAheadSavedToast(), SettingsTextCopy.studyAheadSavedToast());
+        assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsTitle(), SettingsTextCopy.ladderThresholdsTitle());
+        assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsBody(), SettingsTextCopy.ladderThresholdsBody());
+        assertEquals(SettingsLadderThresholdTextCopy.fsrsDaysToGoUpLabel(), SettingsTextCopy.fsrsDaysToGoUpLabel());
+        assertEquals(SettingsLadderThresholdTextCopy.failsToGoDownLabel(), SettingsTextCopy.failsToGoDownLabel());
+        assertEquals(SettingsLadderThresholdTextCopy.useDefaultLadderThresholdsLabel(), SettingsTextCopy.useDefaultLadderThresholdsLabel());
+        assertEquals(SettingsLadderThresholdTextCopy.saveLadderThresholdsLabel(), SettingsTextCopy.saveLadderThresholdsLabel());
+        assertEquals(SettingsLadderThresholdTextCopy.ladderThresholdsSavedToast(), SettingsTextCopy.ladderThresholdsSavedToast());
         assertEquals(SettingsNoteTypeTextCopy.noteTypeFieldsTitle(), SettingsTextCopy.noteTypeFieldsTitle());
         assertEquals(SettingsNoteTypeTextCopy.noteTypeUsingText("Kiku"), SettingsTextCopy.noteTypeUsingText("Kiku"));
         assertEquals(SettingsNoteTypeTextCopy.noteTypeFieldsBody(), SettingsTextCopy.noteTypeFieldsBody());
