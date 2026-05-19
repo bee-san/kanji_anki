@@ -109,6 +109,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
     private final MainActivityStudyProgress studyProgress = new MainActivityStudyProgress(this);
     private final MainActivityStudyScreen studyScreen = new MainActivityStudyScreen(this);
+    private final MainActivityStudyMoreNewCards moreNewCards = new MainActivityStudyMoreNewCards(this);
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
     final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
     private final MainActivityStudyReasonLine reasonLine = new MainActivityStudyReasonLine(this);
@@ -167,59 +168,23 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     int availableStudyMoreNewCards() {
-        return doneActions.availableStudyMoreNewCards();
+        return moreNewCards.availableStudyMoreNewCards();
     }
 
     void showStudyMoreNewCardsDialog(int availableAtOpen) {
-        doneActions.showStudyMoreNewCardsDialog(availableAtOpen);
+        moreNewCards.showStudyMoreNewCardsDialog(availableAtOpen);
     }
 
     boolean applyStudyMoreNewCardsRequest(EditText countInput) {
-        return doneActions.applyStudyMoreNewCardsRequest(countInput);
+        return moreNewCards.applyStudyMoreNewCardsRequest(countInput);
     }
 
     int requestedStudyMoreNewCards(EditText countInput) {
-        StudyMoreNewCardsPolicy.RequestDecision decision = StudyMoreNewCardsPolicy.requestedCount(countInput.getText().toString());
-        if (!decision.accepted()) {
-            Toast.makeText(this, decision.message(), Toast.LENGTH_SHORT).show();
-            return -1;
-        }
-        return decision.requestedCount();
+        return moreNewCards.requestedStudyMoreNewCards(countInput);
     }
 
     boolean startStudyMoreNewCards(int requestedCount) {
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        if (rows.isEmpty()) {
-            Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        long now = System.currentTimeMillis();
-        BridgeScheduler.ExtraNewCardsResult result = new BridgeScheduler().seedExtraNewCards(
-                rows,
-                store.studyItems(),
-                settings(),
-                now,
-                startOfDay(now),
-                requestedCount,
-                studyLadderSettings()
-        );
-        if (!result.admittedAny()) {
-            Toast.makeText(this, StudyMoreNewCardsPolicy.NO_NEW_CARDS_AVAILABLE_MESSAGE, Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        StudyMoreNewCardActions.AdmissionResult admission = StudyMoreNewCardActions.applyAdmission(
-                result,
-                new MainActivityStudyMoreNewCardWriter(this),
-                studyMoreNewCardKanji,
-                this::resetStudyRunProgress,
-                studySessionTracker::setTargetCount
-        );
-        continueAllKanjiSession = false;
-        if (admission.admittedCount() < requestedCount) {
-            Toast.makeText(this, StudyMoreNewCardsPolicy.partialAvailabilityMessage(admission.admittedCount()), Toast.LENGTH_SHORT).show();
-        }
-        renderStudy();
-        return true;
+        return moreNewCards.startStudyMoreNewCards(requestedCount);
     }
 
     void startFocusedStudy() {
