@@ -54,6 +54,10 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return new LocalStoreSimilarKanjiData(this);
     }
 
+    private LocalStoreInventoryData inventoryData() {
+        return new LocalStoreInventoryData(this);
+    }
+
     void createTimelineTables(SQLiteDatabase db) {
         timeline().createTimelineTables(db);
     }
@@ -349,26 +353,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     RecordsImportModels.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query(TABLE_KANJI_INVENTORY, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
-        try {
-            return cursor.moveToFirst() ? readInventoryItem(db, cursor) : null;
-        } finally {
-            cursor.close();
-        }
+        return inventoryData().readInventoryItem(db, kanji);
     }
 
     RecordsImportModels.KanjiInventoryItem readInventoryItem(SQLiteDatabase db, Cursor cursor) {
-        String kanji = string(cursor, COLUMN_KANJI);
-        return new RecordsImportModels.KanjiInventoryItem(
-                kanji,
-                string(cursor, COLUMN_PRIMARY_MEANING),
-                string(cursor, "readings"),
-                string(cursor, COLUMN_BROWSER_SEARCH),
-                integer(cursor, "source_count"),
-                integer(cursor, "example_count"),
-                isKanjiSuspended(db, kanji),
-                longValue(cursor, COLUMN_LAST_SEEN_AT)
-        );
+        return inventoryData().readInventoryItem(db, cursor);
     }
 
     boolean isKanjiSuspended(SQLiteDatabase db, String kanji) {
@@ -418,57 +407,19 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     RecordsImportModels.DashboardRow readDashboardRow(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query(TABLE_DASHBOARD_ROWS, null, WHERE_KANJI, new String[]{kanji}, null, null, null, "1");
-        try {
-            if (!cursor.moveToFirst()) {
-                return null;
-            }
-            return readDashboardRow(db, cursor);
-        } finally {
-            cursor.close();
-        }
+        return inventoryData().readDashboardRow(db, kanji);
     }
 
     RecordsImportModels.DashboardRow readDashboardRow(SQLiteDatabase db, Cursor cursor) {
-        String kanji = string(cursor, COLUMN_KANJI);
-        return new RecordsImportModels.DashboardRow(
-                kanji,
-                nullableInt(cursor, COLUMN_JITEN_RANK),
-                string(cursor, COLUMN_PRIMARY_MEANING),
-                string(cursor, COLUMN_READING),
-                string(cursor, COLUMN_BROWSER_SEARCH),
-                integer(cursor, COLUMN_WEAKNESS_SCORE),
-                string(cursor, COLUMN_REASON_CODE),
-                string(cursor, COLUMN_REASON_TEXT),
-                integer(cursor, COLUMN_ACTIVE_EXAMPLE_COUNT),
-                integer(cursor, COLUMN_SUSPENDED_EXAMPLE_COUNT),
-                integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
-                examplesForKanji(db, kanji)
-        );
+        return inventoryData().readDashboardRow(db, cursor);
     }
 
     RecordsStudyModels.StudyItem studyItemForKanji(SQLiteDatabase db, String kanji) {
-        Cursor cursor = db.query(TABLE_STUDY_ITEMS, null, WHERE_KANJI, new String[]{kanji}, null, null, "state='retired' ASC, due_at ASC", "1");
-        try {
-            if (!cursor.moveToFirst()) {
-                return null;
-            }
-            RecordsStudyModels.StudyItem item = readStudyItem(cursor);
-            boolean hasSimilar = kanjiHasSimilarNeighbor(db, kanji);
-            return hasSimilar != item.hasSimilarKanji ? item.withHasSimilarKanji(hasSimilar) : item;
-        } finally {
-            cursor.close();
-        }
+        return inventoryData().studyItemForKanji(db, kanji);
     }
 
     boolean kanjiHasSimilarNeighbor(SQLiteDatabase db, String kanji) {
-        try (Cursor cursor = db.rawQuery(
-                "SELECT 1 FROM " + TABLE_SIMILAR_KANJI_PAIRS
-                        + " WHERE kanji_a = ? OR kanji_b = ? LIMIT 1",
-                new String[]{kanji, kanji}
-        )) {
-            return cursor.moveToFirst();
-        }
+        return inventoryData().kanjiHasSimilarNeighbor(db, kanji);
     }
 
     RecordsImportModels.KanjiTimelineEvent readTimelineEvent(Cursor cursor) {
