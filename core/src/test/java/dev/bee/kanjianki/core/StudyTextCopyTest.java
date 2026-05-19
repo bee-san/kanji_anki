@@ -115,6 +115,26 @@ public final class StudyTextCopyTest {
     }
 
     @Test
+    public void studyDoneCopyPreservesFocusAndRunSummaryText() {
+        assertEquals("Today's focus done", StudyTextCopy.studyDoneTitle());
+        assertEquals(
+                "Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.",
+                StudyTextCopy.adaptiveFocusDoneBody()
+        );
+        assertEquals(
+                "Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.",
+                StudyTextCopy.studyRunDoneBody()
+        );
+        assertEquals("Today's focus: 0 items left / 7", StudyTextCopy.adaptiveFocusDoneSummary(7));
+        assertEquals("1 kanji moved forward this session", StudyTextCopy.movedForwardSummary(1));
+        assertEquals("3 kanji moved forward this session", StudyTextCopy.movedForwardSummary(3));
+        assertEquals("1 missed and will come back", StudyTextCopy.missedSummary(1));
+        assertEquals("2 missed and will come back", StudyTextCopy.missedSummary(2));
+        assertEquals("1 task completed", StudyTextCopy.completedTaskSummary(1));
+        assertEquals("4 tasks completed", StudyTextCopy.completedTaskSummary(4));
+    }
+
+    @Test
     public void similarRepairPromptPreservesRepairCopyBranches() {
         assertEquals(
                 "Repair the shape mix-up for pull. You picked 提; write 拉.",

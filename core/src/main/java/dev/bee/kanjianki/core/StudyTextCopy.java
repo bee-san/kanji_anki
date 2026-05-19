@@ -79,6 +79,34 @@ public final class StudyTextCopy {
         return "Typing answer accepted.";
     }
 
+    public static String studyDoneTitle() {
+        return "Today's focus done";
+    }
+
+    public static String adaptiveFocusDoneBody() {
+        return "Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.";
+    }
+
+    public static String studyRunDoneBody() {
+        return "Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.";
+    }
+
+    public static String adaptiveFocusDoneSummary(int target) {
+        return "Today's focus: 0 items left / " + target;
+    }
+
+    public static String movedForwardSummary(int count) {
+        return countText(count, "kanji moved forward this session", "kanji moved forward this session");
+    }
+
+    public static String missedSummary(int count) {
+        return countText(count, "missed and will come back", "missed and will come back");
+    }
+
+    public static String completedTaskSummary(int count) {
+        return countText(count, "task completed", "tasks completed");
+    }
+
     public static String similarWritingRepairSavedToast(boolean passed) {
         return passed ? "Repair saved." : "Saved. Try that repair again.";
     }

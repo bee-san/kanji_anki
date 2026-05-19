@@ -224,10 +224,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         prepareStudyContent(plan, false);
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
-        card.addView(text("Kani finished today's adaptive focus. You can stop here, or keep going through all current problem kanji.", 17, STUDY_MUTED, false));
+        card.addView(text(StudyTextCopy.studyDoneTitle(), 32, STUDY_PLUM, true));
+        card.addView(text(StudyTextCopy.adaptiveFocusDoneBody(), 17, STUDY_MUTED, false));
         LinearLayout summary = softInsetPanel();
-        summary.addView(text("Today's focus: 0 items left / " + plan.target, 20, STUDY_PLUM, true));
+        summary.addView(text(StudyTextCopy.adaptiveFocusDoneSummary(plan.target), 20, STUDY_PLUM, true));
         summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         card.addView(summary);
         addDoneStudyActions(card);
@@ -238,12 +238,12 @@ abstract class MainActivityStudy extends MainActivityStats {
         prepareStudyContent(plan, false);
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
-        card.addView(text("Today's focus done", 32, STUDY_PLUM, true));
-        card.addView(text("Kani finished the Study now set. You can stop here, or explicitly continue through all current problem kanji.", 17, STUDY_MUTED, false));
+        card.addView(text(StudyTextCopy.studyDoneTitle(), 32, STUDY_PLUM, true));
+        card.addView(text(StudyTextCopy.studyRunDoneBody(), 17, STUDY_MUTED, false));
         LinearLayout summary = softInsetPanel();
-        summary.addView(text(countText(studySessionTracker.movedForwardCount(), "kanji moved forward this session", "kanji moved forward this session"), 20, STUDY_PLUM, true));
-        summary.addView(text(countText(studySessionTracker.missedCount(), "missed and will come back", "missed and will come back"), 16, STUDY_MUTED, false));
-        summary.addView(text(countText(studySessionTracker.completedCount(), "task completed", "tasks completed"), 16, STUDY_MUTED, false));
+        summary.addView(text(StudyTextCopy.movedForwardSummary(studySessionTracker.movedForwardCount()), 20, STUDY_PLUM, true));
+        summary.addView(text(StudyTextCopy.missedSummary(studySessionTracker.missedCount()), 16, STUDY_MUTED, false));
+        summary.addView(text(StudyTextCopy.completedTaskSummary(studySessionTracker.completedCount()), 16, STUDY_MUTED, false));
         if (plan != null && !plan.status.isEmpty()) {
             summary.addView(text(plan.status, 15, STUDY_MUTED, false));
         }
