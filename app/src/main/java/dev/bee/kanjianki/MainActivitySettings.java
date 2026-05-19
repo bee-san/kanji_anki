@@ -124,7 +124,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
         LinearLayout box = settingsPanelBox();
         box.addView(text(title, 23, INK, true));
         box.addView(text(SettingsTextCopy.autoUpdatePanelStatus(status.enabled), 18, status.enabled ? TEAL : MUTED, true));
-        box.addView(text(SettingsTextCopy.autoUpdateLastCheckLine(autoUpdateLastCheckText(status)), 15, MUTED, false));
+        box.addView(text(
+                SettingsTextCopy.autoUpdateLastCheckLine(DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)),
+                15,
+                MUTED,
+                false
+        ));
         box.addView(text(SettingsTextCopy.autoUpdateLastResultLine(status.lastResult), 15, MUTED, false));
         box.addView(text(SettingsTextCopy.installPermissionLine(canInstall), 15, canInstall ? TEAL : CORAL, true));
 
@@ -159,14 +164,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         });
         box.addView(toggle);
         return box;
-    }
-
-    String autoUpdateLastCheckText(LocalStore.AutoUpdateStatus status) {
-        return DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis);
-    }
-
-    String versionText(String version) {
-        return SettingsTextCopy.versionText(version);
     }
 
     boolean canInstallUpdates() {
@@ -1513,14 +1510,12 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     String autoSyncDetail(LocalStore.AutoSyncSettings auto) {
-        String lastSuccess = auto.lastSuccessAt > 0L ? shortDateTime(auto.lastSuccessAt) : "";
-        String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt ? shortDateTime(auto.lastAttemptAt) : "";
-        String nextRun = auto.nextRunAt > 0L ? shortDateTime(auto.nextRunAt) : "";
+        String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
+        String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
+                ? DateTextPolicy.shortDateTime(auto.lastAttemptAt)
+                : "";
+        String nextRun = auto.nextRunAt > 0L ? DateTextPolicy.shortDateTime(auto.nextRunAt) : "";
         return SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun);
-    }
-
-    String shortDateTime(long millis) {
-        return DateTextPolicy.shortDateTime(millis);
     }
 
     String workloadStatusText(int percent, int maxItems) {

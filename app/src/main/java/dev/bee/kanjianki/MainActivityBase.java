@@ -182,7 +182,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     abstract boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis);
     abstract void clearStudyModeOverrides();
     abstract Typeface fontResource(int fontRes, Typeface fallback);
-    abstract String shortDateTime(long millis);
     abstract EditText thresholdInput(int value);
     abstract int parseThresholdInput(EditText input);
 

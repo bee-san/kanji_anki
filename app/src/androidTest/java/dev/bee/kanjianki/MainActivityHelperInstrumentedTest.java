@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.StatsTextCopy;
 import android.content.Context;
 import android.content.Intent;
@@ -381,8 +382,8 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyVersionRankAndRetentionText(MainActivity activity) {
-        assertEquals("unknown version", activity.versionText(""));
-        assertEquals("0.4.33", activity.versionText("v0.4.33"));
+        assertEquals("unknown version", SettingsTextCopy.versionText(""));
+        assertEquals("0.4.33", SettingsTextCopy.versionText("v0.4.33"));
         assertEquals(1, MainActivitySettings.boolFlag(true));
         assertEquals(0, MainActivitySettings.boolFlag(false));
         assertEquals(0, activity.rankSliderProgress(-20));
