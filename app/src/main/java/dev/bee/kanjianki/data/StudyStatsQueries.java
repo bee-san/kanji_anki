@@ -173,8 +173,8 @@ final class StudyStatsQueries {
         Cursor cursor = db.query(
                 TABLE_STUDY_ITEMS,
                 new String[]{LocalStoreBase.COLUMN_STATE, LocalStoreBase.COLUMN_RUNG, LocalStoreBase.COLUMN_PHASE, LocalStoreBase.COLUMN_REAL_PASS_STREAK, LocalStoreBase.COLUMN_REAL_AGAIN_STREAK, LocalStoreBase.COLUMN_MATURE_INTERVAL_DAYS},
-                null,
-                null,
+                "state<>?",
+                new String[]{STATE_RETIRED},
                 null,
                 null,
                 null
