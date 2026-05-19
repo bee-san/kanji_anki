@@ -28,22 +28,7 @@ final class MainActivitySettingsWorkloadPanel {
         boolean autoMode = AdaptiveLoadPlanner.isAutoMode(activity.store.adaptiveLoadMode());
         final int[] selected = new int[]{current};
         final int[] selectedMax = new int[]{currentMax};
-        SettingsWriteActions.WorkloadSettingsWriter writer = new SettingsWriteActions.WorkloadSettingsWriter() {
-            @Override
-            public void saveAdaptiveLoadMode(String mode) {
-                activity.store.saveAdaptiveLoadMode(mode);
-            }
-
-            @Override
-            public void saveAdaptiveLoadWorkPercent(int workloadPercent) {
-                activity.store.saveAdaptiveLoadWorkPercent(workloadPercent);
-            }
-
-            @Override
-            public void saveAdaptiveLoadMaxItems(int maxItems) {
-                activity.store.saveAdaptiveLoadMaxItems(maxItems);
-            }
-        };
+        SettingsWriteActions.WorkloadSettingsWriter writer = new MainActivitySettingsWorkloadWriter(activity);
         LinearLayout box = activity.settingsPanelBox();
         box.addView(activity.text(SettingsTextCopy.dailyWorkloadTitle(), 23, activity.INK, true));
 
