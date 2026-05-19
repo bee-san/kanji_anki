@@ -869,19 +869,15 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
-        String reason = studyReasonLine(session);
-        if (!reason.isEmpty()) {
-            card.addView(text(reason, 14, STUDY_MUTED, false));
-        }
-    }
-
-    String studyReasonLine(RecordsSchedulerModels.StudySession session) {
-        return StudyTextCopy.studyReasonLine(
+        String reason = StudyTextCopy.studyReasonLine(
                 activeSimilarWritingRepair != null,
                 session,
                 settings().matureSupportThreshold,
                 System.currentTimeMillis()
         );
+        if (!reason.isEmpty()) {
+            card.addView(text(reason, 14, STUDY_MUTED, false));
+        }
     }
 
     void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
@@ -895,16 +891,12 @@ abstract class MainActivityStudy extends MainActivityStats {
                 active.token(),
                 TASK_REPAIR_WRITING,
                 true,
-                similarRepairPrompt(activeRepair)
+                StudyTextCopy.similarRepairPrompt(activeRepair)
         );
         activeStudyPlan = plan;
         registerStudyTaskShown(active.progressKey());
         startActiveStudyTask(active.studyTaskKey(), activeRepair.repairKanji, TASK_REPAIR_WRITING, now);
         renderWritingSession(activeSession);
-    }
-
-    String similarRepairPrompt(RecordsImportModels.SimilarKanjiWritingRepair repair) {
-        return StudyTextCopy.similarRepairPrompt(repair);
     }
 
     void resetStudyRunProgress() {
