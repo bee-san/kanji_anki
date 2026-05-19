@@ -1,6 +1,7 @@
 package dev.bee.kanjianki;
 
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -44,20 +45,10 @@ final class MainActivitySettingsWorkloadPanel {
             box.addView(activity.text(SettingsTextCopy.automaticWorkloadBody(), 15, activity.MUTED, false));
             addMaxItemsControl(box, selectedMax, null, null);
             Button saveMax = activity.primaryButton(SettingsTextCopy.saveMaximumLabel(), activity.STUDY_PINK_DARK);
-            saveMax.setOnClickListener(v -> {
-                WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
-                SettingsWriteActions.saveWorkload(request, writer);
-                Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-                activity.renderSettings();
-            });
+            saveMax.setOnClickListener(new RunnableClickListener(() -> saveMaximumWorkload(selectedMax, writer)));
             box.addView(saveMax);
             Button manual = activity.secondaryButton(SettingsTextCopy.manualWorkloadLabel());
-            manual.setOnClickListener(v -> {
-                WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
-                SettingsWriteActions.saveWorkload(request, writer);
-                Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-                activity.renderSettings();
-            });
+            manual.setOnClickListener(new RunnableClickListener(() -> enableManualWorkload(writer)));
             box.addView(manual);
             return box;
         }
@@ -84,25 +75,56 @@ final class MainActivitySettingsWorkloadPanel {
         addMaxItemsControl(box, selectedMax, status, selected);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveWorkloadLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
-            SettingsWriteActions.saveWorkload(request, writer);
-            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveManualWorkload(selected, selectedMax, writer)));
         box.addView(save);
         Button automatic = activity.secondaryButton(SettingsTextCopy.automaticParetoLabel());
-        automatic.setOnClickListener(v -> {
-            WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
-            SettingsWriteActions.saveWorkload(request, writer);
-            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        automatic.setOnClickListener(new RunnableClickListener(() -> enableAutomaticWorkload(writer)));
         box.addView(automatic);
         return box;
     }
 
     void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
         sliders.addMaxItemsControl(box, selectedMax, workloadStatus, selectedWorkload);
+    }
+
+    private void saveMaximumWorkload(int[] selectedMax, SettingsWriteActions.WorkloadSettingsWriter writer) {
+        WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
+        SettingsWriteActions.saveWorkload(request, writer);
+        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private void enableManualWorkload(SettingsWriteActions.WorkloadSettingsWriter writer) {
+        WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableManualMode();
+        SettingsWriteActions.saveWorkload(request, writer);
+        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private void saveManualWorkload(int[] selected, int[] selectedMax, SettingsWriteActions.WorkloadSettingsWriter writer) {
+        WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveManualWorkload(selected[0], selectedMax[0]);
+        SettingsWriteActions.saveWorkload(request, writer);
+        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private void enableAutomaticWorkload(SettingsWriteActions.WorkloadSettingsWriter writer) {
+        WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.enableAutomaticMode();
+        SettingsWriteActions.saveWorkload(request, writer);
+        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
