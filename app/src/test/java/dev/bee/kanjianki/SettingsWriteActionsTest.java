@@ -1,6 +1,5 @@
 package dev.bee.kanjianki;
 
-import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
@@ -51,17 +50,6 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
-    public void saveFrequencyRangeWritesLegacyRankKeys() {
-        Map<String, Integer> settings = new LinkedHashMap<>();
-
-        SettingsWriteActions.saveFrequencyRange(250, 3000, settings::put);
-
-        assertEquals(2, settings.size());
-        assertEquals(Integer.valueOf(250), settings.get("suspended_rank_min"));
-        assertEquals(Integer.valueOf(3000), settings.get("suspended_rank_max"));
-    }
-
-    @Test
     public void saveNoteTypeFieldsWritesAllFieldMappingKeys() {
         Map<String, String> settings = new LinkedHashMap<>();
 
@@ -86,19 +74,6 @@ public final class SettingsWriteActionsTest {
         assertEquals("Sentence", settings.get(SyncSettings.SENTENCE_FIELD_SETTING_KEY));
         assertEquals("Frequency", settings.get(SyncSettings.FREQUENCY_FIELD_SETTING_KEY));
         assertEquals("FrequencySort", settings.get(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY));
-    }
-
-    @Test
-    public void saveNewCardSortWritesNormalizedModeKey() {
-        Map<String, String> settings = new LinkedHashMap<>();
-
-        SettingsWriteActions.saveNewCardSort(
-                NewCardSortSettingsPolicy.saveRequest(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
-                settings::put
-        );
-
-        assertEquals(1, settings.size());
-        assertEquals(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, settings.get(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY));
     }
 
     @Test

@@ -688,7 +688,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 return;
             }
             SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
-            SettingsWriteActions.saveFrequencyRange(rankRange.minRank(), rankRange.maxRank(), store::putIntSetting);
+            store.putIntSetting("suspended_rank_min", rankRange.minRank());
+            store.putIntSetting("suspended_rank_max", rankRange.maxRank());
             Toast.makeText(this, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show();
             renderSettings();
         });
@@ -931,7 +932,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         Button save = primaryButton(SettingsTextCopy.saveNewCardSortLabel(), STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
             NewCardSortSettingsPolicy.SaveRequest request = NewCardSortSettingsPolicy.saveRequest(selected[0]);
-            SettingsWriteActions.saveNewCardSort(request, store::putStringSetting);
+            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
             Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
             renderSettings();
         });

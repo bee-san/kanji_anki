@@ -2,7 +2,6 @@ package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
-import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RetentionSettingsPolicy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
@@ -26,11 +25,6 @@ final class SettingsWriteActions {
         writer.putIntSetting(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, request.failStreak);
     }
 
-    static void saveFrequencyRange(int minRank, int maxRank, IntSettingWriter writer) {
-        writer.putIntSetting("suspended_rank_min", minRank);
-        writer.putIntSetting("suspended_rank_max", maxRank);
-    }
-
     static void saveNoteTypeFields(NoteTypeFieldWriteRequest request, StringSettingWriter writer) {
         writer.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, request.noteType());
         writer.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, request.expressionField());
@@ -39,10 +33,6 @@ final class SettingsWriteActions {
         writer.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, request.sentenceField());
         writer.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, request.frequencyField());
         writer.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, request.frequencySortField());
-    }
-
-    static void saveNewCardSort(NewCardSortSettingsPolicy.SaveRequest request, StringSettingWriter writer) {
-        writer.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
     }
 
     static void saveLearningSteps(LearningStepsSettingsPolicy.SaveResult request, LearningStepSettingsWriter writer) {
