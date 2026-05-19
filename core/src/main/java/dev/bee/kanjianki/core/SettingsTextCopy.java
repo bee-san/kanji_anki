@@ -502,31 +502,31 @@ public final class SettingsTextCopy {
     }
 
     public static String learningStepsTitle() {
-        return "Learning steps";
+        return SettingsLearningTextCopy.learningStepsTitle();
     }
 
     public static String learningStepsBody() {
-        return "New cards and review misses can come back quickly for practice. These repeats do not change Kani's SRS after the first answer.";
+        return SettingsLearningTextCopy.learningStepsBody();
     }
 
     public static String reviewMissesLabel() {
-        return "Review misses";
+        return SettingsLearningTextCopy.reviewMissesLabel();
     }
 
     public static String ankiDefaultLabel() {
-        return "Anki default";
+        return SettingsLearningTextCopy.ankiDefaultLabel();
     }
 
     public static String sameLearningStepsLabel() {
-        return "Both 1m 10m";
+        return SettingsLearningTextCopy.sameLearningStepsLabel();
     }
 
     public static String saveLearningStepsLabel() {
-        return "Save learning steps";
+        return SettingsLearningTextCopy.saveLearningStepsLabel();
     }
 
     public static String learningStepsSavedToast() {
-        return "Learning steps saved.";
+        return SettingsLearningTextCopy.learningStepsSavedToast();
     }
 
     public static String studyAheadTitle() {
