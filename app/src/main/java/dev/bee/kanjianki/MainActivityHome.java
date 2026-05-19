@@ -107,7 +107,7 @@ abstract class MainActivityHome extends MainActivityBase {
         LocalStore.SyncStatus sync = store.latestSync();
         StudyStatsStore.StudyStreak streak = store.studyStreak(now);
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, now, false);
+        List<RecordsStudyModels.StudyItem> homeItems = studyQueue(rows, now, false, null);
         RecordsSchedulerModels.AdaptiveLoadPlan homePlan = rows.isEmpty() ? null : adaptivePlan(rows, homeItems, now);
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, homeItems, now, homePlan);
         AnkiDroidGateway.ProviderStatus provider = gateway.status();
@@ -401,7 +401,7 @@ abstract class MainActivityHome extends MainActivityBase {
         base("home");
         long now = System.currentTimeMillis();
         List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> items = studyQueue(rows, now, false);
+        List<RecordsStudyModels.StudyItem> items = studyQueue(rows, now, false, null);
         RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty() ? null : adaptivePlan(rows, items, now);
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
 
@@ -569,10 +569,6 @@ abstract class MainActivityHome extends MainActivityBase {
             return fallback;
         }
         return value;
-    }
-
-    List<RecordsStudyModels.StudyItem> studyQueue(List<RecordsImportModels.DashboardRow> rows, long now, boolean persist) {
-        return studyQueue(rows, now, persist, null);
     }
 
     long studyAheadMillis() {

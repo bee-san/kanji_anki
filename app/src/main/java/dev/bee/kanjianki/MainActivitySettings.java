@@ -1417,7 +1417,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             Button off = secondaryButton(SettingsTextCopy.turnOffReminderLabel());
             off.setOnClickListener(v -> {
                 ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute);
-                SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
+                store.saveReminderSettings(new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()));
                 ReminderScheduler.cancel(this);
                 Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
                 renderSettings();
@@ -1502,7 +1502,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute);
         LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
         if (!enabled) {
-            SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
+            store.saveReminderSettings(reminder);
             ReminderScheduler.cancel(this);
             Toast.makeText(this, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show();
             renderSettings();
@@ -1514,7 +1514,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             requestPermissions(new String[]{PERMISSION_POST_NOTIFICATIONS}, REQUEST_POST_NOTIFICATIONS);
             return;
         }
-        SettingsWriteActions.saveReminder(fields, store::saveReminderSettings);
+        store.saveReminderSettings(reminder);
         ReminderScheduler.schedule(this, reminder);
         boolean allowed = notificationsAllowedForReminders();
         Toast.makeText(this, ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed), allowed ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();

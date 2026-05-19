@@ -5,12 +5,10 @@ import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RetentionSettingsPolicy;
-import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy;
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy;
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy;
-import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.sync.SyncSettings;
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy;
 
@@ -80,15 +78,6 @@ final class SettingsWriteActions {
         writer.saveSchedulerParameters(request.parameters);
     }
 
-    static LocalStore.ReminderSettings saveReminder(
-            ReminderSettingsSavePolicy.ReminderFields fields,
-            ReminderSettingsWriter writer
-    ) {
-        LocalStore.ReminderSettings settings = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
-        writer.saveReminderSettings(settings);
-        return settings;
-    }
-
     static void saveImportFilters(ImportFilterWriteRequest request, SettingWriter writer) {
         writer.putIntSetting(SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.activeCards()));
         writer.putIntSetting(SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY, SettingsImportPreset.boolFlag(request.suspendedCards()));
@@ -128,10 +117,6 @@ final class SettingsWriteActions {
 
     interface SchedulerParametersWriter {
         void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters);
-    }
-
-    interface ReminderSettingsWriter {
-        void saveReminderSettings(LocalStore.ReminderSettings settings);
     }
 
     interface SettingWriter extends IntSettingWriter {

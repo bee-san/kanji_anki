@@ -417,7 +417,7 @@ abstract class MainActivityStudy extends MainActivityStats {
             content.addView(card);
             return;
         }
-        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true);
+        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true, activeStudyPlan);
         activeStudyPlan = adaptivePlan(rows, seeded, now);
         activeSession = new BridgeScheduler().targetedSession(
                 seeded,

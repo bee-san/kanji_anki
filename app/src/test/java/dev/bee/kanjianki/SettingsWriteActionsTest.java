@@ -202,15 +202,12 @@ public final class SettingsWriteActionsTest {
 
     @Test
     public void saveReminderBuildsAndWritesNormalizedFields() {
-        RecordingReminderWriter writer = new RecordingReminderWriter();
         ReminderSettingsSavePolicy.ReminderFields fields = ReminderSettingsSavePolicy.fields(true, 30, -4);
-
-        LocalStore.ReminderSettings reminder = SettingsWriteActions.saveReminder(fields, writer);
+        LocalStore.ReminderSettings reminder = new LocalStore.ReminderSettings(fields.enabled(), fields.hour(), fields.minute());
 
         assertTrue(reminder.enabled);
         assertEquals(23, reminder.hour);
         assertEquals(0, reminder.minute);
-        assertEquals(reminder, writer.settings);
     }
 
     @Test
@@ -383,15 +380,6 @@ public final class SettingsWriteActionsTest {
         public void saveSchedulerParameters(RecordsSchedulerModels.SchedulerParameters parameters) {
             this.parameters = parameters;
             writes++;
-        }
-    }
-
-    private static final class RecordingReminderWriter implements SettingsWriteActions.ReminderSettingsWriter {
-        LocalStore.ReminderSettings settings;
-
-        @Override
-        public void saveReminderSettings(LocalStore.ReminderSettings settings) {
-            this.settings = settings;
         }
     }
 
