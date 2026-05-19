@@ -28,7 +28,6 @@ import androidx.core.view.WindowInsetsCompat;
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
-import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
@@ -40,7 +39,6 @@ import dev.bee.kanjianki.core.ReminderSettingsSavePolicy;
 import dev.bee.kanjianki.core.StudyCollectionLookup;
 import dev.bee.kanjianki.core.StudyPlanSelectionPolicy;
 import dev.bee.kanjianki.core.StudySessionProgressTracker;
-import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.HintLevel;
 import dev.bee.kanjianki.core.study.HintProgression;
@@ -546,14 +544,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     void addSpace(int dp) {
         SpaceView space = new SpaceView(this);
         content.addView(space, new LinearLayout.LayoutParams(1, dp(dp)));
-    }
-
-    String labelForTask(String task) {
-        return StudyTaskCopy.labelForTask(task);
-    }
-
-    String adaptiveFocusText(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        return AdaptiveFocusCopy.adaptiveFocusText(plan);
     }
 
     String guideLabel(int level, StrokeGuide guide) {

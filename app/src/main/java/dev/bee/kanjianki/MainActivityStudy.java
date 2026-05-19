@@ -481,7 +481,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         LinearLayout cardShell = softStudyCard();
         cardShell.addView(modePill("Recall"));
         cardShell.addView(text(LABEL_CHOOSE_KANJI, 30, STUDY_PLUM, true));
-        cardShell.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
+        cardShell.addView(text(StudyTaskCopy.labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
         cardShell.addView(text("Pick the kanji that matches the meaning.", 15, STUDY_MUTED, false));
         addStudyReasonLine(cardShell, session);
 
@@ -789,7 +789,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         LinearLayout card = softStudyCard();
         card.addView(modePill(LABEL_PRACTICE));
         card.addView(text("Draw this kanji", 30, STUDY_PLUM, true));
-        card.addView(text(labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
+        card.addView(text(StudyTaskCopy.labelForTask(session.taskType), 16, STUDY_PINK_DARK, true));
         addStudyReasonLine(card, session);
         if (session.row != null) {
             if (isRecallTask(session)) {

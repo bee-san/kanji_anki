@@ -49,6 +49,7 @@ import androidx.core.widget.TextViewCompat;
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
+import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DateTextPolicy;
@@ -416,7 +417,7 @@ abstract class MainActivityHome extends MainActivityBase {
         List<QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
 
         content.addView(homeSectionHeader(HomeTextCopy.focusQueueTitle(), HomeTextCopy.homeLabel(), this::renderHome));
-        content.addView(text(adaptiveFocusText(plan), 16, MUTED, false));
+        content.addView(text(AdaptiveFocusCopy.adaptiveFocusText(plan), 16, MUTED, false));
         addSpace(8);
         if (rows.isEmpty()) {
             emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.focusQueueNoKanjiQueuedBody());
@@ -553,7 +554,7 @@ abstract class MainActivityHome extends MainActivityBase {
         RecordsSchedulerModels.AdaptiveLoadPlan plan = adaptivePlan(rows, items, now);
         List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
         summary.addView(text(HomeTextCopy.syncReadyCountText(entries.size()), 24, Color.WHITE, true));
-        summary.addView(text(HomeTextCopy.syncCandidateSummary(result.dashboardRows, adaptiveFocusText(plan)), 16, Color.WHITE, false));
+        summary.addView(text(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)), 16, Color.WHITE, false));
         addOptionalSyncSummaryLines(summary, result);
         content.addView(summary);
         if (result.dashboardRows > 0) {

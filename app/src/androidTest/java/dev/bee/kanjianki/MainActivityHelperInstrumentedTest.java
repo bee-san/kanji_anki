@@ -5,10 +5,12 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.StatsTextCopy;
+import dev.bee.kanjianki.core.StudyTaskCopy;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -124,25 +126,25 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void assertStudyModeLabels(MainActivity activity) {
-        assertEquals("Study", activity.labelForTask(null));
-        assertEquals("Focused recall", activity.labelForTask("targeted_flashcard"));
-        assertEquals("Kanji -> meaning", activity.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
-        assertEquals("Type the meaning", activity.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
-        assertEquals("Meaning -> kanji", activity.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
-        assertEquals("Font -> meaning", activity.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
-        assertEquals("Word -> reading", activity.labelForTask(BridgeScheduler.TASK_WORD_READING));
-        assertEquals("Write kanji", activity.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
-        assertEquals("Similar kanji", activity.labelForTask(BridgeScheduler.TASK_SIMILAR_KANJI));
-        assertEquals("Quick recall", activity.labelForTask("meaning_flashcard"));
-        assertEquals("Font check", activity.labelForTask("font_recognition"));
-        assertEquals("Write to repair", activity.labelForTask("repair_writing"));
-        assertEquals("Focused practice", activity.labelForTask("targeted_writing"));
-        assertEquals("New problem kanji", activity.labelForTask("context_writing"));
-        assertEquals("Guided review", activity.labelForTask("guided_writing"));
-        assertEquals("Memory check", activity.labelForTask("blind_writing"));
-        assertEquals("Memory check", activity.labelForTask("sampled_handwriting"));
-        assertEquals("Learn the shape", activity.labelForTask("confusable_recognition"));
-        assertEquals("Study", activity.labelForTask("unexpected"));
+        assertEquals("Study", StudyTaskCopy.labelForTask(null));
+        assertEquals("Focused recall", StudyTaskCopy.labelForTask("targeted_flashcard"));
+        assertEquals("Kanji -> meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_KANJI_MEANING));
+        assertEquals("Type the meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_TYPE_MEANING));
+        assertEquals("Meaning -> kanji", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_MEANING_KANJI));
+        assertEquals("Font -> meaning", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_FONT_MEANING));
+        assertEquals("Word -> reading", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_WORD_READING));
+        assertEquals("Write kanji", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_WRITE_KANJI));
+        assertEquals("Similar kanji", StudyTaskCopy.labelForTask(BridgeScheduler.TASK_SIMILAR_KANJI));
+        assertEquals("Quick recall", StudyTaskCopy.labelForTask("meaning_flashcard"));
+        assertEquals("Font check", StudyTaskCopy.labelForTask("font_recognition"));
+        assertEquals("Write to repair", StudyTaskCopy.labelForTask("repair_writing"));
+        assertEquals("Focused practice", StudyTaskCopy.labelForTask("targeted_writing"));
+        assertEquals("New problem kanji", StudyTaskCopy.labelForTask("context_writing"));
+        assertEquals("Guided review", StudyTaskCopy.labelForTask("guided_writing"));
+        assertEquals("Memory check", StudyTaskCopy.labelForTask("blind_writing"));
+        assertEquals("Memory check", StudyTaskCopy.labelForTask("sampled_handwriting"));
+        assertEquals("Learn the shape", StudyTaskCopy.labelForTask("confusable_recognition"));
+        assertEquals("Study", StudyTaskCopy.labelForTask("unexpected"));
         assertEquals("android.permission.POST_NOTIFICATIONS", MainActivityBase.PERMISSION_POST_NOTIFICATIONS);
     }
 
@@ -150,10 +152,10 @@ public final class MainActivityHelperInstrumentedTest {
         RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
         RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 3, 3, Arrays.asList("裂", "提", "語"), 0, true, "all");
         RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 5, 2, Arrays.asList("裂", "提"), 0, false, "focus");
-        assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(null));
-        assertEquals("Adaptive focus is waiting for sync", activity.adaptiveFocusText(waiting));
-        assertEquals("Adaptive focus is set to all current problem kanji", activity.adaptiveFocusText(all));
-        assertEquals("Today's adaptive focus: 2 items left / 5", activity.adaptiveFocusText(focused));
+        assertEquals("Adaptive focus is waiting for sync", AdaptiveFocusCopy.adaptiveFocusText(null));
+        assertEquals("Adaptive focus is waiting for sync", AdaptiveFocusCopy.adaptiveFocusText(waiting));
+        assertEquals("Adaptive focus is set to all current problem kanji", AdaptiveFocusCopy.adaptiveFocusText(all));
+        assertEquals("Today's adaptive focus: 2 items left / 5", AdaptiveFocusCopy.adaptiveFocusText(focused));
     }
 
     private static void assertWritingGuideText(MainActivity activity) {
