@@ -188,11 +188,15 @@ abstract class MainActivityStudy extends MainActivityStats {
             RecordsBase.StudyLadderSettings ladder
     ) {
         initializeSessionProgressTarget(plan);
-        includeDueSimilarWritingRepairs(now, ladder);
-        RecordsImportModels.SimilarKanjiWritingRepair repair = nextDueSimilarWritingRepair(now, ladder);
-        if (repair != null) {
-            renderSimilarWritingRepair(repair, plan, now);
-            return true;
+        if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+            for (RecordsImportModels.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(now)) {
+                studySessionTracker.includePendingTask(similarRepairProgressKey(repair));
+            }
+            RecordsImportModels.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
+            if (repair != null) {
+                renderSimilarWritingRepair(repair, plan, now);
+                return true;
+            }
         }
         if (studySessionTracker.atHardCap(continueAllKanjiSession)) {
             renderStudyRunDone(plan);
@@ -932,22 +936,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         studySessionTracker.initializeTarget(plan);
-    }
-
-    RecordsImportModels.SimilarKanjiWritingRepair nextDueSimilarWritingRepair(long nowMillis, RecordsBase.StudyLadderSettings ladder) {
-        if (!ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-            return null;
-        }
-        return store.nextDueSimilarWritingRepair(nowMillis);
-    }
-
-    void includeDueSimilarWritingRepairs(long nowMillis, RecordsBase.StudyLadderSettings ladder) {
-        if (!ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-            return;
-        }
-        for (RecordsImportModels.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(nowMillis)) {
-            studySessionTracker.includePendingTask(similarRepairProgressKey(repair));
-        }
     }
 
     void registerStudyTaskShown(String key) {
