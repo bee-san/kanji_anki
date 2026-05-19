@@ -994,10 +994,10 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyHomeSyncFocusAndStreakText(MainActivity activity) {
-        assertEquals("Never synced", activity.homeSyncValue(null));
-        assertEquals("", activity.sentenceCase(""));
-        assertEquals("", activity.sentenceCase(null));
-        assertEquals("Synced today", activity.sentenceCase("synced today"));
+        assertEquals("Never synced", HomeTextCopy.homeSyncValue(null));
+        assertEquals("", HomeTextCopy.sentenceCase(""));
+        assertEquals("", HomeTextCopy.sentenceCase(null));
+        assertEquals("Synced today", HomeTextCopy.sentenceCase("synced today"));
 
         RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
         RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 2, 2, Arrays.asList("裂", "語"), 0, true, "all");
@@ -2189,9 +2189,9 @@ public final class MainActivityHelperInstrumentedTest {
     public void browseAndDetailCopyAvoidMisleadingOrBlankRows() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertEquals("No matches", activity.browseResultHeading(0));
-                assertEquals("2 kanji", activity.browseResultHeading(2));
-                assertEquals("Showing first 300 matches", activity.browseResultHeading(300));
+                assertEquals("No matches", HomeTextCopy.browseResultHeading(0));
+                assertEquals("2 kanji", HomeTextCopy.browseResultHeading(2));
+                assertEquals("Showing first 300 matches", HomeTextCopy.browseResultHeading(300));
 
                 RecordsImportModels.DashboardRow row = new RecordsImportModels.DashboardRow(
                         "裂",

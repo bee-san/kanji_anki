@@ -178,7 +178,7 @@ abstract class MainActivityHome extends MainActivityBase {
                 R.drawable.ic_sync_24,
                 TEAL,
                 HomeTextCopy.syncMetricLabel(),
-                homeSyncValue(sync),
+                HomeTextCopy.homeSyncValue(sync == null ? null : sync.finishedAt),
                 HomeTextCopy.syncMetricStatus(provider.canSync && sync != null && "success".equals(sync.status)),
                 this::confirmSync
         ));
@@ -333,14 +333,6 @@ abstract class MainActivityHome extends MainActivityBase {
 
     void renderBrowseKanji() {
         renderBrowseKanji("");
-    }
-
-    String homeSyncValue(LocalStore.SyncStatus sync) {
-        return HomeTextCopy.homeSyncValue(sync == null ? null : sync.finishedAt);
-    }
-
-    String sentenceCase(String value) {
-        return HomeTextCopy.sentenceCase(value);
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
@@ -731,7 +723,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(submit);
 
         List<RecordsImportModels.KanjiInventoryItem> items = store.searchKanjiInventory(query);
-        content.addView(sectionTitle(browseResultHeading(items.size())));
+        content.addView(sectionTitle(HomeTextCopy.browseResultHeading(items.size())));
         if (items.isEmpty()) {
             emptyState(HomeTextCopy.browseEmptyTitle(), HomeTextCopy.browseEmptyBody());
             return;
@@ -765,10 +757,6 @@ abstract class MainActivityHome extends MainActivityBase {
             box.addView(chips);
         }
         return box;
-    }
-
-    String browseResultHeading(int size) {
-        return HomeTextCopy.browseResultHeading(size);
     }
 
     void renderDetail(String kanji, boolean fromBrowse) {
