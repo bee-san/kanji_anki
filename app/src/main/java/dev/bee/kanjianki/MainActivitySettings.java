@@ -122,6 +122,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsStudyTuning(this);
     }
 
+    private MainActivitySettingsStudySort studySort() {
+        return new MainActivitySettingsStudySort(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -498,36 +502,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
-        final String[] selected = new String[]{current.newCardSortMode};
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.newCardSortTitle(), 23, INK, true));
-        TextView status = text(SettingsTextCopy.newCardSortStatusText(selected[0]), 17, TEAL, true);
-        box.addView(status);
-        box.addView(text(SettingsTextCopy.newCardSortBody(), 15, MUTED, false));
-
-        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY), RecordsBase.NEW_CARD_SORT_FREQUENCY, selected, status);
-        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY), RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY, selected, status);
-        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK), RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, selected, status);
-        addSortModeButton(box, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS), RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS, selected, status);
-
-        Button save = primaryButton(SettingsTextCopy.saveNewCardSortLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            NewCardSortSettingsPolicy.SaveRequest request = NewCardSortSettingsPolicy.saveRequest(selected[0]);
-            store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode);
-            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return studySort().newCardSortSettingsPanel(current);
     }
 
     void addSortModeButton(LinearLayout box, String label, String mode, String[] selected, TextView status) {
-        Button button = secondaryButton(label);
-        button.setOnClickListener(v -> {
-            selected[0] = mode;
-            status.setText(SettingsTextCopy.newCardSortStatusText(mode));
-        });
-        box.addView(button);
+        studySort().addSortModeButton(box, label, mode, selected, status);
     }
 
     LinearLayout workloadSettingsPanel() {
