@@ -86,4 +86,44 @@ final class LocalStoreInventoryMaintenance {
             db.insertWithOnConflict(LocalStoreBase.TABLE_KANJI_INVENTORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         }
     }
+
+    void saveRows(SQLiteDatabase db, List<RecordsImportModels.DashboardRow> rows, long rebuiltAt) {
+        for (RecordsImportModels.DashboardRow row : rows) {
+            ContentValues values = new ContentValues();
+            values.put(LocalStoreBase.COLUMN_KANJI, row.kanji);
+            if (row.jitenRank != null) {
+                values.put(LocalStoreBase.COLUMN_JITEN_RANK, row.jitenRank);
+            }
+            values.put(LocalStoreBase.COLUMN_PRIMARY_MEANING, row.primaryMeaning);
+            values.put(LocalStoreBase.COLUMN_READING, row.reading);
+            values.put(LocalStoreBase.COLUMN_BROWSER_SEARCH, row.browserSearch);
+            values.put(LocalStoreBase.COLUMN_WEAKNESS_SCORE, row.weaknessScore);
+            values.put(LocalStoreBase.COLUMN_REASON_CODE, row.reasonCode);
+            values.put(LocalStoreBase.COLUMN_REASON_TEXT, row.reasonText);
+            values.put(LocalStoreBase.COLUMN_ACTIVE_EXAMPLE_COUNT, row.activeExampleCount);
+            values.put(LocalStoreBase.COLUMN_SUSPENDED_EXAMPLE_COUNT, row.suspendedExampleCount);
+            values.put(LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT, row.matureSupportCount);
+            values.put("rebuilt_at", rebuiltAt);
+            db.insertWithOnConflict(LocalStoreBase.TABLE_DASHBOARD_ROWS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            for (RecordsImportModels.Example example : row.examples) {
+                ContentValues ex = new ContentValues();
+                ex.put(LocalStoreBase.COLUMN_KANJI, row.kanji);
+                ex.put("source_type", example.sourceType);
+                ex.put(LocalStoreBase.COLUMN_CARD_ID, example.cardId);
+                ex.put(LocalStoreBase.COLUMN_NOTE_ID, example.noteId);
+                ex.put(LocalStoreBase.COLUMN_EXPRESSION, example.expression);
+                ex.put(LocalStoreBase.COLUMN_READING, example.reading);
+                ex.put(LocalStoreBase.COLUMN_MEANING, example.meaning);
+                ex.put(LocalStoreBase.COLUMN_SENTENCE, example.sentence);
+                ex.put(LocalStoreBase.COLUMN_MATURE, example.mature ? 1 : 0);
+                ex.put(LocalStoreBase.COLUMN_LAPSES, example.lapses);
+                ex.put(LocalStoreBase.COLUMN_INTERVAL_DAYS, example.intervalDays);
+                ex.put(LocalStoreBase.COLUMN_REPS, example.reps);
+                LocalStoreBase.putNullableDouble(ex, LocalStoreBase.COLUMN_FSRS_STABILITY, example.fsrsStability);
+                LocalStoreBase.putNullableDouble(ex, LocalStoreBase.COLUMN_FSRS_DIFFICULTY, example.fsrsDifficulty);
+                LocalStoreBase.putNullableDouble(ex, LocalStoreBase.COLUMN_FSRS_RETRIEVABILITY, example.fsrsRetrievability);
+                db.insert(LocalStoreBase.TABLE_KANJI_EXAMPLES, null, ex);
+            }
+        }
+    }
 }

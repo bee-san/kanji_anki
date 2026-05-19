@@ -549,43 +549,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     void saveRows(SQLiteDatabase db, List<RecordsImportModels.DashboardRow> rows, long rebuiltAt) {
-        for (RecordsImportModels.DashboardRow row : rows) {
-            ContentValues values = new ContentValues();
-            values.put(COLUMN_KANJI, row.kanji);
-            if (row.jitenRank != null) {
-                values.put(COLUMN_JITEN_RANK, row.jitenRank);
-            }
-            values.put(COLUMN_PRIMARY_MEANING, row.primaryMeaning);
-            values.put(COLUMN_READING, row.reading);
-            values.put(COLUMN_BROWSER_SEARCH, row.browserSearch);
-            values.put(COLUMN_WEAKNESS_SCORE, row.weaknessScore);
-            values.put(COLUMN_REASON_CODE, row.reasonCode);
-            values.put(COLUMN_REASON_TEXT, row.reasonText);
-            values.put(COLUMN_ACTIVE_EXAMPLE_COUNT, row.activeExampleCount);
-            values.put(COLUMN_SUSPENDED_EXAMPLE_COUNT, row.suspendedExampleCount);
-            values.put(COLUMN_MATURE_SUPPORT_COUNT, row.matureSupportCount);
-            values.put("rebuilt_at", rebuiltAt);
-            db.insertWithOnConflict(TABLE_DASHBOARD_ROWS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-            for (RecordsImportModels.Example example : row.examples) {
-                ContentValues ex = new ContentValues();
-                ex.put(COLUMN_KANJI, row.kanji);
-                ex.put("source_type", example.sourceType);
-                ex.put(COLUMN_CARD_ID, example.cardId);
-                ex.put(COLUMN_NOTE_ID, example.noteId);
-                ex.put(COLUMN_EXPRESSION, example.expression);
-                ex.put(COLUMN_READING, example.reading);
-                ex.put(COLUMN_MEANING, example.meaning);
-                ex.put(COLUMN_SENTENCE, example.sentence);
-                ex.put(COLUMN_MATURE, example.mature ? 1 : 0);
-                ex.put(COLUMN_LAPSES, example.lapses);
-                ex.put(COLUMN_INTERVAL_DAYS, example.intervalDays);
-                ex.put(COLUMN_REPS, example.reps);
-                putNullableDouble(ex, COLUMN_FSRS_STABILITY, example.fsrsStability);
-                putNullableDouble(ex, COLUMN_FSRS_DIFFICULTY, example.fsrsDifficulty);
-                putNullableDouble(ex, COLUMN_FSRS_RETRIEVABILITY, example.fsrsRetrievability);
-                db.insert(TABLE_KANJI_EXAMPLES, null, ex);
-            }
-        }
+        inventoryMaintenance().saveRows(db, rows, rebuiltAt);
     }
 
     void appendHistoricalSyncSnapshots(
