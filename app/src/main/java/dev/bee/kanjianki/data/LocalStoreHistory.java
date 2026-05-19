@@ -50,6 +50,10 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return new LocalStoreSimilarKanjiMaintenance(this);
     }
 
+    private LocalStoreSimilarKanjiData similarKanjiData() {
+        return new LocalStoreSimilarKanjiData(this);
+    }
+
     void createTimelineTables(SQLiteDatabase db) {
         timeline().createTimelineTables(db);
     }
@@ -328,25 +332,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     Map<String, SimilarChoiceSnapshot> similarChoiceSnapshots(SQLiteDatabase db) {
-        Map<String, SimilarChoiceSnapshot> out = new HashMap<>();
-        try (Cursor cursor = db.query(TABLE_SIMILAR_KANJI_CHOICE_STATE, null, null, null, null, null, null)) {
-            while (cursor.moveToNext()) {
-                String target = string(cursor, COLUMN_TARGET_KANJI);
-                String signature = string(cursor, COLUMN_CHOICE_SIGNATURE);
-                out.put(
-                        similarChoiceKey(target, signature),
-                        new SimilarChoiceSnapshot(
-                                longValue(cursor, COLUMN_DUE_AT),
-                                longValue(cursor, COLUMN_PASSED_AT),
-                                longValue(cursor, COLUMN_LAST_REVIEWED_AT),
-                                integer(cursor, COLUMN_CORRECT_COUNT),
-                                integer(cursor, COLUMN_WRONG_COUNT),
-                                longValue(cursor, COLUMN_FIRST_SEEN_AT)
-                        )
-                );
-            }
-        }
-        return out;
+        return similarKanjiData().similarChoiceSnapshots(db);
     }
 
     RecordsImportModels.SimilarKanjiChoiceCard similarChoiceCard(SQLiteDatabase db, String targetKanji, String choiceSignature) {
@@ -365,32 +351,11 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     RecordsImportModels.SimilarKanjiChoiceCard readSimilarChoiceCard(Cursor cursor) {
-        return new RecordsImportModels.SimilarKanjiChoiceCard(
-                string(cursor, COLUMN_TARGET_KANJI),
-                string(cursor, COLUMN_PRIMARY_MEANING),
-                deserializeChoices(string(cursor, COLUMN_CHOICES)),
-                string(cursor, COLUMN_CHOICE_SIGNATURE),
-                longValue(cursor, COLUMN_DUE_AT),
-                longValue(cursor, COLUMN_PASSED_AT),
-                longValue(cursor, COLUMN_LAST_REVIEWED_AT),
-                integer(cursor, COLUMN_CORRECT_COUNT),
-                integer(cursor, COLUMN_WRONG_COUNT)
-        );
+        return similarKanjiData().readSimilarChoiceCard(cursor);
     }
 
     boolean hasPendingSimilarRepairs(SQLiteDatabase db, String targetKanji, String choiceSignature) {
-        try (Cursor cursor = db.query(
-                TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
-                new String[]{"id"},
-                "status=? AND target_kanji=? AND choice_signature=?",
-                new String[]{STATUS_PENDING, targetKanji, choiceSignature},
-                null,
-                null,
-                null,
-                "1"
-        )) {
-            return cursor.moveToFirst();
-        }
+        return similarKanjiData().hasPendingSimilarRepairs(db, targetKanji, choiceSignature);
     }
 
     void enqueueSimilarWritingRepair(
@@ -400,72 +365,15 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             String wrongSelection,
             long nowMillis
     ) {
-        SimilarKanjiRepairPolicy.RepairDraft draft =
-                SimilarKanjiRepairPolicy.newRepair(card, repairKanji, wrongSelection, nowMillis);
-        if (draft == null) {
-            return;
-        }
-        try (Cursor pending = db.query(
-                TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
-                new String[]{"id"},
-                "status=? AND target_kanji=? AND choice_signature=? AND repair_kanji=?",
-                new String[]{STATUS_PENDING, draft.targetKanji(), draft.choiceSignature(), draft.repairKanji()},
-                null,
-                null,
-                null,
-                "1"
-        )) {
-            if (pending.moveToFirst()) {
-                return;
-            }
-        }
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_TARGET_KANJI, draft.targetKanji());
-        values.put("repair_kanji", draft.repairKanji());
-        values.put(COLUMN_CHOICE_SIGNATURE, draft.choiceSignature());
-        values.put("wrong_selection", draft.wrongSelection());
-        values.put("prompt_meaning", draft.promptMeaning());
-        values.put(COLUMN_STATUS, draft.status());
-        values.put(COLUMN_DUE_AT, draft.dueAtMillis());
-        values.put(COLUMN_ACTIVE_TOKEN, draft.activeToken());
-        values.put(COLUMN_ATTEMPTS, draft.attempts());
-        values.put(COLUMN_CREATED_AT, draft.createdAtMillis());
-        values.put(COLUMN_UPDATED_AT, draft.updatedAtMillis());
-        values.put(COLUMN_COMPLETED_AT, draft.completedAtMillis());
-        db.insert(TABLE_SIMILAR_KANJI_REPAIR_QUEUE, null, values);
+        similarKanjiData().enqueueSimilarWritingRepair(db, card, repairKanji, wrongSelection, nowMillis);
     }
 
     RecordsImportModels.SimilarKanjiWritingRepair similarWritingRepair(SQLiteDatabase db, long repairId) {
-        try (Cursor cursor = db.query(
-                TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
-                null,
-                "id=?",
-                new String[]{Long.toString(repairId)},
-                null,
-                null,
-                null,
-                "1"
-        )) {
-            return cursor.moveToFirst() ? readSimilarWritingRepair(cursor) : null;
-        }
+        return similarKanjiData().similarWritingRepair(db, repairId);
     }
 
     RecordsImportModels.SimilarKanjiWritingRepair readSimilarWritingRepair(Cursor cursor) {
-        return new RecordsImportModels.SimilarKanjiWritingRepair(
-                longValue(cursor, "id"),
-                string(cursor, COLUMN_TARGET_KANJI),
-                string(cursor, "repair_kanji"),
-                string(cursor, COLUMN_CHOICE_SIGNATURE),
-                string(cursor, "wrong_selection"),
-                string(cursor, "prompt_meaning"),
-                string(cursor, COLUMN_STATUS),
-                longValue(cursor, COLUMN_DUE_AT),
-                string(cursor, COLUMN_ACTIVE_TOKEN),
-                integer(cursor, COLUMN_ATTEMPTS),
-                longValue(cursor, COLUMN_CREATED_AT),
-                longValue(cursor, COLUMN_UPDATED_AT),
-                longValue(cursor, COLUMN_COMPLETED_AT)
-        );
+        return similarKanjiData().readSimilarWritingRepair(cursor);
     }
 
     static String serializeChoices(List<String> choices) {
