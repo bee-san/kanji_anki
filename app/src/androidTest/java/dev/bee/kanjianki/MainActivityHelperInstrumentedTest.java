@@ -351,8 +351,13 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(WritingFeedbackCopy.canManualOverride(close));
                 assertTrue(activity.shouldIncreaseSupportAfterAnalysis(wrong));
                 assertFalse(activity.shouldIncreaseSupportAfterAnalysis(close));
-                assertTrue(activity.shouldShowLearningPanel(wrong));
-                assertFalse(activity.shouldShowLearningPanel(analysis(WritingAnalysis.Status.NO_INK, false, order)));
+                assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(wrong, false, true, 1));
+                assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(
+                        analysis(WritingAnalysis.Status.NO_INK, false, order),
+                        false,
+                        true,
+                        3
+                ));
                 assertTrue(activity.attemptProgressText(close).contains("Try cleaner"));
                 assertTrue(activity.attemptProgressText(pass).contains("less help"));
                 assertTrue(activity.targetRevealText(wrong).contains("Target: 裂"));
@@ -1756,12 +1761,17 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(activity.canRevealMoreHelp());
         activity.activeSession = session("裂", "blind_writing", row);
         activity.currentPracticeLevel = 1;
-        assertFalse(activity.shouldShowLearningPanel(null));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, true, false, activity.currentPracticeLevel));
         activity.activeSession = session("裂", "context_writing", row);
-        assertTrue(activity.shouldShowLearningPanel(null));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(null, false, true, activity.currentPracticeLevel));
         activity.currentPracticeLevel = 3;
-        assertFalse(activity.shouldShowLearningPanel(null));
-        assertTrue(activity.shouldShowLearningPanel(analysis(WritingAnalysis.Status.PASS, true, order)));
+        assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(null, false, true, activity.currentPracticeLevel));
+        assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(
+                analysis(WritingAnalysis.Status.PASS, true, order),
+                false,
+                true,
+                activity.currentPracticeLevel
+        ));
         assertFalse(activity.shouldIncreaseSupportAfterAnalysis(null));
         assertFalse(WritingFeedbackCopy.canManualOverride(null));
         assertFalse(WritingFeedbackCopy.canPracticeAfterAnalysis(null));

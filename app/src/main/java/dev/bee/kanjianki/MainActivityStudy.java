@@ -1674,15 +1674,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         return StudyTaskCopy.isTeachingTask(session);
     }
 
-    boolean shouldShowLearningPanel(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.shouldShowLearningPanel(
-                analysis,
-                activeSession != null && isRecallTask(activeSession),
-                activeSession != null && isTeachingTask(activeSession),
-                currentPracticeLevel
-        );
-    }
-
     boolean canRevealMoreHelp() {
         if (activeSession == null) {
             return false;
