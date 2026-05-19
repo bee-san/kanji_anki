@@ -114,6 +114,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsAnkiSource(this);
     }
 
+    private MainActivitySettingsRetention retention() {
+        return new MainActivitySettingsRetention(this);
+    }
+
     void renderUpdate() {
         base(NAV_SETTINGS_ROUTE);
         content.addView(fullWidthHomeButton());
@@ -869,89 +873,11 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout retentionSettingsPanel() {
-        RecordsSchedulerModels.SchedulerParameters current = store.schedulerParameters();
-        final int[] selected = new int[]{SettingsInputRules.retentionPercent(current.targetRetention)};
-        LinearLayout box = settingsPanelBox();
-        box.addView(text(SettingsTextCopy.fsrsRetentionTitle(), 23, INK, true));
-        TextView status = text(SettingsTextCopy.retentionStatusText(selected[0]), 17, TEAL, true);
-        box.addView(status);
-        box.addView(text(SettingsTextCopy.fsrsRetentionBody(), 15, MUTED, false));
-
-        SeekBar slider = new SeekBar(this);
-        slider.setMax(17);
-        slider.setProgress(selected[0] - 80);
-        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                selected[0] = 80 + progress;
-                status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // Drag-start has no side effects; live updates happen as progress changes.
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                // Drag-stop has no side effects; selected retention is already updated.
-            }
-        });
-        box.addView(slider, new LinearLayout.LayoutParams(-1, dp(56)));
-
-        LinearLayout quick = new LinearLayout(this);
-        quick.setOrientation(LinearLayout.HORIZONTAL);
-        for (int value : new int[]{85, 90, 95}) {
-            Button preset = secondaryButton(SettingsTextCopy.retentionPresetLabel(value));
-            preset.setOnClickListener(v -> {
-                selected[0] = value;
-                slider.setProgress(value - 80);
-                status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
-            });
-            quick.addView(preset, new LinearLayout.LayoutParams(0, dp(54), 1));
-        }
-        box.addView(quick);
-
-        CheckBox rankRetentionEnabled = importFilterCheckBox(SettingsTextCopy.useJitenRankRetentionRangesLabel(), current.frequencyRetentionEnabled);
-        box.addView(rankRetentionEnabled);
-        box.addView(text(SettingsTextCopy.jitenRankRetentionRangesBody(), 15, MUTED, false));
-        EditText rankRanges = rankRetentionRangesInput(current.frequencyRetentionRanges);
-        box.addView(rankRanges, new LinearLayout.LayoutParams(-1, dp(132)));
-
-        Button exampleRanges = secondaryButton(SettingsTextCopy.useExampleRangesLabel());
-        exampleRanges.setOnClickListener(v -> rankRanges.setText(FrequencyRetentionRanges.exampleText()));
-        box.addView(exampleRanges);
-
-        Button save = primaryButton(SettingsTextCopy.saveRetentionLabel(), STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            RetentionSettingsPolicy.SaveResult request = RetentionSettingsPolicy.saveRequest(
-                    selected[0],
-                    rankRetentionEnabled.isChecked(),
-                    rankRanges.getText().toString(),
-                    store.schedulerParameters()
-            );
-            if (!request.valid) {
-                Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
-                return;
-            }
-            store.saveSchedulerParameters(request.parameters);
-            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show();
-            renderSettings();
-        });
-        box.addView(save);
-        return box;
+        return retention().retentionSettingsPanel();
     }
 
     EditText rankRetentionRangesInput(String value) {
-        EditText input = new EditText(this);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        input.setText(value == null || value.trim().isEmpty() ? FrequencyRetentionRanges.exampleText() : value.trim());
-        input.setTextSize(16);
-        input.setSingleLine(false);
-        input.setMinLines(3);
-        input.setGravity(Gravity.TOP | Gravity.START);
-        input.setSelectAllOnFocus(false);
-        return input;
+        return retention().rankRetentionRangesInput(value);
     }
 
     LinearLayout reminderSettingsPanel() {
