@@ -116,26 +116,11 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     private final MeaningKanjiChoicePlanner meaningKanjiChoicePlanner = new MeaningKanjiChoicePlanner();
     private final Random meaningChoiceRandom = new Random();
-
-    private MainActivityStudyFlashcard flashcardUi() {
-        return new MainActivityStudyFlashcard(this);
-    }
-
-    private MainActivityStudyWritingUi writingUi() {
-        return new MainActivityStudyWritingUi(this);
-    }
-
-    private MainActivityStudyWritingFlow writingFlow() {
-        return new MainActivityStudyWritingFlow(this);
-    }
-
-    private MainActivityStudyWritingCheck writingCheck() {
-        return new MainActivityStudyWritingCheck(this);
-    }
-
-    private MainActivityStudyReviewFlow writingReview() {
-        return new MainActivityStudyReviewFlow(this);
-    }
+    private final MainActivityStudyFlashcard flashcardUi = new MainActivityStudyFlashcard(this);
+    private final MainActivityStudyWritingUi writingUi = new MainActivityStudyWritingUi(this);
+    private final MainActivityStudyWritingFlow writingFlow = new MainActivityStudyWritingFlow(this);
+    private final MainActivityStudyWritingCheck writingCheck = new MainActivityStudyWritingCheck(this);
+    private final MainActivityStudyReviewFlow writingReview = new MainActivityStudyReviewFlow(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
         LinearLayout box = softInsetPanel();
@@ -656,23 +641,23 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
-        flashcardUi().renderFlashcardSession(session);
+        flashcardUi.renderFlashcardSession(session);
     }
 
     LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
-        return flashcardUi().recognitionHeroCard(session);
+        return flashcardUi.recognitionHeroCard(session);
     }
 
     View recognitionPill(String label) {
-        return flashcardUi().recognitionPill(label);
+        return flashcardUi.recognitionPill(label);
     }
 
     View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {
-        return flashcardUi().heroKanjiPanel(session);
+        return flashcardUi.heroKanjiPanel(session);
     }
 
     Typeface randomFontVariantTypeface() {
-        return flashcardUi().randomFontVariantTypeface();
+        return flashcardUi.randomFontVariantTypeface();
     }
 
     void renderWritingSession(RecordsSchedulerModels.StudySession session) {
@@ -873,23 +858,23 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     View typingAnswerField() {
-        return flashcardUi().typingAnswerField();
+        return flashcardUi.typingAnswerField();
     }
 
     Typeface fontResource(int fontRes, Typeface fallback) {
-        return flashcardUi().fontResource(fontRes, fallback);
+        return flashcardUi.fontResource(fontRes, fallback);
     }
 
     View flashcardAnswerPanel(RecordsSchedulerModels.StudySession session) {
-        return flashcardUi().flashcardAnswerPanel(session);
+        return flashcardUi.flashcardAnswerPanel(session);
     }
 
     LinearLayout studyAnswerDetailsRow(RecordsSchedulerModels.StudySession session, int glyphSize) {
-        return flashcardUi().studyAnswerDetailsRow(session, glyphSize);
+        return flashcardUi.studyAnswerDetailsRow(session, glyphSize);
     }
 
     void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
-        flashcardUi().addStudyCueLines(details, session);
+        flashcardUi.addStudyCueLines(details, session);
     }
 
     DictionaryLookup currentDictionaryLookup() {
@@ -900,39 +885,39 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void buildFlashcardActionBar(boolean revealed) {
-        flashcardUi().buildFlashcardActionBar(revealed);
+        flashcardUi.buildFlashcardActionBar(revealed);
     }
 
     void revealFlashcardAnswer() {
-        flashcardUi().revealFlashcardAnswer();
+        flashcardUi.revealFlashcardAnswer();
     }
 
     void expandFlashcardForAnswer() {
-        flashcardUi().expandFlashcardForAnswer();
+        flashcardUi.expandFlashcardForAnswer();
     }
 
     boolean handleFlashcardGesture(MotionEvent event) {
-        return flashcardUi().handleFlashcardGesture(event);
+        return flashcardUi.handleFlashcardGesture(event);
     }
 
     boolean handleFlashcardRelease(MotionEvent event) {
-        return flashcardUi().handleFlashcardRelease(event);
+        return flashcardUi.handleFlashcardRelease(event);
     }
 
     boolean isTouchInsideView(View view, MotionEvent event) {
-        return flashcardUi().isTouchInsideView(view, event);
+        return flashcardUi.isTouchInsideView(view, event);
     }
 
     void buildStudyActionBar() {
-        writingUi().buildStudyActionBar();
+        writingUi.buildStudyActionBar();
     }
 
     void eraseWritingPad() {
-        writingFlow().eraseWritingPad();
+        writingFlow.eraseWritingPad();
     }
 
     void startGuidedWritingRetry() {
-        writingFlow().startGuidedWritingRetry();
+        writingFlow.startGuidedWritingRetry();
     }
 
     int studyPadHeight() {
@@ -946,27 +931,27 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void checkWriting() {
-        writingCheck().checkWriting();
+        writingCheck.checkWriting();
     }
 
     void submitSimilarKanjiChoice(RecordsImportModels.SimilarKanjiChoiceCard card, String selectedKanji) {
-        writingReview().submitSimilarKanjiChoice(card, selectedKanji);
+        writingReview.submitSimilarKanjiChoice(card, selectedKanji);
     }
 
     boolean showNoInkWhenNeeded() {
-        return writingFlow().showNoInkWhenNeeded();
+        return writingFlow.showNoInkWhenNeeded();
     }
 
     void showModelUnavailable(String message) {
-        writingFlow().showModelUnavailable(message);
+        writingFlow.showModelUnavailable(message);
     }
 
     void recognizeWriting(WritingRecognizer recognizer, CapturedWriting captured, WritingSample sample, StrokeGuide guide, String target, String token) {
-        writingCheck().recognizeWriting(recognizer, captured, sample, guide, target, token);
+        writingCheck.recognizeWriting(recognizer, captured, sample, guide, target, token);
     }
 
     void submitReview(String rating, boolean override) {
-        writingReview().submitReview(rating, override);
+        writingReview.submitReview(rating, override);
     }
 
     void completeActiveRepairStudyTask(String key, String outcome, long answeredAt) {
@@ -993,86 +978,86 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void showWritingHint() {
-        writingFlow().showWritingHint();
+        writingFlow.showWritingHint();
     }
 
     void showAnalysis(WritingAnalysis analysis) {
-        writingFlow().showAnalysis(analysis);
+        writingFlow.showAnalysis(analysis);
     }
 
     void updateResultActions() {
-        writingUi().updateResultActions();
+        writingUi.updateResultActions();
     }
 
     WritingActionPresentation writingActionPresentation() {
-        return writingUi().writingActionPresentation();
+        return writingUi.writingActionPresentation();
     }
 
     void updateUndoStrokeButton() {
-        writingUi().updateUndoStrokeButton();
+        writingUi.updateUndoStrokeButton();
     }
 
     void startCleanerRetry() {
-        writingFlow().startCleanerRetry();
+        writingFlow.startCleanerRetry();
     }
 
     void undoWritingStroke() {
-        writingFlow().undoWritingStroke();
+        writingFlow.undoWritingStroke();
     }
 
     void replayWritingAnalysis() {
-        writingFlow().replayWritingAnalysis();
+        writingFlow.replayWritingAnalysis();
     }
 
     void handleDrawingEdited() {
-        writingFlow().handleDrawingEdited();
+        writingFlow.handleDrawingEdited();
     }
 
     void clearWritingResult() {
-        writingFlow().clearWritingResult();
+        writingFlow.clearWritingResult();
     }
 
     void handleDrawingBlocked(StrokeGuideGuard.Decision decision) {
-        writingFlow().handleDrawingBlocked(decision);
+        writingFlow.handleDrawingBlocked(decision);
     }
 
     String diagnosisText(WritingAnalysis analysis) {
-        return writingFlow().diagnosisText(analysis);
+        return writingFlow.diagnosisText(analysis);
     }
 
     boolean canShowDiagnosis(WritingAnalysis analysis) {
-        return writingFlow().canShowDiagnosis(analysis);
+        return writingFlow.canShowDiagnosis(analysis);
     }
 
     String diagnosisLine(StrokeDiagnosis.Entry entry) {
-        return writingFlow().diagnosisLine(entry);
+        return writingFlow.diagnosisLine(entry);
     }
 
     String strokeDiagnosisText(StrokeDiagnosis.Entry entry, String label) {
-        return writingFlow().strokeDiagnosisText(entry, label);
+        return writingFlow.strokeDiagnosisText(entry, label);
     }
 
     void setStudyStatus(String value, int color) {
-        writingUi().setStudyStatus(value, color);
+        writingUi.setStudyStatus(value, color);
     }
 
     void setResultStatus(String value, int color) {
-        writingUi().setResultStatus(value, color);
+        writingUi.setResultStatus(value, color);
     }
 
     boolean canRevealMoreHelp() {
-        return writingUi().canRevealMoreHelp();
+        return writingUi.canRevealMoreHelp();
     }
 
     void refreshWritingModelStatus() {
-        writingUi().refreshWritingModelStatus();
+        writingUi.refreshWritingModelStatus();
     }
 
     void setWritingModelStatusMessage(WritingRecognizer.ModelStatus status, Throwable error) {
-        writingUi().setWritingModelStatusMessage(status, error);
+        writingUi.setWritingModelStatusMessage(status, error);
     }
 
     void downloadWritingModel() {
-        writingUi().downloadWritingModel();
+        writingUi.downloadWritingModel();
     }
 }
