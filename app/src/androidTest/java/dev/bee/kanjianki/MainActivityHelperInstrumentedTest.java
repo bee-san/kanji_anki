@@ -1811,6 +1811,14 @@ public final class MainActivityHelperInstrumentedTest {
                 true,
                 "split"
         )).level());
+        HintState nextHintState = HintState.fromWritingLevel(2);
+        activity.currentPracticeLevel = 99;
+        activity.setHintState(nextHintState);
+        assertEquals(nextHintState, activity.currentHintState);
+        assertEquals(nextHintState.level().writingLevel(), activity.currentPracticeLevel);
+        activity.setHintState(null);
+        assertEquals(HintState.initial(), activity.currentHintState);
+        assertEquals(HintState.initial().level().writingLevel(), activity.currentPracticeLevel);
         verifyHelpAndLearningPanelState(activity, writing, row, order);
     }
 
