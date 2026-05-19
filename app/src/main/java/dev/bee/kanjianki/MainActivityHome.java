@@ -560,10 +560,6 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(home);
     }
 
-    long studyAheadMillis() {
-        return store.studyAheadMinutes() * 60_000L;
-    }
-
     String nonEmptyOr(String value, String fallback) {
         if (value == null || value.isEmpty()) {
             return fallback;
@@ -596,10 +592,6 @@ abstract class MainActivityHome extends MainActivityBase {
                     }
                 }
         ));
-    }
-
-    List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now) {
-        return queuedEntries(rows, items, now, null);
     }
 
     List<QueueEntry> queuedEntries(List<RecordsImportModels.DashboardRow> rows, List<RecordsStudyModels.StudyItem> items, long now, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
