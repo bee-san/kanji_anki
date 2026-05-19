@@ -43,6 +43,10 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return new LocalStoreTimeline(this);
     }
 
+    private LocalStoreInventoryMaintenance inventoryMaintenance() {
+        return new LocalStoreInventoryMaintenance(this);
+    }
+
     void createTimelineTables(SQLiteDatabase db) {
         timeline().createTimelineTables(db);
     }
@@ -261,7 +265,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings) {
-        rebuildKanjiInventory(db, null, suspendedImportsFromDb(db), dashboardRowsFromDb(db), nowMillis, settings);
+        inventoryMaintenance().backfillKanjiInventory(db, nowMillis, settings);
     }
 
     List<RecordsImportModels.DashboardRow> dashboardRowsFromDb(SQLiteDatabase db) {
@@ -318,14 +322,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             long nowMillis,
             RecordsSyncModels.Settings settings
     ) {
-        KanjiInventoryBuilder inventory = new KanjiInventoryBuilder(nowMillis, settings);
-        addSnapshotInventory(inventory, snapshot, settings);
-        addImportedInventory(inventory, imports);
-        addDashboardInventory(inventory, rows);
-        addKnownKanji(inventory, db, TABLE_STUDY_ITEMS);
-        addKnownKanji(inventory, db, TABLE_REVIEW_LOG);
-        addKnownKanji(inventory, db, TABLE_KANJI_TIMELINE_EVENTS);
-        writeKanjiInventory(db, inventory);
+        inventoryMaintenance().rebuildKanjiInventory(db, snapshot, imports, rows, nowMillis, settings);
     }
 
     void addSnapshotInventory(
