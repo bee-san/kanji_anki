@@ -1,7 +1,9 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
@@ -58,5 +60,30 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
 
         assertTrue(clicked)
+    }
+
+    @Test
+    fun rendersContinueAndBackActionsWithoutStudyMoreWhenNothingIsAvailable() {
+        var continueClicked = false
+        var backClicked = false
+
+        composeRule.setContent {
+            StudyDoneActions(
+                availableStudyMoreNewCards = 0,
+                onStudyMore = {},
+                onContinueAll = { continueClicked = true },
+                onBackHome = { backClicked = true }
+            )
+        }
+
+        composeRule.onAllNodesWithText("Study more new cards").assertCountEquals(0)
+        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).assertIsDisplayed()
+
+        composeRule.onNodeWithText(MainActivityBase.LABEL_CONTINUE_ALL_KANJI).performClick()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
+
+        assertTrue(continueClicked)
+        assertTrue(backClicked)
     }
 }

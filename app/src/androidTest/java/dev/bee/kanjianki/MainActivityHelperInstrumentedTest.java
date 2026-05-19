@@ -1422,6 +1422,9 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.renderFocusDone(complete);
                 assertHasText(activity, "Study more new cards");
+                performClickableWithText(activity.content, "Study more new cards");
+                assertHasText(activity, "How many extra new cards do you want to study now?");
+                performClickableWithText(activity.content, "Cancel");
                 performClickableWithText(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderFocusDone(complete);
