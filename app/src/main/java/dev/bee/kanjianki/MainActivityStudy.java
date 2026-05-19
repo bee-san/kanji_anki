@@ -105,11 +105,12 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyWritingCheck writingCheck = new MainActivityStudyWritingCheck(this);
     private final MainActivityStudyReviewFlow writingReview = new MainActivityStudyReviewFlow(this);
     private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
-    private final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
+    final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
     private final MainActivityStudyProgress studyProgress = new MainActivityStudyProgress(this);
+    private final MainActivityStudyScreen studyScreen = new MainActivityStudyScreen(this);
     private final MainActivityStudyWritingSession writingSession = new MainActivityStudyWritingSession(this);
-    private final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
+    final MainActivityStudyTargetedLaunch targetedLaunch = new MainActivityStudyTargetedLaunch(this);
     private final MainActivityStudyReasonLine reasonLine = new MainActivityStudyReasonLine(this);
     private final MainActivityStudySessionRouter sessionRouter = new MainActivityStudySessionRouter(this);
 
@@ -134,48 +135,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void renderStudy() {
-        base(NAV_STUDY);
-        List<RecordsImportModels.DashboardRow> rows = store.activeDashboardRows();
-        long now = System.currentTimeMillis();
-        RecordsBase.StudyLadderSettings ladder = studyLadderSettings();
-        activeStudyPlan = rows.isEmpty() ? null : studyPlanForMode(rows, store.studyItems(), now);
-        if (renderPendingRepairOrDone(activeStudyPlan, now, ladder)) {
-            return;
-        }
-        if (rows.isEmpty()) {
-            renderEmptyStudyQueue();
-            return;
-        }
-        List<RecordsStudyModels.StudyItem> beforeSeed = store.studyItems();
-        RecordsSchedulerModels.AdaptiveLoadPlan plan = studyPlanForMode(rows, beforeSeed, now);
-        List<RecordsStudyModels.StudyItem> seeded = studyQueue(rows, now, true, plan);
-        RecordsSchedulerModels.AdaptiveLoadPlan seededPlan = studyPlanForMode(rows, seeded, now);
-        activeStudyPlan = seededPlan;
-        if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
-            return;
-        }
-        activeSession = new BridgeScheduler().nextSession(
-                seeded,
-                rows,
-                now,
-                studyAheadMillis(),
-                StudySessionFocusPolicy.allowedKanji(seededPlan, continueAllKanjiSession),
-                settings(),
-                studyLadderSettings()
-        );
-        activeSimilarWritingRepair = null;
-        if (activeSession == null) {
-            renderNoStudySession(seededPlan);
-            return;
-        }
-        StudySessionActions.activateStudySession(
-                activeSession,
-                now,
-                store::saveStudyItem,
-                this::registerStudyTaskShown,
-                this::startActiveStudyTask
-        );
-        renderSession(activeSession);
+        studyScreen.renderStudy();
     }
 
     boolean renderPendingRepairOrDone(
@@ -183,38 +143,23 @@ abstract class MainActivityStudy extends MainActivityStats {
             long now,
             RecordsBase.StudyLadderSettings ladder
     ) {
-        initializeSessionProgressTarget(plan);
-        if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-            for (RecordsImportModels.SimilarKanjiWritingRepair repair : store.dueSimilarWritingRepairs(now)) {
-                studySessionTracker.includePendingTask(similarRepairProgressKey(repair));
-            }
-            RecordsImportModels.SimilarKanjiWritingRepair repair = store.nextDueSimilarWritingRepair(now);
-            if (repair != null) {
-                renderSimilarWritingRepair(repair, plan, now);
-                return true;
-            }
-        }
-        if (studySessionTracker.atHardCap(continueAllKanjiSession)) {
-            doneActions.renderStudyRunDone(plan);
-            return true;
-        }
-        return false;
+        return studyScreen.renderPendingRepairOrDone(plan, now, ladder);
     }
 
     void renderEmptyStudyQueue() {
-        doneActions.renderEmptyStudyQueue();
+        studyScreen.renderEmptyStudyQueue();
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {
-        doneActions.renderNoStudySession(seededPlan);
+        studyScreen.renderNoStudySession(seededPlan);
     }
 
     void renderFocusDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        doneActions.renderFocusDone(plan);
+        studyScreen.renderFocusDone(plan);
     }
 
     void renderStudyRunDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        doneActions.renderStudyRunDone(plan);
+        studyScreen.renderStudyRunDone(plan);
     }
 
     void addDoneStudyActions(LinearLayout card) {
@@ -278,17 +223,15 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     void startFocusedStudy() {
-        clearStudyModeOverrides();
-        resetStudyRunProgress();
-        renderStudy();
+        studyScreen.startFocusedStudy();
     }
 
     void renderStudyForKanji(String kanji) {
-        targetedLaunch.renderStudyForKanji(kanji);
+        studyScreen.renderStudyForKanji(kanji);
     }
 
     void renderStudyForKanjiNotAvailable() {
-        doneActions.renderStudyForKanjiNotAvailable();
+        studyScreen.renderStudyForKanjiNotAvailable();
     }
 
     void renderSession(RecordsSchedulerModels.StudySession session) {
