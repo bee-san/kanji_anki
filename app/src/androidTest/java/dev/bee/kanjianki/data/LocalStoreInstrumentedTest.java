@@ -22,6 +22,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
@@ -1838,9 +1839,19 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "writing", "hard", true, false, false, 0), "hard").contains("not passed"));
 
         store.saveFailedSync(1000L, 2000L, "failed", "provider", "No provider");
-        assertTrue(store.latestSync().headline().contains("Sync blocked: No provider"));
+        assertTrue(SettingsTextCopy.syncStatusHeadline(
+                LocalStoreBase.STATUS_SUCCESS.equals(store.latestSync().status),
+                store.latestSync().errorMessage,
+                store.latestSync().suspendedCards,
+                store.latestSync().importedKanji
+        ).contains("Sync blocked: No provider"));
         saveSingleRowSync(row("確", 0), Collections.emptyList(), 3000L);
-        assertTrue(store.latestSync().headline().contains("rare kanji added"));
+        assertTrue(SettingsTextCopy.syncStatusHeadline(
+                LocalStoreBase.STATUS_SUCCESS.equals(store.latestSync().status),
+                store.latestSync().errorMessage,
+                store.latestSync().suspendedCards,
+                store.latestSync().importedKanji
+        ).contains("rare kanji added"));
     }
 
     @Test

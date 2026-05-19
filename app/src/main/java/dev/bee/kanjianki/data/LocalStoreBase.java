@@ -606,10 +606,6 @@ public abstract class LocalStoreBase extends SQLiteOpenHelper {
             this.errorMessage = values.errorMessage();
             this.removalMessage = values.removalMessage();
         }
-
-        public String headline() {
-            return SettingsTextCopy.syncStatusHeadline(STATUS_SUCCESS.equals(status), errorMessage, suspendedCards, importedKanji);
-        }
     }
 
     record SyncStatusValues(
