@@ -39,10 +39,12 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         historicalSyncStore = new HistoricalSyncStore(this);
     }
 
+    private LocalStoreTimeline timeline() {
+        return new LocalStoreTimeline(this);
+    }
+
     void createTimelineTables(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS kanji_timeline_events (id INTEGER PRIMARY KEY AUTOINCREMENT, kanji TEXT NOT NULL, occurred_at INTEGER NOT NULL, event_type TEXT NOT NULL, title TEXT NOT NULL, detail TEXT NOT NULL, source_expression TEXT NOT NULL, source_reading TEXT NOT NULL, rating TEXT NOT NULL, writing_required INTEGER NOT NULL DEFAULT 0, writing_passed INTEGER NOT NULL DEFAULT 0, manual_override INTEGER NOT NULL DEFAULT 0, weakness_score INTEGER, mature_support_count INTEGER, sync_id INTEGER, dedupe_key TEXT NOT NULL)");
-        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_timeline_dedupe ON kanji_timeline_events(dedupe_key)");
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_timeline_kanji_time ON kanji_timeline_events(kanji, occurred_at, id)");
+        timeline().createTimelineTables(db);
     }
 
     void addNullableColumn(SQLiteDatabase db, String table, String column, String type) {
@@ -56,11 +58,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     void backfillTimelineEvents(SQLiteDatabase db) {
-        Map<String, RowSnapshot> rows = rowSnapshots(db);
-        backfillSuspendedImportTimeline(db);
-        backfillRowTimeline(db, rows);
-        backfillStudyTimeline(db, rows);
-        backfillReviewTimeline(db);
+        timeline().backfillTimelineEvents(db);
     }
 
     void backfillSuspendedImportTimeline(SQLiteDatabase db) {
@@ -229,109 +227,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             long occurredAt,
             RecordsSyncModels.Settings settings
     ) {
-        int target = settings == null ? RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
-        for (RecordsImportModels.SuspendedImport imported : imports) {
-            SourceSnapshot source = sourceFromImport(imported);
-            insertTimelineEvent(
-                    db,
-                    imported.kanji,
-                    occurredAt,
-                    "suspended_imported",
-                    "Imported from suspended Anki",
-                    "Kani recovered this kanji from a suspended AnkiDroid card.",
-                    source.expression,
-                    source.reading,
-                    "",
-                    false,
-                    false,
-                    false,
-                    null,
-                    null,
-                    syncId,
-                    "suspended_imported:" + imported.kanji
-            );
-        }
-
-        for (RecordsImportModels.DashboardRow row : rows) {
-            RowSnapshot previous = previousRows.get(row.kanji);
-            SourceSnapshot source = sourceForRow(row);
-            insertTimelineEvent(
-                    db,
-                    row.kanji,
-                    occurredAt,
-                    TIMELINE_FIRST_SEEN,
-                    TIMELINE_FIRST_SEEN_TITLE,
-                    "This kanji entered Kani from local AnkiDroid evidence.",
-                    source.expression,
-                    source.reading,
-                    "",
-                    false,
-                    false,
-                    false,
-                    row.weaknessScore,
-                    row.matureSupportCount,
-                    syncId,
-                    TIMELINE_FIRST_SEEN_KEY_PREFIX + row.kanji
-            );
-            if (previous == null) {
-                insertTimelineEvent(
-                        db,
-                        row.kanji,
-                        occurredAt,
-                        "weak_support_seen",
-                        "Weak support seen",
-                        TimelineCopy.supportDetail("Anki evidence still needs repair", row.matureSupportCount, target),
-                        source.expression,
-                        source.reading,
-                        "",
-                        false,
-                        false,
-                        false,
-                        row.weaknessScore,
-                        row.matureSupportCount,
-                        syncId,
-                        "weak_support_seen:" + row.kanji + ":" + syncId
-                );
-            } else if (row.matureSupportCount > previous.matureSupportCount) {
-                insertTimelineEvent(
-                        db,
-                        row.kanji,
-                        occurredAt,
-                        "support_improved",
-                        "Anki support improved",
-                        "Mature support rose from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
-                        source.expression,
-                        source.reading,
-                        "",
-                        false,
-                        false,
-                        false,
-                        row.weaknessScore,
-                        row.matureSupportCount,
-                        syncId,
-                        "support_improved:" + row.kanji + ":" + syncId + ":" + previous.matureSupportCount + "-" + row.matureSupportCount
-                );
-            } else if (row.matureSupportCount < previous.matureSupportCount) {
-                insertTimelineEvent(
-                        db,
-                        row.kanji,
-                        occurredAt,
-                        "support_dropped",
-                        "Anki support dropped",
-                        "Mature support fell from " + previous.matureSupportCount + " to " + row.matureSupportCount + ".",
-                        source.expression,
-                        source.reading,
-                        "",
-                        false,
-                        false,
-                        false,
-                        row.weaknessScore,
-                        row.matureSupportCount,
-                        syncId,
-                        "support_dropped:" + row.kanji + ":" + syncId + ":" + previous.matureSupportCount + "-" + row.matureSupportCount
-                );
-            }
-        }
+        timeline().appendSyncTimelineEvents(db, previousRows, imports, rows, syncId, occurredAt, settings);
     }
 
     void appendStudyStateTimelineEvents(
@@ -342,13 +238,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             long occurredAt,
             RecordsSyncModels.Settings settings
     ) {
-        int target = settings == null ? RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold : settings.matureSupportThreshold;
-        for (RecordsStudyModels.StudyItem item : currentItems) {
-            StudySnapshot previous = previousItems.get(studyFamilyKey(item.kanji, item.answerSignature));
-            if (previous != null) {
-                appendStudyStateTimelineEvent(db, item, previous, syncId, occurredAt, target);
-            }
-        }
+        timeline().appendStudyStateTimelineEvents(db, previousItems, currentItems, syncId, occurredAt, settings);
     }
 
     void appendStudyStateTimelineEvent(
@@ -359,31 +249,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
             long occurredAt,
             int target
     ) {
-        if (!stateRetirementChanged(item, previous)) {
-            return;
-        }
-        RowSnapshot row = rowSnapshot(db, item.kanji);
-        SourceSnapshot source = row == null ? firstExampleForKanji(db, item.kanji) : row.source;
-        Integer mature = row == null ? null : row.matureSupportCount;
-        boolean retired = STATE_RETIRED.equals(item.state);
-        insertTimelineEvent(
-                db,
-                item.kanji,
-                occurredAt,
-                retired ? STATE_RETIRED : "reopened",
-                retired ? "Retired by Anki support" : "Repair reopened",
-                TimelineCopy.studyStateDetail(retired, mature, target),
-                source.expression,
-                source.reading,
-                "",
-                false,
-                false,
-                false,
-                row == null ? null : row.weaknessScore,
-                mature,
-                syncId,
-                (retired ? "retired:" : "reopened:") + studyTimelineKey(item) + ":" + syncId
-        );
+        timeline().appendStudyStateTimelineEvent(db, item, previous, syncId, occurredAt, target);
     }
 
     boolean stateRetirementChanged(RecordsStudyModels.StudyItem item, StudySnapshot previous) {
@@ -391,27 +257,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
     }
 
     void appendReviewTimelineEvent(SQLiteDatabase db, RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt, String dedupeKey) {
-        TimelineCopy.ReviewEvent event = TimelineCopy.reviewEvent(request, appliedRating);
-        SourceSnapshot source = firstExampleForKanji(db, request.kanji);
-        RowSnapshot row = rowSnapshot(db, request.kanji);
-        insertTimelineEvent(
-                db,
-                request.kanji,
-                reviewedAt,
-                event.eventType(),
-                event.title(),
-                event.detail(),
-                source.expression,
-                source.reading,
-                appliedRating,
-                request.writingRequired,
-                request.writingPassed,
-                request.manualOverride,
-                row == null ? null : row.weaknessScore,
-                row == null ? null : row.matureSupportCount,
-                null,
-                dedupeKey
-        );
+        timeline().appendReviewTimelineEvent(db, request, appliedRating, reviewedAt, dedupeKey);
     }
 
     void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings) {
