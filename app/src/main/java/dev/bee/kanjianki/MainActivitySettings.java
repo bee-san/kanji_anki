@@ -113,8 +113,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsStudyTuning(this);
     }
 
-    private MainActivitySettingsStudySort studySort() {
-        return new MainActivitySettingsStudySort(this);
+    private MainActivitySettingsStudySortPanel studySortPanel() {
+        return new MainActivitySettingsStudySortPanel(this);
     }
 
     private MainActivitySettingsWorkload workload() {
@@ -281,7 +281,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
-        return studySort().newCardSortSettingsPanel(current);
+        return studySortPanel().newCardSortSettingsPanel(current);
     }
 
     LinearLayout workloadSettingsPanel() {
