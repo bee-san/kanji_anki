@@ -21,6 +21,10 @@ public final class SettingsTextCopyDelegationTest {
                 SettingsTextCopy.syncStatusHeadline(true, null, 4, 2)
         );
         assertEquals(
+            SettingsSummaryTextCopy.syncStatusHeadline(false, "No provider", 0, 0),
+            SettingsTextCopy.syncStatusHeadline(false, "No provider", 0, 0)
+        );
+        assertEquals(
                 SettingsAutomationTextCopy.settingsReminderSummary(true, false, "21:05"),
                 SettingsTextCopy.settingsReminderSummary(true, false, "21:05")
         );
