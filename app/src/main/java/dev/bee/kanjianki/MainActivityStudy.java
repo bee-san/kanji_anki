@@ -272,22 +272,59 @@ abstract class MainActivityStudy extends MainActivityStats {
         boolean canStudyMore = available > 0;
         if (canStudyMore) {
             Button studyMore = pinkPrimaryButton("Study more new cards");
-            studyMore.setOnClickListener(v -> showStudyMoreNewCardsDialog(available));
+            studyMore.setOnClickListener(new StudyMoreNewCardsClickListener(this, available));
             card.addView(studyMore);
         }
         Button keepGoing = canStudyMore ? studySecondaryButton(LABEL_CONTINUE_ALL_KANJI) : pinkPrimaryButton(LABEL_CONTINUE_ALL_KANJI);
-        keepGoing.setOnClickListener(v -> {
-            studyMoreNewCardKanji.clear();
-            continueAllKanjiSession = true;
-            renderStudy();
-        });
+        keepGoing.setOnClickListener(new ContinueAllKanjiClickListener(this));
         card.addView(keepGoing);
         Button back = studySecondaryButton(LABEL_BACK_HOME);
-        back.setOnClickListener(v -> {
-            clearStudyModeOverrides();
-            renderHome();
-        });
+        back.setOnClickListener(new BackHomeClickListener(this));
         card.addView(back);
+    }
+
+    private static final class StudyMoreNewCardsClickListener implements View.OnClickListener {
+        private final MainActivityStudy activity;
+        private final int availableAtOpen;
+
+        StudyMoreNewCardsClickListener(MainActivityStudy activity, int availableAtOpen) {
+            this.activity = activity;
+            this.availableAtOpen = availableAtOpen;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.showStudyMoreNewCardsDialog(availableAtOpen);
+        }
+    }
+
+    private static final class ContinueAllKanjiClickListener implements View.OnClickListener {
+        private final MainActivityStudy activity;
+
+        ContinueAllKanjiClickListener(MainActivityStudy activity) {
+            this.activity = activity;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.studyMoreNewCardKanji.clear();
+            activity.continueAllKanjiSession = true;
+            activity.renderStudy();
+        }
+    }
+
+    private static final class BackHomeClickListener implements View.OnClickListener {
+        private final MainActivityStudy activity;
+
+        BackHomeClickListener(MainActivityStudy activity) {
+            this.activity = activity;
+        }
+
+        @Override
+        public void onClick(View v) {
+            activity.clearStudyModeOverrides();
+            activity.renderHome();
+        }
     }
 
     int availableStudyMoreNewCards() {
