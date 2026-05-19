@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -109,6 +110,20 @@ public final class KanjiImpactAnalyzerTest {
 
         assertEquals(1, report.notHelpingCount);
         assertEquals("Kani is not moving the needle yet.", report.rows.get(0).advice);
+    }
+
+    @Test
+    public void notHelpingRowsFiltersReportForStatsPresentation() {
+        KanjiImpactAnalyzer.Report report = new KanjiImpactAnalyzer().analyze(Arrays.asList(
+                history("助", metric(2, 0, 1, 20.0, 20, 2, 5.0, 0.65), metric(2, 0, 2, 45.0, 30, 1, 4.0, 0.90), null, null, 2, 0, 4),
+                history("詰", metric(2, 0, 1, 20.0, 20, 2, 5.0, 0.80), metric(2, 0, 1, 20.0, 20, 4, 6.0, 0.70), null, null, 2, 0, 4),
+                history("疎", metric(1, 0, 0, 2.0, 1, 0, 5.0, 0.70), metric(1, 0, 0, 2.0, 1, 0, 5.0, 0.70), null, null, 0, 0, 1)
+        ));
+        List<KanjiImpactAnalyzer.Row> rows = KanjiImpactAnalyzer.notHelpingRows(report);
+
+        assertEquals(1, rows.size());
+        assertEquals("詰", rows.get(0).kanji);
+        assertTrue(KanjiImpactAnalyzer.notHelpingRows(null).isEmpty());
     }
 
     @Test

@@ -45,6 +45,19 @@ public final class KanjiImpactAnalyzer {
         return new Report(helped, notHelping, needsMoreCards, rows);
     }
 
+    public static List<Row> notHelpingRows(Report report) {
+        if (report == null) {
+            return Collections.emptyList();
+        }
+        List<Row> rows = new ArrayList<>();
+        for (Row row : report.rows) {
+            if (BUCKET_NOT_HELPING.equals(row.bucket)) {
+                rows.add(row);
+            }
+        }
+        return Collections.unmodifiableList(rows);
+    }
+
     private Row rowFor(KanjiHistory history) {
         MetricSnapshot baseline = firstNonNull(history.sameCardBaseline, history.baseline);
         MetricSnapshot current = firstNonNull(history.sameCardCurrent, history.current);

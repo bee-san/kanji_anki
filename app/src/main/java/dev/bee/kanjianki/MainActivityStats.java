@@ -141,16 +141,7 @@ abstract class MainActivityStats extends MainActivityGames {
     }
 
     List<KanjiImpactAnalyzer.Row> notHelpingRows(KanjiImpactAnalyzer.Report report) {
-        List<KanjiImpactAnalyzer.Row> rows = new ArrayList<>();
-        if (report == null) {
-            return rows;
-        }
-        for (KanjiImpactAnalyzer.Row row : report.rows) {
-            if (KanjiImpactAnalyzer.BUCKET_NOT_HELPING.equals(row.bucket)) {
-                rows.add(row);
-            }
-        }
-        return rows;
+        return KanjiImpactAnalyzer.notHelpingRows(report);
     }
 
     String notHelpingBody(KanjiImpactAnalyzer.Report report, List<KanjiImpactAnalyzer.Row> rows) {
