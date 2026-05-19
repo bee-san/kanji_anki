@@ -673,7 +673,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         titleLp.setMargins(0, dp(14), 0, 0);
         card.addView(title, titleLp);
 
-        TextView question = text(heroQuestion(session), 27, STUDY_HERO_PLUM, true);
+        TextView question = text(StudyTextCopy.heroQuestion(session), 27, STUDY_HERO_PLUM, true);
         question.setGravity(Gravity.CENTER);
         question.setIncludeFontPadding(false);
         LinearLayout.LayoutParams questionLp = new LinearLayout.LayoutParams(-1, -2);
@@ -705,10 +705,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.addView(studyAnswerPanel);
 
         return card;
-    }
-
-    String heroQuestion(RecordsSchedulerModels.StudySession session) {
-        return StudyTextCopy.heroQuestion(session);
     }
 
     View recognitionPill(String label) {
@@ -1085,7 +1081,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 currentDictionaryLookup(),
                 activeSession.item.kanji,
                 typingAnswerInput == null ? "" : typingAnswerInput.getText().toString(),
-                collectionMeaningForSession(activeSession))) {
+                StudyTextCopy.collectionMeaningForSession(activeSession))) {
             Toast.makeText(this, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show();
             submitReview(RATING_GOOD, false);
             return;
@@ -1099,10 +1095,6 @@ abstract class MainActivityStudy extends MainActivityStats {
             studyAnswerPanel.setVisibility(View.VISIBLE);
         }
         buildFlashcardActionBar(true);
-    }
-
-    String collectionMeaningForSession(RecordsSchedulerModels.StudySession session) {
-        return StudyTextCopy.collectionMeaningForSession(session);
     }
 
     void expandFlashcardForAnswer() {

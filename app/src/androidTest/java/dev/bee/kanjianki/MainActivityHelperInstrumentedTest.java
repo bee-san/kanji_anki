@@ -11,6 +11,7 @@ import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.StatsTextCopy;
 import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
@@ -292,8 +293,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(suspended, activity.exampleForSession(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals(active, activity.exampleForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
 
-                assertEquals("What is the reading?", activity.heroQuestion(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("What does this kanji mean?", activity.heroQuestion(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("What is the reading?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertEquals("What does this kanji mean?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
                 assertEquals("Read this word", activity.flashcardTitle(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals("Type the meaning", activity.flashcardTitle(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
                 assertEquals("Recognise this kanji", activity.flashcardTitle(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
@@ -303,9 +304,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Recognise", activity.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
                 assertEquals("活動語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
                 assertEquals("語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.emptyList()))));
-                assertEquals("active", activity.collectionMeaningForSession(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
-                assertEquals("active", activity.collectionMeaningForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("", activity.collectionMeaningForSession(null));
+                assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
+                assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("", StudyTextCopy.collectionMeaningForSession(null));
 
                 assertTrue(activity.isWordReadingTask(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertTrue(activity.isTypingMeaningTask(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
@@ -1434,7 +1435,7 @@ public final class MainActivityHelperInstrumentedTest {
                         "Prompt fallback"
                 );
                 assertTrue(containsText(activity.flashcardAnswerPanel(promptOnly), "Prompt fallback"));
-                assertEquals("split", activity.collectionMeaningForSession(session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()))));
+                assertEquals("split", StudyTextCopy.collectionMeaningForSession(session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()))));
                 assertEquals(Typeface.SERIF, activity.fontResource(0, Typeface.SERIF));
             });
         }
