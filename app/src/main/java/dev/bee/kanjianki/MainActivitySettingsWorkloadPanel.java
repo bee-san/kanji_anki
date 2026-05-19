@@ -17,11 +17,9 @@ import java.util.List;
 
 final class MainActivitySettingsWorkloadPanel {
     private final MainActivitySettings activity;
-    private final MainActivitySettingsWorkload source;
 
-    MainActivitySettingsWorkloadPanel(MainActivitySettings activity, MainActivitySettingsWorkload source) {
+    MainActivitySettingsWorkloadPanel(MainActivitySettings activity) {
         this.activity = activity;
-        this.source = source;
     }
 
     LinearLayout workloadSettingsPanel() {
@@ -57,7 +55,7 @@ final class MainActivitySettingsWorkloadPanel {
                     : activity.adaptivePlan(rows, activity.store.studyItems(), now);
             box.addView(activity.text(SettingsTextCopy.autoWorkloadStatusText(plan), 17, activity.TEAL, true));
             box.addView(activity.text(SettingsTextCopy.automaticWorkloadBody(), 15, activity.MUTED, false));
-            source.addMaxItemsControl(box, selectedMax, null, null);
+            addMaxItemsControl(box, selectedMax, null, null);
             Button saveMax = activity.primaryButton(SettingsTextCopy.saveMaximumLabel(), activity.STUDY_PINK_DARK);
             saveMax.setOnClickListener(v -> {
                 WorkloadSettingsPolicy.SaveRequest request = WorkloadSettingsPolicy.saveMaximum(selectedMax[0]);
@@ -112,7 +110,7 @@ final class MainActivitySettingsWorkloadPanel {
         }
         box.addView(labels);
 
-        source.addMaxItemsControl(box, selectedMax, status, selected);
+        addMaxItemsControl(box, selectedMax, status, selected);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveWorkloadLabel(), activity.STUDY_PINK_DARK);
         save.setOnClickListener(v -> {
@@ -131,5 +129,36 @@ final class MainActivitySettingsWorkloadPanel {
         });
         box.addView(automatic);
         return box;
+    }
+
+    void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
+        TextView maxStatus = activity.text(SettingsTextCopy.maxItemsStatusText(selectedMax[0]), 17, activity.TEAL, true);
+        maxStatus.setPadding(0, activity.dp(8), 0, 0);
+        box.addView(maxStatus);
+
+        SeekBar maxSlider = new SeekBar(activity);
+        maxSlider.setMax(AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+        maxSlider.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+        maxSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                selectedMax[0] = AdaptiveLoadPlanner.normalizeMaxItems(progress + AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+                maxStatus.setText(SettingsTextCopy.maxItemsStatusText(selectedMax[0]));
+                if (workloadStatus != null && selectedWorkload != null) {
+                    workloadStatus.setText(SettingsTextCopy.workloadStatusText(selectedWorkload[0], selectedMax[0]));
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                // Drag-start has no side effects; live updates happen as progress changes.
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                seekBar.setProgress(selectedMax[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS);
+            }
+        });
+        box.addView(maxSlider, new LinearLayout.LayoutParams(-1, activity.dp(56)));
     }
 }

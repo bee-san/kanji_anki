@@ -604,9 +604,10 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyMaxItemControls(MainActivity activity) {
+        MainActivitySettingsWorkloadPanel workloadPanel = new MainActivitySettingsWorkloadPanel(activity);
         LinearLayout maxOnlyBox = new LinearLayout(activity);
         int[] selectedMaxOnly = {AdaptiveLoadPlanner.MIN_MAX_ITEMS};
-        activity.addMaxItemsControl(maxOnlyBox, selectedMaxOnly, null, null);
+        workloadPanel.addMaxItemsControl(maxOnlyBox, selectedMaxOnly, null, null);
         SeekBar maxOnlySlider = seekBars(maxOnlyBox).get(0);
         touchSeekBar(maxOnlySlider);
         maxOnlySlider.setProgress(3);
@@ -616,7 +617,7 @@ public final class MainActivityHelperInstrumentedTest {
         int[] selectedMax = {5};
         int[] selectedWorkload = {20};
         TextView workloadStatus = new TextView(activity);
-        activity.addMaxItemsControl(linkedMaxBox, selectedMax, workloadStatus, selectedWorkload);
+        workloadPanel.addMaxItemsControl(linkedMaxBox, selectedMax, workloadStatus, selectedWorkload);
         SeekBar linkedSlider = seekBars(linkedMaxBox).get(0);
         touchSeekBar(linkedSlider);
         linkedSlider.setProgress(5);

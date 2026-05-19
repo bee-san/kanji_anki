@@ -292,10 +292,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return workload().workloadSettingsPanel();
     }
 
-    void addMaxItemsControl(LinearLayout box, int[] selectedMax, TextView workloadStatus, int[] selectedWorkload) {
-        workload().addMaxItemsControl(box, selectedMax, workloadStatus, selectedWorkload);
-    }
-
     LinearLayout learningStepsSettingsPanel() {
         return learning().learningStepsSettingsPanel();
     }
