@@ -514,7 +514,9 @@ abstract class MainActivityHome extends MainActivityBase {
         LinearLayout info = band(BLUE);
         info.addView(text(nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback()), 17, Color.WHITE, false));
         content.addView(info);
-        addBackHomeButton();
+        Button home = secondaryButton(LABEL_BACK_HOME);
+        home.setOnClickListener(v -> renderHome());
+        content.addView(home);
     }
 
     void renderSuccessfulSyncResult(ManualSyncEngine.SyncResult result) {
@@ -534,7 +536,9 @@ abstract class MainActivityHome extends MainActivityBase {
             study.setOnClickListener(v -> startFocusedStudy());
             content.addView(study);
         }
-        addBackHomeButton();
+        Button home = secondaryButton(LABEL_BACK_HOME);
+        home.setOnClickListener(v -> renderHome());
+        content.addView(home);
     }
 
     void addOptionalSyncSummaryLines(LinearLayout summary, ManualSyncEngine.SyncResult result) {
@@ -558,10 +562,6 @@ abstract class MainActivityHome extends MainActivityBase {
         Button retry = primaryButton(HomeTextCopy.trySyncAgainLabel(), TEAL);
         retry.setOnClickListener(v -> confirmSync());
         content.addView(retry);
-        addBackHomeButton();
-    }
-
-    void addBackHomeButton() {
         Button home = secondaryButton(LABEL_BACK_HOME);
         home.setOnClickListener(v -> renderHome());
         content.addView(home);
