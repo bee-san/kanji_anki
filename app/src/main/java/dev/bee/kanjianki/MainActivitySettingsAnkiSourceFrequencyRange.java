@@ -15,6 +15,7 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
     private final MainActivitySettings activity;
     private final MainActivitySettingsAnkiSourceInputs inputs;
     private final MainActivitySettingsAnkiSourceValidation validation;
+    private final MainActivitySettingsAnkiSourceFrequencyRangeActions actions;
 
     MainActivitySettingsAnkiSourceFrequencyRange(
             MainActivitySettings activity,
@@ -24,6 +25,7 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
         this.activity = activity;
         this.inputs = inputs;
         this.validation = validation;
+        this.actions = new MainActivitySettingsAnkiSourceFrequencyRangeActions(activity);
     }
 
     LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
@@ -75,10 +77,7 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
                 return;
             }
             SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
-            activity.store.putIntSetting("suspended_rank_min", rankRange.minRank());
-            activity.store.putIntSetting("suspended_rank_max", rankRange.maxRank());
-            Toast.makeText(activity, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show();
-            activity.renderSettings();
+            actions.saveFrequencyRange(rankRange);
         });
         box.addView(save);
         return box;
