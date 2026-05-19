@@ -97,10 +97,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivitySettings extends MainActivityStudy {
-    private MainActivitySettingsAutomation automation() {
-        return new MainActivitySettingsAutomation(this);
-    }
-
     private MainActivitySettingsAnkiSource ankiSource() {
         return new MainActivitySettingsAnkiSource(this);
     }
@@ -179,7 +175,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
             LocalStore.AutoSyncSettings autoSync,
             LocalStore.AutoUpdateStatus autoUpdate
     ) {
-        return automation().settingsHero(current, reminder, autoSync, autoUpdate);
+        return new MainActivitySettingsAutomationHero(this).settingsHero(current, reminder, autoSync, autoUpdate);
     }
 
     LinearLayout settingsCategory(
@@ -331,15 +327,15 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout reminderSettingsPanel() {
-        return automation().reminderSettingsPanel();
+        return new MainActivitySettingsAutomationReminder(this).reminderSettingsPanel();
     }
 
     LinearLayout autoSyncSettingsPanel() {
-        return automation().autoSyncSettingsPanel();
+        return new MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanel();
     }
 
     LinearLayout updateSettingsPanel() {
-        return automation().updateSettingsPanel();
+        return new MainActivitySettingsAutomationUpdate(this).updateSettingsPanel();
     }
 
     void runUpdate(boolean cachedPending) {
