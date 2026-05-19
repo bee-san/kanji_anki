@@ -1,6 +1,7 @@
 package dev.bee.kanjianki;
 
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -41,11 +42,7 @@ final class MainActivitySettingsRetentionPanel {
         quick.setOrientation(LinearLayout.HORIZONTAL);
         for (int value : new int[]{85, 90, 95}) {
             Button preset = activity.secondaryButton(SettingsTextCopy.retentionPresetLabel(value));
-            preset.setOnClickListener(v -> {
-                selected[0] = value;
-                slider.setProgress(value - 80);
-                status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
-            });
+            preset.setOnClickListener(new RetentionPresetClickListener(value, selected, slider, status));
             quick.addView(preset, new LinearLayout.LayoutParams(0, activity.dp(54), 1));
         }
         box.addView(quick);
@@ -57,25 +54,11 @@ final class MainActivitySettingsRetentionPanel {
         box.addView(rankRanges, new LinearLayout.LayoutParams(-1, activity.dp(132)));
 
         Button exampleRanges = activity.secondaryButton(SettingsTextCopy.useExampleRangesLabel());
-        exampleRanges.setOnClickListener(v -> rankRanges.setText(FrequencyRetentionRanges.exampleText()));
+        exampleRanges.setOnClickListener(new RunnableClickListener(() -> rankRanges.setText(FrequencyRetentionRanges.exampleText())));
         box.addView(exampleRanges);
 
         Button save = activity.primaryButton(SettingsTextCopy.saveRetentionLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(v -> {
-            RetentionSettingsPolicy.SaveResult request = RetentionSettingsPolicy.saveRequest(
-                    selected[0],
-                    rankRetentionEnabled.isChecked(),
-                    rankRanges.getText().toString(),
-                    activity.store.schedulerParameters()
-            );
-            if (!request.valid) {
-                Toast.makeText(activity, request.message, Toast.LENGTH_LONG).show();
-                return;
-            }
-            activity.store.saveSchedulerParameters(request.parameters);
-            Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
-            activity.renderSettings();
-        });
+        save.setOnClickListener(new RunnableClickListener(() -> saveRetention(selected, rankRetentionEnabled, rankRanges)));
         box.addView(save);
         return box;
     }
@@ -90,5 +73,55 @@ final class MainActivitySettingsRetentionPanel {
         input.setGravity(Gravity.TOP | Gravity.START);
         input.setSelectAllOnFocus(false);
         return input;
+    }
+
+    private void saveRetention(int[] selected, CheckBox rankRetentionEnabled, EditText rankRanges) {
+        RetentionSettingsPolicy.SaveResult request = RetentionSettingsPolicy.saveRequest(
+                selected[0],
+                rankRetentionEnabled.isChecked(),
+                rankRanges.getText().toString(),
+                activity.store.schedulerParameters()
+        );
+        if (!request.valid) {
+            Toast.makeText(activity, request.message, Toast.LENGTH_LONG).show();
+            return;
+        }
+        activity.store.saveSchedulerParameters(request.parameters);
+        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
+        activity.renderSettings();
+    }
+
+    private static final class RetentionPresetClickListener implements View.OnClickListener {
+        private final int value;
+        private final int[] selected;
+        private final SeekBar slider;
+        private final TextView status;
+
+        RetentionPresetClickListener(int value, int[] selected, SeekBar slider, TextView status) {
+            this.value = value;
+            this.selected = selected;
+            this.slider = slider;
+            this.status = status;
+        }
+
+        @Override
+        public void onClick(View v) {
+            selected[0] = value;
+            slider.setProgress(value - 80);
+            status.setText(SettingsTextCopy.retentionStatusText(selected[0]));
+        }
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
