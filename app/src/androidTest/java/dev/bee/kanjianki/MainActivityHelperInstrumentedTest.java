@@ -1665,10 +1665,10 @@ public final class MainActivityHelperInstrumentedTest {
     private static void verifyTokenCandidatesAndReviewToasts(MainActivity activity) {
         assertTrue(activity.isActiveToken("tok"));
         assertFalse(activity.isActiveToken("missing"));
-        assertEquals("", activity.candidateText(null));
+        assertEquals("", WritingFeedbackCopy.candidateText(null));
         assertEquals(
                 "裂, 列, 烈",
-                activity.candidateText(Arrays.asList(
+                WritingFeedbackCopy.candidateText(Arrays.asList(
                         new RecognitionCandidate("裂", 0.9f),
                         new RecognitionCandidate("列", 0.5f),
                         new RecognitionCandidate("烈", 0.4f),

@@ -401,10 +401,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         return StudyCollectionLookup.studyItemByKanji(items, kanji);
     }
 
-    String candidateText(List<RecognitionCandidate> candidates) {
-        return WritingFeedbackCopy.candidateText(candidates);
-    }
-
     StrokeGuide strokeGuide(String kanji) {
         if (strokeGuides == null) {
             strokeGuides = StrokeGuideAssets.load(this);
