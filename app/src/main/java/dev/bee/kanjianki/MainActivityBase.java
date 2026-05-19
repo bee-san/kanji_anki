@@ -176,7 +176,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     abstract void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan);
     abstract DictionaryLookup currentDictionaryLookup();
     abstract RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row);
-    abstract boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis);
     abstract void clearStudyModeOverrides();
     abstract Typeface fontResource(int fontRes, Typeface fallback);
     abstract EditText thresholdInput(int value);

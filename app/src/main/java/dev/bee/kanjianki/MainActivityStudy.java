@@ -1495,7 +1495,7 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void showAnalysis(WritingAnalysis analysis) {
         StrokeGuide guide = activeSession == null ? null : strokeGuide(activeSession.item.kanji);
-        if (shouldIncreaseSupportAfterAnalysis(analysis)) {
+        if (WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis)) {
             setHintState(hintProgression.afterWriting(currentHintState, analysis));
         }
         if (drawingPad != null && activeSession != null) {
@@ -1514,7 +1514,7 @@ abstract class MainActivityStudy extends MainActivityStats {
                 analysis,
                 targetKanji,
                 activeWritingLevel,
-                shouldIncreaseSupportAfterAnalysis(analysis),
+                WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis),
                 diagnosisText(analysis)
         );
         setStudyStatus(WritingFeedbackCopy.guideLabel(currentHintState, guide), MUTED);
@@ -1619,10 +1619,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         }
         StrokeGuide guide = strokeGuide(activeSession.item.kanji);
         return hintProgression.canRevealMoreHelp(currentHintState, guide);
-    }
-
-    boolean shouldIncreaseSupportAfterAnalysis(WritingAnalysis analysis) {
-        return WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis);
     }
 
     void startCleanerRetry() {

@@ -360,8 +360,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(WritingFeedbackCopy.canPracticeAfterAnalysis(wrong));
                 assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
                 assertFalse(WritingFeedbackCopy.canManualOverride(close));
-                assertTrue(activity.shouldIncreaseSupportAfterAnalysis(wrong));
-                assertFalse(activity.shouldIncreaseSupportAfterAnalysis(close));
+                assertTrue(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(wrong));
+                assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(close));
                 assertTrue(WritingFeedbackCopy.shouldShowLearningPanel(wrong, false, false, 1));
                 assertFalse(WritingFeedbackCopy.shouldShowLearningPanel(
                         analysis(WritingAnalysis.Status.NO_INK, false, order),
@@ -369,8 +369,8 @@ public final class MainActivityHelperInstrumentedTest {
                         false,
                         1
                 ));
-                assertTrue(WritingFeedbackCopy.attemptProgressText(close, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, activity.shouldIncreaseSupportAfterAnalysis(close)).contains("Try cleaner"));
-                assertTrue(WritingFeedbackCopy.attemptProgressText(pass, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, activity.shouldIncreaseSupportAfterAnalysis(pass)).contains("less help"));
+                assertTrue(WritingFeedbackCopy.attemptProgressText(close, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(close)).contains("Try cleaner"));
+                assertTrue(WritingFeedbackCopy.attemptProgressText(pass, activity.activeSession == null ? null : activity.activeSession.item.writingLevel, WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(pass)).contains("less help"));
                 assertTrue(WritingFeedbackCopy.targetRevealText(wrong, activity.activeSession == null ? null : activity.activeSession.item.kanji).contains("Target: 裂"));
             });
         }
@@ -1837,7 +1837,7 @@ public final class MainActivityHelperInstrumentedTest {
         activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
         assertTrue(activity.writingActionPresentation().answerPanelVisible);
         activity.activeAnalysis = null;
-        assertFalse(activity.shouldIncreaseSupportAfterAnalysis(null));
+        assertFalse(WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(null));
         assertFalse(WritingFeedbackCopy.canManualOverride(null));
         assertFalse(WritingFeedbackCopy.canPracticeAfterAnalysis(null));
         assertFalse(WritingFeedbackCopy.canSubmitAnalysis(null));
