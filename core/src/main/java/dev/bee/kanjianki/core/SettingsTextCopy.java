@@ -43,24 +43,15 @@ public final class SettingsTextCopy {
     }
 
     public static String settingsReminderSummary(boolean enabled, boolean blocked, String displayTime) {
-        if (blocked) {
-            return "Blocked";
-        }
-        return enabled ? displayTime : "Off";
+        return SettingsAutomationTextCopy.settingsReminderSummary(enabled, blocked, displayTime);
     }
 
     public static String settingsAutoSyncSummary(boolean configured, boolean enabled, String displayTime) {
-        if (!configured) {
-            return "After first sync";
-        }
-        return enabled ? displayTime : "Off";
+        return SettingsAutomationTextCopy.settingsAutoSyncSummary(configured, enabled, displayTime);
     }
 
     public static String settingsUpdateSummary(boolean hasPendingUpdate, boolean enabled) {
-        if (hasPendingUpdate) {
-            return "Verified APK ready";
-        }
-        return enabled ? "Automatic checks on" : "Manual checks";
+        return SettingsAutomationTextCopy.settingsUpdateSummary(hasPendingUpdate, enabled);
     }
 
     public static String syncStatusHeadline(boolean success, String errorMessage, int suspendedCards, int importedKanji) {
@@ -71,10 +62,7 @@ public final class SettingsTextCopy {
     }
 
     public static String versionText(String version) {
-        if (version == null || version.trim().isEmpty()) {
-            return "unknown version";
-        }
-        return version.replaceFirst("^v", "");
+        return SettingsAutomationTextCopy.versionText(version);
     }
 
     public static String settingsAnkiSourceTitle() {
@@ -110,60 +98,59 @@ public final class SettingsTextCopy {
     }
 
     public static String updatePageTitle() {
-        return "GitHub updater";
+        return SettingsAutomationTextCopy.updatePageTitle();
     }
 
     public static String updatePageBody(String versionName) {
-        return "Current version " + String.valueOf(versionName)
-                + ". Checks GitHub Releases, verifies the APK, and asks Android to install it.";
+        return SettingsAutomationTextCopy.updatePageBody(versionName);
     }
 
     public static String automaticUpdatesTitle() {
-        return "Automatic updates";
+        return SettingsAutomationTextCopy.automaticUpdatesTitle();
     }
 
     public static String checkForUpdateLabel() {
-        return "Check for update";
+        return SettingsAutomationTextCopy.checkForUpdateLabel();
     }
 
     public static String autoUpdatePanelStatus(boolean enabled) {
-        return enabled ? "On: checks about once a day" : "Off";
+        return SettingsAutomationTextCopy.autoUpdatePanelStatus(enabled);
     }
 
     public static String autoUpdateLastCheckLine(String lastCheckText) {
-        return "Last check: " + String.valueOf(lastCheckText);
+        return SettingsAutomationTextCopy.autoUpdateLastCheckLine(lastCheckText);
     }
 
     public static String autoUpdateLastResultLine(String lastResult) {
-        return "Last result: " + String.valueOf(lastResult);
+        return SettingsAutomationTextCopy.autoUpdateLastResultLine(lastResult);
     }
 
     public static String installPermissionLine(boolean canInstall) {
-        return "Install permission: " + (canInstall ? "Ready" : "Missing");
+        return SettingsAutomationTextCopy.installPermissionLine(canInstall);
     }
 
     public static String verifiedApkReadyLine(String version) {
-        return "Verified APK ready: " + versionText(version);
+        return SettingsAutomationTextCopy.verifiedApkReadyLine(version);
     }
 
     public static String pendingUpdateFallback() {
-        return "Android needs confirmation before Kani can replace itself.";
+        return SettingsAutomationTextCopy.pendingUpdateFallback();
     }
 
     public static String installVerifiedUpdateLabel() {
-        return "Install verified update";
+        return SettingsAutomationTextCopy.installVerifiedUpdateLabel();
     }
 
     public static String setupAppInstallsLabel() {
-        return "Set up app installs";
+        return SettingsAutomationTextCopy.setupAppInstallsLabel();
     }
 
     public static String automaticUpdatesToggleLabel(boolean enabled) {
-        return enabled ? "Turn off automatic updates" : "Turn on automatic updates";
+        return SettingsAutomationTextCopy.automaticUpdatesToggleLabel(enabled);
     }
 
     public static String backToSettingsLabel() {
-        return "Back to settings";
+        return SettingsAutomationTextCopy.backToSettingsLabel();
     }
 
     public static String settingsCockpitLabel() {
