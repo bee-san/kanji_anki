@@ -59,7 +59,9 @@ final class MainActivityStudyWritingUi {
             activity.checkWritingButton.setVisibility(presentation.checkVisible ? View.VISIBLE : View.GONE);
             activity.checkWritingButton.setEnabled(presentation.checkEnabled);
             activity.checkWritingButton.setText(presentation.checkText);
-            activity.checkWritingButton.setOnClickListener(presentation.messyPass ? v -> activity.startCleanerRetry() : v -> activity.checkWriting());
+            activity.checkWritingButton.setOnClickListener(new RunnableClickListener(
+                    presentation.messyPass ? activity::startCleanerRetry : activity::checkWriting
+            ));
         }
     }
 
@@ -85,7 +87,7 @@ final class MainActivityStudyWritingUi {
             activity.nextAfterPassButton.setVisibility(presentation.nextVisible ? View.VISIBLE : View.GONE);
             if (presentation.nextVisible) {
                 activity.nextAfterPassButton.setText(presentation.nextLabel);
-                activity.nextAfterPassButton.setOnClickListener(v -> activity.submitReview(presentation.nextRating, false));
+                activity.nextAfterPassButton.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(presentation.nextRating, false)));
             }
         }
     }
@@ -138,4 +140,16 @@ final class MainActivityStudyWritingUi {
         }
     }
 
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
+    }
 }
