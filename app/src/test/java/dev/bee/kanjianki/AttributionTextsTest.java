@@ -4,6 +4,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import dev.bee.kanjianki.core.AttributionCopy;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -67,13 +69,19 @@ public final class AttributionTextsTest {
     public void sourceAndNoteAdaptersDelegateToCoreFormatter() throws Exception {
         List<String> lines = new ArrayList<>();
 
-        AttributionTexts.appendSource(lines, object(
-                "name", "KANJIDIC2",
-                "license", "CC BY-SA",
-                "source_path", "kanjidic2.xml",
-                "database_version", "2026-05-01"
+        AttributionCopy.appendSource(lines, new AttributionCopy.Source(
+                null,
+                "KANJIDIC2",
+                "CC BY-SA",
+                null,
+                "kanjidic2.xml",
+                null,
+                "2026-05-01",
+                null,
+                null,
+                null
         ));
-        AttributionTexts.appendNotes(lines, array("note one", "note two"));
+        AttributionCopy.appendNotes(lines, Arrays.asList("note one", "note two"));
 
         assertEquals(
                 "\nKANJIDIC2\nLicense: CC BY-SA\nSource: kanjidic2.xml\nVersion: 2026-05-01\n\nnote one\nnote two",
