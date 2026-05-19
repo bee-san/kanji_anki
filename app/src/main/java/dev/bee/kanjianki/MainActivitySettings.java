@@ -121,8 +121,8 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsWorkloadPanel(this);
     }
 
-    private MainActivitySettingsLearning learning() {
-        return new MainActivitySettingsLearning(this);
+    private MainActivitySettingsLearningPanel learningPanel() {
+        return new MainActivitySettingsLearningPanel(this);
     }
 
     private MainActivitySettingsStudyLadder studyLadderUi() {
@@ -289,7 +289,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
     }
 
     LinearLayout learningStepsSettingsPanel() {
-        return learning().learningStepsSettingsPanel();
+        return learningPanel().learningStepsSettingsPanel();
     }
 
     LinearLayout studyAheadSettingsPanel() {
