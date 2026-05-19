@@ -507,16 +507,14 @@ abstract class MainActivitySettings extends MainActivityStudy {
         grid.setOrientation(LinearLayout.VERTICAL);
         for (SettingsImportPreset preset : SettingsImportPreset.defaults()) {
             Button button = secondaryButton(preset.label());
-            button.setOnClickListener(v -> applyImportPreset(preset));
+            button.setOnClickListener(v -> {
+                SettingsWriteActions.applyImportPreset(preset, importFilterWriter());
+                Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
+                renderSettings();
+            });
             grid.addView(button);
         }
         box.addView(grid);
-    }
-
-    void applyImportPreset(SettingsImportPreset preset) {
-        SettingsWriteActions.applyImportPreset(preset, importFilterWriter());
-        Toast.makeText(this, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
-        renderSettings();
     }
 
     SettingsWriteActions.SettingWriter importFilterWriter() {
