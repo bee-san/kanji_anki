@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.AdaptiveFocusCopy;
+import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
@@ -1001,10 +1002,10 @@ public final class MainActivityHelperInstrumentedTest {
         RecordsSchedulerModels.AdaptiveLoadPlan waiting = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 0, 0, Collections.emptyList(), 0, false, "");
         RecordsSchedulerModels.AdaptiveLoadPlan all = new RecordsSchedulerModels.AdaptiveLoadPlan(100, 2, 2, Arrays.asList("裂", "語"), 0, true, "all");
         RecordsSchedulerModels.AdaptiveLoadPlan focused = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 4, 1, Arrays.asList("裂", "語"), 0, false, "focus");
-        assertEquals("Waiting", activity.focusHeadline(null));
-        assertEquals("Waiting", activity.focusHeadline(waiting));
-        assertEquals("All current", activity.focusHeadline(all));
-        assertEquals("1 items left / 4", activity.focusHeadline(focused));
+        assertEquals("Waiting", HomeTextCopy.focusHeadline(null));
+        assertEquals("Waiting", HomeTextCopy.focusHeadline(waiting));
+        assertEquals("All current", HomeTextCopy.focusHeadline(all));
+        assertEquals("1 items left / 4", HomeTextCopy.focusHeadline(focused));
 
         StudyStatsStore.StudyStreak none = new StudyStatsStore.StudyStreak(0, 0, false, 0, 0L);
         StudyStatsStore.StudyStreak doneToday = new StudyStatsStore.StudyStreak(2, 5, true, 3, 1000L);
@@ -1014,8 +1015,8 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("Not done today", activity.streakMetricBody(none));
         assertEquals("Best: 5 days", activity.streakMetricBody(doneToday));
         assertEquals("Done today", activity.streakMetricBody(doneNoBest));
-        assertEquals("1 day", activity.streakDayCount(1));
-        assertEquals("3 days", activity.streakDayCount(3));
+        assertEquals("1 day", HomeTextCopy.streakDayCount(1));
+        assertEquals("3 days", HomeTextCopy.streakDayCount(3));
     }
 
     private static void verifyStudyTimeRankAndQueueText(MainActivity activity) {

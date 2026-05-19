@@ -194,7 +194,7 @@ abstract class MainActivityHome extends MainActivityBase {
                 R.drawable.ic_target_24,
                 CORAL,
                 HomeTextCopy.focusMetricLabel(),
-                focusHeadline(plan),
+                HomeTextCopy.focusHeadline(plan),
                 null,
                 null
         ));
@@ -343,10 +343,6 @@ abstract class MainActivityHome extends MainActivityBase {
         return HomeTextCopy.sentenceCase(value);
     }
 
-    String focusHeadline(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        return HomeTextCopy.focusHeadline(plan);
-    }
-
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -481,14 +477,6 @@ abstract class MainActivityHome extends MainActivityBase {
 
     String streakMetricBody(StudyStatsStore.StudyStreak streak) {
         return HomeTextCopy.streakMetricBody(streak != null && streak.studiedToday, streak == null ? 0 : streak.bestDays);
-    }
-
-    String humanSyncTime(long timestampMillis) {
-        return DateTextPolicy.humanSyncTime(timestampMillis);
-    }
-
-    String streakDayCount(int days) {
-        return HomeTextCopy.streakDayCount(days);
     }
 
     void confirmSync() {
