@@ -22,6 +22,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.sync.SyncSettings;
 
 import org.junit.After;
@@ -1829,12 +1830,12 @@ public final class LocalStoreInstrumentedTest {
         assertTrue(LocalStoreHistory.deserializeChoices(null).isEmpty());
         assertEquals(Arrays.asList("拉", "提"), LocalStoreHistory.deserializeChoices("拉\t\t提"));
         assertEquals("", LocalStoreHistory.serializeChoices(null));
-        assertTrue(store.studyStateTimelineDetail(true, null, 3).contains("retired"));
-        assertTrue(store.studyStateTimelineDetail(false, null, 3).contains("reopened"));
-        assertTrue(store.studyStateTimelineDetail(false, 1, 3).contains("1 / target 3"));
-        assertTrue(store.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "manual", "good", false, false, true, 0), "good").contains("manual"));
-        assertTrue(store.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "recall", "again", false, false, false, 0), "again").contains("Recall missed"));
-        assertTrue(store.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "writing", "hard", true, false, false, 0), "hard").contains("not passed"));
+        assertTrue(TimelineCopy.studyStateDetail(true, null, 3).contains("retired"));
+        assertTrue(TimelineCopy.studyStateDetail(false, null, 3).contains("reopened"));
+        assertTrue(TimelineCopy.studyStateDetail(false, 1, 3).contains("1 / target 3"));
+        assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "manual", "good", false, false, true, 0), "good").contains("manual"));
+        assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "recall", "again", false, false, false, 0), "again").contains("Recall missed"));
+        assertTrue(TimelineCopy.reviewDetail(new RecordsSchedulerModels.ReviewRequest("拉", "writing", "hard", true, false, false, 0), "hard").contains("not passed"));
 
         store.saveFailedSync(1000L, 2000L, "failed", "provider", "No provider");
         assertTrue(store.latestSync().headline().contains("Sync blocked: No provider"));

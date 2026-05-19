@@ -120,7 +120,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                     row.rebuiltAt == 0L ? System.currentTimeMillis() : row.rebuiltAt,
                     "weak_support_seen",
                     "Weak support seen",
-                    supportDetail("Anki evidence still needs repair", row.matureSupportCount, RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold),
+                    TimelineCopy.supportDetail("Anki evidence still needs repair", row.matureSupportCount, RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold),
                     row.source.expression,
                     row.source.reading,
                     "",
@@ -181,7 +181,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                     "Retired by Anki support",
                     mature == null
                             ? "Kani had already retired this repair before timeline tracking was added."
-                            : supportDetail("Mature Anki support met the target", mature, RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold),
+                            : TimelineCopy.supportDetail("Mature Anki support met the target", mature, RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold),
                     source.expression,
                     source.reading,
                     "",
@@ -280,7 +280,7 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                         occurredAt,
                         "weak_support_seen",
                         "Weak support seen",
-                        supportDetail("Anki evidence still needs repair", row.matureSupportCount, target),
+                        TimelineCopy.supportDetail("Anki evidence still needs repair", row.matureSupportCount, target),
                         source.expression,
                         source.reading,
                         "",
@@ -390,10 +390,6 @@ abstract class LocalStoreHistory extends LocalStoreBase {
         return STATE_RETIRED.equals(item.state) != STATE_RETIRED.equals(previous.state);
     }
 
-    String studyStateTimelineDetail(boolean retired, Integer mature, int target) {
-        return TimelineCopy.studyStateDetail(retired, mature, target);
-    }
-
     void appendReviewTimelineEvent(SQLiteDatabase db, RecordsSchedulerModels.ReviewRequest request, String appliedRating, long reviewedAt, String dedupeKey) {
         TimelineCopy.ReviewEvent event = TimelineCopy.reviewEvent(request, appliedRating);
         SourceSnapshot source = firstExampleForKanji(db, request.kanji);
@@ -416,14 +412,6 @@ abstract class LocalStoreHistory extends LocalStoreBase {
                 null,
                 dedupeKey
         );
-    }
-
-    String reviewDetail(RecordsSchedulerModels.ReviewRequest request, String appliedRating) {
-        return TimelineCopy.reviewDetail(request, appliedRating);
-    }
-
-    String supportDetail(String prefix, int matureSupportCount, int target) {
-        return TimelineCopy.supportDetail(prefix, matureSupportCount, target);
     }
 
     void backfillKanjiInventory(SQLiteDatabase db, long nowMillis, RecordsSyncModels.Settings settings) {
