@@ -399,7 +399,7 @@ abstract class MainActivityHome extends MainActivityBase {
         button.addView(text, new LinearLayout.LayoutParams(-2, -2));
         button.setBackground(panel(Color.WHITE, Color.rgb(235, 214, 228), dp(22)));
         button.setClickable(true);
-        button.setOnClickListener(v -> renderHome());
+        button.setOnClickListener(new RunnableClickListener(this::renderHome));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(56));
         lp.setMargins(0, 0, 0, dp(10));
         button.setLayoutParams(lp);
@@ -420,7 +420,7 @@ abstract class MainActivityHome extends MainActivityBase {
         if (rows.isEmpty()) {
             emptyState(HomeTextCopy.noKanjiQueuedTitle(), HomeTextCopy.focusQueueNoKanjiQueuedBody());
             Button syncButton = primaryButton(HomeTextCopy.syncAnkiDroidLabel(), CORAL);
-            syncButton.setOnClickListener(v -> confirmSync());
+            syncButton.setOnClickListener(new RunnableClickListener(this::confirmSync));
             content.addView(syncButton);
             return;
         }
@@ -449,7 +449,7 @@ abstract class MainActivityHome extends MainActivityBase {
 
     View recentMistakeRow(StudyStatsStore.RecentMistake mistake, RecordsImportModels.DashboardRow row) {
         LinearLayout box = panelBox(Color.WHITE, PINK_STROKE);
-        box.setOnClickListener(v -> renderDetail(mistake.kanji));
+        box.setOnClickListener(new RunnableClickListener(() -> renderDetail(mistake.kanji)));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView kanji = kanjiTile(mistake.kanji, dp(70), 42);
@@ -525,7 +525,7 @@ abstract class MainActivityHome extends MainActivityBase {
         info.addView(text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncAlreadyRunningFallback() : result.message, 17, Color.WHITE, false));
         content.addView(info);
         Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(v -> renderHome());
+        home.setOnClickListener(new RunnableClickListener(this::renderHome));
         content.addView(home);
     }
 
@@ -551,11 +551,11 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(summary);
         if (result.dashboardRows > 0) {
             Button study = primaryButton(LABEL_STUDY_NOW, CORAL);
-            study.setOnClickListener(v -> startFocusedStudy());
+            study.setOnClickListener(new RunnableClickListener(this::startFocusedStudy));
             content.addView(study);
         }
         Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(v -> renderHome());
+        home.setOnClickListener(new RunnableClickListener(this::renderHome));
         content.addView(home);
     }
 
@@ -566,10 +566,10 @@ abstract class MainActivityHome extends MainActivityBase {
         error.addView(text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncFailureFallback() : result.message, 16, Color.WHITE, false));
         content.addView(error);
         Button retry = primaryButton(HomeTextCopy.trySyncAgainLabel(), TEAL);
-        retry.setOnClickListener(v -> confirmSync());
+        retry.setOnClickListener(new RunnableClickListener(this::confirmSync));
         content.addView(retry);
         Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(v -> renderHome());
+        home.setOnClickListener(new RunnableClickListener(this::renderHome));
         content.addView(home);
     }
 
@@ -630,7 +630,7 @@ abstract class MainActivityHome extends MainActivityBase {
         RecordsStudyModels.StudyItem item = entry.item;
         LinearLayout box = panelBox(Color.WHITE, softened(rowColor(item, now)));
         box.setPadding(dp(12), dp(12), dp(12), dp(12));
-        box.setOnClickListener(v -> renderDetail(row.kanji));
+        box.setOnClickListener(new RunnableClickListener(() -> renderDetail(row.kanji)));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.addView(kanjiTile(row.kanji, dp(90), 52));
@@ -687,7 +687,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(search, new LinearLayout.LayoutParams(-1, dp(58)));
 
         Button submit = primaryButton(HomeTextCopy.browseSearchButtonLabel(), TEAL);
-        submit.setOnClickListener(v -> renderBrowseKanji(search.getText().toString()));
+        submit.setOnClickListener(new RunnableClickListener(() -> renderBrowseKanji(search.getText().toString())));
         content.addView(submit);
 
         List<RecordsImportModels.KanjiInventoryItem> items = store.searchKanjiInventory(query);
@@ -703,7 +703,7 @@ abstract class MainActivityHome extends MainActivityBase {
 
     View browseKanjiRow(RecordsImportModels.KanjiInventoryItem item) {
         LinearLayout box = panelBox(Color.WHITE, item.suspended ? CORAL : TEAL);
-        box.setOnClickListener(v -> renderDetail(item.kanji, true));
+        box.setOnClickListener(new RunnableClickListener(() -> renderDetail(item.kanji, true)));
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView glyph = text(item.kanji, 44, INK, true);
@@ -767,7 +767,7 @@ abstract class MainActivityHome extends MainActivityBase {
         content.addView(glyph);
         if (fromBrowse) {
             Button back = secondaryButton(HomeTextCopy.backToBrowseKanjiLabel());
-            back.setOnClickListener(v -> renderBrowseKanji(browseQuery));
+            back.setOnClickListener(new RunnableClickListener(() -> renderBrowseKanji(browseQuery)));
             content.addView(back);
         }
     }
