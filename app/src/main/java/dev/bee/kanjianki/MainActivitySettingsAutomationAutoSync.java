@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Toast;
@@ -35,11 +36,11 @@ final class MainActivitySettingsAutomationAutoSync {
         if (auto.configured) {
             if (auto.enabled) {
                 Button off = activity.secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
-                off.setOnClickListener(v -> disableAutoSync());
+                off.setOnClickListener(new RunnableClickListener(this::disableAutoSync));
                 box.addView(off);
             } else {
                 Button on = activity.primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), activity.STUDY_PINK_DARK);
-                on.setOnClickListener(v -> enableAutoSync());
+                on.setOnClickListener(new RunnableClickListener(this::enableAutoSync));
                 box.addView(on);
             }
         }
@@ -60,5 +61,18 @@ final class MainActivitySettingsAutomationAutoSync {
         AutoSyncScheduler.cancel(activity);
         Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show();
         activity.renderSettings();
+    }
+
+    private static final class RunnableClickListener implements View.OnClickListener {
+        private final Runnable action;
+
+        RunnableClickListener(Runnable action) {
+            this.action = action;
+        }
+
+        @Override
+        public void onClick(View v) {
+            action.run();
+        }
     }
 }
