@@ -324,16 +324,12 @@ abstract class MainActivityHome extends MainActivityBase {
 
     View homeActionRow() {
         List<View> actions = new ArrayList<>();
-        actions.add(pillButton(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, this::renderBrowseKanji));
+        actions.add(pillButton(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, () -> renderBrowseKanji("")));
         actions.add(pillButton(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, this::renderRecentMistakes));
         actions.add(pillButton(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, this::renderStats));
         actions.add(pillButton(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, this::renderGames));
         actions.add(pillButton(NAV_SETTINGS, R.drawable.ic_settings_24, this::renderSettings));
         return twoColumnGrid(actions);
-    }
-
-    void renderBrowseKanji() {
-        renderBrowseKanji("");
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
