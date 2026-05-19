@@ -529,19 +529,6 @@ abstract class MainActivityHome extends MainActivityBase {
         List<QueueEntry> entries = queuedEntries(rows, items, now, plan);
         summary.addView(text(HomeTextCopy.syncReadyCountText(entries.size()), 24, Color.WHITE, true));
         summary.addView(text(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)), 16, Color.WHITE, false));
-        addOptionalSyncSummaryLines(summary, result);
-        content.addView(summary);
-        if (result.dashboardRows > 0) {
-            Button study = primaryButton(LABEL_STUDY_NOW, CORAL);
-            study.setOnClickListener(v -> startFocusedStudy());
-            content.addView(study);
-        }
-        Button home = secondaryButton(LABEL_BACK_HOME);
-        home.setOnClickListener(v -> renderHome());
-        content.addView(home);
-    }
-
-    void addOptionalSyncSummaryLines(LinearLayout summary, ManualSyncEngine.SyncResult result) {
         if (!result.adaptiveSummary.isEmpty()) {
             summary.addView(text(result.adaptiveSummary, 15, Color.WHITE, false));
         }
@@ -551,6 +538,15 @@ abstract class MainActivityHome extends MainActivityBase {
         if (result.message != null && !result.message.isEmpty()) {
             summary.addView(text(result.message, 14, Color.WHITE, false));
         }
+        content.addView(summary);
+        if (result.dashboardRows > 0) {
+            Button study = primaryButton(LABEL_STUDY_NOW, CORAL);
+            study.setOnClickListener(v -> startFocusedStudy());
+            content.addView(study);
+        }
+        Button home = secondaryButton(LABEL_BACK_HOME);
+        home.setOnClickListener(v -> renderHome());
+        content.addView(home);
     }
 
     void renderFailedSyncResult(ManualSyncEngine.SyncResult result) {
