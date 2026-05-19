@@ -664,9 +664,9 @@ abstract class MainActivityStudy extends MainActivityStats {
         card.setClickable(true);
         card.setFocusable(true);
 
-        card.addView(recognitionPill(studyModeLabel(session)));
+        card.addView(recognitionPill(StudyTaskCopy.studyModeLabel(session)));
 
-        TextView title = text(flashcardTitle(session), 21, STUDY_HERO_PLUM, true);
+        TextView title = text(StudyTaskCopy.flashcardTitle(session), 21, STUDY_HERO_PLUM, true);
         title.setGravity(Gravity.CENTER);
         title.setIncludeFontPadding(false);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
@@ -957,14 +957,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void abandonActiveStudyTask() {
         studySessionTracker.abandonActiveTask();
-    }
-
-    String flashcardTitle(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.flashcardTitle(session);
-    }
-
-    String studyModeLabel(RecordsSchedulerModels.StudySession session) {
-        return StudyTaskCopy.studyModeLabel(session);
     }
 
     View typingAnswerField() {

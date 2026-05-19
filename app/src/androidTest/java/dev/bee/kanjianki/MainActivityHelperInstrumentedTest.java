@@ -295,13 +295,13 @@ public final class MainActivityHelperInstrumentedTest {
 
                 assertEquals("What is the reading?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_WORD_READING, row)));
                 assertEquals("What does this kanji mean?", StudyTextCopy.heroQuestion(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("Read this word", activity.flashcardTitle(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("Type the meaning", activity.flashcardTitle(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertEquals("Recognise this kanji", activity.flashcardTitle(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
-                assertEquals("Name this kanji", activity.flashcardTitle(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
-                assertEquals("Read", activity.studyModeLabel(session("語", BridgeScheduler.TASK_WORD_READING, row)));
-                assertEquals("Type", activity.studyModeLabel(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
-                assertEquals("Recognise", activity.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("Read this word", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertEquals("Type the meaning", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
+                assertEquals("Recognise this kanji", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_FONT_MEANING, row)));
+                assertEquals("Name this kanji", StudyTaskCopy.flashcardTitle(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
+                assertEquals("Read", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_WORD_READING, row)));
+                assertEquals("Type", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_TYPE_MEANING, row)));
+                assertEquals("Recognise", StudyTaskCopy.studyModeLabel(session("語", BridgeScheduler.TASK_KANJI_MEANING, row)));
                 assertEquals("活動語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
                 assertEquals("語", activity.wordPrompt(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.emptyList()))));
                 assertEquals("active", StudyTextCopy.collectionMeaningForSession(session("語", BridgeScheduler.TASK_WORD_READING, row("語", "language", "ゴ", Collections.singletonList(active)))));
@@ -1706,7 +1706,7 @@ public final class MainActivityHelperInstrumentedTest {
 
         assertFalse(activity.handleFlashcardGesture(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 1f, 1f, 0)));
         activity.activeSession = writing;
-        assertEquals(MainActivityBase.LABEL_PRACTICE, activity.studyModeLabel(writing));
+        assertEquals(MainActivityBase.LABEL_PRACTICE, StudyTaskCopy.studyModeLabel(writing));
         assertFalse(activity.handleFlashcardGesture(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 1f, 1f, 0)));
     }
 
