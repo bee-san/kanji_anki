@@ -12,7 +12,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Insets;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
@@ -160,13 +159,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     LinearLayout autoUpdatePanel(String title) {
         return updatePage().autoUpdatePanel(title);
-    }
-
-    boolean canInstallUpdates() {
-        if (installPermissionForTests != null) {
-            return installPermissionForTests;
-        }
-        return getPackageManager().canRequestPackageInstalls();
     }
 
     void renderSettings() {

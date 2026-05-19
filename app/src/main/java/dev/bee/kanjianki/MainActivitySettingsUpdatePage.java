@@ -35,7 +35,7 @@ final class MainActivitySettingsUpdatePage {
 
     LinearLayout autoUpdatePanel(String title) {
         LocalStore.AutoUpdateStatus status = activity.store.autoUpdateStatus();
-        boolean canInstall = activity.canInstallUpdates();
+        boolean canInstall = canInstallUpdates();
         LinearLayout box = activity.settingsPanelBox();
         box.addView(activity.text(title, 23, activity.INK, true));
         box.addView(activity.text(SettingsTextCopy.autoUpdatePanelStatus(status.enabled), 18, status.enabled ? activity.TEAL : activity.MUTED, true));
@@ -79,5 +79,12 @@ final class MainActivitySettingsUpdatePage {
         });
         box.addView(toggle);
         return box;
+    }
+
+    private boolean canInstallUpdates() {
+        if (MainActivityBase.installPermissionForTests != null) {
+            return MainActivityBase.installPermissionForTests;
+        }
+        return activity.getPackageManager().canRequestPackageInstalls();
     }
 }
