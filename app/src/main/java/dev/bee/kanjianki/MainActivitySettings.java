@@ -153,13 +153,13 @@ abstract class MainActivitySettings extends MainActivityStudy {
             box.addView(permission);
         }
 
-        Button toggle = secondaryButton(SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled));
-        toggle.setOnClickListener(v -> {
-            AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
-            SettingsWriteActions.setAutoUpdateEnabled(result, store::saveAutoUpdateEnabled);
-            if (result.enabled()) {
-                AutoUpdateScheduler.schedule(this);
-            } else {
+            Button toggle = secondaryButton(SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled));
+            toggle.setOnClickListener(v -> {
+                AutoUpdateSettingsTogglePolicy.ToggleResult result = AutoUpdateSettingsTogglePolicy.toggle(status.enabled);
+                store.saveAutoUpdateEnabled(result.enabled());
+                if (result.enabled()) {
+                    AutoUpdateScheduler.schedule(this);
+                } else {
                 AutoUpdateScheduler.cancel(this);
             }
             Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
@@ -1443,7 +1443,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Button off = secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
                 off.setOnClickListener(v -> {
                     AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.disable();
-                    SettingsWriteActions.setAutoSyncEnabled(result, store::setAutoSyncEnabled);
+                    store.setAutoSyncEnabled(result.enabled());
                     AutoSyncScheduler.cancel(this);
                     Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
                     renderSettings();
@@ -1453,7 +1453,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
                 Button on = primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), STUDY_PINK_DARK);
                 on.setOnClickListener(v -> {
                     AutoSyncSettingsTogglePolicy.ToggleResult result = AutoSyncSettingsTogglePolicy.enable();
-                    SettingsWriteActions.setAutoSyncEnabled(result, store::setAutoSyncEnabled);
+                    store.setAutoSyncEnabled(result.enabled());
                     AutoSyncScheduler.schedule(this);
                     Toast.makeText(this, result.message(), Toast.LENGTH_SHORT).show();
                     renderSettings();

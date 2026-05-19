@@ -111,14 +111,6 @@ final class SettingsWriteActions {
         return settings;
     }
 
-    static void setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.ToggleResult result, AutoSyncSettingsWriter writer) {
-        writer.setAutoSyncEnabled(result.enabled());
-    }
-
-    static void setAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.ToggleResult result, AutoUpdateSettingsWriter writer) {
-        writer.saveAutoUpdateEnabled(result.enabled());
-    }
-
     static void applyImportPreset(SettingsImportPreset preset, SettingWriter writer) {
         saveImportFilters(
                 new ImportFilterWriteRequest(
@@ -188,14 +180,6 @@ final class SettingsWriteActions {
 
     interface ReminderSettingsWriter {
         void saveReminderSettings(LocalStore.ReminderSettings settings);
-    }
-
-    interface AutoSyncSettingsWriter {
-        void setAutoSyncEnabled(boolean enabled);
-    }
-
-    interface AutoUpdateSettingsWriter {
-        void saveAutoUpdateEnabled(boolean enabled);
     }
 
     interface SettingWriter extends IntSettingWriter {

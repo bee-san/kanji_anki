@@ -218,10 +218,10 @@ public final class SettingsWriteActionsTest {
     public void setAutoSyncEnabledWritesToggleResultFlag() {
         RecordingAutoSyncWriter writer = new RecordingAutoSyncWriter();
 
-        SettingsWriteActions.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.enable(), writer);
+        writer.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.enable().enabled());
         assertTrue(writer.enabled);
 
-        SettingsWriteActions.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.disable(), writer);
+        writer.setAutoSyncEnabled(AutoSyncSettingsTogglePolicy.disable().enabled());
         assertEquals(false, writer.enabled);
     }
 
@@ -229,10 +229,10 @@ public final class SettingsWriteActionsTest {
     public void setAutoUpdateEnabledWritesToggleResultFlag() {
         RecordingAutoUpdateWriter writer = new RecordingAutoUpdateWriter();
 
-        SettingsWriteActions.setAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.toggle(false), writer);
+        writer.saveAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.toggle(false).enabled());
         assertTrue(writer.enabled);
 
-        SettingsWriteActions.setAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.toggle(true), writer);
+        writer.saveAutoUpdateEnabled(AutoUpdateSettingsTogglePolicy.toggle(true).enabled());
         assertEquals(false, writer.enabled);
     }
 
@@ -396,19 +396,17 @@ public final class SettingsWriteActionsTest {
         }
     }
 
-    private static final class RecordingAutoSyncWriter implements SettingsWriteActions.AutoSyncSettingsWriter {
+    private static final class RecordingAutoSyncWriter {
         boolean enabled;
 
-        @Override
         public void setAutoSyncEnabled(boolean enabled) {
             this.enabled = enabled;
         }
     }
 
-    private static final class RecordingAutoUpdateWriter implements SettingsWriteActions.AutoUpdateSettingsWriter {
+    private static final class RecordingAutoUpdateWriter {
         boolean enabled;
 
-        @Override
         public void saveAutoUpdateEnabled(boolean enabled) {
             this.enabled = enabled;
         }
