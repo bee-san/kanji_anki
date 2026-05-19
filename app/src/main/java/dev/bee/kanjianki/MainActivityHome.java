@@ -828,12 +828,8 @@ abstract class MainActivityHome extends MainActivityBase {
         }
         Button suspend = secondaryButton(HomeTextCopy.localSuspendButtonLabel(suspended));
         suspend.setOnClickListener(v -> {
-            String toast = HomeActions.toggleLocalSuspension(
-                    store::setKanjiLocallySuspended,
-                    displayKanji,
-                    suspended,
-                    System.currentTimeMillis()
-            );
+            store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
+            String toast = HomeTextCopy.localSuspendToast(suspended);
             Toast.makeText(this, toast, Toast.LENGTH_SHORT).show();
             renderDetail(displayKanji, fromBrowse, browseQuery);
         });

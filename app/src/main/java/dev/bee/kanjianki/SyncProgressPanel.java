@@ -63,17 +63,13 @@ final class SyncProgressPanel extends LinearLayout {
         progressBar.setProgress(SyncProgressCopy.progressPermille(lastScannedCards, lastTotalCards));
         String cardText = SyncProgressCopy.cardProgressText(lastScannedCards, lastTotalCards);
         count.setText(cardText);
-        rate.setText(scanRateText(progress.coreStage()));
-        progressBar.setContentDescription("Sync progress: " + cardText);
-    }
-
-    private String scanRateText(SyncProgressCopy.Stage stage) {
-        return SyncProgressCopy.scanRateText(
-                stage,
+        rate.setText(SyncProgressCopy.scanRateText(
+                progress.coreStage(),
                 lastScannedCards,
                 lastTotalCards,
                 SystemClock.elapsedRealtime() - scanStartedAt
-        );
+        ));
+        progressBar.setContentDescription("Sync progress: " + cardText);
     }
 
     private TextView text(Context context, String value, int sp, int color, boolean bold) {
