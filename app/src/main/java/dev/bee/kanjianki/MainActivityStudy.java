@@ -50,6 +50,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
+import dev.bee.kanjianki.core.FlashcardGesturePolicy;
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner;
@@ -1202,27 +1203,26 @@ abstract class MainActivityStudy extends MainActivityStats {
     }
 
     boolean handleFlashcardRelease(MotionEvent event) {
-        float dx = event.getRawX() - flashcardTouchStartX;
-        float dy = event.getRawY() - flashcardTouchStartY;
-        float absX = Math.abs(dx);
-        float absY = Math.abs(dy);
         int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
-        if (absX <= touchSlop && absY <= touchSlop) {
-            if (!flashcardAnswerRevealed) {
+        FlashcardGesturePolicy.Decision decision = FlashcardGesturePolicy.release(
+                flashcardTouchStartX,
+                flashcardTouchStartY,
+                event.getRawX(),
+                event.getRawY(),
+                touchSlop,
+                dp(72),
+                flashcardAnswerRevealed
+        );
+        switch (decision.action) {
+            case REVEAL:
                 revealFlashcardAnswer();
                 return true;
-            }
-            return false;
-        }
-        int swipeThreshold = Math.max(dp(72), touchSlop * 6);
-        if (absX >= swipeThreshold && absX > absY * 1.25f) {
-            if (!flashcardAnswerRevealed) {
+            case REVIEW:
+                submitReview(decision.rating, false);
+                return true;
+            default:
                 return false;
-            }
-            submitReview(dx > 0 ? RATING_GOOD : RATING_AGAIN, false);
-            return true;
         }
-        return false;
     }
 
     boolean isTouchInsideView(View view, MotionEvent event) {
