@@ -1064,12 +1064,12 @@ public final class MainActivityHelperInstrumentedTest {
             RecordsImportModels.KanjiInventoryItem inventory,
             RecordsImportModels.DashboardRow row
     ) {
-        assertEquals("裂", activity.detailDisplayKanji("fallback", row, inventory));
-        assertEquals("語", activity.detailDisplayKanji("fallback", null, inventory));
-        assertEquals("fallback", activity.detailDisplayKanji("fallback", null, null));
-        assertEquals("Historical recovery", activity.inventoryTitle(null));
-        assertEquals("Historical recovery", activity.inventoryTitle(new RecordsImportModels.KanjiInventoryItem("語", "", "", "", 0, 0, false, 0L)));
-        assertEquals("language", activity.inventoryTitle(inventory));
+        assertEquals("裂", HomeTextCopy.detailDisplayKanji("fallback", row, inventory));
+        assertEquals("語", HomeTextCopy.detailDisplayKanji("fallback", null, inventory));
+        assertEquals("fallback", HomeTextCopy.detailDisplayKanji("fallback", null, null));
+        assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(null));
+        assertEquals("Historical recovery", HomeTextCopy.inventoryTitle(new RecordsImportModels.KanjiInventoryItem("語", "", "", "", 0, 0, false, 0L)));
+        assertEquals("language", HomeTextCopy.inventoryTitle(inventory));
 
         RecordsStudyModels.KanjiRecoveryTimeline activeTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline restingTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), Collections.emptyList());
