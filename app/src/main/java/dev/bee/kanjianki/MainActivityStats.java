@@ -12,7 +12,6 @@ import java.util.List;
 abstract class MainActivityStats extends MainActivityGames {
     void renderStats() {
         base("stats");
-        content.addView(fullWidthHomeButton());
         content.addView(MainActivityStatsCompose.statsScreenView(this));
     }
 

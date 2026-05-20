@@ -3,6 +3,8 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -17,6 +19,35 @@ private const val VERDICT_FILL = 0xFFEEFCFA.toInt()
 class StatsComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun rendersStatsRouteWithHomeAction() {
+        var homeClicked = false
+
+        composeRule.setContent {
+            StatsRouteScreen(
+                model = StatsScreenModel(
+                    title = "Stats",
+                    intro = "Stats intro",
+                    verdict = StatsCardModel(
+                        title = "Kani is working",
+                        body = "Evidence is improving.",
+                        fillColor = VERDICT_FILL,
+                        strokeColor = TEAL
+                    ),
+                    sections = emptyList()
+                ),
+                onHome = { homeClicked = true }
+            )
+        }
+
+        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Stats").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            assertTrue(homeClicked)
+        }
+    }
 
     @Test
     fun rendersTheStatsHeadingsAndCopy() {

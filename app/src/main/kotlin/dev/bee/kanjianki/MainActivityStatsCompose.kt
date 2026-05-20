@@ -24,6 +24,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.HomeTextCopy
 internal const val STATS_INK_COLOR = 0xFF2D1635.toInt()
 internal const val STATS_MUTED_COLOR = 0xFF6C5674.toInt()
 internal const val STATS_CORAL_COLOR = 0xFFFF4C76.toInt()
@@ -71,9 +72,23 @@ fun statsScreenView(activity: Activity): View {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                StatsScreen(model = model)
+                StatsRouteScreen(model = model, onHome = statsActivity::renderHome)
             }
         }
+    }
+}
+
+@Composable
+fun StatsRouteScreen(
+    model: StatsScreenModel,
+    onHome: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HomeFullWidthHomeButton(
+            label = HomeTextCopy.homeLabel(),
+            onClick = onHome
+        )
+        StatsScreen(model = model)
     }
 }
 
