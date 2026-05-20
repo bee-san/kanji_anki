@@ -1589,7 +1589,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeSession = promptOnly;
                 activity.currentHintState = HintState.fromWritingLevel(2);
-                activity.studyStatus = new TextView(activity);
+                activity.studyStatus = new WritingStatusView(activity);
                 activity.downloadModelButton = new Button(activity);
                 new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
@@ -1607,7 +1607,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(1);
-                activity.studyStatus = new TextView(activity);
+                activity.studyStatus = new WritingStatusView(activity);
                 activity.resultStatus = new TextView(activity);
                 activity.checkWritingButton = new Button(activity);
                 activity.downloadModelButton = new Button(activity);
@@ -1807,7 +1807,7 @@ public final class MainActivityHelperInstrumentedTest {
     private static void prepareWritingControls(MainActivity activity, RecordsSchedulerModels.StudySession writing) {
         activity.activeSession = writing;
         activity.currentHintState = HintState.fromWritingLevel(3);
-        activity.studyStatus = new TextView(activity);
+        activity.studyStatus = new WritingStatusView(activity);
         activity.resultStatus = new TextView(activity);
         activity.checkWritingButton = new Button(activity);
         activity.downloadModelButton = new Button(activity);
@@ -2232,7 +2232,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
                 addInk(activity.drawingPad);
-                activity.studyStatus = new TextView(activity);
+                activity.studyStatus = new WritingStatusView(activity);
                 activity.resultStatus = new TextView(activity);
                 activity.checkWritingButton = new Button(activity);
                 activity.downloadModelButton = new Button(activity);
@@ -2456,7 +2456,7 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                activity.studyStatus = new TextView(activity);
+                activity.studyStatus = new WritingStatusView(activity);
                 activity.downloadModelButton = new Button(activity);
                 new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
@@ -2520,7 +2520,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(1);
-                activity.studyStatus = new TextView(activity);
+                activity.studyStatus = new WritingStatusView(activity);
                 activity.resultStatus = new TextView(activity);
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.checkWriting();
@@ -2809,7 +2809,7 @@ public final class MainActivityHelperInstrumentedTest {
     private static void prepareWritingUi(MainActivity activity, RecordsSchedulerModels.StudySession session) {
         activity.activeSession = session;
         activity.currentHintState = HintState.fromWritingLevel(1);
-        activity.studyStatus = new TextView(activity);
+        activity.studyStatus = new WritingStatusView(activity);
         activity.resultStatus = new TextView(activity);
         activity.checkWritingButton = new Button(activity);
         activity.downloadModelButton = new Button(activity);

@@ -124,8 +124,7 @@ final class MainActivityStudyWritingUi {
 
     void setStudyStatus(String value, int color) {
         if (activity.studyStatus != null) {
-            activity.studyStatus.setText(value);
-            activity.studyStatus.setTextColor(color);
+            activity.studyStatus.setStatus(value, color);
         }
         if (activity.resultStatus != null && activity.activeAnalysis == null) {
             activity.resultStatus.setVisibility(View.GONE);

@@ -2,7 +2,6 @@ package dev.bee.kanjianki;
 
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.RecordsImportModels;
@@ -30,11 +29,10 @@ final class MainActivityStudyWritingSession {
         home.studyAnswerPanel = home.learningPanel(session);
         card.addView(home.studyAnswerPanel);
 
-        TextView writingTitle = home.sectionTitle("Writing");
-        writingTitle.setTextColor(home.STUDY_PLUM);
-        card.addView(writingTitle);
+        card.addView(MainActivityStudyWritingChromeCompose.writingSectionTitleView(home, "Writing", home.STUDY_PLUM));
         StrokeGuide guide = home.strokeGuide(session.item.kanji);
-        home.studyStatus = home.text(WritingFeedbackCopy.guideLabel(home.currentHintState, guide), 16, home.STUDY_MUTED, false);
+        home.studyStatus = new WritingStatusView(home);
+        home.studyStatus.setStatus(WritingFeedbackCopy.guideLabel(home.currentHintState, guide), home.STUDY_MUTED);
         card.addView(home.studyStatus);
         home.drawingPad = new DrawingPadView(home);
         home.drawingPad.setTarget(session.item.kanji);
@@ -70,7 +68,7 @@ final class MainActivityStudyWritingSession {
     private List<WritingPromptLineModel> writingPromptLines(RecordsSchedulerModels.StudySession session) {
         List<WritingPromptLineModel> lines = new ArrayList<>();
         if (session.row == null) {
-            lines.add(new WritingPromptLineModel(session.prompt, 17, home.STUDY_MUTED, false));
+            lines.add(new WritingPromptLineModel(safeText(session.prompt), 17, home.STUDY_MUTED, false));
             return lines;
         }
         if (!StudyTaskCopy.isRecallTask(session)) {
@@ -93,6 +91,10 @@ final class MainActivityStudyWritingSession {
                 false
         ));
         return lines;
+    }
+
+    private String safeText(String value) {
+        return value == null ? "" : value;
     }
 
     void resetWritingSession(RecordsSchedulerModels.StudySession session) {
