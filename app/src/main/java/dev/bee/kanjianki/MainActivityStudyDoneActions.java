@@ -2,7 +2,6 @@ package dev.bee.kanjianki;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.widget.LinearLayout;
 import android.widget.EditText;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
@@ -13,7 +12,6 @@ import dev.bee.kanjianki.core.StudyTextCopy;
 
 import java.util.List;
 
-import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyDoneActionsView;
 import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyDoneScreenView;
 
 final class MainActivityStudyDoneActions {
@@ -21,17 +19,6 @@ final class MainActivityStudyDoneActions {
 
     MainActivityStudyDoneActions(MainActivityStudy home) {
         this.home = home;
-    }
-
-    void addDoneStudyActions(LinearLayout card) {
-        int available = availableStudyMoreNewCards();
-        card.addView(studyDoneActionsView(
-                home,
-                available,
-                () -> showStudyMoreNewCardsDialog(available),
-                this::continueAllKanji,
-                this::backHome
-        ));
     }
 
     void renderNoStudySession(RecordsSchedulerModels.AdaptiveLoadPlan seededPlan) {

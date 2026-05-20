@@ -6,7 +6,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -41,25 +40,6 @@ class MainActivityStudyDoneActionsComposeTest {
         assertTrue(studyMoreClicked)
         assertTrue(continueClicked)
         assertTrue(backClicked)
-    }
-
-    @Test
-    fun rendersPrimaryBackHomeButtonAndInvokesAction() {
-        var clicked = false
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-
-        composeRule.setContent {
-            studyBackHomeButtonView(
-                context = context,
-                primary = true,
-                onBackHome = Runnable { clicked = true }
-            )
-        }
-
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).assertIsDisplayed()
-        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
-
-        assertTrue(clicked)
     }
 
     @Test

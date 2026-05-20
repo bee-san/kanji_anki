@@ -152,10 +152,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyScreen.renderStudyRunDone(plan);
     }
 
-    void addDoneStudyActions(LinearLayout card) {
-        doneActions.addDoneStudyActions(card);
-    }
-
     int availableStudyMoreNewCards() {
         return moreNewCards.availableStudyMoreNewCards();
     }

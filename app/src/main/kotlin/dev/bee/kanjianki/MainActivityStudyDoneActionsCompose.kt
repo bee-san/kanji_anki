@@ -65,57 +65,6 @@ internal fun studyDoneScreenView(
     }
 }
 
-internal fun studyDoneActionsView(
-    context: Context,
-    availableStudyMoreNewCards: Int,
-    onStudyMore: Runnable,
-    onContinueAll: Runnable,
-    onBackHome: Runnable
-): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    StudyDoneActions(
-                        availableStudyMoreNewCards = availableStudyMoreNewCards,
-                        onStudyMore = { onStudyMore.run() },
-                        onContinueAll = { onContinueAll.run() },
-                        onBackHome = { onBackHome.run() }
-                    )
-                }
-            }
-        }
-    }
-}
-
-internal fun studyBackHomeButtonView(
-    context: Context,
-    primary: Boolean,
-    onBackHome: Runnable
-): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    if (primary) {
-                        StudyPrimaryButton(
-                            label = MainActivityBase.LABEL_BACK_HOME,
-                            onClick = { onBackHome.run() }
-                        )
-                    } else {
-                        StudySecondaryButton(
-                            label = MainActivityBase.LABEL_BACK_HOME,
-                            onClick = { onBackHome.run() }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun StudyDoneActions(
     availableStudyMoreNewCards: Int,
