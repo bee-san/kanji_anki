@@ -861,8 +861,8 @@ public final class MainActivityHelperInstrumentedTest {
                 View ladder = activity.ladderThresholdSettingsPanel();
                 assertTrue(ladder instanceof androidx.compose.ui.platform.ComposeView);
 
-                LinearLayout ladderOrder = activity.studyLadderSettingsPanel();
-                assertNotNull(findButton(ladderOrder, "Restore default ladder"));
+                View ladderOrder = activity.studyLadderSettingsPanel();
+                assertTrue(ladderOrder instanceof androidx.compose.ui.platform.ComposeView);
                 activity.toggleLadderRung(RecordsBase.LadderRung.SIMILAR_KANJI);
                 assertFalse(activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI));
                 activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6));

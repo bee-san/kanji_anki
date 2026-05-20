@@ -3,7 +3,6 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.view.ViewGroup
 import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -60,10 +59,7 @@ internal fun ladderThresholdSettingsPanelView(
     model: SettingsLadderThresholdPanelModel,
 ): View {
     return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        layoutParams = settingsPanelLayoutParams(activity)
         setContent {
             MaterialTheme {
                 SettingsLadderThresholdPanel(model)

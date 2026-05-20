@@ -3,7 +3,6 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.SeekBar
@@ -73,10 +72,7 @@ internal fun retentionSettingsPanelView(
     model: SettingsRetentionPanelModel,
 ): View {
     return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+        layoutParams = settingsPanelLayoutParams(activity)
         setContent {
             MaterialTheme {
                 SettingsRetentionPanel(model)

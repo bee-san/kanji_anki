@@ -1,6 +1,6 @@
 package dev.bee.kanjianki;
 
-import android.widget.LinearLayout;
+import android.view.View;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsBase;
@@ -15,7 +15,7 @@ final class MainActivitySettingsStudyLadder {
         this.studyLadderPanel = new MainActivitySettingsStudyLadderPanel(activity, this);
     }
 
-    LinearLayout studyLadderSettingsPanel() {
+    View studyLadderSettingsPanel() {
         return studyLadderPanel.studyLadderSettingsPanel();
     }
 
