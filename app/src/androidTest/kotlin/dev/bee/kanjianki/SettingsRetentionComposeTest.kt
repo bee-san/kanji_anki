@@ -58,6 +58,9 @@ class SettingsRetentionComposeTest {
                 action(92f)
             }
         composeRule.onNodeWithText(SettingsTextCopy.retentionStatusText(92)).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(92, selected[0])
+        }
         composeRule.onNodeWithText(SettingsTextCopy.retentionPresetLabel(95)).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.retentionStatusText(95)).assertIsDisplayed()
         composeRule.runOnIdle {

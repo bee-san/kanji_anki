@@ -4,6 +4,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onChildren
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -121,22 +123,13 @@ class SettingsReminderComposeTest {
             SettingsReminderPanel(reminderModel())
         }
 
-        val morning = presetBounds("Morning", 8, 0)
-        val lunch = presetBounds("Lunch", 12, 30)
-        val evening = presetBounds("Evening", 19, 0)
-        val night = presetBounds("Night", 21, 0)
-
-        assertEquals(morning.top, lunch.top, 0.5f)
-        assertEquals(evening.top, night.top, 0.5f)
-        assertTrue(evening.top > morning.bottom)
-        assertTrue(morning.left < lunch.left)
-        assertTrue(evening.left < night.left)
+        composeRule.onNodeWithTag(reminderPresetRowTestTag(0), useUnmergedTree = true)
+            .onChildren()
+            .assertCountEquals(2)
+        composeRule.onNodeWithTag(reminderPresetRowTestTag(1), useUnmergedTree = true)
+            .onChildren()
+            .assertCountEquals(2)
     }
-
-    private fun presetBounds(label: String, hour: Int, minute: Int) =
-        composeRule.onNodeWithText(SettingsTextCopy.reminderPresetButtonLabel(label, hour, minute))
-            .fetchSemanticsNode()
-            .boundsInRoot
 
     private fun reminderModel(
         status: String = SettingsTextCopy.reminderStatus(false, false, "21:00"),

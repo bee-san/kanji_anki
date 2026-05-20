@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,8 @@ data class SettingsReminderPanelModel(
     val onTurnOff: SettingsReminderAction?,
     val onOpenNotificationSettings: SettingsReminderAction?,
 )
+
+internal fun reminderPresetRowTestTag(rowIndex: Int): String = "settings-reminder-preset-row-$rowIndex"
 
 internal fun reminderSettingsPanelView(
     activity: MainActivitySettings,
@@ -153,9 +156,11 @@ private fun ReminderPresetGrid(
     presets: List<SettingsReminderPresetModel>,
     onSelect: (Int, Int) -> Unit,
 ) {
-    presets.chunked(2).forEach { rowPresets ->
+    presets.chunked(2).forEachIndexed { rowIndex, rowPresets ->
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(reminderPresetRowTestTag(rowIndex)),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             rowPresets.forEach { preset ->

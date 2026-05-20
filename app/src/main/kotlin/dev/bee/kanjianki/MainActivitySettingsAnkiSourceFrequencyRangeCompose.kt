@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +49,11 @@ private val FrequencyPanelBorder = Color(0xFFFFC7DE)
 private val FrequencyWhite = Color(0xFFFFFFFF)
 private val FrequencyPanelShape = RoundedCornerShape(24.dp)
 private val FrequencyButtonShape = RoundedCornerShape(12.dp)
+
+object SettingsFrequencyRangeTestTags {
+    const val MIN_RANK_SLIDER = "settings-frequency-min-rank-slider"
+    const val MAX_RANK_SLIDER = "settings-frequency-max-rank-slider"
+}
 
 fun interface SettingsFrequencyRangeAction {
     fun run()
@@ -124,6 +130,7 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
             RankSlider(
                 label = model.minimumRankLabel,
                 rank = minRank,
+                tag = SettingsFrequencyRangeTestTags.MIN_RANK_SLIDER,
                 onRankChanged = { rank ->
                     val nextMin = minOf(rank, model.selectedRanks[1])
                     model.selectedRanks[0] = nextMin
@@ -134,6 +141,7 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
             RankSlider(
                 label = model.maximumRankLabel,
                 rank = maxRank,
+                tag = SettingsFrequencyRangeTestTags.MAX_RANK_SLIDER,
                 onRankChanged = { rank ->
                     val nextMax = maxOf(rank, model.selectedRanks[0])
                     model.selectedRanks[1] = nextMax
@@ -190,6 +198,7 @@ private fun RankInput(label: String, input: EditText, modifier: Modifier) {
 private fun RankSlider(
     label: String,
     rank: Int,
+    tag: String,
     onRankChanged: (Int) -> Unit,
 ) {
     Text(
@@ -207,6 +216,7 @@ private fun RankSlider(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
+            .testTag(tag)
             .semantics { contentDescription = label }
     )
 }

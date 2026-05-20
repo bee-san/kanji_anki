@@ -4,7 +4,7 @@ import android.content.Context
 import android.widget.EditText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -49,11 +49,11 @@ class SettingsFrequencyRangeComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.frequencyRangeTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.frequencyRangeStatusText(100, 3000)).assertIsDisplayed()
-        composeRule.onNodeWithContentDescription(SettingsTextCopy.minimumRankLabel())
+        composeRule.onNodeWithTag(SettingsFrequencyRangeTestTags.MIN_RANK_SLIDER)
             .performSemanticsAction(SemanticsActions.SetProgress) { action ->
                 action(SettingsInputRules.rankSliderProgress(250).toFloat())
             }
-        composeRule.onNodeWithContentDescription(SettingsTextCopy.maximumRankLabel())
+        composeRule.onNodeWithTag(SettingsFrequencyRangeTestTags.MAX_RANK_SLIDER)
             .performSemanticsAction(SemanticsActions.SetProgress) { action ->
                 action(SettingsInputRules.rankSliderProgress(3500).toFloat())
             }
