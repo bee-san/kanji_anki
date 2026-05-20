@@ -294,6 +294,13 @@ public final class MainActivityInstrumentedTest {
         });
     }
 
+    private static void setFrequencyRangeInputs(ActivityScenario<MainActivity> scenario, String minRank, String maxRank) {
+        scenario.onActivity(activity -> {
+            editTextWithContentDescription(activity, SettingsTextCopy.minRankLabel()).setText(minRank);
+            editTextWithContentDescription(activity, SettingsTextCopy.maxRankLabel()).setText(maxRank);
+        });
+    }
+
     private static void verifyStudyBehaviorPanel(ActivityScenario<MainActivity> scenario) {
         scenario.onActivity(activity -> {
             assertHasText(activity, "Daily workload");
@@ -471,9 +478,11 @@ public final class MainActivityInstrumentedTest {
         clickText(scenario, "Use manual workload");
         waitForText(scenario, "Pareto: up to 5 items");
         scenario.onActivity(activity -> {
-            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-            assertTrue(sliders.size() >= 3);
-            sliders.get(2).setProgress(70);
+            SeekBar workloadSlider = seekBarWithContentDescription(
+                    activity,
+                    SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER
+            );
+            workloadSlider.setProgress(70);
         });
         clickText(scenario, "Save workload");
     }
@@ -483,13 +492,15 @@ public final class MainActivityInstrumentedTest {
         waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
         scenario.onActivity(activity -> {
             assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode());
-            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-            assertTrue(sliders.size() >= 1);
-            sliders.get(0).setProgress(4);
+            SeekBar maxItemsSlider = seekBarWithContentDescription(
+                    activity,
+                    SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER
+            );
+            maxItemsSlider.setProgress(6);
         });
         clickText(scenario, SettingsTextCopy.saveMaximumLabel());
         scenario.onActivity(activity -> assertEquals(
-                AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 4),
+                AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 6),
                 activity.store.adaptiveLoadMaxItems()
         ));
         clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
@@ -552,8 +563,8 @@ public final class MainActivityInstrumentedTest {
                 setImportFilterChecked(activity, "Tagged cards", false);
                 setImportFilterChecked(activity, "Weak cards", false);
                 setImportFilterChecked(activity, "Browser query", false);
-                editTextAfterLabel(activity, "Anki note tags").setText("");
-                editTextAfterLabel(activity, "Anki browser query").setText("");
+                editTextWithContentDescription(activity, SettingsTextCopy.ankiNoteTagsLabel()).setText("");
+                editTextWithContentDescription(activity, SettingsTextCopy.ankiBrowserQueryLabel()).setText("");
             });
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
@@ -562,7 +573,10 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
 
-            scenario.onActivity(activity -> editTextAfterLabel(activity, "Anki browser query").setText("deck:Japanese tag:kani"));
+            scenario.onActivity(activity -> editTextWithContentDescription(
+                    activity,
+                    SettingsTextCopy.ankiBrowserQueryLabel()
+            ).setText("deck:Japanese tag:kani"));
             clickText(scenario, "Save import filters");
             waitForText(scenario, "Import filters");
             try (LocalStore store = new LocalStore(context)) {
@@ -574,6 +588,67 @@ public final class MainActivityInstrumentedTest {
                 assertTrue(saved.importBrowserQueryCards);
                 assertEquals("deck:Japanese tag:kani", saved.importBrowserQuery);
             }
+        }
+    }
+
+    @Test
+    public void testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            scenario.onActivity(activity -> {
+                setImportFilterChecked(activity, "Suspended cards", true);
+                editTextWithContentDescription(activity, SettingsTextCopy.fsrsDifficultyLabel()).setText("not numeric");
+            });
+            clickText(scenario, "Save import filters");
+            assertDefaultImportSettingsStillStored();
+
+            scenario.onActivity(activity -> {
+                setImportFilterChecked(activity, "Active cards", true);
+                setImportFilterChecked(activity, "Suspended cards", false);
+                setImportFilterChecked(activity, "Tagged cards", true);
+                setImportFilterChecked(activity, "Weak cards", true);
+                setImportFilterChecked(activity, "Browser query", true);
+                editTextWithContentDescription(activity, SettingsTextCopy.ankiBrowserQueryLabel()).setText("deck:Kiku tag:kani");
+                editTextWithContentDescription(activity, SettingsTextCopy.ankiNoteTagsLabel()).setText("tagAlpha, tagBeta");
+                editTextWithContentDescription(activity, SettingsTextCopy.fsrsDifficultyLabel()).setText("8.5");
+                editTextWithContentDescription(activity, SettingsTextCopy.lapsesLabel()).setText("4");
+                editTextWithContentDescription(activity, SettingsTextCopy.minimumMatchingCardsLabel()).setText("2");
+            });
+            clickText(scenario, "Save import filters");
+            waitForText(scenario, "Import filters");
+            assertCustomImportSettingsStored();
+
+            clickText(scenario, "Leech tag");
+            waitForText(scenario, "Import filters");
+            assertLeechImportPresetStored();
+
+            clickText(scenario, "Mining deck");
+            waitForText(scenario, "Import filters");
+            assertMiningDeckPresetStored();
+        }
+    }
+
+    @Test
+    public void testFrequencyRangeValidationRunsThroughAttachedComposePanel() {
+        RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            setFrequencyRangeInputs(scenario, "many", Integer.toString(defaults.suspendedRankMax));
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
+
+            setFrequencyRangeInputs(scenario, "0", "25");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
+
+            setFrequencyRangeInputs(scenario, "10", "50000");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(defaults.suspendedRankMin, defaults.suspendedRankMax);
+
+            setFrequencyRangeInputs(scenario, "300", "20");
+            clickText(scenario, SettingsTextCopy.saveFrequencyRangeLabel());
+            assertFrequencyRangeStored(20, 300);
         }
     }
 
@@ -2572,7 +2647,7 @@ public final class MainActivityInstrumentedTest {
         try (LocalStore store = new LocalStore(context)) {
             assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
             assertEquals(70, store.adaptiveLoadWorkPercent());
-            assertEquals(5, store.adaptiveLoadMaxItems());
+            assertEquals(AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 6), store.adaptiveLoadMaxItems());
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
             assertTrue(store.schedulerParameters().frequencyRetentionEnabled);
             assertEquals("1-500=95%\n501-20000=85%", store.schedulerParameters().frequencyRetentionRanges);
@@ -2616,7 +2691,55 @@ public final class MainActivityInstrumentedTest {
             assertEquals(defaults.importTaggedCards, saved.importTaggedCards);
             assertEquals(defaults.importWeakCards, saved.importWeakCards);
             assertEquals(defaults.importBrowserQueryCards, saved.importBrowserQueryCards);
+            assertEquals(defaults.importTags, saved.importTags);
+            assertEquals(defaults.importWeakFsrsDifficultyThreshold, saved.importWeakFsrsDifficultyThreshold, 0.001);
+            assertEquals(defaults.importWeakLapsesThreshold, saved.importWeakLapsesThreshold);
+            assertEquals(defaults.importMinMatchingCardsPerKanji, saved.importMinMatchingCardsPerKanji);
             assertEquals(defaults.importBrowserQuery, saved.importBrowserQuery);
+        }
+    }
+
+    private void assertCustomImportSettingsStored() {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertTrue(saved.importActiveCards);
+        assertFalse(saved.importSuspendedCards);
+        assertTrue(saved.importTaggedCardsEnabled());
+        assertEquals(Arrays.asList("tagAlpha", "tagBeta"), saved.importTags);
+        assertTrue(saved.importWeakCards);
+        assertEquals(8.5, saved.importWeakFsrsDifficultyThreshold, 0.001);
+        assertEquals(4, saved.importWeakLapsesThreshold);
+        assertEquals(2, saved.importMinMatchingCardsPerKanji);
+        assertTrue(saved.browserQueryImportEnabled());
+        assertEquals("deck:Kiku tag:kani", saved.importBrowserQuery);
+    }
+
+    private void assertLeechImportPresetStored() {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertFalse(saved.importActiveCards);
+        assertFalse(saved.importSuspendedCards);
+        assertTrue(saved.importTaggedCardsEnabled());
+        assertEquals(Collections.singletonList("leech"), saved.importTags);
+        assertFalse(saved.browserQueryImportEnabled());
+    }
+
+    private void assertMiningDeckPresetStored() {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertFalse(saved.importActiveCards);
+        assertFalse(saved.importSuspendedCards);
+        assertFalse(saved.importTaggedCardsEnabled());
+        assertTrue(saved.browserQueryImportEnabled());
+        assertEquals("deck:Mining", saved.importBrowserQuery);
+    }
+
+    private void assertFrequencyRangeStored(int minRank, int maxRank) {
+        RecordsSyncModels.Settings saved = storedSettings();
+        assertEquals(minRank, saved.suspendedRankMin);
+        assertEquals(maxRank, saved.suspendedRankMax);
+    }
+
+    private RecordsSyncModels.Settings storedSettings() {
+        try (LocalStore store = new LocalStore(context)) {
+            return SyncSettings.fromStore(store);
         }
     }
 
@@ -3115,6 +3238,16 @@ public final class MainActivityInstrumentedTest {
             }
         }
         throw new AssertionError("Missing EditText with content description: " + description);
+    }
+
+    private static SeekBar seekBarWithContentDescription(MainActivity activity, String description) {
+        for (SeekBar slider : findTypes(activity.findViewById(android.R.id.content), SeekBar.class)) {
+            CharSequence value = slider.getContentDescription();
+            if (value != null && value.toString().equals(description)) {
+                return slider;
+            }
+        }
+        throw new AssertionError("Missing SeekBar with content description: " + description);
     }
 
     private static void collectViews(View root, List<View> views) {

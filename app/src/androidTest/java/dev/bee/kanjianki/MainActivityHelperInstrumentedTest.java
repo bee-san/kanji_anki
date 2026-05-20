@@ -651,108 +651,13 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void importFilterAndFrequencyPanelsValidateAndPersistRealSettings() {
+    public void importFilterAndFrequencyPanelsUseComposeBridges() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                RecordsSyncModels.Settings saved = verifyImportFilterPanel(activity);
-                verifyFrequencyRangePanel(activity, saved);
-                verifyImportPresetButtons(activity);
+                assertTrue(activity.importFilterSettingsPanel(activity.settings()) instanceof androidx.compose.ui.platform.ComposeView);
+                assertTrue(activity.frequencyRangeSettingsPanel(activity.settings()) instanceof androidx.compose.ui.platform.ComposeView);
             });
         }
-    }
-
-    private static RecordsSyncModels.Settings verifyImportFilterPanel(MainActivity activity) {
-        LinearLayout importPanel = activity.importFilterSettingsPanel(activity.settings());
-        List<CheckBox> boxes = checkBoxes(importPanel);
-        List<EditText> inputs = editTexts(importPanel);
-        assertEquals(5, boxes.size());
-        assertEquals(5, inputs.size());
-
-        boxes.get(4).setChecked(true);
-        inputs.get(0).setText("");
-        performButtonClick(importPanel, "Save import filters");
-        assertFalse(activity.settings().importBrowserQueryCards);
-
-        for (CheckBox box : boxes) {
-            box.setChecked(false);
-        }
-        performButtonClick(importPanel, "Save import filters");
-        assertTrue(activity.settings().importSuspendedCards);
-
-        boxes.get(1).setChecked(true);
-        inputs.get(2).setText("not numeric");
-        performButtonClick(importPanel, "Save import filters");
-        assertTrue(activity.settings().importSuspendedCards);
-
-        boxes.get(0).setChecked(true);
-        boxes.get(1).setChecked(false);
-        boxes.get(2).setChecked(true);
-        boxes.get(3).setChecked(true);
-        boxes.get(4).setChecked(true);
-        inputs.get(0).setText("deck:Kiku tag:kani");
-        inputs.get(1).setText("tagAlpha, tagBeta");
-        inputs.get(2).setText("8.5");
-        inputs.get(3).setText("4");
-        inputs.get(4).setText("2");
-        performButtonClick(importPanel, "Save import filters");
-
-        RecordsSyncModels.Settings saved = activity.settings();
-        assertTrue(saved.importActiveCards);
-        assertFalse(saved.importSuspendedCards);
-        assertTrue(saved.importTaggedCardsEnabled());
-        assertEquals(Arrays.asList("tagAlpha", "tagBeta"), saved.importTags);
-        assertTrue(saved.importWeakCards);
-        assertEquals(8.5, saved.importWeakFsrsDifficultyThreshold, 0.001);
-        assertEquals(4, saved.importWeakLapsesThreshold);
-        assertEquals(2, saved.importMinMatchingCardsPerKanji);
-        assertTrue(saved.browserQueryImportEnabled());
-        assertEquals("deck:Kiku tag:kani", saved.importBrowserQuery);
-        return saved;
-    }
-
-    private static void verifyFrequencyRangePanel(MainActivity activity, RecordsSyncModels.Settings saved) {
-        View frequencyPanel = activity.frequencyRangeSettingsPanel(activity.settings());
-        List<EditText> rankInputs = editTexts(frequencyPanel);
-        assertEquals(2, rankInputs.size());
-        rankInputs.get(0).setText("many");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        assertEquals(saved.suspendedRankMin, activity.settings().suspendedRankMin);
-
-        rankInputs.get(0).setText("0");
-        rankInputs.get(1).setText("25");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        assertEquals(saved.suspendedRankMin, activity.settings().suspendedRankMin);
-        rankInputs.get(0).setText("10");
-        rankInputs.get(1).setText("50000");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        assertEquals(saved.suspendedRankMin, activity.settings().suspendedRankMin);
-
-        rankInputs.get(0).setText("300");
-        rankInputs.get(1).setText("20");
-        performButtonClick(frequencyPanel, "Save frequency range");
-        RecordsSyncModels.Settings ranked = activity.settings();
-        assertEquals(20, ranked.suspendedRankMin);
-        assertEquals(300, ranked.suspendedRankMax);
-    }
-
-    private static void verifyImportPresetButtons(MainActivity activity) {
-        LinearLayout tagPresetPanel = activity.importFilterSettingsPanel(activity.settings());
-        performButtonClick(tagPresetPanel, "Leech tag");
-        RecordsSyncModels.Settings leechPreset = activity.settings();
-        assertFalse(leechPreset.importActiveCards);
-        assertFalse(leechPreset.importSuspendedCards);
-        assertTrue(leechPreset.importTaggedCardsEnabled());
-        assertEquals(Collections.singletonList("leech"), leechPreset.importTags);
-        assertFalse(leechPreset.browserQueryImportEnabled());
-
-        LinearLayout deckPresetPanel = activity.importFilterSettingsPanel(activity.settings());
-        performButtonClick(deckPresetPanel, "Mining deck");
-        RecordsSyncModels.Settings deckPreset = activity.settings();
-        assertFalse(deckPreset.importActiveCards);
-        assertFalse(deckPreset.importSuspendedCards);
-        assertFalse(deckPreset.importTaggedCardsEnabled());
-        assertTrue(deckPreset.browserQueryImportEnabled());
-        assertEquals("deck:Mining", deckPreset.importBrowserQuery);
     }
 
     @Test

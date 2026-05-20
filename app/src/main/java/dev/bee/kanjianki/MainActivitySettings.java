@@ -187,7 +187,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return panelFactory().settingsPanelBox();
     }
 
-    LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
+    View importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         return ankiSource().importFilterSettingsPanel(current);
     }
 

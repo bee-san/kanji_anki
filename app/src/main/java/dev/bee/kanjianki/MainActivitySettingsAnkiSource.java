@@ -14,17 +14,16 @@ final class MainActivitySettingsAnkiSource {
     MainActivitySettingsAnkiSource(MainActivitySettings activity) {
         this.inputs = new MainActivitySettingsAnkiSourceInputs(activity);
         MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
-        MainActivitySettingsAnkiSourcePresets presets = new MainActivitySettingsAnkiSourcePresets(activity);
         this.frequencyRange = new MainActivitySettingsAnkiSourceFrequencyRange(activity, this.inputs, validation);
         this.noteType = new MainActivitySettingsAnkiSourceNoteType(activity, this.inputs);
-        this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this.inputs, validation, presets);
+        this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this.inputs, validation);
     }
 
     View noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
         return noteType.noteTypeSettingsPanel(current);
     }
 
-    LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
+    View importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         return importFilters.importFilterSettingsPanel(current);
     }
 

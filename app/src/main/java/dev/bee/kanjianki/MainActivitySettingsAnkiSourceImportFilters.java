@@ -1,90 +1,98 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 final class MainActivitySettingsAnkiSourceImportFilters {
     private final MainActivitySettings activity;
     private final MainActivitySettingsAnkiSourceInputs inputs;
     private final MainActivitySettingsAnkiSourceValidation validation;
-    private final MainActivitySettingsAnkiSourcePresets presets;
 
     MainActivitySettingsAnkiSourceImportFilters(
             MainActivitySettings activity,
             MainActivitySettingsAnkiSourceInputs inputs,
-            MainActivitySettingsAnkiSourceValidation validation,
-            MainActivitySettingsAnkiSourcePresets presets
+            MainActivitySettingsAnkiSourceValidation validation
     ) {
         this.activity = activity;
         this.inputs = inputs;
         this.validation = validation;
-        this.presets = presets;
     }
 
-    LinearLayout importFilterSettingsPanel(RecordsSyncModels.Settings current) {
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.importFiltersTitle(), 23, activity.INK, true));
-        box.addView(activity.text(SettingsTextCopy.settingsImportSummary(current), 17, activity.TEAL, true));
-        box.addView(activity.text(SettingsTextCopy.importFiltersBody(), 15, activity.MUTED, false));
-        presets.addImportPresetButtons(box);
-
+    View importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         CheckBox activeCards = activity.importFilterCheckBox(SettingsTextCopy.activeCardsLabel(), current.importActiveCards);
         CheckBox suspendedCards = activity.importFilterCheckBox(SettingsTextCopy.suspendedCardsLabel(), current.importSuspendedCards);
         CheckBox taggedCards = activity.importFilterCheckBox(SettingsTextCopy.taggedCardsLabel(), current.importTaggedCardsEnabled());
         CheckBox weakCards = activity.importFilterCheckBox(SettingsTextCopy.weakCardsLabel(), current.importWeakCards);
         CheckBox browserQueryCards = activity.importFilterCheckBox(SettingsTextCopy.browserQueryLabel(), current.importBrowserQueryCards);
-        box.addView(activeCards);
-        box.addView(suspendedCards);
-        box.addView(taggedCards);
-        box.addView(weakCards);
-        box.addView(browserQueryCards);
 
         EditText browserQueryInput = inputs.fieldInput(current.importBrowserQuery);
         browserQueryInput.setHint(SettingsTextCopy.ankiBrowserQueryHint());
-        inputs.addFieldMappingInput(box, SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput);
+        browserQueryInput.setContentDescription(SettingsTextCopy.ankiBrowserQueryLabel());
 
         EditText tags = inputs.fieldInput(current.importTagsText());
         tags.setHint(SettingsTextCopy.ankiNoteTagsHint());
-        inputs.addFieldMappingInput(box, SettingsTextCopy.ankiNoteTagsLabel(), tags);
+        tags.setContentDescription(SettingsTextCopy.ankiNoteTagsLabel());
 
-        LinearLayout thresholds = new LinearLayout(activity);
-        thresholds.setOrientation(LinearLayout.HORIZONTAL);
         EditText difficultyInput = inputs.decimalInput(current.importWeakFsrsDifficultyThreshold);
-        LinearLayout difficultyColumn = inputs.inputColumn(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 0);
+        difficultyInput.setContentDescription(SettingsTextCopy.fsrsDifficultyLabel());
         EditText lapses = activity.thresholdInput(current.importWeakLapsesThreshold);
-        LinearLayout lapsesColumn = inputs.inputColumn(SettingsTextCopy.lapsesLabel(), lapses, activity.dp(10));
-        thresholds.addView(difficultyColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        thresholds.addView(lapsesColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(thresholds);
+        lapses.setContentDescription(SettingsTextCopy.lapsesLabel());
 
         EditText minMatching = activity.thresholdInput(current.importMinMatchingCardsPerKanji);
-        inputs.addFieldMappingInput(box, SettingsTextCopy.minimumMatchingCardsLabel(), minMatching);
+        minMatching.setContentDescription(SettingsTextCopy.minimumMatchingCardsLabel());
 
-        Button save = activity.primaryButton(SettingsTextCopy.saveImportFiltersLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(new RunnableClickListener(() -> saveImportFilters(
-                activeCards,
-                suspendedCards,
-                taggedCards,
-                weakCards,
-                browserQueryCards,
-                tags,
-                browserQueryInput,
-                difficultyInput,
-                lapses,
-                minMatching
-        )));
-        box.addView(save);
-        return box;
+        return MainActivitySettingsAnkiSourceImportFiltersCompose.importFiltersSettingsPanelView(
+                activity,
+                new SettingsImportFiltersPanelModel(
+                        SettingsTextCopy.importFiltersTitle(),
+                        SettingsTextCopy.settingsImportSummary(current),
+                        SettingsTextCopy.importFiltersBody(),
+                        SettingsTextCopy.presetsTitle(),
+                        presetButtons(),
+                        Arrays.asList(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards),
+                        fieldModel(SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput, 52),
+                        fieldModel(SettingsTextCopy.ankiNoteTagsLabel(), tags, 52),
+                        fieldModel(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 58),
+                        fieldModel(SettingsTextCopy.lapsesLabel(), lapses, 58),
+                        fieldModel(SettingsTextCopy.minimumMatchingCardsLabel(), minMatching, 58),
+                        SettingsTextCopy.saveImportFiltersLabel(),
+                        () -> saveImportFilters(
+                                activeCards,
+                                suspendedCards,
+                                taggedCards,
+                                weakCards,
+                                browserQueryCards,
+                                tags,
+                                browserQueryInput,
+                                difficultyInput,
+                                lapses,
+                                minMatching
+                        )
+                )
+        );
+    }
+
+    private List<SettingsImportPresetButtonModel> presetButtons() {
+        List<SettingsImportPresetButtonModel> models = new ArrayList<>();
+        for (SettingsImportPreset preset : SettingsImportPreset.defaults()) {
+            models.add(new SettingsImportPresetButtonModel(preset.label(), () -> applyPreset(preset)));
+        }
+        return models;
+    }
+
+    private SettingsImportFilterFieldModel fieldModel(String label, EditText input, int heightDp) {
+        return new SettingsImportFilterFieldModel(label, input, heightDp);
     }
 
     private void saveImportFilters(
@@ -132,16 +140,23 @@ final class MainActivitySettingsAnkiSourceImportFilters {
         activity.renderSettings();
     }
 
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
+    private void applyPreset(SettingsImportPreset preset) {
+        SettingsWriteActions.saveImportFilters(
+                new SettingsWriteActions.ImportFilterWriteRequest(
+                        preset.activeCards(),
+                        preset.suspendedCards(),
+                        preset.taggedCards(),
+                        preset.tags(),
+                        preset.weakCards(),
+                        preset.weakDifficulty(),
+                        preset.weakLapses(),
+                        preset.minMatchingCards(),
+                        preset.browserQueryCards(),
+                        preset.browserQuery()
+                ),
+                new MainActivitySettingsAnkiSourceWriter(activity)
+        );
+        Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show();
+        activity.renderSettings();
     }
 }

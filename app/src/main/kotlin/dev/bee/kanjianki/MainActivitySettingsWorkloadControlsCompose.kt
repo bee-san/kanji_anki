@@ -29,6 +29,11 @@ private val WorkloadControlButtonBorder = Color(0xFFEEBDDA)
 private val WorkloadControlWhite = Color(0xFFFFFFFF)
 private val WorkloadControlButtonShape = RoundedCornerShape(12.dp)
 
+object SettingsWorkloadControlDescriptions {
+    const val WORKLOAD_PERCENT_SLIDER = "Daily workload percentage"
+    const val MAX_ITEMS_SLIDER = "Maximum Pareto items"
+}
+
 @Composable
 internal fun WorkloadSlider(
     model: SettingsWorkloadPanelModel,
@@ -37,6 +42,7 @@ internal fun WorkloadSlider(
     AndroidView(
         factory = {
             model.workloadSlider.apply {
+                contentDescription = SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER
                 max = 100
                 progress = model.selectedWorkloadPercent[0]
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -55,6 +61,7 @@ internal fun WorkloadSlider(
             }
         },
         update = { slider ->
+            slider.contentDescription = SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER
             if (slider.progress != model.selectedWorkloadPercent[0]) {
                 slider.progress = model.selectedWorkloadPercent[0]
             }
@@ -81,6 +88,7 @@ internal fun MaxItemsControl(
     AndroidView(
         factory = {
             model.maxItemsSlider.apply {
+                contentDescription = SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER
                 max = AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS
                 progress = maxItems - AdaptiveLoadPlanner.MIN_MAX_ITEMS
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -99,6 +107,7 @@ internal fun MaxItemsControl(
             }
         },
         update = { slider ->
+            slider.contentDescription = SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER
             val progress = model.selectedMaxItems[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS
             if (slider.progress != progress) {
                 slider.progress = progress
