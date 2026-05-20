@@ -3,29 +3,36 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.text.KeyboardOptions
 
 private val StudyAheadInk = Color(0xFF2D1635)
 private val StudyAheadMuted = Color(0xFF6C5674)
@@ -35,15 +42,19 @@ private val StudyAheadWhite = Color(0xFFFFFFFF)
 private val StudyAheadPanelShape = RoundedCornerShape(24.dp)
 private val StudyAheadButtonShape = RoundedCornerShape(12.dp)
 
+object SettingsStudyAheadTestTags {
+    const val MINUTES_INPUT = "settings-study-ahead-minutes-input"
+}
+
 fun interface SettingsStudyAheadSaver {
-    fun save()
+    fun save(minutesText: String)
 }
 
 data class SettingsStudyAheadPanelModel(
     val title: String,
     val body: String,
     val minutesLabel: String,
-    val minutesInput: EditText,
+    val initialMinutesText: String,
     val saveLabel: String,
     val onSave: SettingsStudyAheadSaver,
 )
@@ -64,6 +75,7 @@ internal fun studyAheadSettingsPanelView(
 
 @Composable
 fun SettingsStudyAheadPanel(model: SettingsStudyAheadPanelModel) {
+    var minutesText by remember { mutableStateOf(model.initialMinutesText) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = StudyAheadPanelShape,
@@ -92,14 +104,22 @@ fun SettingsStudyAheadPanel(model: SettingsStudyAheadPanelModel) {
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
-            AndroidView(
-                factory = { model.minutesInput },
+            OutlinedTextField(
+                value = minutesText,
+                onValueChange = { minutesText = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp)
+                    .testTag(SettingsStudyAheadTestTags.MINUTES_INPUT)
+                    .semantics { contentDescription = model.minutesLabel },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = StudyAheadInk,
+                    fontSize = 20.sp
+                )
             )
             Button(
-                onClick = { model.onSave.save() },
+                onClick = { model.onSave.save(minutesText) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp),

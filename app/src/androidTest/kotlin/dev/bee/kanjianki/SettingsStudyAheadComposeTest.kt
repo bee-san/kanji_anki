@@ -1,13 +1,13 @@
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.widget.EditText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.core.app.ApplicationProvider
+import androidx.compose.ui.test.performTextReplacement
 import dev.bee.kanjianki.core.SettingsTextCopy
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -19,9 +19,7 @@ class SettingsStudyAheadComposeTest {
     @Test
     fun rendersStudyAheadCopyAndWiresSave() {
         var saved = false
-        val input = EditText(ApplicationProvider.getApplicationContext<Context>()).apply {
-            setText("45")
-        }
+        var savedText = ""
 
         composeRule.setContent {
             SettingsStudyAheadPanel(
@@ -29,9 +27,12 @@ class SettingsStudyAheadComposeTest {
                     title = SettingsTextCopy.studyAheadTitle(),
                     body = SettingsTextCopy.studyAheadBody(),
                     minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
-                    minutesInput = input,
+                    initialMinutesText = "30",
                     saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
-                    onSave = SettingsStudyAheadSaver { saved = true }
+                    onSave = SettingsStudyAheadSaver {
+                        savedText = it
+                        saved = true
+                    }
                 )
             )
         }
@@ -39,10 +40,12 @@ class SettingsStudyAheadComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.studyAheadTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.studyAheadBody()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.studyAheadMinutesLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(SettingsStudyAheadTestTags.MINUTES_INPUT).performTextReplacement("45")
         composeRule.onNodeWithText(SettingsTextCopy.saveStudyAheadLabel()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(saved)
+            assertEquals("45", savedText)
         }
     }
 }

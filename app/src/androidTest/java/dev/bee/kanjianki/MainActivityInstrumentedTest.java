@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabaseLockedException;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -393,10 +394,11 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario, String minutes) {
-        scenario.onActivity(activity -> editTextWithContentDescription(
-                activity,
-                SettingsTextCopy.studyAheadMinutesLabel()
-        ).setText(minutes));
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.desc(SettingsTextCopy.studyAheadMinutesLabel())), 3000L);
+        assertNotNull(input);
+        input.setText(minutes);
+        device.waitForIdle(2000L);
     }
 
     private static void assertStudyAheadMinutes(ActivityScenario<MainActivity> scenario, int expected) {
@@ -472,6 +474,8 @@ public final class MainActivityInstrumentedTest {
                 AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
                 AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
         ));
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER);
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(100, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS));
         clickText(scenario, "Save workload");
     }
 
@@ -479,9 +483,11 @@ public final class MainActivityInstrumentedTest {
         clickText(scenario, SettingsTextCopy.automaticParetoLabel());
         waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
         scenario.onActivity(activity -> assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode()));
+        setComposeSliderToEnd(SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER);
+        waitForText(scenario, SettingsTextCopy.maxItemsStatusText(AdaptiveLoadPlanner.MAX_MAX_ITEMS));
         clickText(scenario, SettingsTextCopy.saveMaximumLabel());
         scenario.onActivity(activity -> assertEquals(
-                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS,
+                AdaptiveLoadPlanner.MAX_MAX_ITEMS,
                 activity.store.adaptiveLoadMaxItems()
         ));
         clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
@@ -2652,8 +2658,8 @@ public final class MainActivityInstrumentedTest {
     private void assertNavigationSettingsPersisted() {
         try (LocalStore store = new LocalStore(context)) {
             assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
-            assertEquals(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT, store.adaptiveLoadWorkPercent());
-            assertEquals(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS, store.adaptiveLoadMaxItems());
+            assertEquals(100, store.adaptiveLoadWorkPercent());
+            assertEquals(AdaptiveLoadPlanner.MAX_MAX_ITEMS, store.adaptiveLoadMaxItems());
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
             assertTrue(store.schedulerParameters().frequencyRetentionEnabled);
             assertEquals("1-500=95%\n501-20000=85%", store.schedulerParameters().frequencyRetentionRanges);
@@ -3253,6 +3259,15 @@ public final class MainActivityInstrumentedTest {
             }
         }
         throw new AssertionError("Missing EditText with content description: " + description);
+    }
+
+    private static void setComposeSliderToEnd(String description) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 slider = device.wait(Until.findObject(By.desc(description)), 3000L);
+        assertNotNull("Missing slider: " + description + "\nDevice text: " + deviceVisibleText(device), slider);
+        Rect bounds = slider.getVisibleBounds();
+        slider.click(new Point(bounds.right - 2, bounds.centerY()));
+        device.waitForIdle(2000L);
     }
 
     private static void collectViews(View root, List<View> views) {

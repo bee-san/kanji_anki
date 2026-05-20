@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.SettingsTextCopy;
@@ -18,33 +17,21 @@ final class MainActivitySettingsStudyAheadPanel {
 
     View studyAheadSettingsPanel() {
         int currentMinutes = activity.store.studyAheadMinutes();
-        EditText minutesInput = minutesInput(currentMinutes);
         return MainActivitySettingsStudyAheadCompose.studyAheadSettingsPanelView(
                 activity,
                 new SettingsStudyAheadPanelModel(
                         SettingsTextCopy.studyAheadTitle(),
                         SettingsTextCopy.studyAheadBody(),
                         SettingsTextCopy.studyAheadMinutesLabel(),
-                        minutesInput,
+                        String.format(Locale.ROOT, "%d", currentMinutes),
                         SettingsTextCopy.saveStudyAheadLabel(),
-                        () -> saveStudyAhead(minutesInput)
+                        this::saveStudyAhead
                 )
         );
     }
 
-    private EditText minutesInput(int currentMinutes) {
-        EditText input = new EditText(activity);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        input.setText(String.format(Locale.ROOT, "%d", currentMinutes));
-        input.setTextSize(20);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        input.setContentDescription(SettingsTextCopy.studyAheadMinutesLabel());
-        return input;
-    }
-
-    private void saveStudyAhead(EditText minutesInput) {
-        StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesInput.getText().toString());
+    private void saveStudyAhead(String minutesText) {
+        StudyAheadSettingsPolicy.SaveResult request = StudyAheadSettingsPolicy.saveRequest(minutesText);
         if (!request.valid) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();
             return;
