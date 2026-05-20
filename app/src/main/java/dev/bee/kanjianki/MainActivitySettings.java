@@ -253,7 +253,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return Integer.parseInt(input.getText().toString().trim());
     }
 
-    LinearLayout retentionSettingsPanel() {
+    View retentionSettingsPanel() {
         return retentionPanel().retentionSettingsPanel();
     }
 

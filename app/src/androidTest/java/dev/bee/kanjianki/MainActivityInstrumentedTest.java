@@ -39,6 +39,7 @@ import dev.bee.kanjianki.anki.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
+import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
@@ -275,6 +276,7 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save ladder thresholds");
             configureManualWorkload(scenario);
             clickText(scenario, "95%");
+            verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
             enableMorningReminder(scenario);
 
@@ -302,6 +304,46 @@ public final class MainActivityInstrumentedTest {
             assertHasText(activity, "FSRS days to go up");
             assertHasText(activity, "Fails to go down");
         });
+    }
+
+    private static void verifyRetentionValidationAndRanges(ActivityScenario<MainActivity> scenario) {
+        setRankRetentionEnabled(scenario, true);
+        setRetentionRanges(scenario, "not a range");
+        clickText(scenario, SettingsTextCopy.saveRetentionLabel());
+        assertFrequencyRetentionDisabled(scenario);
+
+        clickText(scenario, SettingsTextCopy.useExampleRangesLabel());
+        assertRetentionRanges(scenario, FrequencyRetentionRanges.exampleText());
+        setRetentionRanges(scenario, "1-500=95%\n501-20000=85%");
+    }
+
+    private static void setRankRetentionEnabled(ActivityScenario<MainActivity> scenario, boolean enabled) {
+        scenario.onActivity(activity -> {
+            View root = activity.findViewById(android.R.id.content);
+            CheckBox checkBox = findCheckBox(root, SettingsTextCopy.useJitenRankRetentionRangesLabel());
+            assertNotNull(checkBox);
+            checkBox.setChecked(enabled);
+        });
+    }
+
+    private static void setRetentionRanges(ActivityScenario<MainActivity> scenario, String ranges) {
+        scenario.onActivity(activity -> editTextWithContentDescription(
+                activity,
+                SettingsTextCopy.useJitenRankRetentionRangesLabel()
+        ).setText(ranges));
+    }
+
+    private static void assertRetentionRanges(ActivityScenario<MainActivity> scenario, String ranges) {
+        scenario.onActivity(activity -> assertEquals(
+                ranges,
+                editTextWithContentDescription(activity, SettingsTextCopy.useJitenRankRetentionRangesLabel())
+                        .getText()
+                        .toString()
+        ));
+    }
+
+    private static void assertFrequencyRetentionDisabled(ActivityScenario<MainActivity> scenario) {
+        scenario.onActivity(activity -> assertFalse(activity.store.schedulerParameters().frequencyRetentionEnabled));
     }
 
     private static void verifyLearningStepValidationAndPresets(ActivityScenario<MainActivity> scenario) {
@@ -2512,6 +2554,8 @@ public final class MainActivityInstrumentedTest {
             assertEquals(70, store.adaptiveLoadWorkPercent());
             assertEquals(5, store.adaptiveLoadMaxItems());
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
+            assertTrue(store.schedulerParameters().frequencyRetentionEnabled);
+            assertEquals("1-500=95%\n501-20000=85%", store.schedulerParameters().frequencyRetentionRanges);
             assertEquals(Arrays.asList(2, 15), store.learningStepSettings().newStepsMinutes);
             assertEquals(Arrays.asList(5, 20), store.learningStepSettings().reviewStepsMinutes);
             assertEquals(45, store.studyAheadMinutes());

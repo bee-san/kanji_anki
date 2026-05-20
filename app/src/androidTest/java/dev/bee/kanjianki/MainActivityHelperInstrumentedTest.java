@@ -871,20 +871,8 @@ public final class MainActivityHelperInstrumentedTest {
                 View newCardSort = activity.newCardSortSettingsPanel(activity.settings());
                 assertTrue(newCardSort instanceof androidx.compose.ui.platform.ComposeView);
 
-                LinearLayout retention = activity.retentionSettingsPanel();
-                SeekBar retentionSlider = seekBars(retention).get(0);
-                retentionSlider.setProgress(10);
-                touchSeekBar(retentionSlider);
-                performButtonClick(retention, "95%");
-                performButtonClick(retention, "Save retention");
-                assertEquals(0.95, activity.store.schedulerParameters().targetRetention, 0.001);
-                retention = activity.retentionSettingsPanel();
-                checkBoxes(retention).get(0).setChecked(true);
-                editTexts(retention).get(0).setText("1-500=95%\n501-20000=85%");
-                performButtonClick(retention, "Save retention");
-                RecordsSchedulerModels.SchedulerParameters savedRetention = activity.store.schedulerParameters();
-                assertTrue(savedRetention.frequencyRetentionEnabled);
-                assertEquals("1-500=95%\n501-20000=85%", savedRetention.frequencyRetentionRanges);
+                View retention = activity.retentionSettingsPanel();
+                assertTrue(retention instanceof androidx.compose.ui.platform.ComposeView);
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 21, 0));
                 LinearLayout reminder = activity.reminderSettingsPanel();
