@@ -1,9 +1,12 @@
 package dev.bee.kanjianki
 
 import android.view.View
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -54,11 +57,20 @@ class MainActivityStudyWritingChromeComposeTest {
 
         assertTrue(handle.view() is WritingStatusView)
 
+        composeRule.setContent {
+            AndroidView(factory = { handle.view() })
+        }
+
         handle.hide()
         assertEquals(View.GONE, handle.getVisibility())
+        composeRule.onAllNodesWithText("Model unavailable").assertCountEquals(0)
 
         handle.show("Model unavailable", MainActivityUiSupport.CORAL)
         assertEquals("Model unavailable", handle.getText().toString())
         assertEquals(View.VISIBLE, handle.getVisibility())
+        composeRule.onNodeWithText("Model unavailable").assertIsDisplayed()
+
+        handle.hide()
+        composeRule.onAllNodesWithText("Model unavailable").assertCountEquals(0)
     }
 }
