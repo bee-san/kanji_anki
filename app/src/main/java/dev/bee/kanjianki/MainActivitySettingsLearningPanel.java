@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
@@ -17,49 +16,30 @@ final class MainActivitySettingsLearningPanel {
 
     View learningStepsSettingsPanel() {
         RecordsSchedulerModels.LearningStepSettings current = activity.store.learningStepSettings();
-        EditText newSteps = stepInput(current.newStepsText());
-        EditText reviewSteps = stepInput(current.reviewStepsText());
-        newSteps.setContentDescription(activity.LABEL_NEW_CARDS);
-        reviewSteps.setContentDescription(SettingsTextCopy.reviewMissesLabel());
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
         return MainActivitySettingsLearningCompose.learningStepsSettingsPanelView(
                 activity,
                 new SettingsLearningStepsPanelModel(
                         SettingsTextCopy.learningStepsTitle(),
                         SettingsTextCopy.learningStepsBody(),
                         activity.LABEL_NEW_CARDS,
-                        newSteps,
+                        current.newStepsText(),
                         SettingsTextCopy.reviewMissesLabel(),
-                        reviewSteps,
+                        current.reviewStepsText(),
+                        defaults.newStepsText(),
+                        defaults.reviewStepsText(),
                         SettingsTextCopy.ankiDefaultLabel(),
                         SettingsTextCopy.sameLearningStepsLabel(),
                         SettingsTextCopy.saveLearningStepsLabel(),
-                        () -> applyLearningStepDefaults(newSteps, reviewSteps, false),
-                        () -> applyLearningStepDefaults(newSteps, reviewSteps, true),
-                        () -> saveLearningSteps(newSteps, reviewSteps)
+                        this::saveLearningSteps
                 )
         );
     }
 
-    EditText stepInput(String value) {
-        EditText input = new EditText(activity);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        input.setText(value);
-        input.setTextSize(20);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
-    }
-
-    private void applyLearningStepDefaults(EditText newSteps, EditText reviewSteps, boolean useSameSteps) {
-        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
-        newSteps.setText(defaults.newStepsText());
-        reviewSteps.setText(useSameSteps ? defaults.newStepsText() : defaults.reviewStepsText());
-    }
-
-    private void saveLearningSteps(EditText newSteps, EditText reviewSteps) {
+    private void saveLearningSteps(String newStepsText, String reviewStepsText) {
         LearningStepsSettingsPolicy.SaveResult request = LearningStepsSettingsPolicy.saveRequest(
-                newSteps.getText().toString(),
-                reviewSteps.getText().toString()
+                newStepsText,
+                reviewStepsText
         );
         if (!request.valid) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();

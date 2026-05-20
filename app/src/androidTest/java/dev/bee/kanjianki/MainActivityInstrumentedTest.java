@@ -365,17 +365,14 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setLearningStepText(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
-        scenario.onActivity(activity -> {
-            editTextWithContentDescription(activity, "New cards").setText(newSteps);
-            editTextWithContentDescription(activity, SettingsTextCopy.reviewMissesLabel()).setText(reviewSteps);
-        });
+        setComposeTextField("New cards", newSteps);
+        setComposeTextField(SettingsTextCopy.reviewMissesLabel(), reviewSteps);
     }
 
     private static void assertLearningStepFields(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
-        scenario.onActivity(activity -> {
-            assertEquals(newSteps, editTextWithContentDescription(activity, "New cards").getText().toString());
-            assertEquals(reviewSteps, editTextWithContentDescription(activity, SettingsTextCopy.reviewMissesLabel()).getText().toString());
-        });
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        assertNotNull(device.wait(Until.findObject(By.pkg(appPackage()).text(newSteps)), 3000L));
+        assertNotNull(device.wait(Until.findObject(By.pkg(appPackage()).text(reviewSteps)), 3000L));
     }
 
     private static void assertLearningStepSettings(

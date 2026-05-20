@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -52,8 +53,10 @@ class SettingsLadderThresholdComposeTest {
         composeRule.onNodeWithTag(SettingsLadderThresholdTestTags.PROMOTION_DAYS_INPUT).performTextReplacement("99")
         composeRule.onNodeWithTag(SettingsLadderThresholdTestTags.FAIL_STREAK_INPUT).performTextReplacement("7")
         composeRule.onNodeWithText(SettingsTextCopy.useDefaultLadderThresholdsLabel()).performClick()
-        composeRule.onNodeWithText(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString()).assertIsDisplayed()
-        composeRule.onNodeWithText(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString()).assertIsDisplayed()
+        composeRule.onNodeWithTag(SettingsLadderThresholdTestTags.PROMOTION_DAYS_INPUT)
+            .assertTextEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString())
+        composeRule.onNodeWithTag(SettingsLadderThresholdTestTags.FAIL_STREAK_INPUT)
+            .assertTextEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString())
 
         composeRule.onNodeWithText(SettingsTextCopy.saveLadderThresholdsLabel()).performClick()
 

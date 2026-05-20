@@ -25,9 +25,9 @@ final class MainActivitySettingsLadderThresholdPanel {
                         SettingsTextCopy.ladderThresholdsTitle(),
                         SettingsTextCopy.ladderThresholdsBody(),
                         SettingsTextCopy.fsrsDaysToGoUpLabel(),
-                        String.format(Locale.ROOT, "%d", current.ladderPromotionIntervalDays),
+                        thresholdText(current.ladderPromotionIntervalDays),
                         SettingsTextCopy.failsToGoDownLabel(),
-                        String.format(Locale.ROOT, "%d", current.ladderDemotionFailStreak),
+                        thresholdText(current.ladderDemotionFailStreak),
                         String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS),
                         String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK),
                         SettingsTextCopy.useDefaultLadderThresholdsLabel(),
@@ -35,6 +35,10 @@ final class MainActivitySettingsLadderThresholdPanel {
                         this::saveLadderThresholds
                 )
         );
+    }
+
+    private static String thresholdText(int value) {
+        return String.format(Locale.ROOT, "%d", Math.max(1, value));
     }
 
     private void saveLadderThresholds(String promotionDaysText, String failStreakText) {

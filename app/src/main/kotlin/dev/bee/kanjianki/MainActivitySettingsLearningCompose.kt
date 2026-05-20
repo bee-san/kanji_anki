@@ -3,14 +3,13 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -19,17 +18,25 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 
 private val LearningStepsInk = Color(0xFF2D1635)
 private val LearningStepsMuted = Color(0xFF6C5674)
@@ -40,23 +47,28 @@ private val LearningStepsWhite = Color(0xFFFFFFFF)
 private val LearningStepsPanelShape = RoundedCornerShape(24.dp)
 private val LearningStepsButtonShape = RoundedCornerShape(12.dp)
 
-fun interface SettingsLearningStepsAction {
-    fun run()
+object SettingsLearningStepsTestTags {
+    const val NEW_STEPS_INPUT = "settings-learning-new-steps-input"
+    const val REVIEW_STEPS_INPUT = "settings-learning-review-steps-input"
+}
+
+fun interface SettingsLearningStepsSaveAction {
+    fun save(newStepsText: String, reviewStepsText: String)
 }
 
 data class SettingsLearningStepsPanelModel(
     val title: String,
     val body: String,
     val newCardsLabel: String,
-    val newStepsInput: EditText,
+    val initialNewStepsText: String,
     val reviewMissesLabel: String,
-    val reviewStepsInput: EditText,
+    val initialReviewStepsText: String,
+    val defaultNewStepsText: String,
+    val defaultReviewStepsText: String,
     val ankiDefaultLabel: String,
     val sameStepsLabel: String,
     val saveLabel: String,
-    val onUseAnkiDefault: SettingsLearningStepsAction,
-    val onUseSameSteps: SettingsLearningStepsAction,
-    val onSave: SettingsLearningStepsAction,
+    val onSave: SettingsLearningStepsSaveAction,
 )
 
 internal fun learningStepsSettingsPanelView(
@@ -75,6 +87,8 @@ internal fun learningStepsSettingsPanelView(
 
 @Composable
 fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
+    var newStepsText by rememberSaveable { mutableStateOf(model.initialNewStepsText) }
+    var reviewStepsText by rememberSaveable { mutableStateOf(model.initialReviewStepsText) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = LearningStepsPanelShape,
@@ -97,23 +111,39 @@ fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
                 color = LearningStepsMuted,
                 fontSize = 15.sp
             )
-            LearningStepsInput(label = model.newCardsLabel, input = model.newStepsInput)
-            LearningStepsInput(label = model.reviewMissesLabel, input = model.reviewStepsInput)
+            LearningStepsInput(
+                label = model.newCardsLabel,
+                value = newStepsText,
+                testTag = SettingsLearningStepsTestTags.NEW_STEPS_INPUT,
+                onValueChange = { newStepsText = it }
+            )
+            LearningStepsInput(
+                label = model.reviewMissesLabel,
+                value = reviewStepsText,
+                testTag = SettingsLearningStepsTestTags.REVIEW_STEPS_INPUT,
+                onValueChange = { reviewStepsText = it }
+            )
             Row(modifier = Modifier.fillMaxWidth()) {
                 LearningStepsOutlinedButton(
                     label = model.ankiDefaultLabel,
                     modifier = Modifier.weight(1f),
-                    onClick = { model.onUseAnkiDefault.run() }
+                    onClick = {
+                        newStepsText = model.defaultNewStepsText
+                        reviewStepsText = model.defaultReviewStepsText
+                    }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 LearningStepsOutlinedButton(
                     label = model.sameStepsLabel,
                     modifier = Modifier.weight(1f),
-                    onClick = { model.onUseSameSteps.run() }
+                    onClick = {
+                        newStepsText = model.defaultNewStepsText
+                        reviewStepsText = model.defaultNewStepsText
+                    }
                 )
             }
             Button(
-                onClick = { model.onSave.run() },
+                onClick = { model.onSave.save(newStepsText, reviewStepsText) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp),
@@ -136,18 +166,31 @@ fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {
 }
 
 @Composable
-private fun LearningStepsInput(label: String, input: EditText) {
+private fun LearningStepsInput(
+    label: String,
+    value: String,
+    testTag: String,
+    onValueChange: (String) -> Unit,
+) {
     Text(
         text = label,
         color = LearningStepsInk,
         fontSize = 15.sp,
         fontWeight = FontWeight.Bold
     )
-    AndroidView(
-        factory = { input },
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .testTag(testTag)
+            .semantics { contentDescription = label },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = LearningStepsInk,
+            fontSize = 20.sp
+        )
     )
 }
 
