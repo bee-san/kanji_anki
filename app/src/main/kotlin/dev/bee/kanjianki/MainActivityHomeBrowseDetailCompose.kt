@@ -82,14 +82,6 @@ enum class BrowseDetailPanelStyle {
     CARD,
 }
 
-data class BrowseExampleCardModel(
-    val sourceLabel: String,
-    val expression: String,
-    val sentence: String,
-    val meaning: String,
-    val color: Int,
-)
-
 data class BrowseDetailHeroModel(
     val kanji: String,
     val navigationLabel: String,
@@ -186,17 +178,6 @@ internal fun detailInfoPanelView(activity: MainActivityHomeBrowseDetail, model: 
         setContent {
             MaterialTheme {
                 BrowseDetailInfoPanel(model)
-            }
-        }
-    }
-}
-
-internal fun exampleCardView(activity: MainActivityHomeBrowseDetail, model: BrowseExampleCardModel): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseExampleCard(model)
             }
         }
     }
@@ -356,46 +337,6 @@ fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
                     text = line,
                     color = if (band) White else Muted,
                     fontSize = if (band) 17.sp else 15.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun BrowseExampleCard(model: BrowseExampleCardModel) {
-    val accent = ComposeColor(model.color)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 7.dp),
-        shape = CardShape,
-        color = White,
-        border = BorderStroke(1.dp, accent)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            BrowseChip(label = model.sourceLabel, color = accent)
-            Text(
-                text = model.expression,
-                color = Ink,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-            if (model.sentence.isNotEmpty()) {
-                Text(
-                    text = model.sentence,
-                    color = Muted,
-                    fontSize = 16.sp
-                )
-            }
-            if (model.meaning.isNotEmpty()) {
-                Text(
-                    text = model.meaning,
-                    color = Muted,
-                    fontSize = 15.sp
                 )
             }
         }

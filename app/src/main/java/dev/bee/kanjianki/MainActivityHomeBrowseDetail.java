@@ -266,7 +266,7 @@ public final class MainActivityHomeBrowseDetail {
 
     View exampleView(RecordsImportModels.Example example) {
         int color = MainActivityHome.SOURCE_SUSPENDED.equals(example.sourceType) ? home.CORAL : home.TEAL;
-        return MainActivityHomeBrowseDetailCompose.exampleCardView(
+        return MainActivityHomeBrowseExampleCompose.exampleCardView(
                 this,
                 new BrowseExampleCardModel(
                         HomeTextCopy.exampleSourceLabel(example),
