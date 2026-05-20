@@ -23,7 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 private val WritingPadFill = Color(MainActivityUiSupport.STUDY_PANEL)
 private val WritingPadBorder = Color(MainActivityUiSupport.STUDY_BORDER)
 
-internal fun writingPadPanelView(context: Context, drawingPad: DrawingPadView, maxSizePx: Int): View {
+internal fun writingPadPanelView(context: Context, drawingPad: View, maxSizePx: Int): View {
     return ComposeView(context).apply {
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -42,9 +42,13 @@ internal fun writingPadPanelView(context: Context, drawingPad: DrawingPadView, m
 private fun Context.dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
 @Composable
-internal fun WritingPadPanel(drawingPad: DrawingPadView, maxSizePx: Int) {
+internal fun WritingPadPanel(
+    drawingPad: View,
+    maxSizePx: Int,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         color = WritingPadFill,
         border = BorderStroke(1.dp, WritingPadBorder)

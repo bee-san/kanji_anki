@@ -3,7 +3,6 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 
 data class WritingSessionCardModel(
     val promptHeader: WritingPromptHeaderModel,
@@ -29,7 +26,8 @@ data class WritingSessionCardModel(
     val writingTitle: String,
     val writingTitleColor: Int,
     val status: WritingStatusState,
-    val padPanel: View,
+    val drawingPad: View,
+    val padMaxSizePx: Int,
     val resultStatus: WritingResultStatusHandle,
 )
 
@@ -70,25 +68,12 @@ fun WritingSessionCard(model: WritingSessionCardModel) {
             }
             WritingSectionTitle(title = model.writingTitle, color = model.writingTitleColor)
             WritingStatusText(model.status)
-            WritingEmbeddedView(model.padPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+            WritingPadPanel(
+                drawingPad = model.drawingPad,
+                maxSizePx = model.padMaxSizePx,
+                modifier = Modifier.padding(top = 12.dp, bottom = 10.dp)
+            )
             WritingResultStatus(model.resultStatus)
         }
     }
-}
-
-@Composable
-private fun WritingEmbeddedView(view: View, modifier: Modifier = Modifier) {
-    key(view) {
-        AndroidView(
-            modifier = modifier.fillMaxWidth(),
-            factory = {
-                detachFromParent(view)
-                view
-            }
-        )
-    }
-}
-
-private fun detachFromParent(view: View) {
-    (view.parent as? ViewGroup)?.removeView(view)
 }

@@ -46,7 +46,8 @@ final class MainActivityStudyWritingSession {
                         "Writing",
                         home.STUDY_PLUM,
                         home.studyStatus,
-                        MainActivityStudyWritingPadCompose.writingPadPanelView(home, home.drawingPad, home.studyPadHeight()),
+                        home.drawingPad,
+                        home.studyPadHeight(),
                         home.writingResultStatus
                 )
         ));

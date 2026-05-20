@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
@@ -107,7 +106,8 @@ class MainActivityStudyWritingPromptComposeTest {
                     status = WritingStatusState().apply {
                         setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
                     },
-                    padPanel = TextView(context).apply { text = "Pad" },
+                    drawingPad = DrawingPadView(context).apply { setTarget("裂") },
+                    padMaxSizePx = 320,
                     resultStatus = WritingResultStatusHandle().apply {
                         show("Result", MainActivityUiSupport.STUDY_MUTED)
                     }
@@ -127,8 +127,8 @@ class MainActivityStudyWritingPromptComposeTest {
     fun keepsEmbeddedViewsAttachedAcrossRecomposition() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val previousParent = FrameLayout(context)
-        val padPanel = TextView(context).apply { text = "Pad" }
-        previousParent.addView(padPanel)
+        val drawingPad = DrawingPadView(context).apply { setTarget("裂") }
+        previousParent.addView(drawingPad)
         val title = mutableStateOf("Writing")
 
         composeRule.setContent {
@@ -148,7 +148,8 @@ class MainActivityStudyWritingPromptComposeTest {
                     status = WritingStatusState().apply {
                         setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
                     },
-                    padPanel = padPanel,
+                    drawingPad = drawingPad,
+                    padMaxSizePx = 320,
                     resultStatus = WritingResultStatusHandle().apply {
                         show("Result", MainActivityUiSupport.STUDY_MUTED)
                     }
@@ -157,15 +158,15 @@ class MainActivityStudyWritingPromptComposeTest {
         }
 
         composeRule.waitForIdle()
-        assertNotSame(previousParent, padPanel.parent)
-        assertNotNull(padPanel.parent)
+        assertNotSame(previousParent, drawingPad.parent)
+        assertNotNull(drawingPad.parent)
 
         composeRule.runOnIdle {
             title.value = "Writing again"
         }
         composeRule.waitForIdle()
 
-        assertNotNull(padPanel.parent)
+        assertNotNull(drawingPad.parent)
         composeRule.onNodeWithText("Writing again").assertIsDisplayed()
         composeRule.onNodeWithText("Trace the first strokes").assertIsDisplayed()
         composeRule.onNodeWithText("Result").assertIsDisplayed()
