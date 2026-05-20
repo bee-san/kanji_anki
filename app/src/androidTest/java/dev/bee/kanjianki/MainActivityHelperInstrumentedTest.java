@@ -2214,6 +2214,9 @@ public final class MainActivityHelperInstrumentedTest {
                 fallback = activity.writingFallbackActionsView.currentModelForTests();
                 assertEquals("Pass", primary.getNextText());
                 assertFalse(fallback.getManualOverrideVisible());
+                primary.getOnNext().run();
+                assertEquals(1, activity.store.reviewStatsSince(0L).good);
+                assertEquals(View.GONE, activity.studyActionBar.getVisibility());
             });
         }
     }
