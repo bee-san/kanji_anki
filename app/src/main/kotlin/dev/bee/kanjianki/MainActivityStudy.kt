@@ -274,7 +274,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         if (dictionaryLookup == null) {
             dictionaryLookup = DictionaryAssets.load(this)
         }
-        return dictionaryLookup
+        return dictionaryLookup!!
     }
 
     fun buildFlashcardActionBar(revealed: Boolean) {

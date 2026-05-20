@@ -5,8 +5,9 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsScreen(private val activity: MainActivitySettings) {
     fun renderSettings(preserveScroll: Boolean) {
-        val scrollY = if (preserveScroll && activity.contentScroll != null) {
-            activity.contentScroll.scrollY
+        val previousScroll = activity.contentScroll
+        val scrollY = if (preserveScroll && previousScroll != null) {
+            previousScroll.scrollY
         } else {
             0
         }
@@ -14,7 +15,7 @@ internal class MainActivitySettingsScreen(private val activity: MainActivitySett
         val current = activity.settings()
         activity.content.addView(settingsScreenView(activity, settingsScreenModel(current)))
         if (preserveScroll) {
-            activity.contentScroll.post { activity.contentScroll.scrollTo(0, scrollY) }
+            activity.contentScroll?.post { activity.contentScroll?.scrollTo(0, scrollY) }
         }
     }
 
