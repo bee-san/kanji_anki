@@ -242,10 +242,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         writingSession.hideStudyActionBar();
     }
 
-    void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
-        reasonLine.addStudyReasonLine(card, session);
-    }
-
     String studyReasonLine(RecordsSchedulerModels.StudySession session) {
         return reasonLine.studyReasonLine(session);
     }

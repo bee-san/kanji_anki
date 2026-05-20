@@ -1,7 +1,5 @@
 package dev.bee.kanjianki;
 
-import android.widget.LinearLayout;
-
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.StudyTextCopy;
 
@@ -21,10 +19,4 @@ final class MainActivityStudyReasonLine {
         );
     }
 
-    void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
-        String reason = studyReasonLine(session);
-        if (!reason.isEmpty()) {
-            card.addView(home.text(reason, 14, home.STUDY_MUTED, false));
-        }
-    }
 }
