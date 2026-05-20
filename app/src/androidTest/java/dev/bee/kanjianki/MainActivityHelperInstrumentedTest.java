@@ -259,33 +259,6 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void baseEqualHeightRowSkipsGoneChildrenAndHonorsExactHeight() {
-        MainActivityBase.EqualHeightRow equalRow = new MainActivityBase.EqualHeightRow(context);
-        TextView gone = new TextView(context);
-        gone.setVisibility(View.GONE);
-        equalRow.addView(gone, new LinearLayout.LayoutParams(100, 40));
-        equalRow.measure(
-                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.AT_MOST)
-        );
-        assertEquals(0, equalRow.getMeasuredHeight());
-
-        TextView visible = new TextView(context);
-        visible.setText("Tall");
-        LinearLayout.LayoutParams visibleLp = new LinearLayout.LayoutParams(100, 30);
-        visibleLp.setMargins(0, 3, 0, 7);
-        equalRow.addView(visible, visibleLp);
-        equalRow.measure(
-                View.MeasureSpec.makeMeasureSpec(200, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(60, View.MeasureSpec.EXACTLY)
-        );
-        assertEquals(60, equalRow.getMeasuredHeight());
-        assertEquals(60, MainActivityBase.EqualHeightRow.measuredOuterHeight(visible));
-        MainActivityBase.EqualHeightRow.measureVisibleChild(gone, 20);
-        MainActivityBase.EqualHeightRow.measureVisibleChild(visible, 0);
-    }
-
-    @Test
     public void studySessionHelpersPickExamplesPromptsTitlesAndTaskKinds() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
@@ -2246,7 +2219,7 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void homeAndReminderActionGridsUseTwoColumnsWithWrappingHeights() {
+    public void homeActionGridUsesTwoColumnsWithWrappingHeights() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 View homeGrid = activity.homeActionRow();
@@ -2257,18 +2230,6 @@ public final class MainActivityHelperInstrumentedTest {
                 if (BuildConfig.DEBUG) {
                     assertTrue(containsText(homeGrid, "Compose shell"));
                 }
-
-                List<View> presets = Arrays.asList(
-                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Morning", 8, 0)),
-                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Lunch", 12, 30)),
-                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Evening", 19, 0)),
-                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 0))
-                );
-                View reminderGrid = activity.twoColumnGrid(presets);
-                measureAtWidth(reminderGrid, 320);
-                assertTwoColumnGrid(reminderGrid, 2);
-                assertTrue(containsText(reminderGrid, "Morning 08:00"));
-                assertTrue(containsText(reminderGrid, "Night 21:00"));
             });
         }
     }

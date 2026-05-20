@@ -8,12 +8,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.core.view.WindowInsetsControllerCompat;
-
-import java.util.List;
 
 abstract class MainActivityUiSupport extends Activity {
     static final int BG = Color.rgb(255, 247, 251);
@@ -49,32 +45,6 @@ abstract class MainActivityUiSupport extends Activity {
         controller.setAppearanceLightNavigationBars(true);
     }
 
-    LinearLayout twoColumnGrid(List<View> items) {
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        grid.setBaselineAligned(false);
-        for (int i = 0; i < items.size(); i += 2) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setBaselineAligned(false);
-            addGridCell(row, items.get(i), true);
-            if (i + 1 < items.size()) {
-                addGridCell(row, items.get(i + 1), false);
-            } else {
-                SpaceView spacer = new SpaceView(this);
-                addGridCell(row, spacer, false);
-            }
-            grid.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        }
-        return grid;
-    }
-
-    private void addGridCell(LinearLayout row, View child, boolean first) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
-        lp.setMargins(first ? 0 : dp(4), dp(4), first ? dp(4) : 0, dp(4));
-        row.addView(child, lp);
-    }
-
     TextView text(String value, int sp, int color, boolean bold) {
         TextView text = new TextView(this);
         text.setText(value == null ? "" : value);
@@ -84,18 +54,6 @@ abstract class MainActivityUiSupport extends Activity {
         text.setLineSpacing(0, 1.05f);
         text.setTypeface(Typeface.DEFAULT, bold ? Typeface.BOLD : Typeface.NORMAL);
         return text;
-    }
-
-    Button secondaryButton(String label) {
-        Button button = new Button(this);
-        button.setText(label);
-        button.setAllCaps(false);
-        button.setTextColor(INK);
-        button.setBackground(panel(Color.WHITE, Color.rgb(238, 189, 218), dp(12)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(54));
-        lp.setMargins(dp(3), dp(6), dp(3), dp(6));
-        button.setLayoutParams(lp);
-        return button;
     }
 
     GradientDrawable panel(int fill, int stroke, int radius) {
@@ -108,70 +66,6 @@ abstract class MainActivityUiSupport extends Activity {
 
     int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
-    }
-
-    static final class EqualHeightRow extends LinearLayout {
-        EqualHeightRow(Context context) {
-            super(context);
-        }
-
-        @Override
-        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
-            int maxOuterHeight = 0;
-            int childCount = getChildCount();
-            for (int i = 0; i < childCount; i++) {
-                View child = getChildAt(i);
-                if (child.getVisibility() == GONE) {
-                    continue;
-                }
-                maxOuterHeight = Math.max(maxOuterHeight, measuredOuterHeight(child));
-            }
-            if (maxOuterHeight <= 0) {
-                return;
-            }
-
-            int childAreaHeight = maxOuterHeight;
-            if (View.MeasureSpec.getMode(heightMeasureSpec) == View.MeasureSpec.EXACTLY) {
-                childAreaHeight = Math.max(0, View.MeasureSpec.getSize(heightMeasureSpec) - getPaddingTop() - getPaddingBottom());
-            }
-
-            for (int i = 0; i < childCount; i++) {
-                measureVisibleChild(getChildAt(i), childAreaHeight);
-            }
-
-            if (View.MeasureSpec.getMode(heightMeasureSpec) != View.MeasureSpec.EXACTLY) {
-                setMeasuredDimension(getMeasuredWidth(), getPaddingTop() + getPaddingBottom() + maxOuterHeight);
-            }
-        }
-
-        static int measuredOuterHeight(View child) {
-            int outerHeight = child.getMeasuredHeight();
-            ViewGroup.LayoutParams rawLp = child.getLayoutParams();
-            if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
-                outerHeight += marginLp.topMargin + marginLp.bottomMargin;
-            }
-            return outerHeight;
-        }
-
-        static void measureVisibleChild(View child, int childAreaHeight) {
-            if (child.getVisibility() == GONE) {
-                return;
-            }
-            int childHeight = childAreaHeight;
-            ViewGroup.LayoutParams rawLp = child.getLayoutParams();
-            if (rawLp instanceof ViewGroup.MarginLayoutParams marginLp) {
-                childHeight -= marginLp.topMargin + marginLp.bottomMargin;
-            }
-            if (childHeight <= 0) {
-                return;
-            }
-            child.measure(
-                    View.MeasureSpec.makeMeasureSpec(child.getMeasuredWidth(), View.MeasureSpec.EXACTLY),
-                    View.MeasureSpec.makeMeasureSpec(childHeight, View.MeasureSpec.EXACTLY)
-            );
-        }
     }
 
     static final class SpaceView extends View {
