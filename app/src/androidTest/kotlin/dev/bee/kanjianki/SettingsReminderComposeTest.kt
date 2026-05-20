@@ -46,6 +46,37 @@ class SettingsReminderComposeTest {
     }
 
     @Test
+    fun updatesSelectedTimeFromPickerCallback() {
+        var pickerOpened = false
+        val selectedHour = intArrayOf(21)
+        val selectedMinute = intArrayOf(0)
+
+        composeRule.setContent {
+            SettingsReminderPanel(
+                reminderModel(
+                    selectedHour = selectedHour,
+                    selectedMinute = selectedMinute,
+                    onPickTime = { hour, minute, onSelected ->
+                        assertEquals(21, hour)
+                        assertEquals(0, minute)
+                        pickerOpened = true
+                        onSelected.select(6, 5)
+                    }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(SettingsTextCopy.reminderTimeButtonLabel(21, 0)).performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.reminderTimeButtonLabel(6, 5)).assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            assertTrue(pickerOpened)
+            assertEquals(6, selectedHour[0])
+            assertEquals(5, selectedMinute[0])
+        }
+    }
+
+    @Test
     fun rendersWarningAndOptionalActions() {
         var turnedOff = false
         var openedSettings = false
@@ -93,6 +124,11 @@ class SettingsReminderComposeTest {
         turnOffLabel: String? = null,
         warning: String? = null,
         notificationSettingsLabel: String? = null,
+        onPickTime: (
+            hour: Int,
+            minute: Int,
+            onSelected: SettingsReminderSelectedTimeAction,
+        ) -> Unit = { _, _, _ -> },
         onSave: () -> Unit = {},
         onTurnOff: (() -> Unit)? = null,
         onOpenNotificationSettings: (() -> Unit)? = null,
@@ -114,7 +150,9 @@ class SettingsReminderComposeTest {
             turnOffLabel = turnOffLabel,
             warning = warning,
             notificationSettingsLabel = notificationSettingsLabel,
-            onPickTime = SettingsReminderTimePickerAction { _, _, _ -> },
+            onPickTime = SettingsReminderTimePickerAction { hour, minute, onSelected ->
+                onPickTime(hour, minute, onSelected)
+            },
             onSave = SettingsReminderAction { onSave() },
             onTurnOff = onTurnOff?.let { SettingsReminderAction { it() } },
             onOpenNotificationSettings = onOpenNotificationSettings?.let { SettingsReminderAction { it() } }

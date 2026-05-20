@@ -554,6 +554,29 @@ public final class MainActivityInstrumentedTest {
     }
 
     @Test
+    public void testReminderSettingsPanelCanEnableAndTurnOffReminder() {
+        MainActivity.setRuntimeNotificationPermissionForTests(true);
+        MainActivity.setNotificationsAllowedForTests(true);
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            clickText(scenario, "Automation");
+            waitForText(scenario, "Daily reminder");
+            clickText(scenario, "Morning 08:00");
+            waitForText(scenario, "Reminder time: 08:00");
+            clickText(scenario, "Enable reminder");
+            waitForText(scenario, "Daily around 08:00");
+            assertReminderSettings(true, 8, 0);
+
+            clickText(scenario, "Turn off reminder");
+            waitForText(scenario, "Off");
+            assertReminderSettings(false, 8, 0);
+        } finally {
+            MainActivity.setRuntimeNotificationPermissionForTests(null);
+            MainActivity.setNotificationsAllowedForTests(null);
+        }
+    }
+
+    @Test
     public void testImportFilterValidationBlocksEmptySourcesAndEmptyBrowserQuery() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
@@ -2679,6 +2702,15 @@ public final class MainActivityInstrumentedTest {
             LocalStore.AutoSyncSettings auto = store.autoSyncSettings();
             assertTrue(auto.configured);
             assertEquals(expectedEnabled, auto.enabled);
+        }
+    }
+
+    private void assertReminderSettings(boolean enabled, int hour, int minute) {
+        try (LocalStore store = new LocalStore(context)) {
+            LocalStore.ReminderSettings reminder = store.reminderSettings();
+            assertEquals(enabled, reminder.enabled);
+            assertEquals(hour, reminder.hour);
+            assertEquals(minute, reminder.minute);
         }
     }
 
