@@ -92,32 +92,32 @@ class SettingsNoteTypeFieldState(
     val frequencySort: String
         get() = frequencySortState
 
-    override fun setNoteType(value: String) {
-        noteTypeState = value
+    override fun setNoteType(value: String?) {
+        noteTypeState = value.orEmpty()
     }
 
-    override fun setExpression(value: String) {
-        expressionState = value
+    override fun setExpression(value: String?) {
+        expressionState = value.orEmpty()
     }
 
-    override fun setReading(value: String) {
-        readingState = value
+    override fun setReading(value: String?) {
+        readingState = value.orEmpty()
     }
 
-    override fun setMeaning(value: String) {
-        meaningState = value
+    override fun setMeaning(value: String?) {
+        meaningState = value.orEmpty()
     }
 
-    override fun setSentence(value: String) {
-        sentenceState = value
+    override fun setSentence(value: String?) {
+        sentenceState = value.orEmpty()
     }
 
-    override fun setFrequency(value: String) {
-        frequencyState = value
+    override fun setFrequency(value: String?) {
+        frequencyState = value.orEmpty()
     }
 
-    override fun setFrequencySort(value: String) {
-        frequencySortState = value
+    override fun setFrequencySort(value: String?) {
+        frequencySortState = value.orEmpty()
     }
 
     fun applyDefaults(defaults: RecordsSyncModels.Settings) {

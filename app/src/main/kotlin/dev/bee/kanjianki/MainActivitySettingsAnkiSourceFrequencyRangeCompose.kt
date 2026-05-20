@@ -3,8 +3,8 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,13 +16,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,10 +33,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.FrequencyRetentionRanges
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -51,12 +53,14 @@ private val FrequencyPanelShape = RoundedCornerShape(24.dp)
 private val FrequencyButtonShape = RoundedCornerShape(12.dp)
 
 object SettingsFrequencyRangeTestTags {
+    const val MIN_RANK_INPUT = "settings-frequency-min-rank-input"
+    const val MAX_RANK_INPUT = "settings-frequency-max-rank-input"
     const val MIN_RANK_SLIDER = "settings-frequency-min-rank-slider"
     const val MAX_RANK_SLIDER = "settings-frequency-max-rank-slider"
 }
 
-fun interface SettingsFrequencyRangeAction {
-    fun run()
+fun interface SettingsFrequencyRangeSaveAction {
+    fun save(minRankText: String, maxRankText: String)
 }
 
 data class SettingsFrequencyRangePanelModel(
@@ -64,13 +68,13 @@ data class SettingsFrequencyRangePanelModel(
     val body: String,
     val selectedRanks: IntArray,
     val minRankLabel: String,
-    val minRankInput: EditText,
+    val initialMinRankText: String,
     val maxRankLabel: String,
-    val maxRankInput: EditText,
+    val initialMaxRankText: String,
     val minimumRankLabel: String,
     val maximumRankLabel: String,
     val saveLabel: String,
-    val onSave: SettingsFrequencyRangeAction,
+    val onSave: SettingsFrequencyRangeSaveAction,
 )
 
 internal fun frequencyRangeSettingsPanelView(
@@ -89,8 +93,10 @@ internal fun frequencyRangeSettingsPanelView(
 
 @Composable
 fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
-    var minRank by remember { mutableIntStateOf(model.selectedRanks[0]) }
-    var maxRank by remember { mutableIntStateOf(model.selectedRanks[1]) }
+    var minRank by rememberSaveable { mutableIntStateOf(model.selectedRanks[0]) }
+    var maxRank by rememberSaveable { mutableIntStateOf(model.selectedRanks[1]) }
+    var minRankText by rememberSaveable { mutableStateOf(model.initialMinRankText) }
+    var maxRankText by rememberSaveable { mutableStateOf(model.initialMaxRankText) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -124,17 +130,29 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                RankInput(model.minRankLabel, model.minRankInput, Modifier.weight(1f))
-                RankInput(model.maxRankLabel, model.maxRankInput, Modifier.weight(1f))
+                RankInput(
+                    label = model.minRankLabel,
+                    value = minRankText,
+                    tag = SettingsFrequencyRangeTestTags.MIN_RANK_INPUT,
+                    modifier = Modifier.weight(1f),
+                    onValueChange = { minRankText = it }
+                )
+                RankInput(
+                    label = model.maxRankLabel,
+                    value = maxRankText,
+                    tag = SettingsFrequencyRangeTestTags.MAX_RANK_INPUT,
+                    modifier = Modifier.weight(1f),
+                    onValueChange = { maxRankText = it }
+                )
             }
             RankSlider(
                 label = model.minimumRankLabel,
                 rank = minRank,
                 tag = SettingsFrequencyRangeTestTags.MIN_RANK_SLIDER,
                 onRankChanged = { rank ->
-                    val nextMin = minOf(rank, model.selectedRanks[1])
+                    val nextMin = minOf(rank, maxRank)
                     model.selectedRanks[0] = nextMin
-                    model.minRankInput.setText(formatRank(nextMin))
+                    minRankText = formatRank(nextMin)
                     minRank = nextMin
                 }
             )
@@ -143,14 +161,14 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
                 rank = maxRank,
                 tag = SettingsFrequencyRangeTestTags.MAX_RANK_SLIDER,
                 onRankChanged = { rank ->
-                    val nextMax = maxOf(rank, model.selectedRanks[0])
+                    val nextMax = maxOf(rank, minRank)
                     model.selectedRanks[1] = nextMax
-                    model.maxRankInput.setText(formatRank(nextMax))
+                    maxRankText = formatRank(nextMax)
                     maxRank = nextMax
                 }
             )
             Button(
-                onClick = { model.onSave.run() },
+                onClick = { model.onSave.save(minRankText, maxRankText) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp),
@@ -177,7 +195,13 @@ private fun formatRank(rank: Int): String {
 }
 
 @Composable
-private fun RankInput(label: String, input: EditText, modifier: Modifier) {
+private fun RankInput(
+    label: String,
+    value: String,
+    tag: String,
+    modifier: Modifier,
+    onValueChange: (String) -> Unit,
+) {
     Column(modifier = modifier) {
         Text(
             text = label,
@@ -185,11 +209,19 @@ private fun RankInput(label: String, input: EditText, modifier: Modifier) {
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold
         )
-        AndroidView(
-            factory = { input },
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp)
+                .testTag(tag)
+                .semantics { contentDescription = label },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = FrequencyInk,
+                fontSize = 22.sp
+            )
         )
     }
 }

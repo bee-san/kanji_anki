@@ -68,8 +68,8 @@ final class MainActivitySettingsAnkiSourceValidation {
         );
     }
 
-    int parseRankInput(EditText input) {
-        return Integer.parseInt(input.getText().toString().trim());
+    int parseRankText(String input) {
+        return Integer.parseInt(input.trim());
     }
 
     double parseDecimalInput(EditText input) {

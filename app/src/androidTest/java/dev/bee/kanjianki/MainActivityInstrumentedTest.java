@@ -288,10 +288,8 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setFrequencyRangeInputs(ActivityScenario<MainActivity> scenario, String minRank, String maxRank) {
-        scenario.onActivity(activity -> {
-            editTextWithContentDescription(activity, SettingsTextCopy.minRankLabel()).setText(minRank);
-            editTextWithContentDescription(activity, SettingsTextCopy.maxRankLabel()).setText(maxRank);
-        });
+        setComposeTextField(SettingsTextCopy.minRankLabel(), minRank);
+        setComposeTextField(SettingsTextCopy.maxRankLabel(), maxRank);
     }
 
     private static void verifyStudyBehaviorPanel(ActivityScenario<MainActivity> scenario) {
