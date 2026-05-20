@@ -115,6 +115,10 @@ abstract class MainActivityHome extends MainActivityBase {
         return overview.homeStudyCta();
     }
 
+    View homeSyncCta() {
+        return overview.homeSyncCta();
+    }
+
     ImageView decorativeSparkle(int tint, int sizeDp) {
         return overview.decorativeSparkle(tint, sizeDp);
     }

@@ -31,6 +31,10 @@ final class MainActivityHomeOverview {
         return MainActivityHomeOverviewCompose.homeStudyCtaView(home);
     }
 
+    View homeSyncCta() {
+        return MainActivityHomeOverviewCompose.homeSyncCtaView(home);
+    }
+
     ImageView decorativeSparkle(int tint, int sizeDp) {
         ImageView sparkle = new ImageView(home);
         sparkle.setImageResource(R.drawable.ic_sparkle_24);

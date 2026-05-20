@@ -1,8 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,9 +37,7 @@ final class MainActivityHomeScreen {
         home.addSpace(14);
 
         if (rows.isEmpty()) {
-            Button syncButton = home.primaryButton(HomeTextCopy.syncAnkiDroidLabel(), home.CORAL);
-            syncButton.setOnClickListener(new RunnableClickListener(home::confirmSync));
-            home.content.addView(syncButton);
+            home.content.addView(home.homeSyncCta());
         } else {
             View studyButton = home.homeStudyCta();
             studyButton.setOnClickListener(new RunnableClickListener(home::startFocusedStudy));

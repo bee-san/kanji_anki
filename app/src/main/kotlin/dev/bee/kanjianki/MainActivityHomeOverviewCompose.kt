@@ -4,6 +4,7 @@ package dev.bee.kanjianki
 
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -75,6 +76,23 @@ internal fun homeStudyCtaView(home: MainActivityHome): View {
     }
 }
 
+internal fun homeSyncCtaView(home: MainActivityHome): View {
+    return ComposeView(home).apply {
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, home.dp(62)).apply {
+            setMargins(0, home.dp(8), 0, home.dp(8))
+        }
+        setContent {
+            MaterialTheme {
+                HomePrimaryCta(
+                    label = HomeTextCopy.syncAnkiDroidLabel(),
+                    color = MainActivityUiSupport.CORAL,
+                    onClick = home::confirmSync
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun HomeHeader(
     title: String,
@@ -110,6 +128,32 @@ fun HomeHeader(
             contentDescription = null,
             modifier = Modifier.size(110.dp),
             contentScale = ContentScale.Fit
+        )
+    }
+}
+
+@Composable
+fun HomePrimaryCta(
+    label: String,
+    color: Int,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxSize()
+            .clip(shape)
+            .background(Color(color.toLong() and 0xFFFFFFFFL))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
         )
     }
 }

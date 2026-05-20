@@ -75,6 +75,24 @@ class MainActivityHomeOverviewComposeTest {
     }
 
     @Test
+    fun rendersPrimaryCtaAndInvokesClick() {
+        var clicked = false
+
+        composeRule.setContent {
+            HomePrimaryCta(
+                label = "Sync AnkiDroid",
+                color = MainActivityBase.CORAL,
+                onClick = { clicked = true }
+            )
+        }
+
+        composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
+        composeRule.onNodeWithText("Sync AnkiDroid").performClick()
+
+        assertTrue(clicked)
+    }
+
+    @Test
     fun rendersStudyCtaAndInvokesClick() {
         var clicked = false
 
