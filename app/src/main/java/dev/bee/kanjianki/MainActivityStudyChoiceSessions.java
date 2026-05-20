@@ -78,17 +78,29 @@ final class MainActivityStudyChoiceSessions {
         }
         Collections.shuffle(choices);
 
-        LinearLayout cardShell = home.softStudyCard();
-        cardShell.addView(home.modePill("Recognise"));
-        cardShell.addView(home.text(LABEL_CHOOSE_KANJI, 30, home.STUDY_PLUM, true));
-        cardShell.addView(home.text(MainActivityBase.LABEL_SIMILAR_KANJI, 16, home.STUDY_PINK_DARK, true));
-        cardShell.addView(home.text("Pick the kanji that matches the meaning.", 15, home.STUDY_MUTED, false));
-        home.addStudyReasonLine(cardShell, session);
-        LinearLayout box = home.softInsetPanel();
         String meaning = choiceCard.primaryMeaning;
-        box.addView(home.text("Which kanji means " + meaning + "?", 22, home.STUDY_PLUM, true));
-        box.addView(home.similarKanjiGrid(choices, choiceCard));
-        cardShell.addView(box);
+        String reason = StudyTextCopy.studyReasonLine(
+                home.activeSimilarWritingRepair != null,
+                session,
+                home.settings().matureSupportThreshold,
+                System.currentTimeMillis()
+        );
+        View cardShell = MainActivityStudyChoiceCompose.similarKanjiSessionView(
+                home,
+                new SimilarChoiceSessionModel(
+                        "Recognise",
+                        LABEL_CHOOSE_KANJI,
+                        MainActivityBase.LABEL_SIMILAR_KANJI,
+                        "Pick the kanji that matches the meaning.",
+                        reason,
+                        "Which kanji means " + meaning + "?",
+                        new SimilarChoiceGridModel(
+                                choices,
+                                true,
+                                glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph)
+                        )
+                )
+        );
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
         cardLp.setMargins(0, home.dp(6), 0, home.dp(12));
         home.content.addView(cardShell, cardLp);

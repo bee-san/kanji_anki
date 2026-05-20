@@ -1538,6 +1538,11 @@ public final class MainActivityHelperInstrumentedTest {
                 assertNotNull(activity.flashcardCard);
                 assertSame(activity.flashcardCard, activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
+                activity.store.rebuildSimilarKanjiPairs(similarIndex("裂\t列\n裂\t烈\n"), System.currentTimeMillis());
+                activity.renderSimilarKanjiSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
+                assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
+                assertNull(activity.flashcardGestureArea);
+                assertFalse(activity.flashcardAnswerRevealed);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;

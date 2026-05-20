@@ -37,6 +37,7 @@ abstract class MainActivityUiSupport extends Activity {
     static final int STUDY_MUTED = Color.rgb(130, 96, 132);
     static final int STUDY_PINK_DARK = Color.rgb(218, 58, 122);
     static final int STUDY_BORDER = Color.rgb(255, 199, 222);
+    static final int STUDY_PILL = Color.rgb(255, 239, 247);
     static final int STUDY_BG_SOFT = Color.rgb(255, 246, 251);
     static final int STUDY_HERO_PANEL = Color.rgb(253, 241, 247);
     static final int STUDY_HERO_PINK = Color.rgb(248, 45, 114);
@@ -68,7 +69,7 @@ abstract class MainActivityUiSupport extends Activity {
         pill.setGravity(Gravity.CENTER);
         pill.setIncludeFontPadding(false);
         pill.setPadding(dp(12), dp(7), dp(12), dp(7));
-        pill.setBackground(panel(Color.rgb(255, 239, 247), STUDY_BORDER, dp(18)));
+        pill.setBackground(panel(STUDY_PILL, STUDY_BORDER, dp(18)));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
         lp.setMargins(0, 0, 0, dp(14));
         pill.setLayoutParams(lp);

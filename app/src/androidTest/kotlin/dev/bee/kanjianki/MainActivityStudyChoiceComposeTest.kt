@@ -43,6 +43,40 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
+    fun rendersSimilarChoiceSessionCardAndInvokesSelection() {
+        var selected = ""
+
+        composeRule.setContent {
+            SimilarChoiceSessionCard(
+                model = SimilarChoiceSessionModel(
+                    modeLabel = "Recognise",
+                    title = "Choose the kanji",
+                    taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
+                    body = "Pick the kanji that matches the meaning.",
+                    reasonLine = "Weak Anki evidence",
+                    question = "Which kanji means split?",
+                    gridModel = SimilarChoiceGridModel(
+                        choices = listOf("裂", "列", "烈"),
+                        balanceLastRow = true,
+                        onChoice = SimilarChoiceHandler { selected = it }
+                    )
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Recognise").assertIsDisplayed()
+        composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_SIMILAR_KANJI).assertIsDisplayed()
+        composeRule.onNodeWithText("Pick the kanji that matches the meaning.").assertIsDisplayed()
+        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
+        composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
+
+        composeRule.onNodeWithText("烈").performClick()
+
+        assertEquals("烈", selected)
+    }
+
+    @Test
     fun usesLegacyChoiceGridSpacingConstants() {
         assertEquals(4.dp, SimilarChoiceCellHorizontalPadding)
         assertEquals(8.dp, SimilarChoiceCellTopPadding)
