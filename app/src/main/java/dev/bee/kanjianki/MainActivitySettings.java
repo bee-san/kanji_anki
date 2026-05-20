@@ -1,8 +1,6 @@
 package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.RecordsBase;
-import dev.bee.kanjianki.core.RecordsImportModels;
-import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -41,7 +39,6 @@ import androidx.core.widget.TextViewCompat;
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler;
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.anki.CollectionGateway;
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.DictionaryLookup;
 import dev.bee.kanjianki.core.SchedulerTuner;
