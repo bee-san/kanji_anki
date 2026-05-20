@@ -608,6 +608,10 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(activity.settingsStudyExpanded);
                 assertTrue(containsText(activity.content, "Frequency range"));
                 assertFalse(containsText(activity.content, "Daily workload"));
+                activity.contentScroll.scrollTo(0, 48);
+                activity.renderSettings(true);
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+                assertEquals(48, activity.contentScroll.getScrollY());
 
                 performClickableWithText(activity.content, "Study behavior");
                 assertEquals(1, activity.content.getChildCount());
