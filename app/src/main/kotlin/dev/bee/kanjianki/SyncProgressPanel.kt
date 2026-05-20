@@ -2,16 +2,14 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.os.SystemClock
-import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -22,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +33,8 @@ import dev.bee.kanjianki.sync.SyncProgress
 
 private val INK = 0xFF2D1635.toInt()
 private val MUTED = 0xFF6C5674.toInt()
+private val SyncProgressTrack = Color(0xFFFBDDEC)
+private val SyncProgressFill = Color(0xFFF82D72)
 
 private data class SyncProgressPanelState(
     val stage: String = "Finding note type",
@@ -205,22 +207,13 @@ private fun SyncProgressText(
     bold: Boolean,
     modifier: Modifier = Modifier
 ) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            TextView(context).apply {
-                textSize = sizeSp
-                setTextColor(color)
-                setIncludeFontPadding(false)
-                setPadding(0, context.dp(4), 0, context.dp(4))
-                if (bold) {
-                    setTypeface(Typeface.DEFAULT_BOLD)
-                }
-            }
-        },
-        update = { view ->
-            view.text = value
-        }
+    Text(
+        text = value,
+        modifier = modifier.padding(vertical = 4.dp),
+        color = Color(color),
+        fontSize = sizeSp.sp,
+        fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
     )
 }
 
@@ -232,25 +225,21 @@ private fun SyncProgressBar(
     contentDescription: String,
     modifier: Modifier = Modifier
 ) {
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
-                this.contentDescription = contentDescription
-            }
-        },
-        update = { view ->
-            view.isIndeterminate = indeterminate
-            if (!indeterminate) {
-                view.max = progressMax
-                view.progress = progressValue
-            }
-            view.contentDescription = contentDescription
-        }
+    if (indeterminate) {
+        LinearProgressIndicator(
+            modifier = modifier.semantics { this.contentDescription = contentDescription },
+            color = SyncProgressFill,
+            trackColor = SyncProgressTrack
+        )
+        return
+    }
+    LinearProgressIndicator(
+        progress = { if (progressMax <= 0) 0f else progressValue.toFloat() / progressMax.toFloat() },
+        modifier = modifier.semantics { this.contentDescription = contentDescription },
+        color = SyncProgressFill,
+        trackColor = SyncProgressTrack
     )
 }
-
-private fun Context.dp(value: Int): Int = Math.round(value * resources.displayMetrics.density)
 
 private fun detachFromParent(view: View) {
     (view.parent as? ViewGroup)?.removeView(view)
