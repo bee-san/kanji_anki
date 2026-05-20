@@ -1,9 +1,7 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.SettingsTextCopy;
@@ -18,25 +16,31 @@ final class MainActivitySettingsStudyAheadPanel {
         this.activity = activity;
     }
 
-    LinearLayout studyAheadSettingsPanel() {
+    View studyAheadSettingsPanel() {
         int currentMinutes = activity.store.studyAheadMinutes();
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.studyAheadTitle(), 23, activity.INK, true));
-        box.addView(activity.text(SettingsTextCopy.studyAheadBody(), 15, activity.MUTED, false));
+        EditText minutesInput = minutesInput(currentMinutes);
+        return MainActivitySettingsStudyAheadCompose.studyAheadSettingsPanelView(
+                activity,
+                new SettingsStudyAheadPanelModel(
+                        SettingsTextCopy.studyAheadTitle(),
+                        SettingsTextCopy.studyAheadBody(),
+                        SettingsTextCopy.studyAheadMinutesLabel(),
+                        minutesInput,
+                        SettingsTextCopy.saveStudyAheadLabel(),
+                        () -> saveStudyAhead(minutesInput)
+                )
+        );
+    }
 
-        EditText minutesInput = new EditText(activity);
-        minutesInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        minutesInput.setText(String.format(Locale.ROOT, "%d", currentMinutes));
-        minutesInput.setTextSize(20);
-        minutesInput.setSingleLine(true);
-        minutesInput.setSelectAllOnFocus(true);
-        box.addView(activity.text(SettingsTextCopy.studyAheadMinutesLabel(), 15, activity.INK, true));
-        box.addView(minutesInput, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-
-        Button save = activity.primaryButton(SettingsTextCopy.saveStudyAheadLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(new RunnableClickListener(() -> saveStudyAhead(minutesInput)));
-        box.addView(save);
-        return box;
+    private EditText minutesInput(int currentMinutes) {
+        EditText input = new EditText(activity);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.format(Locale.ROOT, "%d", currentMinutes));
+        input.setTextSize(20);
+        input.setSingleLine(true);
+        input.setSelectAllOnFocus(true);
+        input.setContentDescription(SettingsTextCopy.studyAheadMinutesLabel());
+        return input;
     }
 
     private void saveStudyAhead(EditText minutesInput) {
@@ -48,18 +52,5 @@ final class MainActivitySettingsStudyAheadPanel {
         activity.store.saveStudyAheadMinutes(request.minutes);
         Toast.makeText(activity, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show();
         activity.renderSettings();
-    }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
     }
 }

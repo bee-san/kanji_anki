@@ -223,7 +223,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return learningPanel().learningStepsSettingsPanel();
     }
 
-    LinearLayout studyAheadSettingsPanel() {
+    View studyAheadSettingsPanel() {
         return studyAheadPanel().studyAheadSettingsPanel();
     }
 

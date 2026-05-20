@@ -303,7 +303,10 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
-        scenario.onActivity(activity -> editTextAfterLabel(activity, SettingsTextCopy.studyAheadMinutesLabel()).setText("45"));
+        scenario.onActivity(activity -> editTextWithContentDescription(
+                activity,
+                SettingsTextCopy.studyAheadMinutesLabel()
+        ).setText("45"));
     }
 
     private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
@@ -530,6 +533,17 @@ public final class MainActivityInstrumentedTest {
             );
         }
         MainActivity.setInstallPermissionForTests(true);
+
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            clickText(scenario, "Settings");
+            clickText(scenario, "Automation");
+            waitForText(scenario, "Verified APK ready: 9.9.9");
+            scenario.onActivity(activity -> {
+                assertHasText(activity, "Install permission: Ready");
+                assertHasText(activity, "Install verified update");
+                assertHasText(activity, "Android needs confirmation before Kani can replace itself.");
+            });
+        }
 
         Intent openUpdate = new Intent(context, MainActivity.class)
                 .putExtra(MainActivity.EXTRA_OPEN_UPDATE, true);
@@ -2917,6 +2931,16 @@ public final class MainActivityInstrumentedTest {
             }
         }
         throw new AssertionError("Missing EditText after label: " + label + "\nVisible text: " + visibleText(activity.findViewById(android.R.id.content)));
+    }
+
+    private static EditText editTextWithContentDescription(MainActivity activity, String description) {
+        for (EditText input : findTypes(activity.findViewById(android.R.id.content), EditText.class)) {
+            CharSequence value = input.getContentDescription();
+            if (value != null && value.toString().equals(description)) {
+                return input;
+            }
+        }
+        throw new AssertionError("Missing EditText with content description: " + description);
     }
 
     private static void collectViews(View root, List<View> views) {
