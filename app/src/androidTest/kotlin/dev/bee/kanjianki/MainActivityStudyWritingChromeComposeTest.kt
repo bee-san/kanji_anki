@@ -47,6 +47,25 @@ class MainActivityStudyWritingChromeComposeTest {
     }
 
     @Test
+    fun writingStatusTextRepaintsWhenStateChanges() {
+        val state = WritingStatusState()
+        state.setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
+
+        composeRule.setContent {
+            WritingStatusText(state)
+        }
+
+        composeRule.onNodeWithText("Trace the first strokes").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            state.setStatus("Handwriting checker ready", MainActivityUiSupport.TEAL)
+        }
+
+        composeRule.onAllNodesWithText("Trace the first strokes").assertCountEquals(0)
+        composeRule.onNodeWithText("Handwriting checker ready").assertIsDisplayed()
+    }
+
+    @Test
     fun writingResultStatusHandleShowsAndHidesComposeStatus() {
         val handle = WritingResultStatusHandle()
 
