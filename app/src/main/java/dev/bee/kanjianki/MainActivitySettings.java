@@ -26,7 +26,6 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -128,10 +127,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsUpdateFlow(this);
     }
 
-    private MainActivitySettingsPanelFactory panelFactory() {
-        return new MainActivitySettingsPanelFactory(this);
-    }
-
     void renderUpdate() {
         updatePage().renderUpdate();
     }
@@ -150,10 +145,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     SettingsImportFiltersPanelModel importFilterSettingsPanelModel(RecordsSyncModels.Settings current) {
         return ankiSource().importFilterSettingsPanelModel(current);
-    }
-
-    CheckBox importFilterCheckBox(String label, boolean checked) {
-        return panelFactory().importFilterCheckBox(label, checked);
     }
 
     View frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
