@@ -1,12 +1,11 @@
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.widget.EditText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.core.app.ApplicationProvider
+import androidx.compose.ui.test.performTextReplacement
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertEquals
@@ -21,9 +20,8 @@ class SettingsLadderThresholdComposeTest {
     @Test
     fun rendersLadderThresholdCopyAndWiresDefaultsAndSave() {
         var saved = false
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val promotionDays = EditText(context).apply { setText("30") }
-        val failStreak = EditText(context).apply { setText("2") }
+        var savedPromotionDays = ""
+        var savedFailStreak = ""
 
         composeRule.setContent {
             SettingsLadderThresholdPanel(
@@ -31,16 +29,18 @@ class SettingsLadderThresholdComposeTest {
                     title = SettingsTextCopy.ladderThresholdsTitle(),
                     body = SettingsTextCopy.ladderThresholdsBody(),
                     promotionDaysLabel = SettingsTextCopy.fsrsDaysToGoUpLabel(),
-                    promotionDaysInput = promotionDays,
+                    initialPromotionDaysText = "30",
                     failStreakLabel = SettingsTextCopy.failsToGoDownLabel(),
-                    failStreakInput = failStreak,
+                    initialFailStreakText = "2",
+                    defaultPromotionDaysText = RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString(),
+                    defaultFailStreakText = RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString(),
                     defaultsLabel = SettingsTextCopy.useDefaultLadderThresholdsLabel(),
                     saveLabel = SettingsTextCopy.saveLadderThresholdsLabel(),
-                    onUseDefaults = SettingsLadderThresholdAction {
-                        promotionDays.setText(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString())
-                        failStreak.setText(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString())
-                    },
-                    onSave = SettingsLadderThresholdAction { saved = true }
+                    onSave = SettingsLadderThresholdSaveAction { promotionDaysText, failStreakText ->
+                        savedPromotionDays = promotionDaysText
+                        savedFailStreak = failStreakText
+                        saved = true
+                    }
                 )
             )
         }
@@ -49,16 +49,18 @@ class SettingsLadderThresholdComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.ladderThresholdsBody()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.fsrsDaysToGoUpLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.failsToGoDownLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(SettingsLadderThresholdTestTags.PROMOTION_DAYS_INPUT).performTextReplacement("99")
+        composeRule.onNodeWithTag(SettingsLadderThresholdTestTags.FAIL_STREAK_INPUT).performTextReplacement("7")
         composeRule.onNodeWithText(SettingsTextCopy.useDefaultLadderThresholdsLabel()).performClick()
-        composeRule.runOnIdle {
-            assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString(), promotionDays.text.toString())
-            assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString(), failStreak.text.toString())
-        }
+        composeRule.onNodeWithText(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString()).assertIsDisplayed()
+        composeRule.onNodeWithText(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString()).assertIsDisplayed()
 
         composeRule.onNodeWithText(SettingsTextCopy.saveLadderThresholdsLabel()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(saved)
+            assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString(), savedPromotionDays)
+            assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString(), savedFailStreak)
         }
     }
 }

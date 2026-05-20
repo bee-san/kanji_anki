@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsBase;
@@ -20,36 +19,28 @@ final class MainActivitySettingsLadderThresholdPanel {
 
     View ladderThresholdSettingsPanel() {
         RecordsSyncModels.Settings current = activity.settings();
-        EditText promotionDays = activity.thresholdInput(current.ladderPromotionIntervalDays);
-        EditText failStreak = activity.thresholdInput(current.ladderDemotionFailStreak);
-        promotionDays.setContentDescription(SettingsTextCopy.fsrsDaysToGoUpLabel());
-        failStreak.setContentDescription(SettingsTextCopy.failsToGoDownLabel());
         return MainActivitySettingsLadderThresholdCompose.ladderThresholdSettingsPanelView(
                 activity,
                 new SettingsLadderThresholdPanelModel(
                         SettingsTextCopy.ladderThresholdsTitle(),
                         SettingsTextCopy.ladderThresholdsBody(),
                         SettingsTextCopy.fsrsDaysToGoUpLabel(),
-                        promotionDays,
+                        String.format(Locale.ROOT, "%d", current.ladderPromotionIntervalDays),
                         SettingsTextCopy.failsToGoDownLabel(),
-                        failStreak,
+                        String.format(Locale.ROOT, "%d", current.ladderDemotionFailStreak),
+                        String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS),
+                        String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK),
                         SettingsTextCopy.useDefaultLadderThresholdsLabel(),
                         SettingsTextCopy.saveLadderThresholdsLabel(),
-                        () -> applyDefaultThresholds(promotionDays, failStreak),
-                        () -> saveLadderThresholds(promotionDays, failStreak)
+                        this::saveLadderThresholds
                 )
         );
     }
 
-    private void applyDefaultThresholds(EditText promotionDays, EditText failStreak) {
-        promotionDays.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS));
-        failStreak.setText(String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK));
-    }
-
-    private void saveLadderThresholds(EditText promotionDays, EditText failStreak) {
+    private void saveLadderThresholds(String promotionDaysText, String failStreakText) {
         StudyLadderThresholdPolicy.SaveResult request = StudyLadderThresholdPolicy.saveRequest(
-                promotionDays.getText().toString(),
-                failStreak.getText().toString()
+                promotionDaysText,
+                failStreakText
         );
         if (!request.valid) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show();

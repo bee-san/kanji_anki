@@ -394,11 +394,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario, String minutes) {
-        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        UiObject2 input = device.wait(Until.findObject(By.desc(SettingsTextCopy.studyAheadMinutesLabel())), 3000L);
-        assertNotNull(input);
-        input.setText(minutes);
-        device.waitForIdle(2000L);
+        setComposeTextField(SettingsTextCopy.studyAheadMinutesLabel(), minutes);
     }
 
     private static void assertStudyAheadMinutes(ActivityScenario<MainActivity> scenario, int expected) {
@@ -428,10 +424,8 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario, String promotionDays, String failStreak) {
-        scenario.onActivity(activity -> {
-            editTextWithContentDescription(activity, SettingsTextCopy.fsrsDaysToGoUpLabel()).setText(promotionDays);
-            editTextWithContentDescription(activity, SettingsTextCopy.failsToGoDownLabel()).setText(failStreak);
-        });
+        setComposeTextField(SettingsTextCopy.fsrsDaysToGoUpLabel(), promotionDays);
+        setComposeTextField(SettingsTextCopy.failsToGoDownLabel(), failStreak);
     }
 
     private static void assertLadderThresholdFields(
@@ -439,16 +433,9 @@ public final class MainActivityInstrumentedTest {
             int promotionDays,
             int failStreak
     ) {
-        scenario.onActivity(activity -> {
-            assertEquals(
-                    Integer.toString(promotionDays),
-                    editTextWithContentDescription(activity, SettingsTextCopy.fsrsDaysToGoUpLabel()).getText().toString()
-            );
-            assertEquals(
-                    Integer.toString(failStreak),
-                    editTextWithContentDescription(activity, SettingsTextCopy.failsToGoDownLabel()).getText().toString()
-            );
-        });
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        assertNotNull(device.wait(Until.findObject(By.text(Integer.toString(promotionDays))), 3000L));
+        assertNotNull(device.wait(Until.findObject(By.text(Integer.toString(failStreak))), 3000L));
     }
 
     private static void assertLadderThresholdSettings(
@@ -3263,10 +3250,19 @@ public final class MainActivityInstrumentedTest {
 
     private static void setComposeSliderToEnd(String description) {
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        UiObject2 slider = device.wait(Until.findObject(By.desc(description)), 3000L);
+        UiObject2 slider = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
         assertNotNull("Missing slider: " + description + "\nDevice text: " + deviceVisibleText(device), slider);
+        assertTrue("Slider is not enabled: " + description, slider.isEnabled());
         Rect bounds = slider.getVisibleBounds();
         slider.click(new Point(bounds.right - 2, bounds.centerY()));
+        device.waitForIdle(2000L);
+    }
+
+    private static void setComposeTextField(String description, String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing text field: " + description + "\nDevice text: " + deviceVisibleText(device), input);
+        input.setText(text);
         device.waitForIdle(2000L);
     }
 
