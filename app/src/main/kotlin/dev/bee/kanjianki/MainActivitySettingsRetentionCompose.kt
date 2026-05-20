@@ -5,7 +5,6 @@ package dev.bee.kanjianki
 import android.view.View
 import android.widget.CheckBox
 import android.widget.EditText
-import android.widget.SeekBar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,12 +31,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.SettingsTextCopy
+import kotlin.math.roundToInt
 
 private val RetentionInk = Color(0xFF2D1635)
 private val RetentionMuted = Color(0xFF6C5674)
@@ -48,6 +51,10 @@ private val RetentionWhite = Color(0xFFFFFFFF)
 private val RetentionPanelShape = RoundedCornerShape(24.dp)
 private val RetentionButtonShape = RoundedCornerShape(12.dp)
 
+object SettingsRetentionControlDescriptions {
+    const val RETENTION_SLIDER = "FSRS retention slider"
+}
+
 fun interface SettingsRetentionAction {
     fun run()
 }
@@ -56,7 +63,6 @@ data class SettingsRetentionPanelModel(
     val title: String,
     val body: String,
     val selectedRetentionPercent: IntArray,
-    val retentionSlider: SeekBar,
     val presetValues: IntArray,
     val rankRetentionEnabled: CheckBox,
     val rankRangesBody: String,
@@ -112,7 +118,8 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 color = RetentionMuted,
                 fontSize = 15.sp
             )
-            RetentionSlider(model) { value ->
+            RetentionSlider(retentionPercent) { value ->
+                model.selectedRetentionPercent[0] = value
                 retentionPercent = value
             }
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -122,7 +129,6 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                         modifier = Modifier.weight(1f),
                         onClick = {
                             model.selectedRetentionPercent[0] = value
-                            model.retentionSlider.progress = value - 80
                             retentionPercent = value
                         }
                     )
@@ -175,28 +181,18 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
 }
 
 @Composable
-private fun RetentionSlider(model: SettingsRetentionPanelModel, onRetentionChanged: (Int) -> Unit) {
-    AndroidView(
-        factory = {
-            model.retentionSlider.apply {
-                max = 17
-                progress = model.selectedRetentionPercent[0] - 80
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                        val value = 80 + progress
-                        model.selectedRetentionPercent[0] = value
-                        onRetentionChanged(value)
-                    }
-
-                    override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-
-                    override fun onStopTrackingTouch(seekBar: SeekBar) = Unit
-                })
-            }
+private fun RetentionSlider(retentionPercent: Int, onRetentionChanged: (Int) -> Unit) {
+    Slider(
+        value = retentionPercent.toFloat(),
+        onValueChange = { value ->
+            onRetentionChanged(value.roundToInt())
         },
+        valueRange = 80f..97f,
+        steps = 16,
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
+            .semantics { contentDescription = SettingsRetentionControlDescriptions.RETENTION_SLIDER }
     )
 }
 

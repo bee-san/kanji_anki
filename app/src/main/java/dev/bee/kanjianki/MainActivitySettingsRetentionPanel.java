@@ -4,7 +4,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.SeekBar;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
@@ -23,7 +22,6 @@ final class MainActivitySettingsRetentionPanel {
     View retentionSettingsPanel() {
         RecordsSchedulerModels.SchedulerParameters current = activity.store.schedulerParameters();
         final int[] selected = new int[]{SettingsInputRules.retentionPercent(current.targetRetention)};
-        SeekBar slider = new SeekBar(activity);
         CheckBox rankRetentionEnabled = activity.importFilterCheckBox(
                 SettingsTextCopy.useJitenRankRetentionRangesLabel(),
                 current.frequencyRetentionEnabled
@@ -36,7 +34,6 @@ final class MainActivitySettingsRetentionPanel {
                         SettingsTextCopy.fsrsRetentionTitle(),
                         SettingsTextCopy.fsrsRetentionBody(),
                         selected,
-                        slider,
                         new int[]{85, 90, 95},
                         rankRetentionEnabled,
                         SettingsTextCopy.jitenRankRetentionRangesBody(),

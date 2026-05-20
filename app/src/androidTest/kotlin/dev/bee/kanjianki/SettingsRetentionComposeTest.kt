@@ -3,11 +3,13 @@ package dev.bee.kanjianki
 import android.content.Context
 import android.widget.CheckBox
 import android.widget.EditText
-import android.widget.SeekBar
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.FrequencyRetentionRanges
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -25,7 +27,6 @@ class SettingsRetentionComposeTest {
         var saved = false
         val context = ApplicationProvider.getApplicationContext<Context>()
         val selected = intArrayOf(90)
-        val slider = SeekBar(context)
         val ranges = EditText(context).apply { setText("1-500=95%") }
 
         composeRule.setContent {
@@ -34,7 +35,6 @@ class SettingsRetentionComposeTest {
                     title = SettingsTextCopy.fsrsRetentionTitle(),
                     body = SettingsTextCopy.fsrsRetentionBody(),
                     selectedRetentionPercent = selected,
-                    retentionSlider = slider,
                     presetValues = intArrayOf(85, 90, 95),
                     rankRetentionEnabled = CheckBox(context).apply {
                         text = SettingsTextCopy.useJitenRankRetentionRangesLabel()
@@ -53,11 +53,15 @@ class SettingsRetentionComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.fsrsRetentionTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.retentionStatusText(90)).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RETENTION_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { action ->
+                action(92f)
+            }
+        composeRule.onNodeWithText(SettingsTextCopy.retentionStatusText(92)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.retentionPresetLabel(95)).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.retentionStatusText(95)).assertIsDisplayed()
         composeRule.runOnIdle {
             assertEquals(95, selected[0])
-            assertEquals(15, slider.progress)
         }
 
         composeRule.onNodeWithText(SettingsTextCopy.useExampleRangesLabel()).performClick()
