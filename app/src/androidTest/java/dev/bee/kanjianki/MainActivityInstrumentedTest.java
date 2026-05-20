@@ -365,14 +365,13 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setLearningStepText(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
-        setComposeTextField("New cards", newSteps);
+        setComposeTextField(MainActivityBase.LABEL_NEW_CARDS, newSteps);
         setComposeTextField(SettingsTextCopy.reviewMissesLabel(), reviewSteps);
     }
 
     private static void assertLearningStepFields(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
-        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-        assertNotNull(device.wait(Until.findObject(By.pkg(appPackage()).text(newSteps)), 3000L));
-        assertNotNull(device.wait(Until.findObject(By.pkg(appPackage()).text(reviewSteps)), 3000L));
+        assertComposeTextFieldValue(MainActivityBase.LABEL_NEW_CARDS, newSteps);
+        assertComposeTextFieldValue(SettingsTextCopy.reviewMissesLabel(), reviewSteps);
     }
 
     private static void assertLearningStepSettings(
@@ -654,27 +653,23 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Settings");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Using " + defaults.modelName);
-                noteTypeInput(activity).setText("");
             });
+            setComposeTextField(SettingsTextCopy.noteTypeStatusLabel(), "");
             clickText(scenario, "Save note type");
             assertNoteTypeSettings(defaults);
 
-            scenario.onActivity(activity -> {
-                noteTypeInput(activity).setText("Custom Mining");
-                noteTypeFieldInput(activity, SettingsTextCopy.expressionFieldLabel()).setText("");
-            });
+            setComposeTextField(SettingsTextCopy.noteTypeStatusLabel(), "Custom Mining");
+            setComposeTextField(SettingsTextCopy.expressionFieldLabel(), "");
             clickText(scenario, "Save note type");
             assertNoteTypeSettings(defaults);
 
-            scenario.onActivity(activity -> {
-                noteTypeInput(activity).setText("Custom Mining");
-                noteTypeFieldInput(activity, SettingsTextCopy.expressionFieldLabel()).setText("Word");
-                noteTypeFieldInput(activity, SettingsTextCopy.readingFieldLabel()).setText("WordReading");
-                noteTypeFieldInput(activity, SettingsTextCopy.meaningFieldLabel()).setText("Gloss");
-                noteTypeFieldInput(activity, SettingsTextCopy.sentenceFieldLabel()).setText("Context");
-                noteTypeFieldInput(activity, SettingsTextCopy.frequencyFieldLabel()).setText("Freq");
-                noteTypeFieldInput(activity, SettingsTextCopy.frequencySortFieldLabel()).setText("SortKey");
-            });
+            setComposeTextField(SettingsTextCopy.noteTypeStatusLabel(), "Custom Mining");
+            setComposeTextField(SettingsTextCopy.expressionFieldLabel(), "Word");
+            setComposeTextField(SettingsTextCopy.readingFieldLabel(), "WordReading");
+            setComposeTextField(SettingsTextCopy.meaningFieldLabel(), "Gloss");
+            setComposeTextField(SettingsTextCopy.sentenceFieldLabel(), "Context");
+            setComposeTextField(SettingsTextCopy.frequencyFieldLabel(), "Freq");
+            setComposeTextField(SettingsTextCopy.frequencySortFieldLabel(), "SortKey");
             clickText(scenario, "Save note type");
             waitForText(scenario, "Using Custom Mining");
             assertNoteTypeSettings(new RecordsSyncModels.Settings(
@@ -2948,14 +2943,6 @@ public final class MainActivityInstrumentedTest {
         }
     }
 
-    private static EditText noteTypeInput(MainActivity activity) {
-        return editTextWithContentDescription(activity, SettingsTextCopy.noteTypeStatusLabel());
-    }
-
-    private static EditText noteTypeFieldInput(MainActivity activity, String fieldLabel) {
-        return editTextWithContentDescription(activity, fieldLabel);
-    }
-
     private void assertNoteTypeSettings(RecordsSyncModels.Settings expected) {
         try (LocalStore store = new LocalStore(context)) {
             RecordsSyncModels.Settings actual = SyncSettings.fromStore(store);
@@ -3261,6 +3248,13 @@ public final class MainActivityInstrumentedTest {
         assertNotNull("Missing text field: " + description + "\nDevice text: " + deviceVisibleText(device), input);
         input.setText(text);
         device.waitForIdle(2000L);
+    }
+
+    private static void assertComposeTextFieldValue(String description, String expected) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing text field: " + description + "\nDevice text: " + deviceVisibleText(device), input);
+        assertEquals(expected, input.getText());
     }
 
     private static void collectViews(View root, List<View> views) {

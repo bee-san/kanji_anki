@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -29,7 +30,7 @@ class SettingsLearningStepsComposeTest {
                 model = SettingsLearningStepsPanelModel(
                     title = SettingsTextCopy.learningStepsTitle(),
                     body = SettingsTextCopy.learningStepsBody(),
-                    newCardsLabel = "New cards",
+                    newCardsLabel = MainActivityBase.LABEL_NEW_CARDS,
                     initialNewStepsText = "2m 15m",
                     reviewMissesLabel = SettingsTextCopy.reviewMissesLabel(),
                     initialReviewStepsText = "5m 20m",
@@ -49,15 +50,20 @@ class SettingsLearningStepsComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.learningStepsTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.learningStepsBody()).assertIsDisplayed()
-        composeRule.onNodeWithText("New cards").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_NEW_CARDS).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.reviewMissesLabel()).assertIsDisplayed()
         composeRule.onNodeWithTag(SettingsLearningStepsTestTags.NEW_STEPS_INPUT).performTextReplacement("3m 15m")
         composeRule.onNodeWithTag(SettingsLearningStepsTestTags.REVIEW_STEPS_INPUT).performTextReplacement("6m 30m")
         composeRule.onNodeWithText(SettingsTextCopy.ankiDefaultLabel()).performClick()
-        composeRule.onNodeWithText(defaults.newStepsText()).assertIsDisplayed()
-        composeRule.onNodeWithText(defaults.reviewStepsText()).assertIsDisplayed()
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.NEW_STEPS_INPUT)
+            .assertTextEquals(defaults.newStepsText())
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.REVIEW_STEPS_INPUT)
+            .assertTextEquals(defaults.reviewStepsText())
         composeRule.onNodeWithText(SettingsTextCopy.sameLearningStepsLabel()).performClick()
-        composeRule.onNodeWithText(defaults.newStepsText()).assertIsDisplayed()
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.NEW_STEPS_INPUT)
+            .assertTextEquals(defaults.newStepsText())
+        composeRule.onNodeWithTag(SettingsLearningStepsTestTags.REVIEW_STEPS_INPUT)
+            .assertTextEquals(defaults.newStepsText())
 
         composeRule.onNodeWithText(SettingsTextCopy.saveLearningStepsLabel()).performClick()
 

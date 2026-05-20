@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import java.util.Locale;
 
 final class MainActivitySettingsAnkiSourceInputs {
@@ -9,17 +8,6 @@ final class MainActivitySettingsAnkiSourceInputs {
 
     MainActivitySettingsAnkiSourceInputs(MainActivitySettings activity) {
         this.activity = activity;
-    }
-
-    EditText noteTypeInput(String value) {
-        EditText input = new EditText(activity);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        input.setText(value == null || value.trim().isEmpty() ? dev.bee.kanjianki.core.RecordsSyncModels.Settings.kikuDefaults().modelName : value.trim());
-        input.setHint(dev.bee.kanjianki.core.RecordsSyncModels.Settings.kikuDefaults().modelName);
-        input.setTextSize(20);
-        input.setSingleLine(true);
-        input.setSelectAllOnFocus(true);
-        return input;
     }
 
     EditText fieldInput(String value) {
@@ -30,20 +18,6 @@ final class MainActivitySettingsAnkiSourceInputs {
         input.setSingleLine(true);
         input.setSelectAllOnFocus(true);
         return input;
-    }
-
-    void addFieldMappingInput(LinearLayout box, String label, EditText input) {
-        box.addView(activity.text(label, 14, activity.INK, true));
-        box.addView(input, new LinearLayout.LayoutParams(-1, activity.dp(52)));
-    }
-
-    LinearLayout inputColumn(String label, EditText input, int leftPadding) {
-        LinearLayout column = new LinearLayout(activity);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setPadding(leftPadding, 0, 0, 0);
-        column.addView(activity.text(label, 15, activity.INK, true));
-        column.addView(input, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-        return column;
     }
 
     EditText rankInput(int value) {

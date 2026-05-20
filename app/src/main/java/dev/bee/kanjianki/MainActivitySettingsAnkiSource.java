@@ -15,7 +15,7 @@ final class MainActivitySettingsAnkiSource {
         this.inputs = new MainActivitySettingsAnkiSourceInputs(activity);
         MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
         this.frequencyRange = new MainActivitySettingsAnkiSourceFrequencyRange(activity, this.inputs, validation);
-        this.noteType = new MainActivitySettingsAnkiSourceNoteType(activity, this.inputs);
+        this.noteType = new MainActivitySettingsAnkiSourceNoteType(activity);
         this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this.inputs, validation);
     }
 

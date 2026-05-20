@@ -27,7 +27,7 @@ final class NoteTypeFieldMappings {
             AnkiDroidGateway gateway,
             ExecutorService io,
             Handler main,
-            Inputs inputs
+            FieldInputs inputs
     ) {
         choose(
                 () -> choicesFrom(gateway.noteTypes()),
