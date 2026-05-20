@@ -99,6 +99,10 @@ final class MainActivityStudyFlashcard {
         return MainActivityStudyAnswerCompose.flashcardAnswerPanelView(activity, session);
     }
 
+    StudyAnswerPanelModel flashcardAnswerPanelModel(RecordsSchedulerModels.StudySession session) {
+        return MainActivityStudyAnswerCompose.flashcardAnswerPanelModel(activity, session);
+    }
+
     View typingAnswerField() {
         activity.typingAnswerInput = new EditText(activity);
         activity.typingAnswerInput.setSingleLine(true);

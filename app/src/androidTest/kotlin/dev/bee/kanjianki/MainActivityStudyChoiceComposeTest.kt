@@ -1,22 +1,20 @@
 package dev.bee.kanjianki
 
-import android.view.View
-import android.widget.TextView
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -85,17 +83,8 @@ class MainActivityStudyChoiceComposeTest {
     @Test
     fun rendersMeaningChoiceSessionCardAndRevealsAnswerOnSelection() {
         var selected = ""
-        var answerPanel: TextView? = null
 
         composeRule.setContent {
-            val context = LocalContext.current
-            val panel = remember {
-                TextView(context).apply {
-                    text = "Answer detail"
-                    visibility = View.GONE
-                }
-            }
-            answerPanel = panel
             MeaningChoiceSessionCard(
                 model = MeaningChoiceSessionModel(
                     modeLabel = "Recall",
@@ -105,7 +94,20 @@ class MainActivityStudyChoiceComposeTest {
                     reasonLine = "",
                     question = "Which kanji means split?",
                     choices = listOf("裂", "列", "烈", "劣"),
-                    answerPanel = panel,
+                    answerPanel = StudyAnswerPanelModel(
+                        title = "Answer",
+                        glyph = "裂",
+                        glyphSizeSp = 76,
+                        lines = listOf(
+                            StudyAnswerLineModel(
+                                text = "Answer detail",
+                                color = Color(0xFF2D1635),
+                                sizeSp = 15,
+                                bold = false
+                            )
+                        ),
+                        helperText = null
+                    ),
                     onChoice = KanjiChoiceHandler { selected = it }
                 )
             )
@@ -114,19 +116,16 @@ class MainActivityStudyChoiceComposeTest {
         composeRule.onNodeWithText("Recall").assertIsDisplayed()
         composeRule.onNodeWithText("Choose the kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Which kanji means split?").assertIsDisplayed()
-        composeRule.runOnIdle {
-            assertNotNull(answerPanel)
-            assertEquals(View.GONE, answerPanel?.visibility)
-        }
+        composeRule.onAllNodesWithText("Answer detail").assertCountEquals(0)
 
         composeRule.onNodeWithText("裂").performClick()
 
         composeRule.runOnIdle {
             assertEquals("裂", selected)
-            assertEquals(View.VISIBLE, answerPanel?.visibility)
         }
-        composeRule.onNodeWithText("裂").assertIsNotEnabled()
-        composeRule.onNodeWithText("列").assertIsNotEnabled()
+        composeRule.onNodeWithText("Answer detail").assertIsDisplayed()
+        composeRule.onNodeWithTag(similarChoiceTestTag("裂")).assertIsNotEnabled()
+        composeRule.onNodeWithTag(similarChoiceTestTag("列")).assertIsNotEnabled()
     }
 
     @Test

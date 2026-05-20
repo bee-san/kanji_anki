@@ -54,7 +54,14 @@ internal fun flashcardAnswerPanelView(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
 ): View {
-    return studyAnswerPanelView(activity, answerPanelModel(activity, session, "Answer", 76, null))
+    return studyAnswerPanelView(activity, flashcardAnswerPanelModel(activity, session))
+}
+
+internal fun flashcardAnswerPanelModel(
+    activity: MainActivityStudy,
+    session: RecordsSchedulerModels.StudySession
+): StudyAnswerPanelModel {
+    return answerPanelModel(activity, session, "Answer", 76, null)
 }
 
 internal fun learningPanelView(
@@ -121,9 +128,9 @@ private fun answerPanelModel(
 }
 
 @Composable
-fun StudyAnswerPanel(model: StudyAnswerPanelModel) {
+fun StudyAnswerPanel(model: StudyAnswerPanelModel, modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
         color = StudyAnswerPanelFill,
         border = BorderStroke(1.dp, StudyAnswerBorder)

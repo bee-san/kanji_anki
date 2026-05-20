@@ -32,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 
 private val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
 private val StudyButtonFill = Color(MainActivityUiSupport.STUDY_BG)
@@ -74,7 +73,7 @@ data class MeaningChoiceSessionModel(
     val reasonLine: String,
     val question: String,
     val choices: List<String>,
-    val answerPanel: View,
+    val answerPanel: StudyAnswerPanelModel,
     val onChoice: KanjiChoiceHandler,
 )
 
@@ -140,7 +139,6 @@ fun MeaningChoiceSessionCard(model: MeaningChoiceSessionModel) {
             onAnswered = { glyph ->
                 if (!answered) {
                     answered = true
-                    model.answerPanel.visibility = View.VISIBLE
                     model.onChoice.onChoice(glyph)
                 }
             }
@@ -236,8 +234,8 @@ private fun MeaningChoiceInsetPanel(
                 onChoice = onAnswered
             )
             if (answered) {
-                AndroidView(
-                    factory = { model.answerPanel },
+                StudyAnswerPanel(
+                    model = model.answerPanel,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 10.dp)

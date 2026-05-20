@@ -37,8 +37,7 @@ final class MainActivityStudyChoiceSessions {
             return;
         }
 
-        View answerPanel = home.flashcardAnswerPanel(session);
-        answerPanel.setVisibility(View.GONE);
+        StudyAnswerPanelModel answerPanel = home.flashcardAnswerPanelModel(session);
         String reason = StudyTextCopy.studyReasonLine(
                 home.activeSimilarWritingRepair != null,
                 session,
@@ -56,7 +55,7 @@ final class MainActivityStudyChoiceSessions {
                         StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
                         choiceCard.choices,
                         answerPanel,
-                        glyph -> showMeaningKanjiChoiceResult(choiceCard, glyph, answerPanel)
+                        glyph -> showMeaningKanjiChoiceResult(choiceCard, glyph)
                 )
         );
 
@@ -77,9 +76,8 @@ final class MainActivityStudyChoiceSessions {
         );
     }
 
-    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View answerPanel) {
+    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji) {
         boolean correct = card.isCorrect(selectedKanji);
-        answerPanel.setVisibility(View.VISIBLE);
         if (home.studyActionBar == null) {
             home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false);
             return;

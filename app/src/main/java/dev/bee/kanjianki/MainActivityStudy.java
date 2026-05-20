@@ -313,6 +313,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         return flashcardUi.flashcardAnswerPanel(session);
     }
 
+    StudyAnswerPanelModel flashcardAnswerPanelModel(RecordsSchedulerModels.StudySession session) {
+        return flashcardUi.flashcardAnswerPanelModel(session);
+    }
+
     DictionaryLookup currentDictionaryLookup() {
         if (dictionaryLookup == null) {
             dictionaryLookup = DictionaryAssets.load(this);
