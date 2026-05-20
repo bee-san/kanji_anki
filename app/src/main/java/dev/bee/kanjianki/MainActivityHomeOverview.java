@@ -20,11 +20,11 @@ final class MainActivityHomeOverview {
     }
 
     View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        return MainActivityHomeOverviewCompose.homeMetricRowView(home, sync, provider, streak, plan);
+        return HomeMetricsCompose.homeMetricRowView(home, sync, provider, streak, plan);
     }
 
     View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
-        return MainActivityHomeOverviewCompose.metricCardView(home, iconRes, accent, label, value, body, action);
+        return HomeMetricsCompose.metricCardView(home, iconRes, accent, label, value, body, action);
     }
 
     View homeStudyCta() {

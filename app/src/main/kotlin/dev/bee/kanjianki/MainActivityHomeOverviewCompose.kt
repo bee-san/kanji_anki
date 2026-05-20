@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,7 +31,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -43,27 +41,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.HomeTextCopy
-import dev.bee.kanjianki.core.RecordsSchedulerModels
-import dev.bee.kanjianki.core.StudyTextCopy
-import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.data.StudyStatsStore
-import android.widget.LinearLayout
 
 private val HomeInk = Color(0xFF2D1635)
 private val HomeMuted = Color(0xFF6C5674)
-
-data class HomeMetricModel(
-    val iconRes: Int,
-    val accent: Int,
-    val label: String,
-    val value: String,
-    val body: String?,
-    val onClick: (() -> Unit)?,
-)
-
-internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
 
 internal fun homeHeaderView(home: MainActivityHome): View {
     return ComposeView(home).apply {
@@ -79,49 +60,6 @@ internal fun homeHeaderView(home: MainActivityHome): View {
     }
 }
 
-internal fun homeMetricRowView(
-    home: MainActivityHome,
-    sync: LocalStoreBase.SyncStatus?,
-    provider: AnkiDroidGateway.ProviderStatus,
-    streak: StudyStatsStore.StudyStreak?,
-    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
-): View {
-    val metrics = listOf(
-        HomeMetricModel(
-            R.drawable.ic_sync_24,
-            MainActivityUiSupport.TEAL,
-            HomeTextCopy.syncMetricLabel(),
-            HomeTextCopy.homeSyncValue(sync?.finishedAt),
-            HomeTextCopy.syncMetricStatus(provider.canSync && sync != null && sync.status == "success"),
-            home::confirmSync
-        ),
-        HomeMetricModel(
-            R.drawable.ic_flame_24,
-            home.streakAccent(streak),
-            HomeTextCopy.streakMetricLabel(),
-            HomeTextCopy.streakHeadline(streak?.currentDays ?: 0),
-            HomeTextCopy.streakMetricBody(streak?.studiedToday == true, streak?.bestDays ?: 0),
-            null
-        ),
-        HomeMetricModel(
-            R.drawable.ic_target_24,
-            MainActivityUiSupport.CORAL,
-            HomeTextCopy.focusMetricLabel(),
-            HomeTextCopy.focusHeadline(plan),
-            null,
-            null
-        )
-    )
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                HomeMetricRow(metrics)
-            }
-        }
-    }
-}
-
 internal fun homeStudyCtaView(home: MainActivityHome): View {
     return ComposeView(home).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, home.dp(94))
@@ -131,36 +69,6 @@ internal fun homeStudyCtaView(home: MainActivityHome): View {
                     title = MainActivityBase.LABEL_STUDY_NOW,
                     subtitle = HomeTextCopy.studySupportText(),
                     onClick = home::startFocusedStudy
-                )
-            }
-        }
-    }
-}
-
-internal fun metricCardView(
-    home: MainActivityHome,
-    iconRes: Int,
-    accent: Int,
-    label: String,
-    value: String,
-    body: String?,
-    action: Runnable?
-): View {
-    return ComposeView(home).apply {
-        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-            setMargins(home.dp(4), 0, home.dp(4), 0)
-        }
-        if (action != null) {
-            setOnClickListener { action.run() }
-        }
-        setContent {
-            MaterialTheme {
-                HomeMetricCard(
-                    iconRes = iconRes,
-                    accent = accent,
-                    label = label,
-                    value = value,
-                    body = body
                 )
             }
         }
@@ -295,131 +203,4 @@ fun HomeStudyCta(
                 .size(14.dp)
         )
     }
-}
-
-@Composable
-fun HomeMetricRow(metrics: List<HomeMetricModel>) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        metrics.forEach { metric ->
-            HomeMetricCard(
-                model = metric,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 4.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun HomeMetricCard(
-    iconRes: Int,
-    accent: Int,
-    label: String,
-    value: String,
-    body: String?
-) {
-    HomeMetricCard(
-        model = HomeMetricModel(
-            iconRes = iconRes,
-            accent = accent,
-            label = label,
-            value = value,
-            body = body,
-            onClick = null
-        )
-    )
-}
-
-@Composable
-fun HomeMetricCard(
-    model: HomeMetricModel,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(8.dp)
-    val accentColor = androidColor(model.accent)
-    val borderColor = androidColor(HomeMetricCardBorder.softened(model.accent))
-    val labelStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-    val cardModifier = modifier
-        .testTag(homeMetricCardTestTag(model.label))
-        .then(
-            if (model.onClick == null) {
-                Modifier
-            } else {
-                Modifier.clickable(onClick = model.onClick)
-            }
-        )
-    Box(
-        modifier = cardModifier
-            .fillMaxWidth()
-            .heightIn(min = 136.dp)
-            .clip(shape)
-            .background(Color.White)
-            .border(1.dp, borderColor, shape)
-            .padding(14.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.Top
-        ) {
-            Icon(
-                painter = painterResource(id = model.iconRes),
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier
-                    .size(22.dp)
-                    .padding(bottom = 5.dp)
-            )
-            Text(
-                text = model.label,
-                color = accentColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = labelStyle
-            )
-            Text(
-                text = model.value,
-                color = HomeInk,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 5.dp, bottom = 2.dp),
-                style = labelStyle
-            )
-            if (!model.body.isNullOrEmpty()) {
-                Text(
-                    text = StudyTextCopy.compact(model.body, 18),
-                    color = HomeMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 3.dp),
-                    style = labelStyle
-                )
-            }
-        }
-    }
-}
-
-private object HomeMetricCardBorder {
-    fun softened(accent: Int): Int {
-        return when (accent) {
-            MainActivityBase.CORAL -> android.graphics.Color.rgb(255, 235, 243)
-            MainActivityBase.TEAL -> android.graphics.Color.rgb(230, 250, 251)
-            MainActivityBase.GOLD, android.graphics.Color.rgb(247, 159, 0) -> android.graphics.Color.rgb(255, 247, 220)
-            MainActivityBase.BLUE, MainActivityBase.LILAC -> android.graphics.Color.rgb(242, 238, 255)
-            else -> android.graphics.Color.rgb(248, 238, 245)
-        }
-    }
-}
-
-private fun androidColor(argb: Int): Color {
-    return Color(argb.toLong() and 0xFFFFFFFFL)
 }

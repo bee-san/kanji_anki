@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.HomeTextCopy
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -70,6 +71,7 @@ class MainActivityHomeOverviewComposeTest {
         composeRule.onNodeWithTag(homeMetricCardTestTag("Sync")).performClick()
 
         assertTrue(clicked)
+        assertMetricCardHeightsEqual()
     }
 
     @Test
@@ -88,5 +90,27 @@ class MainActivityHomeOverviewComposeTest {
         composeRule.onNodeWithText(HomeTextCopy.studySupportText()).assertIsDisplayed()
         composeRule.onNodeWithContentDescription(MainActivityBase.LABEL_STUDY_NOW).performClick()
         assertTrue(clicked)
+    }
+
+    private fun assertMetricCardHeightsEqual() {
+        val syncHeight = composeRule.onNodeWithTag(homeMetricCardTestTag("Sync"))
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .height
+        val streakHeight = composeRule.onNodeWithTag(homeMetricCardTestTag("Streak"))
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .height
+        val focusHeight = composeRule.onNodeWithTag(homeMetricCardTestTag("Focus"))
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .height
+
+        assertEquals(syncHeight, streakHeight, METRIC_HEIGHT_TOLERANCE_PX)
+        assertEquals(syncHeight, focusHeight, METRIC_HEIGHT_TOLERANCE_PX)
+    }
+
+    private companion object {
+        private const val METRIC_HEIGHT_TOLERANCE_PX = 1.0f
     }
 }
