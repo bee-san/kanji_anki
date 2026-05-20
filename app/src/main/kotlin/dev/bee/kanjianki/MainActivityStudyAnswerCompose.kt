@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -131,7 +132,7 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel) {
             Text(
                 text = model.title,
                 color = StudyAnswerPlum,
-                fontSize = 19.sp,
+                style = studyAnswerTextStyle(19),
                 fontWeight = FontWeight.Bold
             )
             Row(
@@ -147,7 +148,7 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel) {
                     Text(
                         text = model.glyph,
                         color = StudyAnswerPlum,
-                        fontSize = model.glyphSizeSp.sp,
+                        style = studyAnswerTextStyle(model.glyphSizeSp),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -156,7 +157,7 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel) {
                         Text(
                             text = line.text,
                             color = line.color,
-                            fontSize = line.sizeSp.sp,
+                            style = studyAnswerTextStyle(line.sizeSp),
                             fontWeight = if (line.bold) FontWeight.Bold else FontWeight.Normal
                         )
                     }
@@ -166,9 +167,17 @@ fun StudyAnswerPanel(model: StudyAnswerPanelModel) {
                 Text(
                     text = helper,
                     color = StudyAnswerMuted,
-                    fontSize = 13.sp
+                    style = studyAnswerTextStyle(13)
                 )
             }
         }
     }
+}
+
+private fun studyAnswerTextStyle(sizeSp: Int): TextStyle {
+    val size = sizeSp.sp
+    return TextStyle(
+        fontSize = size,
+        lineHeight = size * 1.05f
+    )
 }

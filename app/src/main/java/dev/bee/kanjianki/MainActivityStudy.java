@@ -97,7 +97,6 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudyWritingFlow writingFlow = new MainActivityStudyWritingFlow(this);
     private final MainActivityStudyWritingCheck writingCheck = new MainActivityStudyWritingCheck(this);
     private final MainActivityStudyReviewFlow writingReview = new MainActivityStudyReviewFlow(this);
-    private final MainActivityStudyChoiceGrid choiceGrid = new MainActivityStudyChoiceGrid(this);
     final MainActivityStudyDoneActions doneActions = new MainActivityStudyDoneActions(this);
     private final MainActivityStudyChoiceSessions choiceSessions = new MainActivityStudyChoiceSessions(this);
     private final MainActivityStudyProgress studyProgress = new MainActivityStudyProgress(this);
@@ -203,10 +202,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         return choiceSessions.meaningKanjiChoiceCardForSession(session);
     }
 
-    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View answerPanel) {
-        choiceGrid.showMeaningKanjiChoiceResult(card, selectedKanji, answerPanel);
-    }
-
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {
         choiceSessions.renderSimilarKanjiSession(session);
     }
@@ -217,14 +212,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     List<String> buildSimilarKanjiChoices(String targetKanji) {
         return choiceSessions.buildSimilarKanjiChoices(targetKanji);
-    }
-
-    View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
-        return choiceGrid.similarKanjiGrid(choices, card);
-    }
-
-    View similarKanjiGrid(List<String> choices, String correctKanji) {
-        return choiceGrid.similarKanjiGrid(choices, correctKanji);
     }
 
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {

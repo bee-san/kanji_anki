@@ -1,6 +1,7 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
@@ -54,7 +55,7 @@ final class MainActivityStudyChoiceSessions {
                         StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
                         choiceCard.choices,
                         answerPanel,
-                        glyph -> home.showMeaningKanjiChoiceResult(choiceCard, glyph, answerPanel)
+                        glyph -> showMeaningKanjiChoiceResult(choiceCard, glyph, answerPanel)
                 )
         );
 
@@ -73,6 +74,25 @@ final class MainActivityStudyChoiceSessions {
                 home.store.searchKanjiInventory(""),
                 meaningChoiceRandom
         );
+    }
+
+    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View answerPanel) {
+        boolean correct = card.isCorrect(selectedKanji);
+        answerPanel.setVisibility(View.VISIBLE);
+        if (home.studyActionBar == null) {
+            home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false);
+            return;
+        }
+        home.styleStudyActionBarShell();
+        home.studyActionBar.removeAllViews();
+        home.studyActionBar.setVisibility(View.VISIBLE);
+        String prompt = home.activeSession == null ? "" : home.activeSession.prompt;
+        String status = StudyTextCopy.meaningKanjiChoiceResult(card, prompt, correct);
+        home.resultStatus = home.text(status, 15, correct ? home.TEAL : home.CORAL, true);
+        home.studyActionBar.addView(home.resultStatus);
+        Button next = home.pinkPrimaryButton("Next");
+        next.setOnClickListener(new RunnableClickListener(() -> home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false)));
+        home.studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, home.dp(62)));
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {
