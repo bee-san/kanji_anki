@@ -1,8 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy;
@@ -17,34 +15,38 @@ final class MainActivitySettingsAutomationAutoSync {
         this.activity = activity;
     }
 
-    LinearLayout autoSyncSettingsPanel() {
+    View autoSyncSettingsPanel() {
         dev.bee.kanjianki.data.LocalStore.AutoSyncSettings auto = activity.store.autoSyncSettings();
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.dailyAnkiSyncTitle(), 23, activity.INK, true));
-        box.addView(activity.text(
-                SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime()),
-                17,
-                auto.enabled ? activity.TEAL : activity.MUTED,
-                true
-        ));
         String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
         String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
                 ? DateTextPolicy.shortDateTime(auto.lastAttemptAt)
                 : "";
         String nextRun = auto.nextRunAt > 0L ? DateTextPolicy.shortDateTime(auto.nextRunAt) : "";
-        box.addView(activity.text(SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun), 15, activity.MUTED, false));
+        String actionLabel = null;
+        boolean primaryAction = false;
+        SettingsAutoSyncAction action = null;
         if (auto.configured) {
             if (auto.enabled) {
-                Button off = activity.secondaryButton(SettingsTextCopy.turnOffDailySyncLabel());
-                off.setOnClickListener(new RunnableClickListener(this::disableAutoSync));
-                box.addView(off);
+                actionLabel = SettingsTextCopy.turnOffDailySyncLabel();
+                action = this::disableAutoSync;
             } else {
-                Button on = activity.primaryButton(SettingsTextCopy.turnOnDailySyncLabel(), activity.STUDY_PINK_DARK);
-                on.setOnClickListener(new RunnableClickListener(this::enableAutoSync));
-                box.addView(on);
+                actionLabel = SettingsTextCopy.turnOnDailySyncLabel();
+                primaryAction = true;
+                action = this::enableAutoSync;
             }
         }
-        return box;
+        return MainActivitySettingsAutomationAutoSyncCompose.autoSyncSettingsPanelView(
+                activity,
+                new SettingsAutoSyncPanelModel(
+                        SettingsTextCopy.dailyAnkiSyncTitle(),
+                        SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime()),
+                        auto.enabled ? activity.TEAL : activity.MUTED,
+                        SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun),
+                        actionLabel,
+                        primaryAction,
+                        action
+                )
+        );
     }
 
     private void enableAutoSync() {
@@ -63,16 +65,4 @@ final class MainActivitySettingsAutomationAutoSync {
         activity.renderSettings();
     }
 
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
-    }
 }

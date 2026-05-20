@@ -261,7 +261,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsAutomationReminder(this).reminderSettingsPanel();
     }
 
-    LinearLayout autoSyncSettingsPanel() {
+    View autoSyncSettingsPanel() {
         return new MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanel();
     }
 

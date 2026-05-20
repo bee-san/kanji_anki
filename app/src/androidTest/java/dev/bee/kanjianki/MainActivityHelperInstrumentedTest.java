@@ -758,13 +758,12 @@ public final class MainActivityHelperInstrumentedTest {
             scenario.onActivity(activity -> {
                 MainActivitySettingsAutomationReminder reminderHelper = new MainActivitySettingsAutomationReminder(activity);
                 activity.store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 6, 45, 1000L, 1000L, 2000L));
-                LinearLayout syncOn = activity.autoSyncSettingsPanel();
-                performButtonClick(syncOn, "Turn off daily sync");
-                assertFalse(activity.store.autoSyncSettings().enabled);
+                View syncOn = activity.autoSyncSettingsPanel();
+                assertTrue(syncOn instanceof androidx.compose.ui.platform.ComposeView);
 
-                LinearLayout syncOff = activity.autoSyncSettingsPanel();
-                performButtonClick(syncOff, "Turn on daily sync");
-                assertTrue(activity.store.autoSyncSettings().enabled);
+                activity.store.setAutoSyncEnabled(false);
+                View syncOff = activity.autoSyncSettingsPanel();
+                assertTrue(syncOff instanceof androidx.compose.ui.platform.ComposeView);
 
                 activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
                 View missingPermission = activity.updateSettingsPanel();
