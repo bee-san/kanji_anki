@@ -31,7 +31,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -85,8 +84,6 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
-    private final MainActivityHomeOverview overview = new MainActivityHomeOverview(this);
-    private final MainActivityHomeChrome chrome = new MainActivityHomeChrome(this);
     private final MainActivityHomeFocusQueue focusQueue = new MainActivityHomeFocusQueue(this);
     private final MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(this);
     private final MainActivityHomeSync syncFlow = new MainActivityHomeSync(this);
@@ -98,40 +95,20 @@ abstract class MainActivityHome extends MainActivityBase {
         MainActivityHomeScreenRenderer.renderHomeScreen(this);
     }
 
-    View homeHeader() {
-        return overview.homeHeader();
-    }
-
-    View homeMetricRow(LocalStore.SyncStatus sync, AnkiDroidGateway.ProviderStatus provider, StudyStatsStore.StudyStreak streak, RecordsSchedulerModels.AdaptiveLoadPlan plan) {
-        return overview.homeMetricRow(sync, provider, streak, plan);
-    }
-
     View metricCard(int iconRes, int accent, String label, String value, String body, Runnable action) {
-        return overview.metricCard(iconRes, accent, label, value, body, action);
-    }
-
-    View homeStudyCta() {
-        return overview.homeStudyCta();
-    }
-
-    View homeSyncCta() {
-        return overview.homeSyncCta();
-    }
-
-    ImageView decorativeSparkle(int tint, int sizeDp) {
-        return overview.decorativeSparkle(tint, sizeDp);
+        return HomeMetricsCompose.metricCardView(this, iconRes, accent, label, value, body, action);
     }
 
     View homeActionRow() {
-        return chrome.homeActionRow();
+        return MainActivityHomeChromeCompose.homeActionRowView(this);
     }
 
     View homeSectionHeader(String title, String actionLabel, Runnable action) {
-        return chrome.homeSectionHeader(title, actionLabel, action);
+        return MainActivityHomeChromeCompose.homeSectionHeaderView(this, title, actionLabel, action);
     }
 
     View fullWidthHomeButton() {
-        return chrome.fullWidthHomeButton();
+        return MainActivityHomeChromeCompose.fullWidthHomeButtonView(this);
     }
 
     void renderFocusQueue() {
