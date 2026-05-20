@@ -128,9 +128,6 @@ private fun FlashcardEmbeddedView(view: View, modifier: Modifier = Modifier) {
             factory = {
                 detachFromParent(view)
                 view
-            },
-            update = {
-                detachFromParent(view)
             }
         )
     }

@@ -14,7 +14,7 @@ final class MainActivityStudyWritingUi {
     MainActivityStudyWritingUi(MainActivityStudy activity) {
         this.activity = activity;
         this.writingStatus = new MainActivityStudyWritingStatus(activity);
-        this.writingToolbar = new MainActivityStudyWritingToolbar(activity, writingStatus);
+        this.writingToolbar = new MainActivityStudyWritingToolbar(activity);
     }
 
     void buildStudyActionBar() {
@@ -23,10 +23,7 @@ final class MainActivityStudyWritingUi {
 
     void updateResultActions() {
         WritingActionPresentation presentation = writingActionPresentation();
-        updateUndoStrokeButton(presentation);
-        updateCheckWritingButton(presentation);
-        updateDownloadModelButton(presentation);
-        updateNextAfterPassButton(presentation);
+        updateToolActionRow(presentation);
         updatePrimaryActionRow(presentation);
         updateFallbackActionButtons(presentation);
         updateHintAndAnswerVisibility(presentation);
@@ -55,27 +52,8 @@ final class MainActivityStudyWritingUi {
         return WritingActionPresentation.from(input);
     }
 
-    void updateCheckWritingButton(WritingActionPresentation presentation) {
-        if (activity.checkWritingButton != null) {
-            activity.checkWritingButton.setVisibility(presentation.checkVisible ? View.VISIBLE : View.GONE);
-            activity.checkWritingButton.setEnabled(presentation.checkEnabled);
-            activity.checkWritingButton.setText(presentation.checkText);
-            activity.checkWritingButton.setOnClickListener(new RunnableClickListener(
-                    presentation.messyPass ? activity::startCleanerRetry : activity::checkWriting
-            ));
-        }
-    }
-
     void updateUndoStrokeButton() {
-        updateUndoStrokeButton(writingActionPresentation());
-    }
-
-    void updateUndoStrokeButton(WritingActionPresentation presentation) {
-        if (activity.undoStrokeButton != null) {
-            activity.undoStrokeButton.setVisibility(View.VISIBLE);
-            activity.undoStrokeButton.setEnabled(presentation.undoEnabled);
-        }
-        updateToolActionRow(presentation);
+        updateToolActionRow(writingActionPresentation());
     }
 
     void updateToolActionRow(WritingActionPresentation presentation) {
@@ -88,22 +66,6 @@ final class MainActivityStudyWritingUi {
                     activity::undoWritingStroke,
                     activity::showWritingHint
             ));
-        }
-    }
-
-    void updateDownloadModelButton(WritingActionPresentation presentation) {
-        if (activity.downloadModelButton != null) {
-            activity.downloadModelButton.setVisibility(presentation.downloadVisible ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    void updateNextAfterPassButton(WritingActionPresentation presentation) {
-        if (activity.nextAfterPassButton != null) {
-            activity.nextAfterPassButton.setVisibility(presentation.nextVisible ? View.VISIBLE : View.GONE);
-            if (presentation.nextVisible) {
-                activity.nextAfterPassButton.setText(presentation.nextLabel);
-                activity.nextAfterPassButton.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(presentation.nextRating, false)));
-            }
         }
     }
 
@@ -125,15 +87,6 @@ final class MainActivityStudyWritingUi {
     }
 
     void updateFallbackActionButtons(WritingActionPresentation presentation) {
-        if (activity.manualOverrideButton != null) {
-            activity.manualOverrideButton.setVisibility(presentation.manualOverrideVisible ? View.VISIBLE : View.GONE);
-        }
-        if (activity.practiceWithGuideButton != null) {
-            activity.practiceWithGuideButton.setVisibility(presentation.practiceWithGuideVisible ? View.VISIBLE : View.GONE);
-        }
-        if (activity.replayButton != null) {
-            activity.replayButton.setVisibility(presentation.replayVisible ? View.VISIBLE : View.GONE);
-        }
         if (activity.writingFallbackActionsView != null) {
             activity.writingFallbackActionsView.render(new WritingFallbackActionsModel(
                     presentation.replayVisible,
@@ -147,10 +100,6 @@ final class MainActivityStudyWritingUi {
     }
 
     void updateHintAndAnswerVisibility(WritingActionPresentation presentation) {
-        if (activity.hintButton != null) {
-            activity.hintButton.setVisibility(presentation.hintVisible ? View.VISIBLE : View.GONE);
-            activity.hintButton.setText(presentation.hintText);
-        }
         if (activity.studyAnswerPanel != null) {
             activity.studyAnswerPanel.setVisibility(presentation.answerPanelVisible ? View.VISIBLE : View.GONE);
         }
@@ -182,19 +131,6 @@ final class MainActivityStudyWritingUi {
     void hideResultStatus() {
         if (activity.writingResultStatus != null) {
             activity.writingResultStatus.hide();
-        }
-    }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
         }
     }
 }

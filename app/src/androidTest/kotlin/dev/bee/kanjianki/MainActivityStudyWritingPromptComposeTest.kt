@@ -1,12 +1,17 @@
 package dev.bee.kanjianki
 
+import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Rule
 import org.junit.Test
 
@@ -107,5 +112,52 @@ class MainActivityStudyWritingPromptComposeTest {
         composeRule.onNodeWithText("Practice").assertIsDisplayed()
         composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Writing").assertIsDisplayed()
+    }
+
+    @Test
+    fun keepsEmbeddedViewsAttachedAcrossRecomposition() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val previousParent = FrameLayout(context)
+        val answerPanel = TextView(context).apply { text = "Reference answer" }
+        val statusView = TextView(context).apply { text = "Trace the first strokes" }
+        val padPanel = TextView(context).apply { text = "Pad" }
+        val resultStatusView = TextView(context).apply { text = "Result" }
+        previousParent.addView(answerPanel)
+        val title = mutableStateOf("Writing")
+
+        composeRule.setContent {
+            WritingSessionCard(
+                WritingSessionCardModel(
+                    promptHeader = WritingPromptHeaderModel(
+                        modeLabel = "Practice",
+                        title = "Draw this kanji",
+                        taskLabel = "Write kanji",
+                        reasonLine = "",
+                        detailLines = emptyList()
+                    ),
+                    answerPanel = answerPanel,
+                    writingTitle = title.value,
+                    writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
+                    statusView = statusView,
+                    padPanel = padPanel,
+                    resultStatusView = resultStatusView
+                )
+            )
+        }
+
+        composeRule.waitForIdle()
+        assertNotSame(previousParent, answerPanel.parent)
+        assertNotNull(answerPanel.parent)
+
+        composeRule.runOnIdle {
+            title.value = "Writing again"
+        }
+        composeRule.waitForIdle()
+
+        assertNotNull(answerPanel.parent)
+        assertNotNull(statusView.parent)
+        assertNotNull(padPanel.parent)
+        assertNotNull(resultStatusView.parent)
+        composeRule.onNodeWithText("Writing again").assertIsDisplayed()
     }
 }

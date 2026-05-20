@@ -70,6 +70,8 @@ class WritingFallbackActionsView(context: Context) : FrameLayout(context) {
     fun render(model: WritingFallbackActionsModel) {
         this.model = model
     }
+
+    fun currentModelForTests(): WritingFallbackActionsModel = model
 }
 
 @Composable

@@ -98,6 +98,8 @@ class WritingPrimaryActionsView(context: Context) : FrameLayout(context) {
     fun render(model: WritingPrimaryActionsModel) {
         this.model = model
     }
+
+    fun currentModelForTests(): WritingPrimaryActionsModel = model
 }
 
 @Composable

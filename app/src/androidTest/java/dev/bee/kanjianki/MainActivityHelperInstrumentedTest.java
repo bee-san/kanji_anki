@@ -1449,7 +1449,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = promptOnly;
                 activity.currentHintState = HintState.fromWritingLevel(2);
                 activity.studyStatus = new WritingStatusView(activity);
-                activity.downloadModelButton = new Button(activity);
+                prepareWritingActionViews(activity);
                 new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
             scenario.onActivity(activity -> assertTrue(activity.studyStatus.getText().toString().contains("download failed")));
@@ -1468,13 +1468,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.currentHintState = HintState.fromWritingLevel(1);
                 activity.studyStatus = new WritingStatusView(activity);
                 activity.writingResultStatus = new WritingResultStatusHandle(activity);
-                activity.checkWritingButton = new Button(activity);
-                activity.downloadModelButton = new Button(activity);
-                activity.nextAfterPassButton = new Button(activity);
-                activity.manualOverrideButton = new Button(activity);
-                activity.practiceWithGuideButton = new Button(activity);
-                activity.replayButton = new Button(activity);
-                activity.hintButton = new Button(activity);
+                prepareWritingActionViews(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
@@ -1668,13 +1662,7 @@ public final class MainActivityHelperInstrumentedTest {
         activity.currentHintState = HintState.fromWritingLevel(3);
         activity.studyStatus = new WritingStatusView(activity);
         activity.writingResultStatus = new WritingResultStatusHandle(activity);
-        activity.checkWritingButton = new Button(activity);
-        activity.downloadModelButton = new Button(activity);
-        activity.nextAfterPassButton = new Button(activity);
-        activity.manualOverrideButton = new Button(activity);
-        activity.practiceWithGuideButton = new Button(activity);
-        activity.replayButton = new Button(activity);
-        activity.hintButton = new Button(activity);
+        prepareWritingActionViews(activity);
         activity.studyAnswerPanel = new LinearLayout(activity);
     }
 
@@ -1682,7 +1670,9 @@ public final class MainActivityHelperInstrumentedTest {
         MainActivityStudyWritingStatus writingStatus = new MainActivityStudyWritingStatus(activity);
         activity.checkingWriting = true;
         activity.updateResultActions();
-        assertEquals("Checking...", activity.checkWritingButton.getText().toString());
+        WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModelForTests();
+        assertEquals("Checking...", primary.getCheckText());
+        assertFalse(primary.getCheckEnabled());
         activity.checkingWriting = false;
         activity.activeAnalysis = new WritingAnalysis(
                 WritingAnalysis.Status.CLOSE,
@@ -1693,19 +1683,24 @@ public final class MainActivityHelperInstrumentedTest {
                 wrong.strokeOrder
         );
         activity.updateResultActions();
-        assertEquals("Try cleaner", activity.checkWritingButton.getText().toString());
+        primary = activity.writingPrimaryActionsView.currentModelForTests();
+        assertEquals("Try cleaner", primary.getCheckText());
+        assertTrue(primary.getCheckEnabled());
 
         activity.writingModelStatusKnown = true;
         activity.writingModelDownloaded = true;
         activity.updateResultActions();
-        assertEquals(View.GONE, activity.downloadModelButton.getVisibility());
+        primary = activity.writingPrimaryActionsView.currentModelForTests();
+        assertFalse(primary.getDownloadVisible());
         activity.activeAnalysis = wrong;
         activity.updateResultActions();
-        assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
-        assertEquals("Fail", activity.nextAfterPassButton.getText().toString());
+        primary = activity.writingPrimaryActionsView.currentModelForTests();
+        assertTrue(primary.getNextVisible());
+        assertEquals("Fail", primary.getNextText());
 
-        assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
-        assertEquals(View.VISIBLE, activity.practiceWithGuideButton.getVisibility());
+        WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModelForTests();
+        assertTrue(fallback.getManualOverrideVisible());
+        assertTrue(fallback.getPracticeWithGuideVisible());
         activity.showModelUnavailable("checker unavailable");
         assertTrue(activity.writingResultStatus.getText().toString().contains("checker unavailable"));
         assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
@@ -2118,13 +2113,7 @@ public final class MainActivityHelperInstrumentedTest {
                 addInk(activity.drawingPad);
                 activity.studyStatus = new WritingStatusView(activity);
                 activity.writingResultStatus = new WritingResultStatusHandle(activity);
-                activity.checkWritingButton = new Button(activity);
-                activity.downloadModelButton = new Button(activity);
-                activity.nextAfterPassButton = new Button(activity);
-                activity.manualOverrideButton = new Button(activity);
-                activity.practiceWithGuideButton = new Button(activity);
-                activity.replayButton = new Button(activity);
-                activity.hintButton = new Button(activity);
+                prepareWritingActionViews(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
 
                 StrokeOrderEvaluator.StrokeOrderResult order = StrokeOrderEvaluator
@@ -2202,20 +2191,26 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
                 activity.updateResultActions();
-                assertEquals("Fail", activity.nextAfterPassButton.getText().toString());
-                assertEquals(View.VISIBLE, activity.nextAfterPassButton.getVisibility());
-                assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
+                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModelForTests();
+                WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModelForTests();
+                assertEquals("Fail", primary.getNextText());
+                assertTrue(primary.getNextVisible());
+                assertTrue(fallback.getManualOverrideVisible());
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
                 activity.updateResultActions();
-                assertEquals("Try cleaner", activity.checkWritingButton.getText().toString());
-                assertEquals("Save hard", activity.nextAfterPassButton.getText().toString());
-                assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
+                primary = activity.writingPrimaryActionsView.currentModelForTests();
+                fallback = activity.writingFallbackActionsView.currentModelForTests();
+                assertEquals("Try cleaner", primary.getCheckText());
+                assertEquals("Save hard", primary.getNextText());
+                assertTrue(fallback.getManualOverrideVisible());
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
                 activity.updateResultActions();
-                assertEquals("Pass", activity.nextAfterPassButton.getText().toString());
-                assertEquals(View.GONE, activity.manualOverrideButton.getVisibility());
+                primary = activity.writingPrimaryActionsView.currentModelForTests();
+                fallback = activity.writingFallbackActionsView.currentModelForTests();
+                assertEquals("Pass", primary.getNextText());
+                assertFalse(fallback.getManualOverrideVisible());
             });
         }
     }
@@ -2320,7 +2315,7 @@ public final class MainActivityHelperInstrumentedTest {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.studyStatus = new WritingStatusView(activity);
-                activity.downloadModelButton = new Button(activity);
+                prepareWritingActionViews(activity);
                 new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(2);
@@ -2675,13 +2670,7 @@ public final class MainActivityHelperInstrumentedTest {
         activity.currentHintState = HintState.fromWritingLevel(1);
         activity.studyStatus = new WritingStatusView(activity);
         activity.writingResultStatus = new WritingResultStatusHandle(activity);
-        activity.checkWritingButton = new Button(activity);
-        activity.downloadModelButton = new Button(activity);
-        activity.nextAfterPassButton = new Button(activity);
-        activity.manualOverrideButton = new Button(activity);
-        activity.practiceWithGuideButton = new Button(activity);
-        activity.replayButton = new Button(activity);
-        activity.hintButton = new Button(activity);
+        prepareWritingActionViews(activity);
         activity.studyAnswerPanel = new LinearLayout(activity);
         activity.drawingPad = new DrawingPadView(activity);
         activity.drawingPad.setTarget(session.item.kanji);
@@ -2689,6 +2678,12 @@ public final class MainActivityHelperInstrumentedTest {
         activity.checkingWriting = false;
         activity.writingModelStatusKnown = false;
         activity.writingModelDownloaded = false;
+    }
+
+    private static void prepareWritingActionViews(MainActivity activity) {
+        activity.writingToolActionsView = new WritingToolActionsView(activity);
+        activity.writingPrimaryActionsView = new WritingPrimaryActionsView(activity);
+        activity.writingFallbackActionsView = new WritingFallbackActionsView(activity);
     }
 
     private static void assertHasText(MainActivity activity, String text) {

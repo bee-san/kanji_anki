@@ -132,9 +132,6 @@ internal fun SyncProgressScreen(title: String, progressPanel: View) {
             factory = {
                 detachFromParent(progressPanel)
                 progressPanel
-            },
-            update = {
-                detachFromParent(progressPanel)
             }
         )
     }

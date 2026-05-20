@@ -70,6 +70,8 @@ class WritingToolActionsView(context: Context) : FrameLayout(context) {
     fun render(model: WritingToolActionsModel) {
         this.model = model
     }
+
+    fun currentModelForTests(): WritingToolActionsModel = model
 }
 
 @Composable

@@ -108,9 +108,6 @@ private fun AndroidPanel(panel: View) {
         factory = {
             detachFromParent(panel)
             panel
-        },
-        update = {
-            detachFromParent(panel)
         }
     )
 }
