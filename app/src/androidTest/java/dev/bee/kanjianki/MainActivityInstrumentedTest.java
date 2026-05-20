@@ -505,6 +505,8 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Turn off automatic updates");
             waitForText(scenario, "Off");
+            clickText(scenario, "Turn on automatic updates");
+            waitForText(scenario, "On: checks about once a day");
         }
     }
 

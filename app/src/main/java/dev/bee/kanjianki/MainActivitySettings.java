@@ -28,7 +28,6 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -156,10 +155,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         updatePage().renderUpdate();
     }
 
-    LinearLayout autoUpdatePanel(String title) {
-        return updatePage().autoUpdatePanel(title);
-    }
-
     void renderSettings() {
         renderSettings(false);
     }
@@ -270,12 +265,21 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanel();
     }
 
-    LinearLayout updateSettingsPanel() {
-        LinearLayout box = autoUpdatePanel(SettingsTextCopy.appUpdatesTitle());
-        Button update = primaryButton(SettingsTextCopy.openUpdaterLabel(), STUDY_PINK_DARK);
-        update.setOnClickListener(new RunnableClickListener(this::renderUpdate));
-        box.addView(update);
-        return box;
+    View updateSettingsPanel() {
+        return MainActivitySettingsUpdatePanelCompose.settingsUpdateOverviewPanelView(
+                this,
+                new SettingsUpdateOverviewPanelModel(
+                        MainActivitySettingsUpdatePageCompose.settingsUpdatePanelModel(
+                                this,
+                                SettingsTextCopy.appUpdatesTitle()
+                        ),
+                        SettingsTextCopy.openUpdaterLabel(),
+                        () -> {
+                            renderUpdate();
+                            return kotlin.Unit.INSTANCE;
+                        }
+                )
+        );
     }
 
     void runUpdate(boolean cachedPending) {

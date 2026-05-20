@@ -49,45 +49,55 @@ fun settingsUpdatePageView(activity: Activity): View {
 }
 
 private fun settingsUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
-    val status = activity.store.autoUpdateStatus()
-    val canInstallUpdates = canInstallUpdates(activity)
     return SettingsUpdatePageModel(
         title = SettingsTextCopy.updatePageTitle(),
         body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
         onHome = activity::renderHome,
         onBack = { activity.renderSettings(false) },
         onCheckForUpdate = { activity.runUpdate(false) },
-        panel = SettingsUpdatePanelModel(
-            title = SettingsTextCopy.automaticUpdatesTitle(),
-            statusLine = SettingsTextCopy.autoUpdatePanelStatus(status.enabled),
-            statusColor = if (status.enabled) SettingsUpdateTeal else SettingsUpdateMuted,
-            lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine(
-                DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)
-            ),
-            lastResultLine = SettingsTextCopy.autoUpdateLastResultLine(status.lastResult),
-            installPermissionLine = SettingsTextCopy.installPermissionLine(canInstallUpdates),
-            installPermissionColor = if (canInstallUpdates) SettingsUpdateTeal else SettingsUpdateCoral,
-            hasPendingUpdate = status.hasPendingUpdate(),
-            pendingVersionLine = if (status.hasPendingUpdate()) {
-                SettingsTextCopy.verifiedApkReadyLine(status.lastVersion)
-            } else {
-                null
-            },
-            pendingMessageLine = if (status.hasPendingUpdate()) {
-                if (status.pendingMessage.isEmpty()) {
-                    SettingsTextCopy.pendingUpdateFallback()
-                } else {
-                    status.pendingMessage
-                }
-            } else {
-                null
-            },
-            canInstallUpdates = canInstallUpdates,
-            onInstallVerifiedUpdate = { activity.runUpdate(true) },
-            onOpenInstallSettings = { activity.startActivity(GitHubUpdater.installPermissionIntent(activity)) },
-            onToggleAutomaticUpdates = { toggleAutomaticUpdates(activity, status.enabled) },
-            automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled),
+        panel = settingsUpdatePanelModel(
+            activity = activity,
+            title = SettingsTextCopy.automaticUpdatesTitle()
         )
+    )
+}
+
+internal fun settingsUpdatePanelModel(
+    activity: MainActivitySettings,
+    title: String,
+): SettingsUpdatePanelModel {
+    val status = activity.store.autoUpdateStatus()
+    val canInstallUpdates = canInstallUpdates(activity)
+    return SettingsUpdatePanelModel(
+        title = title,
+        statusLine = SettingsTextCopy.autoUpdatePanelStatus(status.enabled),
+        statusColor = if (status.enabled) SettingsUpdateTeal else SettingsUpdateMuted,
+        lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine(
+            DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)
+        ),
+        lastResultLine = SettingsTextCopy.autoUpdateLastResultLine(status.lastResult),
+        installPermissionLine = SettingsTextCopy.installPermissionLine(canInstallUpdates),
+        installPermissionColor = if (canInstallUpdates) SettingsUpdateTeal else SettingsUpdateCoral,
+        hasPendingUpdate = status.hasPendingUpdate(),
+        pendingVersionLine = if (status.hasPendingUpdate()) {
+            SettingsTextCopy.verifiedApkReadyLine(status.lastVersion)
+        } else {
+            null
+        },
+        pendingMessageLine = if (status.hasPendingUpdate()) {
+            if (status.pendingMessage.isEmpty()) {
+                SettingsTextCopy.pendingUpdateFallback()
+            } else {
+                status.pendingMessage
+            }
+        } else {
+            null
+        },
+        canInstallUpdates = canInstallUpdates,
+        onInstallVerifiedUpdate = { activity.runUpdate(true) },
+        onOpenInstallSettings = { activity.startActivity(GitHubUpdater.installPermissionIntent(activity)) },
+        onToggleAutomaticUpdates = { toggleAutomaticUpdates(activity, status.enabled) },
+        automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(status.enabled),
     )
 }
 

@@ -84,6 +84,45 @@ class MainActivitySettingsUpdatePageComposeTest {
     }
 
     @Test
+    fun rendersUpdateOverviewPanelAndWiresOpenUpdater() {
+        var openClicked = false
+        composeRule.setContent {
+            SettingsUpdateOverviewPanel(
+                model = SettingsUpdateOverviewPanelModel(
+                    panel = SettingsUpdatePanelModel(
+                        title = SettingsTextCopy.appUpdatesTitle(),
+                        statusLine = SettingsTextCopy.autoUpdatePanelStatus(false),
+                        statusColor = ComposeColor(0xFF6C5674),
+                        lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine("not yet"),
+                        lastResultLine = SettingsTextCopy.autoUpdateLastResultLine("No result yet."),
+                        installPermissionLine = SettingsTextCopy.installPermissionLine(false),
+                        installPermissionColor = ComposeColor(0xFFFF4C76),
+                        hasPendingUpdate = false,
+                        pendingVersionLine = null,
+                        pendingMessageLine = null,
+                        canInstallUpdates = false,
+                        onInstallVerifiedUpdate = {},
+                        onOpenInstallSettings = {},
+                        onToggleAutomaticUpdates = {},
+                        automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(false)
+                    ),
+                    openUpdaterLabel = SettingsTextCopy.openUpdaterLabel(),
+                    onOpenUpdater = { openClicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(SettingsTextCopy.appUpdatesTitle()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.setupAppInstallsLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.openUpdaterLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.openUpdaterLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(openClicked)
+        }
+    }
+
+    @Test
     fun rendersUpdateRunProgressAndWiresNavigation() {
         var homeClicked = false
         var backClicked = false

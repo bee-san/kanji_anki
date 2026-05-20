@@ -955,23 +955,22 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.store.autoSyncSettings().enabled);
 
                 activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
-                LinearLayout missingPermission = activity.updateSettingsPanel();
+                View missingPermission = activity.updateSettingsPanel();
+                assertTrue(missingPermission instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(containsText(missingPermission, "Install permission: Missing"));
-                assertNotNull(findButton(missingPermission, "Set up app installs"));
-                performButtonClick(missingPermission, "Open updater");
-                assertHasText(activity, "GitHub updater");
+                assertTrue(containsText(missingPermission, "Set up app installs"));
+                assertTrue(containsText(missingPermission, "Open updater"));
 
                 MainActivity.setInstallPermissionForTests(true);
-                LinearLayout readyUpdate = activity.updateSettingsPanel();
+                View readyUpdate = activity.updateSettingsPanel();
                 assertTrue(containsText(readyUpdate, "Install permission: Ready"));
                 assertTrue(containsText(readyUpdate, "Verified APK ready: 0.5.0"));
-                assertNotNull(findButton(readyUpdate, "Install verified update"));
+                assertTrue(containsText(readyUpdate, "Install verified update"));
+                assertTrue(containsText(readyUpdate, "Turn off automatic updates"));
 
-                performButtonClick(readyUpdate, "Turn off automatic updates");
-                assertFalse(activity.store.autoUpdateStatus().enabled);
-                LinearLayout updateOff = activity.updateSettingsPanel();
-                performButtonClick(updateOff, "Turn on automatic updates");
-                assertTrue(activity.store.autoUpdateStatus().enabled);
+                activity.store.saveAutoUpdateEnabled(false);
+                View updateOff = activity.updateSettingsPanel();
+                assertTrue(containsText(updateOff, "Turn on automatic updates"));
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 22, 45));
                 reminderHelper.saveReminderFromSelection(6, 15, false);
