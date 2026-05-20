@@ -207,7 +207,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         referenceData().renderDataSources();
     }
 
-    LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
+    View noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
         return ankiSource().noteTypeSettingsPanel(current);
     }
 

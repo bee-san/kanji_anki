@@ -35,7 +35,7 @@ class SettingsStudyLadderComposeTest {
                             moveDownLabel = "Down",
                             canMoveUp = false,
                             canMoveDown = true,
-                            toggleDescription = "On Similar kanji",
+                            toggleDescription = "Turn off Similar kanji",
                             moveUpDescription = "Up Similar kanji",
                             moveDownDescription = "Down Similar kanji",
                             onToggle = SettingsStudyLadderAction { toggled = true },
@@ -67,7 +67,7 @@ class SettingsStudyLadderComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.studyLadderTitle()).assertIsDisplayed()
         composeRule.onNodeWithText("Similar kanji").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("On Similar kanji").performClick()
+        composeRule.onNodeWithContentDescription("Turn off Similar kanji").performClick()
         composeRule.onNodeWithContentDescription("Down Similar kanji").performClick()
         composeRule.onNodeWithContentDescription("Up Word reading").performClick()
         composeRule.onNodeWithContentDescription(SettingsTextCopy.restoreDefaultLadderLabel()).performClick()

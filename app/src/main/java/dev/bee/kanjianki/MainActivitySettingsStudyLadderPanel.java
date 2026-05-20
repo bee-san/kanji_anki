@@ -33,7 +33,7 @@ final class MainActivitySettingsStudyLadderPanel {
                     SettingsTextCopy.moveDownLabel(),
                     i > 0,
                     i < rungs.size() - 1,
-                    ladderActionDescription(SettingsTextCopy.ladderToggleLabel(ladder.isEnabled(rung)), label),
+                    toggleDescription(label, ladder.isEnabled(rung)),
                     ladderActionDescription(SettingsTextCopy.moveUpLabel(), label),
                     ladderActionDescription(SettingsTextCopy.moveDownLabel(), label),
                     () -> source.toggleLadderRung(rung),
@@ -52,6 +52,10 @@ final class MainActivitySettingsStudyLadderPanel {
                         this::restoreDefaultLadderSettings
                 )
         );
+    }
+
+    private String toggleDescription(String rungLabel, boolean enabled) {
+        return (enabled ? "Turn off " : "Turn on ") + rungLabel;
     }
 
     private String ladderActionDescription(String action, String rungLabel) {

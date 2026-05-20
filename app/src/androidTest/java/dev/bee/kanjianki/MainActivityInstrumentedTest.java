@@ -2801,9 +2801,7 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static EditText noteTypeInput(MainActivity activity) {
-        EditText input = findType(activity.findViewById(android.R.id.content), EditText.class);
-        assertNotNull(input);
-        return input;
+        return editTextWithContentDescription(activity, SettingsTextCopy.noteTypeStatusLabel());
     }
 
     private void assertNoteTypeSettings(RecordsSyncModels.Settings expected) {

@@ -1,13 +1,12 @@
 package dev.bee.kanjianki;
 
-import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.SettingsTextCopy;
+
+import java.util.Arrays;
 
 final class MainActivitySettingsAnkiSourceNoteType {
     private final MainActivitySettings activity;
@@ -18,29 +17,22 @@ final class MainActivitySettingsAnkiSourceNoteType {
         this.inputs = inputs;
     }
 
-    LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
+    android.view.View noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.noteTypeFieldsTitle(), 23, activity.INK, true));
-        box.addView(activity.text(SettingsTextCopy.noteTypeUsingText(current.modelName), 17, activity.TEAL, true));
-        box.addView(activity.text(SettingsTextCopy.noteTypeFieldsBody(), 15, activity.MUTED, false));
-
         EditText noteType = inputs.noteTypeInput(current.modelName);
-        box.addView(noteType, new LinearLayout.LayoutParams(-1, activity.dp(58)));
         EditText expressionField = inputs.fieldInput(current.expressionField);
         EditText readingField = inputs.fieldInput(current.readingField);
         EditText meaningField = inputs.fieldInput(current.meaningField);
         EditText sentenceField = inputs.fieldInput(current.sentenceField);
         EditText frequencyField = inputs.fieldInput(current.frequencyField);
         EditText frequencySortField = inputs.fieldInput(current.frequencySortField);
-        box.addView(activity.text(SettingsTextCopy.requiredFieldsTitle(), 15, activity.STUDY_PLUM, true));
-        box.addView(activity.text(SettingsTextCopy.requiredFieldsBody(), 14, activity.MUTED, false));
-        inputs.addFieldMappingInput(box, SettingsTextCopy.expressionFieldLabel(), expressionField);
-        inputs.addFieldMappingInput(box, SettingsTextCopy.readingFieldLabel(), readingField);
-        inputs.addFieldMappingInput(box, SettingsTextCopy.meaningFieldLabel(), meaningField);
-        inputs.addFieldMappingInput(box, SettingsTextCopy.sentenceFieldLabel(), sentenceField);
-        inputs.addFieldMappingInput(box, SettingsTextCopy.frequencyFieldLabel(), frequencyField);
-        inputs.addFieldMappingInput(box, SettingsTextCopy.frequencySortFieldLabel(), frequencySortField);
+        setInputDescription(noteType, SettingsTextCopy.noteTypeStatusLabel());
+        setInputDescription(expressionField, SettingsTextCopy.expressionFieldLabel());
+        setInputDescription(readingField, SettingsTextCopy.readingFieldLabel());
+        setInputDescription(meaningField, SettingsTextCopy.meaningFieldLabel());
+        setInputDescription(sentenceField, SettingsTextCopy.sentenceFieldLabel());
+        setInputDescription(frequencyField, SettingsTextCopy.frequencyFieldLabel());
+        setInputDescription(frequencySortField, SettingsTextCopy.frequencySortFieldLabel());
 
         NoteTypeFieldMappings.Inputs fieldMappings = new NoteTypeFieldMappings.Inputs(
                 noteType,
@@ -51,34 +43,52 @@ final class MainActivitySettingsAnkiSourceNoteType {
                 frequencyField,
                 frequencySortField
         );
-        Button choose = activity.secondaryButton(SettingsTextCopy.chooseFromAnkiDroidLabel());
-        choose.setOnClickListener(new RunnableClickListener(() -> NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldMappings)));
-        box.addView(choose);
-        Button kiku = activity.secondaryButton(SettingsTextCopy.useKikuLabel());
-        kiku.setOnClickListener(new RunnableClickListener(() -> applyKikuDefaults(
-                noteType,
-                expressionField,
-                readingField,
-                meaningField,
-                sentenceField,
-                frequencyField,
-                frequencySortField,
-                defaults
-        )));
-        box.addView(kiku);
+        return MainActivitySettingsAnkiSourceNoteTypeCompose.noteTypeSettingsPanelView(
+                activity,
+                new SettingsNoteTypePanelModel(
+                        SettingsTextCopy.noteTypeFieldsTitle(),
+                        SettingsTextCopy.noteTypeUsingText(current.modelName),
+                        SettingsTextCopy.noteTypeFieldsBody(),
+                        noteType,
+                        SettingsTextCopy.requiredFieldsTitle(),
+                        SettingsTextCopy.requiredFieldsBody(),
+                        Arrays.asList(
+                                new SettingsNoteTypeFieldModel(SettingsTextCopy.expressionFieldLabel(), expressionField),
+                                new SettingsNoteTypeFieldModel(SettingsTextCopy.readingFieldLabel(), readingField),
+                                new SettingsNoteTypeFieldModel(SettingsTextCopy.meaningFieldLabel(), meaningField),
+                                new SettingsNoteTypeFieldModel(SettingsTextCopy.sentenceFieldLabel(), sentenceField),
+                                new SettingsNoteTypeFieldModel(SettingsTextCopy.frequencyFieldLabel(), frequencyField),
+                                new SettingsNoteTypeFieldModel(SettingsTextCopy.frequencySortFieldLabel(), frequencySortField)
+                        ),
+                        SettingsTextCopy.chooseFromAnkiDroidLabel(),
+                        SettingsTextCopy.useKikuLabel(),
+                        SettingsTextCopy.saveNoteTypeLabel(),
+                        () -> NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldMappings),
+                        () -> applyKikuDefaults(
+                                noteType,
+                                expressionField,
+                                readingField,
+                                meaningField,
+                                sentenceField,
+                                frequencyField,
+                                frequencySortField,
+                                defaults
+                        ),
+                        () -> saveNoteTypeFields(
+                                noteType,
+                                expressionField,
+                                readingField,
+                                meaningField,
+                                sentenceField,
+                                frequencyField,
+                                frequencySortField
+                        )
+                )
+        );
+    }
 
-        Button save = activity.primaryButton(SettingsTextCopy.saveNoteTypeLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(new RunnableClickListener(() -> saveNoteTypeFields(
-                noteType,
-                expressionField,
-                readingField,
-                meaningField,
-                sentenceField,
-                frequencyField,
-                frequencySortField
-        )));
-        box.addView(save);
-        return box;
+    private void setInputDescription(EditText input, String description) {
+        input.setContentDescription(description);
     }
 
     private void applyKikuDefaults(
@@ -133,18 +143,5 @@ final class MainActivitySettingsAnkiSourceNoteType {
         );
         Toast.makeText(activity, SettingsTextCopy.noteTypeSavedToast(), Toast.LENGTH_LONG).show();
         activity.renderSettings();
-    }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
     }
 }

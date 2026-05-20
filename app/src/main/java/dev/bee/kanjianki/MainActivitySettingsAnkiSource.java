@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import android.view.View;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.RecordsSyncModels;
@@ -19,7 +20,7 @@ final class MainActivitySettingsAnkiSource {
         this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this.inputs, validation, presets);
     }
 
-    LinearLayout noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
+    View noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
         return noteType.noteTypeSettingsPanel(current);
     }
 
