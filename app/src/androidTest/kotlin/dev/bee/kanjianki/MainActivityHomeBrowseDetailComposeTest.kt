@@ -127,14 +127,16 @@ class MainActivityHomeBrowseDetailComposeTest {
                     model = BrowseDetailPanelModel(
                         title = "Why it is here",
                         lines = listOf("Current local practice evidence from AnkiDroid.", "Anki browser: deck:Japanese"),
-                        color = 0xFF6E5CE6.toInt()
+                        color = 0xFF6E5CE6.toInt(),
+                        style = BrowseDetailPanelStyle.BAND
                     )
                 )
                 BrowseDetailInfoPanel(
                     model = BrowseDetailPanelModel(
                         title = "Local inventory",
                         lines = listOf("1 source note/card · 2 stored examples", "Search: kanji:語"),
-                        color = 0xFFC9F5F7.toInt()
+                        color = 0xFFC9F5F7.toInt(),
+                        style = BrowseDetailPanelStyle.CARD
                     )
                 )
                 BrowseExampleCard(

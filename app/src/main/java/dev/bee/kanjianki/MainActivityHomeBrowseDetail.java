@@ -111,7 +111,7 @@ public final class MainActivityHomeBrowseDetail {
         }
         return MainActivityHomeBrowseDetailCompose.detailInfoPanelView(
                 this,
-                new BrowseDetailPanelModel(HomeTextCopy.detailReasonTitle(), lines, home.BLUE)
+                new BrowseDetailPanelModel(HomeTextCopy.detailReasonTitle(), lines, home.BLUE, BrowseDetailPanelStyle.BAND)
         );
     }
 
@@ -155,7 +155,7 @@ public final class MainActivityHomeBrowseDetail {
         }
         return MainActivityHomeBrowseDetailCompose.detailInfoPanelView(
                 this,
-                new BrowseDetailPanelModel(HomeTextCopy.localInventoryTitle(), lines, Color.rgb(201, 245, 247))
+                new BrowseDetailPanelModel(HomeTextCopy.localInventoryTitle(), lines, Color.rgb(201, 245, 247), BrowseDetailPanelStyle.CARD)
         );
     }
 

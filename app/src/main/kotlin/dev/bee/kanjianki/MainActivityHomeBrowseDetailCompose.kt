@@ -74,7 +74,13 @@ data class BrowseDetailPanelModel(
     val title: String,
     val lines: List<String>,
     val color: Int,
+    val style: BrowseDetailPanelStyle,
 )
+
+enum class BrowseDetailPanelStyle {
+    BAND,
+    CARD,
+}
 
 data class BrowseExampleCardModel(
     val sourceLabel: String,
@@ -326,27 +332,30 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
 @Composable
 fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
     val accent = ComposeColor(model.color)
+    val band = model.style == BrowseDetailPanelStyle.BAND
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = if (band) 8.dp else 7.dp),
         shape = CardShape,
-        color = if (model.color == 0xFF6E5CE6.toInt()) accent else White,
+        color = if (band) accent else White,
         border = BorderStroke(1.dp, accent)
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(if (band) 20.dp else 14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = model.title,
-                color = if (model.color == 0xFF6E5CE6.toInt()) White else Ink,
-                fontSize = if (model.color == 0xFF6E5CE6.toInt()) 22.sp else 19.sp,
+                color = if (band) White else Ink,
+                fontSize = if (band) 22.sp else 19.sp,
                 fontWeight = FontWeight.Bold
             )
-            model.lines.forEachIndexed { index, line ->
+            model.lines.forEach { line ->
                 Text(
                     text = line,
-                    color = if (model.color == 0xFF6E5CE6.toInt()) White else Muted,
-                    fontSize = if (index == 0 && model.color != 0xFF6E5CE6.toInt()) 15.sp else 14.sp
+                    color = if (band) White else Muted,
+                    fontSize = if (band) 17.sp else 15.sp
                 )
             }
         }
@@ -357,7 +366,9 @@ fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
 fun BrowseExampleCard(model: BrowseExampleCardModel) {
     val accent = ComposeColor(model.color)
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 7.dp),
         shape = CardShape,
         color = White,
         border = BorderStroke(1.dp, accent)
@@ -558,16 +569,28 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
 @Composable
 private fun BrowseChip(label: String, color: ComposeColor) {
     Surface(
+        modifier = Modifier.padding(top = 7.dp, end = 7.dp, bottom = 2.dp),
         shape = RoundedCornerShape(999.dp),
-        color = color,
+        color = softened(color),
+        border = BorderStroke(1.dp, color),
     ) {
         Text(
             text = label,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            color = White,
+            color = color,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
+    }
+}
+
+private fun softened(color: ComposeColor): ComposeColor {
+    return when (color) {
+        Coral -> ComposeColor(0xFFFFEBF3)
+        Teal -> ComposeColor(0xFFE6FAFB)
+        Gold -> ComposeColor(0xFFFFF7DC)
+        ComposeColor(0xFF6E5CE6), ComposeColor(0xFFC9B9FF) -> ComposeColor(0xFFF2EEFF)
+        else -> ComposeColor(0xFFF8EEF5)
     }
 }
 
