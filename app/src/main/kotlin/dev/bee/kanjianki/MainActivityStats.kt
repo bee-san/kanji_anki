@@ -11,7 +11,7 @@ internal abstract class MainActivityStats : MainActivityGames() {
         content.addView(statsScreenView(this))
     }
 
-    fun notHelpingRows(report: KanjiImpactAnalyzer.Report): List<KanjiImpactAnalyzer.Row> {
+    fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {
         return KanjiImpactAnalyzer.notHelpingRows(report)
     }
 

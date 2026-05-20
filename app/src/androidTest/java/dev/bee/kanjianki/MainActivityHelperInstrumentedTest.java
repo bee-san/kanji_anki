@@ -2049,6 +2049,7 @@ public final class MainActivityHelperInstrumentedTest {
                 busyLadder.ladderPromotionIntervalDays,
                 busyLadder.ladderDemotionFailStreak
         ).contains("at the demotion threshold"));
+        assertTrue(activity.notHelpingRows(null).isEmpty());
         assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size());
         assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
         assertTrue(activity.queuedEntries(
