@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.sp
 private val WritingPrimaryColor = Color(0xFFDA3A7A)
 private val WritingPrimaryBorder = Color(0xFFFFADCD)
 private val WritingSecondaryFill = Color(0xFFFFF5FA)
+private val WritingDisabledBorder = Color(0xFFFFD5E6)
+private val WritingDisabledText = Color(0xFF9F8A98)
 
 data class WritingPrimaryActionsModel(
     val checkText: String,
@@ -171,14 +173,16 @@ internal fun WritingSecondaryButton(
         enabled = enabled,
         modifier = modifier.heightIn(min = minHeight),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, WritingPrimaryBorder),
+        border = BorderStroke(1.dp, if (enabled) WritingPrimaryBorder else WritingDisabledBorder),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = WritingSecondaryFill,
-            contentColor = WritingPrimaryColor
+            contentColor = WritingPrimaryColor,
+            disabledContainerColor = Color(0xFFFFF9FC),
+            disabledContentColor = WritingDisabledText
         ),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
     ) {
-        WritingActionButtonText(label = label, color = WritingPrimaryColor)
+        WritingActionButtonText(label = label, color = if (enabled) WritingPrimaryColor else WritingDisabledText)
     }
 }
 
