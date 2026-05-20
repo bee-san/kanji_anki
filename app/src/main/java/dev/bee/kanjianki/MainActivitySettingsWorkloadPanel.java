@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.SeekBar;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -48,8 +47,6 @@ final class MainActivitySettingsWorkloadPanel {
                         SettingsTextCopy.manualWorkloadBody(),
                         selected,
                         selectedMax,
-                        new SeekBar(activity),
-                        new SeekBar(activity),
                         Arrays.asList(SettingsTextCopy.workloadScaleLabels()),
                         SettingsTextCopy.saveMaximumLabel(),
                         SettingsTextCopy.manualWorkloadLabel(),

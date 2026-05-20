@@ -1,12 +1,12 @@
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.widget.SeekBar
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.core.app.ApplicationProvider
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertEquals
@@ -22,11 +22,8 @@ class SettingsWorkloadComposeTest {
     fun rendersManualWorkloadAndWiresSlidersAndActions() {
         var saved = false
         var automatic = false
-        val context = ApplicationProvider.getApplicationContext<Context>()
         val selectedWorkload = intArrayOf(20)
         val selectedMax = intArrayOf(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS)
-        val workloadSlider = SeekBar(context)
-        val maxItemsSlider = SeekBar(context)
 
         composeRule.setContent {
             SettingsWorkloadPanel(
@@ -34,8 +31,6 @@ class SettingsWorkloadComposeTest {
                     autoMode = false,
                     selectedWorkload = selectedWorkload,
                     selectedMax = selectedMax,
-                    workloadSlider = workloadSlider,
-                    maxItemsSlider = maxItemsSlider,
                     onSaveWorkload = { saved = true },
                     onEnableAutomatic = { automatic = true }
                 )
@@ -45,11 +40,15 @@ class SettingsWorkloadComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.dailyWorkloadTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.workloadStatusText(20, AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS))
             .assertIsDisplayed()
-        composeRule.runOnIdle {
-            workloadSlider.progress = 73
-            maxItemsSlider.progress = 4
-        }
-        val expectedMax = AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 4)
+        composeRule.onNodeWithTag(SettingsWorkloadTestTags.WORKLOAD_PERCENT_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { action ->
+                action(70f)
+            }
+        composeRule.onNodeWithTag(SettingsWorkloadTestTags.MAX_ITEMS_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { action ->
+                action(9f)
+            }
+        val expectedMax = AdaptiveLoadPlanner.normalizeMaxItems(9)
         composeRule.onNodeWithText(SettingsTextCopy.workloadStatusText(70, expectedMax)).assertIsDisplayed()
 
         composeRule.onNodeWithText(SettingsTextCopy.saveWorkloadLabel()).performClick()
@@ -67,9 +66,7 @@ class SettingsWorkloadComposeTest {
     fun rendersAutomaticWorkloadAndWiresActions() {
         var savedMaximum = false
         var manual = false
-        val context = ApplicationProvider.getApplicationContext<Context>()
         val selectedMax = intArrayOf(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS)
-        val maxItemsSlider = SeekBar(context)
 
         composeRule.setContent {
             SettingsWorkloadPanel(
@@ -77,8 +74,6 @@ class SettingsWorkloadComposeTest {
                     autoMode = true,
                     selectedWorkload = intArrayOf(20),
                     selectedMax = selectedMax,
-                    workloadSlider = SeekBar(context),
-                    maxItemsSlider = maxItemsSlider,
                     onSaveMaximum = { savedMaximum = true },
                     onEnableManual = { manual = true }
                 )
@@ -86,10 +81,11 @@ class SettingsWorkloadComposeTest {
         }
 
         composeRule.onNodeWithText(SettingsTextCopy.automaticWorkloadBody()).assertIsDisplayed()
-        composeRule.runOnIdle {
-            maxItemsSlider.progress = 5
-        }
-        val expectedMax = AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 5)
+        composeRule.onNodeWithTag(SettingsWorkloadTestTags.MAX_ITEMS_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { action ->
+                action(6f)
+            }
+        val expectedMax = AdaptiveLoadPlanner.normalizeMaxItems(6)
         composeRule.onNodeWithText(SettingsTextCopy.maxItemsStatusText(expectedMax)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.saveMaximumLabel()).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.manualWorkloadLabel()).performClick()
@@ -105,8 +101,6 @@ class SettingsWorkloadComposeTest {
         autoMode: Boolean,
         selectedWorkload: IntArray,
         selectedMax: IntArray,
-        workloadSlider: SeekBar,
-        maxItemsSlider: SeekBar,
         onSaveMaximum: () -> Unit = {},
         onEnableManual: () -> Unit = {},
         onSaveWorkload: () -> Unit = {},
@@ -120,8 +114,6 @@ class SettingsWorkloadComposeTest {
             manualBody = SettingsTextCopy.manualWorkloadBody(),
             selectedWorkloadPercent = selectedWorkload,
             selectedMaxItems = selectedMax,
-            workloadSlider = workloadSlider,
-            maxItemsSlider = maxItemsSlider,
             scaleLabels = SettingsTextCopy.workloadScaleLabels().toList(),
             saveMaximumLabel = SettingsTextCopy.saveMaximumLabel(),
             manualWorkloadLabel = SettingsTextCopy.manualWorkloadLabel(),

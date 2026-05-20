@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.widget.SeekBar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,17 +9,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.SettingsTextCopy
+import kotlin.math.roundToInt
 
 private val WorkloadControlInk = Color(0xFF2D1635)
 private val WorkloadControlTeal = Color(0xFF24756C)
@@ -34,41 +37,31 @@ object SettingsWorkloadControlDescriptions {
     const val MAX_ITEMS_SLIDER = "Maximum Pareto items"
 }
 
+object SettingsWorkloadTestTags {
+    const val WORKLOAD_PERCENT_SLIDER = "settings-workload-percent-slider"
+    const val MAX_ITEMS_SLIDER = "settings-workload-max-items-slider"
+}
+
 @Composable
 internal fun WorkloadSlider(
     model: SettingsWorkloadPanelModel,
+    workloadPercent: Int,
     onWorkloadChanged: (Int) -> Unit,
 ) {
-    AndroidView(
-        factory = {
-            model.workloadSlider.apply {
-                contentDescription = SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER
-                max = 100
-                progress = model.selectedWorkloadPercent[0]
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                        val snapped = AdaptiveLoadPlanner.snapWorkloadPercent(progress)
-                        model.selectedWorkloadPercent[0] = snapped
-                        onWorkloadChanged(snapped)
-                    }
-
-                    override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-
-                    override fun onStopTrackingTouch(seekBar: SeekBar) {
-                        seekBar.progress = model.selectedWorkloadPercent[0]
-                    }
-                })
-            }
+    Slider(
+        value = workloadPercent.toFloat(),
+        onValueChange = { progress ->
+            val snapped = AdaptiveLoadPlanner.snapWorkloadPercent(progress.roundToInt())
+            model.selectedWorkloadPercent[0] = snapped
+            onWorkloadChanged(snapped)
         },
-        update = { slider ->
-            slider.contentDescription = SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER
-            if (slider.progress != model.selectedWorkloadPercent[0]) {
-                slider.progress = model.selectedWorkloadPercent[0]
-            }
-        },
+        valueRange = 0f..100f,
+        steps = 19,
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
+            .testTag(SettingsWorkloadTestTags.WORKLOAD_PERCENT_SLIDER)
+            .semantics { contentDescription = SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER }
     )
 }
 
@@ -85,37 +78,20 @@ internal fun MaxItemsControl(
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 8.dp)
     )
-    AndroidView(
-        factory = {
-            model.maxItemsSlider.apply {
-                contentDescription = SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER
-                max = AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS
-                progress = maxItems - AdaptiveLoadPlanner.MIN_MAX_ITEMS
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                        val value = AdaptiveLoadPlanner.normalizeMaxItems(progress + AdaptiveLoadPlanner.MIN_MAX_ITEMS)
-                        model.selectedMaxItems[0] = value
-                        onMaxItemsChanged(value)
-                    }
-
-                    override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-
-                    override fun onStopTrackingTouch(seekBar: SeekBar) {
-                        seekBar.progress = model.selectedMaxItems[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS
-                    }
-                })
-            }
+    Slider(
+        value = maxItems.toFloat(),
+        onValueChange = { progress ->
+            val value = AdaptiveLoadPlanner.normalizeMaxItems(progress.roundToInt())
+            model.selectedMaxItems[0] = value
+            onMaxItemsChanged(value)
         },
-        update = { slider ->
-            slider.contentDescription = SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER
-            val progress = model.selectedMaxItems[0] - AdaptiveLoadPlanner.MIN_MAX_ITEMS
-            if (slider.progress != progress) {
-                slider.progress = progress
-            }
-        },
+        valueRange = AdaptiveLoadPlanner.MIN_MAX_ITEMS.toFloat()..AdaptiveLoadPlanner.MAX_MAX_ITEMS.toFloat(),
+        steps = AdaptiveLoadPlanner.MAX_MAX_ITEMS - AdaptiveLoadPlanner.MIN_MAX_ITEMS - 1,
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
+            .testTag(SettingsWorkloadTestTags.MAX_ITEMS_SLIDER)
+            .semantics { contentDescription = SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER }
     )
 }
 

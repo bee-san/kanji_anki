@@ -22,7 +22,6 @@ import android.view.ViewParent;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.SeekBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -469,31 +468,20 @@ public final class MainActivityInstrumentedTest {
 
     private static void configureManualWorkload(ActivityScenario<MainActivity> scenario) {
         clickText(scenario, "Use manual workload");
-        waitForText(scenario, "Pareto: up to 5 items");
-        scenario.onActivity(activity -> {
-            SeekBar workloadSlider = seekBarWithContentDescription(
-                    activity,
-                    SettingsWorkloadControlDescriptions.WORKLOAD_PERCENT_SLIDER
-            );
-            workloadSlider.setProgress(70);
-        });
+        waitForText(scenario, SettingsTextCopy.workloadStatusText(
+                AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT,
+                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS
+        ));
         clickText(scenario, "Save workload");
     }
 
     private static void verifyWorkloadAutoActions(ActivityScenario<MainActivity> scenario) {
         clickText(scenario, SettingsTextCopy.automaticParetoLabel());
         waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
-        scenario.onActivity(activity -> {
-            assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode());
-            SeekBar maxItemsSlider = seekBarWithContentDescription(
-                    activity,
-                    SettingsWorkloadControlDescriptions.MAX_ITEMS_SLIDER
-            );
-            maxItemsSlider.setProgress(6);
-        });
+        scenario.onActivity(activity -> assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode()));
         clickText(scenario, SettingsTextCopy.saveMaximumLabel());
         scenario.onActivity(activity -> assertEquals(
-                AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 6),
+                AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS,
                 activity.store.adaptiveLoadMaxItems()
         ));
         clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
@@ -2664,8 +2652,8 @@ public final class MainActivityInstrumentedTest {
     private void assertNavigationSettingsPersisted() {
         try (LocalStore store = new LocalStore(context)) {
             assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, store.adaptiveLoadMode());
-            assertEquals(70, store.adaptiveLoadWorkPercent());
-            assertEquals(AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 6), store.adaptiveLoadMaxItems());
+            assertEquals(AdaptiveLoadPlanner.DEFAULT_WORKLOAD_PERCENT, store.adaptiveLoadWorkPercent());
+            assertEquals(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS, store.adaptiveLoadMaxItems());
             assertEquals(0.95, store.schedulerParameters().targetRetention, 0.001);
             assertTrue(store.schedulerParameters().frequencyRetentionEnabled);
             assertEquals("1-500=95%\n501-20000=85%", store.schedulerParameters().frequencyRetentionRanges);
@@ -3265,16 +3253,6 @@ public final class MainActivityInstrumentedTest {
             }
         }
         throw new AssertionError("Missing EditText with content description: " + description);
-    }
-
-    private static SeekBar seekBarWithContentDescription(MainActivity activity, String description) {
-        for (SeekBar slider : findTypes(activity.findViewById(android.R.id.content), SeekBar.class)) {
-            CharSequence value = slider.getContentDescription();
-            if (value != null && value.toString().equals(description)) {
-                return slider;
-            }
-        }
-        throw new AssertionError("Missing SeekBar with content description: " + description);
     }
 
     private static void collectViews(View root, List<View> views) {

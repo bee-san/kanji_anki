@@ -3,7 +3,6 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.SeekBar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -47,8 +46,6 @@ data class SettingsWorkloadPanelModel(
     val manualBody: String,
     val selectedWorkloadPercent: IntArray,
     val selectedMaxItems: IntArray,
-    val workloadSlider: SeekBar,
-    val maxItemsSlider: SeekBar,
     val scaleLabels: List<String>,
     val saveMaximumLabel: String,
     val manualWorkloadLabel: String,
@@ -156,7 +153,7 @@ private fun ManualWorkloadContent(
         color = WorkloadMuted,
         fontSize = 15.sp
     )
-    WorkloadSlider(model, onWorkloadChanged)
+    WorkloadSlider(model, workloadPercent, onWorkloadChanged)
     Row(modifier = Modifier.fillMaxWidth()) {
         model.scaleLabels.forEach { label ->
             Text(
