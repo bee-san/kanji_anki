@@ -35,7 +35,16 @@ internal fun renderRecentMistakesScreen(home: MainActivityHome) {
     home.base("home")
 
     val mistakes = home.store.recentMistakes(RECENT_MISTAKE_LIMIT)
-    val rows = home.store.activeDashboardRows()
+    val model = if (mistakes.isEmpty()) {
+        HomeRecentMistakesPanelModel(
+            emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
+            emptyBody = HomeTextCopy.noRecentMistakesBody(),
+            cards = emptyList(),
+            emptyStyle = HomeEmptyStateStyle.LegacyBand
+        )
+    } else {
+        homeRecentMistakesPanelModel(home, mistakes, home.store.activeDashboardRows())
+    }
     home.content.addView(
         homeRecentMistakesScreenView(
             home,
@@ -43,9 +52,7 @@ internal fun renderRecentMistakesScreen(home: MainActivityHome) {
                 title = HomeTextCopy.recentMistakesTitle(),
                 homeLabel = HomeTextCopy.homeLabel(),
                 onHome = home::renderHome,
-                mistakes = homeRecentMistakesPanelModel(home, mistakes, rows).copy(
-                    emptyStyle = HomeEmptyStateStyle.LegacyBand
-                )
+                mistakes = model
             )
         )
     )
