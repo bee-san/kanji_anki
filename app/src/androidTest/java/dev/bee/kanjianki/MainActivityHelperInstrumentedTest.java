@@ -2058,7 +2058,7 @@ public final class MainActivityHelperInstrumentedTest {
         performClickableWithText(activity.content, "split");
         assertHasText(activity, "Back to Browse Kanji");
         assertHasText(activity, "Local inventory");
-        performButtonClick(activity.content, "Unsuspend locally");
+        performClickableWithText(activity.content, "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing");
         assertHasText(activity, "Kanji not found");

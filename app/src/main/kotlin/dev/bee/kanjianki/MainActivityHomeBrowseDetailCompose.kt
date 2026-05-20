@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,6 +84,28 @@ data class BrowseExampleCardModel(
     val color: Int,
 )
 
+data class BrowseDetailHeroModel(
+    val kanji: String,
+    val navigationLabel: String,
+    val onNavigate: Runnable,
+)
+
+data class BrowseDetailIdentityModel(
+    val title: String,
+    val reading: String,
+    val suspended: Boolean,
+)
+
+data class BrowseDetailActionsModel(
+    val reviewLabel: String?,
+    val onReview: Runnable?,
+    val copyLabel: String?,
+    val copiedLabel: String,
+    val onCopy: Runnable?,
+    val suspendLabel: String,
+    val onSuspend: Runnable,
+)
+
 internal fun browseScreenView(
     activity: MainActivityHomeBrowseDetail,
     query: String,
@@ -113,6 +136,39 @@ internal fun browseKanjiRowView(activity: MainActivityHomeBrowseDetail, item: Re
         setContent {
             MaterialTheme {
                 BrowseKanjiRow(model = browseKanjiRowModel(activity, item))
+            }
+        }
+    }
+}
+
+internal fun detailHeroView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailHeroModel): View {
+    return ComposeView(activity.home()).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                BrowseDetailHero(model)
+            }
+        }
+    }
+}
+
+internal fun detailIdentityView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailIdentityModel): View {
+    return ComposeView(activity.home()).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                BrowseDetailIdentity(model)
+            }
+        }
+    }
+}
+
+internal fun detailActionsView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailActionsModel): View {
+    return ComposeView(activity.home()).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                BrowseDetailActions(model)
             }
         }
     }
@@ -152,6 +208,119 @@ private fun browseKanjiRowModel(
         suspended = item.suspended,
         onClick = { activity.renderDetail(item.kanji, true) }
     )
+}
+
+@Composable
+fun BrowseDetailHero(model: BrowseDetailHeroModel) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        HomeFullWidthHomeButton(
+            label = model.navigationLabel,
+            onClick = { model.onNavigate.run() }
+        )
+        Text(
+            text = model.kanji,
+            modifier = Modifier.fillMaxWidth(),
+            color = Ink,
+            fontSize = 92.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            style = noFontPaddingStyle(92)
+        )
+    }
+}
+
+@Composable
+fun BrowseDetailIdentity(model: BrowseDetailIdentityModel) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (model.suspended) {
+            BrowseChip(label = HomeTextCopy.suspendedChipLabel(), color = Coral)
+        }
+        Text(
+            text = model.title,
+            color = Ink,
+            fontSize = 25.sp,
+            fontWeight = FontWeight.Bold,
+            style = noFontPaddingStyle(25)
+        )
+        if (model.reading.isNotEmpty()) {
+            Text(
+                text = model.reading,
+                color = Teal,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun BrowseDetailActions(model: BrowseDetailActionsModel) {
+    var copied by remember(model.copyLabel) { mutableStateOf(false) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        model.reviewLabel?.let { label ->
+            Button(
+                onClick = { model.onReview?.run() },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Coral,
+                    contentColor = White
+                )
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        model.copyLabel?.let { label ->
+            OutlinedButton(
+                onClick = {
+                    copied = true
+                    model.onCopy?.run()
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = White,
+                    contentColor = Ink
+                )
+            ) {
+                Text(
+                    text = if (copied) model.copiedLabel else label,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        OutlinedButton(
+            onClick = { model.onSuspend.run() },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = White,
+                contentColor = Ink
+            )
+        ) {
+            Text(
+                text = model.suspendLabel,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
 }
 
 @Composable

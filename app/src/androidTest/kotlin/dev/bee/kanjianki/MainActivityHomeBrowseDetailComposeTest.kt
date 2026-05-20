@@ -160,4 +160,58 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("活動語を見た。").assertIsDisplayed()
         composeRule.onNodeWithText("active word").assertIsDisplayed()
     }
+
+    @Test
+    fun rendersDetailHeroIdentityAndActions() {
+        var backClicked = false
+        var reviewClicked = false
+        var copyClicked = false
+        var suspendClicked = false
+
+        composeRule.setContent {
+            androidx.compose.foundation.layout.Column {
+                BrowseDetailHero(
+                    model = BrowseDetailHeroModel(
+                        kanji = "裂",
+                        navigationLabel = "Back to Browse Kanji",
+                        onNavigate = Runnable { backClicked = true }
+                    )
+                )
+                BrowseDetailIdentity(
+                    model = BrowseDetailIdentityModel(
+                        title = "split",
+                        reading = "レツ",
+                        suspended = true
+                    )
+                )
+                BrowseDetailActions(
+                    model = BrowseDetailActionsModel(
+                        reviewLabel = "Review now",
+                        onReview = Runnable { reviewClicked = true },
+                        copyLabel = "Copy Anki search",
+                        copiedLabel = "Copied Anki search",
+                        onCopy = Runnable { copyClicked = true },
+                        suspendLabel = "Unsuspend locally",
+                        onSuspend = Runnable { suspendClicked = true }
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("裂").assertIsDisplayed()
+        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onNodeWithText("レツ").assertIsDisplayed()
+        composeRule.onNodeWithText("SUSPENDED").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Back to Browse Kanji").performClick()
+        composeRule.onNodeWithText("Review now").performClick()
+        composeRule.onNodeWithText("Copy Anki search").performClick()
+        composeRule.onNodeWithText("Copied Anki search").assertIsDisplayed()
+        composeRule.onNodeWithText("Unsuspend locally").performClick()
+
+        assertTrue(backClicked)
+        assertTrue(reviewClicked)
+        assertTrue(copyClicked)
+        assertTrue(suspendClicked)
+    }
 }

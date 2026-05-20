@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.DateTextPolicy;
@@ -78,37 +77,23 @@ public final class MainActivityHomeBrowseDetail {
     }
 
     void addDetailHeader(String displayKanji, boolean fromBrowse, String browseQuery) {
-        if (!fromBrowse) {
-            home.content.addView(home.fullWidthHomeButton());
-        }
-        TextView glyph = home.text(displayKanji, 92, home.INK, true);
-        glyph.setGravity(android.view.Gravity.CENTER);
-        home.content.addView(glyph);
-        if (fromBrowse) {
-            Button back = home.secondaryButton(HomeTextCopy.backToBrowseKanjiLabel());
-            back.setOnClickListener(new RunnableClickListener(() -> renderBrowseKanji(browseQuery)));
-            home.content.addView(back);
-        }
+        home.content.addView(MainActivityHomeBrowseDetailCompose.detailHeroView(
+                this,
+                new BrowseDetailHeroModel(
+                        displayKanji,
+                        fromBrowse ? HomeTextCopy.backToBrowseKanjiLabel() : HomeTextCopy.homeLabel(),
+                        fromBrowse ? () -> renderBrowseKanji(browseQuery) : home::renderHome
+                )
+        ));
     }
 
     void addDetailIdentity(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, boolean suspended) {
-        if (suspended) {
-            LinearLayout chips = new LinearLayout(home);
-            chips.setOrientation(LinearLayout.HORIZONTAL);
-            chips.addView(home.chip(HomeTextCopy.suspendedChipLabel(), home.CORAL));
-            home.content.addView(chips);
-        }
-        if (row == null) {
-            home.content.addView(home.text(HomeTextCopy.inventoryTitle(inventory), 25, home.INK, true));
-            if (inventory != null && !inventory.readings.isEmpty()) {
-                home.content.addView(home.text(inventory.readings, 20, home.TEAL, true));
-            }
-        } else {
-            home.content.addView(home.text(StudyTextCopy.rowMeaning(row), 25, home.INK, true));
-            if (!row.reading.isEmpty()) {
-                home.content.addView(home.text(row.reading, 20, home.TEAL, true));
-            }
-        }
+        String title = row == null ? HomeTextCopy.inventoryTitle(inventory) : StudyTextCopy.rowMeaning(row);
+        String reading = row == null ? (inventory == null ? "" : inventory.readings) : row.reading;
+        home.content.addView(MainActivityHomeBrowseDetailCompose.detailIdentityView(
+                this,
+                new BrowseDetailIdentityModel(title, reading, suspended)
+        ));
     }
 
     View detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
@@ -131,25 +116,24 @@ public final class MainActivityHomeBrowseDetail {
     }
 
     void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
-        if (row != null && !suspended) {
-            Button practice = home.primaryButton(HomeTextCopy.reviewNowLabel(), home.CORAL);
-            practice.setOnClickListener(new RunnableClickListener(() -> home.renderStudyForKanji(row.kanji)));
-            home.content.addView(practice);
-        }
         String browserSearch = HomeTextCopy.detailBrowserSearch(row, inventory);
-        if (!browserSearch.isEmpty()) {
-            Button copy = home.secondaryButton(HomeTextCopy.copyAnkiSearchLabel());
-            copy.setOnClickListener(new ViewClickListener(v -> copyAnkiSearch(browserSearch, v)));
-            home.content.addView(copy);
-        }
-        Button suspend = home.secondaryButton(HomeTextCopy.localSuspendButtonLabel(suspended));
-        suspend.setOnClickListener(new RunnableClickListener(() -> {
-            home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
-            String toast = HomeTextCopy.localSuspendToast(suspended);
-            android.widget.Toast.makeText(home, toast, android.widget.Toast.LENGTH_SHORT).show();
-            renderDetail(displayKanji, fromBrowse, browseQuery);
-        }));
-        home.content.addView(suspend);
+        home.content.addView(MainActivityHomeBrowseDetailCompose.detailActionsView(
+                this,
+                new BrowseDetailActionsModel(
+                        row != null && !suspended ? HomeTextCopy.reviewNowLabel() : null,
+                        row != null && !suspended ? () -> home.renderStudyForKanji(row.kanji) : null,
+                        browserSearch.isEmpty() ? null : HomeTextCopy.copyAnkiSearchLabel(),
+                        home.getString(R.string.copied_anki_search),
+                        browserSearch.isEmpty() ? null : () -> copyAnkiSearch(browserSearch, null),
+                        HomeTextCopy.localSuspendButtonLabel(suspended),
+                        () -> {
+                            home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis());
+                            String toast = HomeTextCopy.localSuspendToast(suspended);
+                            android.widget.Toast.makeText(home, toast, android.widget.Toast.LENGTH_SHORT).show();
+                            renderDetail(displayKanji, fromBrowse, browseQuery);
+                        }
+                )
+        ));
     }
 
     void addDetailExamples(RecordsImportModels.DashboardRow row) {
