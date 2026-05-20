@@ -5,16 +5,17 @@ package dev.bee.kanjianki
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,9 +27,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val StudyPlum = Color(0xFF4B2552)
-private val StudyButtonFill = Color(0xFFFFF5FA)
-private val StudyBorder = Color(0xFFFFADCD)
+private val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
+private val StudyButtonFill = Color(MainActivityUiSupport.STUDY_BG)
+private val StudyBorder = Color(MainActivityUiSupport.STUDY_BORDER)
 
 fun interface SimilarChoiceHandler {
     fun onChoice(glyph: String)
@@ -53,28 +54,33 @@ internal fun similarKanjiGridView(activity: MainActivityStudy, model: SimilarCho
 
 @Composable
 fun SimilarChoiceGrid(model: SimilarChoiceGridModel) {
-    androidx.compose.foundation.layout.Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         model.choices.chunked(2).forEach { rowChoices ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 rowChoices.forEach { glyph ->
                     SimilarChoiceButton(
                         glyph = glyph,
                         onClick = { model.onChoice.onChoice(glyph) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .choiceCellSpacing()
                     )
                 }
                 if (model.balanceLastRow && rowChoices.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(
+                        modifier = Modifier
+                            .weight(1f)
+                            .choiceCellSpacing()
+                            .height(82.dp)
+                    )
                 }
             }
         }
     }
+}
+
+private fun Modifier.choiceCellSpacing(): Modifier {
+    return padding(start = 4.dp, top = 8.dp, end = 4.dp)
 }
 
 @Composable
@@ -85,8 +91,7 @@ private fun SimilarChoiceButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier
-            .height(82.dp),
+        modifier = modifier.height(82.dp),
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, StudyBorder),
         colors = ButtonDefaults.outlinedButtonColors(
