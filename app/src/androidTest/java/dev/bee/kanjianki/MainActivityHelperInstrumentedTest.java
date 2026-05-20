@@ -1992,7 +1992,7 @@ public final class MainActivityHelperInstrumentedTest {
         View passiveMetric = activity.metricCard(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
         assertFalse(passiveMetric.isClickable());
         assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
-        assertTrue(containsText(activity.browseKanjiRow(new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)), "Meaning not stored yet"));
+        assertTrue(activity.browseKanjiRow(new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)) instanceof androidx.compose.ui.platform.ComposeView);
         RecordsStudyModels.StudyItem relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)

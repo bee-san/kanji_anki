@@ -5,7 +5,6 @@ import android.content.ClipboardManager;
 import android.graphics.Color;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,57 +34,12 @@ public final class MainActivityHomeBrowseDetail {
     void renderBrowseKanji(String query) {
         home.activeBrowseQuery = query == null ? "" : query;
         home.base("home");
-        home.content.addView(home.fullWidthHomeButton());
-        home.content.addView(home.text(HomeTextCopy.browseTitle(), 34, home.INK, true));
-        home.content.addView(home.text(HomeTextCopy.browseBody(), 16, home.MUTED, false));
-        home.addSpace(10);
-
-        EditText search = new EditText(home);
-        search.setSingleLine(true);
-        search.setText(query == null ? "" : query);
-        search.setHint(HomeTextCopy.browseSearchHint());
-        search.setTextSize(18);
-        home.content.addView(search, new LinearLayout.LayoutParams(-1, home.dp(58)));
-
-        Button submit = home.primaryButton(HomeTextCopy.browseSearchButtonLabel(), home.TEAL);
-        submit.setOnClickListener(new RunnableClickListener(() -> renderBrowseKanji(search.getText().toString())));
-        home.content.addView(submit);
-
         List<RecordsImportModels.KanjiInventoryItem> items = home.store.searchKanjiInventory(query);
-        home.content.addView(home.sectionTitle(HomeTextCopy.browseResultHeading(items.size())));
-        if (items.isEmpty()) {
-            home.emptyState(HomeTextCopy.browseEmptyTitle(), HomeTextCopy.browseEmptyBody());
-            return;
-        }
-        for (RecordsImportModels.KanjiInventoryItem item : items) {
-            home.content.addView(browseKanjiRow(item));
-        }
+        home.content.addView(MainActivityHomeBrowseDetailCompose.browseScreenView(this, home.activeBrowseQuery, items));
     }
 
     View browseKanjiRow(RecordsImportModels.KanjiInventoryItem item) {
-        LinearLayout box = home.panelBox(Color.WHITE, item.suspended ? home.CORAL : home.TEAL);
-        box.setOnClickListener(new RunnableClickListener(() -> renderDetail(item.kanji, true)));
-        LinearLayout top = new LinearLayout(home);
-        top.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        TextView glyph = home.text(item.kanji, 44, home.INK, true);
-        glyph.setGravity(android.view.Gravity.CENTER);
-        top.addView(glyph, new LinearLayout.LayoutParams(home.dp(74), home.dp(74)));
-        LinearLayout copy = new LinearLayout(home);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(home.text(HomeTextCopy.browseItemMeaning(item), 19, home.INK, true));
-        if (!item.readings.isEmpty()) {
-            copy.addView(home.text(item.readings, 14, home.TEAL, true));
-        }
-        copy.addView(home.text(HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount), 14, home.MUTED, false));
-        top.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(top);
-        if (item.suspended) {
-            LinearLayout chips = new LinearLayout(home);
-            chips.setOrientation(LinearLayout.HORIZONTAL);
-            chips.addView(home.chip(HomeTextCopy.suspendedChipLabel(), home.CORAL));
-            box.addView(chips);
-        }
-        return box;
+        return MainActivityHomeBrowseDetailCompose.browseKanjiRowView(this, item);
     }
 
     void renderDetail(String kanji) {
