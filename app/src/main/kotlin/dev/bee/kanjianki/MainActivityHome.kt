@@ -31,8 +31,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
         accent: Int,
         label: String,
         value: String,
-        body: String,
-        action: Runnable,
+        body: String?,
+        action: Runnable?,
     ): View {
         return metricCardView(this, iconRes, accent, label, value, body, action)
     }
@@ -152,7 +152,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         browseDetail.renderDetail(kanji, fromBrowse)
     }
 
-    fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String) {
+    fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
         browseDetail.renderDetail(kanji, fromBrowse, browseQuery)
     }
 }
