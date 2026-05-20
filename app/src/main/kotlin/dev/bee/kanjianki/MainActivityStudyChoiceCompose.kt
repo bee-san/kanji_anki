@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +31,9 @@ import androidx.compose.ui.unit.sp
 private val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
 private val StudyButtonFill = Color(MainActivityUiSupport.STUDY_BG)
 private val StudyBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+internal val SimilarChoiceCellHorizontalPadding = 4.dp
+internal val SimilarChoiceCellTopPadding = 8.dp
+internal val SimilarChoiceButtonHeight = 82.dp
 
 fun interface SimilarChoiceHandler {
     fun onChoice(glyph: String)
@@ -71,7 +75,7 @@ fun SimilarChoiceGrid(model: SimilarChoiceGridModel) {
                         modifier = Modifier
                             .weight(1f)
                             .choiceCellSpacing()
-                            .height(82.dp)
+                            .height(SimilarChoiceButtonHeight)
                     )
                 }
             }
@@ -80,7 +84,11 @@ fun SimilarChoiceGrid(model: SimilarChoiceGridModel) {
 }
 
 private fun Modifier.choiceCellSpacing(): Modifier {
-    return padding(start = 4.dp, top = 8.dp, end = 4.dp)
+    return padding(
+        start = SimilarChoiceCellHorizontalPadding,
+        top = SimilarChoiceCellTopPadding,
+        end = SimilarChoiceCellHorizontalPadding
+    )
 }
 
 @Composable
@@ -91,7 +99,9 @@ private fun SimilarChoiceButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.height(82.dp),
+        modifier = modifier
+            .height(SimilarChoiceButtonHeight)
+            .testTag(similarChoiceTestTag(glyph)),
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, StudyBorder),
         colors = ButtonDefaults.outlinedButtonColors(
@@ -109,4 +119,8 @@ private fun SimilarChoiceButton(
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
         )
     }
+}
+
+internal fun similarChoiceTestTag(glyph: String): String {
+    return "similar-choice-$glyph"
 }
