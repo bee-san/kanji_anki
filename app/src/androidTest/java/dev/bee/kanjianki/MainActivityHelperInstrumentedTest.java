@@ -233,7 +233,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.markStudyTaskCompleted("topbar:one");
                 activity.markStudyTaskCompleted("topbar:two");
                 activity.continueAllKanjiSession = true;
-                assertTrue(activity.studyTopBar(all) instanceof StudyTopBarView);
+                assertTrue(activity.studyTopBar(all) instanceof androidx.compose.ui.platform.ComposeView);
                 RecordsStudyModels.StudyItem clueItem = studyItem("?", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
                 assertEquals(
                         "Fallback prompt",
@@ -2204,6 +2204,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("Try cleaner", primary.getCheckText());
                 assertEquals("Save hard", primary.getNextText());
                 assertTrue(fallback.getManualOverrideVisible());
+                primary.getOnCheck().run();
+                assertNull(activity.activeAnalysis);
+                assertTrue(activity.studyStatus.getText().toString().contains("Try cleaner"));
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
                 activity.updateResultActions();
@@ -2325,6 +2328,13 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.writingModelStatusKnown);
                 assertFalse(activity.writingModelDownloaded);
                 assertTrue(activity.studyStatus.getText().toString().contains("Download the handwriting checker"));
+                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModelForTests();
+                assertTrue(primary.getDownloadVisible());
+                primary.getOnDownload().run();
+            });
+            scenario.onActivity(activity -> {
+                assertTrue(activity.writingModelDownloaded);
+                assertTrue(activity.studyStatus.getText().toString().contains("Handwriting checker ready"));
 
                 StrokeOrderEvaluator.StrokeOrderResult order = StrokeOrderEvaluator
                         .evaluate(guide("裂"), sample())

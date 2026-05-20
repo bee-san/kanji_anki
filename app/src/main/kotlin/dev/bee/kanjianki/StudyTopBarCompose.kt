@@ -5,7 +5,7 @@ package dev.bee.kanjianki
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlin.math.roundToInt
 
 private val StudyHeroPlum = Color(0xFF7A245D)
 private val StudyHeroPink = Color(0xFFF82D72)
@@ -62,7 +64,9 @@ fun studyTopBarView(
     settingsAction: Runnable
 ): View {
     return ComposeView(context).apply {
-        layoutParams = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            setMargins(0, 0, 0, context.dp(18))
+        }
         setContent {
             MaterialTheme {
                 StudyTopBar(
@@ -85,7 +89,11 @@ fun StudyTopBar(
     onClose: () -> Unit,
     onSettings: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -119,6 +127,8 @@ fun StudyTopBar(
         }
     }
 }
+
+private fun Context.dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
 @Composable
 private fun StudyTopBarIconButton(

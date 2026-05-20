@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.view.View;
+import android.widget.LinearLayout;
 
 import androidx.compose.ui.platform.ComposeView;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -16,24 +17,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
-public final class StudyTopBarViewInstrumentedTest {
+public final class StudyTopBarComposeInstrumentedTest {
     @Test
-    public void studyTopBarDefaultConstructorsHostComposeContent() {
+    public void studyTopBarFactoryReturnsComposeContentWithLegacySpacing() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        StudyTopBarView topBar = new StudyTopBarView(context);
-        StudyTopBarView topBarWithAttrs = new StudyTopBarView(context, null);
+        View topBar = StudyTopBarCompose.studyTopBarView(context, 12, 24, 0.5f, () -> { }, () -> { });
 
         measureLayoutAndDraw(topBar);
-        measureLayoutAndDraw(topBarWithAttrs);
 
-        assertHostsComposeContent(topBar);
-        assertHostsComposeContent(topBarWithAttrs);
+        assertTrue(topBar instanceof ComposeView);
+        assertTrue(topBar.getLayoutParams() instanceof LinearLayout.LayoutParams);
+        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) topBar.getLayoutParams();
+        assertEquals(dp(context, 18), params.bottomMargin);
     }
 
     @Test
     public void studyTopBarMeasuresAtCompactWidth() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        StudyTopBarView topBar = new StudyTopBarView(context, 12, 24, 0.5f, () -> { }, () -> { });
+        View topBar = StudyTopBarCompose.studyTopBarView(context, 12, 24, 0.5f, () -> { }, () -> { });
 
         topBar.measure(
                 View.MeasureSpec.makeMeasureSpec(260, View.MeasureSpec.EXACTLY),
@@ -42,7 +43,7 @@ public final class StudyTopBarViewInstrumentedTest {
         topBar.layout(0, 0, 260, topBar.getMeasuredHeight());
 
         assertEquals(260, topBar.getMeasuredWidth());
-        assertHostsComposeContent(topBar);
+        assertTrue(topBar instanceof ComposeView);
     }
 
     private static void measureLayoutAndDraw(View view) {
@@ -59,8 +60,7 @@ public final class StudyTopBarViewInstrumentedTest {
         }
     }
 
-    private static void assertHostsComposeContent(StudyTopBarView topBar) {
-        assertEquals(1, topBar.getChildCount());
-        assertTrue(topBar.getChildAt(0) instanceof ComposeView);
+    private static int dp(Context context, int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
     }
 }

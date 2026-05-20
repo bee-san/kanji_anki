@@ -472,7 +472,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
                 activeSession != null,
                 continueAllKanjiSession
         );
-        return new StudyTopBarView(this, progress.completed, progress.target, progress.fraction, this::renderHome, this::renderSettings);
+        return StudyTopBarCompose.studyTopBarView(this, progress.completed, progress.target, progress.fraction, this::renderHome, this::renderSettings);
     }
 
     void styleStudyActionBarShell() {
