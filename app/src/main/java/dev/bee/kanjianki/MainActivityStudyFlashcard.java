@@ -2,7 +2,6 @@ package dev.bee.kanjianki;
 
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -25,7 +24,7 @@ final class MainActivityStudyFlashcard {
     void renderFlashcardSession(RecordsSchedulerModels.StudySession session) {
         resetFlashcardSession();
 
-        LinearLayout card = recognitionHeroCard(session);
+        View card = recognitionHeroCard(session);
         activity.flashcardCard = card;
         activity.flashcardGestureArea = card;
 
@@ -50,42 +49,34 @@ final class MainActivityStudyFlashcard {
         activity.hideStudyActionBar();
     }
 
-    LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
-        LinearLayout card = new LinearLayout(activity);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(activity.dp(18), activity.dp(18), activity.dp(18), activity.dp(18));
-        card.setGravity(Gravity.CENTER_HORIZONTAL);
-        card.setBackground(activity.panel(Color.WHITE, Color.TRANSPARENT, activity.dp(32)));
-        card.setElevation(activity.dp(8));
-        card.setClickable(true);
-        card.setFocusable(true);
-
-        card.addView(flashcardPromptHeader(session));
-
+    View recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
         activity.flashcardHeroPanel = heroKanjiPanel(session);
-        card.addView(activity.flashcardHeroPanel);
-
+        View typingAnswer = null;
         if (StudyTaskCopy.isTypingMeaningTask(session)) {
-            card.addView(typingAnswerField());
+            typingAnswer = typingAnswerField();
         }
 
         activity.studyAnswerPanel = flashcardAnswerPanel(session);
         activity.studyAnswerPanel.setVisibility(View.GONE);
-        card.addView(activity.studyAnswerPanel);
 
-        return card;
+        return MainActivityStudyFlashcardContentCompose.flashcardCardView(
+                activity,
+                new FlashcardCardModel(
+                        flashcardPromptHeaderModel(session),
+                        activity.flashcardHeroPanel,
+                        typingAnswer,
+                        activity.studyAnswerPanel
+                )
+        );
     }
 
-    View flashcardPromptHeader(RecordsSchedulerModels.StudySession session) {
-        return MainActivityStudyFlashcardContentCompose.flashcardPromptHeaderView(
-                activity,
-                new FlashcardPromptHeaderModel(
-                        StudyTaskCopy.studyModeLabel(session),
-                        StudyTaskCopy.flashcardTitle(session),
-                        StudyTextCopy.heroQuestion(session),
-                        "Answer hidden until reveal",
-                        activity.studyReasonLine(session)
-                )
+    FlashcardPromptHeaderModel flashcardPromptHeaderModel(RecordsSchedulerModels.StudySession session) {
+        return new FlashcardPromptHeaderModel(
+                StudyTaskCopy.studyModeLabel(session),
+                StudyTaskCopy.flashcardTitle(session),
+                StudyTextCopy.heroQuestion(session),
+                "Answer hidden until reveal",
+                activity.studyReasonLine(session)
         );
     }
 

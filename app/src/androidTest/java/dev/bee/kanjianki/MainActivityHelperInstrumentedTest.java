@@ -1854,6 +1854,8 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(failSession);
+                assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
+                assertEquals(activity.flashcardCard, activity.flashcardGestureArea);
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
                 assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
@@ -1866,6 +1868,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = passSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(passSession);
+                assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 performClickableWithText(activity.studyActionBar, MainActivityBase.LABEL_PASS);
                 RecordsSchedulerModels.ReviewStats passStats = activity.store.reviewStatsSince(0L);

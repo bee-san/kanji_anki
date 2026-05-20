@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.widget.EditText
+import android.widget.TextView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -122,6 +123,31 @@ class MainActivityStudyFlashcardComposeTest {
         }
 
         composeRule.onNodeWithText("裂").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersFlashcardCardShell() {
+        composeRule.setContent {
+            val context = LocalContext.current
+            FlashcardCard(
+                model = FlashcardCardModel(
+                    promptHeader = FlashcardPromptHeaderModel(
+                        modeLabel = "Recognise",
+                        title = "Name this kanji",
+                        question = "What does this kanji mean?",
+                        hiddenHint = "Answer hidden until reveal",
+                        reasonLine = ""
+                    ),
+                    heroPanel = TextView(context).apply { text = "裂" },
+                    typingAnswer = null,
+                    answerPanel = TextView(context).apply { text = "split" }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Recognise").assertIsDisplayed()
+        composeRule.onNodeWithText("Name this kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("What does this kanji mean?").assertIsDisplayed()
     }
 
     @Test

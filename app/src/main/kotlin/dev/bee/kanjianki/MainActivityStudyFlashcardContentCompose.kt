@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.content.Context
 import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
@@ -26,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 
 private val HeroPanelFill = Color(MainActivityUiSupport.STUDY_HERO_PANEL)
 private val HeroPanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
@@ -61,19 +62,12 @@ data class FlashcardHeroPanelModel(
     val typeface: Typeface?,
 )
 
-internal fun flashcardPromptHeaderView(context: Context, model: FlashcardPromptHeaderModel): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        setContent {
-            MaterialTheme {
-                FlashcardPromptHeader(model)
-            }
-        }
-    }
-}
+data class FlashcardCardModel(
+    val promptHeader: FlashcardPromptHeaderModel,
+    val heroPanel: View,
+    val typingAnswer: View?,
+    val answerPanel: View,
+)
 
 internal fun heroKanjiPanelView(activity: MainActivityStudy, model: FlashcardHeroPanelModel): View {
     return ComposeView(activity).apply {
@@ -88,6 +82,54 @@ internal fun heroKanjiPanelView(activity: MainActivityStudy, model: FlashcardHer
                 FlashcardHeroPanel(model)
             }
         }
+    }
+}
+
+internal fun flashcardCardView(activity: MainActivityStudy, model: FlashcardCardModel): View {
+    return ComposeView(activity).apply {
+        isClickable = true
+        isFocusable = true
+        setContent {
+            MaterialTheme {
+                FlashcardCard(model)
+            }
+        }
+    }
+}
+
+@Composable
+fun FlashcardCard(model: FlashcardCardModel) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        color = Color.White,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top
+        ) {
+            FlashcardPromptHeader(model.promptHeader)
+            FlashcardEmbeddedView(model.heroPanel, Modifier.padding(top = 16.dp))
+            model.typingAnswer?.let { typingAnswer ->
+                FlashcardEmbeddedView(typingAnswer)
+            }
+            FlashcardEmbeddedView(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+        }
+    }
+}
+
+@Composable
+private fun FlashcardEmbeddedView(view: View, modifier: Modifier = Modifier) {
+    key(view) {
+        AndroidView(
+            modifier = modifier.fillMaxWidth(),
+            factory = {
+                (view.parent as? ViewGroup)?.removeView(view)
+                view
+            }
+        )
     }
 }
 

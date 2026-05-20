@@ -214,7 +214,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         flashcardUi.renderFlashcardSession(session);
     }
 
-    LinearLayout recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
+    View recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
         return flashcardUi.recognitionHeroCard(session);
     }
 
