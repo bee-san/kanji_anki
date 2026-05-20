@@ -27,6 +27,7 @@ final class MainActivityStudyWritingUi {
         updateCheckWritingButton(presentation);
         updateDownloadModelButton(presentation);
         updateNextAfterPassButton(presentation);
+        updatePrimaryActionRow(presentation);
         updateFallbackActionButtons(presentation);
         updateHintAndAnswerVisibility(presentation);
         if (activity.resultStatus != null && !presentation.resultStatusVisible) {
@@ -89,6 +90,23 @@ final class MainActivityStudyWritingUi {
                 activity.nextAfterPassButton.setText(presentation.nextLabel);
                 activity.nextAfterPassButton.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(presentation.nextRating, false)));
             }
+        }
+    }
+
+    void updatePrimaryActionRow(WritingActionPresentation presentation) {
+        if (activity.writingPrimaryActionsView != null) {
+            activity.writingPrimaryActionsView.render(new WritingPrimaryActionsModel(
+                    presentation.checkText,
+                    presentation.checkVisible,
+                    presentation.checkEnabled,
+                    "Download checker",
+                    presentation.downloadVisible,
+                    presentation.nextLabel,
+                    presentation.nextVisible,
+                    presentation.messyPass ? activity::startCleanerRetry : activity::checkWriting,
+                    writingStatus::downloadWritingModel,
+                    () -> activity.submitReview(presentation.nextRating, false)
+            ));
         }
     }
 

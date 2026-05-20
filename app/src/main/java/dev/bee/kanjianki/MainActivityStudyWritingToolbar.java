@@ -43,21 +43,25 @@ final class MainActivityStudyWritingToolbar {
         return actions;
     }
 
-    private LinearLayout writingPrimaryActions() {
-        LinearLayout primaryActions = new LinearLayout(activity);
-        primaryActions.setOrientation(LinearLayout.HORIZONTAL);
-        activity.checkWritingButton = activity.pinkPrimaryButton("Check");
+    private View writingPrimaryActions() {
+        activity.writingPrimaryActionsView = new WritingPrimaryActionsView(activity);
+
+        activity.checkWritingButton = new Button(activity);
+        activity.checkWritingButton.setText(WritingFeedbackCopy.checkWritingButtonText(false, false));
         activity.checkWritingButton.setOnClickListener(new RunnableClickListener(activity::checkWriting));
-        primaryActions.addView(activity.checkWritingButton, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
 
-        activity.downloadModelButton = activity.studySecondaryButton("Download checker");
+        activity.downloadModelButton = new Button(activity);
+        activity.downloadModelButton.setText(downloadCheckerLabel());
         activity.downloadModelButton.setOnClickListener(new RunnableClickListener(writingStatus::downloadWritingModel));
-        primaryActions.addView(activity.downloadModelButton, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
 
-        activity.nextAfterPassButton = activity.pinkPrimaryButton(activity.LABEL_PASS);
-        activity.nextAfterPassButton.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(WritingFeedbackCopy.submitRating(activity.activeAnalysis), false)));
-        primaryActions.addView(activity.nextAfterPassButton, new LinearLayout.LayoutParams(0, activity.dp(62), 1));
-        return primaryActions;
+        activity.nextAfterPassButton = new Button(activity);
+        activity.nextAfterPassButton.setText(activity.LABEL_PASS);
+        activity.nextAfterPassButton.setVisibility(View.GONE);
+        return activity.writingPrimaryActionsView;
+    }
+
+    private String downloadCheckerLabel() {
+        return "Download checker";
     }
 
     private LinearLayout writingFallbackActions() {
