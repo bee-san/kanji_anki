@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.RecordsImportModels;
-import android.view.View;
 
 import dev.bee.kanjianki.core.KanjiGameCopy;
 import dev.bee.kanjianki.core.KanjiGameEngine;
@@ -75,43 +74,36 @@ abstract class MainActivityGames extends MainActivityHome {
             return;
         }
         base("home");
-        content.addView(homeSectionHeader(mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
-        content.addView(gameScorePanel(true));
-        content.addView(gameQuestionCard(question));
-    }
-
-    private void renderGameUnavailable(KanjiGameEngine.GameMode mode) {
-        base("home");
-        content.addView(homeSectionHeader(mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
-        content.addView(MainActivityGamesCompose.gamesUnavailableView(
+        content.addView(MainActivityGamesCompose.gamesQuestionScreenView(
                 this,
-                new GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
-        ));
-    }
-
-    private View gameScorePanel(boolean awaitingAnswer) {
-        int roundProgress = gameRound.progress(awaitingAnswer);
-        return MainActivityGamesCompose.gamesScorePanelView(
-                this,
-                new GamesScoreStripModel(
-                        KanjiGameCopy.LABEL_ROUND,
-                        roundProgress + "/" + gameRound.totalQuestions,
-                        KanjiGameCopy.LABEL_SCORE,
-                        gameRound.correct + "/" + gameRound.totalQuestions,
-                        KanjiGameCopy.LABEL_STREAK,
-                        Integer.toString(gameRound.streak)
-                )
-        );
-    }
-
-    private View gameQuestionCard(KanjiGameEngine.GameQuestion question) {
-        return MainActivityGamesCompose.gamesQuestionCardView(
-                this,
+                mode.title,
+                gameScoreModel(true),
                 question,
                 choice -> {
                     answerGameQuestion(question, choice);
                     return kotlin.Unit.INSTANCE;
                 }
+        ));
+    }
+
+    private void renderGameUnavailable(KanjiGameEngine.GameMode mode) {
+        base("home");
+        content.addView(MainActivityGamesCompose.gamesUnavailableScreenView(
+                this,
+                mode.title,
+                new GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
+        ));
+    }
+
+    private GamesScoreStripModel gameScoreModel(boolean awaitingAnswer) {
+        int roundProgress = gameRound.progress(awaitingAnswer);
+        return new GamesScoreStripModel(
+                KanjiGameCopy.LABEL_ROUND,
+                roundProgress + "/" + gameRound.totalQuestions,
+                KanjiGameCopy.LABEL_SCORE,
+                gameRound.correct + "/" + gameRound.totalQuestions,
+                KanjiGameCopy.LABEL_STREAK,
+                Integer.toString(gameRound.streak)
         );
     }
 
@@ -123,13 +115,13 @@ abstract class MainActivityGames extends MainActivityHome {
 
     private void renderGameResult(KanjiGameEngine.GameQuestion question, String selected, boolean correct) {
         base("home");
-        content.addView(homeSectionHeader(question.mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
-        content.addView(gameScorePanel(false));
 
         boolean roundComplete = gameRound.roundComplete();
         int color = gameResultTitleColor(roundComplete, correct);
-        content.addView(MainActivityGamesCompose.gamesResultView(
+        content.addView(MainActivityGamesCompose.gamesResultScreenView(
                 this,
+                question.mode.title,
+                gameScoreModel(false),
                 new GamesResultModel(
                         KanjiGameCopy.resultTitle(roundComplete, correct),
                         color,
@@ -148,10 +140,10 @@ abstract class MainActivityGames extends MainActivityHome {
 
     private void renderGameRoundComplete(KanjiGameEngine.GameMode mode) {
         base("home");
-        content.addView(homeSectionHeader(mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
-        content.addView(gameScorePanel(false));
-        content.addView(MainActivityGamesCompose.gamesResultView(
+        content.addView(MainActivityGamesCompose.gamesResultScreenView(
                 this,
+                mode.title,
+                gameScoreModel(false),
                 new GamesResultModel(
                         KanjiGameCopy.LABEL_ROUND_COMPLETE,
                         BLUE,

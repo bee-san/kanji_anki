@@ -1087,17 +1087,21 @@ public final class MainActivityHelperInstrumentedTest {
             scenario.onActivity(activity -> {
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
                 assertHasText(activity, "Game not ready");
-                assertTrue(activity.content.getChildAt(activity.content.getChildCount() - 1) instanceof androidx.compose.ui.platform.ComposeView);
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
 
                 seedRows(activity, Arrays.asList(
                         row("裂", "split", "レツ", Collections.emptyList()),
                         row("語", "language", "ゴ", Collections.emptyList())
                 ));
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Pick the meaning");
                 performClickableWithText(activity.content, "split");
                 assertContainsText(activity.content, "Answer:");
-                assertTrue(activity.content.getChildAt(activity.content.getChildCount() - 1) instanceof androidx.compose.ui.platform.ComposeView);
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 performClickableWithText(activity.content, "Next");
                 assertHasText(activity, "Pick the meaning");
 

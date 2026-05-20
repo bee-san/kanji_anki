@@ -91,43 +91,10 @@ internal fun gamesScreenView(activity: MainActivityGames, model: GamesScreenMode
     }
 }
 
-internal fun gamesScorePanelView(activity: MainActivityGames, model: GamesScoreStripModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    GamesScoreStrip(model)
-                }
-            }
-        }
-    }
-}
-
-internal fun gamesUnavailableView(activity: MainActivityGames, model: GamesUnavailableModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                GamesUnavailableCard(model)
-            }
-        }
-    }
-}
-
-internal fun gamesResultView(activity: MainActivityGames, model: GamesResultModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                GamesResultCard(model)
-            }
-        }
-    }
-}
-
-internal fun gamesQuestionCardView(
+internal fun gamesQuestionScreenView(
     activity: MainActivityGames,
+    title: String,
+    score: GamesScoreStripModel,
     question: KanjiGameEngine.GameQuestion,
     onChoiceSelected: (String) -> Unit
 ): View {
@@ -135,7 +102,11 @@ internal fun gamesQuestionCardView(
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                Surface {
+                GamesPlayScreen(
+                    title = title,
+                    onGames = activity::renderGames,
+                    score = score
+                ) {
                     GamesQuestionCard(
                         question = question,
                         onChoiceSelected = onChoiceSelected
@@ -143,6 +114,63 @@ internal fun gamesQuestionCardView(
                 }
             }
         }
+    }
+}
+
+internal fun gamesUnavailableScreenView(
+    activity: MainActivityGames,
+    title: String,
+    model: GamesUnavailableModel
+): View {
+    return ComposeView(activity).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                GamesPlayScreen(title = title, onGames = activity::renderGames) {
+                    GamesUnavailableCard(model)
+                }
+            }
+        }
+    }
+}
+
+internal fun gamesResultScreenView(
+    activity: MainActivityGames,
+    title: String,
+    score: GamesScoreStripModel,
+    result: GamesResultModel
+): View {
+    return ComposeView(activity).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                GamesPlayScreen(
+                    title = title,
+                    onGames = activity::renderGames,
+                    score = score
+                ) {
+                    GamesResultCard(result)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GamesPlayScreen(
+    title: String,
+    onGames: () -> Unit,
+    score: GamesScoreStripModel? = null,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HomeSectionHeader(
+            title = title,
+            actionLabel = KanjiGameCopy.LABEL_GAMES,
+            onAction = onGames
+        )
+        score?.let { GamesScoreStrip(it) }
+        content()
     }
 }
 

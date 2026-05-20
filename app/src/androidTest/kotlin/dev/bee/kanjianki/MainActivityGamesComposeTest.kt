@@ -141,6 +141,52 @@ class MainActivityGamesComposeTest {
     }
 
     @Test
+    fun rendersPlayScreenWithHeaderScoreAndQuestion() {
+        var gamesClicked = false
+        var clickedChoice = ""
+        val question = KanjiGameEngine.GameQuestion(
+            KanjiGameEngine.GameMode.READING_RUSH,
+            "語る",
+            "語",
+            "Pick the reading",
+            "language word",
+            listOf("かたる", "ゴ"),
+            "語る = かたる"
+        )
+
+        composeRule.setContent {
+            GamesPlayScreen(
+                title = "Reading Rush",
+                onGames = { gamesClicked = true },
+                score = GamesScoreStripModel(
+                    roundLabel = "Round",
+                    roundValue = "2/10",
+                    scoreLabel = "Score",
+                    scoreValue = "1/10",
+                    streakLabel = "Streak",
+                    streakValue = "1"
+                )
+            ) {
+                GamesQuestionCard(
+                    question = question,
+                    onChoiceSelected = { clickedChoice = it }
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Reading Rush").assertIsDisplayed()
+        composeRule.onNodeWithText("Games >").performClick()
+        composeRule.onNodeWithText("2/10").assertIsDisplayed()
+        composeRule.onNodeWithText("語る").assertIsDisplayed()
+        composeRule.onNodeWithText("かたる").performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(gamesClicked)
+            assertTrue(clickedChoice == "かたる")
+        }
+    }
+
+    @Test
     fun rendersGameResultActions() {
         var nextClicked = false
         var gamesClicked = false
