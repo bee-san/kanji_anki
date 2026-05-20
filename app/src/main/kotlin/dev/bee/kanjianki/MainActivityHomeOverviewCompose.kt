@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -42,12 +43,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.data.StudyStatsStore
 import android.widget.LinearLayout
 
 private val HomeInk = Color(0xFF2D1635)
 private val HomeMuted = Color(0xFF6C5674)
+
+data class HomeMetricModel(
+    val iconRes: Int,
+    val accent: Int,
+    val label: String,
+    val value: String,
+    val body: String?,
+    val onClick: (() -> Unit)?,
+)
+
+internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
 
 internal fun homeHeaderView(home: MainActivityHome): View {
     return ComposeView(home).apply {
@@ -58,6 +74,49 @@ internal fun homeHeaderView(home: MainActivityHome): View {
                     title = HomeTextCopy.appTitle(),
                     subtitle = HomeTextCopy.appSubtitle()
                 )
+            }
+        }
+    }
+}
+
+internal fun homeMetricRowView(
+    home: MainActivityHome,
+    sync: LocalStoreBase.SyncStatus?,
+    provider: AnkiDroidGateway.ProviderStatus,
+    streak: StudyStatsStore.StudyStreak?,
+    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
+): View {
+    val metrics = listOf(
+        HomeMetricModel(
+            R.drawable.ic_sync_24,
+            MainActivityUiSupport.TEAL,
+            HomeTextCopy.syncMetricLabel(),
+            HomeTextCopy.homeSyncValue(sync?.finishedAt),
+            HomeTextCopy.syncMetricStatus(provider.canSync && sync != null && sync.status == "success"),
+            home::confirmSync
+        ),
+        HomeMetricModel(
+            R.drawable.ic_flame_24,
+            home.streakAccent(streak),
+            HomeTextCopy.streakMetricLabel(),
+            HomeTextCopy.streakHeadline(streak?.currentDays ?: 0),
+            HomeTextCopy.streakMetricBody(streak?.studiedToday == true, streak?.bestDays ?: 0),
+            null
+        ),
+        HomeMetricModel(
+            R.drawable.ic_target_24,
+            MainActivityUiSupport.CORAL,
+            HomeTextCopy.focusMetricLabel(),
+            HomeTextCopy.focusHeadline(plan),
+            null,
+            null
+        )
+    )
+    return ComposeView(home).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                HomeMetricRow(metrics)
             }
         }
     }
@@ -239,6 +298,23 @@ fun HomeStudyCta(
 }
 
 @Composable
+fun HomeMetricRow(metrics: List<HomeMetricModel>) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        metrics.forEach { metric ->
+            HomeMetricCard(
+                model = metric,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+            )
+        }
+    }
+}
+
+@Composable
 fun HomeMetricCard(
     iconRes: Int,
     accent: Int,
@@ -246,12 +322,38 @@ fun HomeMetricCard(
     value: String,
     body: String?
 ) {
+    HomeMetricCard(
+        model = HomeMetricModel(
+            iconRes = iconRes,
+            accent = accent,
+            label = label,
+            value = value,
+            body = body,
+            onClick = null
+        )
+    )
+}
+
+@Composable
+fun HomeMetricCard(
+    model: HomeMetricModel,
+    modifier: Modifier = Modifier
+) {
     val shape = RoundedCornerShape(8.dp)
-    val accentColor = androidColor(accent)
-    val borderColor = androidColor(HomeMetricCardBorder.softened(accent))
+    val accentColor = androidColor(model.accent)
+    val borderColor = androidColor(HomeMetricCardBorder.softened(model.accent))
     val labelStyle = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+    val cardModifier = modifier
+        .testTag(homeMetricCardTestTag(model.label))
+        .then(
+            if (model.onClick == null) {
+                Modifier
+            } else {
+                Modifier.clickable(onClick = model.onClick)
+            }
+        )
     Box(
-        modifier = Modifier
+        modifier = cardModifier
             .fillMaxWidth()
             .heightIn(min = 136.dp)
             .clip(shape)
@@ -264,7 +366,7 @@ fun HomeMetricCard(
             verticalArrangement = Arrangement.Top
         ) {
             Icon(
-                painter = painterResource(id = iconRes),
+                painter = painterResource(id = model.iconRes),
                 contentDescription = null,
                 tint = accentColor,
                 modifier = Modifier
@@ -272,7 +374,7 @@ fun HomeMetricCard(
                     .padding(bottom = 5.dp)
             )
             Text(
-                text = label,
+                text = model.label,
                 color = accentColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -281,7 +383,7 @@ fun HomeMetricCard(
                 style = labelStyle
             )
             Text(
-                text = value,
+                text = model.value,
                 color = HomeInk,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -290,9 +392,9 @@ fun HomeMetricCard(
                 modifier = Modifier.padding(top = 5.dp, bottom = 2.dp),
                 style = labelStyle
             )
-            if (!body.isNullOrEmpty()) {
+            if (!model.body.isNullOrEmpty()) {
                 Text(
-                    text = StudyTextCopy.compact(body, 18),
+                    text = StudyTextCopy.compact(model.body, 18),
                     color = HomeMuted,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Normal,

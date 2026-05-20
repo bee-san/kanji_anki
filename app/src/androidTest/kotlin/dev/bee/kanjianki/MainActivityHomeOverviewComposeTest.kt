@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -25,6 +26,50 @@ class MainActivityHomeOverviewComposeTest {
 
         composeRule.onNodeWithText(HomeTextCopy.appTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(HomeTextCopy.appSubtitle()).assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersMetricRowAndInvokesClickableMetric() {
+        var clicked = false
+
+        composeRule.setContent {
+            HomeMetricRow(
+                metrics = listOf(
+                    HomeMetricModel(
+                        iconRes = R.drawable.ic_sync_24,
+                        accent = MainActivityBase.TEAL,
+                        label = "Sync",
+                        value = "Ready",
+                        body = "Connected",
+                        onClick = { clicked = true }
+                    ),
+                    HomeMetricModel(
+                        iconRes = R.drawable.ic_flame_24,
+                        accent = MainActivityBase.CORAL,
+                        label = "Streak",
+                        value = "3 days",
+                        body = null,
+                        onClick = null
+                    ),
+                    HomeMetricModel(
+                        iconRes = R.drawable.ic_target_24,
+                        accent = MainActivityBase.BLUE,
+                        label = "Focus",
+                        value = "2 left",
+                        body = null,
+                        onClick = null
+                    )
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Sync").assertIsDisplayed()
+        composeRule.onNodeWithText("Ready").assertIsDisplayed()
+        composeRule.onNodeWithText("Streak").assertIsDisplayed()
+        composeRule.onNodeWithText("Focus").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeMetricCardTestTag("Sync")).performClick()
+
+        assertTrue(clicked)
     }
 
     @Test
