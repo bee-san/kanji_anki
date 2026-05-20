@@ -30,8 +30,8 @@ final class MainActivityStudyWritingUi {
         updatePrimaryActionRow(presentation);
         updateFallbackActionButtons(presentation);
         updateHintAndAnswerVisibility(presentation);
-        if (activity.resultStatus != null && !presentation.resultStatusVisible) {
-            activity.resultStatus.setVisibility(View.GONE);
+        if (!presentation.resultStatusVisible) {
+            hideResultStatus();
         }
     }
 
@@ -168,16 +168,29 @@ final class MainActivityStudyWritingUi {
         if (activity.studyStatus != null) {
             activity.studyStatus.setStatus(value, color);
         }
-        if (activity.resultStatus != null && activity.activeAnalysis == null) {
-            activity.resultStatus.setVisibility(View.GONE);
+        if (activity.activeAnalysis == null) {
+            hideResultStatus();
         }
     }
 
     void setResultStatus(String value, int color) {
+        if (activity.writingResultStatus != null) {
+            activity.writingResultStatus.setStatus(value, color);
+            activity.writingResultStatus.setVisibility(View.VISIBLE);
+        }
         if (activity.resultStatus != null) {
             activity.resultStatus.setText(value);
             activity.resultStatus.setTextColor(color);
             activity.resultStatus.setVisibility(View.VISIBLE);
+        }
+    }
+
+    void hideResultStatus() {
+        if (activity.writingResultStatus != null) {
+            activity.writingResultStatus.setVisibility(View.GONE);
+        }
+        if (activity.resultStatus != null) {
+            activity.resultStatus.setVisibility(View.GONE);
         }
     }
 

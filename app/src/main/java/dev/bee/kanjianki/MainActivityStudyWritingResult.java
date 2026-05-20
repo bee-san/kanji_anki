@@ -56,6 +56,9 @@ final class MainActivityStudyWritingResult {
 
     void clearWritingResult() {
         activity.activeAnalysis = null;
+        if (activity.writingResultStatus != null) {
+            activity.writingResultStatus.setVisibility(View.GONE);
+        }
         if (activity.resultStatus != null) {
             activity.resultStatus.setVisibility(View.GONE);
         }

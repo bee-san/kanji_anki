@@ -1576,6 +1576,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.studyActionBar.getChildAt(1) instanceof WritingPrimaryActionsView);
                 assertTrue(activity.studyActionBar.getChildAt(2) instanceof WritingFallbackActionsView);
                 assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
+                assertTrue(activity.writingResultStatus instanceof WritingStatusView);
                 performClickableWithText(activity.studyActionBar, "Erase");
 
                 activity.activeSession = promptOnly;

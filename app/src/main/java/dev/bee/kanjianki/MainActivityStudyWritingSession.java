@@ -40,9 +40,9 @@ final class MainActivityStudyWritingSession {
         home.drawingPad.setStrokeBlockedListener(home::handleDrawingBlocked);
         home.drawingPad.setGuide(guide, home.currentHintState, false);
         card.addView(MainActivityStudyWritingPadCompose.writingPadPanelView(home, home.drawingPad, home.studyPadHeight()));
-        home.resultStatus = home.text("", 16, home.STUDY_MUTED, false);
-        home.resultStatus.setVisibility(View.GONE);
-        card.addView(home.resultStatus);
+        home.writingResultStatus = new WritingStatusView(home);
+        home.writingResultStatus.setVisibility(View.GONE);
+        card.addView(home.writingResultStatus);
         home.content.addView(card);
 
         home.buildStudyActionBar();

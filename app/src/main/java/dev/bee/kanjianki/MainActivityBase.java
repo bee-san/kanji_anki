@@ -114,6 +114,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     DrawingPadView drawingPad;
     WritingStatusView studyStatus;
     TextView resultStatus;
+    WritingStatusView writingResultStatus;
     Button checkWritingButton;
     Button downloadModelButton;
     WritingPrimaryActionsView writingPrimaryActionsView;
