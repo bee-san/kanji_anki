@@ -40,6 +40,7 @@ abstract class MainActivityUiSupport extends Activity {
     static final int STUDY_PILL = Color.rgb(255, 239, 247);
     static final int STUDY_BG_SOFT = Color.rgb(255, 246, 251);
     static final int STUDY_HERO_PANEL = Color.rgb(253, 241, 247);
+    static final int STUDY_HERO_PILL = Color.rgb(253, 239, 246);
     static final int STUDY_HERO_PINK = Color.rgb(248, 45, 114);
     static final int STUDY_HERO_PLUM = Color.rgb(33, 7, 44);
     static final int STUDY_HERO_MUTED = Color.rgb(102, 82, 110);

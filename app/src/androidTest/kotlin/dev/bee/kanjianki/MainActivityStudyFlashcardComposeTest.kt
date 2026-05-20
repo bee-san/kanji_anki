@@ -56,6 +56,30 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
+    fun rendersRecognitionPill() {
+        composeRule.setContent {
+            RecognitionPill("Recognise")
+        }
+
+        composeRule.onNodeWithText("Recognise").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersFlashcardHeroPanel() {
+        composeRule.setContent {
+            FlashcardHeroPanel(
+                model = FlashcardHeroPanelModel(
+                    glyph = "裂",
+                    glyphSizeSp = 116,
+                    typeface = null
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("裂").assertIsDisplayed()
+    }
+
+    @Test
     fun rendersStudyAnswerPanel() {
         composeRule.setContent {
             StudyAnswerPanel(

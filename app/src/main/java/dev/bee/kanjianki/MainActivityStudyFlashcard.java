@@ -6,8 +6,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -107,54 +105,18 @@ final class MainActivityStudyFlashcard {
     }
 
     View recognitionPill(String label) {
-        LinearLayout pill = new LinearLayout(activity);
-        pill.setOrientation(LinearLayout.HORIZONTAL);
-        pill.setGravity(Gravity.CENTER);
-        pill.setPadding(activity.dp(18), 0, activity.dp(18), 0);
-        pill.setMinimumHeight(activity.dp(44));
-        pill.setBackground(activity.panel(Color.rgb(253, 239, 246), Color.TRANSPARENT, activity.dp(24)));
-
-        ImageView icon = new ImageView(activity);
-        icon.setImageResource(R.drawable.ic_eye_24);
-        icon.setColorFilter(activity.STUDY_HERO_PINK);
-        LinearLayout.LayoutParams iconLp = new LinearLayout.LayoutParams(activity.dp(22), activity.dp(22));
-        iconLp.setMargins(0, 0, activity.dp(10), 0);
-        pill.addView(icon, iconLp);
-
-        TextView text = activity.text(label, 18, activity.STUDY_HERO_PINK, true);
-        text.setIncludeFontPadding(false);
-        pill.addView(text);
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, activity.dp(44));
-        lp.gravity = Gravity.CENTER_HORIZONTAL;
-        pill.setLayoutParams(lp);
-        return pill;
+        return MainActivityStudyFlashcardContentCompose.recognitionPillView(activity, label);
     }
 
     View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {
-        FrameLayout panel = new FrameLayout(activity);
-        panel.setBackground(activity.panel(activity.STUDY_HERO_PANEL, activity.STUDY_BORDER, activity.dp(28)));
-        panel.setPadding(activity.dp(10), activity.dp(10), activity.dp(10), activity.dp(10));
-
-        TextView glyph = activity.text(
-                StudyTaskCopy.isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
-                StudyTaskCopy.isWordReadingTask(session) ? 44 : 116,
-                activity.STUDY_HERO_PLUM,
-                true
+        return MainActivityStudyFlashcardContentCompose.heroKanjiPanelView(
+                activity,
+                new FlashcardHeroPanelModel(
+                        StudyTaskCopy.isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
+                        StudyTaskCopy.isWordReadingTask(session) ? 44 : 116,
+                        StudyTaskCopy.isFontRecognitionTask(session) ? randomFontVariantTypeface() : Typeface.DEFAULT
+                )
         );
-        if (StudyTaskCopy.isFontRecognitionTask(session)) {
-            glyph.setTypeface(randomFontVariantTypeface(), Typeface.BOLD);
-        } else {
-            glyph.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        }
-        glyph.setGravity(Gravity.CENTER);
-        glyph.setIncludeFontPadding(false);
-        panel.addView(glyph, new FrameLayout.LayoutParams(-1, -1, Gravity.CENTER));
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, activity.dp(210));
-        lp.setMargins(0, activity.dp(16), 0, 0);
-        panel.setLayoutParams(lp);
-        return panel;
     }
 
     Typeface randomFontVariantTypeface() {
