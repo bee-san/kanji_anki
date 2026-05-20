@@ -139,4 +139,84 @@ class MainActivityGamesComposeTest {
             assertTrue(clickedChoice == "language")
         }
     }
+
+    @Test
+    fun rendersGameResultActions() {
+        var nextClicked = false
+        var gamesClicked = false
+
+        composeRule.setContent {
+            GamesResultCard(
+                model = GamesResultModel(
+                    title = "Not quite",
+                    titleColor = 0xFFFF4C76.toInt(),
+                    finalScore = null,
+                    accuracy = null,
+                    answer = "Answer: language",
+                    selectedAnswer = "You chose: word",
+                    explanation = "語 = language",
+                    primaryLabel = "Next",
+                    primaryColor = 0xFFFF4C76.toInt(),
+                    onPrimary = Runnable { nextClicked = true },
+                    onGames = Runnable { gamesClicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Not quite").assertIsDisplayed()
+        composeRule.onNodeWithText("Answer: language").assertIsDisplayed()
+        composeRule.onNodeWithText("You chose: word").assertIsDisplayed()
+        composeRule.onNodeWithText("語 = language").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Next").performClick()
+        composeRule.onNodeWithText("Games").performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(nextClicked)
+            assertTrue(gamesClicked)
+        }
+    }
+
+    @Test
+    fun rendersRoundCompleteSummaryAndUnavailableCard() {
+        var newRoundClicked = false
+
+        composeRule.setContent {
+            androidx.compose.foundation.layout.Column {
+                GamesResultCard(
+                    model = GamesResultModel(
+                        title = "Round complete",
+                        titleColor = 0xFF6E5CE6.toInt(),
+                        finalScore = "Final score: 7/10",
+                        accuracy = "Accuracy: 70%",
+                        answer = null,
+                        selectedAnswer = null,
+                        explanation = null,
+                        primaryLabel = "New round",
+                        primaryColor = 0xFF6E5CE6.toInt(),
+                        onPrimary = Runnable { newRoundClicked = true },
+                        onGames = Runnable {}
+                    )
+                )
+                GamesUnavailableCard(
+                    model = GamesUnavailableModel(
+                        title = "Game not ready",
+                        body = "This game needs at least two usable choices from your local kanji data."
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Round complete").assertIsDisplayed()
+        composeRule.onNodeWithText("Final score: 7/10").assertIsDisplayed()
+        composeRule.onNodeWithText("Accuracy: 70%").assertIsDisplayed()
+        composeRule.onNodeWithText("Game not ready").assertIsDisplayed()
+        composeRule.onNodeWithText("This game needs at least two usable choices from your local kanji data.").assertIsDisplayed()
+
+        composeRule.onNodeWithText("New round").performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(newRoundClicked)
+        }
+    }
 }

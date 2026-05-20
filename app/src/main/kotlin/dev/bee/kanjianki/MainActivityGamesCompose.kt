@@ -76,6 +76,25 @@ data class GamesScoreStripModel(
     val streakValue: String,
 )
 
+data class GamesResultModel(
+    val title: String,
+    val titleColor: Int,
+    val finalScore: String?,
+    val accuracy: String?,
+    val answer: String?,
+    val selectedAnswer: String?,
+    val explanation: String?,
+    val primaryLabel: String,
+    val primaryColor: Int,
+    val onPrimary: Runnable,
+    val onGames: Runnable,
+)
+
+data class GamesUnavailableModel(
+    val title: String,
+    val body: String,
+)
+
 internal fun gamesScreenView(activity: MainActivityGames, model: GamesScreenModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -102,6 +121,28 @@ internal fun gamesScorePanelView(activity: MainActivityGames, model: GamesScoreS
     }
 }
 
+internal fun gamesUnavailableView(activity: MainActivityGames, model: GamesUnavailableModel): View {
+    return ComposeView(activity).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                GamesUnavailableCard(model)
+            }
+        }
+    }
+}
+
+internal fun gamesResultView(activity: MainActivityGames, model: GamesResultModel): View {
+    return ComposeView(activity).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                GamesResultCard(model)
+            }
+        }
+    }
+}
+
 internal fun gamesQuestionCardView(
     activity: MainActivityGames,
     question: KanjiGameEngine.GameQuestion,
@@ -117,6 +158,125 @@ internal fun gamesQuestionCardView(
                         onChoiceSelected = onChoiceSelected
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun GamesUnavailableCard(model: GamesUnavailableModel) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = ComposeColor(0xFFFFF7D6),
+        border = BorderStroke(1.dp, ComposeColor(0xFFFFD640))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = model.title,
+                color = Ink,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = model.body,
+                color = Ink,
+                fontSize = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun GamesResultCard(model: GamesResultModel) {
+    val accent = ComposeColor(model.titleColor)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = White,
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = model.title,
+                color = accent,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+            )
+            model.finalScore?.let { line ->
+                Text(
+                    text = line,
+                    color = Ink,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            model.accuracy?.let { line ->
+                Text(
+                    text = line,
+                    color = Muted,
+                    fontSize = 15.sp
+                )
+            }
+            model.answer?.let { line ->
+                Text(
+                    text = line,
+                    color = Ink,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            model.selectedAnswer?.let { line ->
+                Text(
+                    text = line,
+                    color = Muted,
+                    fontSize = 16.sp
+                )
+            }
+            model.explanation?.let { line ->
+                Text(
+                    text = line,
+                    color = Muted,
+                    fontSize = 15.sp
+                )
+            }
+            Button(
+                onClick = { model.onPrimary.run() },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ComposeColor(model.primaryColor),
+                    contentColor = White
+                )
+            ) {
+                Text(
+                    text = model.primaryLabel,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            OutlinedButton(
+                onClick = { model.onGames.run() },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = White,
+                    contentColor = Ink
+                )
+            ) {
+                Text(
+                    text = KanjiGameCopy.LABEL_GAMES,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

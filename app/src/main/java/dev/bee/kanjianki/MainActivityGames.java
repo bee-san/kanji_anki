@@ -1,13 +1,7 @@
 package dev.bee.kanjianki;
 
 import dev.bee.kanjianki.core.RecordsImportModels;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import dev.bee.kanjianki.core.KanjiGameCopy;
 import dev.bee.kanjianki.core.KanjiGameEngine;
@@ -89,7 +83,10 @@ abstract class MainActivityGames extends MainActivityHome {
     private void renderGameUnavailable(KanjiGameEngine.GameMode mode) {
         base("home");
         content.addView(homeSectionHeader(mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
-        emptyState(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY);
+        content.addView(MainActivityGamesCompose.gamesUnavailableView(
+                this,
+                new GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
+        ));
     }
 
     private View gameScorePanel(boolean awaitingAnswer) {
@@ -130,51 +127,52 @@ abstract class MainActivityGames extends MainActivityHome {
         content.addView(gameScorePanel(false));
 
         boolean roundComplete = gameRound.roundComplete();
-        int color = roundComplete ? BLUE : (correct ? TEAL : CORAL);
-        LinearLayout result = panelBox(Color.WHITE, softened(color));
-        result.addView(text(KanjiGameCopy.resultTitle(roundComplete, correct), 28, color, true));
-        if (roundComplete) {
-            addRoundSummary(result);
-        }
-        result.addView(text(KanjiGameCopy.answerText(question.correctAnswer), 18, INK, true));
-        if (!question.isCorrect(selected)) {
-            result.addView(text(KanjiGameCopy.selectedAnswerText(selected), 16, MUTED, false));
-        }
-        result.addView(text(question.explanation, 15, MUTED, false));
-        if (roundComplete) {
-            Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(question.mode));
-            newRound.setOnClickListener(new RunnableClickListener(() -> startGame(question.mode)));
-            result.addView(newRound);
-        } else {
-            Button next = primaryButton(KanjiGameCopy.LABEL_NEXT, colorForGameMode(question.mode));
-            next.setOnClickListener(new RunnableClickListener(() -> renderGameQuestion(question.mode)));
-            result.addView(next);
-        }
-        Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
-        games.setOnClickListener(new RunnableClickListener(this::renderGames));
-        result.addView(games);
-        content.addView(result);
+        int color = gameResultTitleColor(roundComplete, correct);
+        content.addView(MainActivityGamesCompose.gamesResultView(
+                this,
+                new GamesResultModel(
+                        KanjiGameCopy.resultTitle(roundComplete, correct),
+                        color,
+                        roundComplete ? KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions) : null,
+                        roundComplete ? KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered) : null,
+                        KanjiGameCopy.answerText(question.correctAnswer),
+                        question.isCorrect(selected) ? null : KanjiGameCopy.selectedAnswerText(selected),
+                        question.explanation,
+                        roundComplete ? KanjiGameCopy.LABEL_NEW_ROUND : KanjiGameCopy.LABEL_NEXT,
+                        colorForGameMode(question.mode),
+                        roundComplete ? () -> startGame(question.mode) : () -> renderGameQuestion(question.mode),
+                        this::renderGames
+                )
+        ));
     }
 
     private void renderGameRoundComplete(KanjiGameEngine.GameMode mode) {
         base("home");
         content.addView(homeSectionHeader(mode.title, KanjiGameCopy.LABEL_GAMES, this::renderGames));
         content.addView(gameScorePanel(false));
-        LinearLayout result = panelBox(Color.WHITE, softened(BLUE));
-        result.addView(text(KanjiGameCopy.LABEL_ROUND_COMPLETE, 28, BLUE, true));
-        addRoundSummary(result);
-        Button newRound = primaryButton(KanjiGameCopy.LABEL_NEW_ROUND, colorForGameMode(mode));
-        newRound.setOnClickListener(new RunnableClickListener(() -> startGame(mode)));
-        result.addView(newRound);
-        Button games = secondaryButton(KanjiGameCopy.LABEL_GAMES);
-        games.setOnClickListener(new RunnableClickListener(this::renderGames));
-        result.addView(games);
-        content.addView(result);
+        content.addView(MainActivityGamesCompose.gamesResultView(
+                this,
+                new GamesResultModel(
+                        KanjiGameCopy.LABEL_ROUND_COMPLETE,
+                        BLUE,
+                        KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions),
+                        KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered),
+                        null,
+                        null,
+                        null,
+                        KanjiGameCopy.LABEL_NEW_ROUND,
+                        colorForGameMode(mode),
+                        () -> startGame(mode),
+                        this::renderGames
+                )
+        ));
     }
 
-    private void addRoundSummary(LinearLayout result) {
-        result.addView(text(KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions), 20, INK, true));
-        result.addView(text(KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered), 15, MUTED, false));
+    private int gameResultTitleColor(boolean roundComplete, boolean correct) {
+        if (roundComplete) {
+            return BLUE;
+        }
+        return correct ? TEAL : CORAL;
     }
 
     private int colorForGameMode(KanjiGameEngine.GameMode mode) {
