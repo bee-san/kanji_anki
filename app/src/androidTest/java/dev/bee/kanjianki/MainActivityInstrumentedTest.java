@@ -306,25 +306,25 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void verifyRetentionValidationAndRanges(ActivityScenario<MainActivity> scenario) {
-        setRankRetentionEnabled(scenario, true);
-        setRetentionRanges(scenario, "not a range");
+        setRankRetentionEnabled(true);
+        setRetentionRanges("not a range");
         clickText(scenario, SettingsTextCopy.saveRetentionLabel());
         assertFrequencyRetentionDisabled(scenario);
 
         clickText(scenario, SettingsTextCopy.useExampleRangesLabel());
-        assertRetentionRanges(scenario, FrequencyRetentionRanges.exampleText());
-        setRetentionRanges(scenario, "1-500=95%\n501-20000=85%");
+        assertRetentionRanges(FrequencyRetentionRanges.exampleText());
+        setRetentionRanges("1-500=95%\n501-20000=85%");
     }
 
-    private static void setRankRetentionEnabled(ActivityScenario<MainActivity> scenario, boolean enabled) {
+    private static void setRankRetentionEnabled(boolean enabled) {
         setComposeCheckBox(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX, enabled);
     }
 
-    private static void setRetentionRanges(ActivityScenario<MainActivity> scenario, String ranges) {
+    private static void setRetentionRanges(String ranges) {
         setComposeTextField(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT, ranges);
     }
 
-    private static void assertRetentionRanges(ActivityScenario<MainActivity> scenario, String ranges) {
+    private static void assertRetentionRanges(String ranges) {
         assertComposeTextFieldValue(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT, ranges);
     }
 

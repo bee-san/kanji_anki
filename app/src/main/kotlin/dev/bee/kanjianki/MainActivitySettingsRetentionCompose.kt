@@ -106,8 +106,6 @@ internal fun retentionSettingsPanelView(
 @Composable
 fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
     var retentionPercent by rememberSaveable { mutableIntStateOf(model.selectedRetentionPercent[0]) }
-    var frequencyRetentionEnabled by rememberSaveable { mutableStateOf(model.state.frequencyRetentionEnabled) }
-    var frequencyRetentionRanges by rememberSaveable { mutableStateOf(model.state.frequencyRetentionRanges) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RetentionPanelShape,
@@ -157,10 +155,9 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
             }
             RetentionCheckbox(
                 label = model.rankRetentionLabel,
-                checked = frequencyRetentionEnabled,
+                checked = model.state.frequencyRetentionEnabled,
                 onCheckedChange = {
                     model.state.frequencyRetentionEnabled = it
-                    frequencyRetentionEnabled = it
                 }
             )
             Text(
@@ -169,10 +166,9 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 fontSize = 15.sp
             )
             OutlinedTextField(
-                value = frequencyRetentionRanges,
+                value = model.state.frequencyRetentionRanges,
                 onValueChange = {
                     model.state.frequencyRetentionRanges = it
-                    frequencyRetentionRanges = it
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,12 +186,15 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     model.state.frequencyRetentionRanges = model.exampleRangesText
-                    frequencyRetentionRanges = model.exampleRangesText
                 }
             )
             Button(
                 onClick = {
-                    model.onSave.save(retentionPercent, frequencyRetentionEnabled, frequencyRetentionRanges)
+                    model.onSave.save(
+                        retentionPercent,
+                        model.state.frequencyRetentionEnabled,
+                        model.state.frequencyRetentionRanges
+                    )
                 },
                 modifier = Modifier
                     .fillMaxWidth()
