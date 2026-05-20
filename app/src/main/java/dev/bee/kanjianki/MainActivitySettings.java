@@ -34,7 +34,6 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -282,9 +281,4 @@ abstract class MainActivitySettings extends MainActivityStudy {
     void runUpdate(boolean cachedPending) {
         updateFlow().runUpdate(cachedPending);
     }
-
-    LinearLayout indeterminateProgressRow(String label) {
-        return updateFlow().indeterminateProgressRow(label);
-    }
-
 }

@@ -31,7 +31,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -2447,19 +2446,6 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void updaterLoadingRowShowsIndeterminateProgress() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                LinearLayout row = activity.indeterminateProgressRow("Checking GitHub Releases");
-                ProgressBar progress = findProgressBar(row);
-                assertNotNull(progress);
-                assertTrue(progress.isIndeterminate());
-                assertTrue(containsText(row, "Checking GitHub Releases"));
-            });
-        }
-    }
-
-    @Test
     public void writingRecognizerStatusCallbacksUpdateTheVisibleState() {
         FakeWritingRecognizer recognizer = new FakeWritingRecognizer(
                 CompletableFuture.completedFuture(new WritingRecognizer.ModelStatus("ja", "ja-JP", false, "missing")),
@@ -3062,22 +3048,6 @@ public final class MainActivityHelperInstrumentedTest {
         }
         for (int i = 0; i < group.getChildCount(); i++) {
             Button found = findButton(group.getChildAt(i), label);
-            if (found != null) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    private static ProgressBar findProgressBar(View view) {
-        if (view instanceof ProgressBar progressBar) {
-            return progressBar;
-        }
-        if (!(view instanceof ViewGroup group)) {
-            return null;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            ProgressBar found = findProgressBar(group.getChildAt(i));
             if (found != null) {
                 return found;
             }

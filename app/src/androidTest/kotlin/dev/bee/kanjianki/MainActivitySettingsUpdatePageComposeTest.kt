@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -79,6 +80,39 @@ class MainActivitySettingsUpdatePageComposeTest {
             assertTrue(installClicked)
             assertTrue(toggleClicked)
             assertTrue(checkClicked)
+        }
+    }
+
+    @Test
+    fun rendersUpdateRunProgressAndWiresNavigation() {
+        var homeClicked = false
+        var backClicked = false
+
+        composeRule.setContent {
+            SettingsUpdateRunScreen(
+                model = SettingsUpdateRunModel(
+                    title = "Checking release",
+                    body = "Downloading metadata and verifying assets.",
+                    progressLabel = "Checking GitHub Releases",
+                    onHome = { homeClicked = true },
+                    onBack = { backClicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText("Checking release").assertIsDisplayed()
+        composeRule.onNodeWithText("Downloading metadata and verifying assets.").assertIsDisplayed()
+        composeRule.onNodeWithText("Checking GitHub Releases").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Checking GitHub Releases").assertIsDisplayed()
+
+        composeRule.onNodeWithText(HomeTextCopy.homeLabel()).performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(homeClicked)
+            assertTrue(backClicked)
         }
     }
 }
