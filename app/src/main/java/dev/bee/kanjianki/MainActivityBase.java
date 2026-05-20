@@ -159,8 +159,8 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     abstract void renderHome();
-    abstract void renderUpdate();
-    abstract void renderSettings();
+    public abstract void renderUpdate();
+    public abstract void renderSettings();
     abstract void renderStudy();
     abstract void startFocusedStudy();
     abstract void renderStudyForKanji(String kanji);

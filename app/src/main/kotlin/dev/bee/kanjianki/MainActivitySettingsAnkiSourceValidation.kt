@@ -50,8 +50,8 @@ internal class MainActivitySettingsAnkiSourceValidation(
         taggedCards: Boolean,
         weakCards: Boolean,
         browserQueryCards: Boolean,
-        parsedTags: List<String>,
-        queryText: String,
+        parsedTags: List<String>?,
+        queryText: String?,
     ): Boolean {
         if (activeCards) {
             return SettingsInputRules.hasSelectedImportSource(true, false, false, false, false, null, null)
@@ -85,8 +85,8 @@ internal class MainActivitySettingsAnkiSourceValidation(
         taggedCards: CheckBox?,
         weakCards: CheckBox?,
         browserQueryCards: CheckBox?,
-        parsedTags: List<String>,
-        queryText: String,
+        parsedTags: List<String>?,
+        queryText: String?,
     ): Boolean {
         return hasSelectedImportSource(
             activeCards?.isChecked == true,
