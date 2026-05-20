@@ -106,7 +106,7 @@ internal fun gamesQuestionScreenView(
             MaterialTheme {
                 GamesPlayScreen(
                     title = title,
-                    onGames = activity::renderGames,
+                    onGames = activity::returnToGames,
                     score = score
                 ) {
                     GamesQuestionCard(
@@ -128,7 +128,7 @@ internal fun gamesUnavailableScreenView(
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                GamesPlayScreen(title = title, onGames = activity::renderGames) {
+                GamesPlayScreen(title = title, onGames = activity::returnToGames) {
                     GamesUnavailableCard(model)
                 }
             }
@@ -148,7 +148,7 @@ internal fun gamesResultScreenView(
             MaterialTheme {
                 GamesPlayScreen(
                     title = title,
-                    onGames = activity::renderGames,
+                    onGames = activity::returnToGames,
                     score = score
                 ) {
                     GamesResultCard(result)

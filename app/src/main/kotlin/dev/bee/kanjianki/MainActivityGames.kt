@@ -1,0 +1,219 @@
+package dev.bee.kanjianki
+
+import dev.bee.kanjianki.core.KanjiGameCopy
+import dev.bee.kanjianki.core.KanjiGameEngine
+import dev.bee.kanjianki.core.KanjiGameRoundState
+import dev.bee.kanjianki.core.RecordsImportModels
+import java.util.Random
+
+internal abstract class MainActivityGames : MainActivityHome() {
+    private val gameEngine = KanjiGameEngine()
+    private val gameRandom = Random()
+    private var gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+
+    override fun renderGames() {
+        clearGameSession()
+        base("home")
+        content.addView(gamesMenuScreenView(this, gamesScreenModel()))
+    }
+
+    internal fun returnToGames() {
+        renderGames()
+    }
+
+    private fun clearGameSession() {
+        gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+    }
+
+    fun gamesScreenModel(): GamesScreenModel {
+        val data = gameData()
+        val cards = if (data.hasKanji()) {
+            val available = gameEngine.availableModes(data.rows, data.inventory, data.pairs)
+            KanjiGameEngine.GameMode.values().map { mode ->
+                val modeAvailable = available.contains(mode)
+                GamesModeCardModel(
+                    title = mode.title,
+                    label = mode.label,
+                    body = KanjiGameCopy.modeBody(mode, modeAvailable),
+                    accentColor = colorForGameMode(mode),
+                    available = modeAvailable,
+                    chipLabel = if (modeAvailable) KanjiGameCopy.LABEL_PLAY else KanjiGameCopy.LABEL_LOCKED,
+                    onClick = if (modeAvailable) Runnable { startGame(mode) } else Runnable {}
+                )
+            }
+        } else {
+            emptyList()
+        }
+        return GamesScreenModel(
+            title = KanjiGameCopy.LABEL_GAMES,
+            subtitle = KanjiGameCopy.GAMES_SUBTITLE,
+            emptyTitle = if (data.hasKanji()) null else KanjiGameCopy.EMPTY_NO_KANJI_TITLE,
+            emptyBody = if (data.hasKanji()) null else KanjiGameCopy.EMPTY_NO_KANJI_BODY,
+            showSyncButton = !data.hasKanji(),
+            onSync = Runnable { confirmSync() },
+            modeCards = cards
+        )
+    }
+
+    fun startGame(mode: KanjiGameEngine.GameMode) {
+        gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
+        renderGameQuestion(mode)
+    }
+
+    private fun renderGameQuestion(mode: KanjiGameEngine.GameMode) {
+        if (gameRound.roundComplete()) {
+            renderGameRoundComplete(mode)
+            return
+        }
+        val data = gameData()
+        val question = gameEngine.nextQuestion(mode, data.rows, data.inventory, data.pairs, gameRandom)
+        if (question == null) {
+            renderGameUnavailable(mode)
+            return
+        }
+        base("home")
+        content.addView(
+            gamesQuestionScreenView(
+                activity = this,
+                title = mode.title,
+                score = gameScoreModel(awaitingAnswer = true),
+                question = question,
+                onChoiceSelected = { choice -> answerGameQuestion(question, choice) }
+            )
+        )
+    }
+
+    private fun renderGameUnavailable(mode: KanjiGameEngine.GameMode) {
+        base("home")
+        content.addView(
+            gamesUnavailableScreenView(
+                activity = this,
+                title = mode.title,
+                model = GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
+            )
+        )
+    }
+
+    private fun gameScoreModel(awaitingAnswer: Boolean): GamesScoreStripModel {
+        val roundProgress = gameRound.progress(awaitingAnswer)
+        return GamesScoreStripModel(
+            roundLabel = KanjiGameCopy.LABEL_ROUND,
+            roundValue = "$roundProgress/${gameRound.totalQuestions}",
+            scoreLabel = KanjiGameCopy.LABEL_SCORE,
+            scoreValue = "${gameRound.correct}/${gameRound.totalQuestions}",
+            streakLabel = KanjiGameCopy.LABEL_STREAK,
+            streakValue = gameRound.streak.toString()
+        )
+    }
+
+    private fun answerGameQuestion(question: KanjiGameEngine.GameQuestion, selected: String) {
+        val correct = question.isCorrect(selected)
+        gameRound = gameRound.answer(correct)
+        renderGameResult(question, selected, correct)
+    }
+
+    private fun renderGameResult(
+        question: KanjiGameEngine.GameQuestion,
+        selected: String,
+        correct: Boolean
+    ) {
+        base("home")
+        val roundComplete = gameRound.roundComplete()
+        val color = gameResultTitleColor(roundComplete, correct)
+        content.addView(
+            gamesResultScreenView(
+                activity = this,
+                title = question.mode.title,
+                score = gameScoreModel(awaitingAnswer = false),
+                result = GamesResultModel(
+                    title = KanjiGameCopy.resultTitle(roundComplete, correct),
+                    titleColor = color,
+                    finalScore = if (roundComplete) {
+                        KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions)
+                    } else {
+                        null
+                    },
+                    accuracy = if (roundComplete) {
+                        KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered)
+                    } else {
+                        null
+                    },
+                    answer = KanjiGameCopy.answerText(question.correctAnswer),
+                    selectedAnswer = if (question.isCorrect(selected)) {
+                        null
+                    } else {
+                        KanjiGameCopy.selectedAnswerText(selected)
+                    },
+                    explanation = question.explanation,
+                    primaryLabel = if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT,
+                    primaryColor = colorForGameMode(question.mode),
+                    onPrimary = if (roundComplete) {
+                        Runnable { startGame(question.mode) }
+                    } else {
+                        Runnable { renderGameQuestion(question.mode) }
+                    },
+                    onGames = Runnable { renderGames() }
+                )
+            )
+        )
+    }
+
+    private fun renderGameRoundComplete(mode: KanjiGameEngine.GameMode) {
+        base("home")
+        content.addView(
+            gamesResultScreenView(
+                activity = this,
+                title = mode.title,
+                score = gameScoreModel(awaitingAnswer = false),
+                result = GamesResultModel(
+                    title = KanjiGameCopy.LABEL_ROUND_COMPLETE,
+                    titleColor = BLUE,
+                    finalScore = KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions),
+                    accuracy = KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered),
+                    answer = null,
+                    selectedAnswer = null,
+                    explanation = null,
+                    primaryLabel = KanjiGameCopy.LABEL_NEW_ROUND,
+                    primaryColor = colorForGameMode(mode),
+                    onPrimary = Runnable { startGame(mode) },
+                    onGames = Runnable { renderGames() }
+                )
+            )
+        )
+    }
+
+    private fun gameResultTitleColor(roundComplete: Boolean, correct: Boolean): Int {
+        if (roundComplete) {
+            return BLUE
+        }
+        return if (correct) TEAL else CORAL
+    }
+
+    private fun colorForGameMode(mode: KanjiGameEngine.GameMode): Int {
+        return when (mode) {
+            KanjiGameEngine.GameMode.MEANING_POP -> CORAL
+            KanjiGameEngine.GameMode.READING_RUSH -> TEAL
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> BLUE
+        }
+    }
+
+    private fun gameData(): GameData {
+        return GameData(
+            rows = store.activeDashboardRows().orEmpty(),
+            inventory = store.searchKanjiInventory("").orEmpty(),
+            pairs = store.allLocalSimilarPairs().orEmpty()
+        )
+    }
+
+    private data class GameData(
+        val rows: List<RecordsImportModels.DashboardRow>,
+        val inventory: List<RecordsImportModels.KanjiInventoryItem>,
+        val pairs: List<RecordsImportModels.SimilarKanjiPair>
+    ) {
+        fun hasKanji(): Boolean = rows.isNotEmpty() || inventory.isNotEmpty()
+    }
+
+    private companion object {
+        const val GAME_ROUND_QUESTIONS = 10
+    }
+}
