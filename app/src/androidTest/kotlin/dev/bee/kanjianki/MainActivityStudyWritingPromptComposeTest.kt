@@ -104,9 +104,13 @@ class MainActivityStudyWritingPromptComposeTest {
                     answerPanelState = answerState,
                     writingTitle = "Writing",
                     writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
-                    statusView = TextView(context).apply { text = "Trace the first strokes" },
+                    status = WritingStatusState().apply {
+                        setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
+                    },
                     padPanel = TextView(context).apply { text = "Pad" },
-                    resultStatusView = TextView(context).apply { text = "Result" }
+                    resultStatus = WritingResultStatusHandle().apply {
+                        show("Result", MainActivityUiSupport.STUDY_MUTED)
+                    }
                 )
             )
         }
@@ -115,16 +119,16 @@ class MainActivityStudyWritingPromptComposeTest {
         composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
         composeRule.onNodeWithText("Reference answer").assertIsDisplayed()
         composeRule.onNodeWithText("Writing").assertIsDisplayed()
+        composeRule.onNodeWithText("Trace the first strokes").assertIsDisplayed()
+        composeRule.onNodeWithText("Result").assertIsDisplayed()
     }
 
     @Test
     fun keepsEmbeddedViewsAttachedAcrossRecomposition() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val previousParent = FrameLayout(context)
-        val statusView = TextView(context).apply { text = "Trace the first strokes" }
         val padPanel = TextView(context).apply { text = "Pad" }
-        val resultStatusView = TextView(context).apply { text = "Result" }
-        previousParent.addView(statusView)
+        previousParent.addView(padPanel)
         val title = mutableStateOf("Writing")
 
         composeRule.setContent {
@@ -141,26 +145,30 @@ class MainActivityStudyWritingPromptComposeTest {
                     answerPanelState = WritingAnswerPanelState(false),
                     writingTitle = title.value,
                     writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
-                    statusView = statusView,
+                    status = WritingStatusState().apply {
+                        setStatus("Trace the first strokes", MainActivityUiSupport.STUDY_MUTED)
+                    },
                     padPanel = padPanel,
-                    resultStatusView = resultStatusView
+                    resultStatus = WritingResultStatusHandle().apply {
+                        show("Result", MainActivityUiSupport.STUDY_MUTED)
+                    }
                 )
             )
         }
 
         composeRule.waitForIdle()
-        assertNotSame(previousParent, statusView.parent)
-        assertNotNull(statusView.parent)
+        assertNotSame(previousParent, padPanel.parent)
+        assertNotNull(padPanel.parent)
 
         composeRule.runOnIdle {
             title.value = "Writing again"
         }
         composeRule.waitForIdle()
 
-        assertNotNull(statusView.parent)
         assertNotNull(padPanel.parent)
-        assertNotNull(resultStatusView.parent)
         composeRule.onNodeWithText("Writing again").assertIsDisplayed()
+        composeRule.onNodeWithText("Trace the first strokes").assertIsDisplayed()
+        composeRule.onNodeWithText("Result").assertIsDisplayed()
     }
 
     private fun writingAnswerPanelModel(): StudyAnswerPanelModel {

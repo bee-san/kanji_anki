@@ -4,11 +4,7 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,74 +12,59 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private data class WritingStatusState(
+private data class WritingStatusDisplay(
     val text: String = "",
     val color: Int = MainActivityUiSupport.STUDY_MUTED,
 )
 
-class WritingStatusView(context: Context) : FrameLayout(context) {
-    private var state by mutableStateOf(WritingStatusState())
+class WritingStatusState @JvmOverloads constructor(@Suppress("UNUSED_PARAMETER") context: Context? = null) {
+    private var display by mutableStateOf(WritingStatusDisplay())
 
-    init {
-        layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        addView(
-            ComposeView(context).apply {
-                layoutParams = LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                setContent {
-                    MaterialTheme {
-                        WritingStatusText(text = state.text, color = state.color)
-                    }
-                }
-            }
-        )
-    }
+    internal val text: String
+        get() = display.text
+
+    internal val color: Int
+        get() = display.color
 
     fun setStatus(value: String?, color: Int) {
-        state = WritingStatusState(text = value.orEmpty(), color = color)
+        display = WritingStatusDisplay(text = value.orEmpty(), color = color)
     }
 
     fun getText(): CharSequence {
-        return state.text
+        return display.text
     }
 
     fun setText(value: CharSequence?) {
-        setStatus(value?.toString(), state.color)
+        setStatus(value?.toString(), display.color)
     }
 }
 
-class WritingResultStatusHandle(context: Context) {
-    private val statusView = WritingStatusView(context)
-
-    fun view(): View = statusView
+class WritingResultStatusHandle @JvmOverloads constructor(context: Context? = null) {
+    internal val status = WritingStatusState(context)
+    internal var visible by mutableStateOf(false)
+        private set
 
     fun show(value: String?, color: Int) {
-        statusView.setStatus(value, color)
-        statusView.visibility = View.VISIBLE
+        status.setStatus(value, color)
+        visible = true
     }
 
     fun hide() {
-        statusView.visibility = View.GONE
+        visible = false
     }
 
     fun getText(): CharSequence {
-        return statusView.getText()
+        return status.getText()
     }
 
     fun getVisibility(): Int {
-        return statusView.visibility
+        return if (visible) View.VISIBLE else View.GONE
     }
 }
 
@@ -109,6 +90,18 @@ internal fun WritingStatusText(text: String, color: Int) {
         lineHeight = 17.sp,
         style = legacyTextStyle()
     )
+}
+
+@Composable
+internal fun WritingStatusText(state: WritingStatusState) {
+    WritingStatusText(text = state.text, color = state.color)
+}
+
+@Composable
+internal fun WritingResultStatus(handle: WritingResultStatusHandle) {
+    if (handle.visible) {
+        WritingStatusText(handle.status)
+    }
 }
 
 private fun legacyTextStyle(): TextStyle {

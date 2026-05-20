@@ -1391,7 +1391,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.studyActionBar.getChildAt(1) instanceof WritingPrimaryActionsView);
                 assertTrue(activity.studyActionBar.getChildAt(2) instanceof WritingFallbackActionsView);
                 assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
-                assertTrue(activity.writingResultStatus.view() instanceof WritingStatusView);
+                assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
                 performClickableWithText(activity.studyActionBar, "Erase");
 
                 activity.activeSession = promptOnly;
@@ -1421,7 +1421,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeSession = promptOnly;
                 activity.currentHintState = HintState.fromWritingLevel(2);
-                activity.studyStatus = new WritingStatusView(activity);
+                activity.studyStatus = new WritingStatusState();
                 prepareWritingActionViews(activity);
                 new MainActivityStudyWritingStatus(activity).downloadWritingModel();
             });
@@ -1439,8 +1439,8 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession writing = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(1);
-                activity.studyStatus = new WritingStatusView(activity);
-                activity.writingResultStatus = new WritingResultStatusHandle(activity);
+                activity.studyStatus = new WritingStatusState();
+                activity.writingResultStatus = new WritingResultStatusHandle();
                 prepareWritingActionViews(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.drawingPad = new DrawingPadView(activity);
@@ -1633,8 +1633,8 @@ public final class MainActivityHelperInstrumentedTest {
     private static void prepareWritingControls(MainActivity activity, RecordsSchedulerModels.StudySession writing) {
         activity.activeSession = writing;
         activity.currentHintState = HintState.fromWritingLevel(3);
-        activity.studyStatus = new WritingStatusView(activity);
-        activity.writingResultStatus = new WritingResultStatusHandle(activity);
+        activity.studyStatus = new WritingStatusState();
+        activity.writingResultStatus = new WritingResultStatusHandle();
         prepareWritingActionViews(activity);
         activity.studyAnswerPanel = new LinearLayout(activity);
     }
@@ -2085,8 +2085,8 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.drawingPad.setTarget("裂");
                 addInk(activity.drawingPad);
-                activity.studyStatus = new WritingStatusView(activity);
-                activity.writingResultStatus = new WritingResultStatusHandle(activity);
+                activity.studyStatus = new WritingStatusState();
+                activity.writingResultStatus = new WritingResultStatusHandle();
                 prepareWritingActionViews(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
 
@@ -2282,7 +2282,7 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
-                activity.studyStatus = new WritingStatusView(activity);
+                activity.studyStatus = new WritingStatusState();
                 prepareWritingActionViews(activity);
                 new MainActivityStudyWritingStatus(activity).refreshWritingModelStatus();
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
@@ -2353,8 +2353,8 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(1);
-                activity.studyStatus = new WritingStatusView(activity);
-                activity.writingResultStatus = new WritingResultStatusHandle(activity);
+                activity.studyStatus = new WritingStatusState();
+                activity.writingResultStatus = new WritingResultStatusHandle();
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.checkWriting();
                 assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
@@ -2643,8 +2643,8 @@ public final class MainActivityHelperInstrumentedTest {
     private static void prepareWritingUi(MainActivity activity, RecordsSchedulerModels.StudySession session) {
         activity.activeSession = session;
         activity.currentHintState = HintState.fromWritingLevel(1);
-        activity.studyStatus = new WritingStatusView(activity);
-        activity.writingResultStatus = new WritingResultStatusHandle(activity);
+        activity.studyStatus = new WritingStatusState();
+        activity.writingResultStatus = new WritingResultStatusHandle();
         prepareWritingActionViews(activity);
         activity.studyAnswerPanel = new LinearLayout(activity);
         activity.drawingPad = new DrawingPadView(activity);

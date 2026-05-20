@@ -28,9 +28,9 @@ data class WritingSessionCardModel(
     val answerPanelState: WritingAnswerPanelState,
     val writingTitle: String,
     val writingTitleColor: Int,
-    val statusView: View,
+    val status: WritingStatusState,
     val padPanel: View,
-    val resultStatusView: View,
+    val resultStatus: WritingResultStatusHandle,
 )
 
 class WritingAnswerPanelState(initialVisible: Boolean = false) {
@@ -69,9 +69,9 @@ fun WritingSessionCard(model: WritingSessionCardModel) {
                 StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
             }
             WritingSectionTitle(title = model.writingTitle, color = model.writingTitleColor)
-            WritingEmbeddedView(model.statusView)
+            WritingStatusText(model.status)
             WritingEmbeddedView(model.padPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
-            WritingEmbeddedView(model.resultStatusView)
+            WritingResultStatus(model.resultStatus)
         }
     }
 }

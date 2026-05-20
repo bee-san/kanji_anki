@@ -28,14 +28,14 @@ final class MainActivityStudyWritingSession {
         StudyAnswerPanelModel answerPanel = home.learningPanelModel(session);
 
         StrokeGuide guide = home.strokeGuide(session.item.kanji);
-        home.studyStatus = new WritingStatusView(home);
+        home.studyStatus = new WritingStatusState();
         home.studyStatus.setStatus(WritingFeedbackCopy.guideLabel(home.currentHintState, guide), home.STUDY_MUTED);
         home.drawingPad = new DrawingPadView(home);
         home.drawingPad.setTarget(session.item.kanji);
         home.drawingPad.setInkEditListener(home::handleDrawingEdited);
         home.drawingPad.setStrokeBlockedListener(home::handleDrawingBlocked);
         home.drawingPad.setGuide(guide, home.currentHintState, false);
-        home.writingResultStatus = new WritingResultStatusHandle(home);
+        home.writingResultStatus = new WritingResultStatusHandle();
         home.writingResultStatus.hide();
         home.content.addView(MainActivityStudyWritingSessionCompose.writingSessionCardView(
                 home,
@@ -47,7 +47,7 @@ final class MainActivityStudyWritingSession {
                         home.STUDY_PLUM,
                         home.studyStatus,
                         MainActivityStudyWritingPadCompose.writingPadPanelView(home, home.drawingPad, home.studyPadHeight()),
-                        home.writingResultStatus.view()
+                        home.writingResultStatus
                 )
         ));
 

@@ -6,10 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -39,38 +36,40 @@ class MainActivityStudyWritingChromeComposeTest {
     }
 
     @Test
-    fun writingStatusViewKeepsLatestBridgeText() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val view = WritingStatusView(context)
+    fun writingStatusStateKeepsLatestText() {
+        val state = WritingStatusState()
 
-        view.setStatus("Checking handwriting...", MainActivityUiSupport.STUDY_MUTED)
-        assertEquals("Checking handwriting...", view.getText().toString())
+        state.setStatus("Checking handwriting...", MainActivityUiSupport.STUDY_MUTED)
+        assertEquals("Checking handwriting...", state.getText().toString())
 
-        view.setText("Existing analysis message")
-        assertEquals("Existing analysis message", view.getText().toString())
+        state.setText("Existing analysis message")
+        assertEquals("Existing analysis message", state.getText().toString())
     }
 
     @Test
     fun writingResultStatusHandleShowsAndHidesComposeStatus() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val handle = WritingResultStatusHandle(context)
-
-        assertTrue(handle.view() is WritingStatusView)
+        val handle = WritingResultStatusHandle()
 
         composeRule.setContent {
-            AndroidView(factory = { handle.view() })
+            WritingResultStatus(handle)
         }
 
-        handle.hide()
+        composeRule.runOnIdle {
+            handle.hide()
+        }
         assertEquals(View.GONE, handle.getVisibility())
         composeRule.onAllNodesWithText("Model unavailable").assertCountEquals(0)
 
-        handle.show("Model unavailable", MainActivityUiSupport.CORAL)
+        composeRule.runOnIdle {
+            handle.show("Model unavailable", MainActivityUiSupport.CORAL)
+        }
         assertEquals("Model unavailable", handle.getText().toString())
         assertEquals(View.VISIBLE, handle.getVisibility())
         composeRule.onNodeWithText("Model unavailable").assertIsDisplayed()
 
-        handle.hide()
+        composeRule.runOnIdle {
+            handle.hide()
+        }
         composeRule.onAllNodesWithText("Model unavailable").assertCountEquals(0)
     }
 }

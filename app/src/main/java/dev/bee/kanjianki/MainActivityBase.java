@@ -110,7 +110,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     RecordsImportModels.SimilarKanjiWritingRepair activeSimilarWritingRepair;
     RecordsSchedulerModels.AdaptiveLoadPlan activeStudyPlan;
     DrawingPadView drawingPad;
-    WritingStatusView studyStatus;
+    WritingStatusState studyStatus;
     WritingResultStatusHandle writingResultStatus;
     WritingPrimaryActionsView writingPrimaryActionsView;
     WritingFallbackActionsView writingFallbackActionsView;
