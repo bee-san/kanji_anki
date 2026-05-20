@@ -8,7 +8,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,34 +17,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
-
-private val Ink = ComposeColor(0xFF2D1635)
-private val Muted = ComposeColor(0xFF6C5674)
-private val Coral = ComposeColor(0xFFFF4C76)
-private val Teal = ComposeColor(0xFF00AEB5)
-private val Blue = ComposeColor(0xFF6E5CE6)
-private val Grey = ComposeColor(0xFFB2B2BA)
-private val White = ComposeColor(0xFFFFFFFF)
-private val StudyPlum = ComposeColor(0xFF4B2552)
-private val KanjiFontFamily = FontFamily(Font(R.font.kaisei_tokumin_regular))
 
 data class GamesScreenModel(
     val title: String,
@@ -164,125 +147,6 @@ internal fun gamesQuestionCardView(
 }
 
 @Composable
-fun GamesUnavailableCard(model: GamesUnavailableModel) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = ComposeColor(0xFFFFF7D6),
-        border = BorderStroke(1.dp, ComposeColor(0xFFFFD640))
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = model.title,
-                color = Ink,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = model.body,
-                color = Ink,
-                fontSize = 16.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun GamesResultCard(model: GamesResultModel) {
-    val accent = ComposeColor(model.titleColor)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        color = White,
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = model.title,
-                color = accent,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
-            )
-            model.finalScore?.let { line ->
-                Text(
-                    text = line,
-                    color = Ink,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            model.accuracy?.let { line ->
-                Text(
-                    text = line,
-                    color = Muted,
-                    fontSize = 15.sp
-                )
-            }
-            model.answer?.let { line ->
-                Text(
-                    text = line,
-                    color = Ink,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            model.selectedAnswer?.let { line ->
-                Text(
-                    text = line,
-                    color = Muted,
-                    fontSize = 16.sp
-                )
-            }
-            model.explanation?.let { line ->
-                Text(
-                    text = line,
-                    color = Muted,
-                    fontSize = 15.sp
-                )
-            }
-            Button(
-                onClick = { model.onPrimary.run() },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ComposeColor(model.primaryColor),
-                    contentColor = White
-                )
-            ) {
-                Text(
-                    text = model.primaryLabel,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            OutlinedButton(
-                onClick = { model.onGames.run() },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
-                shape = RoundedCornerShape(18.dp),
-                border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = White,
-                    contentColor = Ink
-                )
-            ) {
-                Text(
-                    text = KanjiGameCopy.LABEL_GAMES,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun GamesScreen(model: GamesScreenModel) {
     Column(
         modifier = Modifier
@@ -294,13 +158,13 @@ fun GamesScreen(model: GamesScreenModel) {
             text = model.title,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Ink,
+            color = GamesInk,
             fontSize = 34.sp
         )
         Text(
             text = model.subtitle,
             style = MaterialTheme.typography.bodyMedium,
-            color = Muted,
+            color = GamesMuted,
             fontSize = 16.sp
         )
 
@@ -314,8 +178,8 @@ fun GamesScreen(model: GamesScreenModel) {
                     onClick = { model.onSync.run() },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Coral,
-                        contentColor = White
+                        containerColor = GamesCoral,
+                        contentColor = GamesWhite
                     )
                 ) {
                     Text(text = KanjiGameCopy.LABEL_SYNC_ANKIDROID)
@@ -336,15 +200,15 @@ private fun GamesEmptyState(title: String, body: String) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        color = White,
-        border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4))
+        color = GamesWhite,
+        border = BorderStroke(1.dp, GamesPanelBorder)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Ink)
-            Text(text = body, style = MaterialTheme.typography.bodyMedium, color = Muted)
+            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GamesInk)
+            Text(text = body, style = MaterialTheme.typography.bodyMedium, color = GamesMuted)
         }
     }
 }
@@ -352,10 +216,10 @@ private fun GamesEmptyState(title: String, body: String) {
 @Composable
 private fun GamesModeCard(model: GamesModeCardModel) {
     val accent = ComposeColor(model.accentColor)
-    val availableAccent = if (model.available) accent else Grey
-    val fill = if (model.available) accent.copy(alpha = 0.06f) else White
+    val availableAccent = if (model.available) accent else GamesGrey
+    val fill = if (model.available) accent.copy(alpha = 0.06f) else GamesWhite
     val stroke = availableAccent.copy(alpha = 0.34f)
-    val titleColor = if (model.available) Ink else Muted
+    val titleColor = if (model.available) GamesInk else GamesMuted
     val chipFill = availableAccent.copy(alpha = 0.12f)
     val chipStroke = availableAccent.copy(alpha = 0.34f)
 
@@ -391,7 +255,7 @@ private fun GamesModeCard(model: GamesModeCardModel) {
                         text = model.chipLabel,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (model.available) availableAccent else Grey
+                        color = if (model.available) availableAccent else GamesGrey
                     )
                 }
             }
@@ -405,194 +269,8 @@ private fun GamesModeCard(model: GamesModeCardModel) {
             Text(
                 text = model.body,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Muted
+                color = GamesMuted
             )
         }
-    }
-}
-
-@Composable
-fun GamesScoreStrip(model: GamesScoreStripModel) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 3.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        GamesScoreCard(
-            label = model.roundLabel,
-            value = model.roundValue,
-            accentColor = Blue,
-            modifier = Modifier.weight(1f)
-        )
-        GamesScoreCard(
-            label = model.scoreLabel,
-            value = model.scoreValue,
-            accentColor = Coral,
-            modifier = Modifier.weight(1f)
-        )
-        GamesScoreCard(
-            label = model.streakLabel,
-            value = model.streakValue,
-            accentColor = Teal,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun GamesScoreCard(
-    label: String,
-    value: String,
-    accentColor: ComposeColor,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = White,
-        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.18f))
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = label,
-                style = TextStyle(
-                    fontSize = 12.sp,
-                    lineHeight = 12.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                color = accentColor
-            )
-            Text(
-                text = value,
-                style = TextStyle(
-                    fontSize = 20.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                color = Ink
-            )
-        }
-    }
-}
-
-@Composable
-fun GamesQuestionCard(
-    question: KanjiGameEngine.GameQuestion,
-    onChoiceSelected: (String) -> Unit
-) {
-    val accent = ComposeColor(gameModeColor(question.mode))
-    val kanjiFont = KanjiFontFamily
-    val useKanjiTypography = KanjiGameCopy.choiceUsesKanjiTypography(question)
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 7.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = White,
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f))
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = accent.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, accent.copy(alpha = 0.34f))
-            ) {
-                Text(
-                    text = question.mode.label,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    style = TextStyle(
-                        fontSize = 13.sp,
-                        lineHeight = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = accent
-                )
-            }
-
-            Text(
-                text = question.prompt,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    fontSize = KanjiGameCopy.promptTextSizeSp(question).sp,
-                    lineHeight = KanjiGameCopy.promptTextSizeSp(question).sp,
-                    fontWeight = FontWeight.Bold
-                ).copy(
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    fontFamily = kanjiFont
-                ),
-                color = Ink
-            )
-
-            Text(
-                text = question.promptDetail,
-                style = TextStyle(
-                    fontSize = 16.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.Normal
-                ).copy(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-                color = Muted
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                question.choices.forEach { choice ->
-                    GameChoiceButton(
-                        question = question,
-                        choice = choice,
-                        useKanjiTypography = useKanjiTypography,
-                        onChoiceSelected = onChoiceSelected
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GameChoiceButton(
-    question: KanjiGameEngine.GameQuestion,
-    choice: String,
-    useKanjiTypography: Boolean,
-    onChoiceSelected: (String) -> Unit
-) {
-    val label = KanjiGameCopy.choiceLabel(question, choice)
-    val fontFamily = if (useKanjiTypography) KanjiFontFamily else FontFamily.Default
-    OutlinedButton(
-        onClick = { onChoiceSelected(choice) },
-        modifier = Modifier.fillMaxWidth().heightIn(min = if (useKanjiTypography) 74.dp else 56.dp),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = White,
-            contentColor = Ink
-        )
-    ) {
-        Text(
-            text = label,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            style = TextStyle(
-                fontSize = KanjiGameCopy.choiceTextSizeSp(question).sp,
-                lineHeight = KanjiGameCopy.choiceTextSizeSp(question).sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = fontFamily
-            ).copy(platformStyle = PlatformTextStyle(includeFontPadding = false)),
-            color = if (useKanjiTypography) Ink else StudyPlum
-        )
-    }
-}
-
-private fun gameModeColor(mode: KanjiGameEngine.GameMode): Int {
-    return when (mode) {
-        KanjiGameEngine.GameMode.MEANING_POP -> 0xFFFF4C76.toInt()
-        KanjiGameEngine.GameMode.READING_RUSH -> 0xFF00AEB5.toInt()
-        KanjiGameEngine.GameMode.CONFUSABLE_CLASH -> 0xFF6E5CE6.toInt()
     }
 }
