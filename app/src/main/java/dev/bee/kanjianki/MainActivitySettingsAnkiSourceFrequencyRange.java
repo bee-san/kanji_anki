@@ -2,7 +2,6 @@ package dev.bee.kanjianki;
 
 import android.view.View;
 import android.widget.EditText;
-import android.widget.SeekBar;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsSyncModels;
@@ -32,8 +31,6 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
         EditText maxInput = inputs.rankInput(selected[1]);
         minInput.setContentDescription(SettingsTextCopy.minRankLabel());
         maxInput.setContentDescription(SettingsTextCopy.maxRankLabel());
-        SeekBar minSlider = new SeekBar(activity);
-        SeekBar maxSlider = new SeekBar(activity);
         return MainActivitySettingsAnkiSourceFrequencyRangeCompose.frequencyRangeSettingsPanelView(
                 activity,
                 new SettingsFrequencyRangePanelModel(
@@ -45,9 +42,7 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
                         SettingsTextCopy.maxRankLabel(),
                         maxInput,
                         SettingsTextCopy.minimumRankLabel(),
-                        minSlider,
                         SettingsTextCopy.maximumRankLabel(),
-                        maxSlider,
                         SettingsTextCopy.saveFrequencyRangeLabel(),
                         () -> saveFrequencyRange(minInput, maxInput)
                 )

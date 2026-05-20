@@ -115,6 +115,29 @@ class SettingsReminderComposeTest {
         composeRule.onAllNodesWithText(SettingsTextCopy.turnOffReminderLabel()).assertCountEquals(0)
     }
 
+    @Test
+    fun rendersPresetGridInTwoColumns() {
+        composeRule.setContent {
+            SettingsReminderPanel(reminderModel())
+        }
+
+        val morning = presetBounds("Morning", 8, 0)
+        val lunch = presetBounds("Lunch", 12, 30)
+        val evening = presetBounds("Evening", 19, 0)
+        val night = presetBounds("Night", 21, 0)
+
+        assertEquals(morning.top, lunch.top, 0.5f)
+        assertEquals(evening.top, night.top, 0.5f)
+        assertTrue(evening.top > morning.bottom)
+        assertTrue(morning.left < lunch.left)
+        assertTrue(evening.left < night.left)
+    }
+
+    private fun presetBounds(label: String, hour: Int, minute: Int) =
+        composeRule.onNodeWithText(SettingsTextCopy.reminderPresetButtonLabel(label, hour, minute))
+            .fetchSemanticsNode()
+            .boundsInRoot
+
     private fun reminderModel(
         status: String = SettingsTextCopy.reminderStatus(false, false, "21:00"),
         statusColor: Int = MainActivityUiSupport.MUTED,

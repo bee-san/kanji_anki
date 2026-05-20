@@ -2,11 +2,13 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.widget.EditText
-import android.widget.SeekBar
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -26,8 +28,6 @@ class SettingsFrequencyRangeComposeTest {
         val selected = intArrayOf(100, 3000)
         val minInput = EditText(context).apply { setText("100") }
         val maxInput = EditText(context).apply { setText("3000") }
-        val minSlider = SeekBar(context)
-        val maxSlider = SeekBar(context)
 
         composeRule.setContent {
             SettingsFrequencyRangePanel(
@@ -40,9 +40,7 @@ class SettingsFrequencyRangeComposeTest {
                     maxRankLabel = SettingsTextCopy.maxRankLabel(),
                     maxRankInput = maxInput,
                     minimumRankLabel = SettingsTextCopy.minimumRankLabel(),
-                    minRankSlider = minSlider,
                     maximumRankLabel = SettingsTextCopy.maximumRankLabel(),
-                    maxRankSlider = maxSlider,
                     saveLabel = SettingsTextCopy.saveFrequencyRangeLabel(),
                     onSave = SettingsFrequencyRangeAction { saved = true }
                 )
@@ -51,10 +49,14 @@ class SettingsFrequencyRangeComposeTest {
 
         composeRule.onNodeWithText(SettingsTextCopy.frequencyRangeTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.frequencyRangeStatusText(100, 3000)).assertIsDisplayed()
-        composeRule.runOnIdle {
-            minSlider.progress = SettingsInputRules.rankSliderProgress(250)
-            maxSlider.progress = SettingsInputRules.rankSliderProgress(3500)
-        }
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.minimumRankLabel())
+            .performSemanticsAction(SemanticsActions.SetProgress) { action ->
+                action(SettingsInputRules.rankSliderProgress(250).toFloat())
+            }
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.maximumRankLabel())
+            .performSemanticsAction(SemanticsActions.SetProgress) { action ->
+                action(SettingsInputRules.rankSliderProgress(3500).toFloat())
+            }
 
         composeRule.onNodeWithText(SettingsTextCopy.frequencyRangeStatusText(250, 3500)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.saveFrequencyRangeLabel()).performClick()

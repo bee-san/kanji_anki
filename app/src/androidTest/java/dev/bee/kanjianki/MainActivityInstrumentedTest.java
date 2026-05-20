@@ -254,7 +254,7 @@ public final class MainActivityInstrumentedTest {
     public void testSettingsControlsPersist() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            configureFrequencyRangeSliders(scenario);
+            setFrequencyRangeInputs(scenario, "250", "3500");
             clickText(scenario, "Save frequency range");
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study behavior");
@@ -285,15 +285,6 @@ public final class MainActivityInstrumentedTest {
 
             assertNavigationSettingsPersisted();
         }
-    }
-
-    private static void configureFrequencyRangeSliders(ActivityScenario<MainActivity> scenario) {
-        scenario.onActivity(activity -> {
-            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
-            assertTrue(sliders.size() >= 2);
-            sliders.get(0).setProgress(249);
-            sliders.get(1).setProgress(3499);
-        });
     }
 
     private static void setFrequencyRangeInputs(ActivityScenario<MainActivity> scenario, String minRank, String maxRank) {

@@ -4,7 +4,6 @@ package dev.bee.kanjianki
 
 import android.view.View
 import android.widget.EditText
-import android.widget.SeekBar
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ import dev.bee.kanjianki.core.FrequencyRetentionRanges
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsTextCopy
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val FrequencyInk = Color(0xFF2D1635)
 private val FrequencyMuted = Color(0xFF6C5674)
@@ -59,9 +62,7 @@ data class SettingsFrequencyRangePanelModel(
     val maxRankLabel: String,
     val maxRankInput: EditText,
     val minimumRankLabel: String,
-    val minRankSlider: SeekBar,
     val maximumRankLabel: String,
-    val maxRankSlider: SeekBar,
     val saveLabel: String,
     val onSave: SettingsFrequencyRangeAction,
 )
@@ -122,9 +123,7 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
             }
             RankSlider(
                 label = model.minimumRankLabel,
-                slider = model.minRankSlider,
-                initialRank = minRank,
-                currentRank = { model.selectedRanks[0] },
+                rank = minRank,
                 onRankChanged = { rank ->
                     val nextMin = minOf(rank, model.selectedRanks[1])
                     model.selectedRanks[0] = nextMin
@@ -134,9 +133,7 @@ fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {
             )
             RankSlider(
                 label = model.maximumRankLabel,
-                slider = model.maxRankSlider,
-                initialRank = maxRank,
-                currentRank = { model.selectedRanks[1] },
+                rank = maxRank,
                 onRankChanged = { rank ->
                     val nextMax = maxOf(rank, model.selectedRanks[0])
                     model.selectedRanks[1] = nextMax
@@ -192,9 +189,7 @@ private fun RankInput(label: String, input: EditText, modifier: Modifier) {
 @Composable
 private fun RankSlider(
     label: String,
-    slider: SeekBar,
-    initialRank: Int,
-    currentRank: () -> Int,
+    rank: Int,
     onRankChanged: (Int) -> Unit,
 ) {
     Text(
@@ -203,29 +198,15 @@ private fun RankSlider(
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold
     )
-    AndroidView(
-        factory = {
-            slider.apply {
-                max = FrequencyRetentionRanges.MAX_RANK - FrequencyRetentionRanges.MIN_RANK
-                progress = SettingsInputRules.rankSliderProgress(initialRank)
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                        onRankChanged(SettingsInputRules.rankFromSliderProgress(progress))
-                    }
-
-                    override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
-
-                    override fun onStopTrackingTouch(seekBar: SeekBar) {
-                        seekBar.progress = SettingsInputRules.rankSliderProgress(currentRank())
-                    }
-                })
-            }
+    Slider(
+        value = SettingsInputRules.rankSliderProgress(rank).toFloat(),
+        onValueChange = { progress ->
+            onRankChanged(SettingsInputRules.rankFromSliderProgress(progress.roundToInt()))
         },
-        update = {
-            it.progress = SettingsInputRules.rankSliderProgress(currentRank())
-        },
+        valueRange = 0f..SettingsInputRules.rankSliderProgress(FrequencyRetentionRanges.MAX_RANK).toFloat(),
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
+            .semantics { contentDescription = label }
     )
 }
