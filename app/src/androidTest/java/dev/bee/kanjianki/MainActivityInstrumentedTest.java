@@ -2388,6 +2388,10 @@ public final class MainActivityInstrumentedTest {
             assertEquals(Arrays.asList(2, 15), store.learningStepSettings().newStepsMinutes);
             assertEquals(Arrays.asList(5, 20), store.learningStepSettings().reviewStepsMinutes);
             assertEquals(45, store.studyAheadMinutes());
+            assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, store.getStringSetting(
+                    SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY,
+                    RecordsBase.NEW_CARD_SORT_FREQUENCY
+            ));
             assertEquals(30, store.getIntSetting(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 0));
             assertEquals(2, store.getIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, 0));

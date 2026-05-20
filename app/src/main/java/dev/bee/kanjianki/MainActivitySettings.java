@@ -216,7 +216,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().noteTypeSettingsPanel(current);
     }
 
-    LinearLayout newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
+    View newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
         return studySortPanel().newCardSortSettingsPanel(current);
     }
 

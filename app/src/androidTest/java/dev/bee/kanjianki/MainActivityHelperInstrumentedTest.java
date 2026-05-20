@@ -893,10 +893,8 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6));
                 assertEquals(RecordsBase.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
 
-                LinearLayout newCardSort = activity.newCardSortSettingsPanel(activity.settings());
-                performButtonClick(newCardSort, "Retrievability risk");
-                performButtonClick(newCardSort, "Save new card sort");
-                assertEquals(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK, activity.settings().newCardSortMode);
+                View newCardSort = activity.newCardSortSettingsPanel(activity.settings());
+                assertTrue(newCardSort instanceof androidx.compose.ui.platform.ComposeView);
 
                 LinearLayout retention = activity.retentionSettingsPanel();
                 SeekBar retentionSlider = seekBars(retention).get(0);
