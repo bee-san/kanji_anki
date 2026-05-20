@@ -1,12 +1,17 @@
 package dev.bee.kanjianki
 
+import android.widget.EditText
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -117,6 +122,28 @@ class MainActivityStudyFlashcardComposeTest {
         }
 
         composeRule.onNodeWithText("裂").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersTypingMeaningAnswerWithNativeInput() {
+        var inputRef: EditText? = null
+
+        composeRule.setContent {
+            val context = LocalContext.current
+            val input = remember {
+                EditText(context).apply {
+                    setText("split")
+                }
+            }
+            inputRef = input
+            TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, input = input)
+        }
+
+        composeRule.onNodeWithText(MainActivityBase.LABEL_MEANING).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertNotNull(inputRef)
+            assertEquals("split", inputRef?.text.toString())
+        }
     }
 
     @Test

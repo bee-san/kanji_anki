@@ -7,7 +7,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.StudyTaskCopy;
@@ -67,11 +66,6 @@ final class MainActivityStudyFlashcard {
         card.addView(activity.flashcardHeroPanel);
 
         if (StudyTaskCopy.isTypingMeaningTask(session)) {
-            TextView label = activity.text(activity.LABEL_MEANING, 15, activity.STUDY_HERO_MUTED, true);
-            label.setGravity(Gravity.CENTER);
-            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(-1, -2);
-            labelLp.setMargins(0, activity.dp(14), 0, activity.dp(8));
-            card.addView(label, labelLp);
             card.addView(typingAnswerField());
         }
 
@@ -123,10 +117,7 @@ final class MainActivityStudyFlashcard {
         activity.typingAnswerInput.setHint(activity.LABEL_MEANING);
         activity.typingAnswerInput.setPadding(activity.dp(16), 0, activity.dp(16), 0);
         activity.typingAnswerInput.setBackground(activity.panel(Color.WHITE, activity.STUDY_BORDER, activity.dp(18)));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, activity.dp(58));
-        lp.setMargins(0, activity.dp(4), 0, activity.dp(4));
-        activity.typingAnswerInput.setLayoutParams(lp);
-        return activity.typingAnswerInput;
+        return MainActivityStudyTypingAnswerCompose.typingMeaningAnswerView(activity, activity.typingAnswerInput);
     }
 
     Typeface fontResource(int fontRes, Typeface fallback) {
