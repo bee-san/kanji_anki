@@ -66,26 +66,6 @@ data class HomeFocusQueuePanelModel(
 
 internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
 
-internal fun homeFocusQueueContentView(
-    home: MainActivityHome,
-    rows: List<RecordsImportModels.DashboardRow>,
-    entries: List<MainActivityBase.QueueEntry>,
-    nowMillis: Long,
-    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
-): View {
-    val model = homeFocusQueuePanelModel(home, rows, entries, nowMillis, plan)
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    HomeFocusQueuePanel(model = model, onSync = home::confirmSync)
-                }
-            }
-        }
-    }
-}
-
 internal fun homeFocusQueueCardView(
     home: MainActivityHome,
     entry: MainActivityBase.QueueEntry,

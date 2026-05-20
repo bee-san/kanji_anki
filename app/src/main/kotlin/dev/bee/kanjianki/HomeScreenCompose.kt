@@ -60,17 +60,18 @@ fun HomeScreen(model: HomeScreenModel) {
             onAction = model.onFocusAction
         )
         if (model.previewCards.isEmpty()) {
-            HomeEmptyState(
-                title = requireNotNull(model.emptyTitle),
-                body = requireNotNull(model.emptyBody),
-                style = HomeEmptyStateStyle.LegacyBand
-            )
+            Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                HomeEmptyState(
+                    title = requireNotNull(model.emptyTitle),
+                    body = requireNotNull(model.emptyBody),
+                    style = HomeEmptyStateStyle.LegacyBand
+                )
+            }
         } else {
-            Column(modifier = Modifier.padding(top = 4.dp)) {
-                model.previewCards.forEachIndexed { index, card ->
-                    HomeFocusQueueCard(card)
-                    if (index < model.previewCards.lastIndex) {
-                        Spacer(modifier = Modifier.height(10.dp))
+            Column {
+                model.previewCards.forEach { card ->
+                    Box(modifier = Modifier.padding(vertical = 7.dp)) {
+                        HomeFocusQueueCard(card)
                     }
                 }
             }

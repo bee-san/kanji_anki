@@ -1023,6 +1023,28 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
+    public void renderHomeUsesSingleComposeScreenForEmptyAndActiveStates() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                activity.renderHome();
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
+                assertHasText(activity, HomeTextCopy.noKanjiQueuedTitle());
+                assertHasText(activity, HomeTextCopy.syncAnkiDroidLabel());
+
+                seedRows(activity, Collections.singletonList(row("裂", "split", "レツ", Collections.emptyList())));
+                activity.renderHome();
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
+                assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
+                assertHasText(activity, HomeTextCopy.viewAllLabel() + " >");
+                assertHasText(activity, "裂");
+                assertHasText(activity, "split");
+            });
+        }
+    }
+
+    @Test
     public void homeSyncResultRenderersCoverEmptyAndTerminalStates() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {

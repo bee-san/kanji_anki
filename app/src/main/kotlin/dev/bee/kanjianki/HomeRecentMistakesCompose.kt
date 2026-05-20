@@ -1,7 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,25 +42,8 @@ data class HomeRecentMistakesPanelModel(
     val emptyTitle: String,
     val emptyBody: String,
     val cards: List<HomeRecentMistakesCardModel>,
+    val emptyStyle: HomeEmptyStateStyle = HomeEmptyStateStyle.Panel,
 )
-
-internal fun homeRecentMistakesContentView(
-    home: MainActivityHome,
-    mistakes: List<StudyStatsStore.RecentMistake>,
-    rows: List<RecordsImportModels.DashboardRow>,
-): View {
-    val model = homeRecentMistakesPanelModel(home, mistakes, rows)
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    HomeRecentMistakesPanel(model = model)
-                }
-            }
-        }
-    }
-}
 
 internal fun homeRecentMistakesPanelModel(
     home: MainActivityHome,
@@ -102,7 +82,8 @@ fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
         if (model.cards.isEmpty()) {
             HomeEmptyState(
                 title = model.emptyTitle,
-                body = model.emptyBody
+                body = model.emptyBody,
+                style = model.emptyStyle
             )
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

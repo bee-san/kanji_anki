@@ -17,22 +17,38 @@ internal fun renderFocusQueueScreen(home: MainActivityHome) {
         home.queuedEntries(rows, items, now, plan)
     }
 
-    home.content.addView(home.homeSectionHeader(HomeTextCopy.focusQueueTitle(), HomeTextCopy.homeLabel(), home::renderHome))
-    home.content.addView(homeFocusQueueContentView(home, rows, entries, now, plan))
+    home.content.addView(
+        homeFocusQueueScreenView(
+            home,
+            HomeFocusQueueScreenModel(
+                title = HomeTextCopy.focusQueueTitle(),
+                homeLabel = HomeTextCopy.homeLabel(),
+                onHome = home::renderHome,
+                queue = homeFocusQueuePanelModel(home, rows, entries, now, plan),
+                onSync = home::confirmSync
+            )
+        )
+    )
 }
 
 internal fun renderRecentMistakesScreen(home: MainActivityHome) {
     home.base("home")
-    home.content.addView(home.homeSectionHeader(HomeTextCopy.recentMistakesTitle(), HomeTextCopy.homeLabel(), home::renderHome))
 
     val mistakes = home.store.recentMistakes(RECENT_MISTAKE_LIMIT)
-    if (mistakes.isEmpty()) {
-        home.emptyState(HomeTextCopy.noRecentMistakesTitle(), HomeTextCopy.noRecentMistakesBody())
-        return
-    }
-
     val rows = home.store.activeDashboardRows()
-    home.content.addView(homeRecentMistakesContentView(home, mistakes, rows))
+    home.content.addView(
+        homeRecentMistakesScreenView(
+            home,
+            HomeRecentMistakesScreenModel(
+                title = HomeTextCopy.recentMistakesTitle(),
+                homeLabel = HomeTextCopy.homeLabel(),
+                onHome = home::renderHome,
+                mistakes = homeRecentMistakesPanelModel(home, mistakes, rows).copy(
+                    emptyStyle = HomeEmptyStateStyle.LegacyBand
+                )
+            )
+        )
+    )
 }
 
 private const val RECENT_MISTAKE_LIMIT = 12
