@@ -121,7 +121,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     View flashcardCard;
     View flashcardHeroPanel;
     FlashcardRevealState flashcardRevealState;
-    EditText typingAnswerInput;
+    TypingAnswerState typingAnswerState;
     WritingAnalysis activeAnalysis;
     boolean checkingWriting;
     boolean flashcardAnswerRevealed;

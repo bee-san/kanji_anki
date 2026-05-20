@@ -2459,6 +2459,10 @@ public final class MainActivityInstrumentedTest {
 
     private static void enterFirstEditText(ActivityScenario<MainActivity> scenario, String text) {
         scenario.onActivity(activity -> {
+            if (activity.typingAnswerState != null) {
+                activity.typingAnswerState.setText(text);
+                return;
+            }
             EditText input = findType(activity.findViewById(android.R.id.content), EditText.class);
             assertNotNull(input);
             input.setText(text);

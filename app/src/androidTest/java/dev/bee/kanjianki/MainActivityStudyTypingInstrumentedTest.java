@@ -4,7 +4,6 @@ import android.content.Context;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
 
@@ -77,9 +76,9 @@ public final class MainActivityStudyTypingInstrumentedTest {
             });
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
             scenario.onActivity(activity -> {
-                assertNotNull(activity.typingAnswerInput);
-                assertTrue(hasComposeViewAncestor(activity.typingAnswerInput));
-                activity.typingAnswerInput.setText("split");
+                assertNotNull(activity.typingAnswerState);
+                assertTrue(activity.typingAnswerState.hasBounds());
+                activity.typingAnswerState.setText("split");
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
@@ -93,14 +92,12 @@ public final class MainActivityStudyTypingInstrumentedTest {
             });
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
             scenario.onActivity(activity -> {
-                assertNotNull(activity.typingAnswerInput);
-                assertTrue(hasComposeViewAncestor(activity.typingAnswerInput));
-                activity.typingAnswerInput.setText("wrong");
-                int[] inputLocation = new int[2];
-                activity.typingAnswerInput.getLocationOnScreen(inputLocation);
-                float inputCenterX = inputLocation[0] + activity.typingAnswerInput.getWidth() / 2f;
-                float inputCenterY = inputLocation[1] + activity.typingAnswerInput.getHeight() / 2f;
-                assertTrue(activity.isTouchInsideView(activity.typingAnswerInput, motion(MotionEvent.ACTION_DOWN, inputCenterX, inputCenterY)));
+                assertNotNull(activity.typingAnswerState);
+                assertTrue(activity.typingAnswerState.hasBounds());
+                activity.typingAnswerState.setText("wrong");
+                float inputCenterX = activity.typingAnswerState.centerXForTests();
+                float inputCenterY = activity.typingAnswerState.centerYForTests();
+                assertTrue(activity.typingAnswerState.containsWindowPoint(inputCenterX, inputCenterY));
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_DOWN, inputCenterX, inputCenterY)));
                 assertFalse(activity.flashcardTouchTracking);
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_UP, inputCenterX, inputCenterY)));
@@ -146,17 +143,6 @@ public final class MainActivityStudyTypingInstrumentedTest {
 
     private static RecordsImportModels.DashboardRow row(String kanji, String meaning, String reading) {
         return new RecordsImportModels.DashboardRow(kanji, 1000, meaning, reading, kanji, 10, "reason", "reason text", 1, 0, 0, Collections.emptyList());
-    }
-
-    private static boolean hasComposeViewAncestor(View view) {
-        ViewParent parent = view.getParent();
-        while (parent != null) {
-            if (parent instanceof androidx.compose.ui.platform.ComposeView) {
-                return true;
-            }
-            parent = parent.getParent();
-        }
-        return false;
     }
 
     private static MotionEvent motion(int action, float x, float y) {

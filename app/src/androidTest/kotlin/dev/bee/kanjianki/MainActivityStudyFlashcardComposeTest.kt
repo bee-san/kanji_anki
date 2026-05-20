@@ -1,15 +1,16 @@
 package dev.bee.kanjianki
 
-import android.widget.EditText
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -168,24 +169,22 @@ class MainActivityStudyFlashcardComposeTest {
     }
 
     @Test
-    fun rendersTypingMeaningAnswerWithNativeInput() {
-        var inputRef: EditText? = null
+    fun rendersTypingMeaningAnswerWithComposeInput() {
+        var stateRef: TypingAnswerState? = null
 
         composeRule.setContent {
-            val context = LocalContext.current
-            val input = remember {
-                EditText(context).apply {
-                    setText("split")
-                }
-            }
-            inputRef = input
-            TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, input = input)
+            val state = remember { TypingAnswerState("split") }
+            stateRef = state
+            TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, state = state)
         }
 
         composeRule.onNodeWithText(MainActivityBase.LABEL_MEANING).assertIsDisplayed()
+        composeRule.onNode(hasSetTextAction()).assertTextEquals("split")
+        composeRule.onNode(hasSetTextAction()).performTextReplacement("split open")
         composeRule.runOnIdle {
-            assertNotNull(inputRef)
-            assertEquals("split", inputRef?.text.toString())
+            assertNotNull(stateRef)
+            assertEquals("split open", stateRef?.getText().toString())
+            assertTrue(stateRef?.hasBounds() == true)
         }
     }
 

@@ -1781,18 +1781,16 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_TYPE_MEANING, row);
                 LinearLayout area = new LinearLayout(activity);
-                EditText input = new EditText(activity);
                 activity.content.addView(area, new LinearLayout.LayoutParams(300, 300));
-                activity.content.addView(input, new LinearLayout.LayoutParams(180, 90));
                 area.layout(0, 0, 300, 300);
-                input.layout(20, 20, 180, 90);
                 activity.flashcardGestureArea = area;
-                activity.typingAnswerInput = input;
+                activity.typingAnswerState = new TypingAnswerState();
+                activity.typingAnswerState.setBoundsForTests(20f, 20f, 180f, 90f);
 
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_DOWN, 40f, 40f)));
                 assertFalse(activity.flashcardTouchTracking);
 
-                activity.typingAnswerInput = null;
+                activity.typingAnswerState = null;
                 activity.flashcardTouchTracking = false;
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_UP, 40f, 40f)));
                 activity.flashcardTouchTracking = true;

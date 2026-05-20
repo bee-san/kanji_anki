@@ -1,10 +1,8 @@
 package dev.bee.kanjianki;
 
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
@@ -41,7 +39,7 @@ final class MainActivityStudyFlashcard {
         activity.checkingWriting = false;
         activity.flashcardAnswerRevealed = false;
         activity.flashcardTouchTracking = false;
-        activity.typingAnswerInput = null;
+        activity.typingAnswerState = null;
         activity.hintsUsed = 0;
         activity.setHintState(HintState.initial());
         activity.drawingPad = null;
@@ -55,7 +53,7 @@ final class MainActivityStudyFlashcard {
         activity.flashcardHeroPanel = null;
         activity.studyAnswerPanel = null;
         FlashcardHeroPanelModel heroPanel = heroKanjiPanelModel(session);
-        View typingAnswer = null;
+        TypingAnswerState typingAnswer = null;
         if (StudyTaskCopy.isTypingMeaningTask(session)) {
             typingAnswer = typingAnswerField();
         }
@@ -111,16 +109,9 @@ final class MainActivityStudyFlashcard {
         return MainActivityStudyAnswerCompose.flashcardAnswerPanelModel(activity, session);
     }
 
-    View typingAnswerField() {
-        activity.typingAnswerInput = new EditText(activity);
-        activity.typingAnswerInput.setSingleLine(true);
-        activity.typingAnswerInput.setTextSize(20);
-        activity.typingAnswerInput.setTextColor(activity.STUDY_PLUM);
-        activity.typingAnswerInput.setHintTextColor(activity.STUDY_MUTED);
-        activity.typingAnswerInput.setHint(activity.LABEL_MEANING);
-        activity.typingAnswerInput.setPadding(activity.dp(16), 0, activity.dp(16), 0);
-        activity.typingAnswerInput.setBackground(activity.panel(Color.WHITE, activity.STUDY_BORDER, activity.dp(18)));
-        return MainActivityStudyTypingAnswerCompose.typingMeaningAnswerView(activity, activity.typingAnswerInput);
+    TypingAnswerState typingAnswerField() {
+        activity.typingAnswerState = new TypingAnswerState();
+        return activity.typingAnswerState;
     }
 
     Typeface fontResource(int fontRes, Typeface fallback) {

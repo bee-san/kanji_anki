@@ -2,50 +2,88 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.LinearLayout
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 
 private val TypingAnswerMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
+private val TypingAnswerText = Color(MainActivityUiSupport.STUDY_PLUM)
+private val TypingAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
 
-internal fun typingMeaningAnswerView(
-    activity: MainActivityStudy,
-    input: EditText,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        setContent {
-            MaterialTheme {
-                TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, input = input)
-            }
-        }
+class TypingAnswerState @JvmOverloads constructor(initialText: String = "") {
+    private var value by mutableStateOf(initialText)
+
+    private var boundsInWindow: Rect? = null
+
+    internal val text: String
+        get() = value
+
+    fun setText(value: CharSequence?) {
+        this.value = value?.toString().orEmpty()
+    }
+
+    fun getText(): CharSequence {
+        return value
+    }
+
+    fun containsWindowPoint(x: Float, y: Float): Boolean {
+        val bounds = boundsInWindow ?: return false
+        return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
+    }
+
+    fun hasBounds(): Boolean {
+        return boundsInWindow != null
+    }
+
+    fun centerXForTests(): Float {
+        val bounds = requireNotNull(boundsInWindow) { "Typing answer bounds are not available." }
+        return (bounds.left + bounds.right) / 2f
+    }
+
+    fun centerYForTests(): Float {
+        val bounds = requireNotNull(boundsInWindow) { "Typing answer bounds are not available." }
+        return (bounds.top + bounds.bottom) / 2f
+    }
+
+    fun setBoundsForTests(left: Float, top: Float, right: Float, bottom: Float) {
+        boundsInWindow = Rect(left, top, right, bottom)
+    }
+
+    internal fun updateBounds(bounds: Rect) {
+        boundsInWindow = bounds
     }
 }
 
 @Composable
-internal fun TypingMeaningAnswer(label: String, input: EditText) {
+internal fun TypingMeaningAnswer(label: String, state: TypingAnswerState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -64,11 +102,50 @@ internal fun TypingMeaningAnswer(label: String, input: EditText) {
             textAlign = TextAlign.Center,
             style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))
         )
-        AndroidView(
-            factory = { input },
+        BasicTextField(
+            value = state.text,
+            onValueChange = state::setText,
+            singleLine = true,
+            textStyle = TextStyle(
+                color = TypingAnswerText,
+                fontSize = 20.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = true)
+            ),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(58.dp)
+                .onGloballyPositioned { coordinates ->
+                    state.updateBounds(coordinates.boundsInWindow())
+                },
+            decorationBox = { innerTextField ->
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, TypingAnswerBorder)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (state.text.isEmpty()) {
+                            Text(
+                                text = label,
+                                color = TypingAnswerMuted,
+                                fontSize = 20.sp,
+                                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = true))
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            }
         )
     }
 }

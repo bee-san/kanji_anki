@@ -47,7 +47,7 @@ final class MainActivityStudyFlashcardInteraction {
                 && TypingAnswerMatcher.matches(
                 activity.currentDictionaryLookup(),
                 activity.activeSession.item.kanji,
-                activity.typingAnswerInput == null ? "" : activity.typingAnswerInput.getText().toString(),
+                activity.typingAnswerState == null ? "" : activity.typingAnswerState.getText().toString(),
                 StudyTextCopy.collectionMeaningForSession(activity.activeSession))) {
             Toast.makeText(activity, StudyTextCopy.typingAnswerAcceptedToast(), Toast.LENGTH_SHORT).show();
             activity.submitReview(activity.RATING_GOOD, false);
@@ -91,8 +91,8 @@ final class MainActivityStudyFlashcardInteraction {
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 if (StudyTaskCopy.isTypingMeaningTask(activity.activeSession)
-                        && activity.typingAnswerInput != null
-                        && isTouchInsideView(activity.typingAnswerInput, event)) {
+                        && activity.typingAnswerState != null
+                        && activity.typingAnswerState.containsWindowPoint(event.getX(), event.getY())) {
                     activity.flashcardTouchTracking = false;
                     return false;
                 }

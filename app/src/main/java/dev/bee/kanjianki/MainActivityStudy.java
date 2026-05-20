@@ -305,7 +305,7 @@ abstract class MainActivityStudy extends MainActivityStats {
         studyProgress.abandonActiveStudyTask();
     }
 
-    View typingAnswerField() {
+    TypingAnswerState typingAnswerField() {
         return flashcardUi.typingAnswerField();
     }
 

@@ -105,7 +105,7 @@ final class MainActivityStudyWritingSession {
         home.flashcardGestureArea = null;
         home.flashcardAnswerRevealed = false;
         home.flashcardTouchTracking = false;
-        home.typingAnswerInput = null;
+        home.typingAnswerState = null;
         home.hintsUsed = 0;
         home.setHintState(home.initialHintState(session));
     }

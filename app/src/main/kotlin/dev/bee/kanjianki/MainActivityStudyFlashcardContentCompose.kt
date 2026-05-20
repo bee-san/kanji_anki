@@ -26,7 +26,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 
 private val HeroPanelFill = Color(MainActivityUiSupport.STUDY_HERO_PANEL)
 private val HeroPanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
@@ -77,7 +75,7 @@ class FlashcardRevealState(initialRevealed: Boolean = false) {
 data class FlashcardCardModel(
     val promptHeader: FlashcardPromptHeaderModel,
     val heroPanel: FlashcardHeroPanelModel,
-    val typingAnswer: View?,
+    val typingAnswer: TypingAnswerState?,
     val answerPanel: StudyAnswerPanelModel,
     val revealState: FlashcardRevealState,
 )
@@ -127,31 +125,14 @@ fun FlashcardCard(model: FlashcardCardModel) {
             if (!model.revealState.isRevealed) {
                 FlashcardHeroPanel(model.heroPanel, Modifier.padding(top = 16.dp))
             }
-            model.typingAnswer?.let { typingAnswer ->
-                FlashcardEmbeddedView(typingAnswer)
+            model.typingAnswer?.let { typingAnswerState ->
+                TypingMeaningAnswer(label = MainActivityBase.LABEL_MEANING, state = typingAnswerState)
             }
             if (model.revealState.isRevealed) {
                 StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
             }
         }
     }
-}
-
-@Composable
-private fun FlashcardEmbeddedView(view: View, modifier: Modifier = Modifier) {
-    key(view) {
-        AndroidView(
-            modifier = modifier.fillMaxWidth(),
-            factory = {
-                detachFromParent(view)
-                view
-            }
-        )
-    }
-}
-
-private fun detachFromParent(view: View) {
-    (view.parent as? ViewGroup)?.removeView(view)
 }
 
 @Composable

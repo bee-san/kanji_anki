@@ -163,7 +163,7 @@ final class MainActivityStudyChoiceSessions {
             home.flashcardTouchTracking = false;
         }
         home.flashcardGestureArea = null;
-        home.typingAnswerInput = null;
+        home.typingAnswerState = null;
         home.drawingPad = null;
         home.hintsUsed = 0;
         home.setHintState(HintState.initial());
