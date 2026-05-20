@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -116,7 +118,7 @@ class SyncProgressPanel(context: Context) : FrameLayout(context) {
 }
 
 @Composable
-fun SyncProgressTitle(title: String) {
+internal fun SyncProgressTitle(title: String) {
     Text(
         text = title,
         modifier = Modifier
@@ -124,7 +126,11 @@ fun SyncProgressTitle(title: String) {
             .padding(bottom = 8.dp),
         color = Color(INK),
         fontSize = 34.sp,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        lineHeight = 36.sp,
+        style = TextStyle(
+            platformStyle = PlatformTextStyle(includeFontPadding = true)
+        )
     )
 }
 

@@ -1,6 +1,5 @@
 package dev.bee.kanjianki;
 
-import android.graphics.Typeface;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -13,6 +12,9 @@ import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 
+import java.util.ArrayList;
+import java.util.List;
+
 final class MainActivityStudyWritingSession {
     private final MainActivityStudy home;
 
@@ -24,23 +26,7 @@ final class MainActivityStudyWritingSession {
         resetWritingSession(session);
 
         LinearLayout card = home.softStudyCard();
-        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
-        card.addView(home.text("Draw this kanji", 30, home.STUDY_PLUM, true));
-        card.addView(home.text(StudyTaskCopy.labelForTask(session.taskType), 16, home.STUDY_PINK_DARK, true));
-        home.addStudyReasonLine(card, session);
-        if (session.row != null) {
-            if (StudyTaskCopy.isRecallTask(session)) {
-                card.addView(home.text("Prompt: " + StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session), 17, home.STUDY_PLUM, true));
-                if (!session.row.reading.isEmpty()) {
-                    card.addView(home.text("Reading: " + session.row.reading, 15, home.STUDY_MUTED, false));
-                }
-                card.addView(home.text("Write the kanji from this prompt. The answer stays hidden until you check.", 15, home.STUDY_MUTED, false));
-            } else {
-                card.addView(home.text("Learn it from the reference, trace it, then check.", 15, home.STUDY_MUTED, false));
-            }
-        } else {
-            card.addView(home.text(session.prompt, 17, home.STUDY_MUTED, false));
-        }
+        card.addView(MainActivityStudyWritingPromptCompose.writingPromptHeaderView(home, writingPromptHeaderModel(session)));
         home.studyAnswerPanel = home.learningPanel(session);
         card.addView(home.studyAnswerPanel);
 
@@ -69,6 +55,44 @@ final class MainActivityStudyWritingSession {
         home.buildStudyActionBar();
         home.updateResultActions();
         home.refreshWritingModelStatus();
+    }
+
+    private WritingPromptHeaderModel writingPromptHeaderModel(RecordsSchedulerModels.StudySession session) {
+        return new WritingPromptHeaderModel(
+                MainActivityBase.LABEL_PRACTICE,
+                "Draw this kanji",
+                StudyTaskCopy.labelForTask(session.taskType),
+                home.studyReasonLine(session),
+                writingPromptLines(session)
+        );
+    }
+
+    private List<WritingPromptLineModel> writingPromptLines(RecordsSchedulerModels.StudySession session) {
+        List<WritingPromptLineModel> lines = new ArrayList<>();
+        if (session.row == null) {
+            lines.add(new WritingPromptLineModel(session.prompt, 17, home.STUDY_MUTED, false));
+            return lines;
+        }
+        if (!StudyTaskCopy.isRecallTask(session)) {
+            lines.add(new WritingPromptLineModel("Learn it from the reference, trace it, then check.", 15, home.STUDY_MUTED, false));
+            return lines;
+        }
+        lines.add(new WritingPromptLineModel(
+                "Prompt: " + StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session),
+                17,
+                home.STUDY_PLUM,
+                true
+        ));
+        if (!session.row.reading.isEmpty()) {
+            lines.add(new WritingPromptLineModel("Reading: " + session.row.reading, 15, home.STUDY_MUTED, false));
+        }
+        lines.add(new WritingPromptLineModel(
+                "Write the kanji from this prompt. The answer stays hidden until you check.",
+                15,
+                home.STUDY_MUTED,
+                false
+        ));
+        return lines;
     }
 
     void resetWritingSession(RecordsSchedulerModels.StudySession session) {
