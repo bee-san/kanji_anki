@@ -3,7 +3,9 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -41,6 +43,8 @@ class StudyTopBarComposeTest {
         composeRule.onNodeWithText("2 / 5").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Close study").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
+            .assertRangeInfoEquals(ProgressBarRangeInfo(0.4f, 0f..1f))
 
         composeRule.onNodeWithContentDescription("Close study").performClick()
         composeRule.onNodeWithContentDescription("Settings").performClick()

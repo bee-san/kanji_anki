@@ -6,6 +6,7 @@ import android.content.Context
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,12 +26,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +41,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.roundToInt
 
 private val StudyHeroPlum = Color(0xFF7A245D)
@@ -47,6 +49,10 @@ private val StudyHeroPinkDark = Color(0xFFE62A6D)
 private val StudyHeroTrack = Color(0xFFFBDDEC)
 private val StudyTopBarButtonFill = Color(0xFFFFF2F8)
 private val StudyTopBarButtonShape = RoundedCornerShape(28.dp)
+object StudyTopBarDescriptions {
+    const val PROGRESS = "Study progress"
+}
+
 private val StudyTopBarProgressTextStyle = TextStyle(
     fontSize = 18.sp,
     fontWeight = FontWeight.Bold,
@@ -162,15 +168,27 @@ private fun StudyTopBarIconButton(
 
 @Composable
 private fun StudyProgressPill(fraction: Float) {
-    AndroidView(
+    val clampedFraction = fraction.coerceIn(0f, 1f)
+    Canvas(
         modifier = Modifier
             .fillMaxWidth()
-            .height(7.dp),
-        factory = { viewContext ->
-            StudyProgressPillView(viewContext, StudyHeroTrack.toArgb(), StudyHeroPink.toArgb())
-        },
-        update = { view ->
-            view.setFraction(fraction)
+            .height(7.dp)
+            .semantics {
+                contentDescription = StudyTopBarDescriptions.PROGRESS
+                progressBarRangeInfo = ProgressBarRangeInfo(clampedFraction, 0f..1f)
+            }
+    ) {
+        val radius = size.height / 2f
+        drawRoundRect(
+            color = StudyHeroTrack,
+            cornerRadius = CornerRadius(radius, radius)
+        )
+        if (clampedFraction > 0f) {
+            drawRoundRect(
+                color = StudyHeroPink,
+                size = size.copy(width = size.width * clampedFraction),
+                cornerRadius = CornerRadius(radius, radius)
+            )
         }
-    )
+    }
 }
