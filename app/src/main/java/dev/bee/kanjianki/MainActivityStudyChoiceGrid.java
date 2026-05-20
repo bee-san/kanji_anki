@@ -106,7 +106,14 @@ final class MainActivityStudyChoiceGrid {
     }
 
     View similarKanjiGrid(List<String> choices, RecordsImportModels.SimilarKanjiChoiceCard card) {
-        return kanjiChoiceGrid(choices, (glyph, grid) -> home.submitSimilarKanjiChoice(card, glyph), true);
+        return MainActivityStudyChoiceCompose.similarKanjiGridView(
+                home,
+                new SimilarChoiceGridModel(
+                        choices,
+                        true,
+                        glyph -> home.submitSimilarKanjiChoice(card, glyph)
+                )
+        );
     }
 
     View similarKanjiGrid(List<String> choices, String correctKanji) {

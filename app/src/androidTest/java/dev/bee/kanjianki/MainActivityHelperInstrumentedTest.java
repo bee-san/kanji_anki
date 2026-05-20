@@ -1422,7 +1422,7 @@ public final class MainActivityHelperInstrumentedTest {
             long now
     ) {
         View grid = activity.similarKanjiGrid(Arrays.asList("裂", "列", "烈"), "裂");
-        assertEquals(2, ((ViewGroup) grid).getChildCount());
+        assertTrue(grid instanceof androidx.compose.ui.platform.ComposeView);
         RecordsStudyModels.StudyItem targeted = new BridgeScheduler().newTargetedStudyItem("謎", 1234L, activity.studyLadderSettings());
         assertEquals("謎", targeted.kanji);
         assertEquals("new", targeted.state);
