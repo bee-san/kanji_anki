@@ -1,16 +1,16 @@
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.widget.CheckBox
-import android.widget.EditText
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.FrequencyRetentionRanges
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Assert.assertEquals
@@ -25,9 +25,14 @@ class SettingsRetentionComposeTest {
     @Test
     fun rendersRetentionControlsAndWiresActions() {
         var saved = false
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        var savedRetention = 0
+        var savedRankRetention = false
+        var savedRanges = ""
         val selected = intArrayOf(90)
-        val ranges = EditText(context).apply { setText("1-500=95%") }
+        val state = SettingsRetentionState(
+            frequencyRetentionEnabled = false,
+            frequencyRetentionRanges = "1-500=95%"
+        )
 
         composeRule.setContent {
             SettingsRetentionPanel(
@@ -36,17 +41,18 @@ class SettingsRetentionComposeTest {
                     body = SettingsTextCopy.fsrsRetentionBody(),
                     selectedRetentionPercent = selected,
                     presetValues = intArrayOf(85, 90, 95),
-                    rankRetentionEnabled = CheckBox(context).apply {
-                        text = SettingsTextCopy.useJitenRankRetentionRangesLabel()
-                    },
+                    state = state,
+                    rankRetentionLabel = SettingsTextCopy.useJitenRankRetentionRangesLabel(),
                     rankRangesBody = SettingsTextCopy.jitenRankRetentionRangesBody(),
-                    rankRangesInput = ranges,
+                    exampleRangesText = FrequencyRetentionRanges.exampleText(),
                     exampleRangesLabel = SettingsTextCopy.useExampleRangesLabel(),
                     saveLabel = SettingsTextCopy.saveRetentionLabel(),
-                    onUseExampleRanges = SettingsRetentionAction {
-                        ranges.setText(FrequencyRetentionRanges.exampleText())
-                    },
-                    onSave = SettingsRetentionAction { saved = true }
+                    onSave = SettingsRetentionSaveAction { retentionPercent, rankRetentionEnabled, rankRanges ->
+                        savedRetention = retentionPercent
+                        savedRankRetention = rankRetentionEnabled
+                        savedRanges = rankRanges
+                        saved = true
+                    }
                 )
             )
         }
@@ -67,14 +73,23 @@ class SettingsRetentionComposeTest {
             assertEquals(95, selected[0])
         }
 
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX).assertIsOff()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX).performClick()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX).assertIsOn()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT)
+            .assertTextEquals("1-500=95%")
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT)
+            .performTextReplacement("1-200=96%")
         composeRule.onNodeWithText(SettingsTextCopy.useExampleRangesLabel()).performClick()
-        composeRule.runOnIdle {
-            assertEquals(FrequencyRetentionRanges.exampleText(), ranges.text.toString())
-        }
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT)
+            .assertTextEquals(FrequencyRetentionRanges.exampleText())
         composeRule.onNodeWithText(SettingsTextCopy.saveRetentionLabel()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(saved)
+            assertEquals(95, savedRetention)
+            assertTrue(savedRankRetention)
+            assertEquals(FrequencyRetentionRanges.exampleText(), savedRanges)
         }
     }
 }

@@ -1,9 +1,6 @@
 package dev.bee.kanjianki;
 
-import android.view.Gravity;
 import android.view.View;
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
@@ -22,12 +19,10 @@ final class MainActivitySettingsRetentionPanel {
     View retentionSettingsPanel() {
         RecordsSchedulerModels.SchedulerParameters current = activity.store.schedulerParameters();
         final int[] selected = new int[]{SettingsInputRules.retentionPercent(current.targetRetention)};
-        CheckBox rankRetentionEnabled = activity.importFilterCheckBox(
-                SettingsTextCopy.useJitenRankRetentionRangesLabel(),
-                current.frequencyRetentionEnabled
+        SettingsRetentionState state = new SettingsRetentionState(
+                current.frequencyRetentionEnabled,
+                rankRetentionRangesText(current.frequencyRetentionRanges)
         );
-        EditText rankRanges = rankRetentionRangesInput(current.frequencyRetentionRanges);
-        rankRanges.setContentDescription(SettingsTextCopy.useJitenRankRetentionRangesLabel());
         return MainActivitySettingsRetentionCompose.retentionSettingsPanelView(
                 activity,
                 new SettingsRetentionPanelModel(
@@ -35,34 +30,29 @@ final class MainActivitySettingsRetentionPanel {
                         SettingsTextCopy.fsrsRetentionBody(),
                         selected,
                         new int[]{85, 90, 95},
-                        rankRetentionEnabled,
+                        state,
+                        SettingsTextCopy.useJitenRankRetentionRangesLabel(),
                         SettingsTextCopy.jitenRankRetentionRangesBody(),
-                        rankRanges,
+                        FrequencyRetentionRanges.exampleText(),
                         SettingsTextCopy.useExampleRangesLabel(),
                         SettingsTextCopy.saveRetentionLabel(),
-                        () -> rankRanges.setText(FrequencyRetentionRanges.exampleText()),
-                        () -> saveRetention(selected, rankRetentionEnabled, rankRanges)
+                        this::saveRetention
                 )
         );
     }
 
-    EditText rankRetentionRangesInput(String value) {
-        EditText input = new EditText(activity);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        input.setText(value == null || value.trim().isEmpty() ? FrequencyRetentionRanges.exampleText() : value.trim());
-        input.setTextSize(16);
-        input.setSingleLine(false);
-        input.setMinLines(3);
-        input.setGravity(Gravity.TOP | Gravity.START);
-        input.setSelectAllOnFocus(false);
-        return input;
+    private static String rankRetentionRangesText(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return FrequencyRetentionRanges.exampleText();
+        }
+        return value.trim();
     }
 
-    private void saveRetention(int[] selected, CheckBox rankRetentionEnabled, EditText rankRanges) {
+    private void saveRetention(int retentionPercent, boolean rankRetentionEnabled, String rankRanges) {
         RetentionSettingsPolicy.SaveResult request = RetentionSettingsPolicy.saveRequest(
-                selected[0],
-                rankRetentionEnabled.isChecked(),
-                rankRanges.getText().toString(),
+                retentionPercent,
+                rankRetentionEnabled,
+                rankRanges,
                 activity.store.schedulerParameters()
         );
         if (!request.valid) {

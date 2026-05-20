@@ -317,28 +317,15 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setRankRetentionEnabled(ActivityScenario<MainActivity> scenario, boolean enabled) {
-        scenario.onActivity(activity -> {
-            View root = activity.findViewById(android.R.id.content);
-            CheckBox checkBox = findCheckBox(root, SettingsTextCopy.useJitenRankRetentionRangesLabel());
-            assertNotNull(checkBox);
-            checkBox.setChecked(enabled);
-        });
+        setComposeCheckBox(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX, enabled);
     }
 
     private static void setRetentionRanges(ActivityScenario<MainActivity> scenario, String ranges) {
-        scenario.onActivity(activity -> editTextWithContentDescription(
-                activity,
-                SettingsTextCopy.useJitenRankRetentionRangesLabel()
-        ).setText(ranges));
+        setComposeTextField(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT, ranges);
     }
 
     private static void assertRetentionRanges(ActivityScenario<MainActivity> scenario, String ranges) {
-        scenario.onActivity(activity -> assertEquals(
-                ranges,
-                editTextWithContentDescription(activity, SettingsTextCopy.useJitenRankRetentionRangesLabel())
-                        .getText()
-                        .toString()
-        ));
+        assertComposeTextFieldValue(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT, ranges);
     }
 
     private static void assertFrequencyRetentionDisabled(ActivityScenario<MainActivity> scenario) {
@@ -3230,6 +3217,10 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void setImportFilterChecked(String description, boolean checked) {
+        setComposeCheckBox(description, checked);
+    }
+
+    private static void setComposeCheckBox(String description, boolean checked) {
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         UiObject2 checkbox = composeCheckBox(device, description);
         if (checkbox.isChecked() != checked) {

@@ -3,8 +3,6 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.CheckBox
-import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,29 +13,37 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.SettingsTextCopy
 import kotlin.math.roundToInt
 
@@ -53,10 +59,20 @@ private val RetentionButtonShape = RoundedCornerShape(12.dp)
 
 object SettingsRetentionControlDescriptions {
     const val RETENTION_SLIDER = "FSRS retention slider"
+    const val RANK_RETENTION_CHECKBOX = "Use Jiten-rank retention ranges checkbox"
+    const val RANK_RANGES_INPUT = "Jiten-rank retention ranges input"
 }
 
-fun interface SettingsRetentionAction {
-    fun run()
+class SettingsRetentionState(
+    frequencyRetentionEnabled: Boolean,
+    frequencyRetentionRanges: String?,
+) {
+    var frequencyRetentionEnabled by mutableStateOf(frequencyRetentionEnabled)
+    var frequencyRetentionRanges by mutableStateOf(frequencyRetentionRanges.orEmpty())
+}
+
+fun interface SettingsRetentionSaveAction {
+    fun save(retentionPercent: Int, frequencyRetentionEnabled: Boolean, frequencyRetentionRanges: String)
 }
 
 data class SettingsRetentionPanelModel(
@@ -64,13 +80,13 @@ data class SettingsRetentionPanelModel(
     val body: String,
     val selectedRetentionPercent: IntArray,
     val presetValues: IntArray,
-    val rankRetentionEnabled: CheckBox,
+    val state: SettingsRetentionState,
+    val rankRetentionLabel: String,
     val rankRangesBody: String,
-    val rankRangesInput: EditText,
+    val exampleRangesText: String,
     val exampleRangesLabel: String,
     val saveLabel: String,
-    val onUseExampleRanges: SettingsRetentionAction,
-    val onSave: SettingsRetentionAction,
+    val onSave: SettingsRetentionSaveAction,
 )
 
 internal fun retentionSettingsPanelView(
@@ -89,7 +105,9 @@ internal fun retentionSettingsPanelView(
 
 @Composable
 fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
-    var retentionPercent by remember { mutableIntStateOf(model.selectedRetentionPercent[0]) }
+    var retentionPercent by rememberSaveable { mutableIntStateOf(model.selectedRetentionPercent[0]) }
+    var frequencyRetentionEnabled by rememberSaveable { mutableStateOf(model.state.frequencyRetentionEnabled) }
+    var frequencyRetentionRanges by rememberSaveable { mutableStateOf(model.state.frequencyRetentionRanges) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RetentionPanelShape,
@@ -137,28 +155,48 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                     }
                 }
             }
-            AndroidView(
-                factory = { model.rankRetentionEnabled },
-                modifier = Modifier.fillMaxWidth()
+            RetentionCheckbox(
+                label = model.rankRetentionLabel,
+                checked = frequencyRetentionEnabled,
+                onCheckedChange = {
+                    model.state.frequencyRetentionEnabled = it
+                    frequencyRetentionEnabled = it
+                }
             )
             Text(
                 text = model.rankRangesBody,
                 color = RetentionMuted,
                 fontSize = 15.sp
             )
-            AndroidView(
-                factory = { model.rankRangesInput },
+            OutlinedTextField(
+                value = frequencyRetentionRanges,
+                onValueChange = {
+                    model.state.frequencyRetentionRanges = it
+                    frequencyRetentionRanges = it
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(132.dp)
+                    .semantics { contentDescription = SettingsRetentionControlDescriptions.RANK_RANGES_INPUT },
+                minLines = 3,
+                maxLines = 5,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = RetentionInk,
+                    fontSize = 16.sp
+                )
             )
             RetentionOutlinedButton(
                 label = model.exampleRangesLabel,
                 modifier = Modifier.fillMaxWidth(),
-                onClick = { model.onUseExampleRanges.run() }
+                onClick = {
+                    model.state.frequencyRetentionRanges = model.exampleRangesText
+                    frequencyRetentionRanges = model.exampleRangesText
+                }
             )
             Button(
-                onClick = { model.onSave.run() },
+                onClick = {
+                    model.onSave.save(retentionPercent, frequencyRetentionEnabled, frequencyRetentionRanges)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp),
@@ -177,6 +215,34 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun RetentionCheckbox(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .toggleable(
+                value = checked,
+                role = Role.Checkbox,
+                onValueChange = onCheckedChange
+            )
+            .semantics { contentDescription = SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+            colors = CheckboxDefaults.colors(checkedColor = RetentionPinkDark)
+        )
+        Text(
+            text = label,
+            color = RetentionInk,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
