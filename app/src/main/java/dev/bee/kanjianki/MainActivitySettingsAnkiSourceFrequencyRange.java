@@ -1,11 +1,8 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsSyncModels;
@@ -29,43 +26,32 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
         this.actions = new MainActivitySettingsAnkiSourceFrequencyRangeActions(activity);
     }
 
-    LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
-        LinearLayout box = activity.settingsPanelBox();
+    View frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
-        box.addView(activity.text(SettingsTextCopy.frequencyRangeTitle(), 23, activity.INK, true));
-        TextView status = activity.text(SettingsTextCopy.frequencyRangeStatusText(selected[0], selected[1]), 17, activity.TEAL, true);
-        box.addView(status);
-        box.addView(activity.text(SettingsTextCopy.frequencyRangeBody(), 15, activity.MUTED, false));
-
-        LinearLayout inputRow = new LinearLayout(activity);
-        inputRow.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout minColumn = new LinearLayout(activity);
-        minColumn.setOrientation(LinearLayout.VERTICAL);
-        minColumn.addView(activity.text(SettingsTextCopy.minRankLabel(), 15, activity.INK, true));
         EditText minInput = inputs.rankInput(selected[0]);
-        minColumn.addView(minInput, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-        inputRow.addView(minColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout maxColumn = new LinearLayout(activity);
-        maxColumn.setOrientation(LinearLayout.VERTICAL);
-        maxColumn.setPadding(activity.dp(10), 0, 0, 0);
-        maxColumn.addView(activity.text(SettingsTextCopy.maxRankLabel(), 15, activity.INK, true));
         EditText maxInput = inputs.rankInput(selected[1]);
-        maxColumn.addView(maxInput, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-        inputRow.addView(maxColumn, new LinearLayout.LayoutParams(0, -2, 1));
-        box.addView(inputRow);
-
-        box.addView(activity.text(SettingsTextCopy.minimumRankLabel(), 14, activity.MUTED, true));
+        minInput.setContentDescription(SettingsTextCopy.minRankLabel());
+        maxInput.setContentDescription(SettingsTextCopy.maxRankLabel());
         SeekBar minSlider = new SeekBar(activity);
-        box.addView(minSlider, new LinearLayout.LayoutParams(-1, activity.dp(56)));
-        box.addView(activity.text(SettingsTextCopy.maximumRankLabel(), 14, activity.MUTED, true));
         SeekBar maxSlider = new SeekBar(activity);
-        box.addView(maxSlider, new LinearLayout.LayoutParams(-1, activity.dp(56)));
-        inputs.bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
-
-        Button save = activity.primaryButton(SettingsTextCopy.saveFrequencyRangeLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(new RunnableClickListener(() -> saveFrequencyRange(minInput, maxInput)));
-        box.addView(save);
-        return box;
+        return MainActivitySettingsAnkiSourceFrequencyRangeCompose.frequencyRangeSettingsPanelView(
+                activity,
+                new SettingsFrequencyRangePanelModel(
+                        SettingsTextCopy.frequencyRangeTitle(),
+                        SettingsTextCopy.frequencyRangeBody(),
+                        selected,
+                        SettingsTextCopy.minRankLabel(),
+                        minInput,
+                        SettingsTextCopy.maxRankLabel(),
+                        maxInput,
+                        SettingsTextCopy.minimumRankLabel(),
+                        minSlider,
+                        SettingsTextCopy.maximumRankLabel(),
+                        maxSlider,
+                        SettingsTextCopy.saveFrequencyRangeLabel(),
+                        () -> saveFrequencyRange(minInput, maxInput)
+                )
+        );
     }
 
     private void saveFrequencyRange(EditText minInput, EditText maxInput) {
@@ -84,18 +70,5 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
         }
         SettingsInputRules.RankRange rankRange = SettingsInputRules.normalizedRankRange(minRank, maxRank);
         actions.saveFrequencyRange(rankRange);
-    }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
     }
 }

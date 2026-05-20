@@ -275,6 +275,7 @@ public final class MainActivityInstrumentedTest {
             setLadderThresholdText(scenario);
             clickText(scenario, "Save ladder thresholds");
             configureManualWorkload(scenario);
+            verifyWorkloadAutoActions(scenario);
             clickText(scenario, "95%");
             verifyRetentionValidationAndRanges(scenario);
             clickText(scenario, "Save retention");
@@ -477,6 +478,25 @@ public final class MainActivityInstrumentedTest {
         clickText(scenario, "Save workload");
     }
 
+    private static void verifyWorkloadAutoActions(ActivityScenario<MainActivity> scenario) {
+        clickText(scenario, SettingsTextCopy.automaticParetoLabel());
+        waitForText(scenario, SettingsTextCopy.saveMaximumLabel());
+        scenario.onActivity(activity -> {
+            assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode());
+            List<SeekBar> sliders = findTypes(activity.findViewById(android.R.id.content), SeekBar.class);
+            assertTrue(sliders.size() >= 1);
+            sliders.get(0).setProgress(4);
+        });
+        clickText(scenario, SettingsTextCopy.saveMaximumLabel());
+        scenario.onActivity(activity -> assertEquals(
+                AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 4),
+                activity.store.adaptiveLoadMaxItems()
+        ));
+        clickText(scenario, SettingsTextCopy.manualWorkloadLabel());
+        waitForText(scenario, SettingsTextCopy.saveWorkloadLabel());
+        scenario.onActivity(activity -> assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode()));
+    }
+
     private static void enableMorningReminder(ActivityScenario<MainActivity> scenario) {
         clickText(scenario, "Automation");
         scenario.onActivity(activity -> assertHasTexts(activity, "Daily reminder", "Daily Anki sync"));
@@ -572,19 +592,19 @@ public final class MainActivityInstrumentedTest {
 
             scenario.onActivity(activity -> {
                 noteTypeInput(activity).setText("Custom Mining");
-                editTextAfterLabel(activity, "Expression field").setText("");
+                noteTypeFieldInput(activity, SettingsTextCopy.expressionFieldLabel()).setText("");
             });
             clickText(scenario, "Save note type");
             assertNoteTypeSettings(defaults);
 
             scenario.onActivity(activity -> {
                 noteTypeInput(activity).setText("Custom Mining");
-                editTextAfterLabel(activity, "Expression field").setText("Word");
-                editTextAfterLabel(activity, "Reading field").setText("WordReading");
-                editTextAfterLabel(activity, "Meaning field").setText("Gloss");
-                editTextAfterLabel(activity, "Sentence field").setText("Context");
-                editTextAfterLabel(activity, "Frequency field").setText("Freq");
-                editTextAfterLabel(activity, "Frequency sort field").setText("SortKey");
+                noteTypeFieldInput(activity, SettingsTextCopy.expressionFieldLabel()).setText("Word");
+                noteTypeFieldInput(activity, SettingsTextCopy.readingFieldLabel()).setText("WordReading");
+                noteTypeFieldInput(activity, SettingsTextCopy.meaningFieldLabel()).setText("Gloss");
+                noteTypeFieldInput(activity, SettingsTextCopy.sentenceFieldLabel()).setText("Context");
+                noteTypeFieldInput(activity, SettingsTextCopy.frequencyFieldLabel()).setText("Freq");
+                noteTypeFieldInput(activity, SettingsTextCopy.frequencySortFieldLabel()).setText("SortKey");
             });
             clickText(scenario, "Save note type");
             waitForText(scenario, "Using Custom Mining");
@@ -2802,6 +2822,10 @@ public final class MainActivityInstrumentedTest {
 
     private static EditText noteTypeInput(MainActivity activity) {
         return editTextWithContentDescription(activity, SettingsTextCopy.noteTypeStatusLabel());
+    }
+
+    private static EditText noteTypeFieldInput(MainActivity activity, String fieldLabel) {
+        return editTextWithContentDescription(activity, fieldLabel);
     }
 
     private void assertNoteTypeSettings(RecordsSyncModels.Settings expected) {

@@ -195,7 +195,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return panelFactory().importFilterCheckBox(label, checked);
     }
 
-    LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
+    View frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         return ankiSource().frequencyRangeSettingsPanel(current);
     }
 

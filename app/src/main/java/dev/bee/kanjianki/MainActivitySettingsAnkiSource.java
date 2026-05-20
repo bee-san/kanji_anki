@@ -28,7 +28,7 @@ final class MainActivitySettingsAnkiSource {
         return importFilters.importFilterSettingsPanel(current);
     }
 
-    LinearLayout frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
+    View frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         return frequencyRange.frequencyRangeSettingsPanel(current);
     }
 }

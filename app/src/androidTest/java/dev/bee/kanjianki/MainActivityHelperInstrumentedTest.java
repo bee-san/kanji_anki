@@ -31,7 +31,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -591,25 +590,11 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyRankAndMaxItemControls(MainActivity activity) {
-        MainActivitySettingsAnkiSourceInputs inputs = new MainActivitySettingsAnkiSourceInputs(activity);
-        int[] selectedRanks = {10, 100};
-        TextView rankStatus = new TextView(activity);
-        EditText minRank = new EditText(activity);
-        EditText maxRank = new EditText(activity);
-        SeekBar minSlider = new SeekBar(activity);
-        SeekBar maxSlider = new SeekBar(activity);
-        inputs.bindRankSliders(selectedRanks, rankStatus, minRank, maxRank, minSlider, maxSlider);
-        touchSeekBar(minSlider);
-        touchSeekBar(maxSlider);
-        minSlider.setProgress(SettingsInputRules.rankSliderProgress(50));
-        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(80));
-        assertEquals(50, selectedRanks[0]);
-        assertEquals(80, selectedRanks[1]);
-        minSlider.setProgress(SettingsInputRules.rankSliderProgress(90));
-        assertEquals(80, selectedRanks[0]);
-        maxSlider.setProgress(SettingsInputRules.rankSliderProgress(70));
-        assertEquals(80, selectedRanks[1]);
-        assertTrue(rankStatus.getText().toString().contains("Jiten ranks"));
+        assertEquals(49, SettingsInputRules.rankSliderProgress(50));
+        assertEquals(50, SettingsInputRules.rankFromSliderProgress(49));
+        SettingsInputRules.RankRange normalized = SettingsInputRules.normalizedRankRange(300, 20);
+        assertEquals(20, normalized.minRank());
+        assertEquals(300, normalized.maxRank());
     }
 
     @Test
@@ -726,7 +711,7 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     private static void verifyFrequencyRangePanel(MainActivity activity, RecordsSyncModels.Settings saved) {
-        LinearLayout frequencyPanel = activity.frequencyRangeSettingsPanel(activity.settings());
+        View frequencyPanel = activity.frequencyRangeSettingsPanel(activity.settings());
         List<EditText> rankInputs = editTexts(frequencyPanel);
         assertEquals(2, rankInputs.size());
         rankInputs.get(0).setText("many");
@@ -2982,12 +2967,6 @@ public final class MainActivityHelperInstrumentedTest {
         return out;
     }
 
-    private static List<SeekBar> seekBars(View root) {
-        List<SeekBar> out = new ArrayList<>();
-        collectSeekBars(root, out);
-        return out;
-    }
-
     private static void collectEditTexts(View view, List<EditText> out) {
         if (view instanceof EditText editText) {
             out.add(editText);
@@ -3014,31 +2993,8 @@ public final class MainActivityHelperInstrumentedTest {
         }
     }
 
-    private static void collectSeekBars(View view, List<SeekBar> out) {
-        if (view instanceof SeekBar seekBar) {
-            out.add(seekBar);
-            return;
-        }
-        if (!(view instanceof ViewGroup group)) {
-            return;
-        }
-        for (int i = 0; i < group.getChildCount(); i++) {
-            collectSeekBars(group.getChildAt(i), out);
-        }
-    }
-
     private static MotionEvent motion(int action, float x, float y) {
         return MotionEvent.obtain(0L, 0L, action, x, y, 0);
-    }
-
-    private static void touchSeekBar(SeekBar seekBar) {
-        seekBar.measure(
-                View.MeasureSpec.makeMeasureSpec(240, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(56, View.MeasureSpec.EXACTLY)
-        );
-        seekBar.layout(0, 0, 240, 56);
-        seekBar.onTouchEvent(MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, 120f, 28f, 0));
-        seekBar.onTouchEvent(MotionEvent.obtain(0L, 20L, MotionEvent.ACTION_UP, 180f, 28f, 0));
     }
 
     private static void deleteRecursively(File file) {

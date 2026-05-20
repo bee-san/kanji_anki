@@ -2,21 +2,13 @@ package dev.bee.kanjianki;
 
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
-import android.widget.TextView;
-
-import dev.bee.kanjianki.core.SettingsInputRules;
-import dev.bee.kanjianki.core.SettingsTextCopy;
-
 import java.util.Locale;
 
 final class MainActivitySettingsAnkiSourceInputs {
     private final MainActivitySettings activity;
-    private final MainActivitySettingsAnkiSourceRankSliders rankSliders;
 
     MainActivitySettingsAnkiSourceInputs(MainActivitySettings activity) {
         this.activity = activity;
-        this.rankSliders = new MainActivitySettingsAnkiSourceRankSliders(activity);
     }
 
     EditText noteTypeInput(String value) {
@@ -74,14 +66,4 @@ final class MainActivitySettingsAnkiSourceInputs {
         return input;
     }
 
-    void bindRankSliders(
-            int[] selected,
-            TextView status,
-            EditText minInput,
-            EditText maxInput,
-            SeekBar minSlider,
-            SeekBar maxSlider
-    ) {
-        rankSliders.bindRankSliders(selected, status, minInput, maxInput, minSlider, maxSlider);
-    }
 }
