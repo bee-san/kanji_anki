@@ -2094,6 +2094,7 @@ public final class MainActivityHelperInstrumentedTest {
         performClickableWithText(activity.content, "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing");
+        assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Kanji not found");
     }
 

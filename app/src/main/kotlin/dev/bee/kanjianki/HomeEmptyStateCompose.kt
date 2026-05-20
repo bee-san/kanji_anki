@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -121,8 +122,14 @@ private fun homeEmptyStateColors(style: HomeEmptyStateStyle): HomeEmptyStateColo
             cornerRadius = 8.dp,
             padding = 20.dp,
             textSpacing = 0.dp,
-            titleStyle = TextStyle(lineHeight = 25.sp),
-            bodyStyle = TextStyle(lineHeight = 17.sp)
+            titleStyle = TextStyle(
+                lineHeight = 25.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = true)
+            ),
+            bodyStyle = TextStyle(
+                lineHeight = 17.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = true)
+            )
         )
 
         HomeEmptyStateStyle.Panel -> HomeEmptyStateColors(
