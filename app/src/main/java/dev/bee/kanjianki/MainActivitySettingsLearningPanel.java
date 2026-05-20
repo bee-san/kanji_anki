@@ -15,24 +15,28 @@ final class MainActivitySettingsLearningPanel {
     }
 
     View learningStepsSettingsPanel() {
-        RecordsSchedulerModels.LearningStepSettings current = activity.store.learningStepSettings();
-        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
         return MainActivitySettingsLearningCompose.learningStepsSettingsPanelView(
                 activity,
-                new SettingsLearningStepsPanelModel(
-                        SettingsTextCopy.learningStepsTitle(),
-                        SettingsTextCopy.learningStepsBody(),
-                        activity.LABEL_NEW_CARDS,
-                        current.newStepsText(),
-                        SettingsTextCopy.reviewMissesLabel(),
-                        current.reviewStepsText(),
-                        defaults.newStepsText(),
-                        defaults.reviewStepsText(),
-                        SettingsTextCopy.ankiDefaultLabel(),
-                        SettingsTextCopy.sameLearningStepsLabel(),
-                        SettingsTextCopy.saveLearningStepsLabel(),
-                        this::saveLearningSteps
-                )
+                learningStepsSettingsPanelModel()
+        );
+    }
+
+    SettingsLearningStepsPanelModel learningStepsSettingsPanelModel() {
+        RecordsSchedulerModels.LearningStepSettings current = activity.store.learningStepSettings();
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
+        return new SettingsLearningStepsPanelModel(
+                SettingsTextCopy.learningStepsTitle(),
+                SettingsTextCopy.learningStepsBody(),
+                activity.LABEL_NEW_CARDS,
+                current.newStepsText(),
+                SettingsTextCopy.reviewMissesLabel(),
+                current.reviewStepsText(),
+                defaults.newStepsText(),
+                defaults.reviewStepsText(),
+                SettingsTextCopy.ankiDefaultLabel(),
+                SettingsTextCopy.sameLearningStepsLabel(),
+                SettingsTextCopy.saveLearningStepsLabel(),
+                this::saveLearningSteps
         );
     }
 

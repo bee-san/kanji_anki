@@ -55,7 +55,7 @@ data class SettingsStudyLadderPanelModel(
     val restoreLabel: String,
     val restoreDescription: String,
     val onRestore: SettingsStudyLadderAction,
-)
+) : SettingsPanelModel
 
 data class SettingsStudyLadderRungModel(
     val label: String,

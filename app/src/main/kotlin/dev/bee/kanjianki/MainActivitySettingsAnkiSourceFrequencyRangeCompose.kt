@@ -75,7 +75,7 @@ data class SettingsFrequencyRangePanelModel(
     val maximumRankLabel: String,
     val saveLabel: String,
     val onSave: SettingsFrequencyRangeSaveAction,
-)
+) : SettingsPanelModel
 
 internal fun frequencyRangeSettingsPanelView(
     activity: MainActivitySettings,

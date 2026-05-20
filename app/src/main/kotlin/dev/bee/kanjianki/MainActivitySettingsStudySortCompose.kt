@@ -56,7 +56,7 @@ data class SettingsNewCardSortPanelModel(
     val options: List<SettingsNewCardSortOptionModel>,
     val saveLabel: String,
     val onSave: SettingsNewCardSortSaver,
-)
+) : SettingsPanelModel
 
 internal fun newCardSortSettingsPanelView(
     activity: MainActivitySettings,

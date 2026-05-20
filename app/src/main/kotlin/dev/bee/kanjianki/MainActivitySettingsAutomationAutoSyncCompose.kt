@@ -46,7 +46,7 @@ data class SettingsAutoSyncPanelModel(
     val actionLabel: String?,
     val primaryAction: Boolean,
     val onAction: SettingsAutoSyncAction?,
-)
+) : SettingsPanelModel
 
 internal fun autoSyncSettingsPanelView(
     activity: MainActivitySettings,

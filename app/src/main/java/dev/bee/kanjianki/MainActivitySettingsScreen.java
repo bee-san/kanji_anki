@@ -3,8 +3,6 @@ package dev.bee.kanjianki;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 
-import android.view.View;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -47,9 +45,9 @@ final class MainActivitySettingsScreen {
                                     activity.settingsAnkiExpanded = !activity.settingsAnkiExpanded;
                                     activity.renderSettings(true);
                                 },
-                                activity.noteTypeSettingsPanel(current),
-                                activity.importFilterSettingsPanel(current),
-                                activity.frequencyRangeSettingsPanel(current)
+                                activity.noteTypeSettingsPanelModel(current),
+                                activity.importFilterSettingsPanelModel(current),
+                                activity.frequencyRangeSettingsPanelModel(current)
                         ),
                         settingsCategoryModel(
                                 SettingsTextCopy.settingsStudyBehaviorTitle(),
@@ -60,13 +58,13 @@ final class MainActivitySettingsScreen {
                                     activity.settingsStudyExpanded = !activity.settingsStudyExpanded;
                                     activity.renderSettings(true);
                                 },
-                                activity.newCardSortSettingsPanel(current),
-                                activity.workloadSettingsPanel(),
-                                activity.retentionSettingsPanel(),
-                                activity.learningStepsSettingsPanel(),
-                                activity.studyAheadSettingsPanel(),
-                                activity.studyLadderSettingsPanel(),
-                                activity.ladderThresholdSettingsPanel()
+                                activity.newCardSortSettingsPanelModel(current),
+                                activity.workloadSettingsPanelModel(),
+                                activity.retentionSettingsPanelModel(),
+                                activity.learningStepsSettingsPanelModel(),
+                                activity.studyAheadSettingsPanelModel(),
+                                activity.studyLadderSettingsPanelModel(),
+                                activity.ladderThresholdSettingsPanelModel()
                         ),
                         settingsCategoryModel(
                                 SettingsTextCopy.settingsAutomationTitle(),
@@ -77,9 +75,9 @@ final class MainActivitySettingsScreen {
                                     activity.settingsSyncExpanded = !activity.settingsSyncExpanded;
                                     activity.renderSettings(true);
                                 },
-                                activity.reminderSettingsPanel(),
-                                activity.autoSyncSettingsPanel(),
-                                activity.updateSettingsPanel()
+                                activity.reminderSettingsPanelModel(),
+                                activity.autoSyncSettingsPanelModel(),
+                                activity.updateSettingsPanelModel()
                         ),
                         settingsCategoryModel(
                                 SettingsTextCopy.settingsReferenceDataTitle(),
@@ -90,7 +88,7 @@ final class MainActivitySettingsScreen {
                                     activity.settingsAppExpanded = !activity.settingsAppExpanded;
                                     activity.renderSettings(true);
                                 },
-                                activity.dataLicenseSettingsPanel()
+                                activity.dataLicenseSettingsPanelModel()
                         )
                 ),
                 activity::renderHome
@@ -103,9 +101,9 @@ final class MainActivitySettingsScreen {
             int iconRes,
             boolean expanded,
             Runnable toggle,
-            View... panels
+            SettingsPanelModel... panels
     ) {
-        List<View> panelList = Arrays.asList(panels);
+        List<SettingsPanelModel> panelList = Arrays.asList(panels);
         return MainActivitySettingsScreenCompose.settingsCategorySectionModel(
                 title,
                 summary,

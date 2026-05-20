@@ -43,7 +43,7 @@ data class SettingsReferenceDataLinkModel(
     val body: String,
     val actionLabel: String,
     val onAction: Runnable,
-)
+) : SettingsPanelModel
 
 data class SettingsReferenceDataIntroModel(
     val backLabel: String,

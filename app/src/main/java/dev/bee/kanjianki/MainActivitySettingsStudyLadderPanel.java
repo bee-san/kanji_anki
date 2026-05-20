@@ -19,6 +19,13 @@ final class MainActivitySettingsStudyLadderPanel {
     }
 
     View studyLadderSettingsPanel() {
+        return MainActivitySettingsStudyLadderCompose.studyLadderSettingsPanelView(
+                activity,
+                studyLadderSettingsPanelModel()
+        );
+    }
+
+    SettingsStudyLadderPanelModel studyLadderSettingsPanelModel() {
         RecordsBase.StudyLadderSettings ladder = activity.studyLadderSettings();
         List<RecordsBase.LadderRung> rungs = ladder.orderedRungs;
         List<SettingsStudyLadderRungModel> rungModels = new ArrayList<>();
@@ -41,16 +48,13 @@ final class MainActivitySettingsStudyLadderPanel {
                     () -> moveRung(rung, 1)
             ));
         }
-        return MainActivitySettingsStudyLadderCompose.studyLadderSettingsPanelView(
-                activity,
-                new SettingsStudyLadderPanelModel(
-                        SettingsTextCopy.studyLadderTitle(),
-                        SettingsTextCopy.studyLadderBody(),
-                        rungModels,
-                        SettingsTextCopy.restoreDefaultLadderLabel(),
-                        SettingsTextCopy.restoreDefaultLadderLabel(),
-                        this::restoreDefaultLadderSettings
-                )
+        return new SettingsStudyLadderPanelModel(
+                SettingsTextCopy.studyLadderTitle(),
+                SettingsTextCopy.studyLadderBody(),
+                rungModels,
+                SettingsTextCopy.restoreDefaultLadderLabel(),
+                SettingsTextCopy.restoreDefaultLadderLabel(),
+                this::restoreDefaultLadderSettings
         );
     }
 

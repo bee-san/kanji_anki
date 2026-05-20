@@ -16,6 +16,13 @@ final class MainActivitySettingsAutomationAutoSync {
     }
 
     View autoSyncSettingsPanel() {
+        return MainActivitySettingsAutomationAutoSyncCompose.autoSyncSettingsPanelView(
+                activity,
+                autoSyncSettingsPanelModel()
+        );
+    }
+
+    SettingsAutoSyncPanelModel autoSyncSettingsPanelModel() {
         dev.bee.kanjianki.data.LocalStore.AutoSyncSettings auto = activity.store.autoSyncSettings();
         String lastSuccess = auto.lastSuccessAt > 0L ? DateTextPolicy.shortDateTime(auto.lastSuccessAt) : "";
         String lastAttempt = auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt
@@ -35,17 +42,14 @@ final class MainActivitySettingsAutomationAutoSync {
                 action = this::enableAutoSync;
             }
         }
-        return MainActivitySettingsAutomationAutoSyncCompose.autoSyncSettingsPanelView(
-                activity,
-                new SettingsAutoSyncPanelModel(
-                        SettingsTextCopy.dailyAnkiSyncTitle(),
-                        SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime()),
-                        auto.enabled ? activity.TEAL : activity.MUTED,
-                        SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun),
-                        actionLabel,
-                        primaryAction,
-                        action
-                )
+        return new SettingsAutoSyncPanelModel(
+                SettingsTextCopy.dailyAnkiSyncTitle(),
+                SettingsTextCopy.autoSyncStatus(auto.configured, auto.enabled, auto.displayTime()),
+                auto.enabled ? activity.TEAL : activity.MUTED,
+                SettingsTextCopy.autoSyncDetail(auto.configured, auto.enabled, lastSuccess, lastAttempt, nextRun),
+                actionLabel,
+                primaryAction,
+                action
         );
     }
 

@@ -17,27 +17,31 @@ final class MainActivitySettingsRetentionPanel {
     }
 
     View retentionSettingsPanel() {
+        return MainActivitySettingsRetentionCompose.retentionSettingsPanelView(
+                activity,
+                retentionSettingsPanelModel()
+        );
+    }
+
+    SettingsRetentionPanelModel retentionSettingsPanelModel() {
         RecordsSchedulerModels.SchedulerParameters current = activity.store.schedulerParameters();
         final int[] selected = new int[]{SettingsInputRules.retentionPercent(current.targetRetention)};
         SettingsRetentionState state = new SettingsRetentionState(
                 current.frequencyRetentionEnabled,
                 rankRetentionRangesText(current.frequencyRetentionRanges)
         );
-        return MainActivitySettingsRetentionCompose.retentionSettingsPanelView(
-                activity,
-                new SettingsRetentionPanelModel(
-                        SettingsTextCopy.fsrsRetentionTitle(),
-                        SettingsTextCopy.fsrsRetentionBody(),
-                        selected,
-                        new int[]{85, 90, 95},
-                        state,
-                        SettingsTextCopy.useJitenRankRetentionRangesLabel(),
-                        SettingsTextCopy.jitenRankRetentionRangesBody(),
-                        FrequencyRetentionRanges.exampleText(),
-                        SettingsTextCopy.useExampleRangesLabel(),
-                        SettingsTextCopy.saveRetentionLabel(),
-                        this::saveRetention
-                )
+        return new SettingsRetentionPanelModel(
+                SettingsTextCopy.fsrsRetentionTitle(),
+                SettingsTextCopy.fsrsRetentionBody(),
+                selected,
+                new int[]{85, 90, 95},
+                state,
+                SettingsTextCopy.useJitenRankRetentionRangesLabel(),
+                SettingsTextCopy.jitenRankRetentionRangesBody(),
+                FrequencyRetentionRanges.exampleText(),
+                SettingsTextCopy.useExampleRangesLabel(),
+                SettingsTextCopy.saveRetentionLabel(),
+                this::saveRetention
         );
     }
 

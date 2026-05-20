@@ -25,6 +25,13 @@ final class MainActivitySettingsAnkiSourceImportFilters {
     }
 
     View importFilterSettingsPanel(RecordsSyncModels.Settings current) {
+        return MainActivitySettingsAnkiSourceImportFiltersCompose.importFiltersSettingsPanelView(
+                activity,
+                importFilterSettingsPanelModel(current)
+        );
+    }
+
+    SettingsImportFiltersPanelModel importFilterSettingsPanelModel(RecordsSyncModels.Settings current) {
         SettingsImportFiltersState state = new SettingsImportFiltersState(
                 current.importActiveCards,
                 current.importSuspendedCards,
@@ -38,30 +45,27 @@ final class MainActivitySettingsAnkiSourceImportFilters {
                 thresholdText(current.importMinMatchingCardsPerKanji)
         );
 
-        return MainActivitySettingsAnkiSourceImportFiltersCompose.importFiltersSettingsPanelView(
-                activity,
-                new SettingsImportFiltersPanelModel(
-                        SettingsTextCopy.importFiltersTitle(),
-                        SettingsTextCopy.settingsImportSummary(current),
-                        SettingsTextCopy.importFiltersBody(),
-                        SettingsTextCopy.presetsTitle(),
-                        presetButtons(),
-                        state,
-                        SettingsTextCopy.activeCardsLabel(),
-                        SettingsTextCopy.suspendedCardsLabel(),
-                        SettingsTextCopy.taggedCardsLabel(),
-                        SettingsTextCopy.weakCardsLabel(),
-                        SettingsTextCopy.browserQueryLabel(),
-                        SettingsTextCopy.ankiBrowserQueryLabel(),
-                        SettingsTextCopy.ankiBrowserQueryHint(),
-                        SettingsTextCopy.ankiNoteTagsLabel(),
-                        SettingsTextCopy.ankiNoteTagsHint(),
-                        SettingsTextCopy.fsrsDifficultyLabel(),
-                        SettingsTextCopy.lapsesLabel(),
-                        SettingsTextCopy.minimumMatchingCardsLabel(),
-                        SettingsTextCopy.saveImportFiltersLabel(),
-                        () -> saveImportFilters(state)
-                )
+        return new SettingsImportFiltersPanelModel(
+                SettingsTextCopy.importFiltersTitle(),
+                SettingsTextCopy.settingsImportSummary(current),
+                SettingsTextCopy.importFiltersBody(),
+                SettingsTextCopy.presetsTitle(),
+                presetButtons(),
+                state,
+                SettingsTextCopy.activeCardsLabel(),
+                SettingsTextCopy.suspendedCardsLabel(),
+                SettingsTextCopy.taggedCardsLabel(),
+                SettingsTextCopy.weakCardsLabel(),
+                SettingsTextCopy.browserQueryLabel(),
+                SettingsTextCopy.ankiBrowserQueryLabel(),
+                SettingsTextCopy.ankiBrowserQueryHint(),
+                SettingsTextCopy.ankiNoteTagsLabel(),
+                SettingsTextCopy.ankiNoteTagsHint(),
+                SettingsTextCopy.fsrsDifficultyLabel(),
+                SettingsTextCopy.lapsesLabel(),
+                SettingsTextCopy.minimumMatchingCardsLabel(),
+                SettingsTextCopy.saveImportFiltersLabel(),
+                () -> saveImportFilters(state)
         );
     }
 

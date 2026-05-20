@@ -15,12 +15,16 @@ final class MainActivitySettingsReferenceData {
     View dataLicenseSettingsPanel() {
         return MainActivitySettingsReferenceDataCompose.referenceDataLinkPanelView(
                 activity,
-                new SettingsReferenceDataLinkModel(
-                        SettingsTextCopy.offlineDataLicensesTitle(),
-                        SettingsTextCopy.offlineDataLicensesBody(),
-                        SettingsTextCopy.openDataLicensesLabel(),
-                        this::renderDataSources
-                )
+                dataLicenseSettingsPanelModel()
+        );
+    }
+
+    SettingsReferenceDataLinkModel dataLicenseSettingsPanelModel() {
+        return new SettingsReferenceDataLinkModel(
+                SettingsTextCopy.offlineDataLicensesTitle(),
+                SettingsTextCopy.offlineDataLicensesBody(),
+                SettingsTextCopy.openDataLicensesLabel(),
+                this::renderDataSources
         );
     }
 

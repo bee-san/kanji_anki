@@ -1,8 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.LinearLayout;
-
 import dev.bee.kanjianki.core.RecordsSyncModels;
 
 final class MainActivitySettingsAnkiSource {
@@ -21,11 +19,23 @@ final class MainActivitySettingsAnkiSource {
         return noteType.noteTypeSettingsPanel(current);
     }
 
+    SettingsNoteTypePanelModel noteTypeSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return noteType.noteTypeSettingsPanelModel(current);
+    }
+
     View importFilterSettingsPanel(RecordsSyncModels.Settings current) {
         return importFilters.importFilterSettingsPanel(current);
     }
 
+    SettingsImportFiltersPanelModel importFilterSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return importFilters.importFilterSettingsPanelModel(current);
+    }
+
     View frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
         return frequencyRange.frequencyRangeSettingsPanel(current);
+    }
+
+    SettingsFrequencyRangePanelModel frequencyRangeSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return frequencyRange.frequencyRangeSettingsPanelModel(current);
     }
 }

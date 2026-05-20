@@ -21,6 +21,13 @@ final class MainActivitySettingsAutomationReminder {
     }
 
     View reminderSettingsPanel() {
+        return MainActivitySettingsAutomationReminderCompose.reminderSettingsPanelView(
+                activity,
+                reminderSettingsPanelModel()
+        );
+    }
+
+    SettingsReminderPanelModel reminderSettingsPanelModel() {
         LocalStore.ReminderSettings reminder = activity.store.reminderSettings();
         boolean notificationsAllowed = activity.notificationsAllowedForReminders();
         boolean blocked = reminder.enabled && !notificationsAllowed;
@@ -41,25 +48,22 @@ final class MainActivitySettingsAutomationReminder {
         } else if (!activity.hasRuntimeNotificationPermissionForReminder()) {
             warning = SettingsTextCopy.notificationPermissionBody();
         }
-        return MainActivitySettingsAutomationReminderCompose.reminderSettingsPanelView(
-                activity,
-                new SettingsReminderPanelModel(
-                        SettingsTextCopy.dailyReminderTitle(),
-                        SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime()),
-                        blocked ? activity.CORAL : (reminder.enabled ? activity.TEAL : activity.MUTED),
-                        SettingsTextCopy.dailyReminderBody(),
-                        selectedHour,
-                        selectedMinute,
-                        reminderPresets(),
-                        reminder.enabled ? SettingsTextCopy.saveReminderLabel() : SettingsTextCopy.enableReminderLabel(),
-                        reminder.enabled ? SettingsTextCopy.turnOffReminderLabel() : null,
-                        warning,
-                        notificationSettingsLabel,
-                        this::showReminderTimePicker,
-                        () -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true),
-                        disableAction,
-                        notificationSettingsAction
-                )
+        return new SettingsReminderPanelModel(
+                SettingsTextCopy.dailyReminderTitle(),
+                SettingsTextCopy.reminderStatus(reminder.enabled, blocked, reminder.displayTime()),
+                blocked ? activity.CORAL : (reminder.enabled ? activity.TEAL : activity.MUTED),
+                SettingsTextCopy.dailyReminderBody(),
+                selectedHour,
+                selectedMinute,
+                reminderPresets(),
+                reminder.enabled ? SettingsTextCopy.saveReminderLabel() : SettingsTextCopy.enableReminderLabel(),
+                reminder.enabled ? SettingsTextCopy.turnOffReminderLabel() : null,
+                warning,
+                notificationSettingsLabel,
+                this::showReminderTimePicker,
+                () -> saveReminderFromSelection(selectedHour[0], selectedMinute[0], true),
+                disableAction,
+                notificationSettingsAction
         );
     }
 

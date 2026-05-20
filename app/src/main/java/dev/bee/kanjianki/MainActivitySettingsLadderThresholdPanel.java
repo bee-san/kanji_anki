@@ -18,22 +18,26 @@ final class MainActivitySettingsLadderThresholdPanel {
     }
 
     View ladderThresholdSettingsPanel() {
-        RecordsSyncModels.Settings current = activity.settings();
         return MainActivitySettingsLadderThresholdCompose.ladderThresholdSettingsPanelView(
                 activity,
-                new SettingsLadderThresholdPanelModel(
-                        SettingsTextCopy.ladderThresholdsTitle(),
-                        SettingsTextCopy.ladderThresholdsBody(),
-                        SettingsTextCopy.fsrsDaysToGoUpLabel(),
-                        thresholdText(current.ladderPromotionIntervalDays),
-                        SettingsTextCopy.failsToGoDownLabel(),
-                        thresholdText(current.ladderDemotionFailStreak),
-                        String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS),
-                        String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK),
-                        SettingsTextCopy.useDefaultLadderThresholdsLabel(),
-                        SettingsTextCopy.saveLadderThresholdsLabel(),
-                        this::saveLadderThresholds
-                )
+                ladderThresholdSettingsPanelModel()
+        );
+    }
+
+    SettingsLadderThresholdPanelModel ladderThresholdSettingsPanelModel() {
+        RecordsSyncModels.Settings current = activity.settings();
+        return new SettingsLadderThresholdPanelModel(
+                SettingsTextCopy.ladderThresholdsTitle(),
+                SettingsTextCopy.ladderThresholdsBody(),
+                SettingsTextCopy.fsrsDaysToGoUpLabel(),
+                thresholdText(current.ladderPromotionIntervalDays),
+                SettingsTextCopy.failsToGoDownLabel(),
+                thresholdText(current.ladderDemotionFailStreak),
+                String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS),
+                String.format(Locale.ROOT, "%d", RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK),
+                SettingsTextCopy.useDefaultLadderThresholdsLabel(),
+                SettingsTextCopy.saveLadderThresholdsLabel(),
+                this::saveLadderThresholds
         );
     }
 

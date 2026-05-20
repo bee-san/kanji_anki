@@ -13,6 +13,13 @@ final class MainActivitySettingsAnkiSourceNoteType {
     }
 
     android.view.View noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
+        return MainActivitySettingsAnkiSourceNoteTypeCompose.noteTypeSettingsPanelView(
+                activity,
+                noteTypeSettingsPanelModel(current)
+        );
+    }
+
+    SettingsNoteTypePanelModel noteTypeSettingsPanelModel(RecordsSyncModels.Settings current) {
         RecordsSyncModels.Settings defaults = RecordsSyncModels.Settings.kikuDefaults();
         SettingsNoteTypeFieldState fieldState = new SettingsNoteTypeFieldState(
                 current.modelName,
@@ -23,29 +30,26 @@ final class MainActivitySettingsAnkiSourceNoteType {
                 current.frequencyField,
                 current.frequencySortField
         );
-        return MainActivitySettingsAnkiSourceNoteTypeCompose.noteTypeSettingsPanelView(
-                activity,
-                new SettingsNoteTypePanelModel(
-                        SettingsTextCopy.noteTypeFieldsTitle(),
-                        SettingsTextCopy.noteTypeUsingText(current.modelName),
-                        SettingsTextCopy.noteTypeFieldsBody(),
-                        fieldState,
-                        SettingsTextCopy.requiredFieldsTitle(),
-                        SettingsTextCopy.requiredFieldsBody(),
-                        SettingsTextCopy.noteTypeStatusLabel(),
-                        SettingsTextCopy.expressionFieldLabel(),
-                        SettingsTextCopy.readingFieldLabel(),
-                        SettingsTextCopy.meaningFieldLabel(),
-                        SettingsTextCopy.sentenceFieldLabel(),
-                        SettingsTextCopy.frequencyFieldLabel(),
-                        SettingsTextCopy.frequencySortFieldLabel(),
-                        SettingsTextCopy.chooseFromAnkiDroidLabel(),
-                        SettingsTextCopy.useKikuLabel(),
-                        SettingsTextCopy.saveNoteTypeLabel(),
-                        () -> NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldState),
-                        () -> fieldState.applyDefaults(defaults),
-                        () -> saveNoteTypeFields(fieldState)
-                )
+        return new SettingsNoteTypePanelModel(
+                SettingsTextCopy.noteTypeFieldsTitle(),
+                SettingsTextCopy.noteTypeUsingText(current.modelName),
+                SettingsTextCopy.noteTypeFieldsBody(),
+                fieldState,
+                SettingsTextCopy.requiredFieldsTitle(),
+                SettingsTextCopy.requiredFieldsBody(),
+                SettingsTextCopy.noteTypeStatusLabel(),
+                SettingsTextCopy.expressionFieldLabel(),
+                SettingsTextCopy.readingFieldLabel(),
+                SettingsTextCopy.meaningFieldLabel(),
+                SettingsTextCopy.sentenceFieldLabel(),
+                SettingsTextCopy.frequencyFieldLabel(),
+                SettingsTextCopy.frequencySortFieldLabel(),
+                SettingsTextCopy.chooseFromAnkiDroidLabel(),
+                SettingsTextCopy.useKikuLabel(),
+                SettingsTextCopy.saveNoteTypeLabel(),
+                () -> NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldState),
+                () -> fieldState.applyDefaults(defaults),
+                () -> saveNoteTypeFields(fieldState)
         );
     }
 

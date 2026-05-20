@@ -20,31 +20,35 @@ final class MainActivitySettingsStudySortPanel {
     View newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
         return MainActivitySettingsStudySortCompose.newCardSortSettingsPanelView(
                 activity,
-                new SettingsNewCardSortPanelModel(
-                        SettingsTextCopy.newCardSortTitle(),
-                        SettingsTextCopy.newCardSortBody(),
-                        current.newCardSortMode,
-                        Arrays.asList(
-                                new SettingsNewCardSortOptionModel(
-                                        SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY),
-                                        RecordsBase.NEW_CARD_SORT_FREQUENCY
-                                ),
-                                new SettingsNewCardSortOptionModel(
-                                        SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
-                                        RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY
-                                ),
-                                new SettingsNewCardSortOptionModel(
-                                        SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
-                                        RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK
-                                ),
-                                new SettingsNewCardSortOptionModel(
-                                        SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
-                                        RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS
-                                )
+                newCardSortSettingsPanelModel(current)
+        );
+    }
+
+    SettingsNewCardSortPanelModel newCardSortSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return new SettingsNewCardSortPanelModel(
+                SettingsTextCopy.newCardSortTitle(),
+                SettingsTextCopy.newCardSortBody(),
+                current.newCardSortMode,
+                Arrays.asList(
+                        new SettingsNewCardSortOptionModel(
+                                SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY),
+                                RecordsBase.NEW_CARD_SORT_FREQUENCY
                         ),
-                        SettingsTextCopy.saveNewCardSortLabel(),
-                        actions::saveNewCardSort
-                )
+                        new SettingsNewCardSortOptionModel(
+                                SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY),
+                                RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY
+                        ),
+                        new SettingsNewCardSortOptionModel(
+                                SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK),
+                                RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK
+                        ),
+                        new SettingsNewCardSortOptionModel(
+                                SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS),
+                                RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS
+                        )
+                ),
+                SettingsTextCopy.saveNewCardSortLabel(),
+                actions::saveNewCardSort
         );
     }
 }

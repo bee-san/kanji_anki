@@ -43,7 +43,7 @@ data class SettingsUpdateOverviewPanelModel(
     val panel: SettingsUpdatePanelModel,
     val openUpdaterLabel: String,
     val onOpenUpdater: () -> Unit,
-)
+) : SettingsPanelModel
 
 internal fun settingsUpdateOverviewPanelView(
     activity: MainActivitySettings,

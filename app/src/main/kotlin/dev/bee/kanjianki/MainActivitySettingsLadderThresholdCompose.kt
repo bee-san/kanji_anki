@@ -65,7 +65,7 @@ data class SettingsLadderThresholdPanelModel(
     val defaultsLabel: String,
     val saveLabel: String,
     val onSave: SettingsLadderThresholdSaveAction,
-)
+) : SettingsPanelModel
 
 internal fun ladderThresholdSettingsPanelView(
     activity: MainActivitySettings,

@@ -55,7 +55,7 @@ data class SettingsWorkloadPanelModel(
     val onEnableManual: SettingsWorkloadAction,
     val onSaveWorkload: SettingsWorkloadAction,
     val onEnableAutomatic: SettingsWorkloadAction,
-)
+) : SettingsPanelModel
 
 internal fun workloadSettingsPanelView(
     activity: MainActivitySettings,

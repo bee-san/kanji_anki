@@ -69,7 +69,7 @@ data class SettingsLearningStepsPanelModel(
     val sameStepsLabel: String,
     val saveLabel: String,
     val onSave: SettingsLearningStepsSaveAction,
-)
+) : SettingsPanelModel
 
 internal fun learningStepsSettingsPanelView(
     activity: MainActivitySettings,

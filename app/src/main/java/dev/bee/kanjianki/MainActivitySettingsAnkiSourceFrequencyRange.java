@@ -22,22 +22,26 @@ final class MainActivitySettingsAnkiSourceFrequencyRange {
     }
 
     View frequencyRangeSettingsPanel(RecordsSyncModels.Settings current) {
-        final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
         return MainActivitySettingsAnkiSourceFrequencyRangeCompose.frequencyRangeSettingsPanelView(
                 activity,
-                new SettingsFrequencyRangePanelModel(
-                        SettingsTextCopy.frequencyRangeTitle(),
-                        SettingsTextCopy.frequencyRangeBody(),
-                        selected,
-                        SettingsTextCopy.minRankLabel(),
-                        Integer.toString(selected[0]),
-                        SettingsTextCopy.maxRankLabel(),
-                        Integer.toString(selected[1]),
-                        SettingsTextCopy.minimumRankLabel(),
-                        SettingsTextCopy.maximumRankLabel(),
-                        SettingsTextCopy.saveFrequencyRangeLabel(),
-                        this::saveFrequencyRange
-                )
+                frequencyRangeSettingsPanelModel(current)
+        );
+    }
+
+    SettingsFrequencyRangePanelModel frequencyRangeSettingsPanelModel(RecordsSyncModels.Settings current) {
+        final int[] selected = new int[]{current.suspendedRankMin, current.suspendedRankMax};
+        return new SettingsFrequencyRangePanelModel(
+                SettingsTextCopy.frequencyRangeTitle(),
+                SettingsTextCopy.frequencyRangeBody(),
+                selected,
+                SettingsTextCopy.minRankLabel(),
+                Integer.toString(selected[0]),
+                SettingsTextCopy.maxRankLabel(),
+                Integer.toString(selected[1]),
+                SettingsTextCopy.minimumRankLabel(),
+                SettingsTextCopy.maximumRankLabel(),
+                SettingsTextCopy.saveFrequencyRangeLabel(),
+                this::saveFrequencyRange
         );
     }
 

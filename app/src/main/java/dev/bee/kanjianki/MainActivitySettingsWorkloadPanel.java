@@ -20,6 +20,13 @@ final class MainActivitySettingsWorkloadPanel {
     }
 
     View workloadSettingsPanel() {
+        return MainActivitySettingsWorkloadCompose.workloadSettingsPanelView(
+                activity,
+                workloadSettingsPanelModel()
+        );
+    }
+
+    SettingsWorkloadPanelModel workloadSettingsPanelModel() {
         int current = activity.store.adaptiveLoadWorkPercent();
         int currentMax = activity.store.adaptiveLoadMaxItems();
         boolean autoMode = AdaptiveLoadPlanner.isAutoMode(activity.store.adaptiveLoadMode());
@@ -37,26 +44,23 @@ final class MainActivitySettingsWorkloadPanel {
         } else {
             autoStatus = "";
         }
-        return MainActivitySettingsWorkloadCompose.workloadSettingsPanelView(
-                activity,
-                new SettingsWorkloadPanelModel(
-                        SettingsTextCopy.dailyWorkloadTitle(),
-                        autoMode,
-                        autoStatus,
-                        SettingsTextCopy.automaticWorkloadBody(),
-                        SettingsTextCopy.manualWorkloadBody(),
-                        selected,
-                        selectedMax,
-                        Arrays.asList(SettingsTextCopy.workloadScaleLabels()),
-                        SettingsTextCopy.saveMaximumLabel(),
-                        SettingsTextCopy.manualWorkloadLabel(),
-                        SettingsTextCopy.saveWorkloadLabel(),
-                        SettingsTextCopy.automaticParetoLabel(),
-                        () -> saveMaximumWorkload(selectedMax, writer),
-                        () -> enableManualWorkload(writer),
-                        () -> saveManualWorkload(selected, selectedMax, writer),
-                        () -> enableAutomaticWorkload(writer)
-                )
+        return new SettingsWorkloadPanelModel(
+                SettingsTextCopy.dailyWorkloadTitle(),
+                autoMode,
+                autoStatus,
+                SettingsTextCopy.automaticWorkloadBody(),
+                SettingsTextCopy.manualWorkloadBody(),
+                selected,
+                selectedMax,
+                Arrays.asList(SettingsTextCopy.workloadScaleLabels()),
+                SettingsTextCopy.saveMaximumLabel(),
+                SettingsTextCopy.manualWorkloadLabel(),
+                SettingsTextCopy.saveWorkloadLabel(),
+                SettingsTextCopy.automaticParetoLabel(),
+                () -> saveMaximumWorkload(selectedMax, writer),
+                () -> enableManualWorkload(writer),
+                () -> saveManualWorkload(selected, selectedMax, writer),
+                () -> enableAutomaticWorkload(writer)
         );
     }
 

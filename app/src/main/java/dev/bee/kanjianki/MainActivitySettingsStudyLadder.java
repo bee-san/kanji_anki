@@ -19,6 +19,10 @@ final class MainActivitySettingsStudyLadder {
         return studyLadderPanel.studyLadderSettingsPanel();
     }
 
+    SettingsStudyLadderPanelModel studyLadderSettingsPanelModel() {
+        return studyLadderPanel.studyLadderSettingsPanelModel();
+    }
+
     void toggleLadderRung(RecordsBase.LadderRung rung) {
         RecordsBase.StudyLadderSettings current = activity.studyLadderSettings();
         boolean wasEnabled = current.isEnabled(rung);

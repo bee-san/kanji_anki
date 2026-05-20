@@ -17,6 +17,7 @@ class MainActivitySettingsScreenComposeTest {
     fun rendersSettingsRouteAndInvokesShellActions() {
         var homeClicked = false
         var categoryToggled = false
+        var dataClicked = false
 
         composeRule.setContent {
             SettingsScreen(
@@ -42,6 +43,23 @@ class MainActivitySettingsScreenComposeTest {
                             contentDescription = "Expand Anki source",
                             onToggle = Runnable { categoryToggled = true },
                             panels = emptyList()
+                        ),
+                        SettingsCategorySectionModel(
+                            title = "App data",
+                            summary = "Reference data and licenses.",
+                            iconRes = R.drawable.ic_sparkle_24,
+                            expanded = true,
+                            panelCount = "1 panel",
+                            contentDescription = "Collapse App data",
+                            onToggle = Runnable {},
+                            panels = listOf(
+                                SettingsReferenceDataLinkModel(
+                                    title = "Offline data licenses",
+                                    body = "Dictionary, stroke, and font attributions.",
+                                    actionLabel = "Open licenses",
+                                    onAction = Runnable { dataClicked = true }
+                                )
+                            )
                         )
                     )
                 )
@@ -53,11 +71,16 @@ class MainActivitySettingsScreenComposeTest {
         composeRule.onNodeWithText("Note type").assertIsDisplayed()
         composeRule.onNodeWithText("Anki source").assertIsDisplayed()
         composeRule.onNodeWithText("3 panels").assertIsDisplayed()
+        composeRule.onNodeWithText("App data").assertIsDisplayed()
+        composeRule.onNodeWithText("Offline data licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("Open licenses").assertIsDisplayed()
 
         composeRule.onNodeWithText("Home").performClick()
         composeRule.onNodeWithContentDescription("Expand Anki source").performClick()
+        composeRule.onNodeWithText("Open licenses").performClick()
 
         assertTrue(homeClicked)
         assertTrue(categoryToggled)
+        assertTrue(dataClicked)
     }
 }

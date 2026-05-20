@@ -57,7 +57,7 @@ data class SettingsStudyAheadPanelModel(
     val initialMinutesText: String,
     val saveLabel: String,
     val onSave: SettingsStudyAheadSaver,
-)
+) : SettingsPanelModel
 
 internal fun studyAheadSettingsPanelView(
     activity: MainActivitySettings,

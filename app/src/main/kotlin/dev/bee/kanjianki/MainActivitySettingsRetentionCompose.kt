@@ -87,7 +87,7 @@ data class SettingsRetentionPanelModel(
     val exampleRangesLabel: String,
     val saveLabel: String,
     val onSave: SettingsRetentionSaveAction,
-)
+) : SettingsPanelModel
 
 internal fun retentionSettingsPanelView(
     activity: MainActivitySettings,

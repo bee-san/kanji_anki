@@ -76,7 +76,7 @@ data class SettingsReminderPanelModel(
     val onSave: SettingsReminderAction,
     val onTurnOff: SettingsReminderAction?,
     val onOpenNotificationSettings: SettingsReminderAction?,
-)
+) : SettingsPanelModel
 
 internal fun reminderPresetRowTestTag(rowIndex: Int): String = "settings-reminder-preset-row-$rowIndex"
 

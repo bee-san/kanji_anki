@@ -16,17 +16,21 @@ final class MainActivitySettingsStudyAheadPanel {
     }
 
     View studyAheadSettingsPanel() {
-        int currentMinutes = activity.store.studyAheadMinutes();
         return MainActivitySettingsStudyAheadCompose.studyAheadSettingsPanelView(
                 activity,
-                new SettingsStudyAheadPanelModel(
-                        SettingsTextCopy.studyAheadTitle(),
-                        SettingsTextCopy.studyAheadBody(),
-                        SettingsTextCopy.studyAheadMinutesLabel(),
-                        String.format(Locale.ROOT, "%d", currentMinutes),
-                        SettingsTextCopy.saveStudyAheadLabel(),
-                        this::saveStudyAhead
-                )
+                studyAheadSettingsPanelModel()
+        );
+    }
+
+    SettingsStudyAheadPanelModel studyAheadSettingsPanelModel() {
+        int currentMinutes = activity.store.studyAheadMinutes();
+        return new SettingsStudyAheadPanelModel(
+                SettingsTextCopy.studyAheadTitle(),
+                SettingsTextCopy.studyAheadBody(),
+                SettingsTextCopy.studyAheadMinutesLabel(),
+                String.format(Locale.ROOT, "%d", currentMinutes),
+                SettingsTextCopy.saveStudyAheadLabel(),
+                this::saveStudyAhead
         );
     }
 

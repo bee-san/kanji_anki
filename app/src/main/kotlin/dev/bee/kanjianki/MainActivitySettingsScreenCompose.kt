@@ -12,14 +12,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
+
+sealed interface SettingsPanelModel
 
 data class SettingsScreenModel(
     val homeLabel: String,
@@ -36,7 +36,7 @@ data class SettingsCategorySectionModel(
     val panelCount: String,
     val contentDescription: String,
     val onToggle: Runnable,
-    val panels: List<View>,
+    val panels: List<SettingsPanelModel>,
 )
 
 internal fun settingsScreenView(activity: MainActivitySettings, model: SettingsScreenModel): View {
@@ -93,27 +93,30 @@ fun SettingsCategorySection(model: SettingsCategorySectionModel) {
         )
         if (model.expanded) {
             model.panels.forEach { panel ->
-                key(panel) {
-                    AndroidPanel(panel)
-                }
+                SettingsPanel(panel)
             }
         }
     }
 }
 
 @Composable
-private fun AndroidPanel(panel: View) {
-    AndroidView(
-        modifier = Modifier.fillMaxWidth(),
-        factory = {
-            detachFromParent(panel)
-            panel
-        }
-    )
-}
-
-private fun detachFromParent(view: View) {
-    (view.parent as? ViewGroup)?.removeView(view)
+private fun SettingsPanel(panel: SettingsPanelModel) {
+    when (panel) {
+        is SettingsNoteTypePanelModel -> SettingsNoteTypePanel(panel)
+        is SettingsImportFiltersPanelModel -> SettingsImportFiltersPanel(panel)
+        is SettingsFrequencyRangePanelModel -> SettingsFrequencyRangePanel(panel)
+        is SettingsNewCardSortPanelModel -> SettingsNewCardSortPanel(panel)
+        is SettingsWorkloadPanelModel -> SettingsWorkloadPanel(panel)
+        is SettingsRetentionPanelModel -> SettingsRetentionPanel(panel)
+        is SettingsLearningStepsPanelModel -> SettingsLearningStepsPanel(panel)
+        is SettingsStudyAheadPanelModel -> SettingsStudyAheadPanel(panel)
+        is SettingsStudyLadderPanelModel -> SettingsStudyLadderPanel(panel)
+        is SettingsLadderThresholdPanelModel -> SettingsLadderThresholdPanel(panel)
+        is SettingsReminderPanelModel -> SettingsReminderPanel(panel)
+        is SettingsAutoSyncPanelModel -> SettingsAutoSyncPanel(panel)
+        is SettingsUpdateOverviewPanelModel -> SettingsUpdateOverviewPanel(panel)
+        is SettingsReferenceDataLinkModel -> ReferenceDataLinkPanel(panel)
+    }
 }
 
 internal fun settingsCategorySectionModel(
@@ -122,7 +125,7 @@ internal fun settingsCategorySectionModel(
     iconRes: Int,
     expanded: Boolean,
     onToggle: Runnable,
-    panels: List<View>,
+    panels: List<SettingsPanelModel>,
 ): SettingsCategorySectionModel {
     return SettingsCategorySectionModel(
         title = title,

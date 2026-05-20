@@ -158,7 +158,7 @@ data class SettingsNoteTypePanelModel(
     val onChoose: SettingsNoteTypeAction,
     val onUseKiku: SettingsNoteTypeAction,
     val onSave: SettingsNoteTypeAction,
-)
+) : SettingsPanelModel
 
 internal fun noteTypeSettingsPanelView(
     activity: MainActivitySettings,

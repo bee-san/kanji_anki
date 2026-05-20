@@ -162,6 +162,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().importFilterSettingsPanel(current);
     }
 
+    SettingsImportFiltersPanelModel importFilterSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return ankiSource().importFilterSettingsPanelModel(current);
+    }
+
     CheckBox importFilterCheckBox(String label, boolean checked) {
         return panelFactory().importFilterCheckBox(label, checked);
     }
@@ -170,8 +174,16 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().frequencyRangeSettingsPanel(current);
     }
 
+    SettingsFrequencyRangePanelModel frequencyRangeSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return ankiSource().frequencyRangeSettingsPanelModel(current);
+    }
+
     View dataLicenseSettingsPanel() {
         return referenceData().dataLicenseSettingsPanel();
+    }
+
+    SettingsReferenceDataLinkModel dataLicenseSettingsPanelModel() {
+        return referenceData().dataLicenseSettingsPanelModel();
     }
 
     void renderDataSources() {
@@ -182,24 +194,48 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().noteTypeSettingsPanel(current);
     }
 
+    SettingsNoteTypePanelModel noteTypeSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return ankiSource().noteTypeSettingsPanelModel(current);
+    }
+
     View newCardSortSettingsPanel(RecordsSyncModels.Settings current) {
         return studySortPanel().newCardSortSettingsPanel(current);
+    }
+
+    SettingsNewCardSortPanelModel newCardSortSettingsPanelModel(RecordsSyncModels.Settings current) {
+        return studySortPanel().newCardSortSettingsPanelModel(current);
     }
 
     View workloadSettingsPanel() {
         return workloadPanel().workloadSettingsPanel();
     }
 
+    SettingsWorkloadPanelModel workloadSettingsPanelModel() {
+        return workloadPanel().workloadSettingsPanelModel();
+    }
+
     View learningStepsSettingsPanel() {
         return learningPanel().learningStepsSettingsPanel();
+    }
+
+    SettingsLearningStepsPanelModel learningStepsSettingsPanelModel() {
+        return learningPanel().learningStepsSettingsPanelModel();
     }
 
     View studyAheadSettingsPanel() {
         return studyAheadPanel().studyAheadSettingsPanel();
     }
 
+    SettingsStudyAheadPanelModel studyAheadSettingsPanelModel() {
+        return studyAheadPanel().studyAheadSettingsPanelModel();
+    }
+
     View studyLadderSettingsPanel() {
         return studyLadderUi().studyLadderSettingsPanel();
+    }
+
+    SettingsStudyLadderPanelModel studyLadderSettingsPanelModel() {
+        return studyLadderUi().studyLadderSettingsPanelModel();
     }
 
     void toggleLadderRung(RecordsBase.LadderRung rung) {
@@ -208,6 +244,10 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     View ladderThresholdSettingsPanel() {
         return ladderThresholdPanel().ladderThresholdSettingsPanel();
+    }
+
+    SettingsLadderThresholdPanelModel ladderThresholdSettingsPanelModel() {
+        return ladderThresholdPanel().ladderThresholdSettingsPanelModel();
     }
 
     EditText thresholdInput(int value) {
@@ -228,28 +268,44 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return retentionPanel().retentionSettingsPanel();
     }
 
+    SettingsRetentionPanelModel retentionSettingsPanelModel() {
+        return retentionPanel().retentionSettingsPanelModel();
+    }
+
     View reminderSettingsPanel() {
         return new MainActivitySettingsAutomationReminder(this).reminderSettingsPanel();
+    }
+
+    SettingsReminderPanelModel reminderSettingsPanelModel() {
+        return new MainActivitySettingsAutomationReminder(this).reminderSettingsPanelModel();
     }
 
     View autoSyncSettingsPanel() {
         return new MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanel();
     }
 
+    SettingsAutoSyncPanelModel autoSyncSettingsPanelModel() {
+        return new MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanelModel();
+    }
+
     View updateSettingsPanel() {
         return MainActivitySettingsUpdatePanelCompose.settingsUpdateOverviewPanelView(
                 this,
-                new SettingsUpdateOverviewPanelModel(
-                        MainActivitySettingsUpdatePageCompose.settingsUpdatePanelModel(
-                                this,
-                                SettingsTextCopy.appUpdatesTitle()
-                        ),
-                        SettingsTextCopy.openUpdaterLabel(),
-                        () -> {
-                            renderUpdate();
-                            return kotlin.Unit.INSTANCE;
-                        }
-                )
+                updateSettingsPanelModel()
+        );
+    }
+
+    SettingsUpdateOverviewPanelModel updateSettingsPanelModel() {
+        return new SettingsUpdateOverviewPanelModel(
+                MainActivitySettingsUpdatePageCompose.settingsUpdatePanelModel(
+                        this,
+                        SettingsTextCopy.appUpdatesTitle()
+                ),
+                SettingsTextCopy.openUpdaterLabel(),
+                () -> {
+                    renderUpdate();
+                    return kotlin.Unit.INSTANCE;
+                }
         );
     }
 

@@ -112,7 +112,7 @@ data class SettingsImportFiltersPanelModel(
     val minMatchingLabel: String,
     val saveLabel: String,
     val onSave: SettingsImportFilterAction,
-)
+) : SettingsPanelModel
 
 internal fun importFiltersSettingsPanelView(
     activity: MainActivitySettings,
