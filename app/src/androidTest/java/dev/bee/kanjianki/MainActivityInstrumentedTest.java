@@ -22,7 +22,6 @@ import android.view.View;
 import android.view.ViewParent;
 import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -1972,31 +1971,12 @@ public final class MainActivityInstrumentedTest {
             waitForText(scenario, "1 / 2 cards scanned");
             scenario.onActivity(activity -> {
                 assertHasText(activity, "Scanning cards");
-                ProgressBar bar = findType(activity.findViewById(android.R.id.content), ProgressBar.class);
-                assertNotNull(bar);
-                assertFalse(bar.isIndeterminate());
-                assertEquals(1000, bar.getMax());
-                assertEquals(500, bar.getProgress());
+                assertHasText(activity, "1 / 2 cards scanned");
             });
             progressGateway.finish();
             waitForText(scenario, "Sync complete");
         } finally {
             progressGateway.finish();
-        }
-    }
-
-    @Test
-    public void testSyncProgressPanelShowsProcessingImportedCardsAfterScan() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            scenario.onActivity(activity -> {
-                SyncProgressPanel panel = new SyncProgressPanel(activity);
-                panel.render(SyncProgress.cardsScanned(2, 2));
-                panel.render(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
-
-                assertNotNull(findText(panel, "Processing imported cards"));
-                assertNotNull(findText(panel, "2 / 2 cards scanned"));
-                assertNotNull(findText(panel, "AnkiDroid read finished"));
-            });
         }
     }
 

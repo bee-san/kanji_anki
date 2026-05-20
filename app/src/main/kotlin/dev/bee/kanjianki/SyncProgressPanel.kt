@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,22 +11,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.sync.SyncProgress
 
@@ -36,7 +35,7 @@ private val MUTED = 0xFF6C5674.toInt()
 private val SyncProgressTrack = Color(0xFFFBDDEC)
 private val SyncProgressFill = Color(0xFFF82D72)
 
-private data class SyncProgressPanelState(
+internal data class SyncProgressPanelState(
     val stage: String = "Finding note type",
     val count: String = "Reading collection details.",
     val rate: String = "",
@@ -60,24 +59,12 @@ internal fun syncProgressScreenView(context: Context, title: String, progressPan
     }
 }
 
-class SyncProgressPanel(context: Context) : FrameLayout(context) {
+class SyncProgressPanel {
     private var scanStartedAt: Long = 0L
     private var lastScannedCards: Int = -1
     private var lastTotalCards: Int = -1
-    private var state by mutableStateOf(SyncProgressPanelState())
-
-    init {
-        addView(
-            ComposeView(context).apply {
-                layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                setContent {
-                    MaterialTheme {
-                        SyncProgressPanelContent(state)
-                    }
-                }
-            }
-        )
-    }
+    internal var state by mutableStateOf(SyncProgressPanelState())
+        private set
 
     fun render(progress: SyncProgress) {
         val currentStage = progress.coreStage()
@@ -124,21 +111,13 @@ class SyncProgressPanel(context: Context) : FrameLayout(context) {
 }
 
 @Composable
-internal fun SyncProgressScreen(title: String, progressPanel: View) {
+internal fun SyncProgressScreen(title: String, progressPanel: SyncProgressPanel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.Top
     ) {
         SyncProgressTitle(title)
-        key(progressPanel) {
-            AndroidView(
-                modifier = Modifier.fillMaxWidth(),
-                factory = {
-                    detachFromParent(progressPanel)
-                    progressPanel
-                }
-            )
-        }
+        SyncProgressPanelContent(progressPanel.state)
     }
 }
 
@@ -233,14 +212,14 @@ private fun SyncProgressBar(
         )
         return
     }
+    val progressFraction = if (progressMax <= 0) 0f else progressValue.toFloat() / progressMax.toFloat()
     LinearProgressIndicator(
-        progress = { if (progressMax <= 0) 0f else progressValue.toFloat() / progressMax.toFloat() },
-        modifier = modifier.semantics { this.contentDescription = contentDescription },
+        progress = { progressFraction },
+        modifier = modifier.semantics {
+            this.contentDescription = contentDescription
+            progressBarRangeInfo = ProgressBarRangeInfo(progressFraction, 0f..1f)
+        },
         color = SyncProgressFill,
         trackColor = SyncProgressTrack
     )
-}
-
-private fun detachFromParent(view: View) {
-    (view.parent as? ViewGroup)?.removeView(view)
 }

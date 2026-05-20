@@ -71,9 +71,13 @@ class StudyTopBarComposeTest {
     @Test
     fun progressPillClampsOutOfRangeFractions() {
         setTopBarWithProgress(fraction = -0.5f)
+        composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
+            .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
         assertEquals(StudyProgressTrackColor, captureProgressPixels().leftSample)
 
         setTopBarWithProgress(fraction = 1.5f)
+        composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
+            .assertRangeInfoEquals(ProgressBarRangeInfo(1f, 0f..1f))
         assertEquals(StudyProgressFillColor, captureProgressPixels().rightSample)
     }
 
