@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner;
@@ -16,6 +15,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+
+import static dev.bee.kanjianki.MainActivityStudyChoiceResultCompose.meaningKanjiChoiceResultActionBarView;
 
 final class MainActivityStudyChoiceSessions {
     private static final String LABEL_CHOOSE_KANJI = "Choose the kanji";
@@ -88,11 +89,13 @@ final class MainActivityStudyChoiceSessions {
         home.studyActionBar.setVisibility(View.VISIBLE);
         String prompt = home.activeSession == null ? "" : home.activeSession.prompt;
         String status = StudyTextCopy.meaningKanjiChoiceResult(card, prompt, correct);
-        home.resultStatus = home.text(status, 15, correct ? home.TEAL : home.CORAL, true);
-        home.studyActionBar.addView(home.resultStatus);
-        Button next = home.pinkPrimaryButton("Next");
-        next.setOnClickListener(new RunnableClickListener(() -> home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false)));
-        home.studyActionBar.addView(next, new LinearLayout.LayoutParams(-1, home.dp(62)));
+        home.resultStatus = null;
+        home.studyActionBar.addView(meaningKanjiChoiceResultActionBarView(
+                home,
+                status,
+                correct ? home.TEAL : home.CORAL,
+                () -> home.submitReview(correct ? home.RATING_GOOD : home.RATING_AGAIN, false)
+        ));
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {

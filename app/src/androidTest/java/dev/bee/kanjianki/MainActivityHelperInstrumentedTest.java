@@ -1558,7 +1558,8 @@ public final class MainActivityHelperInstrumentedTest {
                 performClickableWithText(activity.content, "裂");
                 assertHasText(activity, "Correct");
                 assertEquals(View.VISIBLE, activity.studyActionBar.getVisibility());
-                assertEquals(2, activity.studyActionBar.getChildCount());
+                assertEquals(1, activity.studyActionBar.getChildCount());
+                assertTrue(activity.studyActionBar.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(containsText(activity.studyActionBar, "Next"));
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
                 performClickableWithText(activity.studyActionBar, "Next");

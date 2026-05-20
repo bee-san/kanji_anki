@@ -137,6 +137,25 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
+    fun rendersMeaningChoiceResultActionBarAndInvokesNext() {
+        var nextClicks = 0
+
+        composeRule.setContent {
+            MeaningChoiceResultActionBar(
+                status = "Correct: 裂",
+                statusColor = MainActivityUiSupport.TEAL,
+                onNext = { nextClicks++ }
+            )
+        }
+
+        composeRule.onNodeWithText("Correct: 裂").assertIsDisplayed()
+        composeRule.onNodeWithText("Next").assertIsDisplayed()
+        composeRule.onNodeWithText("Next").performClick()
+
+        assertEquals(1, nextClicks)
+    }
+
+    @Test
     fun preservesOddRowBalanceWithInsetCells() {
         composeRule.setContent {
             Box(modifier = Modifier.width(200.dp)) {
