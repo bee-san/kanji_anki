@@ -1,7 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.LinearLayout;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.RecordsImportModels;
@@ -24,26 +23,30 @@ final class MainActivityStudyWritingSession {
     void renderWritingSession(RecordsSchedulerModels.StudySession session) {
         resetWritingSession(session);
 
-        LinearLayout card = home.softStudyCard();
-        card.addView(MainActivityStudyWritingPromptCompose.writingPromptHeaderView(home, writingPromptHeaderModel(session)));
         home.studyAnswerPanel = home.learningPanel(session);
-        card.addView(home.studyAnswerPanel);
 
-        card.addView(MainActivityStudyWritingChromeCompose.writingSectionTitleView(home, "Writing", home.STUDY_PLUM));
         StrokeGuide guide = home.strokeGuide(session.item.kanji);
         home.studyStatus = new WritingStatusView(home);
         home.studyStatus.setStatus(WritingFeedbackCopy.guideLabel(home.currentHintState, guide), home.STUDY_MUTED);
-        card.addView(home.studyStatus);
         home.drawingPad = new DrawingPadView(home);
         home.drawingPad.setTarget(session.item.kanji);
         home.drawingPad.setInkEditListener(home::handleDrawingEdited);
         home.drawingPad.setStrokeBlockedListener(home::handleDrawingBlocked);
         home.drawingPad.setGuide(guide, home.currentHintState, false);
-        card.addView(MainActivityStudyWritingPadCompose.writingPadPanelView(home, home.drawingPad, home.studyPadHeight()));
         home.writingResultStatus = new WritingResultStatusHandle(home);
         home.writingResultStatus.hide();
-        card.addView(home.writingResultStatus.view());
-        home.content.addView(card);
+        home.content.addView(MainActivityStudyWritingSessionCompose.writingSessionCardView(
+                home,
+                new WritingSessionCardModel(
+                        writingPromptHeaderModel(session),
+                        home.studyAnswerPanel,
+                        "Writing",
+                        home.STUDY_PLUM,
+                        home.studyStatus,
+                        MainActivityStudyWritingPadCompose.writingPadPanelView(home, home.drawingPad, home.studyPadHeight()),
+                        home.writingResultStatus.view()
+                )
+        ));
 
         home.buildStudyActionBar();
         home.updateResultActions();

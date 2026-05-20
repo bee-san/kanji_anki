@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import android.widget.TextView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -77,5 +79,33 @@ class MainActivityStudyWritingPromptComposeTest {
 
         composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
         composeRule.onNodeWithText("Learn it from the reference, trace it, then check.").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersWritingSessionCardShell() {
+        composeRule.setContent {
+            val context = LocalContext.current
+            WritingSessionCard(
+                WritingSessionCardModel(
+                    promptHeader = WritingPromptHeaderModel(
+                        modeLabel = "Practice",
+                        title = "Draw this kanji",
+                        taskLabel = "Write kanji",
+                        reasonLine = "",
+                        detailLines = emptyList()
+                    ),
+                    answerPanel = TextView(context).apply { text = "Reference answer" },
+                    writingTitle = "Writing",
+                    writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
+                    statusView = TextView(context).apply { text = "Trace the first strokes" },
+                    padPanel = TextView(context).apply { text = "Pad" },
+                    resultStatusView = TextView(context).apply { text = "Result" }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Practice").assertIsDisplayed()
+        composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("Writing").assertIsDisplayed()
     }
 }

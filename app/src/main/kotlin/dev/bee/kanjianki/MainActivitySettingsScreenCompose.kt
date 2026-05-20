@@ -106,10 +106,17 @@ private fun AndroidPanel(panel: View) {
     AndroidView(
         modifier = Modifier.fillMaxWidth(),
         factory = {
-            (panel.parent as? ViewGroup)?.removeView(panel)
+            detachFromParent(panel)
             panel
+        },
+        update = {
+            detachFromParent(panel)
         }
     )
+}
+
+private fun detachFromParent(view: View) {
+    (view.parent as? ViewGroup)?.removeView(view)
 }
 
 internal fun settingsCategorySectionModel(

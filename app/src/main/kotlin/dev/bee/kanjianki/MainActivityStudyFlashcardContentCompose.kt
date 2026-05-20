@@ -126,11 +126,18 @@ private fun FlashcardEmbeddedView(view: View, modifier: Modifier = Modifier) {
         AndroidView(
             modifier = modifier.fillMaxWidth(),
             factory = {
-                (view.parent as? ViewGroup)?.removeView(view)
+                detachFromParent(view)
                 view
+            },
+            update = {
+                detachFromParent(view)
             }
         )
     }
+}
+
+private fun detachFromParent(view: View) {
+    (view.parent as? ViewGroup)?.removeView(view)
 }
 
 @Composable

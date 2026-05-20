@@ -130,8 +130,11 @@ internal fun SyncProgressScreen(title: String, progressPanel: View) {
         AndroidView(
             modifier = Modifier.fillMaxWidth(),
             factory = {
-                (progressPanel.parent as? ViewGroup)?.removeView(progressPanel)
+                detachFromParent(progressPanel)
                 progressPanel
+            },
+            update = {
+                detachFromParent(progressPanel)
             }
         )
     }
@@ -248,3 +251,7 @@ private fun SyncProgressBar(
 }
 
 private fun Context.dp(value: Int): Int = Math.round(value * resources.displayMetrics.density)
+
+private fun detachFromParent(view: View) {
+    (view.parent as? ViewGroup)?.removeView(view)
+}

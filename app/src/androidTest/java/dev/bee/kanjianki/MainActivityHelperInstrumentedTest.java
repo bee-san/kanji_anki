@@ -1412,6 +1412,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
                 activity.renderWritingSession(recall);
+                assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Prompt: Split, rend");
                 assertTrue(activity.studyActionBar.getChildAt(0) instanceof WritingToolActionsView);
                 assertTrue(activity.studyActionBar.getChildAt(1) instanceof WritingPrimaryActionsView);
@@ -1859,10 +1860,22 @@ public final class MainActivityHelperInstrumentedTest {
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
                 assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
+                activity.flashcardTouchStartX = 100f;
+                activity.flashcardTouchStartY = 100f;
+                assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));
+                RecordsSchedulerModels.ReviewStats gestureFailStats = activity.store.reviewStatsSince(0L);
+                assertEquals(1, gestureFailStats.total);
+                assertEquals(1, gestureFailStats.again);
+
+                failSession = sessionWithToken("裂", BridgeScheduler.TASK_KANJI_MEANING, row, "fail-token-button");
+                activity.activeSession = failSession;
+                activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
+                activity.renderFlashcardSession(failSession);
+                performClickableWithText(activity.studyActionBar, "Reveal");
                 performClickableWithText(activity.studyActionBar, "Fail");
                 RecordsSchedulerModels.ReviewStats failStats = activity.store.reviewStatsSince(0L);
-                assertEquals(1, failStats.total);
-                assertEquals(1, failStats.again);
+                assertEquals(2, failStats.total);
+                assertEquals(2, failStats.again);
 
                 RecordsSchedulerModels.StudySession passSession = sessionWithToken("語", BridgeScheduler.TASK_KANJI_MEANING, row("語", "language", "ゴ", Collections.emptyList()), "pass-token");
                 activity.activeSession = passSession;
@@ -1872,7 +1885,7 @@ public final class MainActivityHelperInstrumentedTest {
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 performClickableWithText(activity.studyActionBar, MainActivityBase.LABEL_PASS);
                 RecordsSchedulerModels.ReviewStats passStats = activity.store.reviewStatsSince(0L);
-                assertEquals(2, passStats.total);
+                assertEquals(3, passStats.total);
                 assertEquals(1, passStats.good);
 
                 RecordsSchedulerModels.StudySession gestureSession = sessionWithToken("提", BridgeScheduler.TASK_KANJI_MEANING, row("提", "carry", "テイ", Collections.emptyList()), "gesture-token");
@@ -1899,8 +1912,8 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.flashcardTouchStartY = 100f;
                 assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));
                 RecordsSchedulerModels.ReviewStats gestureStats = activity.store.reviewStatsSince(0L);
-                assertEquals(3, gestureStats.total);
-                assertEquals(2, gestureStats.again);
+                assertEquals(4, gestureStats.total);
+                assertEquals(3, gestureStats.again);
             });
         }
     }

@@ -2,22 +2,17 @@
 
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -38,17 +33,6 @@ data class WritingPromptLineModel(
     val color: Int,
     val bold: Boolean,
 )
-
-internal fun writingPromptHeaderView(context: Context, model: WritingPromptHeaderModel): View {
-    return ComposeView(context).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                WritingPromptHeader(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun WritingPromptHeader(model: WritingPromptHeaderModel) {

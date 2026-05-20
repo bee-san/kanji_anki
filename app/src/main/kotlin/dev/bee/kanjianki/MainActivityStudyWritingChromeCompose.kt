@@ -28,17 +28,6 @@ private data class WritingStatusState(
     val color: Int = MainActivityUiSupport.STUDY_MUTED,
 )
 
-internal fun writingSectionTitleView(context: Context, title: String, color: Int): View {
-    return ComposeView(context).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                WritingSectionTitle(title = title, color = color)
-            }
-        }
-    }
-}
-
 class WritingStatusView(context: Context) : FrameLayout(context) {
     private var state by mutableStateOf(WritingStatusState())
 
