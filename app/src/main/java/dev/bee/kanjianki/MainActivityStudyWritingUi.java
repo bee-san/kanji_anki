@@ -100,7 +100,9 @@ final class MainActivityStudyWritingUi {
     }
 
     void updateHintAndAnswerVisibility(WritingActionPresentation presentation) {
-        if (activity.studyAnswerPanel != null) {
+        if (activity.writingAnswerPanelState != null) {
+            activity.writingAnswerPanelState.updateVisible(presentation.answerPanelVisible);
+        } else if (activity.studyAnswerPanel != null) {
             activity.studyAnswerPanel.setVisibility(presentation.answerPanelVisible ? View.VISIBLE : View.GONE);
         }
     }

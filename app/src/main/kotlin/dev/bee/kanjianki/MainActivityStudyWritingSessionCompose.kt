@@ -11,7 +11,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,13 +24,23 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 data class WritingSessionCardModel(
     val promptHeader: WritingPromptHeaderModel,
-    val answerPanel: View,
+    val answerPanel: StudyAnswerPanelModel,
+    val answerPanelState: WritingAnswerPanelState,
     val writingTitle: String,
     val writingTitleColor: Int,
     val statusView: View,
     val padPanel: View,
     val resultStatusView: View,
 )
+
+class WritingAnswerPanelState(initialVisible: Boolean = false) {
+    var visible by mutableStateOf(initialVisible)
+        private set
+
+    fun updateVisible(value: Boolean) {
+        visible = value
+    }
+}
 
 internal fun writingSessionCardView(activity: MainActivityStudy, model: WritingSessionCardModel): View {
     return ComposeView(activity).apply {
@@ -52,7 +65,9 @@ fun WritingSessionCard(model: WritingSessionCardModel) {
             horizontalAlignment = Alignment.Start
         ) {
             WritingPromptHeader(model.promptHeader)
-            WritingEmbeddedView(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+            if (model.answerPanelState.visible) {
+                StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+            }
             WritingSectionTitle(title = model.writingTitle, color = model.writingTitleColor)
             WritingEmbeddedView(model.statusView)
             WritingEmbeddedView(model.padPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))

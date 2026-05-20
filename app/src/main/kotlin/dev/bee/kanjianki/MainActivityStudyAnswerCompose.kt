@@ -68,7 +68,14 @@ internal fun learningPanelView(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
 ): View {
-    return studyAnswerPanelView(activity, answerPanelModel(activity, session, "Reference", 72, "Trace it below, then check."))
+    return studyAnswerPanelView(activity, learningPanelModel(activity, session))
+}
+
+internal fun learningPanelModel(
+    activity: MainActivityStudy,
+    session: RecordsSchedulerModels.StudySession
+): StudyAnswerPanelModel {
+    return answerPanelModel(activity, session, "Reference", 72, "Trace it below, then check.")
 }
 
 private fun studyAnswerPanelView(activity: MainActivityStudy, model: StudyAnswerPanelModel): View {

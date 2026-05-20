@@ -88,6 +88,7 @@ class MainActivityStudyWritingPromptComposeTest {
 
     @Test
     fun rendersWritingSessionCardShell() {
+        val answerState = WritingAnswerPanelState(true)
         composeRule.setContent {
             val context = LocalContext.current
             WritingSessionCard(
@@ -99,7 +100,8 @@ class MainActivityStudyWritingPromptComposeTest {
                         reasonLine = "",
                         detailLines = emptyList()
                     ),
-                    answerPanel = TextView(context).apply { text = "Reference answer" },
+                    answerPanel = writingAnswerPanelModel(),
+                    answerPanelState = answerState,
                     writingTitle = "Writing",
                     writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
                     statusView = TextView(context).apply { text = "Trace the first strokes" },
@@ -111,6 +113,7 @@ class MainActivityStudyWritingPromptComposeTest {
 
         composeRule.onNodeWithText("Practice").assertIsDisplayed()
         composeRule.onNodeWithText("Draw this kanji").assertIsDisplayed()
+        composeRule.onNodeWithText("Reference answer").assertIsDisplayed()
         composeRule.onNodeWithText("Writing").assertIsDisplayed()
     }
 
@@ -118,11 +121,10 @@ class MainActivityStudyWritingPromptComposeTest {
     fun keepsEmbeddedViewsAttachedAcrossRecomposition() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val previousParent = FrameLayout(context)
-        val answerPanel = TextView(context).apply { text = "Reference answer" }
         val statusView = TextView(context).apply { text = "Trace the first strokes" }
         val padPanel = TextView(context).apply { text = "Pad" }
         val resultStatusView = TextView(context).apply { text = "Result" }
-        previousParent.addView(answerPanel)
+        previousParent.addView(statusView)
         val title = mutableStateOf("Writing")
 
         composeRule.setContent {
@@ -135,7 +137,8 @@ class MainActivityStudyWritingPromptComposeTest {
                         reasonLine = "",
                         detailLines = emptyList()
                     ),
-                    answerPanel = answerPanel,
+                    answerPanel = writingAnswerPanelModel(),
+                    answerPanelState = WritingAnswerPanelState(false),
                     writingTitle = title.value,
                     writingTitleColor = MainActivityUiSupport.STUDY_PLUM,
                     statusView = statusView,
@@ -146,18 +149,34 @@ class MainActivityStudyWritingPromptComposeTest {
         }
 
         composeRule.waitForIdle()
-        assertNotSame(previousParent, answerPanel.parent)
-        assertNotNull(answerPanel.parent)
+        assertNotSame(previousParent, statusView.parent)
+        assertNotNull(statusView.parent)
 
         composeRule.runOnIdle {
             title.value = "Writing again"
         }
         composeRule.waitForIdle()
 
-        assertNotNull(answerPanel.parent)
         assertNotNull(statusView.parent)
         assertNotNull(padPanel.parent)
         assertNotNull(resultStatusView.parent)
         composeRule.onNodeWithText("Writing again").assertIsDisplayed()
+    }
+
+    private fun writingAnswerPanelModel(): StudyAnswerPanelModel {
+        return StudyAnswerPanelModel(
+            title = "Reference",
+            glyph = "裂",
+            glyphSizeSp = 72,
+            lines = listOf(
+                StudyAnswerLineModel(
+                    text = "Reference answer",
+                    color = androidx.compose.ui.graphics.Color(MainActivityUiSupport.STUDY_PLUM),
+                    sizeSp = 17,
+                    bold = true
+                )
+            ),
+            helperText = null
+        )
     }
 }

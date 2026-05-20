@@ -111,6 +111,10 @@ abstract class MainActivityStudy extends MainActivityStats {
         return MainActivityStudyAnswerCompose.learningPanelView(this, session);
     }
 
+    StudyAnswerPanelModel learningPanelModel(RecordsSchedulerModels.StudySession session) {
+        return MainActivityStudyAnswerCompose.learningPanelModel(this, session);
+    }
+
     RecordsImportModels.Example firstExample(RecordsImportModels.DashboardRow row) {
         return StudyExampleSelector.firstExample(row);
     }

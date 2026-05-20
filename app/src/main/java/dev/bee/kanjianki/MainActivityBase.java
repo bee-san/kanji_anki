@@ -115,6 +115,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     WritingPrimaryActionsView writingPrimaryActionsView;
     WritingFallbackActionsView writingFallbackActionsView;
     WritingToolActionsView writingToolActionsView;
+    WritingAnswerPanelState writingAnswerPanelState;
     View studyAnswerPanel;
     View flashcardGestureArea;
     View flashcardCard;
@@ -313,6 +314,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         }
         flashcardGestureArea = null;
         flashcardCard = null;
+        writingAnswerPanelState = null;
         flashcardRevealState = null;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;

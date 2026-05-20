@@ -23,7 +23,9 @@ final class MainActivityStudyWritingSession {
     void renderWritingSession(RecordsSchedulerModels.StudySession session) {
         resetWritingSession(session);
 
-        home.studyAnswerPanel = home.learningPanel(session);
+        home.writingAnswerPanelState = new WritingAnswerPanelState(false);
+        home.studyAnswerPanel = null;
+        StudyAnswerPanelModel answerPanel = home.learningPanelModel(session);
 
         StrokeGuide guide = home.strokeGuide(session.item.kanji);
         home.studyStatus = new WritingStatusView(home);
@@ -39,7 +41,8 @@ final class MainActivityStudyWritingSession {
                 home,
                 new WritingSessionCardModel(
                         writingPromptHeaderModel(session),
-                        home.studyAnswerPanel,
+                        answerPanel,
+                        home.writingAnswerPanelState,
                         "Writing",
                         home.STUDY_PLUM,
                         home.studyStatus,
