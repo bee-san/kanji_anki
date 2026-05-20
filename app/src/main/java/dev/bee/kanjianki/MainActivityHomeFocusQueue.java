@@ -8,7 +8,6 @@ import java.util.List;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
-import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
@@ -22,27 +21,11 @@ final class MainActivityHomeFocusQueue {
     }
 
     void renderFocusQueue() {
-        home.base("home");
-        long now = System.currentTimeMillis();
-        List<RecordsImportModels.DashboardRow> rows = home.store.activeDashboardRows();
-        List<RecordsStudyModels.StudyItem> items = studyQueue(rows, now, false, null);
-        RecordsSchedulerModels.AdaptiveLoadPlan plan = rows.isEmpty() ? null : home.adaptivePlan(rows, items, now);
-        List<MainActivityBase.QueueEntry> entries = rows.isEmpty() ? new ArrayList<>() : queuedEntries(rows, items, now, plan);
-
-        home.content.addView(home.homeSectionHeader(HomeTextCopy.focusQueueTitle(), HomeTextCopy.homeLabel(), home::renderHome));
-        home.content.addView(MainActivityHomeFocusQueueCompose.homeFocusQueueContentView(home, rows, entries, now, plan));
+        MainActivityHomeFocusQueueRenderer.renderFocusQueueScreen(home);
     }
 
     void renderRecentMistakes() {
-        home.base("home");
-        home.content.addView(home.homeSectionHeader(HomeTextCopy.recentMistakesTitle(), HomeTextCopy.homeLabel(), home::renderHome));
-        List<StudyStatsStore.RecentMistake> mistakes = home.store.recentMistakes(12);
-        if (mistakes.isEmpty()) {
-            home.emptyState(HomeTextCopy.noRecentMistakesTitle(), HomeTextCopy.noRecentMistakesBody());
-            return;
-        }
-        List<RecordsImportModels.DashboardRow> rows = home.store.activeDashboardRows();
-        home.content.addView(MainActivityHomeFocusQueueCompose.homeRecentMistakesContentView(home, mistakes, rows));
+        MainActivityHomeFocusQueueRenderer.renderRecentMistakesScreen(home);
     }
 
     int streakAccent(StudyStatsStore.StudyStreak streak) {
