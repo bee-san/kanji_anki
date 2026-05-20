@@ -1085,6 +1085,10 @@ public final class MainActivityHelperInstrumentedTest {
     public void gamesHostPathsRenderComposeResultAndUnavailableStates() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
+                activity.renderGames();
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
+
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
                 assertHasText(activity, "Game not ready");
                 assertEquals(1, activity.content.getChildCount());

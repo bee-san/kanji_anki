@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 
@@ -78,14 +79,15 @@ data class GamesUnavailableModel(
     val body: String,
 )
 
-internal fun gamesScreenView(activity: MainActivityGames, model: GamesScreenModel): View {
+internal fun gamesMenuScreenView(activity: MainActivityGames, model: GamesScreenModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                Surface {
-                    GamesScreen(model)
-                }
+                GamesMenuScreen(
+                    model = model,
+                    onHome = activity::renderHome
+                )
             }
         }
     }
@@ -171,6 +173,20 @@ fun GamesPlayScreen(
         )
         score?.let { GamesScoreStrip(it) }
         content()
+    }
+}
+
+@Composable
+fun GamesMenuScreen(
+    model: GamesScreenModel,
+    onHome: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HomeFullWidthHomeButton(
+            label = HomeTextCopy.homeLabel(),
+            onClick = onHome
+        )
+        GamesScreen(model)
     }
 }
 

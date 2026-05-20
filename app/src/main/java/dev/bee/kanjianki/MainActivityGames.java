@@ -20,8 +20,7 @@ abstract class MainActivityGames extends MainActivityHome {
     void renderGames() {
         clearGameSession();
         base("home");
-        content.addView(fullWidthHomeButton());
-        content.addView(MainActivityGamesCompose.gamesScreenView(this, gamesScreenModel()));
+        content.addView(MainActivityGamesCompose.gamesMenuScreenView(this, gamesScreenModel()));
     }
 
     private void clearGameSession() {

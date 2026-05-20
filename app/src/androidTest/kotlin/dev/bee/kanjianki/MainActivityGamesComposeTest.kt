@@ -95,6 +95,33 @@ class MainActivityGamesComposeTest {
     }
 
     @Test
+    fun rendersGamesMenuWithHomeAction() {
+        var homeClicked = false
+
+        composeRule.setContent {
+            GamesMenuScreen(
+                model = GamesScreenModel(
+                    title = "Games",
+                    subtitle = "Practice kanji without changing SRS.",
+                    emptyTitle = "No kanji games yet",
+                    emptyBody = "Sync AnkiDroid first so Kani can build practice games from your own cards.",
+                    showSyncButton = false,
+                    onSync = Runnable {},
+                    modeCards = emptyList()
+                ),
+                onHome = { homeClicked = true }
+            )
+        }
+
+        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Games").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            assertTrue(homeClicked)
+        }
+    }
+
+    @Test
     fun rendersScoreStripAndGameQuestionChoices() {
         var clickedChoice = ""
         val question = KanjiGameEngine.GameQuestion(
