@@ -20,7 +20,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.graphics.Insets;
 import androidx.core.view.WindowInsetsCompat;
@@ -113,7 +112,6 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     RecordsSchedulerModels.AdaptiveLoadPlan activeStudyPlan;
     DrawingPadView drawingPad;
     WritingStatusView studyStatus;
-    TextView resultStatus;
     WritingResultStatusHandle writingResultStatus;
     Button checkWritingButton;
     Button downloadModelButton;

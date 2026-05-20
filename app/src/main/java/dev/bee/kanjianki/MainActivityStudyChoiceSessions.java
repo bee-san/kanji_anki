@@ -89,7 +89,6 @@ final class MainActivityStudyChoiceSessions {
         home.studyActionBar.setVisibility(View.VISIBLE);
         String prompt = home.activeSession == null ? "" : home.activeSession.prompt;
         String status = StudyTextCopy.meaningKanjiChoiceResult(card, prompt, correct);
-        home.resultStatus = null;
         home.studyActionBar.addView(meaningKanjiChoiceResultActionBarView(
                 home,
                 status,

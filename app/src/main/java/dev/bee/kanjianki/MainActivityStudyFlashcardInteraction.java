@@ -30,9 +30,6 @@ final class MainActivityStudyFlashcardInteraction {
         activity.studyActionBar.removeAllViews();
         activity.studyActionBar.setVisibility(View.VISIBLE);
 
-        activity.resultStatus = activity.text("", 15, activity.STUDY_MUTED, false);
-        activity.resultStatus.setVisibility(View.GONE);
-        activity.studyActionBar.addView(activity.resultStatus);
         activity.studyActionBar.addView(studyFlashcardActionBarView(
                 activity,
                 revealed,
