@@ -40,6 +40,7 @@ import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.Records;
+import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.study.InkPoint;
@@ -258,10 +259,18 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
             clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
+            verifyLearningStepValidationAndPresets(scenario);
             setLearningStepText(scenario);
             clickText(scenario, "Save learning steps");
-            setStudyAheadMinutes(scenario);
+            setStudyAheadMinutes(scenario, "later");
             clickText(scenario, "Save study ahead");
+            assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
+            setStudyAheadMinutes(scenario, "2000");
+            clickText(scenario, "Save study ahead");
+            assertStudyAheadMinutes(scenario, SettingsInputRules.DEFAULT_STUDY_AHEAD_MINUTES);
+            setStudyAheadMinutes(scenario, "45");
+            clickText(scenario, "Save study ahead");
+            verifyLadderThresholdValidationAndDefaults(scenario);
             setLadderThresholdText(scenario);
             clickText(scenario, "Save ladder thresholds");
             configureManualWorkload(scenario);
@@ -295,24 +304,123 @@ public final class MainActivityInstrumentedTest {
         });
     }
 
+    private static void verifyLearningStepValidationAndPresets(ActivityScenario<MainActivity> scenario) {
+        RecordsSchedulerModels.LearningStepSettings defaults = RecordsSchedulerModels.LearningStepSettings.defaults();
+        setLearningStepText(scenario, "bad", "5m 20m");
+        clickText(scenario, SettingsTextCopy.saveLearningStepsLabel());
+        assertLearningStepSettings(scenario, defaults);
+
+        setLearningStepText(scenario, "2m 15m", "5m 20m");
+        clickText(scenario, SettingsTextCopy.ankiDefaultLabel());
+        assertLearningStepFields(scenario, defaults.newStepsText(), defaults.reviewStepsText());
+        clickText(scenario, SettingsTextCopy.sameLearningStepsLabel());
+        assertLearningStepFields(scenario, defaults.newStepsText(), defaults.newStepsText());
+    }
+
     private static void setLearningStepText(ActivityScenario<MainActivity> scenario) {
+        setLearningStepText(scenario, "2m 15m", "5m 20m");
+    }
+
+    private static void setLearningStepText(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
         scenario.onActivity(activity -> {
-            editTextAfterLabel(activity, "New cards").setText("2m 15m");
-            editTextAfterLabel(activity, "Review misses").setText("5m 20m");
+            editTextWithContentDescription(activity, "New cards").setText(newSteps);
+            editTextWithContentDescription(activity, SettingsTextCopy.reviewMissesLabel()).setText(reviewSteps);
+        });
+    }
+
+    private static void assertLearningStepFields(ActivityScenario<MainActivity> scenario, String newSteps, String reviewSteps) {
+        scenario.onActivity(activity -> {
+            assertEquals(newSteps, editTextWithContentDescription(activity, "New cards").getText().toString());
+            assertEquals(reviewSteps, editTextWithContentDescription(activity, SettingsTextCopy.reviewMissesLabel()).getText().toString());
+        });
+    }
+
+    private static void assertLearningStepSettings(
+            ActivityScenario<MainActivity> scenario,
+            RecordsSchedulerModels.LearningStepSettings expected
+    ) {
+        scenario.onActivity(activity -> {
+            RecordsSchedulerModels.LearningStepSettings actual = activity.store.learningStepSettings();
+            assertEquals(expected.newStepsMinutes, actual.newStepsMinutes);
+            assertEquals(expected.reviewStepsMinutes, actual.reviewStepsMinutes);
         });
     }
 
     private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario) {
+        setStudyAheadMinutes(scenario, "45");
+    }
+
+    private static void setStudyAheadMinutes(ActivityScenario<MainActivity> scenario, String minutes) {
         scenario.onActivity(activity -> editTextWithContentDescription(
                 activity,
                 SettingsTextCopy.studyAheadMinutesLabel()
-        ).setText("45"));
+        ).setText(minutes));
+    }
+
+    private static void assertStudyAheadMinutes(ActivityScenario<MainActivity> scenario, int expected) {
+        scenario.onActivity(activity -> assertEquals(expected, activity.store.studyAheadMinutes()));
+    }
+
+    private static void verifyLadderThresholdValidationAndDefaults(ActivityScenario<MainActivity> scenario) {
+        setLadderThresholdText(scenario, "later", "0");
+        clickText(scenario, SettingsTextCopy.saveLadderThresholdsLabel());
+        assertLadderThresholdSettings(
+                scenario,
+                RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+        );
+
+        setLadderThresholdText(scenario, "99", "7");
+        clickText(scenario, SettingsTextCopy.useDefaultLadderThresholdsLabel());
+        assertLadderThresholdFields(
+                scenario,
+                RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS,
+                RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+        );
     }
 
     private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
+        setLadderThresholdText(scenario, "30", "2");
+    }
+
+    private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario, String promotionDays, String failStreak) {
         scenario.onActivity(activity -> {
-            editTextWithContentDescription(activity, SettingsTextCopy.fsrsDaysToGoUpLabel()).setText("30");
-            editTextWithContentDescription(activity, SettingsTextCopy.failsToGoDownLabel()).setText("2");
+            editTextWithContentDescription(activity, SettingsTextCopy.fsrsDaysToGoUpLabel()).setText(promotionDays);
+            editTextWithContentDescription(activity, SettingsTextCopy.failsToGoDownLabel()).setText(failStreak);
+        });
+    }
+
+    private static void assertLadderThresholdFields(
+            ActivityScenario<MainActivity> scenario,
+            int promotionDays,
+            int failStreak
+    ) {
+        scenario.onActivity(activity -> {
+            assertEquals(
+                    Integer.toString(promotionDays),
+                    editTextWithContentDescription(activity, SettingsTextCopy.fsrsDaysToGoUpLabel()).getText().toString()
+            );
+            assertEquals(
+                    Integer.toString(failStreak),
+                    editTextWithContentDescription(activity, SettingsTextCopy.failsToGoDownLabel()).getText().toString()
+            );
+        });
+    }
+
+    private static void assertLadderThresholdSettings(
+            ActivityScenario<MainActivity> scenario,
+            int promotionDays,
+            int failStreak
+    ) {
+        scenario.onActivity(activity -> {
+            assertEquals(promotionDays, activity.store.getIntSetting(
+                    SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
+                    RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS
+            ));
+            assertEquals(failStreak, activity.store.getIntSetting(
+                    SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
+                    RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK
+            ));
         });
     }
 

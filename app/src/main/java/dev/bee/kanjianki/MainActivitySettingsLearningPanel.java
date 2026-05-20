@@ -1,8 +1,7 @@
 package dev.bee.kanjianki;
 
-import android.widget.Button;
+import android.view.View;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy;
@@ -16,33 +15,29 @@ final class MainActivitySettingsLearningPanel {
         this.activity = activity;
     }
 
-    LinearLayout learningStepsSettingsPanel() {
+    View learningStepsSettingsPanel() {
         RecordsSchedulerModels.LearningStepSettings current = activity.store.learningStepSettings();
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.learningStepsTitle(), 23, activity.INK, true));
-        box.addView(activity.text(SettingsTextCopy.learningStepsBody(), 15, activity.MUTED, false));
-
         EditText newSteps = stepInput(current.newStepsText());
         EditText reviewSteps = stepInput(current.reviewStepsText());
-        box.addView(activity.text(activity.LABEL_NEW_CARDS, 15, activity.INK, true));
-        box.addView(newSteps, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-        box.addView(activity.text(SettingsTextCopy.reviewMissesLabel(), 15, activity.INK, true));
-        box.addView(reviewSteps, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-
-        LinearLayout presets = new LinearLayout(activity);
-        presets.setOrientation(LinearLayout.HORIZONTAL);
-        Button ankiDefault = activity.secondaryButton(SettingsTextCopy.ankiDefaultLabel());
-        ankiDefault.setOnClickListener(new RunnableClickListener(() -> applyLearningStepDefaults(newSteps, reviewSteps, false)));
-        presets.addView(ankiDefault, new LinearLayout.LayoutParams(0, activity.dp(54), 1));
-        Button sameSteps = activity.secondaryButton(SettingsTextCopy.sameLearningStepsLabel());
-        sameSteps.setOnClickListener(new RunnableClickListener(() -> applyLearningStepDefaults(newSteps, reviewSteps, true)));
-        presets.addView(sameSteps, new LinearLayout.LayoutParams(0, activity.dp(54), 1));
-        box.addView(presets);
-
-        Button save = activity.primaryButton(SettingsTextCopy.saveLearningStepsLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(new RunnableClickListener(() -> saveLearningSteps(newSteps, reviewSteps)));
-        box.addView(save);
-        return box;
+        newSteps.setContentDescription(activity.LABEL_NEW_CARDS);
+        reviewSteps.setContentDescription(SettingsTextCopy.reviewMissesLabel());
+        return MainActivitySettingsLearningCompose.learningStepsSettingsPanelView(
+                activity,
+                new SettingsLearningStepsPanelModel(
+                        SettingsTextCopy.learningStepsTitle(),
+                        SettingsTextCopy.learningStepsBody(),
+                        activity.LABEL_NEW_CARDS,
+                        newSteps,
+                        SettingsTextCopy.reviewMissesLabel(),
+                        reviewSteps,
+                        SettingsTextCopy.ankiDefaultLabel(),
+                        SettingsTextCopy.sameLearningStepsLabel(),
+                        SettingsTextCopy.saveLearningStepsLabel(),
+                        () -> applyLearningStepDefaults(newSteps, reviewSteps, false),
+                        () -> applyLearningStepDefaults(newSteps, reviewSteps, true),
+                        () -> saveLearningSteps(newSteps, reviewSteps)
+                )
+        );
     }
 
     EditText stepInput(String value) {
@@ -73,18 +68,5 @@ final class MainActivitySettingsLearningPanel {
         SettingsWriteActions.saveLearningSteps(request, activity.store::saveLearningStepSettings);
         Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show();
         activity.renderSettings();
-    }
-
-    private static final class RunnableClickListener implements android.view.View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(android.view.View v) {
-            action.run();
-        }
     }
 }

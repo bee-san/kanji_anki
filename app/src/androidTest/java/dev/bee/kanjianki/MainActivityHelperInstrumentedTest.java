@@ -689,12 +689,8 @@ public final class MainActivityHelperInstrumentedTest {
                 performButtonClick(manualPanel, "Use automatic Pareto");
                 assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode());
 
-                LinearLayout stepsPanel = activity.learningStepsSettingsPanel();
-                editTexts(stepsPanel).get(0).setText("bad");
-                performButtonClick(stepsPanel, "Save learning steps");
-                performButtonClick(stepsPanel, "Anki default");
-                performButtonClick(stepsPanel, "Both 1m 10m");
-                performButtonClick(stepsPanel, "Save learning steps");
+                View stepsPanel = activity.learningStepsSettingsPanel();
+                assertTrue(stepsPanel instanceof androidx.compose.ui.platform.ComposeView);
                 assertEquals("1m, 10m", activity.store.learningStepSettings().reviewStepsText());
             });
         }

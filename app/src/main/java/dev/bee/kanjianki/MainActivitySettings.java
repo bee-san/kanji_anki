@@ -219,7 +219,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return workloadPanel().workloadSettingsPanel();
     }
 
-    LinearLayout learningStepsSettingsPanel() {
+    View learningStepsSettingsPanel() {
         return learningPanel().learningStepsSettingsPanel();
     }
 
