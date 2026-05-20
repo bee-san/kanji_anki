@@ -1543,6 +1543,16 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
                 assertNull(activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
+                seedRows(activity, Arrays.asList(
+                        row("裂", "split", "レツ", Collections.emptyList()),
+                        row("列", "row", "レツ", Collections.emptyList()),
+                        row("烈", "ardent", "レツ", Collections.emptyList()),
+                        row("劣", "inferior", "レツ", Collections.emptyList())
+                ));
+                activity.renderMeaningKanjiSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
+                assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
+                assertNull(activity.flashcardGestureArea);
+                assertFalse(activity.flashcardAnswerRevealed);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;

@@ -35,20 +35,28 @@ final class MainActivityStudyChoiceSessions {
             return;
         }
 
-        LinearLayout cardShell = home.softStudyCard();
-        cardShell.addView(home.modePill("Recall"));
-        cardShell.addView(home.text(LABEL_CHOOSE_KANJI, 30, home.STUDY_PLUM, true));
-        cardShell.addView(home.text(StudyTaskCopy.labelForTask(session.taskType), 16, home.STUDY_PINK_DARK, true));
-        cardShell.addView(home.text("Pick the kanji that matches the meaning.", 15, home.STUDY_MUTED, false));
-        home.addStudyReasonLine(cardShell, session);
-
-        LinearLayout box = home.softInsetPanel();
-        box.addView(home.text(StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt), 22, home.STUDY_PLUM, true));
         View answerPanel = home.flashcardAnswerPanel(session);
         answerPanel.setVisibility(View.GONE);
-        box.addView(home.meaningKanjiGrid(choiceCard, answerPanel));
-        box.addView(answerPanel);
-        cardShell.addView(box);
+        String reason = StudyTextCopy.studyReasonLine(
+                home.activeSimilarWritingRepair != null,
+                session,
+                home.settings().matureSupportThreshold,
+                System.currentTimeMillis()
+        );
+        View cardShell = MainActivityStudyChoiceCompose.meaningKanjiSessionView(
+                home,
+                new MeaningChoiceSessionModel(
+                        "Recall",
+                        LABEL_CHOOSE_KANJI,
+                        StudyTaskCopy.labelForTask(session.taskType),
+                        "Pick the kanji that matches the meaning.",
+                        reason,
+                        StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
+                        choiceCard.choices,
+                        answerPanel,
+                        glyph -> home.showMeaningKanjiChoiceResult(choiceCard, glyph, null, answerPanel)
+                )
+        );
 
         LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(-1, 0, 1);
         cardLp.setMargins(0, home.dp(6), 0, home.dp(12));
