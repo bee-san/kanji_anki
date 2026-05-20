@@ -41,6 +41,7 @@ class HomeFocusQueueComposeTest {
         composeRule.onNodeWithText("split; tear").assertIsDisplayed()
         composeRule.onNodeWithText("kanji -> meaning").assertIsDisplayed()
         composeRule.onNodeWithText("learning").assertIsDisplayed()
+        composeRule.onNodeWithText(">").assertIsDisplayed()
     }
 
     @Test

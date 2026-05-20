@@ -2,20 +2,16 @@ package dev.bee.kanjianki;
 
 import android.graphics.Color;
 import android.view.View;
-import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import dev.bee.kanjianki.core.BridgeScheduler;
-import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.HomeTextCopy;
-import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
-import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.data.StudyStatsStore;
 
 final class MainActivityHomeFocusQueue {
@@ -95,34 +91,6 @@ final class MainActivityHomeFocusQueue {
     }
 
     View queueRowView(MainActivityBase.QueueEntry entry, long now) {
-        RecordsImportModels.DashboardRow row = entry.row;
-        RecordsStudyModels.StudyItem item = entry.item;
-        LinearLayout box = home.panelBox(Color.WHITE, home.softened(rowColor(item, now)));
-        box.setPadding(home.dp(12), home.dp(12), home.dp(12), home.dp(12));
-        box.setOnClickListener(new RunnableClickListener(() -> home.renderDetail(row.kanji)));
-        LinearLayout top = new LinearLayout(home);
-        top.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        top.addView(home.kanjiTile(row.kanji, home.dp(90), 52));
-        LinearLayout copy = new LinearLayout(home);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        copy.addView(home.text(StudyTextCopy.rowMeaning(row), 19, home.INK, true));
-        copy.addView(home.text(FocusQueueCopy.sourceEvidenceText(row), 14, home.INK, true));
-        copy.addView(home.text(FocusQueueCopy.focusReasonLine(row, item, now, home.settings().matureSupportThreshold), 13, home.MUTED, false));
-        copy.addView(home.text(StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72), 14, home.MUTED, false));
-        LinearLayout.LayoutParams copyLp = new LinearLayout.LayoutParams(0, -2, 1);
-        copyLp.setMargins(home.dp(14), 0, home.dp(6), 0);
-        top.addView(copy, copyLp);
-        top.addView(home.text(">", 34, home.CORAL, true));
-        box.addView(top);
-        LinearLayout chips = new LinearLayout(home);
-        chips.setOrientation(LinearLayout.HORIZONTAL);
-        chips.addView(home.chip(FocusQueueCopy.recognitionStageLabel(item), home.BLUE));
-        if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
-            chips.addView(home.chip(HomeTextCopy.relearningChipLabel(), home.CORAL));
-        } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-            chips.addView(home.chip(MainActivityBase.STATE_LEARNING, home.TEAL));
-        }
-        box.addView(chips);
-        return box;
+        return MainActivityHomeFocusQueueCompose.homeFocusQueueCardView(home, entry, now);
     }
 }

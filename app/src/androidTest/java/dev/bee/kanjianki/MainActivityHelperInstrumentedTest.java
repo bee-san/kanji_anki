@@ -2068,13 +2068,17 @@ public final class MainActivityHelperInstrumentedTest {
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
-        assertTrue(containsText(activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, relearning), 1000L), "relearning"));
+        View relearningRow = activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, relearning), 1000L);
+        assertTrue(relearningRow instanceof androidx.compose.ui.platform.ComposeView);
+        assertTrue(containsText(relearningRow, "relearning"));
         RecordsStudyModels.StudyItem learning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .totalReviews(1)
                 .build();
-        assertTrue(containsText(activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, learning), 1000L), "learning"));
+        View learningRow = activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, learning), 1000L);
+        assertTrue(learningRow instanceof androidx.compose.ui.platform.ComposeView);
+        assertTrue(containsText(learningRow, "learning"));
         seedRows(activity, Collections.singletonList(activeRow));
         activity.renderStudyForKanji("裂");
         assertHasText(activity, "Name this kanji");
