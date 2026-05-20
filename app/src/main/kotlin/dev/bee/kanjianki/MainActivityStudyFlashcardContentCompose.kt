@@ -129,7 +129,8 @@ fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel) {
                 sizeSp = 14,
                 color = StudyMuted,
                 bold = false,
-                includeFontPadding = true
+                includeFontPadding = true,
+                textAlign = TextAlign.Start
             )
         }
     }
@@ -172,6 +173,7 @@ private fun FlashcardHeaderText(
     color: Color,
     bold: Boolean,
     includeFontPadding: Boolean,
+    textAlign: TextAlign = TextAlign.Center,
 ) {
     Text(
         text = text,
@@ -179,7 +181,7 @@ private fun FlashcardHeaderText(
         color = color,
         fontSize = sizeSp.sp,
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-        textAlign = TextAlign.Center,
+        textAlign = textAlign,
         lineHeight = (sizeSp * 1.05f).sp,
         style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = includeFontPadding))
     )
