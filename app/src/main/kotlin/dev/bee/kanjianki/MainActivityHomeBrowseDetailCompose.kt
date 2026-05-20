@@ -121,7 +121,7 @@ private fun browseKanjiRowModel(
 @Composable
 fun BrowseScreen(model: BrowseScreenModel) {
     var query by remember(model.initialQuery) { mutableStateOf(model.initialQuery) }
-    val runSearch = { model.onSearch(query.trim()) }
+    val runSearch = { model.onSearch(query) }
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)

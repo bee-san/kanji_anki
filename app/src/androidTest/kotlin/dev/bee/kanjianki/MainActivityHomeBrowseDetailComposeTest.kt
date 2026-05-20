@@ -56,7 +56,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.setContent {
             BrowseScreen(
                 model = BrowseScreenModel(
-                    initialQuery = "裂",
+                    initialQuery = " 裂 ",
                     resultHeading = "2 kanji",
                     rows = listOf(
                         BrowseKanjiRowModel(
@@ -90,7 +90,7 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("Meaning not stored yet").assertIsDisplayed()
 
         composeRule.onNodeWithText("Search").performClick()
-        assertEquals("裂", searched)
+        assertEquals(" 裂 ", searched)
 
         composeRule.onNodeWithText("split").performClick()
         assertEquals("裂", clickedKanji)

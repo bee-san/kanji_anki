@@ -2010,6 +2010,8 @@ public final class MainActivityHelperInstrumentedTest {
         activity.store.setKanjiLocallySuspended("裂", true, 1000L);
 
         activity.renderBrowseKanji("裂");
+        assertEquals("裂", activity.activeBrowseQuery);
+        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.content, "split");
         assertHasText(activity, "Back to Browse Kanji");
