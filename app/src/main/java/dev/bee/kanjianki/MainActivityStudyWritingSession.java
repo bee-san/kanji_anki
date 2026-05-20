@@ -39,12 +39,7 @@ final class MainActivityStudyWritingSession {
         home.drawingPad.setInkEditListener(home::handleDrawingEdited);
         home.drawingPad.setStrokeBlockedListener(home::handleDrawingBlocked);
         home.drawingPad.setGuide(guide, home.currentHintState, false);
-        LinearLayout padShell = home.softInsetPanel();
-        padShell.setPadding(home.dp(8), home.dp(8), home.dp(8), home.dp(8));
-        MainActivityBase.SquarePadFrame squarePad = new MainActivityBase.SquarePadFrame(home, home.studyPadHeight());
-        squarePad.addView(home.drawingPad);
-        padShell.addView(squarePad, new LinearLayout.LayoutParams(-1, -2));
-        card.addView(padShell);
+        card.addView(MainActivityStudyWritingPadCompose.writingPadPanelView(home, home.drawingPad, home.studyPadHeight()));
         home.resultStatus = home.text("", 16, home.STUDY_MUTED, false);
         home.resultStatus.setVisibility(View.GONE);
         card.addView(home.resultStatus);

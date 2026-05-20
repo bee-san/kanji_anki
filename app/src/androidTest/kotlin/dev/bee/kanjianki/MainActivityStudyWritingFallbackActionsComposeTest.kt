@@ -64,4 +64,24 @@ class MainActivityStudyWritingFallbackActionsComposeTest {
         composeRule.onNodeWithText("Mark right anyway").assertIsDisplayed()
         composeRule.onAllNodesWithText("Try again with full guide").assertCountEquals(0)
     }
+
+    @Test
+    fun rendersNothingWhenEveryFallbackActionIsHidden() {
+        composeRule.setContent {
+            WritingFallbackActions(
+                WritingFallbackActionsModel(
+                    replayVisible = false,
+                    manualOverrideVisible = false,
+                    practiceWithGuideVisible = false,
+                    onReplay = Runnable {},
+                    onManualOverride = Runnable {},
+                    onPracticeWithGuide = Runnable {}
+                )
+            )
+        }
+
+        composeRule.onAllNodesWithText("Replay").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Mark right anyway").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Try again with full guide").assertCountEquals(0)
+    }
 }

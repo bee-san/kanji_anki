@@ -74,6 +74,9 @@ class WritingFallbackActionsView(context: Context) : FrameLayout(context) {
 
 @Composable
 internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
+    if (!model.replayVisible && !model.manualOverrideVisible && !model.practiceWithGuideVisible) {
+        return
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
