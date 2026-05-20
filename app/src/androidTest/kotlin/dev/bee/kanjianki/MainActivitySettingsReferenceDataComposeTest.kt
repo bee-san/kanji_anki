@@ -3,12 +3,58 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
 class MainActivitySettingsReferenceDataComposeTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun rendersReferenceDataLinkPanelAndInvokesAction() {
+        var clicked = false
+
+        composeRule.setContent {
+            ReferenceDataLinkPanel(
+                model = SettingsReferenceDataLinkModel(
+                    title = "Offline data & licenses",
+                    body = "One reference page covers offline data.",
+                    actionLabel = "Open data licenses",
+                    onAction = Runnable { clicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Offline data & licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("One reference page covers offline data.").assertIsDisplayed()
+        composeRule.onNodeWithText("Open data licenses").performClick()
+
+        assertTrue(clicked)
+    }
+
+    @Test
+    fun rendersDataSourcesIntroAndInvokesBack() {
+        var clicked = false
+
+        composeRule.setContent {
+            DataSourcesIntro(
+                model = SettingsReferenceDataIntroModel(
+                    backLabel = "Back to settings",
+                    title = "Data licenses",
+                    body = "Bundled source attribution.",
+                    onBack = Runnable { clicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Data licenses").assertIsDisplayed()
+        composeRule.onNodeWithText("Bundled source attribution.").assertIsDisplayed()
+        composeRule.onNodeWithText("Back to settings").performClick()
+
+        assertTrue(clicked)
+    }
 
     @Test
     fun rendersAttributionPanels() {

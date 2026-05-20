@@ -660,9 +660,9 @@ public final class MainActivityHelperInstrumentedTest {
                 performClickableWithText(activity.content, "Reference data");
                 assertTrue(activity.settingsAppExpanded);
                 assertTrue(containsText(activity.content, "Offline data & licenses"));
-                performButtonClick(activity.content, "Open data licenses");
+                performClickableWithText(activity.content, "Open data licenses");
                 assertHasText(activity, "Data licenses");
-                performButtonClick(activity.content, "Back to settings");
+                performClickableWithText(activity.content, "Back to settings");
                 assertHasText(activity, "Automation");
             });
         }

@@ -205,7 +205,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return ankiSource().frequencyRangeSettingsPanel(current);
     }
 
-    LinearLayout dataLicenseSettingsPanel() {
+    View dataLicenseSettingsPanel() {
         return referenceData().dataLicenseSettingsPanel();
     }
 
