@@ -257,7 +257,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return retentionPanel().retentionSettingsPanel();
     }
 
-    LinearLayout reminderSettingsPanel() {
+    View reminderSettingsPanel() {
         return new MainActivitySettingsAutomationReminder(this).reminderSettingsPanel();
     }
 

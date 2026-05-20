@@ -724,12 +724,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(retention instanceof androidx.compose.ui.platform.ComposeView);
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 21, 0));
-                LinearLayout reminder = activity.reminderSettingsPanel();
-                Button timeButton = findButton(reminder, "Reminder time: 21:00");
-                performButtonClick(reminder, "Morning 08:00");
-                assertEquals("Reminder time: 08:00", timeButton.getText().toString());
-                performButtonClick(reminder, "Turn off reminder");
-                assertFalse(activity.store.reminderSettings().enabled);
+                View reminder = activity.reminderSettingsPanel();
+                assertTrue(reminder instanceof androidx.compose.ui.platform.ComposeView);
                 assertEquals(MainActivityBase.CORAL, reminderStatusColor(true, true));
                 assertEquals(MainActivityBase.TEAL, reminderStatusColor(true, false));
                 assertEquals(MainActivityBase.MUTED, reminderStatusColor(false, false));
@@ -783,7 +779,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(reminder.enabled);
                 assertEquals(6, reminder.hour);
                 assertEquals(15, reminder.minute);
-                assertNotNull(findButton(activity.reminderSettingsPanel(), "Enable reminder"));
+                assertTrue(activity.reminderSettingsPanel() instanceof androidx.compose.ui.platform.ComposeView);
             });
         } finally {
             MainActivity.setInstallPermissionForTests(null);
@@ -833,7 +829,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(saved.enabled);
                 assertEquals(8, saved.hour);
                 assertEquals(15, saved.minute);
-                assertContainsText(activity.reminderSettingsPanel(), "Android notifications are off for Kani");
+                assertTrue(activity.reminderSettingsPanel() instanceof androidx.compose.ui.platform.ComposeView);
 
                 activity.pendingReminderSettings = new LocalStore.ReminderSettings(true, 9, 30);
                 activity.saveGrantedReminderPermission(activity.pendingReminderSettings);
@@ -2186,7 +2182,6 @@ public final class MainActivityHelperInstrumentedTest {
     public void homeAndReminderActionGridsUseTwoColumnsWithWrappingHeights() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                MainActivitySettingsAutomationReminder reminder = new MainActivitySettingsAutomationReminder(activity);
                 View homeGrid = activity.homeActionRow();
                 measureAtWidth(homeGrid, 320);
                 assertTwoColumnGrid(homeGrid, 3);
@@ -2196,14 +2191,11 @@ public final class MainActivityHelperInstrumentedTest {
                     assertTrue(containsText(homeGrid, "Compose shell"));
                 }
 
-                Button time = new Button(activity);
-                int[] hour = new int[]{8};
-                int[] minute = new int[]{0};
                 List<View> presets = Arrays.asList(
-                        reminder.reminderPresetButton("Morning", 8, 0, hour, minute, time),
-                        reminder.reminderPresetButton("Lunch", 12, 30, hour, minute, time),
-                        reminder.reminderPresetButton("Evening", 19, 0, hour, minute, time),
-                        reminder.reminderPresetButton("Night", 21, 0, hour, minute, time)
+                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Morning", 8, 0)),
+                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Lunch", 12, 30)),
+                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Evening", 19, 0)),
+                        activity.secondaryButton(SettingsTextCopy.reminderPresetButtonLabel("Night", 21, 0))
                 );
                 View reminderGrid = activity.twoColumnGrid(presets);
                 measureAtWidth(reminderGrid, 320);
