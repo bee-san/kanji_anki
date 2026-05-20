@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.FocusQueueCopy;
 import dev.bee.kanjianki.core.HomeTextCopy;
+import dev.bee.kanjianki.core.KanjiGameEngine;
 import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
@@ -1252,6 +1253,35 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
+    public void gamesHostPathsRenderComposeResultAndUnavailableStates() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                assertHasText(activity, "Game not ready");
+                assertTrue(activity.content.getChildAt(activity.content.getChildCount() - 1) instanceof androidx.compose.ui.platform.ComposeView);
+
+                seedRows(activity, Arrays.asList(
+                        row("裂", "split", "レツ", Collections.emptyList()),
+                        row("語", "language", "ゴ", Collections.emptyList())
+                ));
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                assertHasText(activity, "Pick the meaning");
+                performClickableWithText(activity.content, "split");
+                assertContainsText(activity.content, "Answer:");
+                assertTrue(activity.content.getChildAt(activity.content.getChildCount() - 1) instanceof androidx.compose.ui.platform.ComposeView);
+                performClickableWithText(activity.content, "Next");
+                assertHasText(activity, "Pick the meaning");
+
+                activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
+                performClickableWithText(activity.content, "language");
+                assertContainsText(activity.content, "Answer:");
+                performClickableWithText(activity.content, "Games");
+                assertHasText(activity, "Games");
+            });
+        }
+    }
+
+    @Test
     public void studyRenderAndProgressHelpersCoverTerminalStudyStates() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
@@ -2131,7 +2161,7 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static void verifySyncResultStudyNow(MainActivity activity) {
         activity.renderSyncResult(syncResult(true, false, 1, 0, "", ""));
-        performButtonClick(activity.content, MainActivityBase.LABEL_STUDY_NOW);
+        performClickableWithText(activity.content, MainActivityBase.LABEL_STUDY_NOW);
         assertHasText(activity, "Name this kanji");
         assertHasText(activity, "What does this kanji mean?");
 

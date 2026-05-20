@@ -209,17 +209,4 @@ abstract class MainActivityGames extends MainActivityHome {
             return !rows.isEmpty() || !inventory.isEmpty();
         }
     }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
-    }
 }
