@@ -158,7 +158,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         WritingRecognizer create(ExecutorService executor);
     }
 
-    abstract void renderHome();
+    public abstract void renderHome();
     public abstract void renderUpdate();
     public abstract void renderSettings();
     abstract void renderStudy();
