@@ -255,6 +255,9 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Save import filters");
             clickText(scenario, "Study behavior");
             verifyStudyBehaviorPanel(scenario);
+            clickText(scenario, SettingsTextCopy.newCardSortLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            waitForText(scenario, SettingsTextCopy.newCardSortStatusText(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK));
+            clickText(scenario, SettingsTextCopy.saveNewCardSortLabel());
             setLearningStepText(scenario);
             clickText(scenario, "Save learning steps");
             setStudyAheadMinutes(scenario);
