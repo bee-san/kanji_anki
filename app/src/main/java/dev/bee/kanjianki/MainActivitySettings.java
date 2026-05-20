@@ -215,7 +215,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return studySortPanel().newCardSortSettingsPanel(current);
     }
 
-    LinearLayout workloadSettingsPanel() {
+    View workloadSettingsPanel() {
         return workloadPanel().workloadSettingsPanel();
     }
 

@@ -610,28 +610,6 @@ public final class MainActivityHelperInstrumentedTest {
         maxSlider.setProgress(SettingsInputRules.rankSliderProgress(70));
         assertEquals(80, selectedRanks[1]);
         assertTrue(rankStatus.getText().toString().contains("Jiten ranks"));
-        verifyMaxItemControls(activity);
-    }
-
-    private static void verifyMaxItemControls(MainActivity activity) {
-        MainActivitySettingsWorkloadPanel workloadPanel = new MainActivitySettingsWorkloadPanel(activity);
-        LinearLayout maxOnlyBox = new LinearLayout(activity);
-        int[] selectedMaxOnly = {AdaptiveLoadPlanner.MIN_MAX_ITEMS};
-        workloadPanel.addMaxItemsControl(maxOnlyBox, selectedMaxOnly, null, null);
-        SeekBar maxOnlySlider = seekBars(maxOnlyBox).get(0);
-        touchSeekBar(maxOnlySlider);
-        maxOnlySlider.setProgress(3);
-        assertEquals(AdaptiveLoadPlanner.normalizeMaxItems(AdaptiveLoadPlanner.MIN_MAX_ITEMS + 3), selectedMaxOnly[0]);
-
-        LinearLayout linkedMaxBox = new LinearLayout(activity);
-        int[] selectedMax = {5};
-        int[] selectedWorkload = {20};
-        TextView workloadStatus = new TextView(activity);
-        workloadPanel.addMaxItemsControl(linkedMaxBox, selectedMax, workloadStatus, selectedWorkload);
-        SeekBar linkedSlider = seekBars(linkedMaxBox).get(0);
-        touchSeekBar(linkedSlider);
-        linkedSlider.setProgress(5);
-        assertTrue(workloadStatus.getText().toString().contains("Pareto: up to"));
     }
 
     @Test
@@ -672,22 +650,13 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
-                LinearLayout autoPanel = activity.workloadSettingsPanel();
-                performButtonClick(autoPanel, "Save maximum");
-                performButtonClick(autoPanel, "Use manual workload");
-                assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode());
+                View autoPanel = activity.workloadSettingsPanel();
+                assertTrue(autoPanel instanceof androidx.compose.ui.platform.ComposeView);
 
                 activity.store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
-                LinearLayout manualPanel = activity.workloadSettingsPanel();
-                List<SeekBar> manualSliders = seekBars(manualPanel);
-                manualSliders.get(0).setProgress(40);
-                touchSeekBar(manualSliders.get(0));
-                manualSliders.get(1).setProgress(4);
-                touchSeekBar(manualSliders.get(1));
-                performButtonClick(manualPanel, "Save workload");
+                View manualPanel = activity.workloadSettingsPanel();
+                assertTrue(manualPanel instanceof androidx.compose.ui.platform.ComposeView);
                 assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode());
-                performButtonClick(manualPanel, "Use automatic Pareto");
-                assertEquals(AdaptiveLoadPlanner.MODE_AUTO, activity.store.adaptiveLoadMode());
 
                 View stepsPanel = activity.learningStepsSettingsPanel();
                 assertTrue(stepsPanel instanceof androidx.compose.ui.platform.ComposeView);
