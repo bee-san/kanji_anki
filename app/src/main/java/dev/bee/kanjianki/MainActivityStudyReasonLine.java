@@ -12,13 +12,17 @@ final class MainActivityStudyReasonLine {
         this.home = home;
     }
 
-    void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
-        String reason = StudyTextCopy.studyReasonLine(
+    String studyReasonLine(RecordsSchedulerModels.StudySession session) {
+        return StudyTextCopy.studyReasonLine(
                 home.activeSimilarWritingRepair != null,
                 session,
                 home.settings().matureSupportThreshold,
                 System.currentTimeMillis()
         );
+    }
+
+    void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
+        String reason = studyReasonLine(session);
         if (!reason.isEmpty()) {
             card.addView(home.text(reason, 14, home.STUDY_MUTED, false));
         }

@@ -61,29 +61,7 @@ final class MainActivityStudyFlashcard {
         card.setClickable(true);
         card.setFocusable(true);
 
-        card.addView(recognitionPill(StudyTaskCopy.studyModeLabel(session)));
-
-        TextView title = activity.text(StudyTaskCopy.flashcardTitle(session), 21, activity.STUDY_HERO_PLUM, true);
-        title.setGravity(Gravity.CENTER);
-        title.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(-1, -2);
-        titleLp.setMargins(0, activity.dp(14), 0, 0);
-        card.addView(title, titleLp);
-
-        TextView question = activity.text(StudyTextCopy.heroQuestion(session), 27, activity.STUDY_HERO_PLUM, true);
-        question.setGravity(Gravity.CENTER);
-        question.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams questionLp = new LinearLayout.LayoutParams(-1, -2);
-        questionLp.setMargins(0, activity.dp(8), 0, 0);
-        card.addView(question, questionLp);
-
-        TextView hiddenHint = activity.text("Answer hidden until reveal", 14, activity.STUDY_HERO_MUTED, false);
-        hiddenHint.setGravity(Gravity.CENTER);
-        hiddenHint.setIncludeFontPadding(false);
-        LinearLayout.LayoutParams hintLp = new LinearLayout.LayoutParams(-1, -2);
-        hintLp.setMargins(0, activity.dp(6), 0, 0);
-        card.addView(hiddenHint, hintLp);
-        activity.addStudyReasonLine(card, session);
+        card.addView(flashcardPromptHeader(session));
 
         activity.flashcardHeroPanel = heroKanjiPanel(session);
         card.addView(activity.flashcardHeroPanel);
@@ -104,8 +82,17 @@ final class MainActivityStudyFlashcard {
         return card;
     }
 
-    View recognitionPill(String label) {
-        return MainActivityStudyFlashcardContentCompose.recognitionPillView(activity, label);
+    View flashcardPromptHeader(RecordsSchedulerModels.StudySession session) {
+        return MainActivityStudyFlashcardContentCompose.flashcardPromptHeaderView(
+                activity,
+                new FlashcardPromptHeaderModel(
+                        StudyTaskCopy.studyModeLabel(session),
+                        StudyTaskCopy.flashcardTitle(session),
+                        StudyTextCopy.heroQuestion(session),
+                        "Answer hidden until reveal",
+                        activity.studyReasonLine(session)
+                )
+        );
     }
 
     View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {

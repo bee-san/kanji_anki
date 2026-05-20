@@ -1,8 +1,10 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
@@ -62,6 +64,44 @@ class MainActivityStudyFlashcardComposeTest {
         }
 
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
+    }
+
+    @Test
+    fun rendersFlashcardPromptHeaderWithReason() {
+        composeRule.setContent {
+            FlashcardPromptHeader(
+                model = FlashcardPromptHeaderModel(
+                    modeLabel = "Recognise",
+                    title = "What does this kanji mean?",
+                    question = "Recall the meaning",
+                    hiddenHint = "Answer hidden until reveal",
+                    reasonLine = "Weak Anki evidence"
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Recognise").assertIsDisplayed()
+        composeRule.onNodeWithText("What does this kanji mean?").assertIsDisplayed()
+        composeRule.onNodeWithText("Recall the meaning").assertIsDisplayed()
+        composeRule.onNodeWithText("Answer hidden until reveal").assertIsDisplayed()
+        composeRule.onNodeWithText("Weak Anki evidence").assertIsDisplayed()
+    }
+
+    @Test
+    fun omitsFlashcardPromptHeaderReasonWhenEmpty() {
+        composeRule.setContent {
+            FlashcardPromptHeader(
+                model = FlashcardPromptHeaderModel(
+                    modeLabel = "Recognise",
+                    title = "What does this kanji mean?",
+                    question = "Recall the meaning",
+                    hiddenHint = "Answer hidden until reveal",
+                    reasonLine = ""
+                )
+            )
+        }
+
+        composeRule.onAllNodesWithText("Weak Anki evidence").assertCountEquals(0)
     }
 
     @Test

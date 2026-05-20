@@ -4,17 +4,19 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import android.graphics.Typeface
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,9 +41,19 @@ import androidx.compose.ui.unit.sp
 
 private val HeroPanelFill = Color(MainActivityUiSupport.STUDY_HERO_PANEL)
 private val HeroPanelBorder = Color(MainActivityUiSupport.STUDY_BORDER)
+private val HeroMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
 private val HeroPlum = Color(MainActivityUiSupport.STUDY_HERO_PLUM)
 private val HeroPink = Color(MainActivityUiSupport.STUDY_HERO_PINK)
 private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
+private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
+
+data class FlashcardPromptHeaderModel(
+    val modeLabel: String,
+    val title: String,
+    val question: String,
+    val hiddenHint: String,
+    val reasonLine: String,
+)
 
 data class FlashcardHeroPanelModel(
     val glyph: String,
@@ -49,17 +61,15 @@ data class FlashcardHeroPanelModel(
     val typeface: Typeface?,
 )
 
-internal fun recognitionPillView(context: Context, label: String): View {
+internal fun flashcardPromptHeaderView(context: Context, model: FlashcardPromptHeaderModel): View {
     return ComposeView(context).apply {
         layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            gravity = Gravity.CENTER_HORIZONTAL
-        }
+        )
         setContent {
             MaterialTheme {
-                RecognitionPill(label)
+                FlashcardPromptHeader(model)
             }
         }
     }
@@ -82,9 +92,53 @@ internal fun heroKanjiPanelView(activity: MainActivityStudy, model: FlashcardHer
 }
 
 @Composable
+fun FlashcardPromptHeader(model: FlashcardPromptHeaderModel) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top
+    ) {
+        RecognitionPill(model.modeLabel)
+        Spacer(modifier = Modifier.height(14.dp))
+        FlashcardHeaderText(
+            text = model.title,
+            sizeSp = 21,
+            color = HeroPlum,
+            bold = true,
+            includeFontPadding = false
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FlashcardHeaderText(
+            text = model.question,
+            sizeSp = 27,
+            color = HeroPlum,
+            bold = true,
+            includeFontPadding = false
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        FlashcardHeaderText(
+            text = model.hiddenHint,
+            sizeSp = 14,
+            color = HeroMuted,
+            bold = false,
+            includeFontPadding = false
+        )
+        if (model.reasonLine.isNotEmpty()) {
+            FlashcardHeaderText(
+                text = model.reasonLine,
+                sizeSp = 14,
+                color = StudyMuted,
+                bold = false,
+                includeFontPadding = true
+            )
+        }
+    }
+}
+
+@Composable
 fun RecognitionPill(label: String) {
     Surface(
-        modifier = Modifier.height(44.dp),
+        modifier = Modifier.heightIn(min = 44.dp),
         shape = RoundedCornerShape(24.dp),
         color = HeroPillFill
     ) {
@@ -104,6 +158,7 @@ fun RecognitionPill(label: String) {
                 color = HeroPink,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
+                lineHeight = (18 * 1.05f).sp,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
         }
@@ -111,7 +166,28 @@ fun RecognitionPill(label: String) {
 }
 
 @Composable
+private fun FlashcardHeaderText(
+    text: String,
+    sizeSp: Int,
+    color: Color,
+    bold: Boolean,
+    includeFontPadding: Boolean,
+) {
+    Text(
+        text = text,
+        modifier = Modifier.fillMaxWidth(),
+        color = color,
+        fontSize = sizeSp.sp,
+        fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+        textAlign = TextAlign.Center,
+        lineHeight = (sizeSp * 1.05f).sp,
+        style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = includeFontPadding))
+    )
+}
+
+@Composable
 fun FlashcardHeroPanel(model: FlashcardHeroPanelModel) {
+    val fontFamily = model.typeface?.let { FontFamily(Typeface.create(it, Typeface.BOLD)) }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -131,8 +207,9 @@ fun FlashcardHeroPanel(model: FlashcardHeroPanelModel) {
                 color = HeroPlum,
                 fontSize = model.glyphSizeSp.sp,
                 fontWeight = FontWeight.Bold,
+                lineHeight = (model.glyphSizeSp * 1.05f).sp,
                 textAlign = TextAlign.Center,
-                fontFamily = model.typeface?.let { FontFamily(it) },
+                fontFamily = fontFamily,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
         }

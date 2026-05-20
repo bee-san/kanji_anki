@@ -222,10 +222,6 @@ abstract class MainActivityStudy extends MainActivityStats {
         return flashcardUi.recognitionHeroCard(session);
     }
 
-    View recognitionPill(String label) {
-        return flashcardUi.recognitionPill(label);
-    }
-
     View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {
         return flashcardUi.heroKanjiPanel(session);
     }
@@ -248,6 +244,10 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     void addStudyReasonLine(LinearLayout card, RecordsSchedulerModels.StudySession session) {
         reasonLine.addStudyReasonLine(card, session);
+    }
+
+    String studyReasonLine(RecordsSchedulerModels.StudySession session) {
+        return reasonLine.studyReasonLine(session);
     }
 
     void renderSimilarWritingRepair(RecordsImportModels.SimilarKanjiWritingRepair repair, RecordsSchedulerModels.AdaptiveLoadPlan plan, long now) {
