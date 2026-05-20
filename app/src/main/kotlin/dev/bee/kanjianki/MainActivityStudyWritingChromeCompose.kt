@@ -75,6 +75,29 @@ class WritingStatusView(context: Context) : FrameLayout(context) {
     }
 }
 
+class WritingResultStatusHandle(context: Context) {
+    private val statusView = WritingStatusView(context)
+
+    fun view(): View = statusView
+
+    fun show(value: String?, color: Int) {
+        statusView.setStatus(value, color)
+        statusView.visibility = View.VISIBLE
+    }
+
+    fun hide() {
+        statusView.visibility = View.GONE
+    }
+
+    fun getText(): CharSequence {
+        return statusView.getText()
+    }
+
+    fun getVisibility(): Int {
+        return statusView.visibility
+    }
+}
+
 @Composable
 internal fun WritingSectionTitle(title: String, color: Int) {
     Text(

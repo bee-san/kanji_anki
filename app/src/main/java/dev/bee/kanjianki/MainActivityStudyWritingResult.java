@@ -1,7 +1,5 @@
 package dev.bee.kanjianki;
 
-import android.view.View;
-
 import dev.bee.kanjianki.core.study.StrokeDiagnosisFormatter;
 import dev.bee.kanjianki.core.study.StrokeGuide;
 import dev.bee.kanjianki.core.study.WritingAnalysis;
@@ -57,10 +55,7 @@ final class MainActivityStudyWritingResult {
     void clearWritingResult() {
         activity.activeAnalysis = null;
         if (activity.writingResultStatus != null) {
-            activity.writingResultStatus.setVisibility(View.GONE);
-        }
-        if (activity.resultStatus != null) {
-            activity.resultStatus.setVisibility(View.GONE);
+            activity.writingResultStatus.hide();
         }
     }
 }

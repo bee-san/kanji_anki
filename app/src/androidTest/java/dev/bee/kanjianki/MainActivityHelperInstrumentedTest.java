@@ -1577,7 +1577,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.studyActionBar.getChildAt(1) instanceof WritingPrimaryActionsView);
                 assertTrue(activity.studyActionBar.getChildAt(2) instanceof WritingFallbackActionsView);
                 assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
-                assertTrue(activity.writingResultStatus instanceof WritingStatusView);
+                assertTrue(activity.writingResultStatus.view() instanceof WritingStatusView);
                 performClickableWithText(activity.studyActionBar, "Erase");
 
                 activity.activeSession = promptOnly;
@@ -1626,7 +1626,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = writing;
                 activity.currentHintState = HintState.fromWritingLevel(1);
                 activity.studyStatus = new WritingStatusView(activity);
-                activity.resultStatus = new TextView(activity);
+                activity.writingResultStatus = new WritingResultStatusHandle(activity);
                 activity.checkWritingButton = new Button(activity);
                 activity.downloadModelButton = new Button(activity);
                 activity.nextAfterPassButton = new Button(activity);
@@ -1826,7 +1826,7 @@ public final class MainActivityHelperInstrumentedTest {
         activity.activeSession = writing;
         activity.currentHintState = HintState.fromWritingLevel(3);
         activity.studyStatus = new WritingStatusView(activity);
-        activity.resultStatus = new TextView(activity);
+        activity.writingResultStatus = new WritingResultStatusHandle(activity);
         activity.checkWritingButton = new Button(activity);
         activity.downloadModelButton = new Button(activity);
         activity.nextAfterPassButton = new Button(activity);
@@ -1866,7 +1866,8 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals(View.VISIBLE, activity.manualOverrideButton.getVisibility());
         assertEquals(View.VISIBLE, activity.practiceWithGuideButton.getVisibility());
         activity.showModelUnavailable("checker unavailable");
-        assertTrue(activity.resultStatus.getText().toString().contains("checker unavailable"));
+        assertTrue(activity.writingResultStatus.getText().toString().contains("checker unavailable"));
+        assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
 
         writingStatus.setWritingModelStatusMessage(null, new RuntimeException("offline"));
         assertTrue(activity.studyStatus.getText().toString().contains("Unable to read"));
@@ -2251,7 +2252,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.drawingPad.setTarget("裂");
                 addInk(activity.drawingPad);
                 activity.studyStatus = new WritingStatusView(activity);
-                activity.resultStatus = new TextView(activity);
+                activity.writingResultStatus = new WritingResultStatusHandle(activity);
                 activity.checkWritingButton = new Button(activity);
                 activity.downloadModelButton = new Button(activity);
                 activity.nextAfterPassButton = new Button(activity);
@@ -2270,12 +2271,11 @@ public final class MainActivityHelperInstrumentedTest {
                         activity.drawingPad != null && activity.drawingPad.hasInk(),
                         guide("裂")
                 ));
-                activity.resultStatus.setText("Previous result");
-                activity.resultStatus.setVisibility(View.VISIBLE);
+                activity.writingResultStatus.show("Previous result", activity.CORAL);
                 activity.handleDrawingEdited();
                 assertNull(activity.activeAnalysis);
                 assertTrue(activity.studyStatus.getText().toString().contains("Updated ink"));
-                assertEquals(View.GONE, activity.resultStatus.getVisibility());
+                assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
                 assertFalse(WritingFeedbackCopy.canReplayAnalysis(
                         analysis(WritingAnalysis.Status.RECOGNITION_ERROR, false, order),
                         activity.drawingPad != null && activity.drawingPad.hasInk(),
@@ -2298,20 +2298,18 @@ public final class MainActivityHelperInstrumentedTest {
                 ));
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
-                activity.resultStatus.setText("Messy pass");
-                activity.resultStatus.setVisibility(View.VISIBLE);
+                activity.writingResultStatus.show("Messy pass", activity.TEAL);
                 activity.startCleanerRetry();
                 assertNull(activity.activeAnalysis);
                 assertTrue(activity.studyStatus.getText().toString().contains("Try cleaner"));
-                assertEquals(View.GONE, activity.resultStatus.getVisibility());
+                assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
 
                 activity.checkingWriting = true;
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
-                activity.resultStatus.setText("Still checking");
-                activity.resultStatus.setVisibility(View.VISIBLE);
+                activity.writingResultStatus.show("Still checking", activity.CORAL);
                 activity.handleDrawingEdited();
                 assertNotNull(activity.activeAnalysis);
-                assertEquals(View.VISIBLE, activity.resultStatus.getVisibility());
+                assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
 
                 activity.checkingWriting = false;
                 activity.activeSession = writing;
@@ -2539,7 +2537,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = session("裂", BridgeScheduler.TASK_WRITE_KANJI, row);
                 activity.currentHintState = HintState.fromWritingLevel(1);
                 activity.studyStatus = new WritingStatusView(activity);
-                activity.resultStatus = new TextView(activity);
+                activity.writingResultStatus = new WritingResultStatusHandle(activity);
                 activity.drawingPad = new DrawingPadView(activity);
                 activity.checkWriting();
                 assertEquals(WritingAnalysis.Status.NO_INK, activity.activeAnalysis.status);
@@ -2549,7 +2547,8 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.showModelUnavailable("The handwriting checker is unavailable on this device.");
                 assertEquals(WritingAnalysis.Status.MODEL_UNAVAILABLE, activity.activeAnalysis.status);
-                assertTrue(activity.resultStatus.getText().toString().contains("unavailable"));
+                assertTrue(activity.writingResultStatus.getText().toString().contains("unavailable"));
+                assertEquals(View.VISIBLE, activity.writingResultStatus.getVisibility());
 
                 activity.replayWritingAnalysis();
                 activity.activeSession = null;
@@ -2828,7 +2827,7 @@ public final class MainActivityHelperInstrumentedTest {
         activity.activeSession = session;
         activity.currentHintState = HintState.fromWritingLevel(1);
         activity.studyStatus = new WritingStatusView(activity);
-        activity.resultStatus = new TextView(activity);
+        activity.writingResultStatus = new WritingResultStatusHandle(activity);
         activity.checkWritingButton = new Button(activity);
         activity.downloadModelButton = new Button(activity);
         activity.nextAfterPassButton = new Button(activity);

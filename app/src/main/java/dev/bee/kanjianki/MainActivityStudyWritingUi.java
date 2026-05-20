@@ -175,22 +175,13 @@ final class MainActivityStudyWritingUi {
 
     void setResultStatus(String value, int color) {
         if (activity.writingResultStatus != null) {
-            activity.writingResultStatus.setStatus(value, color);
-            activity.writingResultStatus.setVisibility(View.VISIBLE);
-        }
-        if (activity.resultStatus != null) {
-            activity.resultStatus.setText(value);
-            activity.resultStatus.setTextColor(color);
-            activity.resultStatus.setVisibility(View.VISIBLE);
+            activity.writingResultStatus.show(value, color);
         }
     }
 
     void hideResultStatus() {
         if (activity.writingResultStatus != null) {
-            activity.writingResultStatus.setVisibility(View.GONE);
-        }
-        if (activity.resultStatus != null) {
-            activity.resultStatus.setVisibility(View.GONE);
+            activity.writingResultStatus.hide();
         }
     }
 

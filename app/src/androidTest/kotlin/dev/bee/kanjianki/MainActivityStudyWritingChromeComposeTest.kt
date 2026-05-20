@@ -1,10 +1,12 @@
 package dev.bee.kanjianki
 
+import android.view.View
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -43,5 +45,20 @@ class MainActivityStudyWritingChromeComposeTest {
 
         view.setText("Existing analysis message")
         assertEquals("Existing analysis message", view.getText().toString())
+    }
+
+    @Test
+    fun writingResultStatusHandleShowsAndHidesComposeStatus() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val handle = WritingResultStatusHandle(context)
+
+        assertTrue(handle.view() is WritingStatusView)
+
+        handle.hide()
+        assertEquals(View.GONE, handle.getVisibility())
+
+        handle.show("Model unavailable", MainActivityUiSupport.CORAL)
+        assertEquals("Model unavailable", handle.getText().toString())
+        assertEquals(View.VISIBLE, handle.getVisibility())
     }
 }
