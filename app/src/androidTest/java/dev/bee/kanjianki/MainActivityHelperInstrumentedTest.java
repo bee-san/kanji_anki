@@ -2064,6 +2064,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertFalse(passiveMetric.isClickable());
         assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
         assertTrue(activity.browseKanjiRow(new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)) instanceof androidx.compose.ui.platform.ComposeView);
+        assertTrue(activity.exampleView(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE)) instanceof androidx.compose.ui.platform.ComposeView);
         RecordsStudyModels.StudyItem relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)

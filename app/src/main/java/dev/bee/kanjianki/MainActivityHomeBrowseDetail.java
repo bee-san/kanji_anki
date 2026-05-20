@@ -34,11 +34,11 @@ public final class MainActivityHomeBrowseDetail {
         home.activeBrowseQuery = query == null ? "" : query;
         home.base("home");
         List<RecordsImportModels.KanjiInventoryItem> items = home.store.searchKanjiInventory(query);
-        home.content.addView(MainActivityHomeBrowseDetailCompose.browseScreenView(this, home.activeBrowseQuery, items));
+        home.content.addView(MainActivityHomeBrowseSearchCompose.browseScreenView(this, home.activeBrowseQuery, items));
     }
 
     View browseKanjiRow(RecordsImportModels.KanjiInventoryItem item) {
-        return MainActivityHomeBrowseDetailCompose.browseKanjiRowView(this, item);
+        return MainActivityHomeBrowseSearchCompose.browseKanjiRowView(this, item);
     }
 
     void renderDetail(String kanji) {

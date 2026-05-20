@@ -5,22 +5,16 @@ package dev.bee.kanjianki
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,47 +22,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
-import dev.bee.kanjianki.core.RecordsImportModels
-
-private val Ink = ComposeColor(0xFF2D1635)
-private val Muted = ComposeColor(0xFF6C5674)
-private val Teal = ComposeColor(0xFF00AEB5)
-private val Coral = ComposeColor(0xFFFF4C76)
-private val Gold = ComposeColor(0xFFFFD640)
-private val White = ComposeColor(0xFFFFFFFF)
-private val Blush = ComposeColor(0xFFFFEFF6)
-private val PanelShape = RoundedCornerShape(18.dp)
-private val CardShape = RoundedCornerShape(8.dp)
-
-data class BrowseScreenModel(
-    val initialQuery: String,
-    val resultHeading: String,
-    val rows: List<BrowseKanjiRowModel>,
-    val onHome: () -> Unit,
-    val onSearch: (String) -> Unit,
-)
-
-data class BrowseKanjiRowModel(
-    val kanji: String,
-    val meaning: String,
-    val readings: String,
-    val summary: String,
-    val suspended: Boolean,
-    val onClick: () -> Unit,
-)
 
 data class BrowseDetailPanelModel(
     val title: String,
@@ -103,41 +64,6 @@ data class BrowseDetailActionsModel(
     val suspendLabel: String,
     val onSuspend: Runnable,
 )
-
-internal fun browseScreenView(
-    activity: MainActivityHomeBrowseDetail,
-    query: String,
-    items: List<RecordsImportModels.KanjiInventoryItem>
-): View {
-    val rows = items.map { item -> browseKanjiRowModel(activity, item) }
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseScreen(
-                    model = BrowseScreenModel(
-                        initialQuery = query,
-                        resultHeading = HomeTextCopy.browseResultHeading(rows.size),
-                        rows = rows,
-                        onHome = activity.home()::renderHome,
-                        onSearch = activity::renderBrowseKanji
-                    )
-                )
-            }
-        }
-    }
-}
-
-internal fun browseKanjiRowView(activity: MainActivityHomeBrowseDetail, item: RecordsImportModels.KanjiInventoryItem): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseKanjiRow(model = browseKanjiRowModel(activity, item))
-            }
-        }
-    }
-}
 
 internal fun detailHeroView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailHeroModel): View {
     return ComposeView(activity.home()).apply {
@@ -183,20 +109,6 @@ internal fun detailInfoPanelView(activity: MainActivityHomeBrowseDetail, model: 
     }
 }
 
-private fun browseKanjiRowModel(
-    activity: MainActivityHomeBrowseDetail,
-    item: RecordsImportModels.KanjiInventoryItem
-): BrowseKanjiRowModel {
-    return BrowseKanjiRowModel(
-        kanji = item.kanji,
-        meaning = HomeTextCopy.browseItemMeaning(item),
-        readings = item.readings,
-        summary = HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount),
-        suspended = item.suspended,
-        onClick = { activity.renderDetail(item.kanji, true) }
-    )
-}
-
 @Composable
 fun BrowseDetailHero(model: BrowseDetailHeroModel) {
     Column(
@@ -210,11 +122,11 @@ fun BrowseDetailHero(model: BrowseDetailHeroModel) {
         Text(
             text = model.kanji,
             modifier = Modifier.fillMaxWidth(),
-            color = Ink,
+            color = BrowseInk,
             fontSize = 92.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
-            style = noFontPaddingStyle(92)
+            style = browseNoFontPaddingStyle(92)
         )
     }
 }
@@ -226,19 +138,19 @@ fun BrowseDetailIdentity(model: BrowseDetailIdentityModel) {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (model.suspended) {
-            BrowseChip(label = HomeTextCopy.suspendedChipLabel(), color = Coral)
+            BrowseChip(label = HomeTextCopy.suspendedChipLabel(), color = BrowseCoral)
         }
         Text(
             text = model.title,
-            color = Ink,
+            color = BrowseInk,
             fontSize = 25.sp,
             fontWeight = FontWeight.Bold,
-            style = noFontPaddingStyle(25)
+            style = browseNoFontPaddingStyle(25)
         )
         if (model.reading.isNotEmpty()) {
             Text(
                 text = model.reading,
-                color = Teal,
+                color = BrowseTeal,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -259,8 +171,8 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 58.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Coral,
-                    contentColor = White
+                    containerColor = BrowseCoral,
+                    contentColor = BrowseWhite
                 )
             ) {
                 Text(
@@ -280,8 +192,8 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
                 shape = RoundedCornerShape(18.dp),
                 border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = White,
-                    contentColor = Ink
+                    containerColor = BrowseWhite,
+                    contentColor = BrowseInk
                 )
             ) {
                 Text(
@@ -297,8 +209,8 @@ fun BrowseDetailActions(model: BrowseDetailActionsModel) {
             shape = RoundedCornerShape(18.dp),
             border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4)),
             colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = White,
-                contentColor = Ink
+                containerColor = BrowseWhite,
+                contentColor = BrowseInk
             )
         ) {
             Text(
@@ -318,8 +230,8 @@ fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = if (band) 8.dp else 7.dp),
-        shape = CardShape,
-        color = if (band) accent else White,
+        shape = BrowseCardShape,
+        color = if (band) accent else BrowseWhite,
         border = BorderStroke(1.dp, accent)
     ) {
         Column(
@@ -328,180 +240,16 @@ fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
         ) {
             Text(
                 text = model.title,
-                color = if (band) White else Ink,
+                color = if (band) BrowseWhite else BrowseInk,
                 fontSize = if (band) 22.sp else 19.sp,
                 fontWeight = FontWeight.Bold
             )
             model.lines.forEach { line ->
                 Text(
                     text = line,
-                    color = if (band) White else Muted,
+                    color = if (band) BrowseWhite else BrowseMuted,
                     fontSize = if (band) 17.sp else 15.sp
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun BrowseScreen(model: BrowseScreenModel) {
-    var query by remember(model.initialQuery) { mutableStateOf(model.initialQuery) }
-    val runSearch = { model.onSearch(query) }
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        HomeFullWidthHomeButton(label = HomeTextCopy.homeLabel(), onClick = model.onHome)
-        Text(
-            text = HomeTextCopy.browseTitle(),
-            modifier = Modifier.fillMaxWidth(),
-            color = Ink,
-            fontSize = 34.sp,
-            fontWeight = FontWeight.Bold,
-            style = noFontPaddingStyle(34)
-        )
-        Text(
-            text = HomeTextCopy.browseBody(),
-            modifier = Modifier.fillMaxWidth(),
-            color = Muted,
-            fontSize = 16.sp
-        )
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            label = { Text(HomeTextCopy.browseSearchHint()) },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { runSearch() })
-        )
-        Button(
-            onClick = runSearch,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 58.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Teal)
-        ) {
-            Text(
-                text = HomeTextCopy.browseSearchButtonLabel(),
-                color = White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Text(
-            text = model.resultHeading,
-            color = Ink,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            style = noFontPaddingStyle(22)
-        )
-        if (model.rows.isEmpty()) {
-            BrowseEmptyState()
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                model.rows.forEach { row ->
-                    BrowseKanjiRow(model = row)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BrowseEmptyState() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = CardShape,
-        color = ComposeColor(0xFFFFF7D6),
-        border = BorderStroke(1.dp, Gold)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = HomeTextCopy.browseEmptyTitle(),
-                color = Ink,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = HomeTextCopy.browseEmptyBody(),
-                color = Ink,
-                fontSize = 16.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
-    val borderColor = if (model.suspended) Coral else Teal
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics(mergeDescendants = true) { }
-            .clickable(onClick = model.onClick),
-        shape = CardShape,
-        color = White,
-        border = BorderStroke(1.dp, borderColor)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Surface(
-                    modifier = Modifier.size(74.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    color = Blush,
-                    border = BorderStroke(1.dp, Blush)
-                ) {
-                    Text(
-                        text = model.kanji,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 11.dp),
-                        color = Ink,
-                        fontSize = 44.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        style = noFontPaddingStyle(44)
-                    )
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = model.meaning,
-                        color = Ink,
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
-                        style = noFontPaddingStyle(19)
-                    )
-                    if (model.readings.isNotEmpty()) {
-                        Text(
-                            text = model.readings,
-                            color = Teal,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text(
-                        text = model.summary,
-                        color = Muted,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-            if (model.suspended) {
-                BrowseChip(label = HomeTextCopy.suspendedChipLabel(), color = Coral)
             }
         }
     }
@@ -512,7 +260,7 @@ private fun BrowseChip(label: String, color: ComposeColor) {
     Surface(
         modifier = Modifier.padding(top = 7.dp, end = 7.dp, bottom = 2.dp),
         shape = RoundedCornerShape(999.dp),
-        color = softened(color),
+        color = browseSoftenedColor(color),
         border = BorderStroke(1.dp, color),
     ) {
         Text(
@@ -523,24 +271,6 @@ private fun BrowseChip(label: String, color: ComposeColor) {
             fontWeight = FontWeight.Bold
         )
     }
-}
-
-private fun softened(color: ComposeColor): ComposeColor {
-    return when (color) {
-        Coral -> ComposeColor(0xFFFFEBF3)
-        Teal -> ComposeColor(0xFFE6FAFB)
-        Gold -> ComposeColor(0xFFFFF7DC)
-        ComposeColor(0xFF6E5CE6), ComposeColor(0xFFC9B9FF) -> ComposeColor(0xFFF2EEFF)
-        else -> ComposeColor(0xFFF8EEF5)
-    }
-}
-
-private fun noFontPaddingStyle(sizeSp: Int): TextStyle {
-    return TextStyle(
-        fontSize = sizeSp.sp,
-        fontWeight = FontWeight.Bold,
-        platformStyle = PlatformTextStyle(includeFontPadding = false)
-    )
 }
 
 internal fun recoveryTimelinePanelsView(activity: MainActivityHomeBrowseDetail, model: MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel): View {
@@ -564,13 +294,13 @@ fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTimelinePan
             text = model.title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = Ink,
+            color = BrowseInk,
             fontSize = 22.sp
         )
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = PanelShape,
-            color = White,
+            shape = BrowsePanelShape,
+            color = BrowseWhite,
             border = BorderStroke(1.dp, ComposeColor(model.statusColor))
         ) {
             Column(
@@ -581,12 +311,12 @@ fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTimelinePan
                     text = model.statusText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Ink
+                    color = BrowseInk
                 )
                 Text(
                     text = model.supportText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Muted
+                    color = BrowseMuted
                 )
             }
         }
@@ -594,7 +324,7 @@ fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTimelinePan
             Text(
                 text = model.emptyText,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Muted,
+                color = BrowseMuted,
                 fontSize = 15.sp
             )
         }
@@ -608,8 +338,8 @@ fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTimelinePan
 private fun RecoveryTimelineEvent(model: MainActivityHomeBrowseDetail.BrowseTimelineEventModel) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = PanelShape,
-        color = White,
+        shape = BrowsePanelShape,
+        color = BrowseWhite,
         border = BorderStroke(1.dp, ComposeColor(model.color))
     ) {
         Column(
@@ -619,19 +349,19 @@ private fun RecoveryTimelineEvent(model: MainActivityHomeBrowseDetail.BrowseTime
             Text(
                 text = model.dateText,
                 style = MaterialTheme.typography.labelMedium,
-                color = Muted
+                color = BrowseMuted
             )
             Text(
                 text = model.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Ink
+                color = BrowseInk
             )
             if (model.detail.isNotEmpty()) {
                 Text(
                     text = model.detail,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Muted
+                    color = BrowseMuted
                 )
             }
             if (model.sourceLine.isNotEmpty()) {
@@ -639,7 +369,7 @@ private fun RecoveryTimelineEvent(model: MainActivityHomeBrowseDetail.BrowseTime
                     text = model.sourceLine,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Ink
+                    color = BrowseInk
                 )
             }
         }
