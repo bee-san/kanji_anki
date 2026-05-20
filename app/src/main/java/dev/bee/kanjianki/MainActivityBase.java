@@ -124,6 +124,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     WritingFallbackActionsView writingFallbackActionsView;
     Button hintButton;
     Button undoStrokeButton;
+    WritingToolActionsView writingToolActionsView;
     View studyAnswerPanel;
     View flashcardGestureArea;
     View flashcardCard;

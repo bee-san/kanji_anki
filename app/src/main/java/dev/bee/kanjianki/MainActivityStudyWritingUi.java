@@ -75,6 +75,20 @@ final class MainActivityStudyWritingUi {
             activity.undoStrokeButton.setVisibility(View.VISIBLE);
             activity.undoStrokeButton.setEnabled(presentation.undoEnabled);
         }
+        updateToolActionRow(presentation);
+    }
+
+    void updateToolActionRow(WritingActionPresentation presentation) {
+        if (activity.writingToolActionsView != null) {
+            activity.writingToolActionsView.render(new WritingToolActionsModel(
+                    presentation.undoEnabled,
+                    presentation.hintText,
+                    presentation.hintVisible,
+                    activity::eraseWritingPad,
+                    activity::undoWritingStroke,
+                    activity::showWritingHint
+            ));
+        }
     }
 
     void updateDownloadModelButton(WritingActionPresentation presentation) {

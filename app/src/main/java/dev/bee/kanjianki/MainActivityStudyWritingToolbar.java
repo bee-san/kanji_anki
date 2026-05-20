@@ -28,19 +28,25 @@ final class MainActivityStudyWritingToolbar {
         activity.studyActionBar.addView(writingFallbackActions());
     }
 
-    private LinearLayout writingToolActions() {
-        LinearLayout actions = new LinearLayout(activity);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        Button clear = activity.studySecondaryButton("Erase");
-        clear.setOnClickListener(new RunnableClickListener(activity::eraseWritingPad));
-        actions.addView(clear, new LinearLayout.LayoutParams(0, activity.dp(58), 1));
-        activity.undoStrokeButton = activity.studySecondaryButton("Undo");
+    private View writingToolActions() {
+        activity.writingToolActionsView = new WritingToolActionsView(activity);
+
+        activity.undoStrokeButton = new Button(activity);
+        activity.undoStrokeButton.setText(undoLabel());
         activity.undoStrokeButton.setOnClickListener(new RunnableClickListener(activity::undoWritingStroke));
-        actions.addView(activity.undoStrokeButton, new LinearLayout.LayoutParams(0, activity.dp(58), 1));
-        activity.hintButton = activity.studySecondaryButton("Hint");
+
+        activity.hintButton = new Button(activity);
+        activity.hintButton.setText(hintLabel());
         activity.hintButton.setOnClickListener(new RunnableClickListener(activity::showWritingHint));
-        actions.addView(activity.hintButton, new LinearLayout.LayoutParams(0, activity.dp(58), 1));
-        return actions;
+        return activity.writingToolActionsView;
+    }
+
+    private String undoLabel() {
+        return "Undo";
+    }
+
+    private String hintLabel() {
+        return "Hint";
     }
 
     private View writingPrimaryActions() {

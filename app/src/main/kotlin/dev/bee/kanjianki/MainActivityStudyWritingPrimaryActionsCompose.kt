@@ -164,9 +164,11 @@ internal fun WritingSecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     minHeight: Dp = 62.dp,
+    enabled: Boolean = true,
 ) {
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.heightIn(min = minHeight),
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, WritingPrimaryBorder),
