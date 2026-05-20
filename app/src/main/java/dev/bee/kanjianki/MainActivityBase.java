@@ -161,20 +161,20 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     public abstract void renderHome();
     public abstract void renderUpdate();
     public abstract void renderSettings();
-    abstract void renderStudy();
-    abstract void startFocusedStudy();
-    abstract void renderStudyForKanji(String kanji);
-    abstract void pauseActiveStudyTask();
-    abstract void resumeActiveStudyTask();
-    abstract void abandonActiveStudyTask();
-    abstract boolean handleFlashcardGesture(MotionEvent event);
-    abstract void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan);
-    abstract DictionaryLookup currentDictionaryLookup();
-    abstract RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row);
-    abstract void clearStudyModeOverrides();
-    abstract Typeface fontResource(int fontRes, Typeface fallback);
-    abstract EditText thresholdInput(int value);
-    abstract int parseThresholdInput(EditText input);
+    public abstract void renderStudy();
+    public abstract void startFocusedStudy();
+    public abstract void renderStudyForKanji(String kanji);
+    public abstract void pauseActiveStudyTask();
+    public abstract void resumeActiveStudyTask();
+    public abstract void abandonActiveStudyTask();
+    public abstract boolean handleFlashcardGesture(MotionEvent event);
+    public abstract void initializeSessionProgressTarget(RecordsSchedulerModels.AdaptiveLoadPlan plan);
+    public abstract DictionaryLookup currentDictionaryLookup();
+    public abstract RecordsImportModels.Example wordReadingExample(RecordsImportModels.DashboardRow row);
+    public abstract void clearStudyModeOverrides();
+    public abstract Typeface fontResource(int fontRes, Typeface fallback);
+    public abstract EditText thresholdInput(int value);
+    public abstract int parseThresholdInput(EditText input);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
