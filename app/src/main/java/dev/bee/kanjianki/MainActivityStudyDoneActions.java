@@ -13,8 +13,8 @@ import dev.bee.kanjianki.core.StudyTextCopy;
 
 import java.util.List;
 
-import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyBackHomeButtonView;
 import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyDoneActionsView;
+import static dev.bee.kanjianki.MainActivityStudyDoneActionsCompose.studyDoneScreenView;
 
 final class MainActivityStudyDoneActions {
     private final MainActivityStudy home;
@@ -29,15 +29,8 @@ final class MainActivityStudyDoneActions {
                 home,
                 available,
                 () -> showStudyMoreNewCardsDialog(available),
-                () -> {
-                    home.studyMoreNewCardKanji.clear();
-                    home.continueAllKanjiSession = true;
-                    home.renderStudy();
-                },
-                () -> {
-                    home.clearStudyModeOverrides();
-                    home.renderHome();
-                }
+                this::continueAllKanji,
+                this::backHome
         ));
     }
 
@@ -47,71 +40,111 @@ final class MainActivityStudyDoneActions {
             return;
         }
         home.prepareStudyContent(seededPlan, false);
-        LinearLayout card = home.softStudyCard();
-        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
-        card.addView(home.text("Nothing due now", 32, home.STUDY_PLUM, true));
-        card.addView(home.text("Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.", 17, home.STUDY_MUTED, false));
-        card.addView(studyBackHomeButtonView(
-                home,
+        home.content.addView(studyDoneScreenView(home, studyDoneScreenModel(
+                "Nothing due now",
+                null,
+                "Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.",
+                List.of(),
+                false,
                 true,
-                () -> {
-                    home.clearStudyModeOverrides();
-                    home.renderHome();
-                }
-        ));
-        home.content.addView(card);
+                true
+        )));
     }
 
     void renderFocusDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         home.prepareStudyContent(plan, false);
-        LinearLayout card = home.softStudyCard();
-        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
-        card.addView(home.text(StudyTextCopy.studyDoneTitle(), 32, home.STUDY_PLUM, true));
-        card.addView(home.text(StudyTextCopy.adaptiveFocusDoneBody(), 17, home.STUDY_MUTED, false));
-        LinearLayout summary = home.softInsetPanel();
-        summary.addView(home.text(StudyTextCopy.adaptiveFocusDoneSummary(plan.target), 20, home.STUDY_PLUM, true));
-        summary.addView(home.text(plan.status, 15, home.STUDY_MUTED, false));
-        card.addView(summary);
-        addDoneStudyActions(card);
-        home.content.addView(card);
+        home.content.addView(studyDoneScreenView(home, studyDoneScreenModel(
+                StudyTextCopy.studyDoneTitle(),
+                null,
+                StudyTextCopy.adaptiveFocusDoneBody(),
+                List.of(StudyTextCopy.adaptiveFocusDoneSummary(plan.target), plan.status),
+                true,
+                false,
+                false
+        )));
     }
 
     void renderStudyRunDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         home.prepareStudyContent(plan, false);
-        LinearLayout card = home.softStudyCard();
-        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
-        card.addView(home.text(StudyTextCopy.studyDoneTitle(), 32, home.STUDY_PLUM, true));
-        card.addView(home.text(StudyTextCopy.studyRunDoneBody(), 17, home.STUDY_MUTED, false));
-        LinearLayout summary = home.softInsetPanel();
-        summary.addView(home.text(StudyTextCopy.movedForwardSummary(home.studySessionTracker.movedForwardCount()), 20, home.STUDY_PLUM, true));
-        summary.addView(home.text(StudyTextCopy.missedSummary(home.studySessionTracker.missedCount()), 16, home.STUDY_MUTED, false));
-        summary.addView(home.text(StudyTextCopy.completedTaskSummary(home.studySessionTracker.completedCount()), 16, home.STUDY_MUTED, false));
+        List<String> summaryLines = new java.util.ArrayList<>();
+        summaryLines.add(StudyTextCopy.movedForwardSummary(home.studySessionTracker.movedForwardCount()));
+        summaryLines.add(StudyTextCopy.missedSummary(home.studySessionTracker.missedCount()));
+        summaryLines.add(StudyTextCopy.completedTaskSummary(home.studySessionTracker.completedCount()));
         if (plan != null && !plan.status.isEmpty()) {
-            summary.addView(home.text(plan.status, 15, home.STUDY_MUTED, false));
+            summaryLines.add(plan.status);
         }
-        card.addView(summary);
-        addDoneStudyActions(card);
-        home.content.addView(card);
+        home.content.addView(studyDoneScreenView(home, studyDoneScreenModel(
+                StudyTextCopy.studyDoneTitle(),
+                null,
+                StudyTextCopy.studyRunDoneBody(),
+                summaryLines,
+                true,
+                false,
+                false
+        )));
     }
 
     void renderEmptyStudyQueue() {
         home.prepareStudyContent(home.activeStudyPlan, false);
-        LinearLayout card = home.softStudyCard();
-        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
-        card.addView(home.text("Study practice", 32, home.STUDY_PLUM, true));
-        card.addView(home.text("Nothing to study yet", 22, home.STUDY_PLUM, true));
-        card.addView(home.text("Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.", 16, home.STUDY_MUTED, false));
-        home.content.addView(card);
+        home.content.addView(studyDoneScreenView(home, studyDoneScreenModel(
+                "Study practice",
+                "Nothing to study yet",
+                "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.",
+                List.of(),
+                false,
+                false,
+                false
+        )));
     }
 
     void renderStudyForKanjiNotAvailable() {
         home.prepareStudyContent(home.activeStudyPlan, false);
-        LinearLayout card = home.softStudyCard();
-        card.addView(home.modePill(MainActivityBase.LABEL_PRACTICE));
-        card.addView(home.text("Study practice", 32, home.STUDY_PLUM, true));
-        card.addView(home.text("Kanji not available", 22, home.STUDY_PLUM, true));
-        card.addView(home.text("This row may have changed after sync.", 16, home.STUDY_MUTED, false));
-        home.content.addView(card);
+        home.content.addView(studyDoneScreenView(home, studyDoneScreenModel(
+                "Study practice",
+                "Kanji not available",
+                "This row may have changed after sync.",
+                List.of(),
+                false,
+                false,
+                false
+        )));
+    }
+
+    private StudyDoneScreenModel studyDoneScreenModel(
+            String title,
+            String headline,
+            String body,
+            List<String> summaryLines,
+            boolean showDoneActions,
+            boolean showBackHome,
+            boolean backHomePrimary
+    ) {
+        int available = showDoneActions ? availableStudyMoreNewCards() : 0;
+        return new StudyDoneScreenModel(
+                MainActivityBase.LABEL_PRACTICE,
+                title,
+                headline,
+                body,
+                summaryLines,
+                showDoneActions,
+                available,
+                showBackHome,
+                backHomePrimary,
+                () -> showStudyMoreNewCardsDialog(available),
+                this::continueAllKanji,
+                this::backHome
+        );
+    }
+
+    private void continueAllKanji() {
+        home.studyMoreNewCardKanji.clear();
+        home.continueAllKanjiSession = true;
+        home.renderStudy();
+    }
+
+    private void backHome() {
+        home.clearStudyModeOverrides();
+        home.renderHome();
     }
 
     int availableStudyMoreNewCards() {

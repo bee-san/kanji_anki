@@ -32,6 +32,38 @@ import androidx.compose.ui.unit.sp
 private val StudyDonePrimary = Color(0xFFDA3A7A)
 private val StudyDonePrimaryBorder = Color(0xFFFFADCD)
 private val StudyDoneSecondaryText = Color(0xFF4B2552)
+private val StudyDoneCardBackground = Color(0xFFFFF7FB)
+private val StudyDoneInsetBackground = Color(0xFFFFFFFF)
+private val StudyDoneMuted = Color(0xFF6C5674)
+
+data class StudyDoneScreenModel(
+    val modeLabel: String,
+    val title: String,
+    val headline: String?,
+    val body: String,
+    val summaryLines: List<String>,
+    val showDoneActions: Boolean,
+    val availableStudyMoreNewCards: Int,
+    val showBackHome: Boolean,
+    val backHomePrimary: Boolean,
+    val onStudyMore: Runnable,
+    val onContinueAll: Runnable,
+    val onBackHome: Runnable,
+)
+
+internal fun studyDoneScreenView(
+    context: Context,
+    model: StudyDoneScreenModel
+): View {
+    return ComposeView(context).apply {
+        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                StudyDoneScreen(model)
+            }
+        }
+    }
+}
 
 internal fun studyDoneActionsView(
     context: Context,
@@ -118,6 +150,108 @@ fun StudyDoneActions(
             label = MainActivityBase.LABEL_BACK_HOME,
             onClick = onBackHome
         )
+    }
+}
+
+@Composable
+fun StudyDoneScreen(model: StudyDoneScreenModel) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        color = StudyDoneCardBackground,
+        border = BorderStroke(1.dp, StudyDonePrimaryBorder)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StudyModePill(model.modeLabel)
+            Text(
+                text = model.title,
+                color = StudyDoneSecondaryText,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+            )
+            model.headline?.let { headline ->
+                Text(
+                    text = headline,
+                    color = StudyDoneSecondaryText,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Text(
+                text = model.body,
+                color = StudyDoneMuted,
+                fontSize = 17.sp
+            )
+            if (model.summaryLines.isNotEmpty()) {
+                StudyDoneSummary(lines = model.summaryLines)
+            }
+            if (model.showDoneActions) {
+                StudyDoneActions(
+                    availableStudyMoreNewCards = model.availableStudyMoreNewCards,
+                    onStudyMore = { model.onStudyMore.run() },
+                    onContinueAll = { model.onContinueAll.run() },
+                    onBackHome = { model.onBackHome.run() }
+                )
+            } else if (model.showBackHome) {
+                if (model.backHomePrimary) {
+                    StudyPrimaryButton(
+                        label = MainActivityBase.LABEL_BACK_HOME,
+                        onClick = { model.onBackHome.run() }
+                    )
+                } else {
+                    StudySecondaryButton(
+                        label = MainActivityBase.LABEL_BACK_HOME,
+                        onClick = { model.onBackHome.run() }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudyModePill(label: String) {
+    Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, StudyDonePrimaryBorder)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            color = StudyDonePrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+        )
+    }
+}
+
+@Composable
+private fun StudyDoneSummary(lines: List<String>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        color = StudyDoneInsetBackground,
+        border = BorderStroke(1.dp, StudyDonePrimaryBorder.copy(alpha = 0.75f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            lines.forEachIndexed { index, line ->
+                Text(
+                    text = line,
+                    color = if (index == 0) StudyDoneSecondaryText else StudyDoneMuted,
+                    fontSize = if (index == 0) 20.sp else 15.sp,
+                    fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
     }
 }
 
