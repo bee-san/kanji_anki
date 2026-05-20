@@ -54,7 +54,7 @@ final class MainActivityStudyChoiceSessions {
                         StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
                         choiceCard.choices,
                         answerPanel,
-                        glyph -> home.showMeaningKanjiChoiceResult(choiceCard, glyph, null, answerPanel)
+                        glyph -> home.showMeaningKanjiChoiceResult(choiceCard, glyph, answerPanel)
                 )
         );
 

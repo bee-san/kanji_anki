@@ -29,7 +29,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.WindowInsets;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -83,10 +82,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 abstract class MainActivityStudy extends MainActivityStats {
-    interface KanjiChoiceClickHandler {
-        void onClick(String glyph, LinearLayout grid);
-    }
-
     static final class CapturedWritingAttempt {
         final CapturedWriting captured;
         final WritingSample sample;
@@ -212,28 +207,8 @@ abstract class MainActivityStudy extends MainActivityStats {
         return choiceSessions.meaningKanjiChoiceCardForSession(session);
     }
 
-    View meaningKanjiGrid(RecordsImportModels.MeaningKanjiChoiceCard card, View answerPanel) {
-        return choiceGrid.meaningKanjiGrid(card, answerPanel);
-    }
-
-    View kanjiChoiceGrid(List<String> choices, KanjiChoiceClickHandler clickHandler, boolean balanceLastRow) {
-        return choiceGrid.kanjiChoiceGrid(choices, clickHandler, balanceLastRow);
-    }
-
-    Button kanjiChoiceButton(String glyph) {
-        return choiceGrid.kanjiChoiceButton(glyph);
-    }
-
-    LinearLayout.LayoutParams kanjiChoiceLayoutParams() {
-        return choiceGrid.kanjiChoiceLayoutParams();
-    }
-
-    void addKanjiChoiceSpacer(LinearLayout grid) {
-        choiceGrid.addKanjiChoiceSpacer(grid);
-    }
-
-    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View grid, View answerPanel) {
-        choiceGrid.showMeaningKanjiChoiceResult(card, selectedKanji, grid, answerPanel);
+    void showMeaningKanjiChoiceResult(RecordsImportModels.MeaningKanjiChoiceCard card, String selectedKanji, View answerPanel) {
+        choiceGrid.showMeaningKanjiChoiceResult(card, selectedKanji, answerPanel);
     }
 
     void renderSimilarKanjiSession(RecordsSchedulerModels.StudySession session) {

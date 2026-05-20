@@ -18,6 +18,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
@@ -29,10 +33,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 
 private val StudyPlum = Color(MainActivityUiSupport.STUDY_PLUM)
 private val StudyButtonFill = Color(MainActivityUiSupport.STUDY_BG)
@@ -46,14 +46,14 @@ internal val SimilarChoiceCellHorizontalPadding = 4.dp
 internal val SimilarChoiceCellTopPadding = 8.dp
 internal val SimilarChoiceButtonHeight = 82.dp
 
-fun interface SimilarChoiceHandler {
+fun interface KanjiChoiceHandler {
     fun onChoice(glyph: String)
 }
 
 data class SimilarChoiceGridModel(
     val choices: List<String>,
     val balanceLastRow: Boolean,
-    val onChoice: SimilarChoiceHandler,
+    val onChoice: KanjiChoiceHandler,
 )
 
 data class SimilarChoiceSessionModel(
@@ -75,7 +75,7 @@ data class MeaningChoiceSessionModel(
     val question: String,
     val choices: List<String>,
     val answerPanel: View,
-    val onChoice: SimilarChoiceHandler,
+    val onChoice: KanjiChoiceHandler,
 )
 
 internal fun similarKanjiGridView(activity: MainActivityStudy, model: SimilarChoiceGridModel): View {

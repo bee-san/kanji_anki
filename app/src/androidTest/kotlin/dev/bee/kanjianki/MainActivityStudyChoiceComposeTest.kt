@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -33,7 +34,7 @@ class MainActivityStudyChoiceComposeTest {
                 model = SimilarChoiceGridModel(
                     choices = listOf("裂", "列", "烈"),
                     balanceLastRow = true,
-                    onChoice = SimilarChoiceHandler { selected = it }
+                    onChoice = KanjiChoiceHandler { selected = it }
                 )
             )
         }
@@ -63,7 +64,7 @@ class MainActivityStudyChoiceComposeTest {
                     gridModel = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
                         balanceLastRow = true,
-                        onChoice = SimilarChoiceHandler { selected = it }
+                        onChoice = KanjiChoiceHandler { selected = it }
                     )
                 )
             )
@@ -105,7 +106,7 @@ class MainActivityStudyChoiceComposeTest {
                     question = "Which kanji means split?",
                     choices = listOf("裂", "列", "烈", "劣"),
                     answerPanel = panel,
-                    onChoice = SimilarChoiceHandler { selected = it }
+                    onChoice = KanjiChoiceHandler { selected = it }
                 )
             )
         }
@@ -124,6 +125,8 @@ class MainActivityStudyChoiceComposeTest {
             assertEquals("裂", selected)
             assertEquals(View.VISIBLE, answerPanel?.visibility)
         }
+        composeRule.onNodeWithText("裂").assertIsNotEnabled()
+        composeRule.onNodeWithText("列").assertIsNotEnabled()
     }
 
     @Test
@@ -141,7 +144,7 @@ class MainActivityStudyChoiceComposeTest {
                     model = SimilarChoiceGridModel(
                         choices = listOf("裂", "列", "烈"),
                         balanceLastRow = true,
-                        onChoice = SimilarChoiceHandler { }
+                        onChoice = KanjiChoiceHandler { }
                     )
                 )
             }

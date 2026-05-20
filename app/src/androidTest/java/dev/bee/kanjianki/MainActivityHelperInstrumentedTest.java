@@ -1553,6 +1553,18 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
                 assertNull(activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
+                performClickableWithText(activity.content, "裂");
+                assertHasText(activity, "Correct");
+                assertEquals(View.VISIBLE, activity.studyActionBar.getVisibility());
+                assertEquals(2, activity.studyActionBar.getChildCount());
+                assertTrue(containsText(activity.studyActionBar, "Next"));
+                assertEquals(0, activity.store.reviewStatsSince(0L).total);
+                performClickableWithText(activity.studyActionBar, "Next");
+                assertEquals(1, activity.store.reviewStatsSince(0L).good);
+
+                activity.renderMeaningKanjiSession(session("返", BridgeScheduler.TASK_MEANING_KANJI, row("返", "return", "ヘン", Collections.emptyList())));
+                assertNotNull(activity.flashcardCard);
+                assertSame(activity.flashcardCard, activity.flashcardGestureArea);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
