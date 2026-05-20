@@ -37,7 +37,6 @@ final class MainActivityStudyWritingCheck {
         }
         StrokeGuide guide = activity.strokeGuide(target);
         activity.checkingWriting = true;
-        activity.checkWritingButton.setEnabled(false);
         activity.updateResultActions();
         activity.setStudyStatus("Checking handwriting...", activity.MUTED);
         WritingRecognizer recognizer = activity.currentWritingRecognizer();

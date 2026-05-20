@@ -64,21 +64,33 @@ final class MainActivityStudyWritingToolbar {
         return "Download checker";
     }
 
-    private LinearLayout writingFallbackActions() {
-        LinearLayout fallbackActions = new LinearLayout(activity);
-        fallbackActions.setOrientation(LinearLayout.HORIZONTAL);
-        activity.replayButton = activity.studySecondaryButton("Replay");
+    private View writingFallbackActions() {
+        activity.writingFallbackActionsView = new WritingFallbackActionsView(activity);
+
+        activity.replayButton = new Button(activity);
+        activity.replayButton.setText(replayLabel());
         activity.replayButton.setOnClickListener(new RunnableClickListener(activity::replayWritingAnalysis));
-        fallbackActions.addView(activity.replayButton, new LinearLayout.LayoutParams(0, activity.dp(56), 1));
 
-        activity.manualOverrideButton = activity.studySecondaryButton("Mark right anyway");
+        activity.manualOverrideButton = new Button(activity);
+        activity.manualOverrideButton.setText(manualOverrideLabel());
         activity.manualOverrideButton.setOnClickListener(new RunnableClickListener(() -> activity.submitReview(activity.RATING_GOOD, true)));
-        fallbackActions.addView(activity.manualOverrideButton, new LinearLayout.LayoutParams(0, activity.dp(56), 1));
 
-        activity.practiceWithGuideButton = activity.studySecondaryButton("Try again with full guide");
+        activity.practiceWithGuideButton = new Button(activity);
+        activity.practiceWithGuideButton.setText(practiceWithGuideLabel());
         activity.practiceWithGuideButton.setOnClickListener(new RunnableClickListener(activity::startGuidedWritingRetry));
-        fallbackActions.addView(activity.practiceWithGuideButton, new LinearLayout.LayoutParams(0, activity.dp(56), 1));
-        return fallbackActions;
+        return activity.writingFallbackActionsView;
+    }
+
+    private String replayLabel() {
+        return "Replay";
+    }
+
+    private String manualOverrideLabel() {
+        return "Mark right anyway";
+    }
+
+    private String practiceWithGuideLabel() {
+        return "Try again with full guide";
     }
 
     private static final class RunnableClickListener implements View.OnClickListener {

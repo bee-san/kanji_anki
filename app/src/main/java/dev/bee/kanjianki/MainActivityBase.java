@@ -121,6 +121,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     Button nextAfterPassButton;
     Button practiceWithGuideButton;
     Button replayButton;
+    WritingFallbackActionsView writingFallbackActionsView;
     Button hintButton;
     Button undoStrokeButton;
     View studyAnswerPanel;

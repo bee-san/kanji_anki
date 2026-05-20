@@ -1573,6 +1573,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.renderWritingSession(recall);
                 assertHasText(activity, "Prompt: Split, rend");
                 assertTrue(activity.studyActionBar.getChildAt(1) instanceof WritingPrimaryActionsView);
+                assertTrue(activity.studyActionBar.getChildAt(2) instanceof WritingFallbackActionsView);
                 performButtonClick(activity.studyActionBar, "Erase");
 
                 activity.activeSession = promptOnly;

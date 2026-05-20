@@ -120,6 +120,16 @@ final class MainActivityStudyWritingUi {
         if (activity.replayButton != null) {
             activity.replayButton.setVisibility(presentation.replayVisible ? View.VISIBLE : View.GONE);
         }
+        if (activity.writingFallbackActionsView != null) {
+            activity.writingFallbackActionsView.render(new WritingFallbackActionsModel(
+                    presentation.replayVisible,
+                    presentation.manualOverrideVisible,
+                    presentation.practiceWithGuideVisible,
+                    activity::replayWritingAnalysis,
+                    () -> activity.submitReview(activity.RATING_GOOD, true),
+                    activity::startGuidedWritingRetry
+            ));
+        }
     }
 
     void updateHintAndAnswerVisibility(WritingActionPresentation presentation) {

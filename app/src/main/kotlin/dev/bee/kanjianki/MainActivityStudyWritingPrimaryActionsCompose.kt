@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -132,16 +133,17 @@ internal fun WritingPrimaryActions(model: WritingPrimaryActionsModel) {
 }
 
 @Composable
-private fun WritingPrimaryButton(
+internal fun WritingPrimaryButton(
     label: String,
     enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    minHeight: Dp = 62.dp,
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.heightIn(min = 62.dp),
+        modifier = modifier.heightIn(min = minHeight),
         shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = WritingPrimaryColor,
@@ -157,14 +159,15 @@ private fun WritingPrimaryButton(
 }
 
 @Composable
-private fun WritingSecondaryButton(
+internal fun WritingSecondaryButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    minHeight: Dp = 62.dp,
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 62.dp),
+        modifier = modifier.heightIn(min = minHeight),
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, WritingPrimaryBorder),
         colors = ButtonDefaults.outlinedButtonColors(
