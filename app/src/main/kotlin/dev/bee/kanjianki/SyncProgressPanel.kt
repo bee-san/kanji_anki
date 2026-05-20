@@ -59,7 +59,9 @@ internal fun syncProgressScreenView(context: Context, title: String, progressPan
     }
 }
 
-class SyncProgressPanel {
+class SyncProgressPanel @JvmOverloads constructor(
+    private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() }
+) {
     private var scanStartedAt: Long = 0L
     private var lastScannedCards: Int = -1
     private var lastTotalCards: Int = -1
@@ -73,7 +75,7 @@ class SyncProgressPanel {
             lastScannedCards = progress.scannedCards
             lastTotalCards = progress.totalCards
             if (scanStartedAt <= 0L) {
-                scanStartedAt = SystemClock.elapsedRealtime()
+                scanStartedAt = elapsedRealtime()
             }
         }
         state = if (lastTotalCards >= 0) {
@@ -100,7 +102,7 @@ class SyncProgressPanel {
                 currentStage,
                 lastScannedCards,
                 lastTotalCards,
-                SystemClock.elapsedRealtime() - scanStartedAt
+                elapsedRealtime() - scanStartedAt
             ),
             progressIndeterminate = false,
             progressMax = 1000,

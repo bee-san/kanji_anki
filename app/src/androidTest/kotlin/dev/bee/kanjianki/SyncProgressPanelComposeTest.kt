@@ -1,6 +1,4 @@
 package dev.bee.kanjianki
-
-import android.os.SystemClock
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.platform.ComposeView
@@ -91,13 +89,20 @@ class SyncProgressPanelComposeTest {
         composeRule.onNodeWithText("0 / 0 cards scanned").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync progress: 0 / 0 cards scanned")
             .assertRangeInfoEquals(ProgressBarRangeInfo(1f, 0f..1f))
+
+        panel.render(SyncProgress.cardsScanned(1, 2))
+
+        composeRule.onNodeWithText("1 / 2 cards scanned").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sync progress: 1 / 2 cards scanned")
+            .assertRangeInfoEquals(ProgressBarRangeInfo(0.5f, 0f..1f))
     }
 
     @Test
     fun rendersEtaAndFinishingCopy() {
-        val panel = syncProgressPanel()
+        val clock = FakeClock()
+        val panel = syncProgressPanel(clock)
         panel.render(SyncProgress.cardsScanned(0, 50_000))
-        SystemClock.sleep(1100L)
+        clock.now += 1100L
         panel.render(SyncProgress.cardsScanned(3, 50_000))
 
         composeRule.setContent {
@@ -119,9 +124,10 @@ class SyncProgressPanelComposeTest {
 
     @Test
     fun rendersSecondAndMinuteEtaUnits() {
-        val secondsPanel = syncProgressPanel()
+        val secondsClock = FakeClock()
+        val secondsPanel = syncProgressPanel(secondsClock)
         secondsPanel.render(SyncProgress.cardsScanned(0, 200))
-        SystemClock.sleep(1100L)
+        secondsClock.now += 1100L
         secondsPanel.render(SyncProgress.cardsScanned(199, 200))
 
         composeRule.setContent {
@@ -133,9 +139,10 @@ class SyncProgressPanelComposeTest {
 
         composeRule.onNode(hasText("sec left", substring = true)).assertIsDisplayed()
 
-        val minutesPanel = syncProgressPanel()
+        val minutesClock = FakeClock()
+        val minutesPanel = syncProgressPanel(minutesClock)
         minutesPanel.render(SyncProgress.cardsScanned(0, 600))
-        SystemClock.sleep(1100L)
+        minutesClock.now += 1100L
         minutesPanel.render(SyncProgress.cardsScanned(3, 600))
 
         composeRule.setContent {
@@ -150,7 +157,8 @@ class SyncProgressPanelComposeTest {
 
     @Test
     fun rendersEstimatingCopyBeforeEnoughProgressOrTime() {
-        val panel = syncProgressPanel()
+        val clock = FakeClock()
+        val panel = syncProgressPanel(clock)
         panel.render(SyncProgress.cardsScanned(0, 10))
         panel.render(SyncProgress.cardsScanned(2, 10))
 
@@ -158,6 +166,21 @@ class SyncProgressPanelComposeTest {
             SyncProgressScreen(
                 title = "Syncing cards",
                 progressPanel = panel
+            )
+        }
+
+        composeRule.onNode(hasText("cards/sec - estimating time left", substring = true)).assertIsDisplayed()
+
+        val slowClock = FakeClock()
+        val slowPanel = syncProgressPanel(slowClock)
+        slowPanel.render(SyncProgress.cardsScanned(0, 10))
+        slowClock.now += 500L
+        slowPanel.render(SyncProgress.cardsScanned(3, 10))
+
+        composeRule.setContent {
+            SyncProgressScreen(
+                title = "Syncing cards",
+                progressPanel = slowPanel
             )
         }
 
@@ -237,7 +260,11 @@ class SyncProgressPanelComposeTest {
         composeRule.onNodeWithText("AnkiDroid read finished. Processing imported cards locally.").assertIsDisplayed()
     }
 
-    private fun syncProgressPanel(): SyncProgressPanel {
-        return SyncProgressPanel()
+    private fun syncProgressPanel(clock: FakeClock = FakeClock()): SyncProgressPanel {
+        return SyncProgressPanel(clock::elapsedRealtime)
+    }
+
+    private class FakeClock(var now: Long = 1L) {
+        fun elapsedRealtime(): Long = now
     }
 }
