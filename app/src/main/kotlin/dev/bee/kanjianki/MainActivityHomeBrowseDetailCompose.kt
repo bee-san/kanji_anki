@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -65,46 +66,92 @@ data class BrowseDetailActionsModel(
     val onSuspend: Runnable,
 )
 
-internal fun detailHeroView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailHeroModel): View {
+data class BrowseDetailScreenModel(
+    val hero: BrowseDetailHeroModel,
+    val identity: BrowseDetailIdentityModel,
+    val reason: BrowseDetailPanelModel,
+    val localInventory: BrowseDetailPanelModel?,
+    val actions: BrowseDetailActionsModel,
+    val timeline: MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel,
+    val examplesTitle: String,
+    val examples: List<BrowseExampleCardModel>,
+)
+
+data class BrowseDetailMissingModel(
+    val homeLabel: String,
+    val onHome: Runnable,
+    val title: String,
+    val body: String,
+)
+
+internal fun browseDetailScreenView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailScreenModel): View {
     return ComposeView(activity.home()).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                BrowseDetailHero(model)
+                BrowseDetailScreen(model)
             }
         }
     }
 }
 
-internal fun detailIdentityView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailIdentityModel): View {
+internal fun browseDetailMissingView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailMissingModel): View {
     return ComposeView(activity.home()).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                BrowseDetailIdentity(model)
+                BrowseDetailMissing(model)
             }
         }
     }
 }
 
-internal fun detailActionsView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailActionsModel): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseDetailActions(model)
+@Composable
+fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        BrowseDetailHero(model.hero)
+        BrowseDetailIdentity(model.identity)
+        Box(modifier = Modifier.padding(top = 10.dp)) {
+            BrowseDetailInfoPanel(model.reason)
+        }
+        model.localInventory?.let { localInventory ->
+            BrowseDetailInfoPanel(localInventory)
+        }
+        BrowseDetailActions(model.actions)
+        Box(modifier = Modifier.padding(top = 12.dp)) {
+            RecoveryTimelinePanels(model.timeline)
+        }
+        if (model.examples.isNotEmpty()) {
+            Text(
+                text = model.examplesTitle,
+                modifier = Modifier.padding(top = 12.dp),
+                color = BrowseInk,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+            model.examples.forEach { example ->
+                BrowseExampleCard(example)
             }
         }
     }
 }
 
-internal fun detailInfoPanelView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailPanelModel): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseDetailInfoPanel(model)
-            }
+@Composable
+fun BrowseDetailMissing(model: BrowseDetailMissingModel) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HomeFullWidthHomeButton(
+            label = model.homeLabel,
+            onClick = { model.onHome.run() }
+        )
+        Box(modifier = Modifier.padding(vertical = 8.dp)) {
+            HomeEmptyState(
+                title = model.title,
+                body = model.body,
+                style = HomeEmptyStateStyle.LegacyBand
+            )
         }
     }
 }
@@ -270,17 +317,6 @@ private fun BrowseChip(label: String, color: ComposeColor) {
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
-    }
-}
-
-internal fun recoveryTimelinePanelsView(activity: MainActivityHomeBrowseDetail, model: MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                RecoveryTimelinePanels(model)
-            }
-        }
     }
 }
 

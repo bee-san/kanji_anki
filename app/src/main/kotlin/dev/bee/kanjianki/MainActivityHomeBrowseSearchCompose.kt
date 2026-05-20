@@ -81,17 +81,6 @@ internal fun browseScreenView(
     }
 }
 
-internal fun browseKanjiRowView(activity: MainActivityHomeBrowseDetail, item: RecordsImportModels.KanjiInventoryItem): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseKanjiRow(model = browseKanjiRowModel(activity, item))
-            }
-        }
-    }
-}
-
 private fun browseKanjiRowModel(
     activity: MainActivityHomeBrowseDetail,
     item: RecordsImportModels.KanjiInventoryItem

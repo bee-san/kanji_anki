@@ -49,7 +49,6 @@ import dev.bee.kanjianki.core.FocusQueuePolicy;
 import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SchedulerTuner;
 import dev.bee.kanjianki.core.TextUtil;
-import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.TypingAnswerMatcher;
 import dev.bee.kanjianki.core.study.HintLevel;
@@ -200,66 +199,12 @@ abstract class MainActivityHome extends MainActivityBase {
         startActivity(ComposeShellActivity.intent(this));
     }
 
-    View browseKanjiRow(RecordsImportModels.KanjiInventoryItem item) {
-        return browseDetail.browseKanjiRow(item);
-    }
-
     void renderDetail(String kanji, boolean fromBrowse) {
         browseDetail.renderDetail(kanji, fromBrowse);
     }
 
     void renderDetail(String kanji, boolean fromBrowse, String browseQuery) {
         browseDetail.renderDetail(kanji, fromBrowse, browseQuery);
-    }
-
-    void addDetailHeader(String displayKanji, boolean fromBrowse, String browseQuery) {
-        browseDetail.addDetailHeader(displayKanji, fromBrowse, browseQuery);
-    }
-
-    void addDetailIdentity(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, boolean suspended) {
-        browseDetail.addDetailIdentity(row, inventory, suspended);
-    }
-
-    View detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
-        return browseDetail.detailReasonPanel(row, inventory);
-    }
-
-    void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
-        browseDetail.addDetailActions(row, inventory, displayKanji, fromBrowse, browseQuery, suspended);
-    }
-    void addDetailExamples(RecordsImportModels.DashboardRow row) {
-        browseDetail.addDetailExamples(row);
-    }
-
-    View localInventoryPanel(RecordsImportModels.KanjiInventoryItem inventory) {
-        return browseDetail.localInventoryPanel(inventory);
-    }
-
-    void copyAnkiSearch(String browserSearch, View v) {
-        browseDetail.copyAnkiSearch(browserSearch, v);
-    }
-
-    void addRecoveryTimeline(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        content.addView(MainActivityHomeBrowseDetailCompose.recoveryTimelinePanelsView(
-                browseDetail,
-                browseDetail.recoveryTimelineModel(timeline)
-        ));
-    }
-
-    View timelineStatusCard(RecordsStudyModels.KanjiRecoveryTimeline timeline) {
-        return browseDetail.timelineStatusCard(timeline);
-    }
-
-    View timelineEventView(RecordsImportModels.KanjiTimelineEvent event) {
-        return browseDetail.timelineEventView(event);
-    }
-
-    int timelineToneColor(TimelineCopy.Tone tone) {
-        return browseDetail.timelineToneColor(tone);
-    }
-
-    View exampleView(RecordsImportModels.Example example) {
-        return browseDetail.exampleView(example);
     }
 
 }

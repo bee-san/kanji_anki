@@ -216,4 +216,89 @@ class MainActivityHomeBrowseDetailComposeTest {
         assertTrue(copyClicked)
         assertTrue(suspendClicked)
     }
+
+    @Test
+    fun rendersFullDetailScreenAndMissingState() {
+        var homeClicked = false
+        var reviewClicked = false
+
+        composeRule.setContent {
+            androidx.compose.foundation.layout.Column {
+                BrowseDetailScreen(
+                    model = BrowseDetailScreenModel(
+                        hero = BrowseDetailHeroModel(
+                            kanji = "裂",
+                            navigationLabel = "Back to Browse Kanji",
+                            onNavigate = Runnable { homeClicked = true }
+                        ),
+                        identity = BrowseDetailIdentityModel(
+                            title = "split",
+                            reading = "レツ",
+                            suspended = false
+                        ),
+                        reason = BrowseDetailPanelModel(
+                            title = "Why it is here",
+                            lines = listOf("Current local practice evidence from AnkiDroid."),
+                            color = 0xFF6E5CE6.toInt(),
+                            style = BrowseDetailPanelStyle.BAND
+                        ),
+                        localInventory = BrowseDetailPanelModel(
+                            title = "Local inventory",
+                            lines = listOf("1 source note/card · 1 stored example"),
+                            color = 0xFFC9F5F7.toInt(),
+                            style = BrowseDetailPanelStyle.CARD
+                        ),
+                        actions = BrowseDetailActionsModel(
+                            reviewLabel = "Review now",
+                            onReview = Runnable { reviewClicked = true },
+                            copyLabel = null,
+                            copiedLabel = "Copied Anki search",
+                            onCopy = null,
+                            suspendLabel = "Suspend locally",
+                            onSuspend = Runnable {}
+                        ),
+                        timeline = MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel(
+                            "Recovery timeline",
+                            "Active repair",
+                            0xFFFF4C76.toInt(),
+                            "Needs 2 mature cards to fully support this kanji.",
+                            emptyList(),
+                            "No timeline events yet."
+                        ),
+                        examplesTitle = "Examples",
+                        examples = listOf(
+                            BrowseExampleCardModel(
+                                sourceLabel = "ACTIVE",
+                                expression = "裂語  レツゴ",
+                                sentence = "裂語を見た。",
+                                meaning = "split word",
+                                color = 0xFF00AEB5.toInt()
+                            )
+                        )
+                    )
+                )
+                BrowseDetailMissing(
+                    BrowseDetailMissingModel(
+                        homeLabel = "Home",
+                        onHome = Runnable {},
+                        title = "Kanji not found",
+                        body = "This kanji is not in local history."
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("裂").assertIsDisplayed()
+        composeRule.onNodeWithText("Why it is here").assertIsDisplayed()
+        composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
+        composeRule.onNodeWithText("Recovery timeline").assertIsDisplayed()
+        composeRule.onNodeWithText("Examples").assertIsDisplayed()
+        composeRule.onNodeWithText("裂語  レツゴ").assertIsDisplayed()
+        composeRule.onNodeWithText("Kanji not found").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Back to Browse Kanji").performClick()
+        composeRule.onNodeWithText("Review now").performClick()
+        assertTrue(homeClicked)
+        assertTrue(reviewClicked)
+    }
 }

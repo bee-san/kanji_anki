@@ -938,16 +938,17 @@ public final class MainActivityHelperInstrumentedTest {
         RecordsStudyModels.KanjiRecoveryTimeline restingTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline retiredTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "retired", 0L), Collections.emptyList());
         RecordsStudyModels.KanjiRecoveryTimeline noRowTimeline = new RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, null, Collections.emptyList());
+        MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(activity);
         assertEquals("Active repair", TimelineCopy.statusText(activeTimeline, System.currentTimeMillis()));
         assertEquals("Resting until review", TimelineCopy.statusText(restingTimeline, System.currentTimeMillis()));
         assertEquals("Retired by Anki support", TimelineCopy.statusText(retiredTimeline, System.currentTimeMillis()));
         assertEquals("Retired by Anki support", TimelineCopy.statusText(noRowTimeline, System.currentTimeMillis()));
-        assertEquals(MainActivityBase.TEAL, activity.timelineToneColor(TimelineCopy.statusTone(retiredTimeline, System.currentTimeMillis())));
-        assertEquals(MainActivityBase.BLUE, activity.timelineToneColor(TimelineCopy.statusTone(restingTimeline, System.currentTimeMillis())));
-        assertEquals(MainActivityBase.CORAL, activity.timelineToneColor(TimelineCopy.statusTone(activeTimeline, System.currentTimeMillis())));
-        assertEquals(MainActivityBase.CORAL, activity.timelineToneColor(TimelineCopy.eventTone("review_failed")));
-        assertEquals(MainActivityBase.TEAL, activity.timelineToneColor(TimelineCopy.eventTone("review_passed")));
-        assertEquals(MainActivityBase.BLUE, activity.timelineToneColor(TimelineCopy.eventTone("sync")));
+        assertEquals(MainActivityBase.TEAL, browseDetail.timelineToneColor(TimelineCopy.statusTone(retiredTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.BLUE, browseDetail.timelineToneColor(TimelineCopy.statusTone(restingTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.CORAL, browseDetail.timelineToneColor(TimelineCopy.statusTone(activeTimeline, System.currentTimeMillis())));
+        assertEquals(MainActivityBase.CORAL, browseDetail.timelineToneColor(TimelineCopy.eventTone("review_failed")));
+        assertEquals(MainActivityBase.TEAL, browseDetail.timelineToneColor(TimelineCopy.eventTone("review_passed")));
+        assertEquals(MainActivityBase.BLUE, browseDetail.timelineToneColor(TimelineCopy.eventTone("sync")));
         assertEquals("", TimelineCopy.sourceLine(event("", "")));
         assertEquals("Source: 活動語", TimelineCopy.sourceLine(event("活動語", "")));
         assertEquals("Source: 活動語  カツドウゴ", TimelineCopy.sourceLine(event("活動語", "カツドウゴ")));
@@ -958,28 +959,30 @@ public final class MainActivityHelperInstrumentedTest {
             RecordsImportModels.KanjiInventoryItem inventory,
             RecordsImportModels.DashboardRow row
     ) {
-        activity.content.removeAllViews();
-        activity.addDetailIdentity(null, inventory, false);
-        assertTrue(containsText(activity.content, "language"));
-        assertTrue(containsText(activity.content, "ゴ"));
+        MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(activity);
+        BrowseDetailIdentityModel inventoryIdentity = browseDetail.detailIdentityModel(null, inventory, false);
+        assertEquals("language", inventoryIdentity.getTitle());
+        assertEquals("ゴ", inventoryIdentity.getReading());
 
-        activity.content.removeAllViews();
-        activity.addDetailIdentity(null, new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 0, false, 0L), false);
-        assertTrue(containsText(activity.content, "Historical recovery"));
-        assertFalse(containsText(activity.content, "ゴ"));
+        BrowseDetailIdentityModel historicalIdentity = browseDetail.detailIdentityModel(
+                null,
+                new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 0, false, 0L),
+                false
+        );
+        assertEquals("Historical recovery", historicalIdentity.getTitle());
+        assertEquals("", historicalIdentity.getReading());
 
-        activity.content.removeAllViews();
-        activity.content.addView(activity.detailReasonPanel(null, inventory));
-        assertTrue(containsText(activity.content, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertTrue(containsText(activity.content, "Anki browser: kanji:語"));
-        activity.content.removeAllViews();
-        activity.content.addView(activity.detailReasonPanel(null, null));
-        assertTrue(containsText(activity.content, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertFalse(containsTextContaining(activity.content, "Anki browser:"));
-        activity.content.removeAllViews();
-        activity.content.addView(activity.detailReasonPanel(row, inventory));
-        assertTrue(containsText(activity.content, "reason text"));
-        assertTrue(containsText(activity.content, "Anki browser: 裂"));
+        BrowseDetailPanelModel inventoryReason = browseDetail.detailReasonPanelModel(null, inventory);
+        assertTrue(inventoryReason.getLines().contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(inventoryReason.getLines().contains("Anki browser: kanji:語"));
+
+        BrowseDetailPanelModel historicalReason = browseDetail.detailReasonPanelModel(null, null);
+        assertTrue(historicalReason.getLines().contains("This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertFalse(historicalReason.getLines().toString().contains("Anki browser:"));
+
+        BrowseDetailPanelModel activeReason = browseDetail.detailReasonPanelModel(row, inventory);
+        assertTrue(activeReason.getLines().contains("reason text"));
+        assertTrue(activeReason.getLines().contains("Anki browser: 裂"));
     }
 
     @Test
@@ -1909,8 +1912,10 @@ public final class MainActivityHelperInstrumentedTest {
         View passiveMetric = activity.metricCard(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
         assertFalse(passiveMetric.isClickable());
         assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
-        assertTrue(activity.browseKanjiRow(new RecordsImportModels.KanjiInventoryItem("謎", "", "", "", 0, 1, false, 0L)) instanceof androidx.compose.ui.platform.ComposeView);
-        assertTrue(activity.exampleView(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE)) instanceof androidx.compose.ui.platform.ComposeView);
+        BrowseExampleCardModel activeExample = new MainActivityHomeBrowseDetail(activity)
+                .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
+        assertEquals("裂語  レツゴ", activeExample.getExpression());
+        assertEquals("split word", activeExample.getMeaning());
         RecordsStudyModels.StudyItem relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
@@ -1936,12 +1941,17 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.content, "split");
+        assertEquals(1, activity.content.getChildCount());
+        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Back to Browse Kanji");
         assertHasText(activity, "Local inventory");
         performClickableWithText(activity.content, "Unsuspend locally");
+        assertEquals(1, activity.content.getChildCount());
+        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing");
-        assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
+        assertEquals(1, activity.content.getChildCount());
+        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Kanji not found");
     }
 
@@ -1952,8 +1962,9 @@ public final class MainActivityHelperInstrumentedTest {
         activity.renderRecentMistakes();
         assertContainsText(activity.content, "Rated again");
 
-        View emptyStatus = activity.timelineStatusCard(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
-        assertTrue(containsText(emptyStatus, "No active Anki evidence in the latest local sync."));
+        MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel emptyTimeline = new MainActivityHomeBrowseDetail(activity)
+                .recoveryTimelineModel(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
+        assertEquals("No active Anki evidence in the latest local sync.", emptyTimeline.supportText);
     }
 
     private static void verifyStatsVerdictBranches(
@@ -2063,10 +2074,9 @@ public final class MainActivityHelperInstrumentedTest {
         LinearLayout summary = new LinearLayout(activity);
         appendOptionalSyncSummaryLines(activity, summary, syncResult(true, false, 1, 0, "", ""));
         assertEquals(0, summary.getChildCount());
-        activity.content.removeAllViews();
-        activity.addRecoveryTimeline(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
-        assertEquals(1, activity.content.getChildCount());
-        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
+        MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel emptyTimeline = new MainActivityHomeBrowseDetail(activity)
+                .recoveryTimelineModel(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
+        assertEquals("No timeline events yet.", emptyTimeline.emptyText);
     }
 
     @Test
@@ -2258,15 +2268,14 @@ public final class MainActivityHelperInstrumentedTest {
                         0,
                         Collections.emptyList()
                 );
-                activity.content.removeAllViews();
-                activity.content.addView(activity.detailReasonPanel(row, null));
-                assertTrue(containsText(activity.content, "Current local practice evidence from AnkiDroid."));
-                assertContainsText(activity.content, "Anki browser: deck:Japanese");
+                MainActivityHomeBrowseDetail browseDetail = new MainActivityHomeBrowseDetail(activity);
+                BrowseDetailPanelModel reason = browseDetail.detailReasonPanelModel(row, null);
+                assertTrue(reason.getLines().contains("Current local practice evidence from AnkiDroid."));
+                assertTrue(reason.getLines().get(1).contains("Anki browser: deck:Japanese"));
 
-                activity.content = new LinearLayout(activity);
-                activity.addDetailIdentity(row, null, false);
-                assertTrue(containsText(activity.content, "split"));
-                assertEquals(1, activity.content.getChildCount());
+                BrowseDetailIdentityModel identity = browseDetail.detailIdentityModel(row, null, false);
+                assertEquals("split", identity.getTitle());
+                assertEquals("", identity.getReading());
             });
         }
     }
