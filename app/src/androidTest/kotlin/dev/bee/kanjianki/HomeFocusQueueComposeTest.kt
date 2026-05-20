@@ -2,7 +2,10 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -12,6 +15,8 @@ class HomeFocusQueueComposeTest {
 
     @Test
     fun rendersQueuedCards() {
+        var clicked = false
+
         composeRule.setContent {
             HomeFocusQueuePanel(
                 model = HomeFocusQueuePanelModel(
@@ -26,9 +31,12 @@ class HomeFocusQueueComposeTest {
                             sourceEvidence = "From phrase · missed card",
                             reasonLine = "Why: weakness 80 · support 0/2 · kanji -> meaning · due now",
                             body = "Needs focused kanji practice.",
-                            tags = listOf("kanji -> meaning", "learning"),
+                            tags = listOf(
+                                HomeFocusQueueTagModel("kanji -> meaning", androidx.compose.ui.graphics.Color(0xFF6E5CE6)),
+                                HomeFocusQueueTagModel("learning", androidx.compose.ui.graphics.Color(0xFF00AEB5))
+                            ),
                             accentColor = androidx.compose.ui.graphics.Color(0xFFFF4C76),
-                            onClick = {}
+                            onClick = { clicked = true }
                         )
                     )
                 ),
@@ -42,6 +50,8 @@ class HomeFocusQueueComposeTest {
         composeRule.onNodeWithText("kanji -> meaning").assertIsDisplayed()
         composeRule.onNodeWithText("learning").assertIsDisplayed()
         composeRule.onNodeWithText(">").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeFocusQueueCardTestTag("裂")).performClick()
+        assertTrue(clicked)
     }
 
     @Test

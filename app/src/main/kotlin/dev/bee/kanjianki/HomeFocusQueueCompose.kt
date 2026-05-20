@@ -4,6 +4,7 @@ package dev.bee.kanjianki
 
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,9 +49,14 @@ data class HomeFocusQueueCardModel(
     val sourceEvidence: String,
     val reasonLine: String,
     val body: String,
-    val tags: List<String>,
+    val tags: List<HomeFocusQueueTagModel>,
     val accentColor: ComposeColor,
     val onClick: () -> Unit,
+)
+
+data class HomeFocusQueueTagModel(
+    val label: String,
+    val color: ComposeColor,
 )
 
 data class HomeFocusQueuePanelModel(
@@ -74,6 +81,8 @@ data class HomeRecentMistakesPanelModel(
     val emptyBody: String,
     val cards: List<HomeRecentMistakesCardModel>,
 )
+
+internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
 
 internal fun homeFocusQueueContentView(
     home: MainActivityHome,
@@ -120,7 +129,12 @@ internal fun homeFocusQueueCardView(
 ): View {
     val model = homeFocusQueueCardModel(home, entry, nowMillis)
     return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, home.dp(7), 0, home.dp(7))
+        }
         setContent {
             MaterialTheme {
                 Surface {
@@ -162,11 +176,11 @@ private fun homeFocusQueueCardModel(
         reasonLine = FocusQueueCopy.focusReasonLine(row, item, nowMillis, home.settings().matureSupportThreshold),
         body = StudyTextCopy.compact(FocusQueueCopy.queueCardBody(row), 72),
         tags = buildList {
-            add(FocusQueueCopy.recognitionStageLabel(item))
+            add(HomeFocusQueueTagModel(FocusQueueCopy.recognitionStageLabel(item), ComposeColor(MainActivityUiSupport.BLUE)))
             if (item.phase == RecordsBase.SchedulerPhase.RELEARNING) {
-                add(HomeTextCopy.relearningChipLabel())
+                add(HomeFocusQueueTagModel(HomeTextCopy.relearningChipLabel(), ComposeColor(MainActivityUiSupport.CORAL)))
             } else if (item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0) {
-                add(MainActivityBase.STATE_LEARNING)
+                add(HomeFocusQueueTagModel(MainActivityBase.STATE_LEARNING, ComposeColor(MainActivityUiSupport.TEAL)))
             }
         },
         accentColor = queueAccentColor(item, nowMillis),
@@ -287,11 +301,10 @@ private fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
     val cardStroke = model.accentColor.copy(alpha = 0.58f)
     val tileFill = model.accentColor.copy(alpha = 0.14f)
     val tileStroke = model.accentColor.copy(alpha = 0.34f)
-    val tagFill = model.accentColor.copy(alpha = 0.08f)
-    val tagStroke = model.accentColor.copy(alpha = 0.30f)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag(homeFocusQueueCardTestTag(model.kanji))
             .clickable(onClick = model.onClick),
         shape = RoundedCornerShape(18.dp),
         color = cardFill,
@@ -329,20 +342,9 @@ private fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                 Text(text = model.sourceEvidence, style = MaterialTheme.typography.bodySmall, color = ComposeColor(0xFF3D3D48))
                 Text(text = model.reasonLine, style = MaterialTheme.typography.bodySmall, color = model.accentColor)
                 Text(text = model.body, style = MaterialTheme.typography.bodyMedium, color = ComposeColor(0xFF6E6E78))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row {
                     model.tags.forEach { tag ->
-                        Surface(
-                            shape = RoundedCornerShape(999.dp),
-                            color = tagFill,
-                            border = BorderStroke(1.dp, tagStroke)
-                        ) {
-                            Text(
-                                text = tag,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = ComposeColor(0xFF1E1E28)
-                            )
-                        }
+                        FocusQueueTag(tag)
                     }
                 }
             }
@@ -353,6 +355,24 @@ private fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
                 color = model.accentColor
             )
         }
+    }
+}
+
+@Composable
+private fun FocusQueueTag(tag: HomeFocusQueueTagModel) {
+    Surface(
+        modifier = Modifier.padding(top = 7.dp, end = 7.dp, bottom = 2.dp),
+        shape = RoundedCornerShape(7.dp),
+        color = focusQueueTagFill(tag.color),
+        border = BorderStroke(1.dp, tag.color)
+    ) {
+        Text(
+            text = tag.label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = tag.color,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -412,6 +432,15 @@ private fun HomeRecentMistakesCard(model: HomeRecentMistakesCardModel) {
                 color = model.accentColor
             )
         }
+    }
+}
+
+private fun focusQueueTagFill(color: ComposeColor): ComposeColor {
+    return when (color) {
+        ComposeColor(MainActivityUiSupport.CORAL) -> ComposeColor(0xFFFFEBF3)
+        ComposeColor(MainActivityUiSupport.TEAL) -> ComposeColor(0xFFE6FAFB)
+        ComposeColor(MainActivityUiSupport.BLUE) -> ComposeColor(0xFFF2EEFF)
+        else -> color.copy(alpha = 0.08f)
     }
 }
 
