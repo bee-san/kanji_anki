@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -52,5 +53,29 @@ class MainActivityStudyFlashcardComposeTest {
 
         assertTrue(failed)
         assertTrue(passed)
+    }
+
+    @Test
+    fun rendersStudyAnswerPanel() {
+        composeRule.setContent {
+            StudyAnswerPanel(
+                model = StudyAnswerPanelModel(
+                    title = "Answer",
+                    glyph = "裂",
+                    glyphSizeSp = 76,
+                    lines = listOf(
+                        StudyAnswerLineModel("split", Color(0xFF4B2552), 17, true),
+                        StudyAnswerLineModel("Reading: レツ", Color(0xFFDA3A7A), 15, true)
+                    ),
+                    helperText = "Trace it below, then check."
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Answer").assertIsDisplayed()
+        composeRule.onNodeWithText("裂").assertIsDisplayed()
+        composeRule.onNodeWithText("split").assertIsDisplayed()
+        composeRule.onNodeWithText("Reading: レツ").assertIsDisplayed()
+        composeRule.onNodeWithText("Trace it below, then check.").assertIsDisplayed()
     }
 }

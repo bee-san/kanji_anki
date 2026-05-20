@@ -110,11 +110,7 @@ abstract class MainActivityStudy extends MainActivityStats {
     private final MainActivityStudySessionRouter sessionRouter = new MainActivityStudySessionRouter(this);
 
     View learningPanel(RecordsSchedulerModels.StudySession session) {
-        LinearLayout box = softInsetPanel();
-        box.addView(text("Reference", 19, STUDY_PLUM, true));
-        box.addView(studyAnswerDetailsRow(session, 72));
-        box.addView(text("Trace it below, then check.", 13, MUTED, false));
-        return box;
+        return MainActivityStudyAnswerCompose.learningPanelView(this, session);
     }
 
     RecordsImportModels.Example firstExample(RecordsImportModels.DashboardRow row) {
@@ -337,14 +333,6 @@ abstract class MainActivityStudy extends MainActivityStats {
 
     View flashcardAnswerPanel(RecordsSchedulerModels.StudySession session) {
         return flashcardUi.flashcardAnswerPanel(session);
-    }
-
-    LinearLayout studyAnswerDetailsRow(RecordsSchedulerModels.StudySession session, int glyphSize) {
-        return flashcardUi.studyAnswerDetailsRow(session, glyphSize);
-    }
-
-    void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
-        flashcardUi.addStudyCueLines(details, session);
     }
 
     DictionaryLookup currentDictionaryLookup() {

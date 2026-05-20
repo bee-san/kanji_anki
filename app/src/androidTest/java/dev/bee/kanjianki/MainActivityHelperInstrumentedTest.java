@@ -1499,7 +1499,11 @@ public final class MainActivityHelperInstrumentedTest {
                         false,
                         "Prompt fallback"
                 );
-                assertTrue(containsText(activity.flashcardAnswerPanel(promptOnly), "Prompt fallback"));
+                View promptAnswerPanel = activity.flashcardAnswerPanel(promptOnly);
+                activity.content.addView(promptAnswerPanel);
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+                assertHasText(activity, "Prompt fallback");
+                activity.content.removeView(promptAnswerPanel);
                 assertEquals("split", StudyTextCopy.collectionMeaningForSession(session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()))));
                 assertEquals(Typeface.SERIF, activity.fontResource(0, Typeface.SERIF));
             });

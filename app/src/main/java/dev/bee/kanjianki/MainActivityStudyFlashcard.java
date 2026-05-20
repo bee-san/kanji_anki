@@ -11,13 +11,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.StudyTaskCopy;
 import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.HintState;
-
-import java.util.List;
 
 final class MainActivityStudyFlashcard {
     private final MainActivityStudy activity;
@@ -165,44 +162,7 @@ final class MainActivityStudyFlashcard {
     }
 
     View flashcardAnswerPanel(RecordsSchedulerModels.StudySession session) {
-        LinearLayout box = activity.softInsetPanel();
-        box.addView(activity.text("Answer", 19, activity.STUDY_PLUM, true));
-        box.addView(studyAnswerDetailsRow(session, 76));
-        return box;
-    }
-
-    LinearLayout studyAnswerDetailsRow(RecordsSchedulerModels.StudySession session, int glyphSize) {
-        LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView glyph = activity.text(session.item.kanji, glyphSize, activity.STUDY_PLUM, true);
-        glyph.setGravity(Gravity.CENTER);
-        row.addView(glyph, new LinearLayout.LayoutParams(activity.dp(118), activity.dp(108)));
-
-        LinearLayout details = new LinearLayout(activity);
-        details.setOrientation(LinearLayout.VERTICAL);
-        if (session.row != null) {
-            addStudyCueLines(details, session);
-        } else {
-            details.addView(activity.text(session.prompt, 15, activity.MUTED, false));
-        }
-        row.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
-        return row;
-    }
-
-    void addStudyCueLines(LinearLayout details, RecordsSchedulerModels.StudySession session) {
-        List<String> lines = StudyCueTexts.answerLines(
-                activity.currentDictionaryLookup(),
-                session,
-                activity.exampleForSession(session),
-                StudyTaskCopy.isWordReadingTask(session)
-        );
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            int color = line.startsWith("Reading:") ? activity.STUDY_PINK_DARK : activity.STUDY_PLUM;
-            details.addView(activity.text(line, i == 0 ? 17 : 15, color, true));
-        }
+        return MainActivityStudyAnswerCompose.flashcardAnswerPanelView(activity, session);
     }
 
     View typingAnswerField() {
