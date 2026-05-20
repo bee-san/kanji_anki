@@ -18,13 +18,21 @@ final class MainActivitySettingsAnkiSourceValidation {
     }
 
     MainActivityBase.ImportThresholds readImportThresholds(EditText difficultyInput, EditText lapses, EditText minMatching) {
+        return readImportThresholds(
+                difficultyInput.getText().toString(),
+                lapses.getText().toString(),
+                minMatching.getText().toString()
+        );
+    }
+
+    MainActivityBase.ImportThresholds readImportThresholds(String difficultyInput, String lapses, String minMatching) {
         double difficulty;
         int lapseThreshold;
         int minCards;
         try {
-            difficulty = parseDecimalInput(difficultyInput);
-            lapseThreshold = activity.parseThresholdInput(lapses);
-            minCards = activity.parseThresholdInput(minMatching);
+            difficulty = parseDecimalText(difficultyInput);
+            lapseThreshold = parseThresholdText(lapses);
+            minCards = parseThresholdText(minMatching);
         } catch (NumberFormatException error) {
             Toast.makeText(activity, SettingsTextCopy.numericImportThresholdsToast(), Toast.LENGTH_SHORT).show();
             return null;
@@ -37,6 +45,38 @@ final class MainActivitySettingsAnkiSourceValidation {
     }
 
     boolean hasSelectedImportSource(
+            boolean activeCards,
+            boolean suspendedCards,
+            boolean taggedCards,
+            boolean weakCards,
+            boolean browserQueryCards,
+            List<String> parsedTags,
+            String queryText
+    ) {
+        if (activeCards) {
+            return SettingsInputRules.hasSelectedImportSource(true, false, false, false, false, null, null);
+        }
+        if (suspendedCards) {
+            return SettingsInputRules.hasSelectedImportSource(false, true, false, false, false, null, null);
+        }
+        if (weakCards) {
+            return SettingsInputRules.hasSelectedImportSource(false, false, false, true, false, null, null);
+        }
+        if (taggedCards && SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, parsedTags, "")) {
+            return true;
+        }
+        return SettingsInputRules.hasSelectedImportSource(
+                false,
+                false,
+                false,
+                false,
+                browserQueryCards,
+                Collections.emptyList(),
+                queryText
+        );
+    }
+
+    boolean hasSelectedImportSource(
             CheckBox activeCards,
             CheckBox suspendedCards,
             CheckBox taggedCards,
@@ -45,25 +85,13 @@ final class MainActivitySettingsAnkiSourceValidation {
             List<String> parsedTags,
             String queryText
     ) {
-        if (activeCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(true, false, false, false, false, null, null);
-        }
-        if (suspendedCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(false, true, false, false, false, null, null);
-        }
-        if (weakCards.isChecked()) {
-            return SettingsInputRules.hasSelectedImportSource(false, false, false, true, false, null, null);
-        }
-        if (taggedCards.isChecked() && SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, parsedTags, "")) {
-            return true;
-        }
-        return SettingsInputRules.hasSelectedImportSource(
-                false,
-                false,
-                false,
-                false,
-                browserQueryCards.isChecked(),
-                Collections.emptyList(),
+        return hasSelectedImportSource(
+                activeCards != null && activeCards.isChecked(),
+                suspendedCards != null && suspendedCards.isChecked(),
+                taggedCards != null && taggedCards.isChecked(),
+                weakCards != null && weakCards.isChecked(),
+                browserQueryCards != null && browserQueryCards.isChecked(),
+                parsedTags,
                 queryText
         );
     }
@@ -73,6 +101,14 @@ final class MainActivitySettingsAnkiSourceValidation {
     }
 
     double parseDecimalInput(EditText input) {
-        return Double.parseDouble(input.getText().toString().trim());
+        return parseDecimalText(input.getText().toString());
+    }
+
+    private static int parseThresholdText(String input) {
+        return Integer.parseInt(input.trim());
+    }
+
+    private static double parseDecimalText(String input) {
+        return Double.parseDouble(input.trim());
     }
 }

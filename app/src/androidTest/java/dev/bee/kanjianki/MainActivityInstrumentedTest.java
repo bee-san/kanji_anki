@@ -548,26 +548,21 @@ public final class MainActivityInstrumentedTest {
     public void testImportFilterValidationBlocksEmptySourcesAndEmptyBrowserQuery() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            scenario.onActivity(activity -> {
-                setImportFilterChecked(activity, "Active cards", false);
-                setImportFilterChecked(activity, "Suspended cards", false);
-                setImportFilterChecked(activity, "Tagged cards", false);
-                setImportFilterChecked(activity, "Weak cards", false);
-                setImportFilterChecked(activity, "Browser query", false);
-                editTextWithContentDescription(activity, SettingsTextCopy.ankiNoteTagsLabel()).setText("");
-                editTextWithContentDescription(activity, SettingsTextCopy.ankiBrowserQueryLabel()).setText("");
-            });
+            setImportFilterChecked(SettingsTextCopy.activeCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.taggedCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.weakCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), false);
+            setComposeTextField(SettingsTextCopy.ankiNoteTagsLabel(), "");
+            setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "");
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
 
-            scenario.onActivity(activity -> setImportFilterChecked(activity, "Browser query", true));
+            setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), true);
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
 
-            scenario.onActivity(activity -> editTextWithContentDescription(
-                    activity,
-                    SettingsTextCopy.ankiBrowserQueryLabel()
-            ).setText("deck:Japanese tag:kani"));
+            setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "deck:Japanese tag:kani");
             clickText(scenario, "Save import filters");
             waitForText(scenario, "Import filters");
             try (LocalStore store = new LocalStore(context)) {
@@ -586,25 +581,21 @@ public final class MainActivityInstrumentedTest {
     public void testImportFilterFieldsAndPresetsPersistThroughAttachedComposePanel() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Settings");
-            scenario.onActivity(activity -> {
-                setImportFilterChecked(activity, "Suspended cards", true);
-                editTextWithContentDescription(activity, SettingsTextCopy.fsrsDifficultyLabel()).setText("not numeric");
-            });
+            setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), true);
+            setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "not numeric");
             clickText(scenario, "Save import filters");
             assertDefaultImportSettingsStillStored();
 
-            scenario.onActivity(activity -> {
-                setImportFilterChecked(activity, "Active cards", true);
-                setImportFilterChecked(activity, "Suspended cards", false);
-                setImportFilterChecked(activity, "Tagged cards", true);
-                setImportFilterChecked(activity, "Weak cards", true);
-                setImportFilterChecked(activity, "Browser query", true);
-                editTextWithContentDescription(activity, SettingsTextCopy.ankiBrowserQueryLabel()).setText("deck:Kiku tag:kani");
-                editTextWithContentDescription(activity, SettingsTextCopy.ankiNoteTagsLabel()).setText("tagAlpha, tagBeta");
-                editTextWithContentDescription(activity, SettingsTextCopy.fsrsDifficultyLabel()).setText("8.5");
-                editTextWithContentDescription(activity, SettingsTextCopy.lapsesLabel()).setText("4");
-                editTextWithContentDescription(activity, SettingsTextCopy.minimumMatchingCardsLabel()).setText("2");
-            });
+            setImportFilterChecked(SettingsTextCopy.activeCardsLabel(), true);
+            setImportFilterChecked(SettingsTextCopy.suspendedCardsLabel(), false);
+            setImportFilterChecked(SettingsTextCopy.taggedCardsLabel(), true);
+            setImportFilterChecked(SettingsTextCopy.weakCardsLabel(), true);
+            setImportFilterChecked(SettingsTextCopy.browserQueryLabel(), true);
+            setComposeTextField(SettingsTextCopy.ankiBrowserQueryLabel(), "deck:Kiku tag:kani");
+            setComposeTextField(SettingsTextCopy.ankiNoteTagsLabel(), "tagAlpha, tagBeta");
+            setComposeTextField(SettingsTextCopy.fsrsDifficultyLabel(), "8.5");
+            setComposeTextField(SettingsTextCopy.lapsesLabel(), "4");
+            setComposeTextField(SettingsTextCopy.minimumMatchingCardsLabel(), "2");
             clickText(scenario, "Save import filters");
             waitForText(scenario, "Import filters");
             assertCustomImportSettingsStored();
@@ -2614,22 +2605,11 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void assertImportFilterDefaultState(MainActivity activity) {
-        View root = activity.findViewById(android.R.id.content);
-        CheckBox activeCards = findCheckBox(root, "Active cards");
-        CheckBox suspendedCards = findCheckBox(root, "Suspended cards");
-        CheckBox taggedCards = findCheckBox(root, "Tagged cards");
-        CheckBox weakCards = findCheckBox(root, "Weak cards");
-        CheckBox browserQuery = findCheckBox(root, "Browser query");
-        assertNotNull(activeCards);
-        assertNotNull(suspendedCards);
-        assertNotNull(taggedCards);
-        assertNotNull(weakCards);
-        assertNotNull(browserQuery);
-        assertFalse(activeCards.isChecked());
-        assertTrue(suspendedCards.isChecked());
-        assertFalse(taggedCards.isChecked());
-        assertFalse(weakCards.isChecked());
-        assertFalse(browserQuery.isChecked());
+        assertComposeCheckBox(SettingsTextCopy.activeCardsLabel(), false);
+        assertComposeCheckBox(SettingsTextCopy.suspendedCardsLabel(), true);
+        assertComposeCheckBox(SettingsTextCopy.taggedCardsLabel(), false);
+        assertComposeCheckBox(SettingsTextCopy.weakCardsLabel(), false);
+        assertComposeCheckBox(SettingsTextCopy.browserQueryLabel(), false);
     }
 
     private void assertNavigationSettingsPersisted() {
@@ -3089,12 +3069,6 @@ public final class MainActivityInstrumentedTest {
         return null;
     }
 
-    private static void setImportFilterChecked(MainActivity activity, String text, boolean checked) {
-        CheckBox box = findCheckBox(activity.findViewById(android.R.id.content), text);
-        assertNotNull(box);
-        box.setChecked(checked);
-    }
-
     private static <T extends View> void collectTypes(View root, Class<T> type, List<T> results) {
         if (root.getVisibility() != View.VISIBLE) {
             return;
@@ -3253,6 +3227,28 @@ public final class MainActivityInstrumentedTest {
         UiObject2 input = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
         assertNotNull("Missing text field: " + description + "\nDevice text: " + deviceVisibleText(device), input);
         assertEquals(expected, input.getText());
+    }
+
+    private static void setImportFilterChecked(String description, boolean checked) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 checkbox = composeCheckBox(device, description);
+        if (checkbox.isChecked() != checked) {
+            checkbox.click();
+            device.waitForIdle(2000L);
+        }
+        assertComposeCheckBox(description, checked);
+    }
+
+    private static void assertComposeCheckBox(String description, boolean checked) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 checkbox = composeCheckBox(device, description);
+        assertEquals("Unexpected checkbox state: " + description, checked, checkbox.isChecked());
+    }
+
+    private static UiObject2 composeCheckBox(UiDevice device, String description) {
+        UiObject2 checkbox = device.wait(Until.findObject(By.pkg(appPackage()).desc(description)), 3000L);
+        assertNotNull("Missing checkbox: " + description + "\nDevice text: " + deviceVisibleText(device), checkbox);
+        return checkbox;
     }
 
     private static void collectViews(View root, List<View> views) {

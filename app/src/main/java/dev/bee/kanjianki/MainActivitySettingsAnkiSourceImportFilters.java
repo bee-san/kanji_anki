@@ -1,8 +1,6 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsBase;
@@ -11,46 +9,34 @@ import dev.bee.kanjianki.core.SettingsImportPreset;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 final class MainActivitySettingsAnkiSourceImportFilters {
     private final MainActivitySettings activity;
-    private final MainActivitySettingsAnkiSourceInputs inputs;
     private final MainActivitySettingsAnkiSourceValidation validation;
 
     MainActivitySettingsAnkiSourceImportFilters(
             MainActivitySettings activity,
-            MainActivitySettingsAnkiSourceInputs inputs,
             MainActivitySettingsAnkiSourceValidation validation
     ) {
         this.activity = activity;
-        this.inputs = inputs;
         this.validation = validation;
     }
 
     View importFilterSettingsPanel(RecordsSyncModels.Settings current) {
-        CheckBox activeCards = activity.importFilterCheckBox(SettingsTextCopy.activeCardsLabel(), current.importActiveCards);
-        CheckBox suspendedCards = activity.importFilterCheckBox(SettingsTextCopy.suspendedCardsLabel(), current.importSuspendedCards);
-        CheckBox taggedCards = activity.importFilterCheckBox(SettingsTextCopy.taggedCardsLabel(), current.importTaggedCardsEnabled());
-        CheckBox weakCards = activity.importFilterCheckBox(SettingsTextCopy.weakCardsLabel(), current.importWeakCards);
-        CheckBox browserQueryCards = activity.importFilterCheckBox(SettingsTextCopy.browserQueryLabel(), current.importBrowserQueryCards);
-
-        EditText browserQueryInput = inputs.fieldInput(current.importBrowserQuery);
-        browserQueryInput.setHint(SettingsTextCopy.ankiBrowserQueryHint());
-        browserQueryInput.setContentDescription(SettingsTextCopy.ankiBrowserQueryLabel());
-
-        EditText tags = inputs.fieldInput(current.importTagsText());
-        tags.setHint(SettingsTextCopy.ankiNoteTagsHint());
-        tags.setContentDescription(SettingsTextCopy.ankiNoteTagsLabel());
-
-        EditText difficultyInput = inputs.decimalInput(current.importWeakFsrsDifficultyThreshold);
-        difficultyInput.setContentDescription(SettingsTextCopy.fsrsDifficultyLabel());
-        EditText lapses = activity.thresholdInput(current.importWeakLapsesThreshold);
-        lapses.setContentDescription(SettingsTextCopy.lapsesLabel());
-
-        EditText minMatching = activity.thresholdInput(current.importMinMatchingCardsPerKanji);
-        minMatching.setContentDescription(SettingsTextCopy.minimumMatchingCardsLabel());
+        SettingsImportFiltersState state = new SettingsImportFiltersState(
+                current.importActiveCards,
+                current.importSuspendedCards,
+                current.importTaggedCardsEnabled(),
+                current.importWeakCards,
+                current.importBrowserQueryCards,
+                trimmed(current.importBrowserQuery),
+                trimmed(current.importTagsText()),
+                decimalText(current.importWeakFsrsDifficultyThreshold),
+                thresholdText(current.importWeakLapsesThreshold),
+                thresholdText(current.importMinMatchingCardsPerKanji)
+        );
 
         return MainActivitySettingsAnkiSourceImportFiltersCompose.importFiltersSettingsPanelView(
                 activity,
@@ -60,25 +46,21 @@ final class MainActivitySettingsAnkiSourceImportFilters {
                         SettingsTextCopy.importFiltersBody(),
                         SettingsTextCopy.presetsTitle(),
                         presetButtons(),
-                        Arrays.asList(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards),
-                        fieldModel(SettingsTextCopy.ankiBrowserQueryLabel(), browserQueryInput, 52),
-                        fieldModel(SettingsTextCopy.ankiNoteTagsLabel(), tags, 52),
-                        fieldModel(SettingsTextCopy.fsrsDifficultyLabel(), difficultyInput, 58),
-                        fieldModel(SettingsTextCopy.lapsesLabel(), lapses, 58),
-                        fieldModel(SettingsTextCopy.minimumMatchingCardsLabel(), minMatching, 58),
+                        state,
+                        SettingsTextCopy.activeCardsLabel(),
+                        SettingsTextCopy.suspendedCardsLabel(),
+                        SettingsTextCopy.taggedCardsLabel(),
+                        SettingsTextCopy.weakCardsLabel(),
+                        SettingsTextCopy.browserQueryLabel(),
+                        SettingsTextCopy.ankiBrowserQueryLabel(),
+                        SettingsTextCopy.ankiBrowserQueryHint(),
+                        SettingsTextCopy.ankiNoteTagsLabel(),
+                        SettingsTextCopy.ankiNoteTagsHint(),
+                        SettingsTextCopy.fsrsDifficultyLabel(),
+                        SettingsTextCopy.lapsesLabel(),
+                        SettingsTextCopy.minimumMatchingCardsLabel(),
                         SettingsTextCopy.saveImportFiltersLabel(),
-                        () -> saveImportFilters(
-                                activeCards,
-                                suspendedCards,
-                                taggedCards,
-                                weakCards,
-                                browserQueryCards,
-                                tags,
-                                browserQueryInput,
-                                difficultyInput,
-                                lapses,
-                                minMatching
-                        )
+                        () -> saveImportFilters(state)
                 )
         );
     }
@@ -91,47 +73,56 @@ final class MainActivitySettingsAnkiSourceImportFilters {
         return models;
     }
 
-    private SettingsImportFilterFieldModel fieldModel(String label, EditText input, int heightDp) {
-        return new SettingsImportFilterFieldModel(label, input, heightDp);
+    private static String trimmed(String value) {
+        return value == null ? "" : value.trim();
     }
 
-    private void saveImportFilters(
-            CheckBox activeCards,
-            CheckBox suspendedCards,
-            CheckBox taggedCards,
-            CheckBox weakCards,
-            CheckBox browserQueryCards,
-            EditText tags,
-            EditText browserQueryInput,
-            EditText difficultyInput,
-            EditText lapses,
-            EditText minMatching
-    ) {
-        List<String> parsedTags = RecordsBase.parseImportTags(tags.getText().toString());
-        String queryText = browserQueryInput.getText().toString().trim();
-        if (browserQueryCards.isChecked() && queryText.isEmpty()) {
+    private static String decimalText(double value) {
+        return String.format(Locale.ROOT, "%.1f", value);
+    }
+
+    private static String thresholdText(int value) {
+        return Integer.toString(Math.max(1, value));
+    }
+
+    private void saveImportFilters(SettingsImportFiltersState state) {
+        List<String> parsedTags = RecordsBase.parseImportTags(state.getTags());
+        String queryText = state.getBrowserQuery().trim();
+        if (state.getBrowserQueryCards() && queryText.isEmpty()) {
             Toast.makeText(activity, SettingsTextCopy.browserQueryRequiredToast(), Toast.LENGTH_SHORT).show();
             return;
         }
-        if (!validation.hasSelectedImportSource(activeCards, suspendedCards, taggedCards, weakCards, browserQueryCards, parsedTags, queryText)) {
+        if (!validation.hasSelectedImportSource(
+                state.getActiveCards(),
+                state.getSuspendedCards(),
+                state.getTaggedCards(),
+                state.getWeakCards(),
+                state.getBrowserQueryCards(),
+                parsedTags,
+                queryText
+        )) {
             Toast.makeText(activity, SettingsTextCopy.importSourceRequiredToast(), Toast.LENGTH_SHORT).show();
             return;
         }
-        MainActivityBase.ImportThresholds parsedThresholds = validation.readImportThresholds(difficultyInput, lapses, minMatching);
+        MainActivityBase.ImportThresholds parsedThresholds = validation.readImportThresholds(
+                state.getDifficulty(),
+                state.getLapses(),
+                state.getMinMatching()
+        );
         if (parsedThresholds == null) {
             return;
         }
         SettingsWriteActions.saveImportFilters(
                 new SettingsWriteActions.ImportFilterWriteRequest(
-                        activeCards.isChecked(),
-                        suspendedCards.isChecked(),
-                        taggedCards.isChecked(),
+                        state.getActiveCards(),
+                        state.getSuspendedCards(),
+                        state.getTaggedCards(),
                         String.join(" ", parsedTags),
-                        weakCards.isChecked(),
+                        state.getWeakCards(),
                         parsedThresholds.difficulty,
                         parsedThresholds.lapseThreshold,
                         parsedThresholds.minCards,
-                        browserQueryCards.isChecked(),
+                        state.getBrowserQueryCards(),
                         queryText
                 ),
                 new MainActivitySettingsAnkiSourceWriter(activity)

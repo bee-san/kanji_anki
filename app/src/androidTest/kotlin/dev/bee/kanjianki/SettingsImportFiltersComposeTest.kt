@@ -1,14 +1,17 @@
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.widget.CheckBox
-import android.widget.EditText
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.core.app.ApplicationProvider
+import androidx.compose.ui.test.performTextReplacement
 import dev.bee.kanjianki.core.SettingsTextCopy
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -21,7 +24,19 @@ class SettingsImportFiltersComposeTest {
     fun rendersFieldsPresetsAndWiresActions() {
         var presetApplied = false
         var saved = false
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        var savedBrowserQuery = ""
+        val state = SettingsImportFiltersState(
+            activeCards = false,
+            suspendedCards = true,
+            taggedCards = false,
+            weakCards = false,
+            browserQueryCards = false,
+            browserQuery = "",
+            tags = "",
+            difficulty = "7.5",
+            lapses = "3",
+            minMatching = "2"
+        )
 
         composeRule.setContent {
             SettingsImportFiltersPanel(
@@ -33,14 +48,24 @@ class SettingsImportFiltersComposeTest {
                     presets = listOf(
                         SettingsImportPresetButtonModel("Leech tag", SettingsImportFilterAction { presetApplied = true })
                     ),
-                    sourceChecks = importFilterChecks(context),
-                    browserQueryField = importFilterField(context, SettingsTextCopy.ankiBrowserQueryLabel()),
-                    tagsField = importFilterField(context, SettingsTextCopy.ankiNoteTagsLabel()),
-                    difficultyField = importFilterField(context, SettingsTextCopy.fsrsDifficultyLabel()),
-                    lapsesField = importFilterField(context, SettingsTextCopy.lapsesLabel()),
-                    minMatchingField = importFilterField(context, SettingsTextCopy.minimumMatchingCardsLabel()),
+                    state = state,
+                    activeCardsLabel = SettingsTextCopy.activeCardsLabel(),
+                    suspendedCardsLabel = SettingsTextCopy.suspendedCardsLabel(),
+                    taggedCardsLabel = SettingsTextCopy.taggedCardsLabel(),
+                    weakCardsLabel = SettingsTextCopy.weakCardsLabel(),
+                    browserQueryCardsLabel = SettingsTextCopy.browserQueryLabel(),
+                    browserQueryLabel = SettingsTextCopy.ankiBrowserQueryLabel(),
+                    browserQueryHint = SettingsTextCopy.ankiBrowserQueryHint(),
+                    tagsLabel = SettingsTextCopy.ankiNoteTagsLabel(),
+                    tagsHint = SettingsTextCopy.ankiNoteTagsHint(),
+                    difficultyLabel = SettingsTextCopy.fsrsDifficultyLabel(),
+                    lapsesLabel = SettingsTextCopy.lapsesLabel(),
+                    minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
                     saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
-                    onSave = SettingsImportFilterAction { saved = true }
+                    onSave = SettingsImportFilterAction {
+                        savedBrowserQuery = state.browserQuery
+                        saved = true
+                    }
                 )
             )
         }
@@ -49,32 +74,22 @@ class SettingsImportFiltersComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.presetsTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.ankiBrowserQueryLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.minimumMatchingCardsLabel()).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.activeCardsLabel()).assertIsOff()
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.suspendedCardsLabel()).assertIsOn()
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).performClick()
+        composeRule.onNodeWithContentDescription(SettingsTextCopy.browserQueryLabel()).assertIsOn()
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT).performTextReplacement("deck:Kiku")
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.TAGS_INPUT).performTextReplacement("leeches, custom")
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.DIFFICULTY_INPUT).assertTextEquals("7.5")
         composeRule.onNodeWithText("Leech tag").performClick()
         composeRule.onNodeWithText(SettingsTextCopy.saveImportFiltersLabel()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(presetApplied)
             assertTrue(saved)
+            assertTrue(state.browserQueryCards)
+            assertEquals("deck:Kiku", savedBrowserQuery)
+            assertEquals("leeches, custom", state.tags)
         }
-    }
-
-    private fun importFilterChecks(context: Context): List<CheckBox> {
-        return listOf(
-            SettingsTextCopy.activeCardsLabel(),
-            SettingsTextCopy.suspendedCardsLabel(),
-            SettingsTextCopy.taggedCardsLabel(),
-            SettingsTextCopy.weakCardsLabel(),
-            SettingsTextCopy.browserQueryLabel()
-        ).map { label ->
-            CheckBox(context).apply { text = label }
-        }
-    }
-
-    private fun importFilterField(context: Context, label: String): SettingsImportFilterFieldModel {
-        return SettingsImportFilterFieldModel(
-            label = label,
-            input = EditText(context),
-            heightDp = 52
-        )
     }
 }

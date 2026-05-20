@@ -3,32 +3,42 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.CheckBox
-import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 
 private val ImportFilterInk = Color(0xFF2D1635)
 private val ImportFilterMuted = Color(0xFF6C5674)
@@ -40,6 +50,38 @@ private val ImportFilterWhite = Color(0xFFFFFFFF)
 private val ImportFilterPanelShape = RoundedCornerShape(24.dp)
 private val ImportFilterButtonShape = RoundedCornerShape(12.dp)
 
+object SettingsImportFiltersTestTags {
+    const val BROWSER_QUERY_INPUT = "settings-import-browser-query-input"
+    const val TAGS_INPUT = "settings-import-tags-input"
+    const val DIFFICULTY_INPUT = "settings-import-difficulty-input"
+    const val LAPSES_INPUT = "settings-import-lapses-input"
+    const val MIN_MATCHING_INPUT = "settings-import-min-matching-input"
+}
+
+class SettingsImportFiltersState(
+    activeCards: Boolean,
+    suspendedCards: Boolean,
+    taggedCards: Boolean,
+    weakCards: Boolean,
+    browserQueryCards: Boolean,
+    browserQuery: String?,
+    tags: String?,
+    difficulty: String?,
+    lapses: String?,
+    minMatching: String?,
+) {
+    var activeCards by mutableStateOf(activeCards)
+    var suspendedCards by mutableStateOf(suspendedCards)
+    var taggedCards by mutableStateOf(taggedCards)
+    var weakCards by mutableStateOf(weakCards)
+    var browserQueryCards by mutableStateOf(browserQueryCards)
+    var browserQuery by mutableStateOf(browserQuery.orEmpty())
+    var tags by mutableStateOf(tags.orEmpty())
+    var difficulty by mutableStateOf(difficulty.orEmpty())
+    var lapses by mutableStateOf(lapses.orEmpty())
+    var minMatching by mutableStateOf(minMatching.orEmpty())
+}
+
 fun interface SettingsImportFilterAction {
     fun run()
 }
@@ -49,24 +91,25 @@ data class SettingsImportPresetButtonModel(
     val onClick: SettingsImportFilterAction,
 )
 
-data class SettingsImportFilterFieldModel(
-    val label: String,
-    val input: EditText,
-    val heightDp: Int,
-)
-
 data class SettingsImportFiltersPanelModel(
     val title: String,
     val summary: String,
     val body: String,
     val presetsTitle: String,
     val presets: List<SettingsImportPresetButtonModel>,
-    val sourceChecks: List<CheckBox>,
-    val browserQueryField: SettingsImportFilterFieldModel,
-    val tagsField: SettingsImportFilterFieldModel,
-    val difficultyField: SettingsImportFilterFieldModel,
-    val lapsesField: SettingsImportFilterFieldModel,
-    val minMatchingField: SettingsImportFilterFieldModel,
+    val state: SettingsImportFiltersState,
+    val activeCardsLabel: String,
+    val suspendedCardsLabel: String,
+    val taggedCardsLabel: String,
+    val weakCardsLabel: String,
+    val browserQueryCardsLabel: String,
+    val browserQueryLabel: String,
+    val browserQueryHint: String,
+    val tagsLabel: String,
+    val tagsHint: String,
+    val difficultyLabel: String,
+    val lapsesLabel: String,
+    val minMatchingLabel: String,
     val saveLabel: String,
     val onSave: SettingsImportFilterAction,
 )
@@ -124,22 +167,53 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
             model.presets.forEach { preset ->
                 ImportFilterOutlinedButton(preset.label) { preset.onClick.run() }
             }
-            model.sourceChecks.forEach { check ->
-                AndroidView(
-                    factory = { check },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            ImportFilterField(model.browserQueryField)
-            ImportFilterField(model.tagsField)
+            ImportFilterCheckbox(model.activeCardsLabel, model.state.activeCards) { model.state.activeCards = it }
+            ImportFilterCheckbox(model.suspendedCardsLabel, model.state.suspendedCards) { model.state.suspendedCards = it }
+            ImportFilterCheckbox(model.taggedCardsLabel, model.state.taggedCards) { model.state.taggedCards = it }
+            ImportFilterCheckbox(model.weakCardsLabel, model.state.weakCards) { model.state.weakCards = it }
+            ImportFilterCheckbox(model.browserQueryCardsLabel, model.state.browserQueryCards) { model.state.browserQueryCards = it }
+            ImportFilterTextField(
+                label = model.browserQueryLabel,
+                value = model.state.browserQuery,
+                hint = model.browserQueryHint,
+                testTag = SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT,
+                onValueChange = { model.state.browserQuery = it }
+            )
+            ImportFilterTextField(
+                label = model.tagsLabel,
+                value = model.state.tags,
+                hint = model.tagsHint,
+                testTag = SettingsImportFiltersTestTags.TAGS_INPUT,
+                onValueChange = { model.state.tags = it }
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                ImportFilterField(model.difficultyField, Modifier.weight(1f))
-                ImportFilterField(model.lapsesField, Modifier.weight(1f))
+                ImportFilterTextField(
+                    label = model.difficultyLabel,
+                    value = model.state.difficulty,
+                    testTag = SettingsImportFiltersTestTags.DIFFICULTY_INPUT,
+                    keyboardType = KeyboardType.Decimal,
+                    modifier = Modifier.weight(1f),
+                    onValueChange = { model.state.difficulty = it }
+                )
+                ImportFilterTextField(
+                    label = model.lapsesLabel,
+                    value = model.state.lapses,
+                    testTag = SettingsImportFiltersTestTags.LAPSES_INPUT,
+                    keyboardType = KeyboardType.Number,
+                    modifier = Modifier.weight(1f),
+                    onValueChange = { model.state.lapses = it }
+                )
             }
-            ImportFilterField(model.minMatchingField)
+            ImportFilterTextField(
+                label = model.minMatchingLabel,
+                value = model.state.minMatching,
+                testTag = SettingsImportFiltersTestTags.MIN_MATCHING_INPUT,
+                keyboardType = KeyboardType.Number,
+                onValueChange = { model.state.minMatching = it }
+            )
             Button(
                 onClick = { model.onSave.run() },
                 modifier = Modifier
@@ -164,22 +238,66 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
 }
 
 @Composable
-private fun ImportFilterField(
-    field: SettingsImportFilterFieldModel,
+private fun ImportFilterCheckbox(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .toggleable(
+                value = checked,
+                role = Role.Checkbox,
+                onValueChange = onCheckedChange
+            )
+            .semantics { contentDescription = label },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+            colors = CheckboxDefaults.colors(checkedColor = ImportFilterPinkDark)
+        )
+        Text(
+            text = label,
+            color = ImportFilterInk,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun ImportFilterTextField(
+    label: String,
+    value: String,
+    testTag: String,
+    onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    hint: String = "",
+    keyboardType: KeyboardType = KeyboardType.Text,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = field.label,
+            text = label,
             color = ImportFilterInk,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold
         )
-        AndroidView(
-            factory = { field.input },
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(field.heightDp.dp)
+                .testTag(testTag)
+                .semantics { contentDescription = label },
+            placeholder = if (hint.isEmpty()) null else {
+                { Text(text = hint, color = ImportFilterMuted, fontSize = 15.sp) }
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = ImportFilterInk,
+                fontSize = 18.sp
+            )
         )
     }
 }

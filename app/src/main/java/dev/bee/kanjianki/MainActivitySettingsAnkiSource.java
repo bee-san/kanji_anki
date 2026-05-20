@@ -6,17 +6,15 @@ import android.widget.LinearLayout;
 import dev.bee.kanjianki.core.RecordsSyncModels;
 
 final class MainActivitySettingsAnkiSource {
-    private final MainActivitySettingsAnkiSourceInputs inputs;
     private final MainActivitySettingsAnkiSourceFrequencyRange frequencyRange;
     private final MainActivitySettingsAnkiSourceNoteType noteType;
     private final MainActivitySettingsAnkiSourceImportFilters importFilters;
 
     MainActivitySettingsAnkiSource(MainActivitySettings activity) {
-        this.inputs = new MainActivitySettingsAnkiSourceInputs(activity);
         MainActivitySettingsAnkiSourceValidation validation = new MainActivitySettingsAnkiSourceValidation(activity);
         this.frequencyRange = new MainActivitySettingsAnkiSourceFrequencyRange(activity, validation);
         this.noteType = new MainActivitySettingsAnkiSourceNoteType(activity);
-        this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, this.inputs, validation);
+        this.importFilters = new MainActivitySettingsAnkiSourceImportFilters(activity, validation);
     }
 
     View noteTypeSettingsPanel(RecordsSyncModels.Settings current) {
