@@ -2005,6 +2005,58 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
+    public void hostedTypingMeaningInputAutoPassesAndPreservesGestureExclusion() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsSchedulerModels.StudySession correct = sessionWithToken("裂", BridgeScheduler.TASK_TYPE_MEANING, row, "typing-correct");
+                activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
+                activity.activeSession = correct;
+                activity.startActiveStudyTask(activity.sessionTaskKey(correct), "裂", correct.taskType, System.currentTimeMillis());
+                activity.renderFlashcardSession(correct);
+            });
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> {
+                assertNotNull(activity.typingAnswerInput);
+                activity.typingAnswerInput.setText("split");
+                performClickableWithText(activity.studyActionBar, "Reveal");
+                RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.good);
+
+                RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
+                RecordsSchedulerModels.StudySession wrong = sessionWithToken("裂", BridgeScheduler.TASK_TYPE_MEANING, row, "typing-wrong");
+                activity.activeSession = wrong;
+                activity.startActiveStudyTask(activity.sessionTaskKey(wrong), "裂", wrong.taskType, System.currentTimeMillis());
+                activity.renderFlashcardSession(wrong);
+            });
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            scenario.onActivity(activity -> {
+                assertNotNull(activity.typingAnswerInput);
+                activity.typingAnswerInput.setText("wrong");
+                int[] inputLocation = new int[2];
+                activity.typingAnswerInput.getLocationOnScreen(inputLocation);
+                float inputCenterX = inputLocation[0] + activity.typingAnswerInput.getWidth() / 2f;
+                float inputCenterY = inputLocation[1] + activity.typingAnswerInput.getHeight() / 2f;
+                assertTrue(activity.isTouchInsideView(activity.typingAnswerInput, motion(MotionEvent.ACTION_DOWN, inputCenterX, inputCenterY)));
+                assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_DOWN, inputCenterX, inputCenterY)));
+                assertFalse(activity.flashcardTouchTracking);
+                assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_UP, inputCenterX, inputCenterY)));
+                assertFalse(activity.flashcardTouchTracking);
+
+                performClickableWithText(activity.studyActionBar, "Reveal");
+                assertTrue(activity.flashcardAnswerRevealed);
+                assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
+                assertTrue(containsText(activity.studyActionBar, "Fail"));
+                assertTrue(containsText(activity.studyActionBar, MainActivityBase.LABEL_PASS));
+                RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);
+                assertEquals(1, stats.total);
+                assertEquals(1, stats.good);
+            });
+        }
+    }
+
+    @Test
     public void flashcardButtonsAndGesturesPersistPassFailOnlyAfterReveal() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
