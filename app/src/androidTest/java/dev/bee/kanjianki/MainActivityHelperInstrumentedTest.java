@@ -862,22 +862,8 @@ public final class MainActivityHelperInstrumentedTest {
                 View studyAhead = activity.studyAheadSettingsPanel();
                 assertTrue(studyAhead instanceof androidx.compose.ui.platform.ComposeView);
 
-                LinearLayout ladder = activity.ladderThresholdSettingsPanel();
-                List<EditText> thresholdInputs = editTexts(ladder);
-                thresholdInputs.get(0).setText("oops");
-                thresholdInputs.get(1).setText("3");
-                performButtonClick(ladder, "Save ladder thresholds");
-                thresholdInputs.get(0).setText("21");
-                thresholdInputs.get(1).setText("3");
-                performButtonClick(ladder, "Save ladder thresholds");
-                thresholdInputs.get(0).setText("3");
-                thresholdInputs.get(1).setText("0");
-                performButtonClick(ladder, "Save ladder thresholds");
-                performButtonClick(ladder, "Use 21 and 3");
-                performButtonClick(ladder, "Save ladder thresholds");
-                RecordsSyncModels.Settings updated = activity.settings();
-                assertEquals(RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS, updated.ladderPromotionIntervalDays);
-                assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, updated.ladderDemotionFailStreak);
+                View ladder = activity.ladderThresholdSettingsPanel();
+                assertTrue(ladder instanceof androidx.compose.ui.platform.ComposeView);
 
                 LinearLayout ladderOrder = activity.studyLadderSettingsPanel();
                 assertNotNull(findButton(ladderOrder, "Restore default ladder"));

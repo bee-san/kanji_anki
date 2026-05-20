@@ -1,9 +1,7 @@
 package dev.bee.kanjianki;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import dev.bee.kanjianki.core.RecordsBase;
@@ -20,27 +18,27 @@ final class MainActivitySettingsLadderThresholdPanel {
         this.activity = activity;
     }
 
-    LinearLayout ladderThresholdSettingsPanel() {
+    View ladderThresholdSettingsPanel() {
         RecordsSyncModels.Settings current = activity.settings();
-        LinearLayout box = activity.settingsPanelBox();
-        box.addView(activity.text(SettingsTextCopy.ladderThresholdsTitle(), 23, activity.INK, true));
-        box.addView(activity.text(SettingsTextCopy.ladderThresholdsBody(), 15, activity.MUTED, false));
-
         EditText promotionDays = activity.thresholdInput(current.ladderPromotionIntervalDays);
         EditText failStreak = activity.thresholdInput(current.ladderDemotionFailStreak);
-        box.addView(activity.text(SettingsTextCopy.fsrsDaysToGoUpLabel(), 15, activity.INK, true));
-        box.addView(promotionDays, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-        box.addView(activity.text(SettingsTextCopy.failsToGoDownLabel(), 15, activity.INK, true));
-        box.addView(failStreak, new LinearLayout.LayoutParams(-1, activity.dp(58)));
-
-        Button defaults = activity.secondaryButton(SettingsTextCopy.useDefaultLadderThresholdsLabel());
-        defaults.setOnClickListener(new RunnableClickListener(() -> applyDefaultThresholds(promotionDays, failStreak)));
-        box.addView(defaults);
-
-        Button save = activity.primaryButton(SettingsTextCopy.saveLadderThresholdsLabel(), activity.STUDY_PINK_DARK);
-        save.setOnClickListener(new RunnableClickListener(() -> saveLadderThresholds(promotionDays, failStreak)));
-        box.addView(save);
-        return box;
+        promotionDays.setContentDescription(SettingsTextCopy.fsrsDaysToGoUpLabel());
+        failStreak.setContentDescription(SettingsTextCopy.failsToGoDownLabel());
+        return MainActivitySettingsLadderThresholdCompose.ladderThresholdSettingsPanelView(
+                activity,
+                new SettingsLadderThresholdPanelModel(
+                        SettingsTextCopy.ladderThresholdsTitle(),
+                        SettingsTextCopy.ladderThresholdsBody(),
+                        SettingsTextCopy.fsrsDaysToGoUpLabel(),
+                        promotionDays,
+                        SettingsTextCopy.failsToGoDownLabel(),
+                        failStreak,
+                        SettingsTextCopy.useDefaultLadderThresholdsLabel(),
+                        SettingsTextCopy.saveLadderThresholdsLabel(),
+                        () -> applyDefaultThresholds(promotionDays, failStreak),
+                        () -> saveLadderThresholds(promotionDays, failStreak)
+                )
+        );
     }
 
     private void applyDefaultThresholds(EditText promotionDays, EditText failStreak) {
@@ -60,18 +58,5 @@ final class MainActivitySettingsLadderThresholdPanel {
         SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting);
         Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show();
         activity.renderSettings();
-    }
-
-    private static final class RunnableClickListener implements View.OnClickListener {
-        private final Runnable action;
-
-        RunnableClickListener(Runnable action) {
-            this.action = action;
-        }
-
-        @Override
-        public void onClick(View v) {
-            action.run();
-        }
     }
 }

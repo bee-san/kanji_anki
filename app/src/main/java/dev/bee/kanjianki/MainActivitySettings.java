@@ -235,7 +235,7 @@ abstract class MainActivitySettings extends MainActivityStudy {
         studyLadderUi().toggleLadderRung(rung);
     }
 
-    LinearLayout ladderThresholdSettingsPanel() {
+    View ladderThresholdSettingsPanel() {
         return ladderThresholdPanel().ladderThresholdSettingsPanel();
     }
 

@@ -311,8 +311,8 @@ public final class MainActivityInstrumentedTest {
 
     private static void setLadderThresholdText(ActivityScenario<MainActivity> scenario) {
         scenario.onActivity(activity -> {
-            editTextAfterLabel(activity, "FSRS days to go up").setText("30");
-            editTextAfterLabel(activity, "Fails to go down").setText("2");
+            editTextWithContentDescription(activity, SettingsTextCopy.fsrsDaysToGoUpLabel()).setText("30");
+            editTextWithContentDescription(activity, SettingsTextCopy.failsToGoDownLabel()).setText("2");
         });
     }
 
