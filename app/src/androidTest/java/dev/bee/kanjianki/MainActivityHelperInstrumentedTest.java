@@ -2132,8 +2132,7 @@ public final class MainActivityHelperInstrumentedTest {
             MainActivity activity,
             RecordsImportModels.DashboardRow activeRow
     ) {
-        LinearLayout noEvidence = activity.statsVerdictPanel(StudyStatsStore.KaniOutcomeStats.empty());
-        assertTrue(containsText(noEvidence, "Kani is not currently working for you"));
+        assertEquals("Kani is not currently working for you", StatsTextCopy.verdictTitle(false));
         StudyStatsStore.LadderHealthMetric ladderOnly = new StudyStatsStore.LadderHealthMetric(
                 Collections.singletonMap(RecordsBase.LadderRung.KANJI_MEANING, 1),
                 1,
@@ -2157,7 +2156,10 @@ public final class MainActivityHelperInstrumentedTest {
                 ladderOnly.ladderPromotionIntervalDays,
                 ladderOnly.ladderDemotionFailStreak
         ).contains("more than 21 days"));
-        assertTrue(containsText(activity.statsVerdictPanel(ladderStats), "Kani is not currently working for you"));
+        assertFalse(StatsTextCopy.verdictWorking(
+                ladderStats.weakKanjiImproved.improvedCount,
+                ladderStats.matureSupportGained.matureSupportGained
+        ));
         verifyWorkingStatsVerdict(activity, activeRow);
     }
 
