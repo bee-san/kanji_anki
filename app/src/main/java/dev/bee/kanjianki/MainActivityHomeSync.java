@@ -1,9 +1,8 @@
 package dev.bee.kanjianki;
 
 import android.app.AlertDialog;
-import android.widget.Button;
-import android.widget.LinearLayout;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import dev.bee.kanjianki.anki.CollectionGateway;
@@ -72,56 +71,69 @@ final class MainActivityHomeSync {
     }
 
     void renderSkippedSyncResult(ManualSyncEngine.SyncResult result) {
-        home.content.addView(home.text(HomeTextCopy.syncAlreadyRunningTitle(), 34, home.INK, true));
-        LinearLayout info = home.band(home.BLUE);
-        info.addView(home.text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncAlreadyRunningFallback() : result.message, 17, android.graphics.Color.WHITE, false));
-        home.content.addView(info);
-        Button homeButton = home.secondaryButton(MainActivityBase.LABEL_BACK_HOME);
-        homeButton.setOnClickListener(new RunnableClickListener(home::renderHome));
-        home.content.addView(homeButton);
+        home.content.addView(MainActivityHomeSyncCompose.syncResultScreenView(
+                home,
+                new SyncResultScreenModel(
+                        HomeTextCopy.syncAlreadyRunningTitle(),
+                        null,
+                        List.of(home.nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback())),
+                        home.BLUE,
+                        null,
+                        home.TEAL,
+                        null,
+                        MainActivityBase.LABEL_BACK_HOME,
+                        home::renderHome
+                )
+        ));
     }
 
     void renderSuccessfulSyncResult(ManualSyncEngine.SyncResult result) {
-        home.content.addView(home.text(HomeTextCopy.syncCompleteTitle(), 34, home.INK, true));
-        LinearLayout summary = home.band(home.TEAL);
         long now = System.currentTimeMillis();
         List<RecordsImportModels.DashboardRow> rows = home.store.activeDashboardRows();
         List<RecordsStudyModels.StudyItem> items = home.store.studyItems();
         RecordsSchedulerModels.AdaptiveLoadPlan plan = home.adaptivePlan(rows, items, now);
         List<MainActivityBase.QueueEntry> entries = home.queuedEntries(rows, items, now, plan);
-        summary.addView(home.text(HomeTextCopy.syncReadyCountText(entries.size()), 24, android.graphics.Color.WHITE, true));
-        summary.addView(home.text(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)), 16, android.graphics.Color.WHITE, false));
+        List<String> summaryLines = new ArrayList<>();
+        summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)));
         if (!result.adaptiveSummary.isEmpty()) {
-            summary.addView(home.text(result.adaptiveSummary, 15, android.graphics.Color.WHITE, false));
+            summaryLines.add(result.adaptiveSummary);
         }
         if (result.importedSuspendedKanji > 0) {
-            summary.addView(home.text(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji), 15, android.graphics.Color.WHITE, false));
+            summaryLines.add(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji));
         }
         if (result.message != null && !result.message.isEmpty()) {
-            summary.addView(home.text(result.message, 14, android.graphics.Color.WHITE, false));
+            summaryLines.add(result.message);
         }
-        home.content.addView(summary);
-        if (result.dashboardRows > 0) {
-            Button study = home.primaryButton(MainActivityBase.LABEL_STUDY_NOW, home.CORAL);
-            study.setOnClickListener(new RunnableClickListener(home::startFocusedStudy));
-            home.content.addView(study);
-        }
-        Button homeButton = home.secondaryButton(MainActivityBase.LABEL_BACK_HOME);
-        homeButton.setOnClickListener(new RunnableClickListener(home::renderHome));
-        home.content.addView(homeButton);
+        home.content.addView(MainActivityHomeSyncCompose.syncResultScreenView(
+                home,
+                new SyncResultScreenModel(
+                        HomeTextCopy.syncCompleteTitle(),
+                        HomeTextCopy.syncReadyCountText(entries.size()),
+                        summaryLines,
+                        home.TEAL,
+                        result.dashboardRows > 0 ? MainActivityBase.LABEL_STUDY_NOW : null,
+                        home.CORAL,
+                        result.dashboardRows > 0 ? home::startFocusedStudy : null,
+                        MainActivityBase.LABEL_BACK_HOME,
+                        home::renderHome
+                )
+        ));
     }
 
     void renderFailedSyncResult(ManualSyncEngine.SyncResult result) {
-        home.content.addView(home.text(HomeTextCopy.syncNeedsAttentionTitle(), 34, home.INK, true));
-        LinearLayout error = home.band(home.CORAL);
-        error.addView(home.text(HomeTextCopy.syncReadErrorTitle(), 24, android.graphics.Color.WHITE, true));
-        error.addView(home.text(result.message == null || result.message.isEmpty() ? HomeTextCopy.syncFailureFallback() : result.message, 16, android.graphics.Color.WHITE, false));
-        home.content.addView(error);
-        Button retry = home.primaryButton(HomeTextCopy.trySyncAgainLabel(), home.TEAL);
-        retry.setOnClickListener(new RunnableClickListener(this::confirmSync));
-        home.content.addView(retry);
-        Button homeButton = home.secondaryButton(MainActivityBase.LABEL_BACK_HOME);
-        homeButton.setOnClickListener(new RunnableClickListener(home::renderHome));
-        home.content.addView(homeButton);
+        home.content.addView(MainActivityHomeSyncCompose.syncResultScreenView(
+                home,
+                new SyncResultScreenModel(
+                        HomeTextCopy.syncNeedsAttentionTitle(),
+                        HomeTextCopy.syncReadErrorTitle(),
+                        List.of(home.nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback())),
+                        home.CORAL,
+                        HomeTextCopy.trySyncAgainLabel(),
+                        home.TEAL,
+                        this::confirmSync,
+                        MainActivityBase.LABEL_BACK_HOME,
+                        home::renderHome
+                )
+        ));
     }
 }

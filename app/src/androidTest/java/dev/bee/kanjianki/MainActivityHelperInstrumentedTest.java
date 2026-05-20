@@ -1232,14 +1232,17 @@ public final class MainActivityHelperInstrumentedTest {
                 assertHasText(activity, "No recent mistakes yet");
 
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync already running");
                 assertHasText(activity, "Already syncing.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync needs attention");
                 assertHasText(activity, "Provider unavailable.");
 
                 activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Auto Pareto: 2 items today"));
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync complete");
                 assertHasText(activity, "Cleanup finished.");
 
