@@ -1861,6 +1861,7 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.studyActionBar = new LinearLayout(activity);
                 activity.studyAnswerPanel = new LinearLayout(activity);
                 activity.flashcardHeroPanel = new LinearLayout(activity);
+                activity.flashcardRevealState = null;
                 activity.flashcardCard = new LinearLayout(activity);
                 activity.flashcardCard.setLayoutParams(new LinearLayout.LayoutParams(-1, 0, 1));
                 activity.flashcardAnswerRevealed = false;
