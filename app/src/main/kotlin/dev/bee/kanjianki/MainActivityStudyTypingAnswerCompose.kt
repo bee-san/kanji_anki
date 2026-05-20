@@ -46,10 +46,6 @@ class TypingAnswerState @JvmOverloads constructor(initialText: String = "") {
     internal val text: String
         get() = value
 
-    fun setText(value: CharSequence?) {
-        this.value = value?.toString().orEmpty()
-    }
-
     fun getText(): CharSequence {
         return value
     }
@@ -59,22 +55,8 @@ class TypingAnswerState @JvmOverloads constructor(initialText: String = "") {
         return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
     }
 
-    fun hasBounds(): Boolean {
-        return boundsInWindow != null
-    }
-
-    fun centerXForTests(): Float {
-        val bounds = requireNotNull(boundsInWindow) { "Typing answer bounds are not available." }
-        return (bounds.left + bounds.right) / 2f
-    }
-
-    fun centerYForTests(): Float {
-        val bounds = requireNotNull(boundsInWindow) { "Typing answer bounds are not available." }
-        return (bounds.top + bounds.bottom) / 2f
-    }
-
-    fun setBoundsForTests(left: Float, top: Float, right: Float, bottom: Float) {
-        boundsInWindow = Rect(left, top, right, bottom)
+    internal fun updateText(value: String) {
+        this.value = value
     }
 
     internal fun updateBounds(bounds: Rect) {
@@ -104,7 +86,7 @@ internal fun TypingMeaningAnswer(label: String, state: TypingAnswerState) {
         )
         BasicTextField(
             value = state.text,
-            onValueChange = state::setText,
+            onValueChange = state::updateText,
             singleLine = true,
             textStyle = TextStyle(
                 color = TypingAnswerText,

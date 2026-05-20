@@ -1775,7 +1775,7 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void flashcardGestureTrackingCoversTypingBoundsCancelAndOutsideRelease() {
+    public void flashcardGestureTrackingCoversMissingTypingBoundsCancelAndOutsideRelease() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
@@ -1785,10 +1785,10 @@ public final class MainActivityHelperInstrumentedTest {
                 area.layout(0, 0, 300, 300);
                 activity.flashcardGestureArea = area;
                 activity.typingAnswerState = new TypingAnswerState();
-                activity.typingAnswerState.setBoundsForTests(20f, 20f, 180f, 90f);
+                assertFalse(activity.typingAnswerState.containsWindowPoint(40f, 40f));
 
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_DOWN, 40f, 40f)));
-                assertFalse(activity.flashcardTouchTracking);
+                assertTrue(activity.flashcardTouchTracking);
 
                 activity.typingAnswerState = null;
                 activity.flashcardTouchTracking = false;

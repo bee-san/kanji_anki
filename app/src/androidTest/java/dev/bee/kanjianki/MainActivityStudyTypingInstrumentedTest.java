@@ -1,10 +1,12 @@
 package dev.bee.kanjianki;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -13,6 +15,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.BridgeScheduler;
@@ -75,10 +78,10 @@ public final class MainActivityStudyTypingInstrumentedTest {
                 activity.renderSession(correct);
             });
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            typeAnswer("split");
             scenario.onActivity(activity -> {
                 assertNotNull(activity.typingAnswerState);
-                assertTrue(activity.typingAnswerState.hasBounds());
-                activity.typingAnswerState.setText("split");
+                assertEquals("split", activity.typingAnswerState.getText().toString());
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
@@ -91,12 +94,13 @@ public final class MainActivityStudyTypingInstrumentedTest {
                 activity.renderSession(wrong);
             });
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            UiObject2 wrongInput = typeAnswer("wrong");
+            Rect inputBounds = wrongInput.getVisibleBounds();
             scenario.onActivity(activity -> {
                 assertNotNull(activity.typingAnswerState);
-                assertTrue(activity.typingAnswerState.hasBounds());
-                activity.typingAnswerState.setText("wrong");
-                float inputCenterX = activity.typingAnswerState.centerXForTests();
-                float inputCenterY = activity.typingAnswerState.centerYForTests();
+                assertEquals("wrong", activity.typingAnswerState.getText().toString());
+                float inputCenterX = inputBounds.exactCenterX();
+                float inputCenterY = inputBounds.exactCenterY();
                 assertTrue(activity.typingAnswerState.containsWindowPoint(inputCenterX, inputCenterY));
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_DOWN, inputCenterX, inputCenterY)));
                 assertFalse(activity.flashcardTouchTracking);
@@ -113,6 +117,15 @@ public final class MainActivityStudyTypingInstrumentedTest {
                 assertEquals(1, stats.good);
             });
         }
+    }
+
+    private static UiObject2 typeAnswer(String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 input = device.wait(Until.findObject(By.clazz(EditText.class.getName())), 3000L);
+        assertNotNull(input);
+        input.setText(text);
+        device.waitForIdle(2000L);
+        return input;
     }
 
     private static RecordsSchedulerModels.StudySession sessionWithToken(String kanji, RecordsImportModels.DashboardRow row, String token) {

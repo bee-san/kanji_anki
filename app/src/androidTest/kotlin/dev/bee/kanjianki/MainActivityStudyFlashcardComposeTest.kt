@@ -184,7 +184,6 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.runOnIdle {
             assertNotNull(stateRef)
             assertEquals("split open", stateRef?.getText().toString())
-            assertTrue(stateRef?.hasBounds() == true)
         }
     }
 

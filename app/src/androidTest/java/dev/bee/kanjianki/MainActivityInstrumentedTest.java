@@ -2458,17 +2458,20 @@ public final class MainActivityInstrumentedTest {
     }
 
     private static void enterFirstEditText(ActivityScenario<MainActivity> scenario, String text) {
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        UiObject2 composeInput = device.wait(Until.findObject(By.clazz(EditText.class.getName())), 1000L);
+        if (composeInput != null) {
+            composeInput.setText(text);
+            device.waitForIdle(2000L);
+            return;
+        }
         scenario.onActivity(activity -> {
-            if (activity.typingAnswerState != null) {
-                activity.typingAnswerState.setText(text);
-                return;
-            }
             EditText input = findType(activity.findViewById(android.R.id.content), EditText.class);
             assertNotNull(input);
             input.setText(text);
             input.setSelection(text.length());
         });
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle(2000L);
+        device.waitForIdle(2000L);
     }
 
     private static void enterDialogEditText(String text) {
