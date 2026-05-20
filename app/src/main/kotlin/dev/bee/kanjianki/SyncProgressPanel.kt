@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.content.Context
 import android.os.SystemClock
 import android.graphics.Typeface
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ProgressBar
@@ -12,13 +13,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.sync.SyncProgress
@@ -35,6 +40,17 @@ private data class SyncProgressPanelState(
     val progressValue: Int = 0,
     val progressDescription: String = "Sync progress"
 )
+
+internal fun syncProgressTitleView(context: Context, title: String): View {
+    return ComposeView(context).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                SyncProgressTitle(title)
+            }
+        }
+    }
+}
 
 class SyncProgressPanel(context: Context) : FrameLayout(context) {
     private var scanStartedAt: Long = 0L
@@ -97,6 +113,19 @@ class SyncProgressPanel(context: Context) : FrameLayout(context) {
             progressDescription = "Sync progress: $cardText"
         )
     }
+}
+
+@Composable
+fun SyncProgressTitle(title: String) {
+    Text(
+        text = title,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        color = Color(INK),
+        fontSize = 34.sp,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 @Composable
