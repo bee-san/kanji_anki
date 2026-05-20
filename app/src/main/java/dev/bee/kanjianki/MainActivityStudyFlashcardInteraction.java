@@ -54,11 +54,13 @@ final class MainActivityStudyFlashcardInteraction {
             return;
         }
         activity.flashcardAnswerRevealed = true;
-        if (activity.flashcardHeroPanel != null) {
+        if (activity.flashcardRevealState != null) {
+            activity.flashcardRevealState.reveal();
+        } else if (activity.flashcardHeroPanel != null) {
             activity.flashcardHeroPanel.setVisibility(View.GONE);
         }
         expandFlashcardForAnswer();
-        if (activity.studyAnswerPanel != null) {
+        if (activity.flashcardRevealState == null && activity.studyAnswerPanel != null) {
             activity.studyAnswerPanel.setVisibility(View.VISIBLE);
         }
         buildFlashcardActionBar(true);

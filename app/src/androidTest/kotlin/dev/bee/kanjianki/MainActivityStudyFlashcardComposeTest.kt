@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.widget.EditText
-import android.widget.TextView
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -127,8 +126,8 @@ class MainActivityStudyFlashcardComposeTest {
 
     @Test
     fun rendersFlashcardCardShell() {
+        val revealState = FlashcardRevealState(false)
         composeRule.setContent {
-            val context = LocalContext.current
             FlashcardCard(
                 model = FlashcardCardModel(
                     promptHeader = FlashcardPromptHeaderModel(
@@ -138,9 +137,20 @@ class MainActivityStudyFlashcardComposeTest {
                         hiddenHint = "Answer hidden until reveal",
                         reasonLine = ""
                     ),
-                    heroPanel = TextView(context).apply { text = "裂" },
+                    heroPanel = FlashcardHeroPanelModel(
+                        glyph = "裂",
+                        glyphSizeSp = 116,
+                        typeface = null
+                    ),
                     typingAnswer = null,
-                    answerPanel = TextView(context).apply { text = "split" }
+                    answerPanel = StudyAnswerPanelModel(
+                        title = "Answer",
+                        glyph = "裂",
+                        glyphSizeSp = 76,
+                        lines = listOf(StudyAnswerLineModel("split", Color(0xFF4B2552), 17, true)),
+                        helperText = null
+                    ),
+                    revealState = revealState
                 )
             )
         }
@@ -148,6 +158,13 @@ class MainActivityStudyFlashcardComposeTest {
         composeRule.onNodeWithText("Recognise").assertIsDisplayed()
         composeRule.onNodeWithText("Name this kanji").assertIsDisplayed()
         composeRule.onNodeWithText("What does this kanji mean?").assertIsDisplayed()
+        composeRule.onAllNodesWithText("split").assertCountEquals(0)
+
+        composeRule.runOnIdle {
+            revealState.reveal()
+        }
+
+        composeRule.onNodeWithText("split").assertIsDisplayed()
     }
 
     @Test

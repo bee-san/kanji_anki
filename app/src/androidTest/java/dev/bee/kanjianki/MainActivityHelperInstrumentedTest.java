@@ -1827,7 +1827,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(activity.flashcardCard, activity.flashcardGestureArea);
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
-                assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
+                assertTrue(containsText(activity.content, "split"));
                 activity.flashcardTouchStartX = 100f;
                 activity.flashcardTouchStartY = 100f;
                 assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));

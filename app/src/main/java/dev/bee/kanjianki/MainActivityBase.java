@@ -119,6 +119,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     View flashcardGestureArea;
     View flashcardCard;
     View flashcardHeroPanel;
+    FlashcardRevealState flashcardRevealState;
     EditText typingAnswerInput;
     WritingAnalysis activeAnalysis;
     boolean checkingWriting;
@@ -312,6 +313,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
         }
         flashcardGestureArea = null;
         flashcardCard = null;
+        flashcardRevealState = null;
         flashcardAnswerRevealed = false;
         flashcardTouchTracking = false;
         LinearLayout root = new LinearLayout(this);

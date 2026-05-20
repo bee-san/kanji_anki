@@ -108,7 +108,7 @@ public final class MainActivityStudyTypingInstrumentedTest {
 
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
-                assertEquals(View.VISIBLE, activity.studyAnswerPanel.getVisibility());
+                assertTrue(containsText(activity.content, "split"));
                 assertTrue(containsText(activity.studyActionBar, "Fail"));
                 assertTrue(containsText(activity.studyActionBar, MainActivityBase.LABEL_PASS));
                 RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);

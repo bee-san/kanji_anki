@@ -50,22 +50,26 @@ final class MainActivityStudyFlashcard {
     }
 
     View recognitionHeroCard(RecordsSchedulerModels.StudySession session) {
-        activity.flashcardHeroPanel = heroKanjiPanel(session);
+        FlashcardRevealState revealState = new FlashcardRevealState(false);
+        activity.flashcardRevealState = revealState;
+        activity.flashcardHeroPanel = null;
+        activity.studyAnswerPanel = null;
+        FlashcardHeroPanelModel heroPanel = heroKanjiPanelModel(session);
         View typingAnswer = null;
         if (StudyTaskCopy.isTypingMeaningTask(session)) {
             typingAnswer = typingAnswerField();
         }
 
-        activity.studyAnswerPanel = flashcardAnswerPanel(session);
-        activity.studyAnswerPanel.setVisibility(View.GONE);
+        StudyAnswerPanelModel answerPanel = flashcardAnswerPanelModel(session);
 
         return MainActivityStudyFlashcardContentCompose.flashcardCardView(
                 activity,
                 new FlashcardCardModel(
                         flashcardPromptHeaderModel(session),
-                        activity.flashcardHeroPanel,
+                        heroPanel,
                         typingAnswer,
-                        activity.studyAnswerPanel
+                        answerPanel,
+                        revealState
                 )
         );
     }
@@ -83,11 +87,15 @@ final class MainActivityStudyFlashcard {
     View heroKanjiPanel(RecordsSchedulerModels.StudySession session) {
         return MainActivityStudyFlashcardContentCompose.heroKanjiPanelView(
                 activity,
-                new FlashcardHeroPanelModel(
-                        StudyTaskCopy.isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
-                        StudyTaskCopy.isWordReadingTask(session) ? 44 : 116,
-                        StudyTaskCopy.isFontRecognitionTask(session) ? randomFontVariantTypeface() : Typeface.DEFAULT
-                )
+                heroKanjiPanelModel(session)
+        );
+    }
+
+    FlashcardHeroPanelModel heroKanjiPanelModel(RecordsSchedulerModels.StudySession session) {
+        return new FlashcardHeroPanelModel(
+                StudyTaskCopy.isWordReadingTask(session) ? StudyTextCopy.wordPrompt(session) : session.item.kanji,
+                StudyTaskCopy.isWordReadingTask(session) ? 44 : 116,
+                StudyTaskCopy.isFontRecognitionTask(session) ? randomFontVariantTypeface() : Typeface.DEFAULT
         );
     }
 

@@ -25,7 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -62,11 +65,21 @@ data class FlashcardHeroPanelModel(
     val typeface: Typeface?,
 )
 
+class FlashcardRevealState(initialRevealed: Boolean = false) {
+    var isRevealed by mutableStateOf(initialRevealed)
+        private set
+
+    fun reveal() {
+        isRevealed = true
+    }
+}
+
 data class FlashcardCardModel(
     val promptHeader: FlashcardPromptHeaderModel,
-    val heroPanel: View,
+    val heroPanel: FlashcardHeroPanelModel,
     val typingAnswer: View?,
-    val answerPanel: View,
+    val answerPanel: StudyAnswerPanelModel,
+    val revealState: FlashcardRevealState,
 )
 
 internal fun heroKanjiPanelView(activity: MainActivityStudy, model: FlashcardHeroPanelModel): View {
@@ -111,11 +124,15 @@ fun FlashcardCard(model: FlashcardCardModel) {
             verticalArrangement = Arrangement.Top
         ) {
             FlashcardPromptHeader(model.promptHeader)
-            FlashcardEmbeddedView(model.heroPanel, Modifier.padding(top = 16.dp))
+            if (!model.revealState.isRevealed) {
+                FlashcardHeroPanel(model.heroPanel, Modifier.padding(top = 16.dp))
+            }
             model.typingAnswer?.let { typingAnswer ->
                 FlashcardEmbeddedView(typingAnswer)
             }
-            FlashcardEmbeddedView(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+            if (model.revealState.isRevealed) {
+                StudyAnswerPanel(model.answerPanel, Modifier.padding(top = 12.dp, bottom = 10.dp))
+            }
         }
     }
 }
@@ -234,10 +251,10 @@ private fun FlashcardHeaderText(
 }
 
 @Composable
-fun FlashcardHeroPanel(model: FlashcardHeroPanelModel) {
+fun FlashcardHeroPanel(model: FlashcardHeroPanelModel, modifier: Modifier = Modifier) {
     val fontFamily = model.typeface?.let { FontFamily(Typeface.create(it, Typeface.BOLD)) }
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(210.dp),
         shape = RoundedCornerShape(28.dp),
