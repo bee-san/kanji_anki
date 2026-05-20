@@ -496,10 +496,7 @@ abstract class MainActivityBase extends MainActivityUiSupport {
     }
 
     void emptyState(String title, String body) {
-        LinearLayout empty = band(GOLD);
-        empty.addView(text(title, 24, INK, true));
-        empty.addView(text(body, 16, INK, false));
-        content.addView(empty);
+        content.addView(MainActivityHomeEmptyStateCompose.homeEmptyStateView(this, title, body));
     }
 
     void addSpace(int dp) {

@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -40,8 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import dev.bee.kanjianki.core.HomeTextCopy
 
 private val HomeInk = Color(0xFF2D1635)
@@ -145,6 +145,9 @@ fun HomePrimaryCta(
             .fillMaxSize()
             .clip(shape)
             .background(Color(color.toLong() and 0xFFFFFFFFL))
+            .semantics {
+                contentDescription = label
+            }
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

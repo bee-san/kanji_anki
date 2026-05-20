@@ -228,7 +228,7 @@ fun HomeFocusQueuePanel(model: HomeFocusQueuePanelModel, onSync: () -> Unit) {
             color = ComposeColor(0xFF6E6E78)
         )
         if (model.cards.isEmpty()) {
-            HomeFocusQueueEmptyState(
+            HomeEmptyState(
                 title = requireNotNull(model.emptyTitle),
                 body = requireNotNull(model.emptyBody)
             )
@@ -263,7 +263,7 @@ fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (model.cards.isEmpty()) {
-            HomeFocusQueueEmptyState(
+            HomeEmptyState(
                 title = model.emptyTitle,
                 body = model.emptyBody
             )
@@ -273,24 +273,6 @@ fun HomeRecentMistakesPanel(model: HomeRecentMistakesPanelModel) {
                     HomeRecentMistakesCard(card)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun HomeFocusQueueEmptyState(title: String, body: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = ComposeColor.White,
-        border = BorderStroke(1.dp, ComposeColor(0xFFEBD6E4))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(text = body, style = MaterialTheme.typography.bodyMedium, color = ComposeColor(0xFF6E6E78))
         }
     }
 }

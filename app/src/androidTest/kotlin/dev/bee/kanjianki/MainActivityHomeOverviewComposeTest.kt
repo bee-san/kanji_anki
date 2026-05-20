@@ -87,7 +87,7 @@ class MainActivityHomeOverviewComposeTest {
         }
 
         composeRule.onNodeWithText("Sync AnkiDroid").assertIsDisplayed()
-        composeRule.onNodeWithText("Sync AnkiDroid").performClick()
+        composeRule.onNodeWithContentDescription("Sync AnkiDroid").performClick()
 
         assertTrue(clicked)
     }
