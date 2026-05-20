@@ -1235,11 +1235,15 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync already running");
                 assertHasText(activity, "Already syncing.");
+                activity.renderSyncResult(syncResult(false, true, 0, 0, "", ""));
+                assertHasText(activity, "Kani is already reading AnkiDroid.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync needs attention");
                 assertHasText(activity, "Provider unavailable.");
+                activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
+                assertHasText(activity, "Try again after checking AnkiDroid permissions.");
 
                 activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Auto Pareto: 2 items today"));
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
