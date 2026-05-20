@@ -53,11 +53,16 @@ final class MainActivityStudyDoneActions {
 
     void renderFocusDone(RecordsSchedulerModels.AdaptiveLoadPlan plan) {
         home.prepareStudyContent(plan, false);
+        List<String> summaryLines = new java.util.ArrayList<>();
+        summaryLines.add(StudyTextCopy.adaptiveFocusDoneSummary(plan.target));
+        if (!plan.status.isEmpty()) {
+            summaryLines.add(plan.status);
+        }
         home.content.addView(studyDoneScreenView(home, studyDoneScreenModel(
                 StudyTextCopy.studyDoneTitle(),
                 null,
                 StudyTextCopy.adaptiveFocusDoneBody(),
-                List.of(StudyTextCopy.adaptiveFocusDoneSummary(plan.target), plan.status),
+                summaryLines,
                 true,
                 false,
                 false

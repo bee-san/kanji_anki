@@ -1315,6 +1315,8 @@ public final class MainActivityHelperInstrumentedTest {
         assertHasText(activity, "Nothing to study yet");
         activity.renderNoStudySession(dueLater);
         assertHasText(activity, "Nothing due now");
+        performClickableWithText(activity.content, MainActivityBase.LABEL_BACK_HOME);
+        assertHasText(activity, "Kani");
         activity.renderFocusDone(complete);
         assertHasText(activity, "Today's focus done");
         assertHasText(activity, "Today's focus: 0 items left / 3");

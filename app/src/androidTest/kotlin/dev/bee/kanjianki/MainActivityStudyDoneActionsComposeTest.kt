@@ -149,4 +149,33 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText("Sync from AnkiDroid first.").assertIsDisplayed()
         composeRule.onAllNodesWithText(MainActivityBase.LABEL_BACK_HOME).assertCountEquals(0)
     }
+
+    @Test
+    fun rendersNoSessionBackHomeAction() {
+        var backClicked = false
+
+        composeRule.setContent {
+            StudyDoneScreen(
+                model = StudyDoneScreenModel(
+                    modeLabel = MainActivityBase.LABEL_PRACTICE,
+                    title = "Nothing due now",
+                    headline = null,
+                    body = "Your active kanji are resting.",
+                    summaryLines = emptyList(),
+                    showDoneActions = false,
+                    availableStudyMoreNewCards = 0,
+                    showBackHome = true,
+                    backHomePrimary = true,
+                    onStudyMore = Runnable {},
+                    onContinueAll = Runnable {},
+                    onBackHome = Runnable { backClicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Nothing due now").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_BACK_HOME).performClick()
+
+        assertTrue(backClicked)
+    }
 }
