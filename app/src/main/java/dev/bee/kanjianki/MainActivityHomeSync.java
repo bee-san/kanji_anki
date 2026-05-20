@@ -34,9 +34,12 @@ final class MainActivityHomeSync {
 
     void runSync() {
         home.base("home");
-        home.content.addView(SyncProgressPanelKt.syncProgressTitleView(home, HomeTextCopy.syncingTitle()));
         SyncProgressPanel progressView = new SyncProgressPanel(home);
-        home.content.addView(progressView);
+        home.content.addView(SyncProgressPanelKt.syncProgressScreenView(
+                home,
+                HomeTextCopy.syncingTitle(),
+                progressView
+        ));
         CollectionGateway syncGateway = MainActivityHome.collectionGatewayForTests == null
                 ? home.gateway
                 : MainActivityHome.collectionGatewayForTests;

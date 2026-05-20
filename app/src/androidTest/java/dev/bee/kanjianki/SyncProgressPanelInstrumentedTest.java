@@ -46,6 +46,14 @@ public final class SyncProgressPanelInstrumentedTest {
     }
 
     @Test
+    public void syncProgressScreenUsesSingleComposeBridge() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        View screen = SyncProgressPanelKt.syncProgressScreenView(context, "Syncing cards", new SyncProgressPanel(context));
+
+        assertTrue(screen instanceof androidx.compose.ui.platform.ComposeView);
+    }
+
+    @Test
     public void syncProgressPanelShowsEtaAndFinishingCopy() {
         SyncProgressPanel panel = panel();
 

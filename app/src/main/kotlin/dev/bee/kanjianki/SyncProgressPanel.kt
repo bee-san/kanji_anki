@@ -54,6 +54,20 @@ internal fun syncProgressTitleView(context: Context, title: String): View {
     }
 }
 
+internal fun syncProgressScreenView(context: Context, title: String, progressPanel: SyncProgressPanel): View {
+    return ComposeView(context).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                SyncProgressScreen(
+                    title = title,
+                    progressPanel = progressPanel
+                )
+            }
+        }
+    }
+}
+
 class SyncProgressPanel(context: Context) : FrameLayout(context) {
     private var scanStartedAt: Long = 0L
     private var lastScannedCards: Int = -1
@@ -113,6 +127,23 @@ class SyncProgressPanel(context: Context) : FrameLayout(context) {
             progressMax = 1000,
             progressValue = SyncProgressCopy.progressPermille(lastScannedCards, lastTotalCards),
             progressDescription = "Sync progress: $cardText"
+        )
+    }
+}
+
+@Composable
+internal fun SyncProgressScreen(title: String, progressPanel: View) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.Top
+    ) {
+        SyncProgressTitle(title)
+        AndroidView(
+            modifier = Modifier.fillMaxWidth(),
+            factory = {
+                (progressPanel.parent as? ViewGroup)?.removeView(progressPanel)
+                progressPanel
+            }
         )
     }
 }
