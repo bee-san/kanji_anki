@@ -57,6 +57,44 @@ class MainActivitySettingsReferenceDataComposeTest {
     }
 
     @Test
+    fun rendersReferenceDataRouteAndInvokesNavigation() {
+        var homeClicked = false
+        var backClicked = false
+
+        composeRule.setContent {
+            ReferenceDataScreen(
+                SettingsReferenceDataScreenModel(
+                    homeLabel = "Home",
+                    onHome = Runnable { homeClicked = true },
+                    intro = SettingsReferenceDataIntroModel(
+                        backLabel = "Back to settings",
+                        title = "Data licenses",
+                        body = "Bundled source attribution.",
+                        onBack = Runnable { backClicked = true }
+                    ),
+                    dataSources = SettingsReferenceDataModel(
+                        dictionaryTitle = "Dictionary data",
+                        dictionaryBody = "KANJIDIC2 and Jiten sources",
+                        strokeTitle = "Stroke data",
+                        strokeBody = "KanjiVG attribution and source path",
+                        fontsTitle = "Fonts",
+                        fontsBody = "Bundled font attribution"
+                    )
+                )
+            )
+        }
+
+        composeRule.onNodeWithText("Home").performClick()
+        composeRule.onNodeWithText("Back to settings").performClick()
+        composeRule.onNodeWithText("Dictionary data").assertIsDisplayed()
+        composeRule.onNodeWithText("Stroke data").assertIsDisplayed()
+        composeRule.onNodeWithText("Fonts").assertIsDisplayed()
+
+        assertTrue(homeClicked)
+        assertTrue(backClicked)
+    }
+
+    @Test
     fun rendersAttributionPanels() {
         composeRule.setContent {
             DataSourcesPanels(

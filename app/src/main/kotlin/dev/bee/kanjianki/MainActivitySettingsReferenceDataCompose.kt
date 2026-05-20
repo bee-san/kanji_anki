@@ -61,6 +61,13 @@ data class SettingsReferenceDataModel(
     val fontsBody: String,
 )
 
+data class SettingsReferenceDataScreenModel(
+    val homeLabel: String,
+    val onHome: Runnable,
+    val intro: SettingsReferenceDataIntroModel,
+    val dataSources: SettingsReferenceDataModel,
+)
+
 internal fun referenceDataLinkPanelView(activity: MainActivitySettings, model: SettingsReferenceDataLinkModel): View {
     return ComposeView(activity).apply {
         layoutParams = LinearLayout.LayoutParams(
@@ -77,23 +84,12 @@ internal fun referenceDataLinkPanelView(activity: MainActivitySettings, model: S
     }
 }
 
-internal fun dataSourcesIntroView(activity: MainActivitySettings, model: SettingsReferenceDataIntroModel): View {
+internal fun referenceDataScreenView(activity: MainActivitySettings, model: SettingsReferenceDataScreenModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
             MaterialTheme {
-                DataSourcesIntro(model)
-            }
-        }
-    }
-}
-
-internal fun dataSourcesPanelsView(activity: MainActivitySettings, model: SettingsReferenceDataModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                DataSourcesPanels(model)
+                ReferenceDataScreen(model)
             }
         }
     }
@@ -117,6 +113,21 @@ fun ReferenceDataLinkPanel(model: SettingsReferenceDataLinkModel) {
             label = model.actionLabel,
             onClick = { model.onAction.run() }
         )
+    }
+}
+
+@Composable
+fun ReferenceDataScreen(model: SettingsReferenceDataScreenModel) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        HomeFullWidthHomeButton(
+            label = model.homeLabel,
+            onClick = { model.onHome.run() }
+        )
+        DataSourcesIntro(model.intro)
+        DataSourcesPanels(model.dataSources)
     }
 }
 

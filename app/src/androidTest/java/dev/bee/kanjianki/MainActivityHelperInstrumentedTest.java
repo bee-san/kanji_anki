@@ -631,6 +631,8 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.settingsAppExpanded);
                 assertTrue(containsText(activity.content, "Offline data & licenses"));
                 performClickableWithText(activity.content, "Open data licenses");
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Data licenses");
                 performClickableWithText(activity.content, "Back to settings");
                 assertHasText(activity, "Automation");

@@ -2,6 +2,7 @@ package dev.bee.kanjianki;
 
 import android.view.View;
 
+import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 
 final class MainActivitySettingsReferenceData {
@@ -25,17 +26,20 @@ final class MainActivitySettingsReferenceData {
 
     void renderDataSources() {
         activity.base(activity.NAV_SETTINGS_ROUTE);
-        activity.content.addView(activity.fullWidthHomeButton());
-        activity.content.addView(MainActivitySettingsReferenceDataCompose.dataSourcesIntroView(
+        activity.content.addView(MainActivitySettingsReferenceDataCompose.referenceDataScreenView(
                 activity,
-                new SettingsReferenceDataIntroModel(
-                        SettingsTextCopy.backToSettingsLabel(),
-                        SettingsTextCopy.dataLicensesTitle(),
-                        SettingsTextCopy.dataLicensesBody(),
-                        () -> activity.renderSettings(false)
+                new SettingsReferenceDataScreenModel(
+                        HomeTextCopy.homeLabel(),
+                        activity::renderHome,
+                        new SettingsReferenceDataIntroModel(
+                                SettingsTextCopy.backToSettingsLabel(),
+                                SettingsTextCopy.dataLicensesTitle(),
+                                SettingsTextCopy.dataLicensesBody(),
+                                () -> activity.renderSettings(false)
+                        ),
+                        dataSourcesModel()
                 )
         ));
-        activity.content.addView(MainActivitySettingsReferenceDataCompose.dataSourcesPanelsView(activity, dataSourcesModel()));
     }
 
     SettingsReferenceDataModel dataSourcesModel() {
