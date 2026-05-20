@@ -54,14 +54,14 @@ data class HomeMetricModel(
 
 internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
 
-internal fun homeMetricRowView(
+internal fun homeMetricModels(
     home: MainActivityHome,
     sync: LocalStoreBase.SyncStatus?,
     provider: AnkiDroidGateway.ProviderStatus,
     streak: StudyStatsStore.StudyStreak?,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?
-): View {
-    val metrics = listOf(
+): List<HomeMetricModel> {
+    return listOf(
         HomeMetricModel(
             R.drawable.ic_sync_24,
             MainActivityUiSupport.TEAL,
@@ -87,6 +87,16 @@ internal fun homeMetricRowView(
             null
         )
     )
+}
+
+internal fun homeMetricRowView(
+    home: MainActivityHome,
+    sync: LocalStoreBase.SyncStatus?,
+    provider: AnkiDroidGateway.ProviderStatus,
+    streak: StudyStatsStore.StudyStreak?,
+    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
+): View {
+    val metrics = homeMetricModels(home, sync, provider, streak, plan)
     return ComposeView(home).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {

@@ -126,7 +126,7 @@ internal fun homeFocusQueuePanelModel(
     )
 }
 
-private fun homeFocusQueueCardModel(
+internal fun homeFocusQueueCardModel(
     home: MainActivityHome,
     entry: MainActivityBase.QueueEntry,
     nowMillis: Long,
@@ -193,7 +193,7 @@ fun HomeFocusQueuePanel(model: HomeFocusQueuePanelModel, onSync: () -> Unit) {
 }
 
 @Composable
-private fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
+internal fun HomeFocusQueueCard(model: HomeFocusQueueCardModel) {
     val cardFill = model.accentColor.copy(alpha = 0.06f)
     val cardStroke = model.accentColor.copy(alpha = 0.58f)
     val tileFill = model.accentColor.copy(alpha = 0.14f)

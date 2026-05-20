@@ -85,7 +85,6 @@ import java.util.concurrent.Executors;
 
 abstract class MainActivityHome extends MainActivityBase {
     String activeBrowseQuery = "";
-    private final MainActivityHomeScreen homeScreen = new MainActivityHomeScreen(this);
     private final MainActivityHomeOverview overview = new MainActivityHomeOverview(this);
     private final MainActivityHomeChrome chrome = new MainActivityHomeChrome(this);
     private final MainActivityHomeFocusQueue focusQueue = new MainActivityHomeFocusQueue(this);
@@ -96,7 +95,7 @@ abstract class MainActivityHome extends MainActivityBase {
     abstract void renderGames();
 
     void renderHome() {
-        homeScreen.renderHome();
+        MainActivityHomeScreenRenderer.renderHomeScreen(this);
     }
 
     View homeHeader() {

@@ -45,8 +45,8 @@ data class HomeActionModel(
     val onClick: () -> Unit,
 )
 
-internal fun homeActionRowView(home: MainActivityHome): View {
-    val actions = buildList {
+internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
+    return buildList {
         add(HomeActionModel(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24) { home.renderBrowseKanji("") })
         add(HomeActionModel(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, home::renderRecentMistakes))
         add(HomeActionModel(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, home::renderStats))
@@ -56,6 +56,10 @@ internal fun homeActionRowView(home: MainActivityHome): View {
             add(HomeActionModel("Compose shell", R.drawable.ic_sparkle_24, home::openComposeShell))
         }
     }
+}
+
+internal fun homeActionRowView(home: MainActivityHome): View {
+    val actions = homeActionModels(home)
     return ComposeView(home).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         setContent {
