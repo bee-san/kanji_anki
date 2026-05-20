@@ -1171,15 +1171,18 @@ public final class MainActivityHelperInstrumentedTest {
         assertTrue(containsText(activity.content, "Historical recovery"));
         assertFalse(containsText(activity.content, "ゴ"));
 
-        LinearLayout inventoryReason = activity.detailReasonPanel(null, inventory);
-        assertTrue(containsText(inventoryReason, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertTrue(containsText(inventoryReason, "Anki browser: kanji:語"));
-        LinearLayout fallbackReason = activity.detailReasonPanel(null, null);
-        assertTrue(containsText(fallbackReason, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
-        assertFalse(containsTextContaining(fallbackReason, "Anki browser:"));
-        LinearLayout rowReason = activity.detailReasonPanel(row, inventory);
-        assertTrue(containsText(rowReason, "reason text"));
-        assertTrue(containsText(rowReason, "Anki browser: 裂"));
+        activity.content.removeAllViews();
+        activity.content.addView(activity.detailReasonPanel(null, inventory));
+        assertTrue(containsText(activity.content, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertTrue(containsText(activity.content, "Anki browser: kanji:語"));
+        activity.content.removeAllViews();
+        activity.content.addView(activity.detailReasonPanel(null, null));
+        assertTrue(containsText(activity.content, "This kanji is no longer in the active Anki evidence set, but Kani kept its local recovery history."));
+        assertFalse(containsTextContaining(activity.content, "Anki browser:"));
+        activity.content.removeAllViews();
+        activity.content.addView(activity.detailReasonPanel(row, inventory));
+        assertTrue(containsText(activity.content, "reason text"));
+        assertTrue(containsText(activity.content, "Anki browser: 裂"));
     }
 
     @Test
@@ -2379,9 +2382,10 @@ public final class MainActivityHelperInstrumentedTest {
                         0,
                         Collections.emptyList()
                 );
-                LinearLayout why = activity.detailReasonPanel(row, null);
-                assertTrue(containsText(why, "Current local practice evidence from AnkiDroid."));
-                assertContainsText(why, "Anki browser: deck:Japanese");
+                activity.content.removeAllViews();
+                activity.content.addView(activity.detailReasonPanel(row, null));
+                assertTrue(containsText(activity.content, "Current local practice evidence from AnkiDroid."));
+                assertContainsText(activity.content, "Anki browser: deck:Japanese");
 
                 activity.content = new LinearLayout(activity);
                 activity.addDetailIdentity(row, null, false);

@@ -240,7 +240,7 @@ abstract class MainActivityHome extends MainActivityBase {
         browseDetail.addDetailIdentity(row, inventory, suspended);
     }
 
-    LinearLayout detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
+    View detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
         return browseDetail.detailReasonPanel(row, inventory);
     }
 

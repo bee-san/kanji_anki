@@ -69,6 +69,20 @@ data class BrowseKanjiRowModel(
     val onClick: () -> Unit,
 )
 
+data class BrowseDetailPanelModel(
+    val title: String,
+    val lines: List<String>,
+    val color: Int,
+)
+
+data class BrowseExampleCardModel(
+    val sourceLabel: String,
+    val expression: String,
+    val sentence: String,
+    val meaning: String,
+    val color: Int,
+)
+
 internal fun browseScreenView(
     activity: MainActivityHomeBrowseDetail,
     query: String,
@@ -104,6 +118,28 @@ internal fun browseKanjiRowView(activity: MainActivityHomeBrowseDetail, item: Re
     }
 }
 
+internal fun detailInfoPanelView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailPanelModel): View {
+    return ComposeView(activity.home()).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                BrowseDetailInfoPanel(model)
+            }
+        }
+    }
+}
+
+internal fun exampleCardView(activity: MainActivityHomeBrowseDetail, model: BrowseExampleCardModel): View {
+    return ComposeView(activity.home()).apply {
+        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        setContent {
+            MaterialTheme {
+                BrowseExampleCard(model)
+            }
+        }
+    }
+}
+
 private fun browseKanjiRowModel(
     activity: MainActivityHomeBrowseDetail,
     item: RecordsImportModels.KanjiInventoryItem
@@ -116,6 +152,74 @@ private fun browseKanjiRowModel(
         suspended = item.suspended,
         onClick = { activity.renderDetail(item.kanji, true) }
     )
+}
+
+@Composable
+fun BrowseDetailInfoPanel(model: BrowseDetailPanelModel) {
+    val accent = ComposeColor(model.color)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CardShape,
+        color = if (model.color == 0xFF6E5CE6.toInt()) accent else White,
+        border = BorderStroke(1.dp, accent)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = model.title,
+                color = if (model.color == 0xFF6E5CE6.toInt()) White else Ink,
+                fontSize = if (model.color == 0xFF6E5CE6.toInt()) 22.sp else 19.sp,
+                fontWeight = FontWeight.Bold
+            )
+            model.lines.forEachIndexed { index, line ->
+                Text(
+                    text = line,
+                    color = if (model.color == 0xFF6E5CE6.toInt()) White else Muted,
+                    fontSize = if (index == 0 && model.color != 0xFF6E5CE6.toInt()) 15.sp else 14.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun BrowseExampleCard(model: BrowseExampleCardModel) {
+    val accent = ComposeColor(model.color)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CardShape,
+        color = White,
+        border = BorderStroke(1.dp, accent)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            BrowseChip(label = model.sourceLabel, color = accent)
+            Text(
+                text = model.expression,
+                color = Ink,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (model.sentence.isNotEmpty()) {
+                Text(
+                    text = model.sentence,
+                    color = Muted,
+                    fontSize = 16.sp
+                )
+            }
+            if (model.meaning.isNotEmpty()) {
+                Text(
+                    text = model.meaning,
+                    color = Muted,
+                    fontSize = 15.sp
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -276,17 +380,17 @@ fun BrowseKanjiRow(model: BrowseKanjiRowModel) {
                 }
             }
             if (model.suspended) {
-                BrowseChip(label = HomeTextCopy.suspendedChipLabel())
+                BrowseChip(label = HomeTextCopy.suspendedChipLabel(), color = Coral)
             }
         }
     }
 }
 
 @Composable
-private fun BrowseChip(label: String) {
+private fun BrowseChip(label: String, color: ComposeColor) {
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = Coral,
+        color = color,
     ) {
         Text(
             text = label,

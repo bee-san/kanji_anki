@@ -118,4 +118,46 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithText("Sync AnkiDroid first, or try a different search.").assertIsDisplayed()
         composeRule.onAllNodesWithText("SUSPENDED").assertCountEquals(0)
     }
+
+    @Test
+    fun rendersDetailInfoPanelsAndExampleCards() {
+        composeRule.setContent {
+            androidx.compose.foundation.layout.Column {
+                BrowseDetailInfoPanel(
+                    model = BrowseDetailPanelModel(
+                        title = "Why it is here",
+                        lines = listOf("Current local practice evidence from AnkiDroid.", "Anki browser: deck:Japanese"),
+                        color = 0xFF6E5CE6.toInt()
+                    )
+                )
+                BrowseDetailInfoPanel(
+                    model = BrowseDetailPanelModel(
+                        title = "Local inventory",
+                        lines = listOf("1 source note/card · 2 stored examples", "Search: kanji:語"),
+                        color = 0xFFC9F5F7.toInt()
+                    )
+                )
+                BrowseExampleCard(
+                    model = BrowseExampleCardModel(
+                        sourceLabel = "ACTIVE",
+                        expression = "活動語  カツドウゴ",
+                        sentence = "活動語を見た。",
+                        meaning = "active word",
+                        color = 0xFF00AEB5.toInt()
+                    )
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Why it is here").assertIsDisplayed()
+        composeRule.onNodeWithText("Current local practice evidence from AnkiDroid.").assertIsDisplayed()
+        composeRule.onNodeWithText("Anki browser: deck:Japanese").assertIsDisplayed()
+        composeRule.onNodeWithText("Local inventory").assertIsDisplayed()
+        composeRule.onNodeWithText("1 source note/card · 2 stored examples").assertIsDisplayed()
+        composeRule.onNodeWithText("Search: kanji:語").assertIsDisplayed()
+        composeRule.onNodeWithText("ACTIVE").assertIsDisplayed()
+        composeRule.onNodeWithText("活動語  カツドウゴ").assertIsDisplayed()
+        composeRule.onNodeWithText("活動語を見た。").assertIsDisplayed()
+        composeRule.onNodeWithText("active word").assertIsDisplayed()
+    }
 }

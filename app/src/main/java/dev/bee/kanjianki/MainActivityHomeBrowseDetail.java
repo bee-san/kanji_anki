@@ -111,21 +111,23 @@ public final class MainActivityHomeBrowseDetail {
         }
     }
 
-    LinearLayout detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
-        LinearLayout why = home.band(home.BLUE);
-        why.addView(home.text(HomeTextCopy.detailReasonTitle(), 22, Color.WHITE, true));
+    View detailReasonPanel(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory) {
+        List<String> lines = new java.util.ArrayList<>();
         if (row == null) {
-            why.addView(home.text(HomeTextCopy.historicalReasonText(), 17, Color.WHITE, false));
+            lines.add(HomeTextCopy.historicalReasonText());
             if (inventory != null && !inventory.browserSearch.isEmpty()) {
-                why.addView(home.text(HomeTextCopy.ankiBrowserLine(StudyTextCopy.compact(inventory.browserSearch, 96)), 14, Color.WHITE, false));
+                lines.add(HomeTextCopy.ankiBrowserLine(StudyTextCopy.compact(inventory.browserSearch, 96)));
             }
         } else {
-            why.addView(home.text(HomeTextCopy.activeReasonText(row), 17, Color.WHITE, false));
+            lines.add(HomeTextCopy.activeReasonText(row));
             if (!row.browserSearch.isEmpty()) {
-                why.addView(home.text(HomeTextCopy.ankiBrowserLine(StudyTextCopy.compact(row.browserSearch, 96)), 14, Color.WHITE, false));
+                lines.add(HomeTextCopy.ankiBrowserLine(StudyTextCopy.compact(row.browserSearch, 96)));
             }
         }
-        return why;
+        return MainActivityHomeBrowseDetailCompose.detailInfoPanelView(
+                this,
+                new BrowseDetailPanelModel(HomeTextCopy.detailReasonTitle(), lines, home.BLUE)
+        );
     }
 
     void addDetailActions(RecordsImportModels.DashboardRow row, RecordsImportModels.KanjiInventoryItem inventory, String displayKanji, boolean fromBrowse, String browseQuery, boolean suspended) {
@@ -159,16 +161,18 @@ public final class MainActivityHomeBrowseDetail {
     }
 
     View localInventoryPanel(RecordsImportModels.KanjiInventoryItem inventory) {
-        LinearLayout box = home.panelBox(Color.WHITE, Color.rgb(201, 245, 247));
-        box.addView(home.text(HomeTextCopy.localInventoryTitle(), 19, home.INK, true));
-        box.addView(home.text(HomeTextCopy.localInventorySummary(inventory.sourceCount, inventory.exampleCount), 15, home.MUTED, false));
+        List<String> lines = new java.util.ArrayList<>();
+        lines.add(HomeTextCopy.localInventorySummary(inventory.sourceCount, inventory.exampleCount));
         if (!inventory.browserSearch.isEmpty()) {
-            box.addView(home.text(HomeTextCopy.localInventorySearchLine(StudyTextCopy.compact(inventory.browserSearch, 96)), 14, home.MUTED, false));
+            lines.add(HomeTextCopy.localInventorySearchLine(StudyTextCopy.compact(inventory.browserSearch, 96)));
         }
         if (inventory.lastSeenAtMillis > 0L) {
-            box.addView(home.text(HomeTextCopy.localInventoryLastSeenLine(inventory.lastSeenAtMillis), 14, home.MUTED, false));
+            lines.add(HomeTextCopy.localInventoryLastSeenLine(inventory.lastSeenAtMillis));
         }
-        return box;
+        return MainActivityHomeBrowseDetailCompose.detailInfoPanelView(
+                this,
+                new BrowseDetailPanelModel(HomeTextCopy.localInventoryTitle(), lines, Color.rgb(201, 245, 247))
+        );
     }
 
     void copyAnkiSearch(String browserSearch, View v) {
@@ -278,17 +282,16 @@ public final class MainActivityHomeBrowseDetail {
 
     View exampleView(RecordsImportModels.Example example) {
         int color = MainActivityHome.SOURCE_SUSPENDED.equals(example.sourceType) ? home.CORAL : home.TEAL;
-        LinearLayout box = home.panelBox(Color.WHITE, color);
-        box.addView(home.chip(HomeTextCopy.exampleSourceLabel(example), color));
-        box.addView(home.text(HomeTextCopy.exampleExpressionLine(example), 22, home.INK, true));
-        if (!example.sentence.isEmpty()) {
-            box.addView(home.text(example.sentence, 16, home.MUTED, false));
-        }
-        String meaning = HomeTextCopy.exampleMeaningLine(example);
-        if (!meaning.isEmpty()) {
-            box.addView(home.text(meaning, 15, home.MUTED, false));
-        }
-        return box;
+        return MainActivityHomeBrowseDetailCompose.exampleCardView(
+                this,
+                new BrowseExampleCardModel(
+                        HomeTextCopy.exampleSourceLabel(example),
+                        HomeTextCopy.exampleExpressionLine(example),
+                        example.sentence,
+                        HomeTextCopy.exampleMeaningLine(example),
+                        color
+                )
+        );
     }
 
 }
