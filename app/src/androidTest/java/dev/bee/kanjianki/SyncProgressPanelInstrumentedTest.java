@@ -38,14 +38,6 @@ public final class SyncProgressPanelInstrumentedTest {
     }
 
     @Test
-    public void syncProgressTitleUsesComposeBridge() {
-        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        View title = SyncProgressPanelKt.syncProgressTitleView(context, "Syncing cards");
-
-        assertTrue(title instanceof androidx.compose.ui.platform.ComposeView);
-    }
-
-    @Test
     public void syncProgressScreenUsesSingleComposeBridge() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         View screen = SyncProgressPanelKt.syncProgressScreenView(context, "Syncing cards", new SyncProgressPanel(context));

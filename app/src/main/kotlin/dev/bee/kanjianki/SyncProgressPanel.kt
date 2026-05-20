@@ -43,17 +43,6 @@ private data class SyncProgressPanelState(
     val progressDescription: String = "Sync progress"
 )
 
-internal fun syncProgressTitleView(context: Context, title: String): View {
-    return ComposeView(context).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                SyncProgressTitle(title)
-            }
-        }
-    }
-}
-
 internal fun syncProgressScreenView(context: Context, title: String, progressPanel: SyncProgressPanel): View {
     return ComposeView(context).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
