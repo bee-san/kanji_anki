@@ -3,6 +3,8 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -29,5 +31,17 @@ class MainActivityStudyWritingChromeComposeTest {
         }
 
         composeRule.onNodeWithText("Trace the first strokes, then try from memory.").assertIsDisplayed()
+    }
+
+    @Test
+    fun writingStatusViewKeepsLatestBridgeText() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val view = WritingStatusView(context)
+
+        view.setStatus("Checking handwriting...", MainActivityUiSupport.STUDY_MUTED)
+        assertEquals("Checking handwriting...", view.getText().toString())
+
+        view.setText("Existing analysis message")
+        assertEquals("Existing analysis message", view.getText().toString())
     }
 }

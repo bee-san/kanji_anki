@@ -1578,6 +1578,18 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.renderWritingSession(promptOnly);
                 assertHasText(activity, "Prompt only");
 
+                RecordsSchedulerModels.StudySession nullPromptOnly = new RecordsSchedulerModels.StudySession(
+                        studyItem("?", RecordsBase.LadderRung.WRITE_KANJI, "review", 0L),
+                        null,
+                        "null-prompt-token",
+                        BridgeScheduler.TASK_WRITE_KANJI,
+                        true,
+                        null
+                );
+                activity.activeSession = nullPromptOnly;
+                activity.renderWritingSession(nullPromptOnly);
+                assertHasText(activity, "Draw this kanji");
+
                 activity.activeSession = null;
                 activity.studyActionBar = null;
                 activity.buildStudyActionBar();
