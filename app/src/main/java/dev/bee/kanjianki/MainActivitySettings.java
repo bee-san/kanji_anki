@@ -135,10 +135,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
         return new MainActivitySettingsUpdatePage(this);
     }
 
-    private MainActivitySettingsCategory settingsCategoryUi() {
-        return new MainActivitySettingsCategory(this);
-    }
-
     private MainActivitySettingsScreen settingsScreen() {
         return new MainActivitySettingsScreen(this);
     }
@@ -161,26 +157,6 @@ abstract class MainActivitySettings extends MainActivityStudy {
 
     void renderSettings(boolean preserveScroll) {
         settingsScreen().renderSettings(preserveScroll);
-    }
-
-    View settingsHero(
-            RecordsSyncModels.Settings current,
-            LocalStore.ReminderSettings reminder,
-            LocalStore.AutoSyncSettings autoSync,
-            LocalStore.AutoUpdateStatus autoUpdate
-    ) {
-        return MainActivitySettingsAutomationHeroCompose.settingsAutomationHeroView(this, current, reminder, autoSync, autoUpdate);
-    }
-
-    LinearLayout settingsCategory(
-            String title,
-            String summary,
-            int iconRes,
-            boolean expanded,
-            Runnable toggle,
-            View... panels
-    ) {
-        return settingsCategoryUi().settingsCategory(title, summary, iconRes, expanded, toggle, panels);
     }
 
     View importFilterSettingsPanel(RecordsSyncModels.Settings current) {

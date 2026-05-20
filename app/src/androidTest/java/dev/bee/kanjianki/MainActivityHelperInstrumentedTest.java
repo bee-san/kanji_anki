@@ -602,12 +602,16 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.renderSettings();
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(activity.settingsAnkiExpanded);
                 assertFalse(activity.settingsStudyExpanded);
                 assertTrue(containsText(activity.content, "Frequency range"));
                 assertFalse(containsText(activity.content, "Daily workload"));
 
                 performClickableWithText(activity.content, "Study behavior");
+                assertEquals(1, activity.content.getChildCount());
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(activity.settingsStudyExpanded);
                 assertTrue(containsText(activity.content, "Daily workload"));
 

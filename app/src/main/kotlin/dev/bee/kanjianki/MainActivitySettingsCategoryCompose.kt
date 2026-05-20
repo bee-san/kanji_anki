@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +28,6 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,44 +43,6 @@ private const val HEADER_CORNER_RADIUS = 26
 private const val HEADER_ICON_SIZE = 40
 private const val HEADER_COUNT_RADIUS = 16
 private const val HEADER_ICON_RADIUS = 16
-
-internal fun settingsCategoryHeaderView(
-    activity: MainActivitySettings,
-    title: String,
-    summary: String,
-    iconRes: Int,
-    expanded: Boolean,
-    panelCount: String,
-    iconTintColor: Int,
-    borderColor: Int,
-    titleColor: Int,
-    summaryColor: Int,
-    countColor: Int,
-    contentDescription: String,
-    onToggle: Runnable
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                SettingsCategoryHeader(
-                    title = title,
-                    summary = summary,
-                    iconRes = iconRes,
-                    iconTint = ComposeColor(iconTintColor),
-                    borderColor = ComposeColor(borderColor),
-                    expanded = expanded,
-                    countText = panelCount,
-                    titleColor = ComposeColor(titleColor),
-                    summaryColor = ComposeColor(summaryColor),
-                    countColor = ComposeColor(countColor),
-                    contentDescription = contentDescription,
-                    onToggle = { onToggle.run() }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 internal fun SettingsCategoryHeader(
