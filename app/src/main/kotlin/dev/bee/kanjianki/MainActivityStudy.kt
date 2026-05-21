@@ -122,7 +122,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         renderStudy()
     }
 
-    override fun renderStudyForKanji(kanji: String) {
+    override fun renderStudyForKanji(kanji: String?) {
         studyScreen.renderStudyForKanji(kanji)
     }
 

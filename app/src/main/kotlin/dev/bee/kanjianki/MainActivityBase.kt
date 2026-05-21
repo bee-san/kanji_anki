@@ -208,7 +208,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun renderSettings()
     abstract fun renderStudy()
     abstract fun startFocusedStudy()
-    abstract fun renderStudyForKanji(kanji: String)
+    abstract fun renderStudyForKanji(kanji: String?)
     abstract fun pauseActiveStudyTask()
     abstract fun resumeActiveStudyTask()
     abstract fun abandonActiveStudyTask()
