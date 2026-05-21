@@ -36,21 +36,6 @@ private val StudyDoneCardBackground = Color(0xFFFFF7FB)
 private val StudyDoneInsetBackground = Color(0xFFFFFFFF)
 private val StudyDoneMuted = Color(0xFF6C5674)
 
-data class StudyDoneScreenModel(
-    val modeLabel: String,
-    val title: String,
-    val headline: String?,
-    val body: String,
-    val summaryLines: List<String>,
-    val showDoneActions: Boolean,
-    val availableStudyMoreNewCards: Int,
-    val showBackHome: Boolean,
-    val backHomePrimary: Boolean,
-    val onStudyMore: Runnable,
-    val onContinueAll: Runnable,
-    val onBackHome: Runnable,
-)
-
 internal fun studyDoneScreenView(
     context: Context,
     model: StudyDoneScreenModel
