@@ -6,7 +6,6 @@ import dev.bee.kanjianki.core.HomeTextCopy
 
 internal fun renderHomeScreen(home: MainActivityHome) {
     home.clearStudyModeOverrides()
-    home.base("home")
 
     val now = System.currentTimeMillis()
     val sync = home.store.latestSync()
@@ -49,7 +48,9 @@ internal fun renderHomeScreen(home: MainActivityHome) {
             homeFocusQueueCardModel(home, entry, now)
         }
     )
-    home.content.addView(homeScreenView(home, model))
+    home.composeRoute("home") {
+        HomeScreen(model)
+    }
 }
 
 private const val HOME_PREVIEW_ROW_LIMIT = 3
