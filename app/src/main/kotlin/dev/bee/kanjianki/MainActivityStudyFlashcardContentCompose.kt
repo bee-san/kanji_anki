@@ -25,9 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,37 +45,6 @@ private val HeroPlum = Color(MainActivityUiSupport.STUDY_HERO_PLUM)
 private val HeroPink = Color(MainActivityUiSupport.STUDY_HERO_PINK)
 private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
 private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
-
-data class FlashcardPromptHeaderModel(
-    val modeLabel: String,
-    val title: String,
-    val question: String,
-    val hiddenHint: String,
-    val reasonLine: String,
-)
-
-data class FlashcardHeroPanelModel(
-    val glyph: String,
-    val glyphSizeSp: Int,
-    val typeface: Typeface?,
-)
-
-class FlashcardRevealState(initialRevealed: Boolean = false) {
-    var isRevealed by mutableStateOf(initialRevealed)
-        private set
-
-    fun reveal() {
-        isRevealed = true
-    }
-}
-
-data class FlashcardCardModel(
-    val promptHeader: FlashcardPromptHeaderModel,
-    val heroPanel: FlashcardHeroPanelModel,
-    val typingAnswer: TypingAnswerState?,
-    val answerPanel: StudyAnswerPanelModel,
-    val revealState: FlashcardRevealState,
-)
 
 internal fun heroKanjiPanelView(activity: MainActivityStudy, model: FlashcardHeroPanelModel): View {
     return ComposeView(activity).apply {
