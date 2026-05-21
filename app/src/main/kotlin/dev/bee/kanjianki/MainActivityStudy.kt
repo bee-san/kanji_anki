@@ -347,7 +347,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         recognizer: WritingRecognizer,
         captured: CapturedWriting,
         sample: WritingSample,
-        guide: StrokeGuide,
+        guide: StrokeGuide?,
         target: String,
         token: String,
     ) {
