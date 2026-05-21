@@ -66,7 +66,7 @@ data class BrowseDetailActionsModel(
     val onSuspend: Runnable,
 )
 
-data class BrowseDetailScreenModel(
+internal data class BrowseDetailScreenModel(
     val hero: BrowseDetailHeroModel,
     val identity: BrowseDetailIdentityModel,
     val reason: BrowseDetailPanelModel,
@@ -107,7 +107,7 @@ internal fun browseDetailMissingView(activity: MainActivityHomeBrowseDetail, mod
 }
 
 @Composable
-fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
+internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -321,7 +321,7 @@ private fun BrowseChip(label: String, color: ComposeColor) {
 }
 
 @Composable
-fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel) {
+internal fun RecoveryTimelinePanels(model: MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
