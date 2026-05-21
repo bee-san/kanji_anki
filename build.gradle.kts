@@ -55,16 +55,25 @@ val maybeSonarCoveragePaths = buildList<String> {
 }
 val fastSonarCoverageExclusions = listOf(
     "app/src/main/java/dev/bee/kanjianki/MainActivity*.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/MainActivity*.kt",
     "app/src/main/java/dev/bee/kanjianki/*View.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
     "app/src/main/java/dev/bee/kanjianki/SyncProgressPanel.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/SyncProgressPanel.kt",
     "app/src/main/java/dev/bee/kanjianki/anki/*.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
     "app/src/main/java/dev/bee/kanjianki/data/HistoricalSyncStore.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/data/HistoricalSyncStore.kt",
     "app/src/main/java/dev/bee/kanjianki/data/LocalStore*.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore.kt",
     "app/src/main/java/dev/bee/kanjianki/data/SettingsRepository.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
     "app/src/main/java/dev/bee/kanjianki/reminders/*.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/reminders/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/ReminderReceiverDailyActions.kt",
     "app/src/main/java/dev/bee/kanjianki/sync/*.java",
+    "app/src/main/kotlin/dev/bee/kanjianki/sync/*.kt",
 )
 val testSonarCoverageExclusions = listOf(
     "**/src/test/**",
