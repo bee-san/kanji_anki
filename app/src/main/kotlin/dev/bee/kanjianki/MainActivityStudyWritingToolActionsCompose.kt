@@ -20,28 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 
-data class WritingToolActionsModel(
-    val undoEnabled: Boolean,
-    val hintText: String,
-    val hintVisible: Boolean,
-    val onErase: Runnable,
-    val onUndo: Runnable,
-    val onHint: Runnable,
-) {
-    companion object {
-        fun initial(): WritingToolActionsModel {
-            return WritingToolActionsModel(
-                undoEnabled = false,
-                hintText = "Hint",
-                hintVisible = false,
-                onErase = Runnable {},
-                onUndo = Runnable {},
-                onHint = Runnable {}
-            )
-        }
-    }
-}
-
 class WritingToolActionsView(context: Context) : FrameLayout(context) {
     private var model by mutableStateOf(WritingToolActionsModel.initial())
 

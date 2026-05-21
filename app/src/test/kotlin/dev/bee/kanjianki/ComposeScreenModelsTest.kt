@@ -284,4 +284,41 @@ class ComposeScreenModelsTest {
         assertEquals(false, readingLine.bold)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun writingToolActionsModelKeepsDefaultAndCallbackState() {
+        val initial = WritingToolActionsModel.initial()
+        assertEquals(false, initial.undoEnabled)
+        assertEquals("Hint", initial.hintText)
+        assertEquals(false, initial.hintVisible)
+
+        var erased = false
+        var undone = false
+        var hinted = false
+        val erase = Runnable { erased = true }
+        val undo = Runnable { undone = true }
+        val hint = Runnable { hinted = true }
+        val model = WritingToolActionsModel(
+            undoEnabled = true,
+            hintText = "More help",
+            hintVisible = true,
+            onErase = erase,
+            onUndo = undo,
+            onHint = hint,
+        )
+
+        assertEquals(true, model.undoEnabled)
+        assertEquals("More help", model.hintText)
+        assertEquals(true, model.hintVisible)
+        assertSame(erase, model.onErase)
+        assertSame(undo, model.onUndo)
+        assertSame(hint, model.onHint)
+        model.onErase.run()
+        model.onUndo.run()
+        model.onHint.run()
+        assertEquals(true, erased)
+        assertEquals(true, undone)
+        assertEquals(true, hinted)
+        assertEquals(model, model.copy())
+    }
 }
