@@ -1,6 +1,5 @@
 package dev.bee.kanjianki;
 
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -9,9 +8,10 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import androidx.activity.ComponentActivity;
 import androidx.core.view.WindowInsetsControllerCompat;
 
-abstract class MainActivityUiSupport extends Activity {
+abstract class MainActivityUiSupport extends ComponentActivity {
     static final int BG = Color.rgb(255, 247, 251);
     static final int INK = Color.rgb(45, 22, 53);
     static final int MUTED = Color.rgb(108, 86, 116);

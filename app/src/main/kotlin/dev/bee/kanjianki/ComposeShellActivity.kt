@@ -32,7 +32,7 @@ object ComposeShellPresenter {
     fun create(versionName: String): ComposeShellModel {
         return ComposeShellModel(
             title = "Compose shell",
-            body = "This is the first Kotlin/Compose foothold in Kani. The existing View shell still owns the main app.",
+            body = "Kani now boots through a Kotlin/Compose shell while the remaining parity screens migrate in place.",
             versionLabel = "App version $versionName",
             closeLabel = "Close"
         )

@@ -12,6 +12,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
+import androidx.activity.compose.setContent
 import androidx.core.view.WindowInsetsCompat
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
@@ -273,6 +274,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         handlePermissionResult(requestCode, grantResults)
     }
 
@@ -337,7 +339,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundColor(if (NAV_STUDY == selected) STUDY_BG_SOFT else BG)
-        setContentView(root)
+        setContent {
+            MainActivityShell(legacyRoot = root)
+        }
         styleSystemBars()
 
         content = LinearLayout(this)
@@ -361,7 +365,22 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             applyStudyActionBarPadding()
             insets
         }
-        root.requestApplyInsets()
+        requestInsetsWhenAttached(root)
+    }
+
+    fun requestInsetsWhenAttached(root: View) {
+        if (root.isAttachedToWindow) {
+            root.requestApplyInsets()
+            return
+        }
+        root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(view: View) {
+                view.removeOnAttachStateChangeListener(this)
+                view.requestApplyInsets()
+            }
+
+            override fun onViewDetachedFromWindow(view: View) = Unit
+        })
     }
 
     fun isActiveToken(token: String): Boolean {

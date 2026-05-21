@@ -11,7 +11,7 @@ public final class ComposeShellPresenterTest {
         ComposeShellModel model = ComposeShellPresenter.create("0.4.33");
 
         assertEquals("Compose shell", model.getTitle());
-        assertTrue(model.getBody().contains("Kotlin/Compose foothold"));
+        assertTrue(model.getBody().contains("Kotlin/Compose shell"));
         assertEquals("App version 0.4.33", model.getVersionLabel());
         assertEquals("Close", model.getCloseLabel());
     }
