@@ -39,12 +39,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import dev.bee.kanjianki.core.HomeTextCopy
 
-data class HomeActionModel(
-    val label: String,
-    val iconRes: Int,
-    val onClick: () -> Unit,
-)
-
 internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
     return buildList {
         add(HomeActionModel(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24) { home.renderBrowseKanji("") })
