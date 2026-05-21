@@ -20,28 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 
-data class WritingFallbackActionsModel(
-    val replayVisible: Boolean,
-    val manualOverrideVisible: Boolean,
-    val practiceWithGuideVisible: Boolean,
-    val onReplay: Runnable,
-    val onManualOverride: Runnable,
-    val onPracticeWithGuide: Runnable,
-) {
-    companion object {
-        fun initial(): WritingFallbackActionsModel {
-            return WritingFallbackActionsModel(
-                replayVisible = false,
-                manualOverrideVisible = false,
-                practiceWithGuideVisible = false,
-                onReplay = Runnable {},
-                onManualOverride = Runnable {},
-                onPracticeWithGuide = Runnable {}
-            )
-        }
-    }
-}
-
 class WritingFallbackActionsView(context: Context) : FrameLayout(context) {
     private var model by mutableStateOf(WritingFallbackActionsModel.initial())
 

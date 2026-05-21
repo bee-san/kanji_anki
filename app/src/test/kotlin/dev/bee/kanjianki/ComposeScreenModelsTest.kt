@@ -321,4 +321,41 @@ class ComposeScreenModelsTest {
         assertEquals(true, hinted)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun writingFallbackActionsModelKeepsDefaultAndCallbackState() {
+        val initial = WritingFallbackActionsModel.initial()
+        assertEquals(false, initial.replayVisible)
+        assertEquals(false, initial.manualOverrideVisible)
+        assertEquals(false, initial.practiceWithGuideVisible)
+
+        var replayed = false
+        var manuallyAccepted = false
+        var retried = false
+        val replay = Runnable { replayed = true }
+        val manualOverride = Runnable { manuallyAccepted = true }
+        val practiceWithGuide = Runnable { retried = true }
+        val model = WritingFallbackActionsModel(
+            replayVisible = true,
+            manualOverrideVisible = true,
+            practiceWithGuideVisible = true,
+            onReplay = replay,
+            onManualOverride = manualOverride,
+            onPracticeWithGuide = practiceWithGuide,
+        )
+
+        assertEquals(true, model.replayVisible)
+        assertEquals(true, model.manualOverrideVisible)
+        assertEquals(true, model.practiceWithGuideVisible)
+        assertSame(replay, model.onReplay)
+        assertSame(manualOverride, model.onManualOverride)
+        assertSame(practiceWithGuide, model.onPracticeWithGuide)
+        model.onReplay.run()
+        model.onManualOverride.run()
+        model.onPracticeWithGuide.run()
+        assertEquals(true, replayed)
+        assertEquals(true, manuallyAccepted)
+        assertEquals(true, retried)
+        assertEquals(model, model.copy())
+    }
 }
