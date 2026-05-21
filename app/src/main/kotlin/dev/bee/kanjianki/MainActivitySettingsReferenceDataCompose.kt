@@ -38,36 +38,6 @@ private val FontBorder = ComposeColor(0xFFFFD640)
 private val PanelShape = RoundedCornerShape(24.dp)
 private val ButtonShape = RoundedCornerShape(12.dp)
 
-data class SettingsReferenceDataLinkModel(
-    val title: String,
-    val body: String,
-    val actionLabel: String,
-    val onAction: Runnable,
-) : SettingsPanelModel
-
-data class SettingsReferenceDataIntroModel(
-    val backLabel: String,
-    val title: String,
-    val body: String,
-    val onBack: Runnable,
-)
-
-data class SettingsReferenceDataModel(
-    val dictionaryTitle: String,
-    val dictionaryBody: String,
-    val strokeTitle: String,
-    val strokeBody: String,
-    val fontsTitle: String,
-    val fontsBody: String,
-)
-
-data class SettingsReferenceDataScreenModel(
-    val homeLabel: String,
-    val onHome: Runnable,
-    val intro: SettingsReferenceDataIntroModel,
-    val dataSources: SettingsReferenceDataModel,
-)
-
 internal fun referenceDataLinkPanelView(activity: MainActivitySettings, model: SettingsReferenceDataLinkModel): View {
     return ComposeView(activity).apply {
         layoutParams = LinearLayout.LayoutParams(

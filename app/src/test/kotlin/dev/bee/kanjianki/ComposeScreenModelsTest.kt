@@ -462,4 +462,69 @@ class ComposeScreenModelsTest {
         assertEquals(screen, screen.copy())
         assertEquals(category, category.copy())
     }
+
+    @Test
+    fun referenceDataModelsKeepNavigationAndAttributionFields() {
+        var opened = false
+        var wentHome = false
+        var wentBack = false
+        val openAction = Runnable { opened = true }
+        val homeAction = Runnable { wentHome = true }
+        val backAction = Runnable { wentBack = true }
+        val link = SettingsReferenceDataLinkModel(
+            title = "Offline data licenses",
+            body = "Dictionary, stroke, and font attributions.",
+            actionLabel = "Open licenses",
+            onAction = openAction,
+        )
+        val intro = SettingsReferenceDataIntroModel(
+            backLabel = "Back to settings",
+            title = "Data licenses",
+            body = "Bundled source attribution.",
+            onBack = backAction,
+        )
+        val sources = SettingsReferenceDataModel(
+            dictionaryTitle = "Dictionary data",
+            dictionaryBody = "KANJIDIC2 and Jiten sources",
+            strokeTitle = "Stroke data",
+            strokeBody = "KanjiVG attribution",
+            fontsTitle = "Fonts",
+            fontsBody = "Bundled font attribution",
+        )
+        val screen = SettingsReferenceDataScreenModel(
+            homeLabel = "Home",
+            onHome = homeAction,
+            intro = intro,
+            dataSources = sources,
+        )
+
+        assertEquals("Offline data licenses", link.title)
+        assertEquals("Dictionary, stroke, and font attributions.", link.body)
+        assertEquals("Open licenses", link.actionLabel)
+        assertSame(openAction, link.onAction)
+        assertEquals("Back to settings", intro.backLabel)
+        assertEquals("Data licenses", intro.title)
+        assertEquals("Bundled source attribution.", intro.body)
+        assertSame(backAction, intro.onBack)
+        assertEquals("Dictionary data", sources.dictionaryTitle)
+        assertEquals("KANJIDIC2 and Jiten sources", sources.dictionaryBody)
+        assertEquals("Stroke data", sources.strokeTitle)
+        assertEquals("KanjiVG attribution", sources.strokeBody)
+        assertEquals("Fonts", sources.fontsTitle)
+        assertEquals("Bundled font attribution", sources.fontsBody)
+        assertEquals("Home", screen.homeLabel)
+        assertSame(homeAction, screen.onHome)
+        assertSame(intro, screen.intro)
+        assertSame(sources, screen.dataSources)
+        link.onAction.run()
+        screen.onHome.run()
+        intro.onBack.run()
+        assertEquals(true, opened)
+        assertEquals(true, wentHome)
+        assertEquals(true, wentBack)
+        assertEquals(link, link.copy())
+        assertEquals(intro, intro.copy())
+        assertEquals(sources, sources.copy())
+        assertEquals(screen, screen.copy())
+    }
 }
