@@ -33,32 +33,27 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     }
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
-        home.base("home")
         val timeline = home.store.timelineForKanji(kanji)
         val row = timeline.currentRow
         val inventory = timeline.inventoryItem
         if (inventory == null && row == null && timeline.currentStudyItem == null && timeline.events.isEmpty()) {
-            home.content.addView(
-                browseDetailMissingView(
-                    this,
-                    BrowseDetailMissingModel(
+            val model = BrowseDetailMissingModel(
                         HomeTextCopy.homeLabel(),
                         Runnable { home.renderHome() },
                         HomeTextCopy.kanjiNotFoundTitle(),
                         HomeTextCopy.kanjiNotFoundBody()
-                    )
-                )
             )
+            home.composeRoute("home") {
+                BrowseDetailMissing(model)
+            }
             return
         }
         val displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory)
         val suspended = inventory != null && inventory.suspended
-        home.content.addView(
-            browseDetailScreenView(
-                this,
-                detailScreenModel(timeline, row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended)
-            )
-        )
+        val model = detailScreenModel(timeline, row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended)
+        home.composeRoute("home") {
+            BrowseDetailScreen(model)
+        }
     }
 
     fun detailScreenModel(

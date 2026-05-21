@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,34 +23,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
-
-internal fun browseDetailScreenView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailScreenModel): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseDetailScreen(model)
-            }
-        }
-    }
-}
-
-internal fun browseDetailMissingView(activity: MainActivityHomeBrowseDetail, model: BrowseDetailMissingModel): View {
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseDetailMissing(model)
-            }
-        }
-    }
-}
 
 @Composable
 internal fun BrowseDetailScreen(model: BrowseDetailScreenModel) {
