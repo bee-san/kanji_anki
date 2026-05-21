@@ -35,21 +35,6 @@ private val StudyAnswerPink = Color(MainActivityUiSupport.STUDY_PINK_DARK)
 private val StudyAnswerPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
 private val StudyAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
 
-data class StudyAnswerPanelModel(
-    val title: String,
-    val glyph: String,
-    val glyphSizeSp: Int,
-    val lines: List<StudyAnswerLineModel>,
-    val helperText: String?,
-)
-
-data class StudyAnswerLineModel(
-    val text: String,
-    val color: Color,
-    val sizeSp: Int,
-    val bold: Boolean,
-)
-
 internal fun flashcardAnswerPanelView(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession

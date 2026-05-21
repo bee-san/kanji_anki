@@ -922,4 +922,43 @@ class ComposeScreenModelsTest {
         assertEquals(page, page.copy())
         assertEquals(run, run.copy())
     }
+
+    @Test
+    fun studyAnswerPanelModelKeepsGlyphLinesAndHelperText() {
+        val reading = StudyAnswerLineModel(
+            text = "Reading: かに",
+            color = ComposeColor(0xFFFF4C76),
+            sizeSp = 17,
+            bold = true,
+        )
+        val meaning = StudyAnswerLineModel(
+            text = "crab",
+            color = ComposeColor(0xFF3B2350),
+            sizeSp = 15,
+            bold = true,
+        )
+        val model = StudyAnswerPanelModel(
+            title = "Answer",
+            glyph = "蟹",
+            glyphSizeSp = 76,
+            lines = listOf(reading, meaning),
+            helperText = "Trace it below, then check.",
+        )
+
+        assertEquals("Answer", model.title)
+        assertEquals("蟹", model.glyph)
+        assertEquals(76, model.glyphSizeSp)
+        assertEquals(listOf(reading, meaning), model.lines)
+        assertEquals("Trace it below, then check.", model.helperText)
+        assertEquals("Reading: かに", reading.text)
+        assertEquals(ComposeColor(0xFFFF4C76), reading.color)
+        assertEquals(17, reading.sizeSp)
+        assertEquals(true, reading.bold)
+        assertEquals("crab", meaning.text)
+        assertEquals(ComposeColor(0xFF3B2350), meaning.color)
+        assertEquals(15, meaning.sizeSp)
+        assertEquals(true, meaning.bold)
+        assertEquals(model, model.copy())
+        assertEquals(reading, reading.copy())
+    }
 }
