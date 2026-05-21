@@ -40,36 +40,6 @@ private val WritingSecondaryFill = Color(0xFFFFF5FA)
 private val WritingDisabledBorder = Color(0xFFFFD5E6)
 private val WritingDisabledText = Color(0xFF9F8A98)
 
-data class WritingPrimaryActionsModel(
-    val checkText: String,
-    val checkVisible: Boolean,
-    val checkEnabled: Boolean,
-    val downloadText: String,
-    val downloadVisible: Boolean,
-    val nextText: String,
-    val nextVisible: Boolean,
-    val onCheck: Runnable,
-    val onDownload: Runnable,
-    val onNext: Runnable,
-) {
-    companion object {
-        fun initial(): WritingPrimaryActionsModel {
-            return WritingPrimaryActionsModel(
-                checkText = "Check",
-                checkVisible = true,
-                checkEnabled = true,
-                downloadText = "Download checker",
-                downloadVisible = true,
-                nextText = MainActivityBase.LABEL_PASS,
-                nextVisible = false,
-                onCheck = Runnable {},
-                onDownload = Runnable {},
-                onNext = Runnable {}
-            )
-        }
-    }
-}
-
 class WritingPrimaryActionsView(context: Context) : FrameLayout(context) {
     private var model by mutableStateOf(WritingPrimaryActionsModel.initial())
 

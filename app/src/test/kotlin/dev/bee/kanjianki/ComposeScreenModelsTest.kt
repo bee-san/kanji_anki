@@ -358,4 +358,53 @@ class ComposeScreenModelsTest {
         assertEquals(true, retried)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun writingPrimaryActionsModelKeepsDefaultAndCallbackState() {
+        val initial = WritingPrimaryActionsModel.initial()
+        assertEquals("Check", initial.checkText)
+        assertEquals(true, initial.checkVisible)
+        assertEquals(true, initial.checkEnabled)
+        assertEquals("Download checker", initial.downloadText)
+        assertEquals(true, initial.downloadVisible)
+        assertEquals(MainActivityBase.LABEL_PASS, initial.nextText)
+        assertEquals(false, initial.nextVisible)
+
+        var checked = false
+        var downloaded = false
+        var advanced = false
+        val check = Runnable { checked = true }
+        val download = Runnable { downloaded = true }
+        val next = Runnable { advanced = true }
+        val model = WritingPrimaryActionsModel(
+            checkText = "Try cleaner",
+            checkVisible = true,
+            checkEnabled = false,
+            downloadText = "Download checker",
+            downloadVisible = false,
+            nextText = "Save hard",
+            nextVisible = true,
+            onCheck = check,
+            onDownload = download,
+            onNext = next,
+        )
+
+        assertEquals("Try cleaner", model.checkText)
+        assertEquals(true, model.checkVisible)
+        assertEquals(false, model.checkEnabled)
+        assertEquals("Download checker", model.downloadText)
+        assertEquals(false, model.downloadVisible)
+        assertEquals("Save hard", model.nextText)
+        assertEquals(true, model.nextVisible)
+        assertSame(check, model.onCheck)
+        assertSame(download, model.onDownload)
+        assertSame(next, model.onNext)
+        model.onCheck.run()
+        model.onDownload.run()
+        model.onNext.run()
+        assertEquals(true, checked)
+        assertEquals(true, downloaded)
+        assertEquals(true, advanced)
+        assertEquals(model, model.copy())
+    }
 }
