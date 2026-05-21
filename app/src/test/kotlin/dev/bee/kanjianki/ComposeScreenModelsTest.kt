@@ -743,4 +743,63 @@ class ComposeScreenModelsTest {
         assertEquals(listOf("saveMaximum", "enableManual", "saveWorkload", "enableAutomatic"), calls)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun studyLadderModelKeepsRungsAndActions() {
+        val calls = mutableListOf<String>()
+        val toggle = SettingsStudyLadderAction { calls.add("toggle") }
+        val moveUp = SettingsStudyLadderAction { calls.add("moveUp") }
+        val moveDown = SettingsStudyLadderAction { calls.add("moveDown") }
+        val restore = SettingsStudyLadderAction { calls.add("restore") }
+        val rung = SettingsStudyLadderRungModel(
+            label = "Recognition",
+            subtitle = "Current default rung",
+            toggleLabel = "Disable",
+            moveUpLabel = "Move up",
+            moveDownLabel = "Move down",
+            canMoveUp = true,
+            canMoveDown = false,
+            toggleDescription = "Disable Recognition",
+            moveUpDescription = "Move up Recognition",
+            moveDownDescription = "Move down Recognition",
+            onToggle = toggle,
+            onMoveUp = moveUp,
+            onMoveDown = moveDown,
+        )
+        val model = SettingsStudyLadderPanelModel(
+            title = "Study ladder",
+            body = "Choose recognition steps.",
+            rungs = listOf(rung),
+            restoreLabel = "Restore defaults",
+            restoreDescription = "Restore default study ladder",
+            onRestore = restore,
+        )
+
+        assertEquals("Recognition", rung.label)
+        assertEquals("Current default rung", rung.subtitle)
+        assertEquals("Disable", rung.toggleLabel)
+        assertEquals("Move up", rung.moveUpLabel)
+        assertEquals("Move down", rung.moveDownLabel)
+        assertEquals(true, rung.canMoveUp)
+        assertEquals(false, rung.canMoveDown)
+        assertEquals("Disable Recognition", rung.toggleDescription)
+        assertEquals("Move up Recognition", rung.moveUpDescription)
+        assertEquals("Move down Recognition", rung.moveDownDescription)
+        assertSame(toggle, rung.onToggle)
+        assertSame(moveUp, rung.onMoveUp)
+        assertSame(moveDown, rung.onMoveDown)
+        assertEquals("Study ladder", model.title)
+        assertEquals("Choose recognition steps.", model.body)
+        assertEquals(listOf(rung), model.rungs)
+        assertEquals("Restore defaults", model.restoreLabel)
+        assertEquals("Restore default study ladder", model.restoreDescription)
+        assertSame(restore, model.onRestore)
+        rung.onToggle.run()
+        rung.onMoveUp.run()
+        rung.onMoveDown.run()
+        model.onRestore.run()
+        assertEquals(listOf("toggle", "moveUp", "moveDown", "restore"), calls)
+        assertEquals(rung, rung.copy())
+        assertEquals(model, model.copy())
+    }
 }
