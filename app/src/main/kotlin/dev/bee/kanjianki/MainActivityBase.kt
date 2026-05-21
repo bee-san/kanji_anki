@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -11,7 +10,6 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowInsetsCompat
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -27,7 +25,6 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
 import dev.bee.kanjianki.core.StudyCollectionLookup
 import dev.bee.kanjianki.core.StudyPlanSelectionPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker
@@ -199,6 +196,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var activeUpdateUiRunToken = 0
 
+    private val permissionHandler = MainActivityPermissionHandler(this)
+
     fun interface WritingRecognizerFactory {
         fun create(executor: ExecutorService): WritingRecognizer
     }
@@ -266,11 +265,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun requestAnkiPermissionIfNeeded() {
-        val status = gateway.status()
-        val permission = status.permission
-        if (permission != null && !status.permissionGranted) {
-            requestPermissions(arrayOf(permission), 7)
-        }
+        permissionHandler.requestAnkiPermissionIfNeeded()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
@@ -279,43 +274,19 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun handlePermissionResult(requestCode: Int, grantResults: IntArray) {
-        if (requestCode == 7) {
-            renderHome()
-        } else if (requestCode == REQUEST_POST_NOTIFICATIONS) {
-            handlePostNotificationPermission(grantResults)
-        }
+        permissionHandler.handlePermissionResult(requestCode, grantResults)
     }
 
     fun handlePostNotificationPermission(grantResults: IntArray) {
-        val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
-        val pending = pendingReminderSettings
-        if (granted) {
-            saveGrantedReminderPermission(pending)
-        } else {
-            disableReminderAfterDeniedPermission(pending)
-        }
-        pendingReminderSettings = null
-        renderSettings()
+        permissionHandler.handlePostNotificationPermission(grantResults)
     }
 
     fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {
-        val reminder = pending ?: store.reminderSettings()
-        store.saveReminderSettings(reminder)
-        ReminderScheduler.schedule(this, reminder)
-        val allowed = notificationsAllowedForReminders()
-        Toast.makeText(
-            this,
-            ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed),
-            if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
-        ).show()
+        permissionHandler.saveGrantedReminderPermission(pending)
     }
 
     fun disableReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
-        val fallback = pending ?: store.reminderSettings()
-        val fields = ReminderSettingsSavePolicy.fields(false, fallback.hour, fallback.minute)
-        store.saveReminderSettings(LocalStoreBase.ReminderSettings(fields.enabled(), fields.hour(), fields.minute()))
-        ReminderScheduler.cancel(this)
-        Toast.makeText(this, ReminderSettingsSavePolicy.PERMISSION_DENIED_MESSAGE, Toast.LENGTH_LONG).show()
+        permissionHandler.disableReminderAfterDeniedPermission(pending)
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
