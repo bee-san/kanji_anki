@@ -140,7 +140,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun meaningKanjiChoiceCardForSession(
         session: RecordsSchedulerModels.StudySession,
-    ): RecordsImportModels.MeaningKanjiChoiceCard {
+    ): RecordsImportModels.MeaningKanjiChoiceCard? {
         return choiceSessions.meaningKanjiChoiceCardForSession(session)
     }
 
