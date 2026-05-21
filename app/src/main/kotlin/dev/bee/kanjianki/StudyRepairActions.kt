@@ -56,27 +56,17 @@ internal object StudyRepairActions {
         fun markStudyTaskCompleted(taskKey: String)
     }
 
-    internal class ActiveRepair(
-        private val repair: RecordsImportModels.SimilarKanjiWritingRepair,
-        private val token: String,
-        private val progressKey: String,
-        private val studyTaskKey: String,
-    ) {
-        fun repair(): RecordsImportModels.SimilarKanjiWritingRepair = repair
+    @JvmRecord
+    internal data class ActiveRepair(
+        val repair: RecordsImportModels.SimilarKanjiWritingRepair,
+        val token: String,
+        val progressKey: String,
+        val studyTaskKey: String,
+    )
 
-        fun token(): String = token
-
-        fun progressKey(): String = progressKey
-
-        fun studyTaskKey(): String = studyTaskKey
-    }
-
-    internal class RepairCompletion(
-        private val saved: Boolean,
-        private val passed: Boolean,
-    ) {
-        fun saved(): Boolean = saved
-
-        fun passed(): Boolean = passed
-    }
+    @JvmRecord
+    internal data class RepairCompletion(
+        val saved: Boolean,
+        val passed: Boolean,
+    )
 }

@@ -132,21 +132,21 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         now: Long,
     ) {
         val active = StudyRepairActions.activateSimilarWritingRepair(repair, now, home.store::saveSimilarWritingRepair)
-        val activeRepair = active.repair()
+        val activeRepair = active.repair
         home.activeSimilarWritingRepair = activeRepair
         val item = BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, home.studyLadderSettings())
         val session = RecordsSchedulerModels.StudySession(
-            item.withToken(active.token()),
+            item.withToken(active.token),
             null,
-            active.token(),
+            active.token,
             MainActivityBase.TASK_REPAIR_WRITING,
             true,
             StudyTextCopy.similarRepairPrompt(activeRepair)
         )
         home.activeSession = session
         home.activeStudyPlan = plan
-        home.registerStudyTaskShown(active.progressKey())
-        home.startActiveStudyTask(active.studyTaskKey(), activeRepair.repairKanji, MainActivityBase.TASK_REPAIR_WRITING, now)
+        home.registerStudyTaskShown(active.progressKey)
+        home.startActiveStudyTask(active.studyTaskKey, activeRepair.repairKanji, MainActivityBase.TASK_REPAIR_WRITING, now)
         renderWritingSession(session)
     }
 }

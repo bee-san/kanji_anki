@@ -42,6 +42,22 @@ public final class StudyRepairActionsTest {
     }
 
     @Test
+    public void resultTypesKeepJavaRecordSemantics() {
+        RecordsImportModels.SimilarKanjiWritingRepair repair = repair("active-token");
+
+        assertTrue(StudyRepairActions.ActiveRepair.class.isRecord());
+        assertTrue(StudyRepairActions.RepairCompletion.class.isRecord());
+        assertEquals(
+                new StudyRepairActions.ActiveRepair(repair, "token", "progress", "task"),
+                new StudyRepairActions.ActiveRepair(repair, "token", "progress", "task")
+        );
+        assertEquals(
+                new StudyRepairActions.RepairCompletion(true, false),
+                new StudyRepairActions.RepairCompletion(true, false)
+        );
+    }
+
+    @Test
     public void completeSimilarWritingRepairRecordsAndMarksSavedPass() {
         RecordsImportModels.SimilarKanjiWritingRepair repair = repair("active-token");
         List<String> events = new ArrayList<>();

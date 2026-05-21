@@ -55,8 +55,8 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
             study.studySessionTracker::setTargetCount
         )
         study.continueAllKanjiSession = false
-        if (admission.admittedCount() < requestedCount) {
-            Toast.makeText(study, StudyMoreNewCardsPolicy.partialAvailabilityMessage(admission.admittedCount()), Toast.LENGTH_SHORT).show()
+        if (admission.admittedCount < requestedCount) {
+            Toast.makeText(study, StudyMoreNewCardsPolicy.partialAvailabilityMessage(admission.admittedCount), Toast.LENGTH_SHORT).show()
         }
         study.renderStudy()
         return true

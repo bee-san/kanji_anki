@@ -85,6 +85,15 @@ public final class StudyMoreNewCardActionsTest {
         assertEquals(-1, target.get());
     }
 
+    @Test
+    public void admissionResultKeepsJavaRecordSemantics() {
+        assertTrue(StudyMoreNewCardActions.AdmissionResult.class.isRecord());
+        assertEquals(
+                new StudyMoreNewCardActions.AdmissionResult(true, 2),
+                new StudyMoreNewCardActions.AdmissionResult(true, 2)
+        );
+    }
+
     private static List<RecordsImportModels.DashboardRow> rows(String... kanji) {
         List<RecordsImportModels.DashboardRow> rows = new ArrayList<>();
         for (String item : kanji) {

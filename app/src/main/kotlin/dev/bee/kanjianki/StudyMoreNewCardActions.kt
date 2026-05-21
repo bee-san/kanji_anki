@@ -38,12 +38,9 @@ internal object StudyMoreNewCardActions {
         fun setTargetCount(targetCount: Int)
     }
 
-    internal class AdmissionResult(
-        private val admittedAny: Boolean,
-        private val admittedCount: Int,
-    ) {
-        fun admittedAny(): Boolean = admittedAny
-
-        fun admittedCount(): Int = admittedCount
-    }
+    @JvmRecord
+    internal data class AdmissionResult(
+        val admittedAny: Boolean,
+        val admittedCount: Int,
+    )
 }

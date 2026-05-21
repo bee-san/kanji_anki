@@ -43,7 +43,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         )
         Toast.makeText(
             activity,
-            StudyTextCopy.similarWritingRepairSavedToast(completion.passed()),
+            StudyTextCopy.similarWritingRepairSavedToast(completion.passed),
             Toast.LENGTH_SHORT
         ).show()
         activity.activeSimilarWritingRepair = null
