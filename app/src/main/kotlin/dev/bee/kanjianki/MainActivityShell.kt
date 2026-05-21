@@ -26,12 +26,29 @@ fun MainActivityShell(
                     contentDescription = "Kani shell ${model.selectedRoute}"
                 }
         ) {
-            key(legacyRoot) {
-                AndroidView(
-                    factory = { legacyRoot },
-                    modifier = Modifier.fillMaxSize()
-                )
+            MainActivityRouteHost(legacyRoot = legacyRoot, model = model)
+        }
+    }
+}
+
+@Composable
+internal fun MainActivityRouteHost(
+    legacyRoot: View,
+    model: MainActivityShellModel,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag(model.routeTestTag)
+            .semantics {
+                contentDescription = model.routeContentDescription
             }
+    ) {
+        key(legacyRoot) {
+            AndroidView(
+                factory = { legacyRoot },
+                modifier = Modifier.fillMaxSize()
+            )
         }
     }
 }

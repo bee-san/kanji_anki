@@ -35,6 +35,8 @@ class MainActivityShellComposeTest {
 
         composeRule.onNodeWithTag("main-activity-shell")
             .assert(hasContentDescription("Kani shell ${MainActivityBase.NAV_STUDY}"))
+        composeRule.onNodeWithTag("main-route-${MainActivityBase.NAV_STUDY}")
+            .assert(hasContentDescription("Kani route ${MainActivityBase.NAV_STUDY}"))
         composeRule.onNodeWithText("Legacy shell content").assertIsDisplayed()
     }
 

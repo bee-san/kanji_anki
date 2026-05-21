@@ -16,6 +16,8 @@ class ComposeScreenModelsTest {
 
         assertEquals(MainActivityBase.NAV_STUDY, study.selectedRoute)
         assertEquals(MainActivityShellModel(MainActivityBase.NAV_STUDY), study)
+        assertEquals("main-route-${MainActivityBase.NAV_STUDY}", study.routeTestTag)
+        assertEquals("Kani route ${MainActivityBase.NAV_STUDY}", study.routeContentDescription)
     }
 
     @Test
