@@ -10,8 +10,6 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import androidx.activity.compose.setContent
-import androidx.core.view.WindowInsetsCompat
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
@@ -194,6 +192,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val permissionHandler = MainActivityPermissionHandler(this)
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
+    private val shellHost = MainActivityShellHost(this)
 
     fun interface WritingRecognizerFactory {
         fun create(executor: ExecutorService): WritingRecognizer
@@ -294,64 +293,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun base(selected: String) {
-        activeUpdateUiRunToken = 0
-        if (NAV_STUDY != selected) {
-            abandonActiveStudyTask()
-        }
-        flashcardGestureArea = null
-        flashcardCard = null
-        writingAnswerPanelState = null
-        flashcardRevealState = null
-        flashcardAnswerRevealed = false
-        flashcardTouchTracking = false
-        val root = LinearLayout(this)
-        root.orientation = LinearLayout.VERTICAL
-        root.setBackgroundColor(if (NAV_STUDY == selected) STUDY_BG_SOFT else BG)
-        setContent {
-            MainActivityShell(
-                legacyRoot = root,
-                model = MainActivityShellModel(selectedRoute = selected)
-            )
-        }
-        styleSystemBars()
-
-        content = LinearLayout(this)
-        content.orientation = LinearLayout.VERTICAL
-        content.setPadding(dp(18), dp(18), dp(18), dp(18))
-        val scroll = ScrollView(this)
-        contentScroll = scroll
-        scroll.addView(content)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        studyActionBar = LinearLayout(this)
-        studyActionBar?.orientation = LinearLayout.VERTICAL
-        applyStudyActionBarPadding()
-        studyActionBar?.setBackgroundColor(STUDY_BG_SOFT)
-        studyActionBar?.visibility = View.GONE
-        root.addView(studyActionBar, LinearLayout.LayoutParams(-1, -2))
-        root.setOnApplyWindowInsetsListener { view, insets ->
-            val bars = WindowInsetsCompat.toWindowInsetsCompat(insets, view)
-                .getInsets(WindowInsetsCompat.Type.systemBars())
-            studyActionBarBottomInset = bars.bottom
-            content.setPadding(dp(18), dp(18) + bars.top, dp(18), dp(18) + bars.bottom)
-            applyStudyActionBarPadding()
-            insets
-        }
-        requestInsetsWhenAttached(root)
-    }
-
-    fun requestInsetsWhenAttached(root: View) {
-        if (root.isAttachedToWindow) {
-            root.requestApplyInsets()
-            return
-        }
-        root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(view: View) {
-                view.removeOnAttachStateChangeListener(this)
-                view.requestApplyInsets()
-            }
-
-            override fun onViewDetachedFromWindow(view: View) = Unit
-        })
+        shellHost.base(selected)
     }
 
     fun isActiveToken(token: String): Boolean {
