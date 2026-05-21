@@ -1,0 +1,109 @@
+package dev.bee.kanjianki
+
+import android.widget.Toast
+import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.StudyReviewRequestPolicy
+import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.StudyStatsStore
+
+internal class MainActivityStudyReviewFlow(private val activity: MainActivityStudy) {
+    private val reviewWriter: StudyReviewActions.ReviewWriter = MainActivityStudyReviewWriter(activity)
+
+    fun submitReview(rating: String, override: Boolean) {
+        val session = activity.activeSession ?: return
+        if (activity.activeSimilarWritingRepair != null) {
+            submitSimilarWritingRepair(rating)
+            return
+        }
+        val mappedReview = StudyReviewRequestPolicy.from(
+            session,
+            StudyReviewWritingOutcome.from(activity.activeAnalysis),
+            activity.hintsUsed,
+            rating,
+            override
+        )
+        submitNormalReview(mappedReview.request())
+    }
+
+    fun submitSimilarWritingRepair(rating: String) {
+        val repair = activity.activeSimilarWritingRepair ?: return
+        val now = System.currentTimeMillis()
+        activity.completeActiveRepairStudyTask(activity.similarRepairStudyTaskKey(repair), rating, now)
+        val completion = StudyRepairActions.completeSimilarWritingRepair(
+            repair,
+            rating,
+            now,
+            activity.store::finishSimilarWritingRepair,
+            activity.studySessionTracker::recordRepairOutcome,
+            activity::markStudyTaskCompleted
+        )
+        Toast.makeText(
+            activity,
+            StudyTextCopy.similarWritingRepairSavedToast(completion.passed()),
+            Toast.LENGTH_SHORT
+        ).show()
+        activity.activeSimilarWritingRepair = null
+        activity.renderStudy()
+    }
+
+    fun submitSimilarKanjiChoice(card: RecordsImportModels.SimilarKanjiChoiceCard, selectedKanji: String) {
+        val now = System.currentTimeMillis()
+        val result = activity.store.submitSimilarChoice(
+            card,
+            selectedKanji,
+            now,
+            activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.WRITE_KANJI)
+        )
+        submitReview(if (result.correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+    }
+
+    fun submitNormalReview(request: RecordsSchedulerModels.ReviewRequest) {
+        val session = activity.activeSession!!
+        val scheduler = BridgeScheduler()
+        val consumed = HashSet(activity.store.consumedTokens())
+        val now = System.currentTimeMillis()
+        val parameters = activity.store.schedulerParameters()
+        val effectiveParameters = parameters.withTargetRetention(
+            parameters.targetRetentionForRank(session.row.jitenRank)
+        )
+        val result = scheduler.applyReview(
+            session.item,
+            request,
+            consumed,
+            now,
+            effectiveParameters,
+            activity.settings(),
+            activity.studyLadderSettings()
+        )
+        activity.completeActiveStudyTask(activity.sessionTaskKey(session), result.appliedRating, now)
+        var streak: StudyStatsStore.StudyStreak? = null
+        if (!result.duplicate) {
+            saveAppliedReview(request, result, now)
+            streak = activity.store.studyStreak(now)
+            activity.tuneSchedulerIfNeeded(parameters, now)
+        }
+        val currentStreakDays = streak?.currentDays ?: 0
+        Toast.makeText(activity, HomeTextCopy.reviewToast(result.duplicate, result.appliedRating, currentStreakDays), Toast.LENGTH_SHORT).show()
+        activity.renderStudy()
+    }
+
+    fun saveAppliedReview(
+        request: RecordsSchedulerModels.ReviewRequest,
+        result: RecordsSchedulerModels.ReviewResult,
+        now: Long,
+    ) {
+        StudyReviewActions.saveAppliedReview(
+            request,
+            result,
+            activity.activeSession!!.item,
+            now,
+            reviewWriter,
+            activity.studySessionTracker::recordReviewOutcome,
+            activity::markStudyRunPassed
+        )
+    }
+}
