@@ -212,7 +212,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun resumeActiveStudyTask()
     abstract fun abandonActiveStudyTask()
     abstract fun handleFlashcardGesture(event: MotionEvent): Boolean
-    abstract fun initializeSessionProgressTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan)
+    abstract fun initializeSessionProgressTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?)
     abstract fun currentDictionaryLookup(): DictionaryLookup
     abstract fun wordReadingExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example
     abstract fun clearStudyModeOverrides()
@@ -488,12 +488,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         activeStudyPlan = plan
         content.removeAllViews()
         contentScroll?.isFillViewport = fillViewport
-        if (plan != null) {
-            content.addView(studyTopBar(plan))
-        }
+        content.addView(studyTopBar(plan))
     }
 
-    fun studyTopBar(plan: RecordsSchedulerModels.AdaptiveLoadPlan): View {
+    fun studyTopBar(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): View {
         initializeSessionProgressTarget(plan)
         val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
         return studyTopBarView(

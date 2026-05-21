@@ -73,7 +73,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun renderPendingRepairOrDone(
-        plan: RecordsSchedulerModels.AdaptiveLoadPlan,
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         now: Long,
         ladder: RecordsBase.StudyLadderSettings,
     ): Boolean {
@@ -92,7 +92,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyScreen.renderFocusDone(plan)
     }
 
-    fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
+    fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
         studyScreen.renderStudyRunDone(plan)
     }
 
@@ -192,7 +192,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun renderSimilarWritingRepair(
         repair: RecordsImportModels.SimilarKanjiWritingRepair,
-        plan: RecordsSchedulerModels.AdaptiveLoadPlan,
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         now: Long,
     ) {
         writingSession.renderSimilarWritingRepair(repair, plan, now)
@@ -210,7 +210,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyProgress.markStudyRunPassed(kanji)
     }
 
-    override fun initializeSessionProgressTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
+    override fun initializeSessionProgressTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
         studyProgress.initializeSessionProgressTarget(plan)
     }
 
@@ -222,7 +222,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyProgress.markStudyTaskCompleted(key)
     }
 
-    fun sessionTaskKey(session: RecordsSchedulerModels.StudySession): String {
+    fun sessionTaskKey(session: RecordsSchedulerModels.StudySession?): String {
         return studyProgress.sessionTaskKey(session)
     }
 
@@ -370,7 +370,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return studyState.initialHintState(session)
     }
 
-    fun setHintState(state: HintState) {
+    fun setHintState(state: HintState?) {
         studyState.setHintState(state)
     }
 
