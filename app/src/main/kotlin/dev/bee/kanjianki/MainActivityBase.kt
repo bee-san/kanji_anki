@@ -340,7 +340,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundColor(if (NAV_STUDY == selected) STUDY_BG_SOFT else BG)
         setContent {
-            MainActivityShell(legacyRoot = root)
+            MainActivityShell(
+                legacyRoot = root,
+                model = MainActivityShellModel(selectedRoute = selected)
+            )
         }
         styleSystemBars()
 

@@ -4,11 +4,14 @@ import android.widget.TextView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Rule
 import org.junit.Test
@@ -24,9 +27,14 @@ class MainActivityShellComposeTest {
         }
 
         composeRule.setContent {
-            MainActivityShell(legacyRoot)
+            MainActivityShell(
+                legacyRoot = legacyRoot,
+                model = MainActivityShellModel(selectedRoute = MainActivityBase.NAV_STUDY)
+            )
         }
 
+        composeRule.onNodeWithTag("main-activity-shell")
+            .assert(hasContentDescription("Kani shell ${MainActivityBase.NAV_STUDY}"))
         composeRule.onNodeWithText("Legacy shell content").assertIsDisplayed()
     }
 
