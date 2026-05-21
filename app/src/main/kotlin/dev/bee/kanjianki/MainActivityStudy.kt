@@ -297,7 +297,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return flashcardUi.handleFlashcardRelease(event)
     }
 
-    fun isTouchInsideView(view: View, event: MotionEvent): Boolean {
+    fun isTouchInsideView(view: View?, event: MotionEvent): Boolean {
         return flashcardUi.isTouchInsideView(view, event)
     }
 

@@ -137,7 +137,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         return interaction.handleFlashcardRelease(event)
     }
 
-    fun isTouchInsideView(view: View, event: MotionEvent): Boolean {
+    fun isTouchInsideView(view: View?, event: MotionEvent): Boolean {
         return interaction.isTouchInsideView(view, event)
     }
 }
