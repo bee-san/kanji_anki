@@ -39,6 +39,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
+import androidx.compose.ui.platform.ComposeView;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -115,6 +116,19 @@ public final class MainActivityHelperInstrumentedTest {
         MainActivity.setNotificationsAllowedForTests(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(new File(context.getCacheDir(), "updates"));
+    }
+
+    @Test
+    public void launcherHostsLegacyHomeInsideComposeShell() {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                ViewGroup activityContent = activity.findViewById(android.R.id.content);
+                assertEquals(1, activityContent.getChildCount());
+                assertTrue(activityContent.getChildAt(0) instanceof ComposeView);
+                assertNotNull(activity.content);
+                assertTrue(containsText(activity.content, "Kani"));
+            });
+        }
     }
 
     @Test
