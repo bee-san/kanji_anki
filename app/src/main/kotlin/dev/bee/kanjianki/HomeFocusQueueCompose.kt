@@ -40,30 +40,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTextCopy
 
-data class HomeFocusQueueCardModel(
-    val kanji: String,
-    val meaning: String,
-    val sourceEvidence: String,
-    val reasonLine: String,
-    val body: String,
-    val tags: List<HomeFocusQueueTagModel>,
-    val accentColor: ComposeColor,
-    val onClick: () -> Unit,
-)
-
-data class HomeFocusQueueTagModel(
-    val label: String,
-    val color: ComposeColor,
-)
-
-data class HomeFocusQueuePanelModel(
-    val planText: String,
-    val emptyTitle: String?,
-    val emptyBody: String?,
-    val showSyncButton: Boolean,
-    val cards: List<HomeFocusQueueCardModel>,
-)
-
 internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
 
 internal fun homeFocusQueueCardView(
