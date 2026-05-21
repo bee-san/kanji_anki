@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
@@ -273,6 +274,10 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     fun base(selected: String) {
         shellHost.base(selected)
+    }
+
+    fun composeRoute(selected: String, content: @Composable () -> Unit) {
+        shellHost.composeRoute(selected, content)
     }
 
     fun isActiveToken(token: String): Boolean {

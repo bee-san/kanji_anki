@@ -7,8 +7,10 @@ import dev.bee.kanjianki.data.StudyStatsStore
 
 internal abstract class MainActivityStats : MainActivityGames() {
     override fun renderStats() {
-        base("stats")
-        content.addView(statsScreenView(this))
+        val model = buildStatsScreenModel()
+        composeRoute("stats") {
+            StatsRouteScreen(model = model, onHome = this::renderHome)
+        }
     }
 
     fun notHelpingRows(report: KanjiImpactAnalyzer.Report?): List<KanjiImpactAnalyzer.Row> {

@@ -4,15 +4,12 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
 import androidx.core.view.WindowInsetsCompat
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun base(selected: String) {
-        activity.activeUpdateUiRunToken = 0
-        if (MainActivityBase.NAV_STUDY != selected) {
-            activity.abandonActiveStudyTask()
-        }
-        resetStudyInteractionState()
+        prepareRoute(selected)
 
         val root = LinearLayout(activity)
         root.orientation = LinearLayout.VERTICAL
@@ -55,6 +52,31 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
             insets
         }
         requestInsetsWhenAttached(root)
+    }
+
+    fun composeRoute(selected: String, content: @Composable () -> Unit) {
+        prepareRoute(selected)
+        activity.content = LinearLayout(activity)
+        activity.content.orientation = LinearLayout.VERTICAL
+        activity.contentScroll = null
+        activity.studyActionBar = LinearLayout(activity)
+        activity.studyActionBar?.orientation = LinearLayout.VERTICAL
+        activity.studyActionBar?.visibility = View.GONE
+        activity.setContent {
+            MainActivityComposeRoute(
+                model = MainActivityShellModel(selectedRoute = selected),
+                content = content
+            )
+        }
+        activity.styleSystemBars()
+    }
+
+    private fun prepareRoute(selected: String) {
+        activity.activeUpdateUiRunToken = 0
+        if (MainActivityBase.NAV_STUDY != selected) {
+            activity.abandonActiveStudyTask()
+        }
+        resetStudyInteractionState()
     }
 
     private fun resetStudyInteractionState() {

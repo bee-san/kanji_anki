@@ -4,6 +4,7 @@ import android.widget.TextView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -55,6 +56,23 @@ class MainActivityShellComposeTest {
 
         composeRule.onNodeWithText("Second shell root").assertIsDisplayed()
         composeRule.onAllNodesWithText("First shell root").assertCountEquals(0)
+    }
+
+    @Test
+    fun hostsComposeRouteContentWithoutLegacyRoot() {
+        composeRule.setContent {
+            MainActivityComposeRoute(
+                model = MainActivityShellModel(selectedRoute = "stats")
+            ) {
+                Text("Compose stats content")
+            }
+        }
+
+        composeRule.onNodeWithTag("main-activity-shell")
+            .assert(hasContentDescription("Kani shell stats"))
+        composeRule.onNodeWithTag("main-route-stats")
+            .assert(hasContentDescription("Kani route stats"))
+        composeRule.onNodeWithText("Compose stats content").assertIsDisplayed()
     }
 
     private fun textRoot(text: String): TextView {
