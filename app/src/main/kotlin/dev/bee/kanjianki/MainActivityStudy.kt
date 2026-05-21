@@ -206,7 +206,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyProgress.clearStudyModeOverrides()
     }
 
-    fun markStudyRunPassed(kanji: String) {
+    fun markStudyRunPassed(kanji: String?) {
         studyProgress.markStudyRunPassed(kanji)
     }
 
@@ -214,11 +214,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyProgress.initializeSessionProgressTarget(plan)
     }
 
-    fun registerStudyTaskShown(key: String) {
+    fun registerStudyTaskShown(key: String?) {
         studyProgress.registerStudyTaskShown(key)
     }
 
-    fun markStudyTaskCompleted(key: String) {
+    fun markStudyTaskCompleted(key: String?) {
         studyProgress.markStudyTaskCompleted(key)
     }
 
@@ -226,19 +226,19 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return studyProgress.sessionTaskKey(session)
     }
 
-    fun similarRepairProgressKey(repair: RecordsImportModels.SimilarKanjiWritingRepair): String {
+    fun similarRepairProgressKey(repair: RecordsImportModels.SimilarKanjiWritingRepair?): String {
         return studyProgress.similarRepairProgressKey(repair)
     }
 
-    fun similarRepairStudyTaskKey(repair: RecordsImportModels.SimilarKanjiWritingRepair): String {
+    fun similarRepairStudyTaskKey(repair: RecordsImportModels.SimilarKanjiWritingRepair?): String {
         return studyProgress.similarRepairStudyTaskKey(repair)
     }
 
-    fun startActiveStudyTask(key: String, kanji: String, taskType: String, startedAt: Long) {
+    fun startActiveStudyTask(key: String?, kanji: String?, taskType: String?, startedAt: Long) {
         studyProgress.startActiveStudyTask(key, kanji, taskType, startedAt)
     }
 
-    fun completeActiveStudyTask(key: String, outcome: String, answeredAt: Long) {
+    fun completeActiveStudyTask(key: String?, outcome: String?, answeredAt: Long) {
         studyProgress.completeActiveStudyTask(key, outcome, answeredAt)
     }
 
@@ -358,7 +358,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingReview.submitReview(rating, override)
     }
 
-    fun completeActiveRepairStudyTask(key: String, outcome: String, answeredAt: Long) {
+    fun completeActiveRepairStudyTask(key: String?, outcome: String?, answeredAt: Long) {
         studyState.completeActiveRepairStudyTask(key, outcome, answeredAt)
     }
 
