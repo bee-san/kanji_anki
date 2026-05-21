@@ -21,30 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-data class SettingsUpdatePanelModel(
-    val title: String,
-    val statusLine: String,
-    val statusColor: ComposeColor,
-    val lastCheckLine: String,
-    val lastResultLine: String,
-    val installPermissionLine: String,
-    val installPermissionColor: ComposeColor,
-    val hasPendingUpdate: Boolean,
-    val pendingVersionLine: String?,
-    val pendingMessageLine: String?,
-    val canInstallUpdates: Boolean,
-    val onInstallVerifiedUpdate: () -> Unit,
-    val onOpenInstallSettings: () -> Unit,
-    val onToggleAutomaticUpdates: () -> Unit,
-    val automaticUpdatesToggleLabel: String,
-)
-
-data class SettingsUpdateOverviewPanelModel(
-    val panel: SettingsUpdatePanelModel,
-    val openUpdaterLabel: String,
-    val onOpenUpdater: () -> Unit,
-) : SettingsPanelModel
-
 internal fun settingsUpdateOverviewPanelView(
     activity: MainActivitySettings,
     model: SettingsUpdateOverviewPanelModel,

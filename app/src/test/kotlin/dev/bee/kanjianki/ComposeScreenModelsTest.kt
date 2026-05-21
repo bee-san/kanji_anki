@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStoreBase
+import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -801,5 +802,64 @@ class ComposeScreenModelsTest {
         assertEquals(listOf("toggle", "moveUp", "moveDown", "restore"), calls)
         assertEquals(rung, rung.copy())
         assertEquals(model, model.copy())
+    }
+
+    @Test
+    fun settingsUpdateModelsKeepPendingFieldsAndCallbacks() {
+        val calls = mutableListOf<String>()
+        val install = { calls += "install" }
+        val openSettings = { calls += "settings" }
+        val toggle = { calls += "toggle" }
+        val openUpdater = { calls += "updater" }
+        val statusColor = ComposeColor(0xFFFF4C76)
+        val permissionColor = ComposeColor(0xFF00AEB5)
+        val panel = SettingsUpdatePanelModel(
+            title = "App updates",
+            statusLine = "Verified APK ready",
+            statusColor = statusColor,
+            lastCheckLine = "Checked today",
+            lastResultLine = "No errors",
+            installPermissionLine = "Permission granted",
+            installPermissionColor = permissionColor,
+            hasPendingUpdate = true,
+            pendingVersionLine = "Version 0.5.0",
+            pendingMessageLine = "Ready to install",
+            canInstallUpdates = true,
+            onInstallVerifiedUpdate = install,
+            onOpenInstallSettings = openSettings,
+            onToggleAutomaticUpdates = toggle,
+            automaticUpdatesToggleLabel = "Turn off automatic checks",
+        )
+        val overview = SettingsUpdateOverviewPanelModel(
+            panel = panel,
+            openUpdaterLabel = "Open updater",
+            onOpenUpdater = openUpdater,
+        )
+
+        assertEquals("App updates", panel.title)
+        assertEquals("Verified APK ready", panel.statusLine)
+        assertEquals(statusColor, panel.statusColor)
+        assertEquals("Checked today", panel.lastCheckLine)
+        assertEquals("No errors", panel.lastResultLine)
+        assertEquals("Permission granted", panel.installPermissionLine)
+        assertEquals(permissionColor, panel.installPermissionColor)
+        assertEquals(true, panel.hasPendingUpdate)
+        assertEquals("Version 0.5.0", panel.pendingVersionLine)
+        assertEquals("Ready to install", panel.pendingMessageLine)
+        assertEquals(true, panel.canInstallUpdates)
+        assertSame(install, panel.onInstallVerifiedUpdate)
+        assertSame(openSettings, panel.onOpenInstallSettings)
+        assertSame(toggle, panel.onToggleAutomaticUpdates)
+        assertEquals("Turn off automatic checks", panel.automaticUpdatesToggleLabel)
+        assertSame(panel, overview.panel)
+        assertEquals("Open updater", overview.openUpdaterLabel)
+        assertSame(openUpdater, overview.onOpenUpdater)
+        panel.onInstallVerifiedUpdate()
+        panel.onOpenInstallSettings()
+        panel.onToggleAutomaticUpdates()
+        overview.onOpenUpdater()
+        assertEquals(listOf("install", "settings", "toggle", "updater"), calls)
+        assertEquals(panel, panel.copy())
+        assertEquals(overview, overview.copy())
     }
 }
