@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.content.Intent
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.data.LocalStore
@@ -16,6 +17,14 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         AutoSyncScheduler.schedule(activity)
         AutoUpdateScheduler.schedule(activity)
         DatabaseBackupScheduler.schedule(activity)
-        activity.handleLaunchIntent(activity.intent)
+        handleLaunchIntent(activity.intent)
+    }
+
+    fun handleLaunchIntent(intent: Intent?) {
+        if (intent != null && intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
+            activity.renderUpdate()
+        } else {
+            activity.renderHome()
+        }
     }
 }

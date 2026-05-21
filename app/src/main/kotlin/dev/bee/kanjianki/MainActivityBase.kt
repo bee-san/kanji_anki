@@ -236,11 +236,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun handleLaunchIntent(intent: Intent?) {
-        if (intent != null && intent.getBooleanExtra(EXTRA_OPEN_UPDATE, false)) {
-            renderUpdate()
-        } else {
-            renderHome()
-        }
+        startup.handleLaunchIntent(intent)
     }
 
     fun requestAnkiPermissionIfNeeded() {
