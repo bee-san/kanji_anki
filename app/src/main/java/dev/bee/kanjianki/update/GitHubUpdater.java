@@ -334,7 +334,7 @@ public final class GitHubUpdater {
         }
     }
 
-    interface UpdateClient {
+    public interface UpdateClient {
         String getText(String url) throws IOException;
 
         void download(String url, File file) throws IOException;
