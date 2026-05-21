@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.anki
 
 import android.content.ContentResolver
-import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -15,9 +14,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SyncValidator
 import dev.bee.kanjianki.sync.SyncProgress
-import dev.bee.kanjianki.syncdomain.ProviderArchiveCleanupPolicy
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
-import dev.bee.kanjianki.syncdomain.SyncMirrorPolicy
 import java.util.Collections
 import java.util.Locale
 import java.util.regex.Pattern
@@ -29,6 +26,7 @@ class AnkiDroidGateway private constructor(
     private val packageManager: PackageManager
     private val resolver: ContentResolver
     private val cardReader: AnkiDroidCardReader
+    private val archiveCleanup: AnkiDroidArchiveCleanup
     private val permissionChecker: PermissionChecker
 
     constructor(context: Context) : this(context, ProviderTarget.TARGETS)
@@ -38,6 +36,7 @@ class AnkiDroidGateway private constructor(
         packageManager = appContext.packageManager
         resolver = appContext.contentResolver
         cardReader = AnkiDroidCardReader(resolver)
+        archiveCleanup = AnkiDroidArchiveCleanup(resolver)
         permissionChecker = PermissionChecker { permission -> appContext.checkSelfPermission(permission) }
     }
 
@@ -177,65 +176,7 @@ class AnkiDroidGateway private constructor(
         if (target == null || snapshot.cards.isEmpty()) {
             return RemovalSummary(0, 0, 0, "No provider removal attempted.")
         }
-        val cleanup = ProviderArchiveCleanupPolicy.plan(
-            archiveCleanupCards(snapshot.cards),
-            selectedSuspendedCardIds(selectedSuspendedImports),
-        )
-        if (!cleanup.hasSuspendedCards()) {
-            return RemovalSummary(0, 0, 0, "No suspended cards needed provider cleanup.")
-        }
-
-        var tagged = 0
-        var failed = cleanup.alreadyFailedCards()
-        for (noteId in cleanup.notesToTag()) {
-            if (tagNoteArchived(target, noteId)) {
-                tagged++
-            } else {
-                failed++
-            }
-        }
-        val message = ProviderArchiveCleanupPolicy.removalMessage(tagged, failed)
-        return RemovalSummary(cleanup.sourceCards(), 0, tagged, message)
-    }
-
-    private fun archiveCleanupCards(cards: List<RecordsSyncModels.Card>): List<ProviderArchiveCleanupPolicy.Card> {
-        val cleanupCards = ArrayList<ProviderArchiveCleanupPolicy.Card>()
-        for (card in cards) {
-            cleanupCards.add(ProviderArchiveCleanupPolicy.Card(card.cardId, card.noteId, card.suspended))
-        }
-        return cleanupCards
-    }
-
-    private fun selectedSuspendedCardIds(imports: List<RecordsImportModels.SuspendedImport>?): Set<Long>? {
-        if (imports == null) {
-            return null
-        }
-        val sources = ArrayList<SyncMirrorPolicy.SelectedSource>()
-        for (imported in imports) {
-            for (source in imported.sources) {
-                sources.add(SyncMirrorPolicy.SelectedSource(source.cardId, source.suspended))
-            }
-        }
-        return SyncMirrorPolicy.selectedSuspendedCardIds(sources)
-    }
-
-    private fun tagNoteArchived(target: ProviderTarget, noteId: Long): Boolean {
-        val noteUri = uriFor(target.authority, URI_SEGMENT_NOTES, noteId.toString())
-        var tags = ""
-        val rawCursor = resolver.query(noteUri, arrayOf(COLUMN_TAGS), null, null, null)
-        if (rawCursor != null) {
-            rawCursor.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    tags = value(cursor, COLUMN_TAGS)
-                }
-            }
-        }
-        if (!ProviderNotePolicy.isArchivedTagPresent(splitTags(tags))) {
-            tags = "$tags ${ProviderNotePolicy.ARCHIVED_TAG}".trim()
-        }
-        val values = ContentValues()
-        values.put(COLUMN_TAGS, tags)
-        return resolver.update(noteUri, values, null, null) > 0
+        return archiveCleanup.removeArchivedSuspendedCards(target.authority, snapshot, selectedSuspendedImports)
     }
 
     @Throws(SyncFailure::class)
