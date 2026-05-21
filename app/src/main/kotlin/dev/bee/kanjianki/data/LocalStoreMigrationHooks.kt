@@ -3,7 +3,7 @@ package dev.bee.kanjianki.data
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.RecordsSyncModels
 
-internal class LocalStoreMigrationHooks(
+class LocalStoreMigrationHooks(
     private val store: LocalStoreBase,
 ) {
     fun createTimelineTables(db: SQLiteDatabase) {
