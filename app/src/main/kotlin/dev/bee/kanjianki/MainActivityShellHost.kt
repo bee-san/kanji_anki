@@ -5,6 +5,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.WindowInsetsCompat
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
@@ -58,6 +59,8 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         prepareRoute(selected)
         activity.content = LinearLayout(activity)
         activity.content.orientation = LinearLayout.VERTICAL
+        // Keep the legacy content field structurally compatible while this route renders through Activity.setContent.
+        activity.content.addView(ComposeView(activity))
         activity.contentScroll = null
         activity.studyActionBar = LinearLayout(activity)
         activity.studyActionBar?.orientation = LinearLayout.VERTICAL
