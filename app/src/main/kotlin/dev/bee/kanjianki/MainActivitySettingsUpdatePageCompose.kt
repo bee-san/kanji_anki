@@ -23,15 +23,6 @@ import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy
 
-data class SettingsUpdatePageModel(
-    val title: String,
-    val body: String,
-    val onHome: () -> Unit,
-    val onBack: () -> Unit,
-    val onCheckForUpdate: () -> Unit,
-    val panel: SettingsUpdatePanelModel,
-)
-
 fun settingsUpdatePageView(activity: Activity): View {
     val settingsActivity = activity as MainActivitySettings
     val model = settingsUpdatePageModel(settingsActivity)

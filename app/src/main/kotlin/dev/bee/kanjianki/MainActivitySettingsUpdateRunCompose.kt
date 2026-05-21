@@ -32,14 +32,6 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-data class SettingsUpdateRunModel(
-    val title: String,
-    val body: String,
-    val progressLabel: String,
-    val onHome: () -> Unit,
-    val onBack: () -> Unit,
-)
-
 internal fun settingsUpdateRunView(
     activity: MainActivitySettings,
     title: String,

@@ -862,4 +862,64 @@ class ComposeScreenModelsTest {
         assertEquals(panel, panel.copy())
         assertEquals(overview, overview.copy())
     }
+
+    @Test
+    fun settingsUpdateScreenModelsKeepNavigationCallbacks() {
+        val calls = mutableListOf<String>()
+        val home = { calls += "home" }
+        val back = { calls += "back" }
+        val check = { calls += "check" }
+        val panel = SettingsUpdatePanelModel(
+            title = "Automatic updates",
+            statusLine = "On",
+            statusColor = ComposeColor(0xFF00AEB5),
+            lastCheckLine = "Never checked",
+            lastResultLine = "No previous result",
+            installPermissionLine = "Permission missing",
+            installPermissionColor = ComposeColor(0xFFFF4C76),
+            hasPendingUpdate = false,
+            pendingVersionLine = null,
+            pendingMessageLine = null,
+            canInstallUpdates = false,
+            onInstallVerifiedUpdate = {},
+            onOpenInstallSettings = {},
+            onToggleAutomaticUpdates = {},
+            automaticUpdatesToggleLabel = "Turn off",
+        )
+        val page = SettingsUpdatePageModel(
+            title = "Updater",
+            body = "Check for a signed GitHub release.",
+            onHome = home,
+            onBack = back,
+            onCheckForUpdate = check,
+            panel = panel,
+        )
+        val run = SettingsUpdateRunModel(
+            title = "Checking",
+            body = "Downloading metadata.",
+            progressLabel = "Checking GitHub",
+            onHome = home,
+            onBack = back,
+        )
+
+        assertEquals("Updater", page.title)
+        assertEquals("Check for a signed GitHub release.", page.body)
+        assertSame(home, page.onHome)
+        assertSame(back, page.onBack)
+        assertSame(check, page.onCheckForUpdate)
+        assertSame(panel, page.panel)
+        assertEquals("Checking", run.title)
+        assertEquals("Downloading metadata.", run.body)
+        assertEquals("Checking GitHub", run.progressLabel)
+        assertSame(home, run.onHome)
+        assertSame(back, run.onBack)
+        page.onHome()
+        page.onBack()
+        page.onCheckForUpdate()
+        run.onHome()
+        run.onBack()
+        assertEquals(listOf("home", "back", "check", "home", "back"), calls)
+        assertEquals(page, page.copy())
+        assertEquals(run, run.copy())
+    }
 }
