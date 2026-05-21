@@ -12,10 +12,10 @@ internal class MainActivityStudyReviewWriter(
 
     override fun saveReview(
         request: RecordsSchedulerModels.ReviewRequest,
-        appliedRating: String,
+        appliedRating: String?,
         reviewedAt: Long,
-        beforeReview: RecordsStudyModels.StudyItem?,
-        afterReview: RecordsStudyModels.StudyItem?,
+        beforeReview: RecordsStudyModels.StudyItem,
+        afterReview: RecordsStudyModels.StudyItem,
     ) {
         activity.store.saveReview(request, appliedRating, reviewedAt, beforeReview, afterReview)
     }
