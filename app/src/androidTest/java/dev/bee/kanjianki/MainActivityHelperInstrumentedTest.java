@@ -119,14 +119,14 @@ public final class MainActivityHelperInstrumentedTest {
     }
 
     @Test
-    public void launcherHostsLegacyHomeInsideComposeShell() {
+    public void launcherHostsHomeInsideComposeShell() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 ViewGroup activityContent = activity.findViewById(android.R.id.content);
                 assertEquals(1, activityContent.getChildCount());
                 assertTrue(activityContent.getChildAt(0) instanceof ComposeView);
                 assertNotNull(activity.content);
-                assertTrue(containsText(activity.content, "Kani"));
+                assertHasText(activity, "Kani");
             });
         }
     }
