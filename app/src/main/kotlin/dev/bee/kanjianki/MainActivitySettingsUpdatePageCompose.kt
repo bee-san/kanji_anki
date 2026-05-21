@@ -39,7 +39,7 @@ fun settingsUpdatePageView(activity: Activity): View {
     }
 }
 
-private fun settingsUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
+internal fun settingsUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
     return SettingsUpdatePageModel(
         title = SettingsTextCopy.updatePageTitle(),
         body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
