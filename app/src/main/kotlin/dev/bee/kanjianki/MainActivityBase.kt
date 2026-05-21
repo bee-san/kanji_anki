@@ -36,7 +36,6 @@ import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.reminders.ReminderScheduler
-import dev.bee.kanjianki.study.MlKitJapaneseWritingRecognizer
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.sync.SyncSettings
@@ -197,6 +196,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var activeUpdateUiRunToken = 0
 
     private val permissionHandler = MainActivityPermissionHandler(this)
+    private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
 
     fun interface WritingRecognizerFactory {
         fun create(executor: ExecutorService): WritingRecognizer
@@ -362,14 +362,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     fun currentWritingRecognizer(): WritingRecognizer? {
-        writingRecognizerForTests?.let { return it }
-        writingRecognizer?.let { return it }
-        return try {
-            writingRecognizer = writingRecognizerFactoryForTests?.create(io) ?: MlKitJapaneseWritingRecognizer(io)
-            writingRecognizer
-        } catch (_: RuntimeException) {
-            null
-        }
+        return writingRecognizerProvider.currentWritingRecognizer()
     }
 
     fun hasRuntimeNotificationPermissionForReminder(): Boolean {
