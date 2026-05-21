@@ -961,4 +961,71 @@ class ComposeScreenModelsTest {
         assertEquals(model, model.copy())
         assertEquals(reading, reading.copy())
     }
+
+    @Test
+    fun studyChoiceModelsKeepSessionTextAndChoiceCallbacks() {
+        val calls = mutableListOf<String>()
+        val handler = KanjiChoiceHandler { calls += it }
+        val grid = SimilarChoiceGridModel(
+            choices = listOf("裂", "列", "烈"),
+            balanceLastRow = true,
+            onChoice = handler,
+        )
+        val answer = StudyAnswerPanelModel(
+            title = "Answer",
+            glyph = "裂",
+            glyphSizeSp = 76,
+            lines = listOf(
+                StudyAnswerLineModel(
+                    text = "Reading: れつ",
+                    color = ComposeColor(0xFFFF4C76),
+                    sizeSp = 17,
+                    bold = true,
+                )
+            ),
+            helperText = null,
+        )
+        val similar = SimilarChoiceSessionModel(
+            modeLabel = "Recognise",
+            title = "Choose the kanji",
+            taskLabel = MainActivityBase.LABEL_SIMILAR_KANJI,
+            body = "Pick the kanji that matches the meaning.",
+            reasonLine = "Weak Anki evidence",
+            question = "Which kanji means split?",
+            gridModel = grid,
+        )
+        val meaning = MeaningChoiceSessionModel(
+            modeLabel = "Recall",
+            title = "Choose the kanji",
+            taskLabel = "meaning -> kanji",
+            body = "Pick the kanji that matches the meaning.",
+            reasonLine = "",
+            question = "Which kanji means split?",
+            choices = listOf("裂", "列", "烈", "劣"),
+            answerPanel = answer,
+            onChoice = handler,
+        )
+
+        assertEquals(listOf("裂", "列", "烈"), grid.choices)
+        assertEquals(true, grid.balanceLastRow)
+        assertSame(handler, grid.onChoice)
+        assertEquals("Recognise", similar.modeLabel)
+        assertEquals("Choose the kanji", similar.title)
+        assertEquals(MainActivityBase.LABEL_SIMILAR_KANJI, similar.taskLabel)
+        assertEquals("Pick the kanji that matches the meaning.", similar.body)
+        assertEquals("Weak Anki evidence", similar.reasonLine)
+        assertEquals("Which kanji means split?", similar.question)
+        assertSame(grid, similar.gridModel)
+        assertEquals("Recall", meaning.modeLabel)
+        assertEquals("meaning -> kanji", meaning.taskLabel)
+        assertEquals(listOf("裂", "列", "烈", "劣"), meaning.choices)
+        assertSame(answer, meaning.answerPanel)
+        assertSame(handler, meaning.onChoice)
+        grid.onChoice.onChoice("列")
+        meaning.onChoice.onChoice("裂")
+        assertEquals(listOf("列", "裂"), calls)
+        assertEquals(grid, grid.copy())
+        assertEquals(similar, similar.copy())
+        assertEquals(meaning, meaning.copy())
+    }
 }

@@ -36,28 +36,6 @@ private val StudyPillFill = Color(MainActivityUiSupport.STUDY_PILL)
 private val StudyPinkDark = Color(MainActivityUiSupport.STUDY_PINK_DARK)
 private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
 
-data class SimilarChoiceSessionModel(
-    val modeLabel: String,
-    val title: String,
-    val taskLabel: String,
-    val body: String,
-    val reasonLine: String,
-    val question: String,
-    val gridModel: SimilarChoiceGridModel,
-)
-
-data class MeaningChoiceSessionModel(
-    val modeLabel: String,
-    val title: String,
-    val taskLabel: String,
-    val body: String,
-    val reasonLine: String,
-    val question: String,
-    val choices: List<String>,
-    val answerPanel: StudyAnswerPanelModel,
-    val onChoice: KanjiChoiceHandler,
-)
-
 internal fun similarKanjiGridView(activity: MainActivityStudy, model: SimilarChoiceGridModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

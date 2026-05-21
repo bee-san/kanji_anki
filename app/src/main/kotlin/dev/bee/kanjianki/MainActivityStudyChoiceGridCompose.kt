@@ -27,16 +27,6 @@ internal val SimilarChoiceCellHorizontalPadding = 4.dp
 internal val SimilarChoiceCellTopPadding = 8.dp
 internal val SimilarChoiceButtonHeight = 82.dp
 
-fun interface KanjiChoiceHandler {
-    fun onChoice(glyph: String)
-}
-
-data class SimilarChoiceGridModel(
-    val choices: List<String>,
-    val balanceLastRow: Boolean,
-    val onChoice: KanjiChoiceHandler,
-)
-
 @Composable
 fun SimilarChoiceGrid(model: SimilarChoiceGridModel) {
     KanjiChoiceGrid(
