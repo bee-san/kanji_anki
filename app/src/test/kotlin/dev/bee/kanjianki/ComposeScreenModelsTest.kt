@@ -527,4 +527,33 @@ class ComposeScreenModelsTest {
         assertEquals(sources, sources.copy())
         assertEquals(screen, screen.copy())
     }
+
+    @Test
+    fun newCardSortModelKeepsOptionsAndSaverContract() {
+        var savedMode: String? = null
+        val saver = SettingsNewCardSortSaver { mode -> savedMode = mode }
+        val frequency = SettingsNewCardSortOptionModel("Frequency", "frequency")
+        val risk = SettingsNewCardSortOptionModel("Retrievability risk", "retrievability_risk")
+        val model = SettingsNewCardSortPanelModel(
+            title = "New card order",
+            body = "Choose how Kani admits new problem kanji.",
+            initialMode = frequency.mode,
+            options = listOf(frequency, risk),
+            saveLabel = "Save order",
+            onSave = saver,
+        )
+
+        assertEquals("Frequency", frequency.label)
+        assertEquals("frequency", frequency.mode)
+        assertEquals("New card order", model.title)
+        assertEquals("Choose how Kani admits new problem kanji.", model.body)
+        assertEquals("frequency", model.initialMode)
+        assertEquals(listOf(frequency, risk), model.options)
+        assertEquals("Save order", model.saveLabel)
+        assertSame(saver, model.onSave)
+        model.onSave.save(risk.mode)
+        assertEquals("retrievability_risk", savedMode)
+        assertEquals(frequency, frequency.copy())
+        assertEquals(model, model.copy())
+    }
 }

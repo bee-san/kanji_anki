@@ -40,24 +40,6 @@ private val StudySortWhite = Color(0xFFFFFFFF)
 private val StudySortPanelShape = RoundedCornerShape(24.dp)
 private val StudySortButtonShape = RoundedCornerShape(12.dp)
 
-data class SettingsNewCardSortOptionModel(
-    val label: String,
-    val mode: String,
-)
-
-fun interface SettingsNewCardSortSaver {
-    fun save(mode: String)
-}
-
-data class SettingsNewCardSortPanelModel(
-    val title: String,
-    val body: String,
-    val initialMode: String,
-    val options: List<SettingsNewCardSortOptionModel>,
-    val saveLabel: String,
-    val onSave: SettingsNewCardSortSaver,
-) : SettingsPanelModel
-
 internal fun newCardSortSettingsPanelView(
     activity: MainActivitySettings,
     model: SettingsNewCardSortPanelModel,
