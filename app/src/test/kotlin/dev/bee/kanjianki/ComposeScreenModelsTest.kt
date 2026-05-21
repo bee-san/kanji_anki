@@ -113,4 +113,34 @@ class ComposeScreenModelsTest {
         assertEquals(coral, model.color)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun syncResultModelKeepsPrimaryAndSecondaryActions() {
+        val coral = 0xFFFF4C76.toInt()
+        val teal = 0xFF00AEB5.toInt()
+        val primary = Runnable {}
+        val secondary = Runnable {}
+        val model = SyncResultScreenModel(
+            title = "Sync complete",
+            headline = "12 cards imported",
+            lines = listOf("8 suspended", "4 active"),
+            accentColor = coral,
+            primaryLabel = "Study now",
+            primaryColor = teal,
+            onPrimary = primary,
+            secondaryLabel = "Back home",
+            onSecondary = secondary,
+        )
+
+        assertEquals("Sync complete", model.title)
+        assertEquals("12 cards imported", model.headline)
+        assertEquals(listOf("8 suspended", "4 active"), model.lines)
+        assertEquals(coral, model.accentColor)
+        assertEquals("Study now", model.primaryLabel)
+        assertEquals(teal, model.primaryColor)
+        assertSame(primary, model.onPrimary)
+        assertEquals("Back home", model.secondaryLabel)
+        assertSame(secondary, model.onSecondary)
+        assertEquals(model, model.copy())
+    }
 }

@@ -31,18 +31,6 @@ private val Ink = ComposeColor(0xFF2D1635)
 private val White = ComposeColor(0xFFFFFFFF)
 private val BorderPink = ComposeColor(0xFFEBD6E4)
 
-data class SyncResultScreenModel(
-    val title: String,
-    val headline: String?,
-    val lines: List<String>,
-    val accentColor: Int,
-    val primaryLabel: String?,
-    val primaryColor: Int,
-    val onPrimary: Runnable?,
-    val secondaryLabel: String,
-    val onSecondary: Runnable,
-)
-
 internal fun syncResultScreenView(activity: MainActivityHome, model: SyncResultScreenModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
