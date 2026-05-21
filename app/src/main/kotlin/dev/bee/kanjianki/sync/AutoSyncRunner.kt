@@ -53,12 +53,12 @@ internal class AutoSyncRunner @JvmOverloads constructor(
             store.recordAutoSyncAttempt(now, sync.success)
         }
         if (sync.success) {
-            return Result.success(sync.message)
+            return Result.success(sync.message ?: "")
         }
         if (sync.skipped) {
-            return Result.skipped(sync.message)
+            return Result.skipped(sync.message ?: "")
         }
-        return Result.failed(sync.message)
+        return Result.failed(sync.message ?: "")
     }
 
     class Result private constructor(
