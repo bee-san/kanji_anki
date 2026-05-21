@@ -2,7 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabase
 
-object LocalStoreSchema {
+internal object LocalStoreSchema {
     const val DB_NAME: String = "kanji_anki_simple.db"
     const val DB_VERSION: Int = 20
 
