@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStoreBase
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -1127,5 +1128,25 @@ class ComposeScreenModelsTest {
         assertEquals(true, result.visible)
         result.hide()
         assertEquals(false, result.visible)
+    }
+
+    @Test
+    fun typingAnswerStateKeepsTextAndWindowBounds() {
+        val state = TypingAnswerState("split")
+
+        assertEquals("split", state.text)
+        assertEquals("split", state.getText().toString())
+        assertEquals(false, state.containsWindowPoint(10f, 10f))
+
+        state.updateText("rend")
+        state.updateBounds(Rect(left = 4f, top = 8f, right = 24f, bottom = 38f))
+
+        assertEquals("rend", state.text)
+        assertEquals("rend", state.getText().toString())
+        assertEquals(true, state.containsWindowPoint(4f, 8f))
+        assertEquals(true, state.containsWindowPoint(24f, 38f))
+        assertEquals(true, state.containsWindowPoint(12f, 20f))
+        assertEquals(false, state.containsWindowPoint(3f, 20f))
+        assertEquals(false, state.containsWindowPoint(12f, 39f))
     }
 }

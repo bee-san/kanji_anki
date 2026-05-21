@@ -15,13 +15,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -37,32 +33,6 @@ import androidx.compose.ui.unit.sp
 private val TypingAnswerMuted = Color(MainActivityUiSupport.STUDY_HERO_MUTED)
 private val TypingAnswerText = Color(MainActivityUiSupport.STUDY_PLUM)
 private val TypingAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-
-class TypingAnswerState @JvmOverloads constructor(initialText: String = "") {
-    private var value by mutableStateOf(initialText)
-
-    private var boundsInWindow: Rect? = null
-
-    internal val text: String
-        get() = value
-
-    fun getText(): CharSequence {
-        return value
-    }
-
-    fun containsWindowPoint(x: Float, y: Float): Boolean {
-        val bounds = boundsInWindow ?: return false
-        return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
-    }
-
-    internal fun updateText(value: String) {
-        this.value = value
-    }
-
-    internal fun updateBounds(bounds: Rect) {
-        boundsInWindow = bounds
-    }
-}
 
 @Composable
 internal fun TypingMeaningAnswer(label: String, state: TypingAnswerState) {
