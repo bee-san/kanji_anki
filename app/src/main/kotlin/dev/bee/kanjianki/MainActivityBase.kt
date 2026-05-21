@@ -191,6 +191,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
     private val shellHost = MainActivityShellHost(this)
     private val startup = MainActivityStartup(this)
+    private val activityLifecycle = MainActivityLifecycle(this)
 
     fun interface WritingRecognizerFactory {
         fun create(executor: ExecutorService): WritingRecognizer
@@ -220,26 +221,17 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     }
 
     override fun onPause() {
-        pauseActiveStudyTask()
-        activityPaused = true
+        activityLifecycle.onPause()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        activityPaused = false
-        resumeActiveStudyTask()
+        activityLifecycle.onResume()
     }
 
     override fun onDestroy() {
-        io.shutdownNow()
-        val recognizer = writingRecognizer
-        if (recognizer != null && recognizer !== writingRecognizerForTests) {
-            recognizer.close()
-        }
-        if (storeOrNull() != null) {
-            store.close()
-        }
+        activityLifecycle.onDestroy()
         super.onDestroy()
     }
 
@@ -528,11 +520,4 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         }
     }
 
-    private fun storeOrNull(): LocalStore? {
-        return try {
-            store
-        } catch (_: NullPointerException) {
-            null
-        }
-    }
 }
