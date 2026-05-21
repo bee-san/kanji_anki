@@ -143,4 +143,71 @@ class ComposeScreenModelsTest {
         assertSame(secondary, model.onSecondary)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun reminderPanelModelKeepsMutableTimeAndActions() {
+        var picked: Pair<Int, Int>? = null
+        var saved = false
+        var turnedOff = false
+        var openedSettings = false
+        val selectedHour = intArrayOf(7)
+        val selectedMinute = intArrayOf(30)
+        val pickTime = SettingsReminderTimePickerAction { hour, minute, onSelected ->
+            picked = hour to minute
+            onSelected.select(8, 45)
+        }
+        val save = SettingsReminderAction { saved = true }
+        val turnOff = SettingsReminderAction { turnedOff = true }
+        val openSettings = SettingsReminderAction { openedSettings = true }
+        val preset = SettingsReminderPresetModel("Morning", 8, 0)
+
+        val model = SettingsReminderPanelModel(
+            title = "Daily reminder",
+            status = "On",
+            statusColor = 0xFF00AEB5.toInt(),
+            body = "Kani will remind you to study.",
+            selectedHour = selectedHour,
+            selectedMinute = selectedMinute,
+            presets = listOf(preset),
+            saveLabel = "Save reminder",
+            turnOffLabel = "Turn off",
+            warning = "Notifications are blocked",
+            notificationSettingsLabel = "Open notification settings",
+            onPickTime = pickTime,
+            onSave = save,
+            onTurnOff = turnOff,
+            onOpenNotificationSettings = openSettings,
+        )
+
+        assertEquals("Daily reminder", model.title)
+        assertEquals("On", model.status)
+        assertEquals(0xFF00AEB5.toInt(), model.statusColor)
+        assertEquals("Kani will remind you to study.", model.body)
+        assertSame(selectedHour, model.selectedHour)
+        assertSame(selectedMinute, model.selectedMinute)
+        assertEquals(listOf(preset), model.presets)
+        assertEquals("Save reminder", model.saveLabel)
+        assertEquals("Turn off", model.turnOffLabel)
+        assertEquals("Notifications are blocked", model.warning)
+        assertEquals("Open notification settings", model.notificationSettingsLabel)
+        assertSame(pickTime, model.onPickTime)
+        assertSame(save, model.onSave)
+        assertSame(turnOff, model.onTurnOff)
+        assertSame(openSettings, model.onOpenNotificationSettings)
+
+        model.onPickTime.pick(model.selectedHour[0], model.selectedMinute[0]) { hour, minute ->
+            model.selectedHour[0] = hour
+            model.selectedMinute[0] = minute
+        }
+        model.onSave.run()
+        model.onTurnOff?.run()
+        model.onOpenNotificationSettings?.run()
+
+        assertEquals(7 to 30, picked)
+        assertEquals(8, model.selectedHour[0])
+        assertEquals(45, model.selectedMinute[0])
+        assertEquals(true, saved)
+        assertEquals(true, turnedOff)
+        assertEquals(true, openedSettings)
+    }
 }
