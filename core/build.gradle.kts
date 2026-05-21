@@ -46,6 +46,7 @@ dependencies {
     api(project(":dictionary-core"))
     api(project(":domain"))
     api(project(":sync-domain"))
+    implementation(project(":fsrs-java"))
     implementation(project(":update-core"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }
