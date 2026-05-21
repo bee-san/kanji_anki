@@ -25,7 +25,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         store.settingsRepository().putLong(key, value)
     }
 
-    fun putStringSetting(key: String, value: String) {
+    fun putStringSetting(key: String, value: String?) {
         store.settingsRepository().putString(key, value)
     }
 

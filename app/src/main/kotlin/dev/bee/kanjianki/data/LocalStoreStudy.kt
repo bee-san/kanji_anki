@@ -1,0 +1,319 @@
+package dev.bee.kanjianki.data
+
+import android.content.ContentValues
+import android.content.Context
+import android.database.sqlite.SQLiteDatabase
+import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.TextUtil
+
+internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(context) {
+    private fun studySettings(): LocalStoreStudySettings = LocalStoreStudySettings(this)
+
+    private fun studyLog(): LocalStoreStudyLog = LocalStoreStudyLog(this)
+
+    private fun studyStatus(): LocalStoreStudyStatus = LocalStoreStudyStatus(this as LocalStore)
+
+    fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
+        replaceStudyItems(items, null, 0L, null)
+    }
+
+    fun replaceStudyItems(
+        items: List<RecordsStudyModels.StudyItem>,
+        syncId: Long?,
+        occurredAt: Long,
+        settings: RecordsSyncModels.Settings?,
+    ) {
+        writableDatabase.transaction {
+            val previous = if (syncId == null) emptyMap() else studySnapshots(this)
+            delete(TABLE_STUDY_ITEMS, null, null)
+            for (item in items) {
+                upsertStudyItem(this, item)
+            }
+            if (syncId != null) {
+                appendStudyStateTimelineEvents(this, previous, items, syncId, occurredAt, settings)
+            }
+        }
+    }
+
+    fun saveStudyItem(item: RecordsStudyModels.StudyItem) {
+        writableDatabase.transaction {
+            upsertStudyItem(this, item)
+        }
+    }
+
+    fun saveReview(request: RecordsSchedulerModels.ReviewRequest, appliedRating: String?, reviewedAt: Long) {
+        saveReview(request, appliedRating, reviewedAt, null, null)
+    }
+
+    fun saveReview(
+        request: RecordsSchedulerModels.ReviewRequest,
+        appliedRating: String?,
+        reviewedAt: Long,
+        beforeReview: RecordsStudyModels.StudyItem?,
+        afterReview: RecordsStudyModels.StudyItem?,
+    ) {
+        writableDatabase.transaction {
+            val inserted = insertReview(this, request, appliedRating, reviewedAt, beforeReview, afterReview)
+            if (inserted != -1L) {
+                appendReviewTimelineEvent(this, request, appliedRating, reviewedAt, "review:" + request.token)
+            }
+        }
+    }
+
+    fun kanjiImpactReport(): KanjiImpactAnalyzer.Report = KanjiImpactReportStore(this as LocalStore).report()
+
+    fun insertReview(
+        db: SQLiteDatabase,
+        request: RecordsSchedulerModels.ReviewRequest,
+        appliedRating: String?,
+        reviewedAt: Long,
+        beforeReview: RecordsStudyModels.StudyItem?,
+        afterReview: RecordsStudyModels.StudyItem?,
+    ): Long {
+        val values = ContentValues()
+        values.put(COLUMN_KANJI, request.kanji)
+        values.put(COLUMN_TOKEN, request.token)
+        values.put(COLUMN_RATING, appliedRating)
+        values.put(COLUMN_WRITING_REQUIRED, if (request.writingRequired) 1 else 0)
+        values.put(COLUMN_WRITING_PASSED, if (request.writingPassed) 1 else 0)
+        values.put(COLUMN_MANUAL_OVERRIDE, if (request.manualOverride) 1 else 0)
+        values.put(COLUMN_REVIEWED_AT, reviewedAt)
+        values.put(COLUMN_REVIEW_DAY_START, localDayStart(reviewedAt))
+        values.put(COLUMN_TASK_TYPE, request.taskType)
+        values.put(COLUMN_ANSWER_SIGNATURE, request.answerSignature)
+        values.put("prompt", request.prompt)
+        values.put("hints_used", request.hintsUsed)
+        values.put("writing_clean", if (request.writingClean) 1 else 0)
+        values.put("memory_before", taskMemoryText(beforeReview, request.taskType))
+        values.put("memory_after", taskMemoryText(afterReview, request.taskType))
+        values.put("scheduler_state_after_json", studyItemSchedulerJson(afterReview))
+        return db.insertWithOnConflict(TABLE_REVIEW_LOG, null, values, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
+    fun taskMemoryText(item: RecordsStudyModels.StudyItem?, taskType: String?): String {
+        if (item == null || taskType.isNullOrEmpty()) {
+            return ""
+        }
+        return item.memoryForTaskType(taskType).encode()
+    }
+
+    fun studyItemSchedulerJson(item: RecordsStudyModels.StudyItem?): String {
+        if (item == null) {
+            return ""
+        }
+        return "{" +
+            "\"state\":" + TextUtil.jsonQuote(item.state) +
+            ",\"due_at\":" + item.dueAtMillis +
+            ",\"stability\":" + item.stability +
+            ",\"difficulty\":" + item.difficulty +
+            ",\"total_reviews\":" + item.totalReviews +
+            ",\"lapses\":" + item.lapses +
+            ",\"learning_step\":" + item.learningStep +
+            ",\"writing_level\":" + item.writingLevel +
+            ",\"recognition_stage\":" + item.recognitionStage +
+            ",\"writing_remediation_pending\":" + if (item.writingRemediationPending) "true" else "false" +
+            ",\"mature_interval_days\":" + item.matureIntervalDays +
+            "}"
+    }
+
+    fun consumedTokens(): List<String> = studyStatus().consumedTokens()
+
+    fun latestSync(): SyncStatus? = studyStatus().latestSync()
+
+    fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean = studyStatus().hasSuccessfulSyncSince(finishedAtMillis)
+
+    fun getIntSetting(key: String, fallback: Int): Int = studySettings().getIntSetting(key, fallback)
+
+    fun getLongSetting(key: String, fallback: Long): Long = studySettings().getLongSetting(key, fallback)
+
+    fun getStringSetting(key: String, fallback: String?): String? {
+        return settingsRepository().getString(key, fallback)
+    }
+
+    fun getDoubleSetting(key: String, fallback: Double): Double = studySettings().getDoubleSetting(key, fallback)
+
+    fun putIntSetting(key: String, value: Int) {
+        studySettings().putIntSetting(key, value)
+    }
+
+    fun putLongSetting(key: String, value: Long) {
+        studySettings().putLongSetting(key, value)
+    }
+
+    fun putStringSetting(key: String, value: String?) {
+        studySettings().putStringSetting(key, value)
+    }
+
+    fun putDoubleSetting(key: String, value: Double) {
+        studySettings().putDoubleSetting(key, value)
+    }
+
+    fun adaptiveLoadWorkPercent(): Int = studySettings().adaptiveLoadWorkPercent()
+
+    fun saveAdaptiveLoadWorkPercent(percent: Int) {
+        studySettings().saveAdaptiveLoadWorkPercent(percent)
+    }
+
+    fun studyAheadMinutes(): Int = studySettings().studyAheadMinutes()
+
+    fun saveStudyAheadMinutes(minutes: Int) {
+        studySettings().saveStudyAheadMinutes(minutes)
+    }
+
+    fun studyLadderSettings(): RecordsBase.StudyLadderSettings = studySettings().studyLadderSettings()
+
+    fun saveStudyLadderSettings(settings: RecordsBase.StudyLadderSettings?) {
+        studySettings().saveStudyLadderSettings(settings)
+    }
+
+    fun adaptiveLoadMaxItems(): Int = studySettings().adaptiveLoadMaxItems()
+
+    fun saveAdaptiveLoadMaxItems(maxItems: Int) {
+        studySettings().saveAdaptiveLoadMaxItems(maxItems)
+    }
+
+    fun adaptiveLoadMode(): String = studySettings().adaptiveLoadMode()
+
+    fun saveAdaptiveLoadMode(mode: String?) {
+        studySettings().saveAdaptiveLoadMode(mode)
+    }
+
+    fun reminderSettings(): ReminderSettings = studySettings().reminderSettings()
+
+    fun saveReminderSettings(settings: ReminderSettings) {
+        studySettings().saveReminderSettings(settings)
+    }
+
+    fun autoSyncSettings(): AutoSyncSettings = studySettings().autoSyncSettings()
+
+    fun activateAutoSyncAfterFirstSuccess(): Boolean = studySettings().activateAutoSyncAfterFirstSuccess()
+
+    fun setAutoSyncEnabled(enabled: Boolean) {
+        studySettings().setAutoSyncEnabled(enabled)
+    }
+
+    fun markAutoSyncScheduled(nextRunAt: Long) {
+        studySettings().markAutoSyncScheduled(nextRunAt)
+    }
+
+    fun recordAutoSyncAttempt(attemptedAt: Long, success: Boolean) {
+        studySettings().recordAutoSyncAttempt(attemptedAt, success)
+    }
+
+    fun saveAutoSyncSettings(settings: AutoSyncSettings) {
+        studySettings().saveAutoSyncSettings(settings)
+    }
+
+    fun autoUpdateStatus(): AutoUpdateStatus = studySettings().autoUpdateStatus()
+
+    fun saveAutoUpdateEnabled(enabled: Boolean) {
+        studySettings().saveAutoUpdateEnabled(enabled)
+    }
+
+    fun recordAutoUpdateResult(
+        checkedAt: Long,
+        result: String?,
+        version: String?,
+        pendingApkName: String?,
+        pendingMessage: String?,
+    ) {
+        studySettings().recordAutoUpdateResult(checkedAt, result, version, pendingApkName, pendingMessage)
+    }
+
+    fun clearPendingAutoUpdate(result: String?) {
+        studySettings().clearPendingAutoUpdate(result)
+    }
+
+    fun schedulerParameters(): RecordsSchedulerModels.SchedulerParameters = studySettings().schedulerParameters()
+
+    fun saveSchedulerParameters(parameters: RecordsSchedulerModels.SchedulerParameters) {
+        studySettings().saveSchedulerParameters(parameters)
+    }
+
+    fun learningStepSettings(): RecordsSchedulerModels.LearningStepSettings = studySettings().learningStepSettings()
+
+    fun saveLearningStepSettings(settings: RecordsSchedulerModels.LearningStepSettings?) {
+        studySettings().saveLearningStepSettings(settings)
+    }
+
+    fun saveLearningRepeat(repeat: RecordsSchedulerModels.LearningRepeat) {
+        studyLog().saveLearningRepeat(repeat)
+    }
+
+    fun enqueueLearningRepeat(
+        item: RecordsStudyModels.StudyItem,
+        taskType: String,
+        repeatType: String,
+        stepIndex: Int,
+        dueAtMillis: Long,
+        nowMillis: Long,
+    ) {
+        studyLog().enqueueLearningRepeat(item, taskType, repeatType, stepIndex, dueAtMillis, nowMillis)
+    }
+
+    fun clearLearningRepeat(repeat: RecordsSchedulerModels.LearningRepeat) {
+        studyLog().clearLearningRepeat(repeat)
+    }
+
+    fun dueLearningRepeats(nowMillis: Long): List<RecordsSchedulerModels.LearningRepeat> {
+        return studyLog().dueLearningRepeats(nowMillis)
+    }
+
+    fun reviewStatsSince(sinceMillis: Long): RecordsSchedulerModels.ReviewStats {
+        return StudyStatsStore(this as LocalStore).reviewStatsSince(sinceMillis)
+    }
+
+    fun recordStudyTaskAnswered(
+        taskKey: String?,
+        kanji: String?,
+        taskType: String?,
+        startedAt: Long,
+        answeredAt: Long,
+        activeElapsedMillis: Long,
+        outcome: String?,
+    ): Boolean {
+        return studyLog().recordStudyTaskAnswered(
+            taskKey,
+            kanji,
+            taskType,
+            startedAt,
+            answeredAt,
+            activeElapsedMillis,
+            outcome
+        )
+    }
+
+    fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {
+        return StudyStatsStore(this as LocalStore).studyTaskTimeStats(nowMillis)
+    }
+
+    fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
+        return StudyStatsStore(this as LocalStore).recentMistakes(limit)
+    }
+
+    fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak {
+        return StudyStatsStore(this as LocalStore).studyStreak(nowMillis)
+    }
+
+    fun studyImpactStats(): StudyStatsStore.StudyImpactStats {
+        return StudyStatsStore(this as LocalStore).studyImpactStats()
+    }
+
+    fun kaniOutcomeStats(): StudyStatsStore.KaniOutcomeStats {
+        return StudyStatsStore(this as LocalStore).kaniOutcomeStats()
+    }
+
+    fun studiedKanjiSince(sinceMillis: Long): Set<String> {
+        return StudyStatsStore(this as LocalStore).studiedKanjiSince(sinceMillis)
+    }
+
+    private companion object {
+        fun localDayStart(millis: Long): Long = LocalDayPolicy.localDayStart(millis)
+    }
+}
