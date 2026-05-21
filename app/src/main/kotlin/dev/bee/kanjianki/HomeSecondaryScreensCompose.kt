@@ -1,35 +1,9 @@
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
-
-internal fun homeFocusQueueScreenView(home: MainActivityHome, model: HomeFocusQueueScreenModel): View {
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                HomeFocusQueueScreen(model)
-            }
-        }
-    }
-}
-
-internal fun homeRecentMistakesScreenView(home: MainActivityHome, model: HomeRecentMistakesScreenModel): View {
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                HomeRecentMistakesScreen(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun HomeFocusQueueScreen(model: HomeFocusQueueScreenModel) {
