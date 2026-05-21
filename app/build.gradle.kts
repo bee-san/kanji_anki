@@ -136,6 +136,14 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
                     "**/BuildConfig.*",
                     "**/Manifest*.*",
                 )
+            },
+            fileTree(layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes").get().asFile) {
+                exclude(
+                    "**/R.class",
+                    "**/R$*.class",
+                    "**/BuildConfig.*",
+                    "**/Manifest*.*",
+                )
             }
         )
     )

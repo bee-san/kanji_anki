@@ -26,6 +26,7 @@ val maybeSonarMainBinaries = listOf(
     rootPath("update-core/build/classes"),
     rootPath("app/build/intermediates/javac"),
     rootPath("app/build/tmp/kotlin-classes/debug"),
+    rootPath("app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
 )
 val maybeSonarTestBinaries = listOf(
     rootPath("fsrs-java/build/classes"),
@@ -36,6 +37,8 @@ val maybeSonarTestBinaries = listOf(
     rootPath("dictionary-core/build/classes"),
     rootPath("update-core/build/classes"),
     rootPath("app/build/intermediates/javac"),
+    rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+    rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
 )
 val maybeSonarCoveragePaths = buildList<String> {
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
