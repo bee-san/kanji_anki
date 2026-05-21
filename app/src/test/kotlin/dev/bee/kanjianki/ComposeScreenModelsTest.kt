@@ -210,4 +210,38 @@ class ComposeScreenModelsTest {
         assertEquals(true, turnedOff)
         assertEquals(true, openedSettings)
     }
+
+    @Test
+    fun autoSyncPanelModelKeepsOptionalActionContract() {
+        var toggled = false
+        val action = SettingsAutoSyncAction { toggled = true }
+        val model = SettingsAutoSyncPanelModel(
+            title = "Daily Anki sync",
+            status = "On at 06:45",
+            statusColor = 0xFF00AEB5.toInt(),
+            detail = "Last success yesterday. Next run tomorrow.",
+            actionLabel = "Turn off",
+            primaryAction = false,
+            onAction = action,
+        )
+        val disabled = model.copy(
+            status = "Not configured",
+            actionLabel = null,
+            primaryAction = false,
+            onAction = null,
+        )
+
+        assertEquals("Daily Anki sync", model.title)
+        assertEquals("On at 06:45", model.status)
+        assertEquals(0xFF00AEB5.toInt(), model.statusColor)
+        assertEquals("Last success yesterday. Next run tomorrow.", model.detail)
+        assertEquals("Turn off", model.actionLabel)
+        assertEquals(false, model.primaryAction)
+        assertSame(action, model.onAction)
+        model.onAction?.run()
+        assertEquals(true, toggled)
+        assertEquals("Not configured", disabled.status)
+        assertEquals(null, disabled.actionLabel)
+        assertEquals(null, disabled.onAction)
+    }
 }

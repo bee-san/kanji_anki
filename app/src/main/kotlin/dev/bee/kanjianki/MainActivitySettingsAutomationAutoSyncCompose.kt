@@ -34,20 +34,6 @@ private val AutoSyncWhite = Color(0xFFFFFFFF)
 private val AutoSyncPanelShape = RoundedCornerShape(24.dp)
 private val AutoSyncButtonShape = RoundedCornerShape(12.dp)
 
-fun interface SettingsAutoSyncAction {
-    fun run()
-}
-
-data class SettingsAutoSyncPanelModel(
-    val title: String,
-    val status: String,
-    val statusColor: Int,
-    val detail: String,
-    val actionLabel: String?,
-    val primaryAction: Boolean,
-    val onAction: SettingsAutoSyncAction?,
-) : SettingsPanelModel
-
 internal fun autoSyncSettingsPanelView(
     activity: MainActivitySettings,
     model: SettingsAutoSyncPanelModel,
