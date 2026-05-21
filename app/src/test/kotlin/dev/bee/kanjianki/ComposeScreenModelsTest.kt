@@ -1,0 +1,116 @@
+package dev.bee.kanjianki
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Test
+
+class ComposeScreenModelsTest {
+    @Test
+    fun shellModelDefaultsToHomeAndCopiesSelectedRoute() {
+        assertEquals("home", MainActivityShellModel().selectedRoute)
+
+        val study = MainActivityShellModel().copy(selectedRoute = MainActivityBase.NAV_STUDY)
+
+        assertEquals(MainActivityBase.NAV_STUDY, study.selectedRoute)
+        assertEquals(MainActivityShellModel(MainActivityBase.NAV_STUDY), study)
+    }
+
+    @Test
+    fun homeScreenModelKeepsAllCallbacksAndSections() {
+        val onSync = {}
+        val onStudy = {}
+        val onFocus = {}
+        val action = HomeActionModel("Stats", R.drawable.ic_stats_24) {}
+        val coral = 0xFFFF4C76.toInt()
+        val metric = HomeMetricModel(R.drawable.ic_target_24, coral, "Focus", "2", "Ready", null)
+
+        val model = HomeScreenModel(
+            title = "Kani",
+            subtitle = "Repair weak kanji",
+            metrics = listOf(metric),
+            showSyncCta = true,
+            syncLabel = "Sync",
+            studyLabel = "Study",
+            studySubtitle = "Next weak kanji",
+            onSync = onSync,
+            onStudy = onStudy,
+            actions = listOf(action),
+            focusTitle = "Focus queue",
+            focusActionLabel = "View all",
+            onFocusAction = onFocus,
+            emptyTitle = "Empty",
+            emptyBody = "Sync first",
+            previewCards = emptyList(),
+        )
+
+        assertEquals("Kani", model.title)
+        assertEquals("Repair weak kanji", model.subtitle)
+        assertEquals(listOf(metric), model.metrics)
+        assertEquals(true, model.showSyncCta)
+        assertEquals("Sync", model.syncLabel)
+        assertEquals("Study", model.studyLabel)
+        assertEquals("Next weak kanji", model.studySubtitle)
+        assertSame(onSync, model.onSync)
+        assertSame(onStudy, model.onStudy)
+        assertEquals(listOf(action), model.actions)
+        assertEquals("Focus queue", model.focusTitle)
+        assertEquals("View all", model.focusActionLabel)
+        assertSame(onFocus, model.onFocusAction)
+        assertEquals("Empty", model.emptyTitle)
+        assertEquals("Sync first", model.emptyBody)
+        assertEquals(emptyList<HomeFocusQueueCardModel>(), model.previewCards)
+        assertEquals(model, model.copy())
+    }
+
+    @Test
+    fun secondaryScreenModelsKeepPanelContracts() {
+        val onHome = {}
+        val onSync = {}
+        val queue = HomeFocusQueuePanelModel(
+            planText = "Adaptive focus",
+            emptyTitle = "No cards",
+            emptyBody = "Sync first",
+            showSyncButton = true,
+            cards = emptyList(),
+        )
+        val mistakes = HomeRecentMistakesPanelModel(
+            emptyTitle = "No mistakes",
+            emptyBody = "Missed reviews appear here",
+            cards = emptyList(),
+        )
+
+        val focusModel = HomeFocusQueueScreenModel("Focus", "Home", onHome, queue, onSync)
+        val mistakesModel = HomeRecentMistakesScreenModel("Mistakes", "Home", onHome, mistakes)
+
+        assertEquals("Focus", focusModel.title)
+        assertEquals("Home", focusModel.homeLabel)
+        assertSame(onHome, focusModel.onHome)
+        assertSame(queue, focusModel.queue)
+        assertSame(onSync, focusModel.onSync)
+        assertEquals(focusModel, focusModel.copy())
+        assertEquals("Mistakes", mistakesModel.title)
+        assertEquals("Home", mistakesModel.homeLabel)
+        assertSame(onHome, mistakesModel.onHome)
+        assertSame(mistakes, mistakesModel.mistakes)
+        assertEquals(mistakesModel, mistakesModel.copy())
+    }
+
+    @Test
+    fun browseExampleModelKeepsSourceAndTextFields() {
+        val coral = 0xFFFF4C76.toInt()
+        val model = BrowseExampleCardModel(
+            sourceLabel = "Suspended",
+            expression = "裂語",
+            sentence = "裂語 is an example.",
+            meaning = "split word",
+            color = coral,
+        )
+
+        assertEquals("Suspended", model.sourceLabel)
+        assertEquals("裂語", model.expression)
+        assertEquals("裂語 is an example.", model.sentence)
+        assertEquals("split word", model.meaning)
+        assertEquals(coral, model.color)
+        assertEquals(model, model.copy())
+    }
+}
