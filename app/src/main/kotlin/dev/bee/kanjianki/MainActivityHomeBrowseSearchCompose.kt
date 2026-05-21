@@ -40,23 +40,6 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 
-data class BrowseScreenModel(
-    val initialQuery: String,
-    val resultHeading: String,
-    val rows: List<BrowseKanjiRowModel>,
-    val onHome: () -> Unit,
-    val onSearch: (String) -> Unit,
-)
-
-data class BrowseKanjiRowModel(
-    val kanji: String,
-    val meaning: String,
-    val readings: String,
-    val summary: String,
-    val suspended: Boolean,
-    val onClick: () -> Unit,
-)
-
 internal fun browseScreenView(
     activity: MainActivityHomeBrowseDetail,
     query: String,
