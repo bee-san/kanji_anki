@@ -686,10 +686,10 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
 
     companion object {
         @JvmStatic
-        fun serializeChoices(choices: List<String>): String = SimilarChoiceCodec.serializeChoices(choices)
+        fun serializeChoices(choices: List<String>?): String = SimilarChoiceCodec.serializeChoices(choices)
 
         @JvmStatic
-        fun deserializeChoices(encoded: String): List<String> = SimilarChoiceCodec.deserializeChoices(encoded)
+        fun deserializeChoices(encoded: String?): List<String> = SimilarChoiceCodec.deserializeChoices(encoded)
 
         @JvmStatic
         fun normalizeSingleKanji(value: String?): String = TextUtil.normalizeSingleKanji(value)
