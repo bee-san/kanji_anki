@@ -117,7 +117,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             ",\"learning_step\":" + item.learningStep +
             ",\"writing_level\":" + item.writingLevel +
             ",\"recognition_stage\":" + item.recognitionStage +
-            ",\"writing_remediation_pending\":" + if (item.writingRemediationPending) "true" else "false" +
+            ",\"writing_remediation_pending\":" + (if (item.writingRemediationPending) "true" else "false") +
             ",\"mature_interval_days\":" + item.matureIntervalDays +
             "}"
     }
