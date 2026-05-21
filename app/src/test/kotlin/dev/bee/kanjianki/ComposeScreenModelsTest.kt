@@ -1028,4 +1028,18 @@ class ComposeScreenModelsTest {
         assertEquals(similar, similar.copy())
         assertEquals(meaning, meaning.copy())
     }
+
+    @Test
+    fun writingAnswerPanelStateKeepsVisibilityTransitions() {
+        val hidden = WritingAnswerPanelState()
+        val visible = WritingAnswerPanelState(true)
+
+        assertEquals(false, hidden.visible)
+        assertEquals(true, visible.visible)
+        hidden.updateVisible(true)
+        visible.updateVisible(false)
+
+        assertEquals(true, hidden.visible)
+        assertEquals(false, visible.visible)
+    }
 }
