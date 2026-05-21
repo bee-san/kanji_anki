@@ -1,14 +1,12 @@
 package dev.bee.kanjianki
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.sync.SyncProgress
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -39,14 +37,6 @@ class SyncProgressPanelComposeTest {
         }
 
         composeRule.onNodeWithText("Syncing cards").assertIsDisplayed()
-    }
-
-    @Test
-    fun syncProgressScreenUsesSingleComposeBridge() {
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val screen = syncProgressScreenView(context, "Syncing cards", SyncProgressPanel())
-
-        assertTrue(screen is ComposeView)
     }
 
     @Test

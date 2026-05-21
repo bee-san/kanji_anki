@@ -1,9 +1,6 @@
 package dev.bee.kanjianki
 
-import android.content.Context
 import android.os.SystemClock
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -44,20 +40,6 @@ internal data class SyncProgressPanelState(
     val progressValue: Int = 0,
     val progressDescription: String = "Sync progress"
 )
-
-internal fun syncProgressScreenView(context: Context, title: String, progressPanel: SyncProgressPanel): View {
-    return ComposeView(context).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                SyncProgressScreen(
-                    title = title,
-                    progressPanel = progressPanel
-                )
-            }
-        }
-    }
-}
 
 class SyncProgressPanel @JvmOverloads constructor(
     private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() }

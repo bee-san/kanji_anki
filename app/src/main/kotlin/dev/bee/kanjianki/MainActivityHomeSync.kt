@@ -18,15 +18,13 @@ internal class MainActivityHomeSync(private val home: MainActivityHome) {
     }
 
     fun runSync() {
-        home.base("home")
         val progressView = SyncProgressPanel()
-        home.content.addView(
-            syncProgressScreenView(
-                home,
-                HomeTextCopy.syncingTitle(),
-                progressView,
+        home.composeRoute("home") {
+            SyncProgressScreen(
+                title = HomeTextCopy.syncingTitle(),
+                progressPanel = progressView,
             )
-        )
+        }
         val syncGateway = MainActivityBase.collectionGatewayForTests ?: home.gateway
         val coordinator = ManualSyncCoordinator(
             home.io,
