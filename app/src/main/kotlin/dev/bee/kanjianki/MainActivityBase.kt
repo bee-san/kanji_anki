@@ -15,10 +15,8 @@ import androidx.core.view.WindowInsetsCompat
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.FocusQueuePolicy
-import dev.bee.kanjianki.core.FocusedStudyPlanPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -26,7 +24,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
-import dev.bee.kanjianki.core.StudyPlanSelectionPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.study.HintProgression
 import dev.bee.kanjianki.core.study.HintState
@@ -40,7 +37,6 @@ import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.sync.SyncSettings
 import dev.bee.kanjianki.update.AutoUpdateScheduler
-import java.util.Collections
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -197,6 +193,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     private val permissionHandler = MainActivityPermissionHandler(this)
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
+    private val studyPlanProvider = MainActivityStudyPlanProvider(this)
 
     fun interface WritingRecognizerFactory {
         fun create(executor: ExecutorService): WritingRecognizer
@@ -405,23 +402,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
-        return AdaptiveLoadPlanner().plan(
-            AdaptiveLoadPlanner.PlanRequest.builder(
-                rows,
-                items,
-                store.reviewStatsSince(now - 7 * DAY_MILLIS),
-                store.studyStreak(now).currentDays,
-                store.studiedKanjiSince(startOfDay(now)),
-                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                    store.adaptiveLoadWorkPercent(),
-                    store.adaptiveLoadMode(),
-                    store.adaptiveLoadMaxItems(),
-                ),
-                now,
-            )
-                .settings(settings())
-                .build()
-        )
+        return studyPlanProvider.adaptivePlan(rows, items, now)
     }
 
     fun studyPlanForMode(
@@ -429,24 +410,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
-        var studiedToday: Set<String> = Collections.emptySet()
-        var adaptive: RecordsSchedulerModels.AdaptiveLoadPlan? = null
-        if (studyMoreNewCardKanji.isEmpty()) {
-            if (continueAllKanjiSession) {
-                studiedToday = store.studiedKanjiSince(startOfDay(now))
-            } else {
-                adaptive = adaptivePlan(rows, items, now)
-            }
-        }
-        return StudyPlanSelectionPolicy.select(
-            studyMoreNewCardKanji,
-            continueAllKanjiSession,
-            rows,
-            items,
-            studiedToday,
-            now,
-            adaptive,
-        )
+        return studyPlanProvider.studyPlanForMode(rows, items, now)
     }
 
     fun studyMoreNewCardsPlan(
@@ -454,7 +418,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
-        return FocusedStudyPlanPolicy.studyMoreNewCardsPlan(studyMoreNewCardKanji, rows, items, now)
+        return studyPlanProvider.studyMoreNewCardsPlan(rows, items, now)
     }
 
     fun allCurrentProblemKanjiPlan(
@@ -462,12 +426,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
-        return FocusedStudyPlanPolicy.allCurrentProblemKanjiPlan(
-            rows,
-            items,
-            store.studiedKanjiSince(startOfDay(now)),
-            now,
-        )
+        return studyPlanProvider.allCurrentProblemKanjiPlan(rows, items, now)
     }
 
     fun prepareStudyContent(plan: RecordsSchedulerModels.AdaptiveLoadPlan?, fillViewport: Boolean) {
