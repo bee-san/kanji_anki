@@ -104,6 +104,18 @@ public final class HomeStudyQueueActionsTest {
         assertFalse(recomputed.get());
     }
 
+    @Test
+    public void studyQueueRequestKeepsJavaRecordSemantics() {
+        HomeStudyQueueActions.StudyQueueSeeder seeder = (rows, currentItems, settings, nowMillis, startOfDayMillis, plan, ladder) -> currentItems;
+        RecordingWriter writer = new RecordingWriter(Collections.emptyList());
+        HomeStudyQueueActions.StudyQueueRequest request = baseRequest(false, Collections.emptyList(), null, seeder, writer);
+
+        assertTrue(HomeStudyQueueActions.StudyQueueRequest.class.isRecord());
+        assertFalse(request.persist());
+        assertSame(seeder, request.seeder());
+        assertSame(writer, request.writer());
+    }
+
     private static HomeStudyQueueActions.StudyQueueRequest request(
             boolean persist,
             List<RecordsStudyModels.StudyItem> current,
