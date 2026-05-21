@@ -136,7 +136,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             activity.store.putIntSetting(key, value)
         }
 
-        override fun putStringSetting(key: String, value: String) {
+        override fun putStringSetting(key: String, value: String?) {
             activity.store.putStringSetting(key, value)
         }
 

@@ -75,6 +75,28 @@ public final class SettingsWriteActionsTest {
     }
 
     @Test
+    public void noteTypeFieldWriteRequestKeepsJavaRecordSemanticsAndNullComponents() {
+        SettingsWriteActions.NoteTypeFieldWriteRequest request = new SettingsWriteActions.NoteTypeFieldWriteRequest(
+                "Kiku",
+                "Expression",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertTrue(SettingsWriteActions.NoteTypeFieldWriteRequest.class.isRecord());
+        assertEquals("Kiku", request.noteType());
+        assertEquals("Expression", request.expressionField());
+        assertEquals(null, request.readingField());
+        assertEquals(
+                request,
+                new SettingsWriteActions.NoteTypeFieldWriteRequest("Kiku", "Expression", null, null, null, null, null)
+        );
+    }
+
+    @Test
     public void saveLearningStepsWritesValidParsedSettingsOnly() {
         RecordingLearningStepWriter writer = new RecordingLearningStepWriter();
 
@@ -228,6 +250,30 @@ public final class SettingsWriteActionsTest {
         assertEquals(3, writer.settings.get(SyncSettings.IMPORT_MIN_MATCHING_CARDS_SETTING_KEY));
         assertEquals(1, writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY));
         assertEquals("rated:30:1", writer.settings.get(SyncSettings.IMPORT_BROWSER_QUERY_SETTING_KEY));
+    }
+
+    @Test
+    public void importFilterWriteRequestKeepsJavaRecordSemanticsAndNullComponents() {
+        SettingsWriteActions.ImportFilterWriteRequest request = new SettingsWriteActions.ImportFilterWriteRequest(
+                true,
+                true,
+                false,
+                null,
+                false,
+                6.5,
+                1,
+                2,
+                false,
+                null
+        );
+
+        assertTrue(SettingsWriteActions.ImportFilterWriteRequest.class.isRecord());
+        assertEquals(null, request.tags());
+        assertEquals(null, request.browserQuery());
+        assertEquals(
+                request,
+                new SettingsWriteActions.ImportFilterWriteRequest(true, true, false, null, false, 6.5, 1, 2, false, null)
+        );
     }
 
     private static final class RecordingSettingsWriter implements SettingsWriteActions.SettingWriter {
