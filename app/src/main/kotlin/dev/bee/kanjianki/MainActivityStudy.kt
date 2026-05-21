@@ -16,7 +16,6 @@ import dev.bee.kanjianki.core.study.StrokeGuideGuard
 import dev.bee.kanjianki.core.study.WritingActionPresentation
 import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.core.study.WritingSample
-import dev.bee.kanjianki.data.DictionaryAssets
 import dev.bee.kanjianki.study.CapturedWriting
 import dev.bee.kanjianki.study.WritingRecognizer
 
@@ -41,6 +40,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val moreNewCards = MainActivityStudyMoreNewCards(this)
     private val studyState = MainActivityStudyState(this)
     private val writingSession = MainActivityStudyWritingSession(this)
+    private val dictionaryLookupProvider = MainActivityDictionaryLookupProvider(this)
 
     @JvmField
     val targetedLaunch = MainActivityStudyTargetedLaunch(this)
@@ -271,10 +271,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     override fun currentDictionaryLookup(): DictionaryLookup {
-        if (dictionaryLookup == null) {
-            dictionaryLookup = DictionaryAssets.load(this)
-        }
-        return dictionaryLookup!!
+        return dictionaryLookupProvider.currentDictionaryLookup()
     }
 
     fun buildFlashcardActionBar(revealed: Boolean) {
