@@ -4,7 +4,6 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.reminders.ReminderScheduler
 
 data class SettingsAutomationHeroPillModel(
     val label: String,
@@ -19,14 +18,22 @@ data class SettingsAutomationHeroModel(
     val rows: List<List<SettingsAutomationHeroPillModel>>,
 )
 
+internal object SettingsAutomationHeroColors {
+    val muted: Int = 0xFF6C5674.toInt()
+    val coral: Int = 0xFFFF4C76.toInt()
+    val teal: Int = 0xFF00AEB5.toInt()
+    val studyPlum: Int = 0xFF4B2552.toInt()
+    val studyPinkDark: Int = 0xFFDA3A7A.toInt()
+}
+
 internal fun settingsAutomationHeroModel(
-    activity: MainActivitySettings,
     current: RecordsSyncModels.Settings,
     reminder: LocalStoreBase.ReminderSettings,
     autoSync: LocalStoreBase.AutoSyncSettings,
-    autoUpdate: LocalStoreBase.AutoUpdateStatus
+    autoUpdate: LocalStoreBase.AutoUpdateStatus,
+    notificationsAllowed: Boolean,
 ): SettingsAutomationHeroModel {
-    val reminderBlocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(activity)
+    val reminderBlocked = reminder.enabled && !notificationsAllowed
     return SettingsAutomationHeroModel(
         cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
         title = MainActivityBase.NAV_SETTINGS,
@@ -36,19 +43,19 @@ internal fun settingsAutomationHeroModel(
                 SettingsAutomationHeroPillModel(
                     SettingsTextCopy.noteTypeStatusLabel(),
                     StudyTextCopy.compact(current.modelName, 56),
-                    MainActivityUiSupport.STUDY_PLUM
+                    SettingsAutomationHeroColors.studyPlum
                 ),
                 SettingsAutomationHeroPillModel(
                     SettingsTextCopy.importFiltersStatusLabel(),
                     StudyTextCopy.compact(SettingsTextCopy.settingsImportSummary(current), 56),
-                    MainActivityUiSupport.TEAL
+                    SettingsAutomationHeroColors.teal
                 )
             ),
             listOf(
                 SettingsAutomationHeroPillModel(
                     SettingsTextCopy.importRanksStatusLabel(),
                     StudyTextCopy.compact("${current.suspendedRankMin}-${current.suspendedRankMax}", 56),
-                    MainActivityUiSupport.TEAL
+                    SettingsAutomationHeroColors.teal
                 ),
                 SettingsAutomationHeroPillModel(
                     SettingsTextCopy.reminderStatusLabel(),
@@ -60,7 +67,7 @@ internal fun settingsAutomationHeroModel(
                         ),
                         56
                     ),
-                    if (reminder.enabled) MainActivityUiSupport.TEAL else MainActivityUiSupport.MUTED
+                    if (reminder.enabled) SettingsAutomationHeroColors.teal else SettingsAutomationHeroColors.muted
                 )
             ),
             listOf(
@@ -74,7 +81,7 @@ internal fun settingsAutomationHeroModel(
                         ),
                         56
                     ),
-                    if (autoSync.enabled) MainActivityUiSupport.TEAL else MainActivityUiSupport.MUTED
+                    if (autoSync.enabled) SettingsAutomationHeroColors.teal else SettingsAutomationHeroColors.muted
                 ),
                 SettingsAutomationHeroPillModel(
                     SettingsTextCopy.updatesStatusLabel(),
@@ -85,14 +92,18 @@ internal fun settingsAutomationHeroModel(
                         ),
                         56
                     ),
-                    if (autoUpdate.hasPendingUpdate()) MainActivityUiSupport.CORAL else MainActivityUiSupport.STUDY_PINK_DARK
+                    if (autoUpdate.hasPendingUpdate()) {
+                        SettingsAutomationHeroColors.coral
+                    } else {
+                        SettingsAutomationHeroColors.studyPinkDark
+                    }
                 )
             ),
             listOf(
                 SettingsAutomationHeroPillModel(
                     SettingsTextCopy.matchingCardsStatusLabel(),
                     StudyTextCopy.compact(SettingsTextCopy.matchingCardsSummary(current), 56),
-                    MainActivityUiSupport.STUDY_PLUM
+                    SettingsAutomationHeroColors.studyPlum
                 )
             )
         )

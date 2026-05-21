@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.reminders.ReminderScheduler
 
 internal class MainActivitySettingsScreen(private val activity: MainActivitySettings) {
     fun renderSettings(preserveScroll: Boolean) {
@@ -22,11 +23,11 @@ internal class MainActivitySettingsScreen(private val activity: MainActivitySett
     fun settingsScreenModel(current: RecordsSyncModels.Settings): SettingsScreenModel {
         return settingsScreenModel(
             settingsAutomationHeroModel(
-                activity,
                 current,
                 activity.store.reminderSettings(),
                 activity.store.autoSyncSettings(),
-                activity.store.autoUpdateStatus()
+                activity.store.autoUpdateStatus(),
+                ReminderScheduler.notificationsAllowed(activity)
             ),
             listOf(
                 settingsCategoryModel(

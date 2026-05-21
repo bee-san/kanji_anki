@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -579,5 +581,114 @@ class ComposeScreenModelsTest {
         model.onSave.save("60")
         assertEquals("60", savedMinutesText)
         assertEquals(model, model.copy())
+    }
+
+    @Test
+    fun ladderThresholdModelKeepsDefaultsAndSaveContract() {
+        var savedPromotionDays: String? = null
+        var savedFailStreak: String? = null
+        val save = SettingsLadderThresholdSaveAction { promotionDaysText, failStreakText ->
+            savedPromotionDays = promotionDaysText
+            savedFailStreak = failStreakText
+        }
+        val model = SettingsLadderThresholdPanelModel(
+            title = "Ladder thresholds",
+            body = "Tune rung movement.",
+            promotionDaysLabel = "FSRS days to go up",
+            initialPromotionDaysText = "21",
+            failStreakLabel = "Fails to go down",
+            initialFailStreakText = "3",
+            defaultPromotionDaysText = "21",
+            defaultFailStreakText = "3",
+            defaultsLabel = "Use 21 and 3",
+            saveLabel = "Save ladder thresholds",
+            onSave = save,
+        )
+
+        assertEquals("Ladder thresholds", model.title)
+        assertEquals("Tune rung movement.", model.body)
+        assertEquals("FSRS days to go up", model.promotionDaysLabel)
+        assertEquals("21", model.initialPromotionDaysText)
+        assertEquals("Fails to go down", model.failStreakLabel)
+        assertEquals("3", model.initialFailStreakText)
+        assertEquals("21", model.defaultPromotionDaysText)
+        assertEquals("3", model.defaultFailStreakText)
+        assertEquals("Use 21 and 3", model.defaultsLabel)
+        assertEquals("Save ladder thresholds", model.saveLabel)
+        assertSame(save, model.onSave)
+        model.onSave.save("28", "4")
+        assertEquals("28", savedPromotionDays)
+        assertEquals("4", savedFailStreak)
+        assertEquals(model, model.copy())
+    }
+
+    @Test
+    fun settingsAutomationHeroFactoryKeepsEnabledAndPendingSummaries() {
+        val model = settingsAutomationHeroModel(
+            current = RecordsSyncModels.Settings.kikuDefaults(),
+            reminder = LocalStoreBase.ReminderSettings(true, 8, 5),
+            autoSync = LocalStoreBase.AutoSyncSettings(true, true, 7, 30, 0L, 0L, 0L),
+            autoUpdate = LocalStoreBase.AutoUpdateStatus(
+                true,
+                0L,
+                "update_available",
+                "0.5.0",
+                "kani-0.5.0.apk",
+                "Ready to install",
+            ),
+            notificationsAllowed = false,
+        )
+
+        assertEquals("Settings cockpit", model.cockpitLabel)
+        assertEquals(MainActivityBase.NAV_SETTINGS, model.title)
+        assertEquals(4, model.rows.size)
+        assertEquals("Note type", model.rows[0][0].label)
+        assertEquals("Kiku", model.rows[0][0].value)
+        assertEquals(0xFF4B2552.toInt(), model.rows[0][0].valueColor)
+        assertEquals("Import filters", model.rows[0][1].label)
+        assertEquals(0xFF00AEB5.toInt(), model.rows[0][1].valueColor)
+        assertEquals("Reminder", model.rows[1][1].label)
+        assertEquals("Blocked", model.rows[1][1].value)
+        assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
+        assertEquals("Daily sync", model.rows[2][0].label)
+        assertEquals("07:30", model.rows[2][0].value)
+        assertEquals(0xFF00AEB5.toInt(), model.rows[2][0].valueColor)
+        assertEquals("Updates", model.rows[2][1].label)
+        assertEquals("Verified APK ready", model.rows[2][1].value)
+        assertEquals(0xFFFF4C76.toInt(), model.rows[2][1].valueColor)
+        assertEquals("Matching cards", model.rows[3][0].label)
+        assertEquals(0xFF4B2552.toInt(), model.rows[3][0].valueColor)
+    }
+
+    @Test
+    fun settingsAutomationHeroFactoryKeepsDisabledSummaries() {
+        val model = settingsAutomationHeroModel(
+            current = RecordsSyncModels.Settings.kikuDefaults(),
+            reminder = LocalStoreBase.ReminderSettings(false, 8, 5),
+            autoSync = LocalStoreBase.AutoSyncSettings(true, false, 7, 30, 0L, 0L, 0L),
+            autoUpdate = LocalStoreBase.AutoUpdateStatus(false, 0L, "", "", "", ""),
+            notificationsAllowed = true,
+        )
+
+        assertEquals("Off", model.rows[1][1].value)
+        assertEquals(0xFF6C5674.toInt(), model.rows[1][1].valueColor)
+        assertEquals("Off", model.rows[2][0].value)
+        assertEquals(0xFF6C5674.toInt(), model.rows[2][0].valueColor)
+        assertEquals("Manual checks", model.rows[2][1].value)
+        assertEquals(0xFFDA3A7A.toInt(), model.rows[2][1].valueColor)
+    }
+
+    @Test
+    fun settingsAutomationHeroFactoryKeepsAllowedReminderSummary() {
+        val model = settingsAutomationHeroModel(
+            current = RecordsSyncModels.Settings.kikuDefaults(),
+            reminder = LocalStoreBase.ReminderSettings(true, 8, 5),
+            autoSync = LocalStoreBase.AutoSyncSettings(false, false, 7, 30, 0L, 0L, 0L),
+            autoUpdate = LocalStoreBase.AutoUpdateStatus(false, 0L, "", "", "", ""),
+            notificationsAllowed = true,
+        )
+
+        assertEquals("08:05", model.rows[1][1].value)
+        assertEquals(0xFF00AEB5.toInt(), model.rows[1][1].valueColor)
     }
 }

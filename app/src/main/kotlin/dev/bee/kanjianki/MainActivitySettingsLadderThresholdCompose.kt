@@ -49,24 +49,6 @@ object SettingsLadderThresholdTestTags {
     const val FAIL_STREAK_INPUT = "settings-ladder-threshold-fail-streak-input"
 }
 
-fun interface SettingsLadderThresholdSaveAction {
-    fun save(promotionDaysText: String, failStreakText: String)
-}
-
-data class SettingsLadderThresholdPanelModel(
-    val title: String,
-    val body: String,
-    val promotionDaysLabel: String,
-    val initialPromotionDaysText: String,
-    val failStreakLabel: String,
-    val initialFailStreakText: String,
-    val defaultPromotionDaysText: String,
-    val defaultFailStreakText: String,
-    val defaultsLabel: String,
-    val saveLabel: String,
-    val onSave: SettingsLadderThresholdSaveAction,
-) : SettingsPanelModel
-
 internal fun ladderThresholdSettingsPanelView(
     activity: MainActivitySettings,
     model: SettingsLadderThresholdPanelModel,
