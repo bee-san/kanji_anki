@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -31,33 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
-
-internal fun settingsUpdateRunView(
-    activity: MainActivitySettings,
-    title: String,
-    body: String,
-    progressLabel: String,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        setContent {
-            MaterialTheme {
-                SettingsUpdateRunScreen(
-                    model = SettingsUpdateRunModel(
-                        title = title,
-                        body = body,
-                        progressLabel = progressLabel,
-                        onHome = activity::renderHome,
-                        onBack = { activity.renderSettings(false) },
-                    )
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsUpdateRunScreen(model: SettingsUpdateRunModel) {
