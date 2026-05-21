@@ -21,14 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-data class BrowseExampleCardModel(
-    val sourceLabel: String,
-    val expression: String,
-    val sentence: String,
-    val meaning: String,
-    val color: Int,
-)
-
 internal fun exampleCardView(activity: MainActivityHomeBrowseDetail, model: BrowseExampleCardModel): View {
     return ComposeView(activity.home()).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
