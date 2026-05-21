@@ -31,54 +31,6 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 
-data class GamesScreenModel(
-    val title: String,
-    val subtitle: String,
-    val emptyTitle: String?,
-    val emptyBody: String?,
-    val showSyncButton: Boolean,
-    val onSync: Runnable,
-    val modeCards: List<GamesModeCardModel>,
-)
-
-data class GamesModeCardModel(
-    val title: String,
-    val label: String,
-    val body: String,
-    val accentColor: Int,
-    val available: Boolean,
-    val chipLabel: String,
-    val onClick: Runnable,
-)
-
-data class GamesScoreStripModel(
-    val roundLabel: String,
-    val roundValue: String,
-    val scoreLabel: String,
-    val scoreValue: String,
-    val streakLabel: String,
-    val streakValue: String,
-)
-
-data class GamesResultModel(
-    val title: String,
-    val titleColor: Int,
-    val finalScore: String?,
-    val accuracy: String?,
-    val answer: String?,
-    val selectedAnswer: String?,
-    val explanation: String?,
-    val primaryLabel: String,
-    val primaryColor: Int,
-    val onPrimary: Runnable,
-    val onGames: Runnable,
-)
-
-data class GamesUnavailableModel(
-    val title: String,
-    val body: String,
-)
-
 internal fun gamesMenuScreenView(activity: MainActivityGames, model: GamesScreenModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
