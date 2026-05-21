@@ -556,4 +556,28 @@ class ComposeScreenModelsTest {
         assertEquals(frequency, frequency.copy())
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun studyAheadModelKeepsInitialMinutesAndSaverContract() {
+        var savedMinutesText: String? = null
+        val saver = SettingsStudyAheadSaver { minutesText -> savedMinutesText = minutesText }
+        val model = SettingsStudyAheadPanelModel(
+            title = "Study ahead",
+            body = "Let Kani include near-due cards.",
+            minutesLabel = "Minutes ahead",
+            initialMinutesText = "45",
+            saveLabel = "Save window",
+            onSave = saver,
+        )
+
+        assertEquals("Study ahead", model.title)
+        assertEquals("Let Kani include near-due cards.", model.body)
+        assertEquals("Minutes ahead", model.minutesLabel)
+        assertEquals("45", model.initialMinutesText)
+        assertEquals("Save window", model.saveLabel)
+        assertSame(saver, model.onSave)
+        model.onSave.save("60")
+        assertEquals("60", savedMinutesText)
+        assertEquals(model, model.copy())
+    }
 }

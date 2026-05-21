@@ -46,19 +46,6 @@ object SettingsStudyAheadTestTags {
     const val MINUTES_INPUT = "settings-study-ahead-minutes-input"
 }
 
-fun interface SettingsStudyAheadSaver {
-    fun save(minutesText: String)
-}
-
-data class SettingsStudyAheadPanelModel(
-    val title: String,
-    val body: String,
-    val minutesLabel: String,
-    val initialMinutesText: String,
-    val saveLabel: String,
-    val onSave: SettingsStudyAheadSaver,
-) : SettingsPanelModel
-
 internal fun studyAheadSettingsPanelView(
     activity: MainActivitySettings,
     model: SettingsStudyAheadPanelModel,
