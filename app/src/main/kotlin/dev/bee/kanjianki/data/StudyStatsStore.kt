@@ -208,7 +208,7 @@ class StudyStatsStore internal constructor(store: LocalStore) {
         @JvmField val demotionReadyCount: Int
 
         constructor(
-            rungCounts: Map<RecordsBase.LadderRung, Int>?,
+            rungCounts: Map<out RecordsBase.LadderRung?, Int?>?,
             totalActiveItems: Int,
             realDueReviewsToMove: Int,
             promotionReadyCount: Int,
@@ -225,7 +225,7 @@ class StudyStatsStore internal constructor(store: LocalStore) {
         )
 
         constructor(
-            rungCounts: Map<RecordsBase.LadderRung, Int>?,
+            rungCounts: Map<out RecordsBase.LadderRung?, Int?>?,
             totalActiveItems: Int,
             ladderPromotionIntervalDays: Int,
             ladderDemotionFailStreak: Int,
@@ -235,8 +235,11 @@ class StudyStatsStore internal constructor(store: LocalStore) {
         ) {
             val normalized = emptyRungDistribution().toMutableMap()
             if (rungCounts != null) {
-                for ((rung, count) in rungCounts) {
-                    normalized[rung] = (count ?: 0).coerceAtLeast(0)
+                for (entry in rungCounts.entries) {
+                    val rung = entry.key
+                    if (rung != null) {
+                        normalized[rung] = (entry.value ?: 0).coerceAtLeast(0)
+                    }
                 }
             }
             this.rungCounts = Collections.unmodifiableMap(normalized)
