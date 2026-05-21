@@ -12,7 +12,6 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
-import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -32,9 +31,7 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
-import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.sync.SyncSettings
-import dev.bee.kanjianki.update.AutoUpdateScheduler
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -193,6 +190,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private val writingRecognizerProvider = MainActivityWritingRecognizerProvider(this)
     private val studyPlanProvider = MainActivityStudyPlanProvider(this)
     private val shellHost = MainActivityShellHost(this)
+    private val startup = MainActivityStartup(this)
 
     fun interface WritingRecognizerFactory {
         fun create(executor: ExecutorService): WritingRecognizer
@@ -218,14 +216,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        store = LocalStore(this)
-        gateway = ankiDroidGatewayForTests ?: AnkiDroidGateway(this)
-        requestAnkiPermissionIfNeeded()
-        ReminderScheduler.schedule(this)
-        AutoSyncScheduler.schedule(this)
-        AutoUpdateScheduler.schedule(this)
-        DatabaseBackupScheduler.schedule(this)
-        handleLaunchIntent(intent)
+        startup.start()
     }
 
     override fun onPause() {
