@@ -562,6 +562,16 @@ public final class LocalStoreInstrumentedTest {
     }
 
     @Test
+    public void testTimelineForNullKanjiReturnsEmptyTimeline() {
+        RecordsStudyModels.KanjiRecoveryTimeline timeline = store.timelineForKanji(null);
+
+        assertNull(timeline.inventoryItem);
+        assertNull(timeline.currentRow);
+        assertNull(timeline.currentStudyItem);
+        assertTrue(timeline.events.isEmpty());
+    }
+
+    @Test
     public void testTimelineReviewEventsMapPassFailAndManualOverride() {
         store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "pass-token", "good", true, true, false, 0), "good", 1000L);
         store.saveReview(new RecordsSchedulerModels.ReviewRequest("拉", "fail-token", "good", true, false, false, 0), "again", 2000L);
@@ -1719,6 +1729,8 @@ public final class LocalStoreInstrumentedTest {
 
         assertNotNull(store.rowForKanji("拉"));
         assertNull(store.rowForKanji("孤"));
+        assertNull(store.rowForKanji(null));
+        assertNull(store.inventoryItemForKanji(null));
         assertFalse(store.isKanjiLocallySuspended("拉"));
         store.setKanjiLocallySuspended("拉", true, 3500L);
         assertTrue(store.isKanjiLocallySuspended("拉"));

@@ -8,7 +8,10 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 internal class LocalStoreInventoryData(
     private val activity: LocalStoreHistory,
 ) {
-    fun readInventoryItem(db: SQLiteDatabase, kanji: String): RecordsImportModels.KanjiInventoryItem? {
+    fun readInventoryItem(db: SQLiteDatabase, kanji: String?): RecordsImportModels.KanjiInventoryItem? {
+        if (kanji == null) {
+            return null
+        }
         db.query(
             LocalStoreBase.TABLE_KANJI_INVENTORY,
             null,
@@ -37,7 +40,10 @@ internal class LocalStoreInventoryData(
         )
     }
 
-    fun readDashboardRow(db: SQLiteDatabase, kanji: String): RecordsImportModels.DashboardRow? {
+    fun readDashboardRow(db: SQLiteDatabase, kanji: String?): RecordsImportModels.DashboardRow? {
+        if (kanji == null) {
+            return null
+        }
         db.query(
             LocalStoreBase.TABLE_DASHBOARD_ROWS,
             null,
@@ -73,7 +79,10 @@ internal class LocalStoreInventoryData(
         )
     }
 
-    fun studyItemForKanji(db: SQLiteDatabase, kanji: String): RecordsStudyModels.StudyItem? {
+    fun studyItemForKanji(db: SQLiteDatabase, kanji: String?): RecordsStudyModels.StudyItem? {
+        if (kanji == null) {
+            return null
+        }
         db.query(
             LocalStoreBase.TABLE_STUDY_ITEMS,
             null,
@@ -93,7 +102,10 @@ internal class LocalStoreInventoryData(
         }
     }
 
-    fun kanjiHasSimilarNeighbor(db: SQLiteDatabase, kanji: String): Boolean {
+    fun kanjiHasSimilarNeighbor(db: SQLiteDatabase, kanji: String?): Boolean {
+        if (kanji == null) {
+            return false
+        }
         db.rawQuery(
             "SELECT 1 FROM " + LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS +
                 " WHERE kanji_a = ? OR kanji_b = ? LIMIT 1",
