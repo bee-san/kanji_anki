@@ -9,21 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 
-data class HomeFocusQueueScreenModel(
-    val title: String,
-    val homeLabel: String,
-    val onHome: () -> Unit,
-    val queue: HomeFocusQueuePanelModel,
-    val onSync: () -> Unit,
-)
-
-data class HomeRecentMistakesScreenModel(
-    val title: String,
-    val homeLabel: String,
-    val onHome: () -> Unit,
-    val mistakes: HomeRecentMistakesPanelModel,
-)
-
 internal fun homeFocusQueueScreenView(home: MainActivityHome, model: HomeFocusQueueScreenModel): View {
     return ComposeView(home).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

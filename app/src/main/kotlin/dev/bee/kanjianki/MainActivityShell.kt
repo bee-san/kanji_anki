@@ -12,10 +12,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.AndroidView
 
-data class MainActivityShellModel(
-    val selectedRoute: String = "home",
-)
-
 @Composable
 fun MainActivityShell(
     legacyRoot: View,

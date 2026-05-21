@@ -14,25 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 
-data class HomeScreenModel(
-    val title: String,
-    val subtitle: String,
-    val metrics: List<HomeMetricModel>,
-    val showSyncCta: Boolean,
-    val syncLabel: String,
-    val studyLabel: String,
-    val studySubtitle: String,
-    val onSync: () -> Unit,
-    val onStudy: () -> Unit,
-    val actions: List<HomeActionModel>,
-    val focusTitle: String,
-    val focusActionLabel: String?,
-    val onFocusAction: (() -> Unit)?,
-    val emptyTitle: String?,
-    val emptyBody: String?,
-    val previewCards: List<HomeFocusQueueCardModel>,
-)
-
 internal fun homeScreenView(home: MainActivityHome, model: HomeScreenModel): View {
     return ComposeView(home).apply {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
