@@ -52,9 +52,6 @@ internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
         add(HomeActionModel(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, home::renderStats))
         add(HomeActionModel(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, home::renderGames))
         add(HomeActionModel(MainActivityBase.NAV_SETTINGS, R.drawable.ic_settings_24, home::renderSettings))
-        if (BuildConfig.DEBUG) {
-            add(HomeActionModel("Compose shell", R.drawable.ic_sparkle_24, home::openComposeShell))
-        }
     }
 }
 

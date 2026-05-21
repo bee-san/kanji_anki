@@ -35,9 +35,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".ComposeShellActivity"
-            android:exported="false" />
         <provider
             android:name=".update.ApkContentProvider"
             android:authorities="${applicationId}.apk"

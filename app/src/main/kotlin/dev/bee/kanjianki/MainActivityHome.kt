@@ -144,10 +144,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         browseDetail.renderBrowseKanji(query)
     }
 
-    fun openComposeShell() {
-        startActivity(ComposeShellActivity.intent(this))
-    }
-
     fun renderDetail(kanji: String, fromBrowse: Boolean) {
         browseDetail.renderDetail(kanji, fromBrowse)
     }
