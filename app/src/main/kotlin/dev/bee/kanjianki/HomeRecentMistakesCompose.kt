@@ -29,22 +29,6 @@ import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 
-data class HomeRecentMistakesCardModel(
-    val kanji: String,
-    val title: String,
-    val subtitle: String,
-    val sourceEvidence: String?,
-    val accentColor: ComposeColor,
-    val onClick: () -> Unit,
-)
-
-data class HomeRecentMistakesPanelModel(
-    val emptyTitle: String,
-    val emptyBody: String,
-    val cards: List<HomeRecentMistakesCardModel>,
-    val emptyStyle: HomeEmptyStateStyle = HomeEmptyStateStyle.Panel,
-)
-
 internal fun homeRecentMistakesPanelModel(
     home: MainActivityHome,
     mistakes: List<StudyStatsStore.RecentMistake>,
