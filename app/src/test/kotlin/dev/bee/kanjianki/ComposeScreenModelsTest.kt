@@ -1104,4 +1104,28 @@ class ComposeScreenModelsTest {
         assertEquals(section, section.copy())
         assertEquals(line, line.copy())
     }
+
+    @Test
+    fun writingStatusModelsKeepTextColorAndVisibility() {
+        val muted = 0xFF826084.toInt()
+        val coral = 0xFFFF4C76.toInt()
+        val status = WritingStatusState()
+        val result = WritingResultStatusHandle()
+
+        assertEquals("", status.getText().toString())
+        status.setStatus("Trace the first strokes", muted)
+        assertEquals("Trace the first strokes", status.getText().toString())
+        assertEquals(muted, status.color)
+        status.setText("Existing analysis message")
+        assertEquals("Existing analysis message", status.getText().toString())
+        assertEquals(muted, status.color)
+
+        assertEquals(false, result.visible)
+        result.show("Model unavailable", coral)
+        assertEquals("Model unavailable", result.getText().toString())
+        assertEquals(coral, result.status.color)
+        assertEquals(true, result.visible)
+        result.hide()
+        assertEquals(false, result.visible)
+    }
 }
