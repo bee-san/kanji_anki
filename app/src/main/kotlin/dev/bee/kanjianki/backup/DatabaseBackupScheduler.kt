@@ -35,16 +35,15 @@ object DatabaseBackupScheduler {
         }
     }
 
-    @JvmStatic
-    fun cancel(context: Context?, factory: WorkCancellerFactory) {
+    internal fun cancel(context: Context?, factory: WorkCancellerFactory) {
         factory.create(context!!.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 
-    fun interface WorkCancellerFactory {
+    internal fun interface WorkCancellerFactory {
         fun create(appContext: Context): WorkCanceller
     }
 
-    fun interface WorkCanceller {
+    internal fun interface WorkCanceller {
         fun cancelUniqueWork(workName: String)
     }
 }
