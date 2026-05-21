@@ -244,4 +244,44 @@ class ComposeScreenModelsTest {
         assertEquals(null, disabled.actionLabel)
         assertEquals(null, disabled.onAction)
     }
+
+    @Test
+    fun writingPromptModelsKeepHeaderAndLineFields() {
+        val muted = 0xFF6C5674.toInt()
+        val plum = 0xFF4B2552.toInt()
+        val promptLine = WritingPromptLineModel(
+            text = "Prompt: split, rend",
+            sizeSp = 17,
+            color = plum,
+            bold = true,
+        )
+        val readingLine = WritingPromptLineModel(
+            text = "Reading: レツ",
+            sizeSp = 15,
+            color = muted,
+            bold = false,
+        )
+        val model = WritingPromptHeaderModel(
+            modeLabel = "Practice",
+            title = "Draw this kanji",
+            taskLabel = "Write kanji",
+            reasonLine = "Weak Anki evidence",
+            detailLines = listOf(promptLine, readingLine),
+        )
+
+        assertEquals("Practice", model.modeLabel)
+        assertEquals("Draw this kanji", model.title)
+        assertEquals("Write kanji", model.taskLabel)
+        assertEquals("Weak Anki evidence", model.reasonLine)
+        assertEquals(listOf(promptLine, readingLine), model.detailLines)
+        assertEquals("Prompt: split, rend", promptLine.text)
+        assertEquals(17, promptLine.sizeSp)
+        assertEquals(plum, promptLine.color)
+        assertEquals(true, promptLine.bold)
+        assertEquals("Reading: レツ", readingLine.text)
+        assertEquals(15, readingLine.sizeSp)
+        assertEquals(muted, readingLine.color)
+        assertEquals(false, readingLine.bold)
+        assertEquals(model, model.copy())
+    }
 }

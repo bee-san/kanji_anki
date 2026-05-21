@@ -19,21 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-data class WritingPromptHeaderModel(
-    val modeLabel: String,
-    val title: String,
-    val taskLabel: String,
-    val reasonLine: String,
-    val detailLines: List<WritingPromptLineModel>,
-)
-
-data class WritingPromptLineModel(
-    val text: String,
-    val sizeSp: Int,
-    val color: Int,
-    val bold: Boolean,
-)
-
 @Composable
 fun WritingPromptHeader(model: WritingPromptHeaderModel) {
     Column(
