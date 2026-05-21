@@ -19,26 +19,6 @@ import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
-sealed interface SettingsPanelModel
-
-data class SettingsScreenModel(
-    val homeLabel: String,
-    val onHome: Runnable,
-    val hero: SettingsAutomationHeroModel,
-    val categories: List<SettingsCategorySectionModel>,
-)
-
-data class SettingsCategorySectionModel(
-    val title: String,
-    val summary: String,
-    val iconRes: Int,
-    val expanded: Boolean,
-    val panelCount: String,
-    val contentDescription: String,
-    val onToggle: Runnable,
-    val panels: List<SettingsPanelModel>,
-)
-
 internal fun settingsScreenView(activity: MainActivitySettings, model: SettingsScreenModel): View {
     return ComposeView(activity).apply {
         layoutParams = ViewGroup.LayoutParams(

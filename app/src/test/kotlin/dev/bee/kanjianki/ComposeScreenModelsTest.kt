@@ -407,4 +407,59 @@ class ComposeScreenModelsTest {
         assertEquals(true, advanced)
         assertEquals(model, model.copy())
     }
+
+    @Test
+    fun settingsScreenModelsKeepCategoryAndShellActions() {
+        var homeClicked = false
+        var toggled = false
+        val home = Runnable { homeClicked = true }
+        val toggle = Runnable { toggled = true }
+        val hero = SettingsAutomationHeroModel(
+            cockpitLabel = "Cockpit",
+            title = "Settings",
+            body = "Configure Kani behavior.",
+            rows = listOf(
+                listOf(SettingsAutomationHeroPillModel("Daily sync", "Enabled", 0xFF00AEB5.toInt()))
+            ),
+        )
+        val panel = SettingsReferenceDataLinkModel(
+            title = "Offline data licenses",
+            body = "Dictionary, stroke, and font attributions.",
+            actionLabel = "Open licenses",
+            onAction = Runnable {},
+        )
+        val category = settingsCategorySectionModel(
+            title = "Study",
+            summary = "Tune review behavior.",
+            iconRes = R.drawable.ic_target_24,
+            expanded = true,
+            onToggle = toggle,
+            panels = listOf(panel),
+        )
+        val screen = SettingsScreenModel(
+            homeLabel = "Home",
+            onHome = home,
+            hero = hero,
+            categories = listOf(category),
+        )
+
+        assertEquals("Home", screen.homeLabel)
+        assertSame(home, screen.onHome)
+        assertSame(hero, screen.hero)
+        assertEquals(listOf(category), screen.categories)
+        assertEquals("Study", category.title)
+        assertEquals("Tune review behavior.", category.summary)
+        assertEquals(R.drawable.ic_target_24, category.iconRes)
+        assertEquals(true, category.expanded)
+        assertEquals("1 card", category.panelCount)
+        assertEquals("Collapse Study", category.contentDescription)
+        assertSame(toggle, category.onToggle)
+        assertEquals(listOf(panel), category.panels)
+        screen.onHome.run()
+        category.onToggle.run()
+        assertEquals(true, homeClicked)
+        assertEquals(true, toggled)
+        assertEquals(screen, screen.copy())
+        assertEquals(category, category.copy())
+    }
 }
