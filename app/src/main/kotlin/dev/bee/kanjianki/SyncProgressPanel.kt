@@ -93,7 +93,7 @@ class SyncProgressPanel @JvmOverloads constructor(
         }
     }
 
-    private fun renderKnownTotal(currentStage: SyncProgressCopy.Stage): SyncProgressPanelState {
+    private fun renderKnownTotal(currentStage: SyncProgressCopy.Stage?): SyncProgressPanelState {
         val cardText = SyncProgressCopy.cardProgressText(lastScannedCards, lastTotalCards)
         return SyncProgressPanelState(
             stage = SyncProgressCopy.stageTitle(currentStage),
