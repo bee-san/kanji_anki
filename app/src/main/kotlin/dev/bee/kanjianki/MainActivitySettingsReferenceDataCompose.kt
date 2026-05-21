@@ -54,17 +54,6 @@ internal fun referenceDataLinkPanelView(activity: MainActivitySettings, model: S
     }
 }
 
-internal fun referenceDataScreenView(activity: MainActivitySettings, model: SettingsReferenceDataScreenModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                ReferenceDataScreen(model)
-            }
-        }
-    }
-}
-
 @Composable
 fun ReferenceDataLinkPanel(model: SettingsReferenceDataLinkModel) {
     SettingsPanel {
