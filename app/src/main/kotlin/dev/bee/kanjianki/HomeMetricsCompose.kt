@@ -43,15 +43,6 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyStatsStore
 
-data class HomeMetricModel(
-    val iconRes: Int,
-    val accent: Int,
-    val label: String,
-    val value: String,
-    val body: String?,
-    val onClick: (() -> Unit)?,
-)
-
 internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
 
 internal fun homeMetricModels(
