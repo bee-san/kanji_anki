@@ -50,7 +50,6 @@ internal class MainActivityHomeSync(private val home: MainActivityHome) {
     }
 
     fun renderSyncResult(result: ManualSyncEngine.SyncResult) {
-        home.base("home")
         if (result.skipped) {
             renderSkippedSyncResult(result)
         } else if (result.success) {
@@ -61,20 +60,17 @@ internal class MainActivityHomeSync(private val home: MainActivityHome) {
     }
 
     fun renderSkippedSyncResult(result: ManualSyncEngine.SyncResult) {
-        home.content.addView(
-            syncResultScreenView(
-                home,
-                SyncResultScreenModel(
-                    HomeTextCopy.syncAlreadyRunningTitle(),
-                    null,
-                    listOf(home.nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback())),
-                    MainActivityBase.BLUE,
-                    null,
-                    MainActivityBase.TEAL,
-                    null,
-                    MainActivityBase.LABEL_BACK_HOME,
-                    home::renderHome,
-                )
+        renderSyncResultScreen(
+            SyncResultScreenModel(
+                HomeTextCopy.syncAlreadyRunningTitle(),
+                null,
+                listOf(home.nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback())),
+                MainActivityBase.BLUE,
+                null,
+                MainActivityBase.TEAL,
+                null,
+                MainActivityBase.LABEL_BACK_HOME,
+                home::renderHome,
             )
         )
     }
@@ -96,40 +92,40 @@ internal class MainActivityHomeSync(private val home: MainActivityHome) {
         if (!result.message.isNullOrEmpty()) {
             summaryLines.add(result.message)
         }
-        home.content.addView(
-            syncResultScreenView(
-                home,
-                SyncResultScreenModel(
-                    HomeTextCopy.syncCompleteTitle(),
-                    HomeTextCopy.syncReadyCountText(entries.size),
-                    summaryLines,
-                    MainActivityBase.TEAL,
-                    if (result.dashboardRows > 0) MainActivityBase.LABEL_STUDY_NOW else null,
-                    MainActivityBase.CORAL,
-                    if (result.dashboardRows > 0) home::startFocusedStudy else null,
-                    MainActivityBase.LABEL_BACK_HOME,
-                    home::renderHome,
-                )
+        renderSyncResultScreen(
+            SyncResultScreenModel(
+                HomeTextCopy.syncCompleteTitle(),
+                HomeTextCopy.syncReadyCountText(entries.size),
+                summaryLines,
+                MainActivityBase.TEAL,
+                if (result.dashboardRows > 0) MainActivityBase.LABEL_STUDY_NOW else null,
+                MainActivityBase.CORAL,
+                if (result.dashboardRows > 0) home::startFocusedStudy else null,
+                MainActivityBase.LABEL_BACK_HOME,
+                home::renderHome,
             )
         )
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {
-        home.content.addView(
-            syncResultScreenView(
-                home,
-                SyncResultScreenModel(
-                    HomeTextCopy.syncNeedsAttentionTitle(),
-                    HomeTextCopy.syncReadErrorTitle(),
-                    listOf(home.nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback())),
-                    MainActivityBase.CORAL,
-                    HomeTextCopy.trySyncAgainLabel(),
-                    MainActivityBase.TEAL,
-                    this::confirmSync,
-                    MainActivityBase.LABEL_BACK_HOME,
-                    home::renderHome,
-                )
+        renderSyncResultScreen(
+            SyncResultScreenModel(
+                HomeTextCopy.syncNeedsAttentionTitle(),
+                HomeTextCopy.syncReadErrorTitle(),
+                listOf(home.nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback())),
+                MainActivityBase.CORAL,
+                HomeTextCopy.trySyncAgainLabel(),
+                MainActivityBase.TEAL,
+                this::confirmSync,
+                MainActivityBase.LABEL_BACK_HOME,
+                home::renderHome,
             )
         )
+    }
+
+    private fun renderSyncResultScreen(model: SyncResultScreenModel) {
+        home.composeRoute("home") {
+            SyncResultScreen(model)
+        }
     }
 }

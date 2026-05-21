@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -30,17 +27,6 @@ import androidx.compose.ui.unit.sp
 private val Ink = ComposeColor(0xFF2D1635)
 private val White = ComposeColor(0xFFFFFFFF)
 private val BorderPink = ComposeColor(0xFFEBD6E4)
-
-internal fun syncResultScreenView(activity: MainActivityHome, model: SyncResultScreenModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                SyncResultScreen(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SyncResultScreen(model: SyncResultScreenModel) {
