@@ -50,12 +50,16 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val writingSession = MainActivityStudyWritingSession(this)
     private val dictionaryLookupProvider = MainActivityDictionaryLookupProvider(this)
 
+    fun learningPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
+        return learningPanelModel(this, session)
+    }
+
     fun learningPanel(session: RecordsSchedulerModels.StudySession): View {
         val model = learningPanelModel(this, session)
         return ComposeView(this).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
             ).apply {
                 setMargins(0, dp(12), 0, dp(10))
             }
@@ -65,10 +69,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
                 }
             }
         }
-    }
-
-    fun learningPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
-        return learningPanelModel(this, session)
     }
 
     fun firstExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example? {
@@ -281,48 +281,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
         flashcardUi.renderComposeFlashcardSession(session)
-    }
-
-    fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
-        val revealState = FlashcardRevealState(false)
-        flashcardRevealState = revealState
-        flashcardHeroPanel = null
-        studyAnswerPanel = null
-        val heroPanel = FlashcardHeroPanelModel(
-            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
-            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
-            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(this) else Typeface.DEFAULT
-        )
-        val typingAnswer = if (StudyTaskCopy.isTypingMeaningTask(session)) {
-            typingAnswerField()
-        } else {
-            null
-        }
-        val answerPanel = flashcardAnswerPanelModel(session)
-
-        return ComposeView(this).apply {
-            isClickable = true
-            isFocusable = true
-            setContent {
-                MaterialTheme {
-                    FlashcardCard(
-                        FlashcardCardModel(
-                            FlashcardPromptHeaderModel(
-                                StudyTaskCopy.studyModeLabel(session),
-                                StudyTaskCopy.flashcardTitle(session),
-                                StudyTextCopy.heroQuestion(session),
-                                "Answer hidden until reveal",
-                                studyReasonLine(session)
-                            ),
-                            heroPanel,
-                            typingAnswer,
-                            answerPanel,
-                            revealState
-                        )
-                    )
-                }
-            }
-        }
     }
 
     fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
