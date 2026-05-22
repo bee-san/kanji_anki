@@ -27,7 +27,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
-        home.renderLegacyStudyRoute()
+        home.base(MainActivityBase.NAV_STUDY)
         resetWritingSession(session)
         val route = writingRouteModel(session)
         home.content.addView(

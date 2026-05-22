@@ -47,7 +47,3 @@ internal fun MainActivityStudy.renderComposeStudyRouteWithActionBar(
         actionBar = actionBar,
     )
 }
-
-internal fun MainActivityStudy.renderLegacyStudyRoute() {
-    base(MainActivityBase.NAV_STUDY)
-}
