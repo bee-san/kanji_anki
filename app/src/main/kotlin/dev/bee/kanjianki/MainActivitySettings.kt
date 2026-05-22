@@ -179,10 +179,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         renderSettings()
     }
 
-    fun toggleLadderRung(rung: RecordsBase.LadderRung) {
-        MainActivitySettingsStudyLadder(this).toggleLadderRung(rung)
-    }
-
     fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
         val current = settings()
         return SettingsLadderThresholdPanelModel(
