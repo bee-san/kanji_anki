@@ -74,7 +74,14 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel(),
                     MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel(),
                     learningStepsSettingsPanelModel(),
-                    studyAheadSettingsPanelModel(),
+                    SettingsStudyAheadPanelModel(
+                        title = SettingsTextCopy.studyAheadTitle(),
+                        body = SettingsTextCopy.studyAheadBody(),
+                        minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
+                        initialMinutesText = store.studyAheadMinutes().toString(),
+                        saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
+                        onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
+                    ),
                     MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel(),
                     ladderThresholdSettingsPanelModel()
                 ),
@@ -86,7 +93,15 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                     },
                     reminderSettingsPanelModel(),
                     autoSyncSettingsPanelModel(),
-                    updateSettingsPanelModel()
+                    SettingsUpdateOverviewPanelModel(
+                        settingsUpdatePanelModel(
+                            activity = this,
+                            title = SettingsTextCopy.appUpdatesTitle(),
+                        ),
+                        SettingsTextCopy.openUpdaterLabel(),
+                    ) {
+                        renderUpdate()
+                    }
                 ),
                 settingsReferenceDataCategoryModel(
                     settingsAppExpanded,
@@ -151,17 +166,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         SettingsWriteActions.saveLearningSteps(request, store::saveLearningStepSettings)
         Toast.makeText(this, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show()
         renderSettings()
-    }
-
-    fun studyAheadSettingsPanelModel(): SettingsStudyAheadPanelModel {
-        return SettingsStudyAheadPanelModel(
-            title = SettingsTextCopy.studyAheadTitle(),
-            body = SettingsTextCopy.studyAheadBody(),
-            minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
-            initialMinutesText = store.studyAheadMinutes().toString(),
-            saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
-            onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
-        )
     }
 
     fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
@@ -237,6 +241,17 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun autoSyncSettingsPanelModel(): SettingsAutoSyncPanelModel {
         return MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanelModel()
+    }
+
+    fun studyAheadSettingsPanelModel(): SettingsStudyAheadPanelModel {
+        return SettingsStudyAheadPanelModel(
+            title = SettingsTextCopy.studyAheadTitle(),
+            body = SettingsTextCopy.studyAheadBody(),
+            minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
+            initialMinutesText = store.studyAheadMinutes().toString(),
+            saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
+            onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
+        )
     }
 
     fun updateSettingsPanelModel(): SettingsUpdateOverviewPanelModel {
