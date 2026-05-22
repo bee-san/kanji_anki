@@ -2,9 +2,11 @@ package dev.bee.kanjianki
 
 import android.text.InputType
 import android.widget.EditText
+import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import java.util.Locale
 
@@ -15,10 +17,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun retentionPanel(): MainActivitySettingsRetentionPanel {
         return MainActivitySettingsRetentionPanel(this)
-    }
-
-    private fun studyAheadPanel(): MainActivitySettingsStudyAheadPanel {
-        return MainActivitySettingsStudyAheadPanel(this)
     }
 
     private fun ladderThresholdPanel(): MainActivitySettingsLadderThresholdPanel {
@@ -164,7 +162,25 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun studyAheadSettingsPanelModel(): SettingsStudyAheadPanelModel {
-        return studyAheadPanel().studyAheadSettingsPanelModel()
+        return SettingsStudyAheadPanelModel(
+            title = SettingsTextCopy.studyAheadTitle(),
+            body = SettingsTextCopy.studyAheadBody(),
+            minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
+            initialMinutesText = store.studyAheadMinutes().toString(),
+            saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
+            onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
+        )
+    }
+
+    private fun saveStudyAhead(minutesText: String) {
+        val request = StudyAheadSettingsPolicy.saveRequest(minutesText)
+        if (!request.valid) {
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        store.saveStudyAheadMinutes(request.minutes)
+        Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show()
+        renderSettings()
     }
 
     fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
