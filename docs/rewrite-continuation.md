@@ -80,88 +80,76 @@ git show --check 2f1cf8e6
 
 Commit `2f1cf8e6` closes those gaps by clicking `Study more new cards` in the helper test and covering both populated and empty extra-new-card states in the Compose test.
 
-## Migration Backlog
+## Rewrite Exit Checklist
 
-This is the working list for the remaining rewrite. Keep the branch as the active migration branch, keep product behavior as the parity contract, and cut one lane at a time.
+This is the definitive remaining work. The rewrite is done only when every item in this checklist is complete, reviewed, committed, pushed, and the final verification gates pass. Do not add unrelated Java extraction or helper cleanup unless it directly completes one of these items.
 
-### 1. Home shell
+### 1. Finish the direct Compose app shell
 
-- Finish the Home browse-detail migration in `MainActivityHomeBrowseDetailCompose.kt`.
-- Move the search header, query input, result heading, empty state, and result rows out of legacy Views.
-- Keep `MainActivityHome.browseKanjiRow(...)` only if tests still need it as a bridge.
-- Decide whether the remaining Home helper views stay as test-backed bridges or move into the Compose host:
-  - `MainActivityHome.homeActionRow()`
-  - `MainActivityHome.homeSectionHeader(...)`
-  - `MainActivityHome.fullWidthHomeButton()`
-- Continue the Home overview, metrics, recent mistakes, focus queue, and sync surfaces toward Compose-only rendering.
+- Home, Settings, Stats, Games, Study, Update, and secondary Home screens all enter through `setContent` / `composeRoute` paths.
+- No production route renders its primary screen by manually assembling `LinearLayout`, `TextView`, or other legacy View trees.
+- `ComposeView` wrappers are allowed only inside Android interop components that still must host a real platform View, such as the handwriting pad or test-only helper code.
+- `MainActivityBase`, `MainActivityHome`, `MainActivitySettings`, and `MainActivityStudy` are route coordinators only. They may build models and dispatch actions, but they must not contain screen layout code.
 
-### 2. Settings shell
+### 2. Remove production test bridges
 
-- Keep collapsing the remaining settings panels into the Compose files.
-- Remaining settings lanes include:
-  - update/release
-  - reference data
-  - category sections
-  - automation hero/reminder/autosync
-  - study ladder and threshold settings
-  - learning steps
-  - retention
-  - workload
-  - study sort
-  - Anki source import filters, frequency range, and note type
-- Keep `MainActivitySettings*` wrappers only while androidTest still depends on them.
+- Any helper whose only purpose is to expose a screen fragment to instrumentation tests lives under `app/src/androidTest`, not `app/src/main`.
+- Production `MainActivity*` classes do not keep wrapper methods solely because tests call them.
+- Existing helper tests either assert the full Compose route, call model builders directly, or use androidTest-local bridge helpers.
 
-### 3. Study shell
+### 3. Finish Settings migration
 
-- Keep inlining the remaining study bridges into the study route and Compose files.
-- Preserve test-backed wrappers until the helper tests are moved.
-- Continue the study write and flashcard lanes:
-  - writing session card
-  - writing toolbar
-  - primary and fallback writing actions
-  - writing pad
-  - study prompt and answer panels
-  - flashcard card and action bar
-  - choice grid/session/result screens
-  - done-actions and empty/focus-done states
-- Keep the Study shell split into route, model, and surface pieces instead of a new god class.
+- The Settings route is one Compose screen model plus focused panel composables.
+- Remaining settings behavior is migrated with parity for update/release, reference data, categories, automation reminder/autosync, study ladder, ladder thresholds, study-ahead, learning steps, retention, workload, study sort, Anki source validation, import filters, frequency range, and note type mapping.
+- Toasts, dialogs, file pickers, and note-type selection stay behind small action interfaces or focused controller classes, not embedded in composable layout code.
+- Scroll preservation and expanded-section state still behave as they do on this branch.
 
-### 4. Data and repository boundary
+### 4. Finish Study migration
 
-- Keep pushing view logic out of the data layer.
-- Remaining boundary work includes:
-  - `LocalStore`
-  - `SettingsRepository`
-  - `HistoricalSyncStore`
-  - migration hooks and schema helpers
-  - any remaining activity-owned repository adapters
-- Keep `LocalStoreMigrations`, `LocalStoreSchema`, and `LocalStoreMigrationHooks` as the active migration boundary until the rewrite is done.
+- Flashcard, writing, similar-kanji choice, meaning-kanji choice, done, empty, and focus-done states all render through Compose route surfaces.
+- Remaining Study action bars, top bars, prompt/answer panels, flashcard cards, writing status, writing toolbar, writing actions, and choice result screens are model-driven composables.
+- Gesture behavior, reveal-before-grading, above-the-fold controls, writing recognition, repair actions, similar-kanji routing, and "study more new cards" behavior keep current parity.
+- Study stays split into route, model, action, scheduler, writing, and surface files. No new giant Study class replaces the old one.
 
-### 5. `fsrs_java` integration
+### 5. Finish Home migration
 
-- Keep the in-repo `:fsrs-java` engine covered by `core` and `fsrs-java` tests.
-- Keep the adapter path through `BridgeScheduler` and the review transition code under coverage.
-- Verify any remaining ladder or memory-handoff behavior against the reference fixtures before removing related shims.
+- Home overview, metrics, action chrome, focus queue, recent mistakes, sync result screens, browse search, browse detail, examples, timeline, and empty states are Compose-owned.
+- Search query preservation, back navigation, "study this kanji", recent mistakes navigation, sync CTA behavior, and browse-detail timeline behavior keep current parity.
+- Home route files remain focused by feature; no single Home Compose file becomes the new dump for every surface.
 
-### 6. Parity tests and review
+### 6. Finish core Kotlin migration
 
-- Add or extend Compose tests before removing a bridge.
-- Keep androidTest helper coverage for any legacy surface that is still asserted.
-- After every small batch:
-  - run the narrow compile or focused test gate first
-  - run `./gradlew ciFast` before push
-  - commit
-  - push
-  - dispatch a reviewer agent on the commit
-- Use Semble first when picking the next slice or checking for duplicate work.
+- `app/src/main` remains Kotlin-only.
+- `core/src/main/java/dev/bee/kanjianki/core` is reduced to zero Java files, or every remaining Java file has a written reason that it is intentionally left Java for compatibility.
+- Large core Java files are migrated in risk order: record/model containers, scheduler/review logic, copy/text helpers, import selection, game/planner logic, and analyzers.
+- Java-to-Kotlin migrations preserve Java-callable APIs where tests or Android code still depend on method-style accessors.
 
-### 7. Final parity audit before merge
+### 7. Finish fsrs-java and scheduler parity
 
-Do not call the rewrite complete until a real audit passes for:
+- The in-repo `:fsrs-java` engine is still used through the Kotlin adapter path.
+- `BridgeScheduler`, review transitions, ladder movement, Anki-exact learning/relearning behavior, promotion after FSRS schedules beyond the configured threshold, and demotion after configured consecutive failures are covered by focused tests.
+- Reference fixtures and existing FSRS tests pass after any adapter or scheduler cleanup.
 
-- AnkiDroid sync and import defaults
-- study ladder behavior and learning/relearning semantics
-- FSRS scheduling and reference fixtures
-- writing recognition, guided handwriting, repair actions, and similar-kanji flows
-- Stats, settings, update/release behavior, and database migrations
-- app identity, packaging, and the release path
+### 8. Finish data and repository boundaries
+
+- `LocalStore`, `SettingsRepository`, historical sync storage, migration hooks, schema helpers, and activity-owned repository adapters have clear ownership and focused tests.
+- UI code does not know SQL details, migration details, or raw storage keys except through explicit repository/model APIs.
+- Settings storage fallback behavior, import provenance, sync run history, timeline events, study logs, and stats evidence remain backward compatible with existing installs.
+
+### 9. Finish parity coverage
+
+- Add or update tests before removing any bridge that currently has test coverage.
+- Required passing gates:
+  - `./gradlew :core:test :fsrs-java:test`
+  - `./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac`
+  - `./gradlew :app:testDebugUnitTest`
+  - `./gradlew ciFast`
+- Manual or emulator smoke coverage must include Home, Settings, Study flashcard, Study writing, Study choice cards, browse/detail, sync/update, and Stats before merging.
+
+### 10. Final merge criteria
+
+- The branch is clean, pushed, and PR CI is green.
+- The final PR summary maps every checklist item above to the commits that completed it.
+- No stale continuation note says the branch is unfinished.
+- No hidden TODO, disabled test, lint suppression, or review-agent finding remains unless it is explicitly documented as out of scope for this rewrite.
+- Only after all items pass, merge the rewrite branch to `main`, push `main`, and verify `main` is clean and green.
