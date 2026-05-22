@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public final class LadderHealthPolicyTest {
     @Test
@@ -35,12 +36,17 @@ public final class LadderHealthPolicyTest {
 
     @Test
     public void summarizeNormalizesNullsAndThresholds() {
+        LadderHealthPolicy.ItemEvidence normalized = new LadderHealthPolicy.ItemEvidence(null, null, null, -1, -2, -3);
+        LadderHealthPolicy.ItemEvidence legacyCtor = new LadderHealthPolicy.ItemEvidence(null, null, null, -1, -2);
         LadderHealthPolicy.Metric metric = LadderHealthPolicy.summarize(
-                Collections.singletonList(new LadderHealthPolicy.ItemEvidence(null, null, null, -1, -2, -3)),
+                Collections.singletonList(normalized),
                 0,
                 0
         );
 
+        assertEquals(new LadderHealthPolicy.ItemEvidence("", RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.NEW_LEARNING, 0, 0, 0), normalized);
+        assertEquals(0, legacyCtor.matureIntervalDays());
+        assertEquals("ItemEvidence[state=, rung=KANJI_MEANING, phase=NEW_LEARNING, realPassStreak=0, realAgainStreak=0, matureIntervalDays=0]", normalized.toString());
         assertEquals(1, metric.totalActiveItems());
         assertEquals(1, metric.ladderPromotionIntervalDays());
         assertEquals(1, metric.ladderDemotionFailStreak());
@@ -48,6 +54,7 @@ public final class LadderHealthPolicyTest {
         assertEquals(0, metric.promotionReadyCount());
         assertEquals(0, metric.demotionRiskCount());
         assertEquals(0, metric.demotionReadyCount());
+        assertThrows(UnsupportedOperationException.class, () -> metric.rungCounts().put(RecordsBase.LadderRung.KANJI_MEANING, 2));
     }
 
     @Test
