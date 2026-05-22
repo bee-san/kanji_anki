@@ -40,36 +40,50 @@ private val WritingSecondaryFill = Color(0xFFFFF5FA)
 private val WritingDisabledBorder = Color(0xFFFFD5E6)
 private val WritingDisabledText = Color(0xFF9F8A98)
 
-class WritingPrimaryActionsView(context: Context) : FrameLayout(context) {
+class WritingPrimaryActionsView private constructor(
+    context: Context,
+    private val sharedState: WritingActionsBarState?,
+    private val mountStandaloneContent: Boolean,
+) : FrameLayout(context) {
     private var model by mutableStateOf(WritingPrimaryActionsModel.initial())
+
+    constructor(context: Context) : this(context, null, true)
+
+    internal constructor(context: Context, sharedState: WritingActionsBarState) : this(context, sharedState, false)
 
     init {
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         )
-        addView(
-            ComposeView(context).apply {
-                layoutParams = LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                setContent {
-                    MaterialTheme {
-                        Surface {
-                            WritingPrimaryActions(model)
+        if (mountStandaloneContent) {
+            addView(
+                ComposeView(context).apply {
+                    layoutParams = LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    setContent {
+                        MaterialTheme {
+                            Surface {
+                                WritingPrimaryActions(model)
+                            }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
     }
 
     fun render(model: WritingPrimaryActionsModel) {
-        this.model = model
+        if (sharedState == null) {
+            this.model = model
+        } else {
+            sharedState.primaryActions = model
+        }
     }
 
-    fun currentModelForTests(): WritingPrimaryActionsModel = model
+    fun currentModelForTests(): WritingPrimaryActionsModel = sharedState?.primaryActions ?: model
 }
 
 @Composable

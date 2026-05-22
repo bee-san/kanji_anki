@@ -20,36 +20,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 
-class WritingToolActionsView(context: Context) : FrameLayout(context) {
+class WritingToolActionsView private constructor(
+    context: Context,
+    private val sharedState: WritingActionsBarState?,
+    private val mountStandaloneContent: Boolean,
+) : FrameLayout(context) {
     private var model by mutableStateOf(WritingToolActionsModel.initial())
+
+    constructor(context: Context) : this(context, null, true)
+
+    internal constructor(context: Context, sharedState: WritingActionsBarState) : this(context, sharedState, false)
 
     init {
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         )
-        addView(
-            ComposeView(context).apply {
-                layoutParams = LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                setContent {
-                    MaterialTheme {
-                        Surface {
-                            WritingToolActions(model)
+        if (mountStandaloneContent) {
+            addView(
+                ComposeView(context).apply {
+                    layoutParams = LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    setContent {
+                        MaterialTheme {
+                            Surface {
+                                WritingToolActions(model)
+                            }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
     }
 
     fun render(model: WritingToolActionsModel) {
-        this.model = model
+        if (sharedState == null) {
+            this.model = model
+        } else {
+            sharedState.toolActions = model
+        }
     }
 
-    fun currentModelForTests(): WritingToolActionsModel = model
+    fun currentModelForTests(): WritingToolActionsModel = sharedState?.toolActions ?: model
 }
 
 @Composable

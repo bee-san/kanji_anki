@@ -9,26 +9,10 @@ internal class MainActivityStudyWritingToolbar(private val activity: MainActivit
         actionBar.removeAllViews()
         actionBar.visibility = View.VISIBLE
 
-        actionBar.addView(writingToolActions())
-        actionBar.addView(writingPrimaryActions())
-        actionBar.addView(writingFallbackActions())
-    }
-
-    private fun writingToolActions(): View {
-        return WritingToolActionsView(activity).also {
-            activity.writingToolActionsView = it
-        }
-    }
-
-    private fun writingPrimaryActions(): View {
-        return WritingPrimaryActionsView(activity).also {
-            activity.writingPrimaryActionsView = it
-        }
-    }
-
-    private fun writingFallbackActions(): View {
-        return WritingFallbackActionsView(activity).also {
-            activity.writingFallbackActionsView = it
-        }
+        val state = WritingActionsBarState()
+        activity.writingToolActionsView = WritingToolActionsView(activity, state)
+        activity.writingPrimaryActionsView = WritingPrimaryActionsView(activity, state)
+        activity.writingFallbackActionsView = WritingFallbackActionsView(activity, state)
+        actionBar.addView(writingActionsBarView(activity, state))
     }
 }

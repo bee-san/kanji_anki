@@ -1407,9 +1407,11 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.renderWritingSession(recall);
                 assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Prompt: Split, rend");
-                assertTrue(activity.studyActionBar.getChildAt(0) instanceof WritingToolActionsView);
-                assertTrue(activity.studyActionBar.getChildAt(1) instanceof WritingPrimaryActionsView);
-                assertTrue(activity.studyActionBar.getChildAt(2) instanceof WritingFallbackActionsView);
+                assertEquals(1, activity.studyActionBar.getChildCount());
+                assertTrue(activity.studyActionBar.getChildAt(0) instanceof android.widget.FrameLayout);
+                assertNotNull(activity.writingToolActionsView);
+                assertNotNull(activity.writingPrimaryActionsView);
+                assertNotNull(activity.writingFallbackActionsView);
                 assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
                 assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
                 performClickableWithText(activity.studyActionBar, "Erase");
