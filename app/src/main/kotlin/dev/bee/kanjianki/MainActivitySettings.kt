@@ -133,10 +133,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return referenceData().dataLicenseSettingsPanelModel()
     }
 
-    fun renderDataSources() {
-        referenceData().renderDataSources()
-    }
-
     fun noteTypeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNoteTypePanelModel {
         return ankiSource().noteTypeSettingsPanelModel(current)
     }

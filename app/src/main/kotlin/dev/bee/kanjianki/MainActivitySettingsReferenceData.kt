@@ -9,15 +9,13 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
             title = SettingsTextCopy.offlineDataLicensesTitle(),
             body = SettingsTextCopy.offlineDataLicensesBody(),
             actionLabel = SettingsTextCopy.openDataLicensesLabel(),
-            onAction = Runnable { renderDataSources() }
+            onAction = Runnable {
+                val model = referenceDataScreenModel()
+                activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+                    ReferenceDataScreen(model)
+                }
+            }
         )
-    }
-
-    fun renderDataSources() {
-        val model = referenceDataScreenModel()
-        activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
-            ReferenceDataScreen(model)
-        }
     }
 
     fun dataSourcesModel(): SettingsReferenceDataModel {
