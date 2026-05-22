@@ -1,15 +1,19 @@
 package dev.bee.kanjianki
 
+import android.app.AlertDialog
 import android.graphics.Typeface
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import dev.bee.kanjianki.core.AdaptiveFocusCopy
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.StudyStatsStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.AutoSyncScheduler
 
 internal abstract class MainActivityHome : MainActivityBase() {
     @JvmField
@@ -17,7 +21,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     private val focusQueue = MainActivityHomeFocusQueue(this)
     private val browseDetail = MainActivityHomeBrowseDetail(this)
-    private val syncFlow = MainActivityHomeSync(this)
 
     abstract fun renderStats()
     abstract fun renderGames()
@@ -51,27 +54,123 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun confirmSync() {
-        syncFlow.confirmSync()
+        val current = settings()
+        AlertDialog.Builder(this)
+            .setTitle(HomeTextCopy.syncDialogTitle())
+            .setMessage(HomeTextCopy.syncDialogMessage(current))
+            .setPositiveButton(HomeTextCopy.syncDialogPositiveLabel()) { _, _ -> runSync() }
+            .setNegativeButton(HomeTextCopy.cancelLabel(), null)
+            .show()
     }
 
     fun runSync() {
-        syncFlow.runSync()
+        val progressView = SyncProgressPanel()
+        renderHomeRoute {
+            SyncProgressScreen(
+                title = HomeTextCopy.syncingTitle(),
+                progressPanel = progressView,
+            )
+        }
+        val syncGateway = MainActivityBase.collectionGatewayForTests ?: gateway
+        val coordinator = ManualSyncCoordinator(
+            io,
+            main::post,
+            { progress ->
+                ManualSyncEngine(
+                    this,
+                    store,
+                    syncGateway,
+                    settings(),
+                    progress,
+                ).run()
+            },
+            {
+                store.activateAutoSyncAfterFirstSuccess()
+                AutoSyncScheduler.schedule(this)
+            },
+            this::renderSyncResult,
+        )
+        coordinator.start { update -> main.post { progressView.render(update) } }
     }
 
     fun renderSyncResult(result: ManualSyncEngine.SyncResult) {
-        syncFlow.renderSyncResult(result)
+        if (result.skipped) {
+            renderSkippedSyncResult(result)
+        } else if (result.success) {
+            renderSuccessfulSyncResult(result)
+        } else {
+            renderFailedSyncResult(result)
+        }
     }
 
     fun renderSkippedSyncResult(result: ManualSyncEngine.SyncResult) {
-        syncFlow.renderSkippedSyncResult(result)
+        renderSyncResultScreen(
+            SyncResultScreenModel(
+                HomeTextCopy.syncAlreadyRunningTitle(),
+                null,
+                listOf(nonEmptyOr(result.message, HomeTextCopy.syncAlreadyRunningFallback())),
+                BLUE,
+                null,
+                TEAL,
+                null,
+                LABEL_BACK_HOME,
+                this::renderHome,
+            )
+        )
     }
 
     fun renderSuccessfulSyncResult(result: ManualSyncEngine.SyncResult) {
-        syncFlow.renderSuccessfulSyncResult(result)
+        val now = System.currentTimeMillis()
+        val rows = store.activeDashboardRows()
+        val items = store.studyItems()
+        val plan = adaptivePlan(rows, items, now)
+        val entries = queuedEntries(rows, items, now, plan)
+        val summaryLines = mutableListOf<String>()
+        summaryLines.add(HomeTextCopy.syncCandidateSummary(result.dashboardRows, AdaptiveFocusCopy.adaptiveFocusText(plan)))
+        if (result.adaptiveSummary.isNotEmpty()) {
+            summaryLines.add(result.adaptiveSummary)
+        }
+        if (result.importedSuspendedKanji > 0) {
+            summaryLines.add(HomeTextCopy.importedSuspendedKanjiText(result.importedSuspendedKanji))
+        }
+        if (!result.message.isNullOrEmpty()) {
+            summaryLines.add(result.message)
+        }
+        renderSyncResultScreen(
+            SyncResultScreenModel(
+                HomeTextCopy.syncCompleteTitle(),
+                HomeTextCopy.syncReadyCountText(entries.size),
+                summaryLines,
+                TEAL,
+                if (result.dashboardRows > 0) LABEL_STUDY_NOW else null,
+                CORAL,
+                if (result.dashboardRows > 0) ::startFocusedStudy else null,
+                LABEL_BACK_HOME,
+                this::renderHome,
+            )
+        )
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {
-        syncFlow.renderFailedSyncResult(result)
+        renderSyncResultScreen(
+            SyncResultScreenModel(
+                HomeTextCopy.syncNeedsAttentionTitle(),
+                HomeTextCopy.syncReadErrorTitle(),
+                listOf(nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback())),
+                CORAL,
+                HomeTextCopy.trySyncAgainLabel(),
+                TEAL,
+                this::confirmSync,
+                LABEL_BACK_HOME,
+                this::renderHome,
+            )
+        )
+    }
+
+    private fun renderSyncResultScreen(model: SyncResultScreenModel) {
+        renderHomeRoute {
+            SyncResultScreen(model)
+        }
     }
 
     fun studyAheadMillis(): Long {
