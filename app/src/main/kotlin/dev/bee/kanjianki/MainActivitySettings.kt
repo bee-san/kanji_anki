@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
+import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import java.util.Locale
 
@@ -17,10 +18,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun retentionPanel(): MainActivitySettingsRetentionPanel {
         return MainActivitySettingsRetentionPanel(this)
-    }
-
-    private fun ladderThresholdPanel(): MainActivitySettingsLadderThresholdPanel {
-        return MainActivitySettingsLadderThresholdPanel(this)
     }
 
     private fun studySortPanel(): MainActivitySettingsStudySortPanel {
@@ -192,7 +189,37 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
-        return ladderThresholdPanel().ladderThresholdSettingsPanelModel()
+        val current = settings()
+        return SettingsLadderThresholdPanelModel(
+            title = SettingsTextCopy.ladderThresholdsTitle(),
+            body = SettingsTextCopy.ladderThresholdsBody(),
+            promotionDaysLabel = SettingsTextCopy.fsrsDaysToGoUpLabel(),
+            initialPromotionDaysText = thresholdText(current.ladderPromotionIntervalDays),
+            failStreakLabel = SettingsTextCopy.failsToGoDownLabel(),
+            initialFailStreakText = thresholdText(current.ladderDemotionFailStreak),
+            defaultPromotionDaysText = RecordsBase.DEFAULT_LADDER_PROMOTION_INTERVAL_DAYS.toString(),
+            defaultFailStreakText = RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK.toString(),
+            defaultsLabel = SettingsTextCopy.useDefaultLadderThresholdsLabel(),
+            saveLabel = SettingsTextCopy.saveLadderThresholdsLabel(),
+            onSave = SettingsLadderThresholdSaveAction { promotionDaysText, failStreakText ->
+                saveLadderThresholds(promotionDaysText, failStreakText)
+            }
+        )
+    }
+
+    private fun saveLadderThresholds(promotionDaysText: String, failStreakText: String) {
+        val request = StudyLadderThresholdPolicy.saveRequest(promotionDaysText, failStreakText)
+        if (!request.valid) {
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        SettingsWriteActions.saveLadderThresholds(request, store::putIntSetting)
+        Toast.makeText(this, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show()
+        renderSettings()
+    }
+
+    private companion object {
+        fun thresholdText(value: Int): String = value.coerceAtLeast(1).toString()
     }
 
     override fun thresholdInput(value: Int): EditText {
