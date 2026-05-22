@@ -1375,7 +1375,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(activity.flashcardAnswerRevealed);
                 activity.store.rebuildSimilarKanjiPairs(similarIndex("裂\t列\n裂\t烈\n"), System.currentTimeMillis());
                 activity.renderSimilarKanjiSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
-                assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
+                assertHasText(activity, MainActivityBase.LABEL_SIMILAR_KANJI);
+                assertHasText(activity, "Which kanji means split?");
                 assertNull(activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
                 seedRows(activity, Arrays.asList(

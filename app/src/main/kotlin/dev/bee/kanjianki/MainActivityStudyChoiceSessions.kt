@@ -2,6 +2,10 @@ package dev.bee.kanjianki
 
 import android.view.View
 import android.widget.LinearLayout
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -87,7 +91,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun renderSimilarKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        resetChoiceSession(false)
+        resetChoiceSessionState(false)
 
         val choiceCard = similarChoiceCardForSession(session)
         val choices = ArrayList(choiceCard.choices)
@@ -104,24 +108,35 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.settings().matureSupportThreshold,
             System.currentTimeMillis()
         )
-        val cardShell = similarKanjiSessionView(
-            home,
-            SimilarChoiceSessionModel(
-                "Recognise",
-                LABEL_CHOOSE_KANJI,
-                MainActivityBase.LABEL_SIMILAR_KANJI,
-                "Pick the kanji that matches the meaning.",
-                reason,
-                "Which kanji means $meaning?",
-                SimilarChoiceGridModel(
-                    choices,
-                    true
-                ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) }
-            )
+        val model = SimilarChoiceSessionModel(
+            "Recognise",
+            LABEL_CHOOSE_KANJI,
+            MainActivityBase.LABEL_SIMILAR_KANJI,
+            "Pick the kanji that matches the meaning.",
+            reason,
+            "Which kanji means $meaning?",
+            SimilarChoiceGridModel(
+                choices,
+                true
+            ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) }
         )
-        val cardLp = LinearLayout.LayoutParams(-1, 0, 1f)
-        cardLp.setMargins(0, home.dp(6), 0, home.dp(12))
-        home.content.addView(cardShell, cardLp)
+        home.initializeSessionProgressTarget(home.activeStudyPlan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        home.composeRoute(MainActivityBase.NAV_STUDY) {
+            Column {
+                StudyTopBar(
+                    completed = progress.completed,
+                    target = progress.target,
+                    fraction = progress.fraction,
+                    onClose = home::renderHome,
+                    onSettings = home::renderSettings,
+                )
+                SimilarChoiceSessionCard(
+                    model = model,
+                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+                )
+            }
+        }
     }
 
     fun similarChoiceCardForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.SimilarKanjiChoiceCard {
@@ -145,6 +160,10 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
     fun resetChoiceSession(resetTouchTracking: Boolean) {
         home.prepareStudyContent(home.activeStudyPlan, true)
+        resetChoiceSessionState(resetTouchTracking)
+    }
+
+    private fun resetChoiceSessionState(resetTouchTracking: Boolean) {
         home.activeSimilarWritingRepair = null
         home.activeAnalysis = null
         home.checkingWriting = false

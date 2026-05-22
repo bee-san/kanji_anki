@@ -70,13 +70,14 @@ internal fun meaningKanjiSessionView(activity: MainActivityStudy, model: Meaning
 }
 
 @Composable
-fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel) {
+fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifier = Modifier) {
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
         taskLabel = model.taskLabel,
         body = model.body,
-        reasonLine = model.reasonLine
+        reasonLine = model.reasonLine,
+        modifier = modifier,
     ) {
         SimilarChoiceInsetPanel(model)
     }
@@ -112,10 +113,11 @@ private fun StudyChoiceSessionSurface(
     taskLabel: String,
     body: String,
     reasonLine: String,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
         color = StudyCardFill,
         border = BorderStroke(1.dp, StudyChoiceBorder),
