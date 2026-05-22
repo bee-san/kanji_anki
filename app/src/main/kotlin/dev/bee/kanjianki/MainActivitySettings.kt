@@ -70,12 +70,12 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                         settingsStudyExpanded = !settingsStudyExpanded
                         renderSettings(true)
                     },
-                    newCardSortSettingsPanelModel(current),
-                    workloadSettingsPanelModel(),
-                    retentionSettingsPanelModel(),
+                    MainActivitySettingsStudySortPanel(this).newCardSortSettingsPanelModel(current),
+                    MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel(),
+                    MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel(),
                     learningStepsSettingsPanelModel(),
                     studyAheadSettingsPanelModel(),
-                    studyLadderSettingsPanelModel(),
+                    MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel(),
                     ladderThresholdSettingsPanelModel()
                 ),
                 settingsAutomationCategoryModel(
@@ -164,6 +164,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         )
     }
 
+    fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
+        return MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel()
+    }
+
     private fun saveStudyAhead(minutesText: String) {
         val request = StudyAheadSettingsPolicy.saveRequest(minutesText)
         if (!request.valid) {
@@ -173,10 +177,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         store.saveStudyAheadMinutes(request.minutes)
         Toast.makeText(this, SettingsTextCopy.studyAheadSavedToast(), Toast.LENGTH_SHORT).show()
         renderSettings()
-    }
-
-    fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
-        return MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel()
     }
 
     fun toggleLadderRung(rung: RecordsBase.LadderRung) {
@@ -213,6 +213,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         renderSettings()
     }
 
+    fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
+        return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel()
+    }
+
     private companion object {
         fun thresholdText(value: Int): String = value.coerceAtLeast(1).toString()
     }
@@ -229,10 +233,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     override fun parseThresholdInput(input: EditText): Int {
         return input.text.toString().trim().toInt()
-    }
-
-    fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
-        return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel()
     }
 
     fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
