@@ -106,7 +106,13 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 MaterialTheme {
                     FlashcardCard(
                         FlashcardCardModel(
-                            flashcardPromptHeaderModel(session),
+                            FlashcardPromptHeaderModel(
+                                StudyTaskCopy.studyModeLabel(session),
+                                StudyTaskCopy.flashcardTitle(session),
+                                StudyTextCopy.heroQuestion(session),
+                                "Answer hidden until reveal",
+                                activity.studyReasonLine(session)
+                            ),
                             heroPanel,
                             typingAnswer,
                             answerPanel,
@@ -116,16 +122,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 }
             }
         }
-    }
-
-    fun flashcardPromptHeaderModel(session: RecordsSchedulerModels.StudySession): FlashcardPromptHeaderModel {
-        return FlashcardPromptHeaderModel(
-            StudyTaskCopy.studyModeLabel(session),
-            StudyTaskCopy.flashcardTitle(session),
-            StudyTextCopy.heroQuestion(session),
-            "Answer hidden until reveal",
-            activity.studyReasonLine(session)
-        )
     }
 
     fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
