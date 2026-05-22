@@ -197,9 +197,8 @@ public final class MainActivityInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertHasText(activity, RAMEN_RADICAL_GAP);
                 activity.renderBrowseKanji("拉");
-                EditText search = findType(activity.findViewById(android.R.id.content), EditText.class);
-                assertNotNull(search);
-                assertEquals("拉", search.getText().toString());
+                assertEquals("拉", activity.activeBrowseQuery);
+                assertHasText(activity, "拉");
             });
             clickText(scenario, RAMEN_RADICAL_GAP);
             scenario.onActivity(activity -> {
@@ -221,9 +220,8 @@ public final class MainActivityInstrumentedTest {
             });
             clickText(scenario, "Back to Browse Kanji");
             scenario.onActivity(activity -> {
-                EditText search = findType(activity.findViewById(android.R.id.content), EditText.class);
-                assertNotNull(search);
-                assertEquals("拉", search.getText().toString());
+                assertEquals("拉", activity.activeBrowseQuery);
+                assertHasText(activity, "拉");
             });
         }
     }

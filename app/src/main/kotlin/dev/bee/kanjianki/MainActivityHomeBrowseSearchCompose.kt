@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +16,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -40,28 +36,19 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 
-internal fun browseScreenView(
+internal fun browseScreenModel(
     activity: MainActivityHomeBrowseDetail,
     query: String,
     items: List<RecordsImportModels.KanjiInventoryItem>
-): View {
+): BrowseScreenModel {
     val rows = items.map { item -> browseKanjiRowModel(activity, item) }
-    return ComposeView(activity.home()).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                BrowseScreen(
-                    model = BrowseScreenModel(
-                        initialQuery = query,
-                        resultHeading = HomeTextCopy.browseResultHeading(rows.size),
-                        rows = rows,
-                        onHome = activity.home()::renderHome,
-                        onSearch = activity::renderBrowseKanji
-                    )
-                )
-            }
-        }
-    }
+    return BrowseScreenModel(
+        initialQuery = query,
+        resultHeading = HomeTextCopy.browseResultHeading(rows.size),
+        rows = rows,
+        onHome = activity.home()::renderHome,
+        onSearch = activity::renderBrowseKanji
+    )
 }
 
 private fun browseKanjiRowModel(

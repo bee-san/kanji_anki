@@ -19,9 +19,11 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
 
     fun renderBrowseKanji(query: String?) {
         home.activeBrowseQuery = query ?: ""
-        home.base("home")
         val items = home.store.searchKanjiInventory(query)
-        home.content.addView(browseScreenView(this, home.activeBrowseQuery, items))
+        val model = browseScreenModel(this, home.activeBrowseQuery, items)
+        home.composeRoute("home") {
+            BrowseScreen(model)
+        }
     }
 
     fun renderDetail(kanji: String) {

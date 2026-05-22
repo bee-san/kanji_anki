@@ -1953,12 +1953,12 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals("裂", activity.activeBrowseQuery);
         assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "SUSPENDED");
-        performClickableWithText(activity.content, "split");
+        performClickableWithText(activity.findViewById(android.R.id.content), "split");
         assertEquals(1, activity.content.getChildCount());
         assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Back to Browse Kanji");
         assertHasText(activity, "Local inventory");
-        performClickableWithText(activity.content, "Unsuspend locally");
+        performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertEquals(1, activity.content.getChildCount());
         assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
