@@ -7,10 +7,10 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `0b9359d3`
+- Last verified commit before this refresh: `dd0a0c9e`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
-- `core/src/main/java/dev/bee/kanjianki/core` has 8 Java files.
+- `core/src/main/java/dev/bee/kanjianki/core` has 7 Java files.
 - `FrequencyRetentionRanges.java` is an intentional compatibility exception
   unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
 - Compose is wired through direct `setContent` route surfaces, but the shell
@@ -79,7 +79,6 @@ item is satisfied.
 
 Migrate or explicitly justify every remaining file. The finite remaining list is:
 
-- `AdaptiveLoadPlanner.java`
 - `BridgeScheduler.java`
 - `FrequencyRetentionRanges.java`
 - `RecordsBase.java`
@@ -92,7 +91,7 @@ The only already-accepted exception is `FrequencyRetentionRanges.java`; keep it
 only if its Java-reflection privacy contract is documented and tested. The
 remaining migration order is:
 
-1. Scheduler/review logic: `AdaptiveLoadPlanner.java`, `BridgeScheduler.java`.
+1. Scheduler facade: `BridgeScheduler.java`.
 2. Record/model containers: `RecordsBase.java`, `RecordsImportModels.java`,
    `RecordsSchedulerModels.java`, `RecordsStudyModels.java`,
    `RecordsSyncModels.java`.
@@ -141,14 +140,14 @@ documented Android interop exception; Home, Settings, Study, Browse/Detail,
 Stats, Games, Sync, and Update are model-driven Compose surfaces with current
 behavior parity; production test-only bridges are removed or moved to
 androidTest; `app/src/main` and `fsrs-java/src/main` remain Kotlin-only;
-`core/src/main/java/dev/bee/kanjianki/core` is reduced to zero Java files except
-for the explicitly documented `FrequencyRetentionRanges.java` compatibility
-exception if it still cannot be moved safely; the finite remaining Java list is
-`AdaptiveLoadPlanner.java`, `BridgeScheduler.java`, `RecordsBase.java`,
-`RecordsImportModels.java`, `RecordsSchedulerModels.java`,
-`RecordsStudyModels.java`, and `RecordsSyncModels.java`; production legacy route
-mirrors and test-only bridges are removed or moved to androidTest; remaining
-data and repository
+the finite remaining Java migration list is `BridgeScheduler.java`,
+`RecordsBase.java`, `RecordsImportModels.java`, `RecordsSchedulerModels.java`,
+`RecordsStudyModels.java`, and `RecordsSyncModels.java`; when those are migrated,
+`core/src/main/java/dev/bee/kanjianki/core` is zero Java files except for the
+explicitly documented and tested `FrequencyRetentionRanges.java` compatibility
+exception if it still cannot be moved safely; production legacy route mirrors
+and test-only bridges are removed or moved to androidTest; remaining data and
+repository
 boundaries are clean and backward-compatible; no new god classes or layout dumps
 are introduced; every slice is committed, reviewed by an agent, pushed, and
 verified with focused tests plus `ciFast`; final verification passes
