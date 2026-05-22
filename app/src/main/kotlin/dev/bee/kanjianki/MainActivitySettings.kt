@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.LearningStepsSettingsPolicy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.reminders.ReminderScheduler
@@ -50,16 +51,88 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             0
         }
         val current = settings()
+        val reminder = store.reminderSettings()
+        val autoSync = store.autoSyncSettings()
+        val autoUpdate = store.autoUpdateStatus()
+        val reminderBlocked = reminder.enabled && !ReminderScheduler.notificationsAllowed(this)
+        val hero = SettingsAutomationHeroModel(
+            cockpitLabel = SettingsTextCopy.settingsCockpitLabel(),
+            title = MainActivityBase.NAV_SETTINGS,
+            body = SettingsTextCopy.settingsHeroBody(),
+            rows = listOf(
+                listOf(
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.noteTypeStatusLabel(),
+                        StudyTextCopy.compact(current.modelName, 56),
+                        SettingsAutomationHeroColors.studyPlum
+                    ),
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.importFiltersStatusLabel(),
+                        StudyTextCopy.compact(SettingsTextCopy.settingsImportSummary(current), 56),
+                        SettingsAutomationHeroColors.teal
+                    )
+                ),
+                listOf(
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.importRanksStatusLabel(),
+                        StudyTextCopy.compact("${current.suspendedRankMin}-${current.suspendedRankMax}", 56),
+                        SettingsAutomationHeroColors.teal
+                    ),
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.reminderStatusLabel(),
+                        StudyTextCopy.compact(
+                            SettingsTextCopy.settingsReminderSummary(
+                                reminder.enabled,
+                                reminderBlocked,
+                                reminder.displayTime()
+                            ),
+                            56
+                        ),
+                        if (reminder.enabled) SettingsAutomationHeroColors.teal else SettingsAutomationHeroColors.muted
+                    )
+                ),
+                listOf(
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.dailySyncStatusLabel(),
+                        StudyTextCopy.compact(
+                            SettingsTextCopy.settingsAutoSyncSummary(
+                                autoSync.configured,
+                                autoSync.enabled,
+                                autoSync.displayTime()
+                            ),
+                            56
+                        ),
+                        if (autoSync.enabled) SettingsAutomationHeroColors.teal else SettingsAutomationHeroColors.muted
+                    ),
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.updatesStatusLabel(),
+                        StudyTextCopy.compact(
+                            SettingsTextCopy.settingsUpdateSummary(
+                                autoUpdate.hasPendingUpdate(),
+                                autoUpdate.enabled
+                            ),
+                            56
+                        ),
+                        if (autoUpdate.hasPendingUpdate()) {
+                            SettingsAutomationHeroColors.coral
+                        } else {
+                            SettingsAutomationHeroColors.studyPinkDark
+                        }
+                    )
+                ),
+                listOf(
+                    SettingsAutomationHeroPillModel(
+                        SettingsTextCopy.matchingCardsStatusLabel(),
+                        StudyTextCopy.compact(SettingsTextCopy.matchingCardsSummary(current), 56),
+                        SettingsAutomationHeroColors.studyPlum
+                    )
+                )
+            )
+        )
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
             SettingsScreen(
                 settingsScreenModel(
-                    settingsAutomationHeroModel(
-                        current,
-                        store.reminderSettings(),
-                        store.autoSyncSettings(),
-                        store.autoUpdateStatus(),
-                        ReminderScheduler.notificationsAllowed(this)
-                    ),
+                    hero,
                     listOf(
                         settingsAnkiSourceCategoryModel(
                             settingsAnkiExpanded,
