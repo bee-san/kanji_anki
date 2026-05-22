@@ -63,7 +63,7 @@ internal class MainActivityStudyScreen(private val study: MainActivityStudy) {
             }
             val repair = study.store.nextDueSimilarWritingRepair(now)
             if (repair != null) {
-                study.renderLegacySimilarWritingRepairRoute(repair, plan, now)
+                study.renderSimilarWritingRepairRoute(repair, plan, now)
                 return true
             }
         }

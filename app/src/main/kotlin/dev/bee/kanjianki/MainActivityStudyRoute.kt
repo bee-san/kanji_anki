@@ -60,11 +60,10 @@ internal fun MainActivityStudy.renderWritingStudyRoute(session: RecordsScheduler
     renderComposeWritingSession(session)
 }
 
-internal fun MainActivityStudy.renderLegacySimilarWritingRepairRoute(
+internal fun MainActivityStudy.renderSimilarWritingRepairRoute(
     repair: RecordsImportModels.SimilarKanjiWritingRepair,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
     now: Long,
 ) {
-    renderLegacyStudyRoute()
     renderSimilarWritingRepair(repair, plan, now)
 }

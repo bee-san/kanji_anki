@@ -185,7 +185,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         home.activeStudyPlan = plan
         home.registerStudyTaskShown(active.progressKey)
         home.startActiveStudyTask(active.studyTaskKey, activeRepair.repairKanji, MainActivityBase.TASK_REPAIR_WRITING, now)
-        renderWritingSession(session)
+        renderComposeWritingSession(session)
     }
 
     @Composable
