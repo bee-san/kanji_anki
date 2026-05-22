@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,18 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
-
-internal fun writingSessionCardView(activity: MainActivityStudy, model: WritingSessionCardModel): View {
-    return ComposeView(activity).apply {
-        setContent {
-            MaterialTheme {
-                WritingSessionCard(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun WritingSessionCard(
