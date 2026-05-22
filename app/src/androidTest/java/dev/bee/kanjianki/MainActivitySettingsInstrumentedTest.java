@@ -36,7 +36,7 @@ import java.util.Locale;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static dev.bee.kanjianki.MainActivitySettingsInstrumentedTestModels.settingsUpdatePanelForTest;
+import static dev.bee.kanjianki.MainActivitySettingsUpdatePageCompose.settingsUpdatePanelModel;
 
 @RunWith(AndroidJUnit4.class)
 public final class MainActivitySettingsInstrumentedTest {
@@ -277,15 +277,24 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertEquals(MainActivityBase.MUTED, syncOff.getStatusColor());
 
                 activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
-                SettingsUpdatePanelModel missingPermission = settingsUpdatePanelForTest(activity);
+                SettingsUpdatePanelModel missingPermission = settingsUpdatePanelModel(
+                        activity,
+                        SettingsTextCopy.automaticUpdatesTitle()
+                );
                 assertFalse(missingPermission.getCanInstallUpdates());
 
                 MainActivity.setInstallPermissionForTests(true);
-                SettingsUpdatePanelModel readyUpdate = settingsUpdatePanelForTest(activity);
+                SettingsUpdatePanelModel readyUpdate = settingsUpdatePanelModel(
+                        activity,
+                        SettingsTextCopy.automaticUpdatesTitle()
+                );
                 assertTrue(readyUpdate.getCanInstallUpdates());
 
                 activity.store.saveAutoUpdateEnabled(false);
-                SettingsUpdatePanelModel updateOff = settingsUpdatePanelForTest(activity);
+                SettingsUpdatePanelModel updateOff = settingsUpdatePanelModel(
+                        activity,
+                        SettingsTextCopy.automaticUpdatesTitle()
+                );
                 assertEquals(SettingsTextCopy.automaticUpdatesToggleLabel(false), updateOff.getAutomaticUpdatesToggleLabel());
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 22, 45));

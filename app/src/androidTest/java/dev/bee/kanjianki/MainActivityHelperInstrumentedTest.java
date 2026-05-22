@@ -1069,7 +1069,7 @@ public final class MainActivityHelperInstrumentedTest {
                         false,
                         "Prompt fallback"
                 );
-                View promptAnswerPanel = activity.flashcardAnswerPanel(promptOnly);
+                View promptAnswerPanel = StudyComposeTestViews.flashcardAnswerPanelTestView(activity, promptOnly);
                 activity.content.addView(promptAnswerPanel);
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync();
                 assertHasText(activity, "Prompt fallback");
@@ -1105,7 +1105,7 @@ public final class MainActivityHelperInstrumentedTest {
                         "Prompt only"
                 );
                 assertTrue(containsText(StudyComposeTestViews.learningPanelTestView(activity, promptOnly), "Prompt only"));
-                assertTrue(containsText(activity.heroKanjiPanel(session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
+                assertTrue(containsText(StudyComposeTestViews.heroKanjiPanelTestView(activity, session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
                 assertNotNull(activity.randomFontVariantTypeface());
 
                 RecordsSchedulerModels.StudySession similarFallback = session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row);
