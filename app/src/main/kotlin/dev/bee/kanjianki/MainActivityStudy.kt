@@ -5,11 +5,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyExampleSelector
 import dev.bee.kanjianki.core.StudyLayoutPolicy
+import dev.bee.kanjianki.core.StudySessionFocusPolicy
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.StrokeGuide
 import dev.bee.kanjianki.core.study.StrokeGuideGuard
@@ -37,7 +39,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     private val choiceSessions = MainActivityStudyChoiceSessions(this)
     private val studyProgress = MainActivityStudyProgress(this)
-    private val studyScreen = MainActivityStudyScreen(this)
     private val moreNewCards = MainActivityStudyMoreNewCards(this)
     private val studyState = MainActivityStudyState(this)
     private val writingSession = MainActivityStudyWritingSession(this)
@@ -69,7 +70,48 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     override fun renderStudy() {
-        studyScreen.renderStudy()
+        val rows = store.activeDashboardRows()
+        val now = System.currentTimeMillis()
+        val ladder = studyLadderSettings()
+        activeStudyPlan = if (rows.isEmpty()) null else studyPlanForMode(rows, store.studyItems(), now)
+        if (renderPendingRepairOrDone(activeStudyPlan, now, ladder)) {
+            return
+        }
+        if (rows.isEmpty()) {
+            renderEmptyStudyQueue()
+            return
+        }
+        val beforeSeed = store.studyItems()
+        val plan = studyPlanForMode(rows, beforeSeed, now)
+        val seeded = studyQueue(rows, now, true, plan)
+        val seededPlan = studyPlanForMode(rows, seeded, now)
+        activeStudyPlan = seededPlan
+        if (renderPendingRepairOrDone(seededPlan, now, ladder)) {
+            return
+        }
+        activeSession = BridgeScheduler().nextSession(
+            seeded,
+            rows,
+            now,
+            studyAheadMillis(),
+            StudySessionFocusPolicy.allowedKanji(seededPlan, continueAllKanjiSession),
+            settings(),
+            studyLadderSettings()
+        )
+        activeSimilarWritingRepair = null
+        val session = activeSession
+        if (session == null) {
+            renderNoStudySession(seededPlan)
+            return
+        }
+        StudySessionActions.activateStudySession(
+            session,
+            now,
+            store::saveStudyItem,
+            ::registerStudyTaskShown,
+            ::startActiveStudyTask
+        )
+        renderSession(session)
     }
 
     fun renderPendingRepairOrDone(
@@ -77,23 +119,38 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         now: Long,
         ladder: RecordsBase.StudyLadderSettings,
     ): Boolean {
-        return studyScreen.renderPendingRepairOrDone(plan, now, ladder)
+        initializeSessionProgressTarget(plan)
+        if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+            for (repair in store.dueSimilarWritingRepairs(now)) {
+                studySessionTracker.includePendingTask(similarRepairProgressKey(repair))
+            }
+            val repair = store.nextDueSimilarWritingRepair(now)
+            if (repair != null) {
+                renderSimilarWritingRepairRoute(repair, plan, now)
+                return true
+            }
+        }
+        if (studySessionTracker.atHardCap(continueAllKanjiSession)) {
+            doneActions.renderStudyRunDone(plan)
+            return true
+        }
+        return false
     }
 
     fun renderEmptyStudyQueue() {
-        studyScreen.renderEmptyStudyQueue()
+        doneActions.renderEmptyStudyQueue()
     }
 
     fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        studyScreen.renderNoStudySession(seededPlan)
+        doneActions.renderNoStudySession(seededPlan)
     }
 
     fun renderFocusDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        studyScreen.renderFocusDone(plan)
+        doneActions.renderFocusDone(plan)
     }
 
     fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
-        studyScreen.renderStudyRunDone(plan)
+        doneActions.renderStudyRunDone(plan)
     }
 
     fun availableStudyMoreNewCards(): Int {
@@ -123,11 +180,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     override fun renderStudyForKanji(kanji: String?) {
-        studyScreen.renderStudyForKanji(kanji)
+        targetedLaunch.renderStudyForKanji(kanji)
     }
 
     fun renderStudyForKanjiNotAvailable() {
-        studyScreen.renderStudyForKanjiNotAvailable()
+        doneActions.renderStudyForKanjiNotAvailable()
     }
 
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
