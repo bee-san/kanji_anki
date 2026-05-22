@@ -68,7 +68,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
     private fun composeFlashcardRouteModel(session: RecordsSchedulerModels.StudySession): ComposeFlashcardRouteModel {
         resetFlashcardInteractionState()
-        val card = recognitionHeroCard(session)
+        val card = activity.recognitionHeroCard(session)
         activity.flashcardCard = card
         activity.flashcardGestureArea = card
         val actionBarState = FlashcardActionBarState(
@@ -79,49 +79,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         )
         activity.flashcardActionBarState = actionBarState
         return ComposeFlashcardRouteModel(card, actionBarState)
-    }
-
-    fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
-        val revealState = FlashcardRevealState(false)
-        activity.flashcardRevealState = revealState
-        activity.flashcardHeroPanel = null
-        activity.studyAnswerPanel = null
-        val heroPanel = FlashcardHeroPanelModel(
-            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
-            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
-            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT
-        )
-        val typingAnswer = if (StudyTaskCopy.isTypingMeaningTask(session)) {
-            typingAnswerField()
-        } else {
-            null
-        }
-
-        val answerPanel = flashcardAnswerPanelModel(session)
-
-        return ComposeView(activity).apply {
-            isClickable = true
-            isFocusable = true
-            setContent {
-                MaterialTheme {
-                    FlashcardCard(
-                        FlashcardCardModel(
-                            FlashcardPromptHeaderModel(
-                                StudyTaskCopy.studyModeLabel(session),
-                                StudyTaskCopy.flashcardTitle(session),
-                                StudyTextCopy.heroQuestion(session),
-                                "Answer hidden until reveal",
-                                activity.studyReasonLine(session)
-                            ),
-                            heroPanel,
-                            typingAnswer,
-                            answerPanel,
-                            revealState
-                        )
-                    )
-                }
-            }
-        }
     }
 
     fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {

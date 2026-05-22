@@ -284,7 +284,45 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
-        return flashcardUi.recognitionHeroCard(session)
+        val revealState = FlashcardRevealState(false)
+        flashcardRevealState = revealState
+        flashcardHeroPanel = null
+        studyAnswerPanel = null
+        val heroPanel = FlashcardHeroPanelModel(
+            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
+            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
+            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(this) else Typeface.DEFAULT
+        )
+        val typingAnswer = if (StudyTaskCopy.isTypingMeaningTask(session)) {
+            typingAnswerField()
+        } else {
+            null
+        }
+        val answerPanel = flashcardAnswerPanelModel(session)
+
+        return ComposeView(this).apply {
+            isClickable = true
+            isFocusable = true
+            setContent {
+                MaterialTheme {
+                    FlashcardCard(
+                        FlashcardCardModel(
+                            FlashcardPromptHeaderModel(
+                                StudyTaskCopy.studyModeLabel(session),
+                                StudyTaskCopy.flashcardTitle(session),
+                                StudyTextCopy.heroQuestion(session),
+                                "Answer hidden until reveal",
+                                studyReasonLine(session)
+                            ),
+                            heroPanel,
+                            typingAnswer,
+                            answerPanel,
+                            revealState
+                        )
+                    )
+                }
+            }
+        }
     }
 
     fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
