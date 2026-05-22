@@ -2,10 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,14 +11,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -35,20 +29,6 @@ private val StudyDoneSecondaryText = Color(0xFF4B2552)
 private val StudyDoneCardBackground = Color(0xFFFFF7FB)
 private val StudyDoneInsetBackground = Color(0xFFFFFFFF)
 private val StudyDoneMuted = Color(0xFF6C5674)
-
-internal fun studyDoneScreenView(
-    context: Context,
-    model: StudyDoneScreenModel
-): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                StudyDoneScreen(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun StudyDoneActions(
@@ -88,9 +68,9 @@ fun StudyDoneActions(
 }
 
 @Composable
-fun StudyDoneScreen(model: StudyDoneScreenModel) {
+fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
         color = StudyDoneCardBackground,
         border = BorderStroke(1.dp, StudyDonePrimaryBorder)

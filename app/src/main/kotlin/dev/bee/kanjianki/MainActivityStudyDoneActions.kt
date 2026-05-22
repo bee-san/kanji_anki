@@ -3,6 +3,10 @@ package dev.bee.kanjianki
 import android.app.AlertDialog
 import android.content.DialogInterface
 import android.widget.EditText
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
@@ -14,48 +18,41 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             renderFocusDone(seededPlan)
             return
         }
-        home.prepareStudyContent(seededPlan, false)
-        home.content.addView(
-            studyDoneScreenView(
-                home,
-                studyDoneScreenModel(
-                    "Nothing due now",
-                    null,
-                    "Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.",
-                    emptyList(),
-                    false,
-                    true,
-                    true
-                )
+        renderStudyDone(
+            seededPlan,
+            studyDoneScreenModel(
+                "Nothing due now",
+                null,
+                "Your active kanji are resting. Sync again if Anki has created new problem candidates, or come back when the next review is due.",
+                emptyList(),
+                false,
+                true,
+                true
             )
         )
     }
 
     fun renderFocusDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        home.prepareStudyContent(plan, false)
         val summaryLines = mutableListOf<String>()
         summaryLines.add(StudyTextCopy.adaptiveFocusDoneSummary(plan.target))
         if (plan.status.isNotEmpty()) {
             summaryLines.add(plan.status)
         }
-        home.content.addView(
-            studyDoneScreenView(
-                home,
-                studyDoneScreenModel(
-                    StudyTextCopy.studyDoneTitle(),
-                    null,
-                    StudyTextCopy.adaptiveFocusDoneBody(),
-                    summaryLines,
-                    true,
-                    false,
-                    false
-                )
+        renderStudyDone(
+            plan,
+            studyDoneScreenModel(
+                StudyTextCopy.studyDoneTitle(),
+                null,
+                StudyTextCopy.adaptiveFocusDoneBody(),
+                summaryLines,
+                true,
+                false,
+                false
             )
         )
     }
 
     fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
-        home.prepareStudyContent(plan, false)
         val summaryLines = mutableListOf<String>()
         summaryLines.add(StudyTextCopy.movedForwardSummary(home.studySessionTracker.movedForwardCount()))
         summaryLines.add(StudyTextCopy.missedSummary(home.studySessionTracker.missedCount()))
@@ -63,56 +60,69 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         if (plan != null && plan.status.isNotEmpty()) {
             summaryLines.add(plan.status)
         }
-        home.content.addView(
-            studyDoneScreenView(
-                home,
-                studyDoneScreenModel(
-                    StudyTextCopy.studyDoneTitle(),
-                    null,
-                    StudyTextCopy.studyRunDoneBody(),
-                    summaryLines,
-                    true,
-                    false,
-                    false
-                )
+        renderStudyDone(
+            plan,
+            studyDoneScreenModel(
+                StudyTextCopy.studyDoneTitle(),
+                null,
+                StudyTextCopy.studyRunDoneBody(),
+                summaryLines,
+                true,
+                false,
+                false
             )
         )
     }
 
     fun renderEmptyStudyQueue() {
-        home.prepareStudyContent(home.activeStudyPlan, false)
-        home.content.addView(
-            studyDoneScreenView(
-                home,
-                studyDoneScreenModel(
-                    "Study practice",
-                    "Nothing to study yet",
-                    "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.",
-                    emptyList(),
-                    false,
-                    false,
-                    false
-                )
+        renderStudyDone(
+            home.activeStudyPlan,
+            studyDoneScreenModel(
+                "Study practice",
+                "Nothing to study yet",
+                "Sync from AnkiDroid first. Study opens once the app finds problem kanji to repair.",
+                emptyList(),
+                false,
+                false,
+                false
             )
         )
     }
 
     fun renderStudyForKanjiNotAvailable() {
-        home.prepareStudyContent(home.activeStudyPlan, false)
-        home.content.addView(
-            studyDoneScreenView(
-                home,
-                studyDoneScreenModel(
-                    "Study practice",
-                    "Kanji not available",
-                    "This row may have changed after sync.",
-                    emptyList(),
-                    false,
-                    false,
-                    false
-                )
+        renderStudyDone(
+            home.activeStudyPlan,
+            studyDoneScreenModel(
+                "Study practice",
+                "Kanji not available",
+                "This row may have changed after sync.",
+                emptyList(),
+                false,
+                false,
+                false
             )
         )
+    }
+
+    private fun renderStudyDone(
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        model: StudyDoneScreenModel,
+    ) {
+        home.activeStudyPlan = plan
+        home.initializeSessionProgressTarget(plan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        home.composeRoute(MainActivityBase.NAV_STUDY) {
+            Column {
+                StudyTopBar(
+                    completed = progress.completed,
+                    target = progress.target,
+                    fraction = progress.fraction,
+                    onClose = home::renderHome,
+                    onSettings = home::renderSettings,
+                )
+                StudyDoneScreen(model = model, modifier = Modifier.padding(top = 10.dp))
+            }
+        }
     }
 
     private fun studyDoneScreenModel(
