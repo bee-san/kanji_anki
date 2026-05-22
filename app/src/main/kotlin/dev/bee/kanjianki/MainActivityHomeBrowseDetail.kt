@@ -13,14 +13,10 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
-    fun home(): MainActivityHome {
-        return home
-    }
-
     fun renderBrowseKanji(query: String?) {
         home.activeBrowseQuery = query ?: ""
         val items = home.store.searchKanjiInventory(query)
-        val model = browseScreenModel(this, home.activeBrowseQuery, items)
+        val model = browseScreenModel(home, home.activeBrowseQuery, items)
         home.renderHomeRoute {
             BrowseScreen(model)
         }

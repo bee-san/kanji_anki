@@ -37,7 +37,7 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 
 internal fun browseScreenModel(
-    activity: MainActivityHomeBrowseDetail,
+    activity: MainActivityHome,
     query: String,
     items: List<RecordsImportModels.KanjiInventoryItem>
 ): BrowseScreenModel {
@@ -46,13 +46,13 @@ internal fun browseScreenModel(
         initialQuery = query,
         resultHeading = HomeTextCopy.browseResultHeading(rows.size),
         rows = rows,
-        onHome = activity.home()::renderHome,
+        onHome = activity::renderHome,
         onSearch = activity::renderBrowseKanji
     )
 }
 
 private fun browseKanjiRowModel(
-    activity: MainActivityHomeBrowseDetail,
+    activity: MainActivityHome,
     item: RecordsImportModels.KanjiInventoryItem
 ): BrowseKanjiRowModel {
     return BrowseKanjiRowModel(
