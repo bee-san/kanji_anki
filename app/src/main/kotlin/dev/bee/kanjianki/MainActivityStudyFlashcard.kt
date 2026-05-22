@@ -86,7 +86,11 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.flashcardRevealState = revealState
         activity.flashcardHeroPanel = null
         activity.studyAnswerPanel = null
-        val heroPanel = heroKanjiPanelModel(session)
+        val heroPanel = FlashcardHeroPanelModel(
+            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
+            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
+            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT
+        )
         val typingAnswer = if (StudyTaskCopy.isTypingMeaningTask(session)) {
             typingAnswerField()
         } else {
@@ -125,6 +129,11 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
+        val heroPanel = FlashcardHeroPanelModel(
+            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
+            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
+            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT
+        )
         return ComposeView(activity).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -134,18 +143,10 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             }
             setContent {
                 MaterialTheme {
-                    FlashcardHeroPanel(heroKanjiPanelModel(session))
+                    FlashcardHeroPanel(heroPanel)
                 }
             }
         }
-    }
-
-    fun heroKanjiPanelModel(session: RecordsSchedulerModels.StudySession): FlashcardHeroPanelModel {
-        return FlashcardHeroPanelModel(
-            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
-            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
-            if (StudyTaskCopy.isFontRecognitionTask(session)) randomFontVariantTypeface() else Typeface.DEFAULT
-        )
     }
 
     fun randomFontVariantTypeface(): Typeface {
