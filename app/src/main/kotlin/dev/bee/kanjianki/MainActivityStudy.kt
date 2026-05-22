@@ -212,7 +212,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
         when (StudySessionRoute.destination(session)) {
-            StudySessionRoute.Destination.WRITING -> renderWritingStudyRoute(session)
+            StudySessionRoute.Destination.WRITING -> writingSession.renderComposeWritingSession(session)
             StudySessionRoute.Destination.SIMILAR_KANJI -> renderSimilarKanjiSession(session)
             StudySessionRoute.Destination.MEANING_KANJI -> renderMeaningKanjiSession(session)
             StudySessionRoute.Destination.FLASHCARD -> renderFlashcardStudyRoute(session)
@@ -265,10 +265,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
         writingSession.renderWritingSession(session)
-    }
-
-    fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
-        writingSession.renderComposeWritingSession(session)
     }
 
     fun resetWritingSession(session: RecordsSchedulerModels.StudySession) {

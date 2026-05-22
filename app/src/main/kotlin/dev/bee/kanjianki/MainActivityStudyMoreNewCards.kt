@@ -4,6 +4,7 @@ import android.widget.EditText
 import android.widget.Toast
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
+import dev.bee.kanjianki.core.RecordsStudyModels
 
 internal class MainActivityStudyMoreNewCards(private val study: MainActivityStudy) {
     fun availableStudyMoreNewCards(): Int {
@@ -49,7 +50,17 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
         }
         val admission = StudyMoreNewCardActions.applyAdmission(
             result,
-            MainActivityStudyMoreNewCardWriter(study),
+            object : StudyMoreNewCardActions.StudyItemWriter {
+                override fun annotateSimilarKanjiAvailability(
+                    items: List<RecordsStudyModels.StudyItem>,
+                ): List<RecordsStudyModels.StudyItem> {
+                    return study.store.annotateSimilarKanjiAvailability(items)
+                }
+
+                override fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
+                    study.store.replaceStudyItems(items)
+                }
+            },
             study.studyMoreNewCardKanji,
             study::resetStudyRunProgress,
             study.studySessionTracker::setTargetCount

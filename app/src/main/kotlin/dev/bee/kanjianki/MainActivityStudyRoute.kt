@@ -56,10 +56,6 @@ internal fun MainActivityStudy.renderFlashcardStudyRoute(session: RecordsSchedul
     renderComposeFlashcardSession(session)
 }
 
-internal fun MainActivityStudy.renderWritingStudyRoute(session: RecordsSchedulerModels.StudySession) {
-    renderComposeWritingSession(session)
-}
-
 internal fun MainActivityStudy.renderSimilarWritingRepairRoute(
     repair: RecordsImportModels.SimilarKanjiWritingRepair,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
