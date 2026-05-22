@@ -11,6 +11,8 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.reminders.ReminderScheduler
+import dev.bee.kanjianki.update.GitHubUpdater
+import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
@@ -40,10 +42,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun updatePage(): MainActivitySettingsUpdatePage {
         return MainActivitySettingsUpdatePage(this)
-    }
-
-    private fun updateFlow(): MainActivitySettingsUpdateFlow {
-        return MainActivitySettingsUpdateFlow(this)
     }
 
     override fun renderUpdate() {
@@ -287,6 +285,35 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun runUpdate(cachedPending: Boolean) {
-        updateFlow().runUpdate(cachedPending)
+        val copy = UpdateRunScreenCopy.forRun(cachedPending)
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+            SettingsUpdateRunScreen(
+                model = SettingsUpdateRunModel(
+                    title = copy.title(),
+                    body = copy.body(),
+                    progressLabel = copy.progressLabel(),
+                    onHome = ::renderHome,
+                    onBack = { renderSettings(false) },
+                )
+            )
+        }
+        val updateUiRun = ++updateUiRunCounter
+        activeUpdateUiRunToken = updateUiRun
+        io.execute {
+            val updater = GitHubUpdater(this)
+            val result = if (cachedPending) {
+                updater.installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+            } else {
+                updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+            }
+            main.post {
+                if (activeUpdateUiRunToken != updateUiRun) {
+                    return@post
+                }
+                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                result.intent?.let(::startActivity)
+                renderUpdate()
+            }
+        }
     }
 }
