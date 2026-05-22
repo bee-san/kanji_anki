@@ -31,7 +31,7 @@ object FocusQueueCopy {
 
     @JvmStatic
     fun queueCardBody(row: RecordsImportModels.DashboardRow): String {
-        if (row.reasonText == null || row.reasonText.isEmpty()) {
+        if (row.reasonText.isEmpty()) {
             return "Needs focused kanji practice."
         }
         val normalized = row.reasonText.lowercase(Locale.ROOT)
