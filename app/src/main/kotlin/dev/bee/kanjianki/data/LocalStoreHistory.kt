@@ -559,12 +559,6 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         }
     }
 
-    fun firstImportedAt(db: SQLiteDatabase, kanji: String, fallback: Long): Long {
-        db.query(TABLE_SUSPENDED_IMPORTS, arrayOf(COLUMN_FIRST_IMPORTED_AT), WHERE_KANJI, arrayOf(kanji), null, null, null, "1").use { cursor ->
-            return if (cursor.moveToFirst()) longValue(cursor, COLUMN_FIRST_IMPORTED_AT) else fallback
-        }
-    }
-
     fun selectedSuspendedCardIds(imports: List<RecordsImportModels.SuspendedImport>): Set<Long> {
         val sources = ArrayList<SyncMirrorPolicy.SelectedSource>()
         for (imported in imports) {

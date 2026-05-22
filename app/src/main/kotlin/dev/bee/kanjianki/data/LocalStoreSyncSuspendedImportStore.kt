@@ -4,9 +4,7 @@ import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.RecordsImportModels
 
-internal class LocalStoreSyncSuspendedImportStore(
-    private val store: LocalStoreSync,
-) {
+internal class LocalStoreSyncSuspendedImportStore {
     fun saveSuspendedImports(
         db: SQLiteDatabase,
         imports: List<RecordsImportModels.SuspendedImport>,
@@ -29,7 +27,7 @@ internal class LocalStoreSyncSuspendedImportStore(
         imported.jitenRank?.let { values.put(LocalStoreBase.COLUMN_JITEN_RANK, it) }
         values.put(LocalStoreBase.COLUMN_RANK_KNOWN, if (imported.rankKnown) 1 else 0)
         values.put(LocalStoreBase.COLUMN_CUTOFF_USED, imported.cutoffUsed)
-        values.put(LocalStoreBase.COLUMN_FIRST_IMPORTED_AT, store.firstImportedAt(db, imported.kanji, finishedAt))
+        values.put(LocalStoreBase.COLUMN_FIRST_IMPORTED_AT, firstImportedAt(db, imported.kanji, finishedAt))
         values.put(LocalStoreBase.COLUMN_LAST_SEEN_SYNC_ID, syncId)
         db.insertWithOnConflict(
             LocalStoreBase.TABLE_SUSPENDED_IMPORTS,
@@ -53,6 +51,21 @@ internal class LocalStoreSyncSuspendedImportStore(
                 sourceValues,
                 SQLiteDatabase.CONFLICT_REPLACE,
             )
+        }
+    }
+
+    private fun firstImportedAt(db: SQLiteDatabase, kanji: String, fallback: Long): Long {
+        db.query(
+            LocalStoreBase.TABLE_SUSPENDED_IMPORTS,
+            arrayOf(LocalStoreBase.COLUMN_FIRST_IMPORTED_AT),
+            LocalStoreBase.WHERE_KANJI,
+            arrayOf(kanji),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_FIRST_IMPORTED_AT) else fallback
         }
     }
 }

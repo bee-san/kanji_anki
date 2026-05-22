@@ -21,7 +21,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
     }
 
     private fun suspendedImportStore(): LocalStoreSyncSuspendedImportStore {
-        return LocalStoreSyncSuspendedImportStore(this)
+        return LocalStoreSyncSuspendedImportStore()
     }
 
     fun saveSuccessfulSync(
