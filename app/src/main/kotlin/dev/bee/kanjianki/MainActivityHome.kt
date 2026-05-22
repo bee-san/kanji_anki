@@ -26,7 +26,52 @@ internal abstract class MainActivityHome : MainActivityBase() {
     abstract fun renderGames()
 
     override fun renderHome() {
-        renderHomeScreen(this)
+        clearStudyModeOverrides()
+
+        val now = System.currentTimeMillis()
+        val sync = store.latestSync()
+        val streak = store.studyStreak(now)
+        val rows = store.activeDashboardRows()
+        val homeItems = studyQueue(rows, now, false, null)
+        val homePlan = if (rows.isEmpty()) null else adaptivePlan(rows, homeItems, now)
+        val entries = if (rows.isEmpty()) {
+            emptyList()
+        } else {
+            queuedEntries(rows, homeItems, now, homePlan)
+        }
+        val provider = gateway.status()
+
+        val model = HomeScreenModel(
+            title = HomeTextCopy.appTitle(),
+            subtitle = HomeTextCopy.appSubtitle(),
+            metrics = homeMetricModels(this, sync, provider, streak, homePlan),
+            showSyncCta = rows.isEmpty(),
+            syncLabel = HomeTextCopy.syncAnkiDroidLabel(),
+            studyLabel = MainActivityBase.LABEL_STUDY_NOW,
+            studySubtitle = HomeTextCopy.studySupportText(),
+            onSync = this::confirmSync,
+            onStudy = this::startFocusedStudy,
+            actions = homeActionModels(this),
+            focusTitle = HomeTextCopy.focusQueueTitle(),
+            focusActionLabel = if (rows.isEmpty()) null else HomeTextCopy.viewAllLabel(),
+            onFocusAction = if (rows.isEmpty()) null else this::renderFocusQueue,
+            emptyTitle = when {
+                rows.isEmpty() -> HomeTextCopy.noKanjiQueuedTitle()
+                entries.isEmpty() -> MainActivityBase.EMPTY_ACTIVE_PRACTICE_TITLE
+                else -> null
+            },
+            emptyBody = when {
+                rows.isEmpty() -> HomeTextCopy.homeNoKanjiQueuedBody()
+                entries.isEmpty() -> MainActivityBase.EMPTY_ACTIVE_PRACTICE_BODY
+                else -> null
+            },
+            previewCards = entries.take(HOME_PREVIEW_ROW_LIMIT).map { entry ->
+                homeFocusQueueCardModel(this, entry, now)
+            }
+        )
+        renderHomeRoute {
+            HomeScreen(model)
+        }
     }
 
     fun homeActionRow(): View {
@@ -218,6 +263,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
             background = panel(BLUSH, BLUSH, dp(10))
             layoutParams = LinearLayout.LayoutParams(sizePx, sizePx)
         }
+    }
+
+    private companion object {
+        const val HOME_PREVIEW_ROW_LIMIT = 3
     }
 
     fun renderDetail(kanji: String) {
