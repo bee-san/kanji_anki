@@ -7,12 +7,14 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this document: `f87a9083`
+- Last verified commit before this refresh: `247f096d`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
-- `core/src/main/java/dev/bee/kanjianki/core` still has 18 Java files.
+- `core/src/main/java/dev/bee/kanjianki/core` has 10 Java files.
 - `FrequencyRetentionRanges.java` is an intentional compatibility exception
   unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
+- Compose is wired through direct `setContent` route surfaces, but the shell
+  still keeps legacy mirror views for test and scroll compatibility.
 
 ## Remaining Migration Items
 
@@ -75,41 +77,44 @@ item is satisfied.
 
 ### 6. Migrate Remaining Core Java
 
-Migrate or explicitly justify every remaining file:
+Migrate or explicitly justify every remaining file. The finite remaining list is:
 
 - `AdaptiveLoadPlanner.java`
 - `BridgeScheduler.java`
 - `FrequencyRetentionRanges.java`
-- `HomeTextCopy.java`
-- `KanjiAnalyzer.java`
-- `KanjiGameEngine.java`
 - `KanjiImpactAnalyzer.java`
-- `KanjiImportSelector.java`
-- `KanjiInventoryBuilder.java`
 - `RecordsBase.java`
 - `RecordsImportModels.java`
 - `RecordsSchedulerModels.java`
 - `RecordsStudyModels.java`
 - `RecordsSyncModels.java`
 - `ReviewTransitionEngine.java`
-- `SettingsTextCopy.java`
-- `SimilarKanjiChoicePlanner.java`
-- `SimilarKanjiIndex.java`
 
-Migration order should be:
+The only already-accepted exception is `FrequencyRetentionRanges.java`; keep it
+only if its Java-reflection privacy contract is documented and tested. The
+remaining migration order is:
 
-1. Copy/text helpers.
-2. Small planners/selectors.
-3. Analyzers and game engine.
-4. Scheduler/review logic.
-5. Record/model containers.
-6. Compatibility exceptions with tests and documentation.
+1. Scheduler/review logic: `AdaptiveLoadPlanner.java`, `BridgeScheduler.java`,
+   `ReviewTransitionEngine.java`, `KanjiImpactAnalyzer.java`.
+2. Record/model containers: `RecordsBase.java`, `RecordsImportModels.java`,
+   `RecordsSchedulerModels.java`, `RecordsStudyModels.java`,
+   `RecordsSyncModels.java`.
+3. Compatibility exception audit: `FrequencyRetentionRanges.java`.
 
 Every Java-to-Kotlin migration must preserve Java-callable APIs where Android
 code or tests still depend on method-style accessors, Java records, public
 fields, constructor visibility, or nullable behavior.
 
-### 7. Data Stack Boundary Check
+### 7. Remove Legacy Route Mirrors And Test Bridges
+
+- `MainActivityShellHost` no longer creates legacy `LinearLayout`,
+  `ScrollView`, or placeholder `ComposeView` mirrors unless a production
+  Android interop need is documented.
+- Production methods that exist only for instrumentation are moved to
+  `app/src/androidTest` helpers.
+- Android tests use real Compose routes or explicit test-only bridges.
+
+### 8. Data Stack Boundary Check
 
 - Existing SQLite/local-store behavior remains backward-compatible.
 - Repository/use-case boundaries are clear enough that UI routes do not issue
@@ -118,7 +123,7 @@ fields, constructor visibility, or nullable behavior.
   slice or deferred with a written reason. Do not claim the modern stack is done
   if the app still uses the existing local-store implementation.
 
-### 8. Verification And Review Gates
+### 9. Verification And Review Gates
 
 - Each migration slice has a focused commit, pushed to the PR branch.
 - Reviewer agents inspect risky commits and their findings are fixed or
@@ -140,12 +145,18 @@ Stats, Games, Sync, and Update are model-driven Compose surfaces with current
 behavior parity; production test-only bridges are removed or moved to
 androidTest; `app/src/main` and `fsrs-java/src/main` remain Kotlin-only;
 `core/src/main/java/dev/bee/kanjianki/core` is reduced to zero Java files except
-for explicitly documented compatibility exceptions with tests; remaining data
-and repository boundaries are clean and backward-compatible; no new god classes
-or layout dumps are introduced; every slice is committed, reviewed by an agent,
-pushed, and verified with focused tests plus `ciFast`; final verification passes
+for the explicitly documented `FrequencyRetentionRanges.java` compatibility
+exception if it still cannot be moved safely; the finite remaining Java list is
+`AdaptiveLoadPlanner.java`, `BridgeScheduler.java`, `KanjiImpactAnalyzer.java`,
+`RecordsBase.java`, `RecordsImportModels.java`, `RecordsSchedulerModels.java`,
+`RecordsStudyModels.java`, `RecordsSyncModels.java`, and
+`ReviewTransitionEngine.java`; production legacy route mirrors and test-only
+bridges are removed or moved to androidTest; remaining data and repository
+boundaries are clean and backward-compatible; no new god classes or layout dumps
+are introduced; every slice is committed, reviewed by an agent, pushed, and
+verified with focused tests plus `ciFast`; final verification passes
 `./gradlew ciFast`, `./gradlew --no-build-cache clean :core:test
 :app:compileDebugKotlin`, androidTest compilation, PR CI, and a smoke pass for
 Home, Settings, Study flashcard/writing, Browse/Detail, Stats, Games, Sync, and
-Update. When all checklist items in `docs/rewrite-exit-goal.md` are complete,
-the rewrite is done and the branch may be merged to main.
+Update. When every item in this checklist is complete, the rewrite is done and
+the branch may be merged to main.
