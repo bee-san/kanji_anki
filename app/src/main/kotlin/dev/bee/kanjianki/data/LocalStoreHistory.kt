@@ -578,18 +578,6 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         return ActiveCardIndex(index.noteIds(), index.cardIds(), index.activeCardCount())
     }
 
-    fun countDeletedExisting(db: SQLiteDatabase, table: String, idColumn: String, currentIds: Set<Long>): Int {
-        var missing = 0
-        db.query(table, arrayOf(idColumn), null, null, null, null, null).use { cursor ->
-            while (cursor.moveToNext()) {
-                if (!currentIds.contains(cursor.getLong(0))) {
-                    missing++
-                }
-            }
-        }
-        return missing
-    }
-
     companion object {
         @JvmStatic
         fun serializeChoices(choices: List<String>?): String = SimilarChoiceCodec.serializeChoices(choices)

@@ -152,4 +152,16 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
     fun updateSyncRemovalMessage(syncId: Long, message: String?) {
         syncRunStore().updateSyncRemovalMessage(syncId, message)
     }
+
+    private fun countDeletedExisting(db: SQLiteDatabase, table: String, idColumn: String, currentIds: Set<Long>): Int {
+        var missing = 0
+        db.query(table, arrayOf(idColumn), null, null, null, null, null).use { cursor ->
+            while (cursor.moveToNext()) {
+                if (!currentIds.contains(cursor.getLong(0))) {
+                    missing++
+                }
+            }
+        }
+        return missing
+    }
 }
