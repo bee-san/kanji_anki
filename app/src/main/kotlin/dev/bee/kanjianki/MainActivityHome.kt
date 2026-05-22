@@ -96,7 +96,22 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun fullWidthHomeButton(): View {
-        return fullWidthHomeButtonView(this)
+        return ComposeView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)).apply {
+                setMargins(0, 0, 0, dp(10))
+            }
+            setOnClickListener { renderHome() }
+            setContent {
+                MaterialTheme {
+                    Surface {
+                        HomeFullWidthHomeButton(
+                            label = HomeTextCopy.homeLabel(),
+                            onClick = this@MainActivityHome::renderHome
+                        )
+                    }
+                }
+            }
+        }
     }
 
     fun renderFocusQueue() {

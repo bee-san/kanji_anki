@@ -71,25 +71,6 @@ internal fun homeSectionHeaderView(
     }
 }
 
-internal fun fullWidthHomeButtonView(home: MainActivityHome): View {
-    return ComposeView(home).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, home.dp(56)).apply {
-            setMargins(0, 0, 0, home.dp(10))
-        }
-        setOnClickListener { home.renderHome() }
-        setContent {
-            MaterialTheme {
-                Surface {
-                    HomeFullWidthHomeButton(
-                        label = HomeTextCopy.homeLabel(),
-                        onClick = home::renderHome
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun HomeActionGrid(actions: List<HomeActionModel>) {
     Column(
