@@ -158,42 +158,6 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         inventoryMaintenance().rebuildKanjiInventory(db, snapshot, imports, rows, nowMillis, settings)
     }
 
-    fun addSnapshotInventory(
-        inventory: KanjiInventoryBuilder,
-        snapshot: RecordsSyncModels.CollectionSnapshot?,
-        settings: RecordsSyncModels.Settings,
-    ) {
-        if (snapshot == null) {
-            return
-        }
-        val activeIndex = LocalStoreSyncMirrorAdapters.activeCardIndex(snapshot.cards)
-        for (note in snapshot.notes) {
-            if (activeIndex.noteIds.contains(note.noteId)) {
-                inventory.addSnapshotNote(note)
-            }
-        }
-    }
-
-    fun addImportedInventory(inventory: KanjiInventoryBuilder, imports: List<RecordsImportModels.SuspendedImport>) {
-        for (imported in imports) {
-            inventory.addSuspendedImport(imported)
-        }
-    }
-
-    fun addDashboardInventory(inventory: KanjiInventoryBuilder, rows: List<RecordsImportModels.DashboardRow>) {
-        for (row in rows) {
-            inventory.addDashboardRow(row)
-        }
-    }
-
-    fun addKnownKanji(inventory: KanjiInventoryBuilder, db: SQLiteDatabase, table: String) {
-        db.query(true, table, arrayOf(COLUMN_KANJI), null, null, null, null, null, null).use { cursor ->
-            while (cursor.moveToNext()) {
-                inventory.addKnownKanji(string(cursor, COLUMN_KANJI))
-            }
-        }
-    }
-
     fun writeKanjiInventory(db: SQLiteDatabase, inventory: KanjiInventoryBuilder) {
         for (item in inventory.build(previousInventoryItems(db))) {
             val values = ContentValues()
