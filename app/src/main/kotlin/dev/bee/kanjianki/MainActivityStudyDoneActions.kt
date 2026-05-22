@@ -3,7 +3,6 @@ package dev.bee.kanjianki
 import android.app.AlertDialog
 import android.content.DialogInterface
 import android.widget.EditText
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -109,19 +108,8 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         model: StudyDoneScreenModel,
     ) {
         home.activeStudyPlan = plan
-        home.initializeSessionProgressTarget(plan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
-        home.composeRoute(MainActivityBase.NAV_STUDY) {
-            Column {
-                StudyTopBar(
-                    completed = progress.completed,
-                    target = progress.target,
-                    fraction = progress.fraction,
-                    onClose = home::renderHome,
-                    onSettings = home::renderSettings,
-                )
-                StudyDoneScreen(model = model, modifier = Modifier.padding(top = 10.dp))
-            }
+        home.renderComposeStudyRoute {
+            StudyDoneScreen(model = model, modifier = Modifier.padding(top = 10.dp))
         }
     }
 

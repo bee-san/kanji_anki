@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -55,19 +54,8 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 )
             },
         )
-        home.initializeSessionProgressTarget(home.activeStudyPlan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
-        home.composeRoute(MainActivityBase.NAV_STUDY) {
-            Column {
-                StudyTopBar(
-                    completed = progress.completed,
-                    target = progress.target,
-                    fraction = progress.fraction,
-                    onClose = home::renderHome,
-                    onSettings = home::renderSettings,
-                )
-                MeaningChoiceSessionCard(model = model)
-            }
+        home.renderComposeStudyRoute {
+            MeaningChoiceSessionCard(model = model)
         }
     }
 
@@ -115,22 +103,11 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 true
             ) { glyph -> home.submitSimilarKanjiChoice(choiceCard, glyph) }
         )
-        home.initializeSessionProgressTarget(home.activeStudyPlan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
-        home.composeRoute(MainActivityBase.NAV_STUDY) {
-            Column {
-                StudyTopBar(
-                    completed = progress.completed,
-                    target = progress.target,
-                    fraction = progress.fraction,
-                    onClose = home::renderHome,
-                    onSettings = home::renderSettings,
-                )
-                SimilarChoiceSessionCard(
-                    model = model,
-                    modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
-                )
-            }
+        home.renderComposeStudyRoute {
+            SimilarChoiceSessionCard(
+                model = model,
+                modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
+            )
         }
     }
 
