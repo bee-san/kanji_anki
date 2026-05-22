@@ -155,7 +155,7 @@ class StudySessionProgressTracker {
         }
 
         private fun safeKanji(kanji: String?): String {
-            return kanji?.trim() ?: ""
+            return kanji?.trimJavaWhitespace() ?: ""
         }
 
         private fun locallyImproved(
@@ -167,6 +167,18 @@ class StudySessionProgressTracker {
             }
             return after.writingLevel > before.writingLevel ||
                 after.realPassStreak > before.realPassStreak
+        }
+
+        private fun String.trimJavaWhitespace(): String {
+            var start = 0
+            var end = length
+            while (start < end && this[start].code <= ' '.code) {
+                start++
+            }
+            while (start < end && this[end - 1].code <= ' '.code) {
+                end--
+            }
+            return substring(start, end)
         }
     }
 }

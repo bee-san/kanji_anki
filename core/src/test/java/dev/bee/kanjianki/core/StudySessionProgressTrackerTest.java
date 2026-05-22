@@ -159,6 +159,18 @@ public final class StudySessionProgressTrackerTest {
         assertEquals(0, tracker.missedCount());
     }
 
+    @Test
+    public void reviewOutcomeKanjiTrimKeepsJavaWhitespaceSemantics() {
+        StudySessionProgressTracker tracker = new StudySessionProgressTracker();
+        RecordsStudyModels.StudyItem before = item("裂", RecordsBase.LadderRung.KANJI_MEANING, 0, 0);
+
+        tracker.recordReviewOutcome("　", BridgeScheduler.RATING_AGAIN, before, before);
+        tracker.recordReviewOutcome("　裂　", BridgeScheduler.RATING_AGAIN, before, before);
+
+        assertEquals(0, tracker.movedForwardCount());
+        assertEquals(2, tracker.missedCount());
+    }
+
     private static RecordsImportModels.DashboardRow row(String kanji) {
         return new RecordsImportModels.DashboardRow(
                 kanji,
