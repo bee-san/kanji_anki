@@ -18,20 +18,6 @@ import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy
 
-internal fun settingsUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
-    return SettingsUpdatePageModel(
-        title = SettingsTextCopy.updatePageTitle(),
-        body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
-        onHome = activity::renderHome,
-        onBack = { activity.renderSettings(false) },
-        onCheckForUpdate = { activity.runUpdate(false) },
-        panel = settingsUpdatePanelModel(
-            activity = activity,
-            title = SettingsTextCopy.automaticUpdatesTitle()
-        )
-    )
-}
-
 internal fun settingsUpdatePanelModel(
     activity: MainActivitySettings,
     title: String,

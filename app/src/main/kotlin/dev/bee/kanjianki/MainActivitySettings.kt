@@ -21,9 +21,20 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     override fun renderUpdate() {
-        val model = settingsUpdatePageModel(this)
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
-            SettingsUpdatePage(model)
+            SettingsUpdatePage(
+                SettingsUpdatePageModel(
+                    title = SettingsTextCopy.updatePageTitle(),
+                    body = SettingsTextCopy.updatePageBody(BuildConfig.VERSION_NAME),
+                    onHome = this@MainActivitySettings::renderHome,
+                    onBack = { renderSettings(false) },
+                    onCheckForUpdate = { runUpdate(false) },
+                    panel = settingsUpdatePanelModel(
+                        activity = this@MainActivitySettings,
+                        title = SettingsTextCopy.automaticUpdatesTitle()
+                    )
+                )
+            )
         }
     }
 
