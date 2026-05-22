@@ -8,7 +8,7 @@ import dev.bee.kanjianki.data.StudyStatsStore
 internal abstract class MainActivityStats : MainActivityGames() {
     override fun renderStats() {
         val model = buildStatsScreenModel()
-        renderStatsRoute {
+        composeRoute(MainActivityBase.NAV_STATS_ROUTE) {
             StatsRouteScreen(model = model, onHome = this::renderHome)
         }
     }
