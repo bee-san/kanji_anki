@@ -42,19 +42,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
-        home.base(MainActivityBase.NAV_STUDY)
-        resetWritingSession(session)
-        val route = writingRouteModel(session)
-        home.content.addView(
-            writingSessionCardView(
-                home,
-                route.cardModel
-            )
-        )
-
-        home.buildStudyActionBar()
-        home.updateResultActions()
-        home.refreshWritingModelStatus()
+        renderComposeWritingSession(session)
     }
 
     private fun composeWritingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {

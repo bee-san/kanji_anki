@@ -277,6 +277,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         flashcardUi.renderComposeFlashcardSession(session)
     }
 
+    fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
+        writingSession.renderComposeWritingSession(session)
+    }
+
     fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
         return flashcardUi.recognitionHeroCard(session)
     }
@@ -287,10 +291,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun randomFontVariantTypeface(): Typeface {
         return flashcardUi.randomFontVariantTypeface()
-    }
-
-    fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
-        writingSession.renderWritingSession(session)
     }
 
     fun resetWritingSession(session: RecordsSchedulerModels.StudySession) {
