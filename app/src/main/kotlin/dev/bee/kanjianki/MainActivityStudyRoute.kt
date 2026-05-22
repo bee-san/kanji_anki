@@ -51,11 +51,3 @@ internal fun MainActivityStudy.renderComposeStudyRouteWithActionBar(
 internal fun MainActivityStudy.renderLegacyStudyRoute() {
     base(MainActivityBase.NAV_STUDY)
 }
-
-internal fun MainActivityStudy.renderSimilarWritingRepairRoute(
-    repair: RecordsImportModels.SimilarKanjiWritingRepair,
-    plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
-    now: Long,
-) {
-    renderSimilarWritingRepair(repair, plan, now)
-}

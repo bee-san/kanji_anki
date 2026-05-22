@@ -121,7 +121,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             }
             val repair = store.nextDueSimilarWritingRepair(now)
             if (repair != null) {
-                renderSimilarWritingRepairRoute(repair, plan, now)
+                writingSession.renderSimilarWritingRepair(repair, plan, now)
                 return true
             }
         }
@@ -282,14 +282,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             settings().matureSupportThreshold,
             System.currentTimeMillis()
         )
-    }
-
-    fun renderSimilarWritingRepair(
-        repair: RecordsImportModels.SimilarKanjiWritingRepair,
-        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
-        now: Long,
-    ) {
-        writingSession.renderSimilarWritingRepair(repair, plan, now)
     }
 
     fun resetStudyRunProgress() {
