@@ -57,23 +57,6 @@ internal fun gamesQuestionScreenView(
     }
 }
 
-internal fun gamesUnavailableScreenView(
-    activity: MainActivityGames,
-    title: String,
-    model: GamesUnavailableModel
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                GamesPlayScreen(title = title, onGames = activity::returnToGames) {
-                    GamesUnavailableCard(model)
-                }
-            }
-        }
-    }
-}
-
 internal fun gamesResultScreenView(
     activity: MainActivityGames,
     title: String,

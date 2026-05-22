@@ -89,14 +89,12 @@ internal abstract class MainActivityGames : MainActivityHome() {
     }
 
     private fun renderGameUnavailable(mode: KanjiGameEngine.GameMode) {
-        base("home")
-        content.addView(
-            gamesUnavailableScreenView(
-                activity = this,
-                title = mode.title,
-                model = GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
-            )
-        )
+        val model = GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
+        composeRoute("home") {
+            GamesPlayScreen(title = mode.title, onGames = this::returnToGames) {
+                GamesUnavailableCard(model)
+            }
+        }
     }
 
     private fun gameScoreModel(awaitingAnswer: Boolean): GamesScoreStripModel {
