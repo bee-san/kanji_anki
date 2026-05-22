@@ -2,9 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,7 +27,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -42,56 +37,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.bee.kanjianki.core.HomeTextCopy
 
 private val HomeInk = Color(0xFF2D1635)
 private val HomeMuted = Color(0xFF6C5674)
-
-internal fun homeHeaderView(home: MainActivityHome): View {
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                HomeHeader(
-                    title = HomeTextCopy.appTitle(),
-                    subtitle = HomeTextCopy.appSubtitle()
-                )
-            }
-        }
-    }
-}
-
-internal fun homeStudyCtaView(home: MainActivityHome): View {
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, home.dp(94))
-        setContent {
-            MaterialTheme {
-                HomeStudyCta(
-                    title = MainActivityBase.LABEL_STUDY_NOW,
-                    subtitle = HomeTextCopy.studySupportText(),
-                    onClick = home::startFocusedStudy
-                )
-            }
-        }
-    }
-}
-
-internal fun homeSyncCtaView(home: MainActivityHome): View {
-    return ComposeView(home).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, home.dp(62)).apply {
-            setMargins(0, home.dp(8), 0, home.dp(8))
-        }
-        setContent {
-            MaterialTheme {
-                HomePrimaryCta(
-                    label = HomeTextCopy.syncAnkiDroidLabel(),
-                    color = MainActivityUiSupport.CORAL,
-                    onClick = home::confirmSync
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun HomeHeader(
