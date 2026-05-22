@@ -111,6 +111,42 @@ public final class KanjiInventoryBuilderTest {
         assertEquals("a / b / c +1 more", builder.build(Collections.emptyMap()).get(0).readings());
     }
 
+    @Test
+    public void itemConstructorsNormalizeNullAndNegativeValuesForJavaCallers() {
+        KanjiInventoryBuilder.PreviousItem previous = new KanjiInventoryBuilder.PreviousItem(
+                null,
+                null,
+                null,
+                -1,
+                -2,
+                -3L,
+                -4L
+        );
+        KanjiInventoryBuilder.BuiltItem built = new KanjiInventoryBuilder.BuiltItem(
+                null,
+                null,
+                null,
+                null,
+                null,
+                -1,
+                -2,
+                -3L,
+                -4L
+        );
+
+        assertEquals("", previous.primaryMeaning());
+        assertEquals("", previous.readings());
+        assertEquals("", previous.browserSearch());
+        assertEquals(0, previous.sourceCount());
+        assertEquals(0, previous.exampleCount());
+        assertEquals(0L, previous.firstSeenAtMillis());
+        assertEquals(0L, previous.lastSeenAtMillis());
+        assertEquals("", built.kanji());
+        assertEquals("", built.searchText());
+        assertEquals(0, built.sourceCount());
+        assertEquals(0L, built.lastSeenAtMillis());
+    }
+
     private static RecordsSyncModels.Note note(String expression, String reading, String meaning, String sentence) {
         RecordsSyncModels.Settings settings = RecordsSyncModels.Settings.kikuDefaults();
         Map<String, String> fields = new HashMap<>();
