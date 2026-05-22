@@ -124,48 +124,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         }
     }
 
-    fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
-        val heroPanel = FlashcardHeroPanelModel(
-            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
-            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
-            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT
-        )
-        return ComposeView(activity).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                activity.dp(210)
-            ).apply {
-                setMargins(0, activity.dp(16), 0, 0)
-            }
-            setContent {
-                MaterialTheme {
-                    FlashcardHeroPanel(heroPanel)
-                }
-            }
-        }
-    }
-
-    fun randomFontVariantTypeface(): Typeface {
-        return StudyFontVariants.random(activity)
-    }
-
-    fun flashcardAnswerPanel(session: RecordsSchedulerModels.StudySession): View {
-        val model = flashcardAnswerPanelModel(session)
-        return ComposeView(activity).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, activity.dp(12), 0, activity.dp(10))
-            }
-            setContent {
-                MaterialTheme {
-                    StudyAnswerPanel(model)
-                }
-            }
-        }
-    }
-
     fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
         return flashcardAnswerPanelModel(activity, session)
     }

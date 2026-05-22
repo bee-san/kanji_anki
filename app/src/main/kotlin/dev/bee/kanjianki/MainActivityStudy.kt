@@ -3,7 +3,9 @@ package dev.bee.kanjianki
 import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.LinearLayout
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ComposeView
 import dev.bee.kanjianki.core.DictionaryLookup
@@ -14,6 +16,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyExampleSelector
 import dev.bee.kanjianki.core.StudyLayoutPolicy
 import dev.bee.kanjianki.core.StudySessionFocusPolicy
+import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.StrokeGuide
@@ -285,11 +288,28 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
-        return flashcardUi.heroKanjiPanel(session)
+        val heroPanel = FlashcardHeroPanelModel(
+            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
+            if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
+            if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(this) else Typeface.DEFAULT
+        )
+        return ComposeView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(210)
+            ).apply {
+                setMargins(0, dp(16), 0, 0)
+            }
+            setContent {
+                MaterialTheme {
+                    FlashcardHeroPanel(heroPanel)
+                }
+            }
+        }
     }
 
     fun randomFontVariantTypeface(): Typeface {
-        return flashcardUi.randomFontVariantTypeface()
+        return StudyFontVariants.random(this)
     }
 
     fun resetWritingSession(session: RecordsSchedulerModels.StudySession) {
@@ -374,7 +394,20 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun flashcardAnswerPanel(session: RecordsSchedulerModels.StudySession): View {
-        return flashcardUi.flashcardAnswerPanel(session)
+        val model = flashcardUi.flashcardAnswerPanelModel(session)
+        return ComposeView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, dp(12), 0, dp(10))
+            }
+            setContent {
+                MaterialTheme {
+                    StudyAnswerPanel(model)
+                }
+            }
+        }
     }
 
     fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
