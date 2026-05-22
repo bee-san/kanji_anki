@@ -160,7 +160,7 @@ class MainActivityGamesComposeTest {
         composeRule.onNodeWithText("Pick the meaning").assertIsDisplayed()
         composeRule.onNodeWithText("語").assertIsDisplayed()
         composeRule.onNodeWithText("language").assertIsDisplayed()
-        composeRule.onNodeWithText(KanjiGameCopy.choiceLabel(question, "language")).performClick()
+        composeRule.onNodeWithText(KanjiGameCopy.choiceLabel(question, "language").orEmpty()).performClick()
 
         composeRule.runOnIdle {
             assertTrue(clickedChoice == "language")

@@ -25,13 +25,6 @@ public class RecordsValueModelsTest {
 
     @Test
     public void splitModelConstructorsStayHiddenWhileExposingRecordApi() throws Exception {
-        Constructor<Records> recordsConstructor = Records.class.getDeclaredConstructor();
-        assertTrue(Modifier.isPrivate(recordsConstructor.getModifiers()));
-        assertEquals(0, Records.class.getConstructors().length);
-
-        recordsConstructor.setAccessible(true);
-        recordsConstructor.newInstance();
-
         SplitProbe probe = new SplitProbe();
         assertTrue(probe instanceof RecordsBase);
         assertTrue(probe.defaultSuspendedCards());
@@ -535,9 +528,9 @@ public class RecordsValueModelsTest {
             assertTrue(expected.getMessage().contains("Settings received"));
         }
 
-        assertEquals("only", Records.arg(new Object[]{"only"}, 0, "test"));
+        assertEquals("only", RecordsBase.arg(new Object[]{"only"}, 0, "test"));
 
-        Method arg = Records.class.getDeclaredMethod("arg", Object[].class, int.class, String.class);
+        Method arg = RecordsBase.class.getDeclaredMethod("arg", Object[].class, int.class, String.class);
         arg.setAccessible(true);
         try {
             arg.invoke(null, new Object[]{new Object[]{"only"}}, 2, "test");

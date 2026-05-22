@@ -19,7 +19,6 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.KanjiInventoryBuilder;
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer;
-import dev.bee.kanjianki.core.Records;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
 import dev.bee.kanjianki.core.SettingsTextCopy;

@@ -175,7 +175,7 @@ private fun GameChoiceButton(
     useKanjiTypography: Boolean,
     onChoiceSelected: (String) -> Unit
 ) {
-    val label = KanjiGameCopy.choiceLabel(question, choice)
+    val label = KanjiGameCopy.choiceLabel(question, choice).orEmpty()
     val fontFamily = if (useKanjiTypography) GamesKanjiFontFamily else FontFamily.Default
     OutlinedButton(
         onClick = { onChoiceSelected(choice) },
