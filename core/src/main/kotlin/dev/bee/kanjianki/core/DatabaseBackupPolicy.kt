@@ -33,7 +33,12 @@ object DatabaseBackupPolicy {
             return emptyList()
         }
         files.sort()
-        return files.take(files.size - MAX_BACKUPS)
+        val toDelete = files.size - MAX_BACKUPS
+        val old = ArrayList<File>(toDelete)
+        for (index in 0 until toDelete) {
+            old.add(files[index])
+        }
+        return old
     }
 
     private fun matchingBackups(backupDir: File): Array<File>? {
