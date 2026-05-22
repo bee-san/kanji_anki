@@ -26,17 +26,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderHomeScreen(this)
     }
 
-    fun metricCard(
-        iconRes: Int,
-        accent: Int,
-        label: String,
-        value: String,
-        body: String?,
-        action: Runnable?,
-    ): View {
-        return metricCardView(this, iconRes, accent, label, value, body, action)
-    }
-
     fun homeActionRow(): View {
         return homeActionRowView(this)
     }
@@ -121,10 +110,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     fun rowColor(item: RecordsStudyModels.StudyItem, now: Long): Int {
         return focusQueue.rowColor(item, now)
-    }
-
-    fun queueRowView(entry: QueueEntry, now: Long): View {
-        return focusQueue.queueRowView(entry, now)
     }
 
     fun kanjiTile(value: String, sizePx: Int, textSp: Int): TextView {

@@ -69,6 +69,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import kotlin.Unit;
+
 import java.io.File;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
@@ -727,15 +729,18 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 boolean[] metricClicked = {false};
-                View metric = activity.metricCard(
+                HomeMetricModel metric = new HomeMetricModel(
                         R.drawable.ic_sync_24,
                         MainActivityBase.TEAL,
                         "Sync",
                         "Ready",
                         "Tap to sync",
-                        () -> metricClicked[0] = true
+                        () -> {
+                            metricClicked[0] = true;
+                            return Unit.INSTANCE;
+                        }
                 );
-                metric.performClick();
+                metric.getOnClick().invoke();
                 assertTrue(metricClicked[0]);
 
                 boolean[] headerClicked = {false};
@@ -1668,8 +1673,8 @@ public final class MainActivityHelperInstrumentedTest {
             MainActivity activity,
             RecordsImportModels.DashboardRow activeRow
     ) {
-        View passiveMetric = activity.metricCard(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
-        assertFalse(passiveMetric.isClickable());
+        HomeMetricModel passiveMetric = new HomeMetricModel(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
+        assertNull(passiveMetric.getOnClick());
         assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
         BrowseExampleCardModel activeExample = new MainActivityHomeBrowseDetail(activity)
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
@@ -1679,17 +1684,15 @@ public final class MainActivityHelperInstrumentedTest {
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.RELEARNING)
                 .build();
-        View relearningRow = activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, relearning), 1000L);
-        assertTrue(relearningRow instanceof androidx.compose.ui.platform.ComposeView);
-        assertTrue(containsText(relearningRow, "relearning"));
+        HomeFocusQueueCardModel relearningRow = MainActivityHomeFocusQueueCompose.homeFocusQueueCardModel(activity, new MainActivityBase.QueueEntry(activeRow, relearning), 1000L);
+        assertTrue(relearningRow.getTags().stream().anyMatch(tag -> tag.getLabel().equals("relearning")));
         RecordsStudyModels.StudyItem learning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
                 .totalReviews(1)
                 .build();
-        View learningRow = activity.queueRowView(new MainActivityBase.QueueEntry(activeRow, learning), 1000L);
-        assertTrue(learningRow instanceof androidx.compose.ui.platform.ComposeView);
-        assertTrue(containsText(learningRow, "learning"));
+        HomeFocusQueueCardModel learningRow = MainActivityHomeFocusQueueCompose.homeFocusQueueCardModel(activity, new MainActivityBase.QueueEntry(activeRow, learning), 1000L);
+        assertTrue(learningRow.getTags().stream().anyMatch(tag -> tag.getLabel().equals("learning")));
         seedRows(activity, Collections.singletonList(activeRow));
         activity.renderStudyForKanji("裂");
         assertHasText(activity, "Name this kanji");

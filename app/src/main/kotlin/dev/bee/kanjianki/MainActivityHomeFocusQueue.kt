@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.graphics.Color
-import android.view.View
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -72,7 +71,4 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         }
     }
 
-    fun queueRowView(entry: MainActivityBase.QueueEntry, now: Long): View {
-        return homeFocusQueueCardView(home, entry, now)
-    }
 }

@@ -2,9 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,13 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
@@ -78,54 +73,6 @@ internal fun homeMetricModels(
             null
         )
     )
-}
-
-internal fun homeMetricRowView(
-    home: MainActivityHome,
-    sync: LocalStoreBase.SyncStatus?,
-    provider: AnkiDroidGateway.ProviderStatus,
-    streak: StudyStatsStore.StudyStreak?,
-    plan: RecordsSchedulerModels.AdaptiveLoadPlan?
-): View {
-    val metrics = homeMetricModels(home, sync, provider, streak, plan)
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                HomeMetricRow(metrics)
-            }
-        }
-    }
-}
-
-internal fun metricCardView(
-    home: MainActivityHome,
-    iconRes: Int,
-    accent: Int,
-    label: String,
-    value: String,
-    body: String?,
-    action: Runnable?
-): View {
-    return ComposeView(home).apply {
-        layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-            setMargins(home.dp(4), 0, home.dp(4), 0)
-        }
-        if (action != null) {
-            setOnClickListener { action.run() }
-        }
-        setContent {
-            MaterialTheme {
-                HomeMetricCard(
-                    iconRes = iconRes,
-                    accent = accent,
-                    label = label,
-                    value = value,
-                    body = body
-                )
-            }
-        }
-    }
 }
 
 @Composable

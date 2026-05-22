@@ -2,9 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,29 +37,6 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTextCopy
 
 internal fun homeFocusQueueCardTestTag(kanji: String): String = "home-focus-queue-card-$kanji"
-
-internal fun homeFocusQueueCardView(
-    home: MainActivityHome,
-    entry: MainActivityBase.QueueEntry,
-    nowMillis: Long,
-): View {
-    val model = homeFocusQueueCardModel(home, entry, nowMillis)
-    return ComposeView(home).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            setMargins(0, home.dp(7), 0, home.dp(7))
-        }
-        setContent {
-            MaterialTheme {
-                Surface {
-                    HomeFocusQueueCard(model)
-                }
-            }
-        }
-    }
-}
 
 internal fun homeFocusQueuePanelModel(
     home: MainActivityHome,
