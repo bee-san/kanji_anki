@@ -215,7 +215,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             StudySessionRoute.Destination.WRITING -> writingSession.renderComposeWritingSession(session)
             StudySessionRoute.Destination.SIMILAR_KANJI -> renderSimilarKanjiSession(session)
             StudySessionRoute.Destination.MEANING_KANJI -> renderMeaningKanjiSession(session)
-            StudySessionRoute.Destination.FLASHCARD -> renderFlashcardStudyRoute(session)
+            StudySessionRoute.Destination.FLASHCARD -> renderComposeFlashcardSession(session)
         }
     }
 

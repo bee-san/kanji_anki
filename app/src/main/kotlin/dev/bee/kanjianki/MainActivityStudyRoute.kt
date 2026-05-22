@@ -52,10 +52,6 @@ internal fun MainActivityStudy.renderLegacyStudyRoute() {
     base(MainActivityBase.NAV_STUDY)
 }
 
-internal fun MainActivityStudy.renderFlashcardStudyRoute(session: RecordsSchedulerModels.StudySession) {
-    renderComposeFlashcardSession(session)
-}
-
 internal fun MainActivityStudy.renderSimilarWritingRepairRoute(
     repair: RecordsImportModels.SimilarKanjiWritingRepair,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?,

@@ -21,7 +21,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
         val choiceCard = meaningKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < 4) {
-            home.renderFlashcardStudyRoute(session)
+            home.renderComposeFlashcardSession(session)
             return
         }
 
@@ -79,7 +79,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         val choiceCard = similarChoiceCardForSession(session)
         val choices = ArrayList(choiceCard.choices)
         if (choices.size < 2) {
-            home.renderFlashcardStudyRoute(session)
+            home.renderComposeFlashcardSession(session)
             return
         }
         choices.shuffle()
