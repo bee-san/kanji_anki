@@ -15,5 +15,9 @@ object AutoSyncSettingsTogglePolicy {
     }
 
     @JvmRecord
-    data class ToggleResult(val enabled: Boolean, val message: String)
+    data class ToggleResult(val enabled: Boolean, val message: String) {
+        override fun toString(): String {
+            return "ToggleResult[enabled=$enabled, message=$message]"
+        }
+    }
 }

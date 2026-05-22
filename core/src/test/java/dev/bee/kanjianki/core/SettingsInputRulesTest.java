@@ -52,6 +52,7 @@ public final class SettingsInputRulesTest {
         assertEquals(new SettingsInputRules.RankRange(1, 1), SettingsInputRules.normalizedRankRange(Integer.MIN_VALUE, 0));
         assertEquals(new SettingsInputRules.RankRange(20000, 20000), SettingsInputRules.normalizedRankRange(20_001, Integer.MAX_VALUE));
         assertTrue(SettingsInputRules.RankRange.class.isRecord());
+        assertEquals("RankRange[minRank=20, maxRank=300]", SettingsInputRules.normalizedRankRange(300, 20).toString());
     }
 
     @Test

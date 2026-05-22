@@ -80,5 +80,9 @@ object SettingsInputRules {
     }
 
     @JvmRecord
-    data class RankRange(val minRank: Int, val maxRank: Int)
+    data class RankRange(val minRank: Int, val maxRank: Int) {
+        override fun toString(): String {
+            return "RankRange[minRank=$minRank, maxRank=$maxRank]"
+        }
+    }
 }

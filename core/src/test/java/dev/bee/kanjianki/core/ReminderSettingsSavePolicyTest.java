@@ -15,6 +15,7 @@ public final class ReminderSettingsSavePolicyTest {
         assertEquals(23, fields.hour());
         assertEquals(0, fields.minute());
         assertTrue(ReminderSettingsSavePolicy.ReminderFields.class.isRecord());
+        assertEquals("ReminderFields[enabled=true, hour=23, minute=0]", fields.toString());
     }
 
     @Test

@@ -20,5 +20,9 @@ object ReminderSettingsSavePolicy {
     }
 
     @JvmRecord
-    data class ReminderFields(val enabled: Boolean, val hour: Int, val minute: Int)
+    data class ReminderFields(val enabled: Boolean, val hour: Int, val minute: Int) {
+        override fun toString(): String {
+            return "ReminderFields[enabled=$enabled, hour=$hour, minute=$minute]"
+        }
+    }
 }
