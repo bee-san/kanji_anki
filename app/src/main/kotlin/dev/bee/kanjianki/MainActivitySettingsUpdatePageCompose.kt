@@ -2,18 +2,13 @@
 
 package dev.bee.kanjianki
 
-import android.app.Activity
-import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,22 +17,6 @@ import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy
-
-fun settingsUpdatePageView(activity: Activity): View {
-    val settingsActivity = activity as MainActivitySettings
-    val model = settingsUpdatePageModel(settingsActivity)
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        setContent {
-            MaterialTheme {
-                SettingsUpdatePage(model)
-            }
-        }
-    }
-}
 
 internal fun settingsUpdatePageModel(activity: MainActivitySettings): SettingsUpdatePageModel {
     return SettingsUpdatePageModel(

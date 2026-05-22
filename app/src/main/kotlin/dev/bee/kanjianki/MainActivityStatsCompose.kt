@@ -2,9 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.app.Activity
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,19 +31,6 @@ internal const val STATS_VERDICT_WORKING_FILL = 0xFFEEFCFA.toInt()
 internal const val STATS_VERDICT_LADDER_FILL = 0xFFFFFAE2.toInt()
 internal const val STATS_VERDICT_IDLE_FILL = 0xFFF6F6F8.toInt()
 internal const val STATS_WHITE_COLOR = 0xFFFFFFFF.toInt()
-
-fun statsScreenView(activity: Activity): View {
-    val statsActivity = activity as MainActivityStats
-    val model = statsActivity.buildStatsScreenModel()
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                StatsRouteScreen(model = model, onHome = statsActivity::renderHome)
-            }
-        }
-    }
-}
 
 @Composable
 fun StatsRouteScreen(
