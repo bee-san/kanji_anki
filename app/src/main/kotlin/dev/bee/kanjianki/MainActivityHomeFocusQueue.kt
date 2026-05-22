@@ -48,7 +48,17 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                 home::studyLadderSettings,
                 home::adaptivePlan,
                 scheduler::seedQueue,
-                MainActivityHomeStudyItemsWriter(home),
+                object : HomeStudyQueueActions.StudyItemsWriter {
+                    override fun annotateSimilarKanjiAvailability(
+                        items: List<RecordsStudyModels.StudyItem>,
+                    ): List<RecordsStudyModels.StudyItem> {
+                        return home.store.annotateSimilarKanjiAvailability(items)
+                    }
+
+                    override fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
+                        home.store.replaceStudyItems(items)
+                    }
+                },
             )
         )
     }
