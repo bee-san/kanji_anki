@@ -40,12 +40,11 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsReferenceData(this)
     }
 
-    private fun updatePage(): MainActivitySettingsUpdatePage {
-        return MainActivitySettingsUpdatePage(this)
-    }
-
     override fun renderUpdate() {
-        updatePage().renderUpdate()
+        val model = settingsUpdatePageModel(this)
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
+            SettingsUpdatePage(model)
+        }
     }
 
     override fun renderSettings() {
