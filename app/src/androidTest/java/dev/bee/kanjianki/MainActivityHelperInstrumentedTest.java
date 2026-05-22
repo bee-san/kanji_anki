@@ -589,39 +589,45 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.renderSettings();
+                View settingsRoot = activity.findViewById(android.R.id.content);
                 assertEquals(1, activity.content.getChildCount());
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(activity.settingsAnkiExpanded);
                 assertFalse(activity.settingsStudyExpanded);
-                assertTrue(containsText(activity.content, "Frequency range"));
-                assertFalse(containsText(activity.content, "Daily workload"));
+                assertTrue(containsText(settingsRoot, "Frequency range"));
+                assertFalse(containsText(settingsRoot, "Daily workload"));
                 activity.contentScroll.scrollTo(0, 48);
                 activity.renderSettings(true);
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync();
                 assertEquals(48, activity.contentScroll.getScrollY());
+                settingsRoot = activity.findViewById(android.R.id.content);
 
-                performClickableWithText(activity.content, "Study behavior");
+                performClickableWithText(settingsRoot, "Study behavior");
+                settingsRoot = activity.findViewById(android.R.id.content);
                 assertEquals(1, activity.content.getChildCount());
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(activity.settingsStudyExpanded);
-                assertTrue(containsText(activity.content, "Daily workload"));
+                assertTrue(containsText(settingsRoot, "Daily workload"));
 
-                performClickableWithText(activity.content, "Anki source");
+                performClickableWithText(settingsRoot, "Anki source");
+                settingsRoot = activity.findViewById(android.R.id.content);
                 assertFalse(activity.settingsAnkiExpanded);
-                assertFalse(containsText(activity.content, "Frequency range"));
+                assertFalse(containsText(settingsRoot, "Frequency range"));
 
-                performClickableWithText(activity.content, "Automation");
+                performClickableWithText(settingsRoot, "Automation");
+                settingsRoot = activity.findViewById(android.R.id.content);
                 assertTrue(activity.settingsSyncExpanded);
-                assertTrue(containsText(activity.content, "Daily Anki sync"));
+                assertTrue(containsText(settingsRoot, "Daily Anki sync"));
 
-                performClickableWithText(activity.content, "Reference data");
+                performClickableWithText(settingsRoot, "Reference data");
+                settingsRoot = activity.findViewById(android.R.id.content);
                 assertTrue(activity.settingsAppExpanded);
-                assertTrue(containsText(activity.content, "Offline data & licenses"));
-                performClickableWithText(activity.content, "Open data licenses");
+                assertTrue(containsText(settingsRoot, "Offline data & licenses"));
+                performClickableWithText(settingsRoot, "Open data licenses");
                 assertEquals(1, activity.content.getChildCount());
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Data licenses");
-                performClickableWithText(activity.content, "Back to settings");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Back to settings");
                 assertHasText(activity, "Automation");
             });
         }

@@ -80,9 +80,18 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
 
     private fun composeScrollMirror(initialScrollY: Int): ScrollView {
         return ScrollView(activity).apply {
-            addView(View(activity), ViewGroup.LayoutParams(1, COMPOSE_SCROLL_MIRROR_HEIGHT))
+            val child = View(activity)
+            addView(child, ViewGroup.LayoutParams(1, COMPOSE_SCROLL_MIRROR_HEIGHT))
+            measure(exactMeasureSpec(1), exactMeasureSpec(1))
+            layout(0, 0, 1, 1)
+            child.measure(exactMeasureSpec(1), exactMeasureSpec(COMPOSE_SCROLL_MIRROR_HEIGHT))
+            child.layout(0, 0, 1, COMPOSE_SCROLL_MIRROR_HEIGHT)
             scrollTo(0, initialScrollY)
         }
+    }
+
+    private fun exactMeasureSpec(size: Int): Int {
+        return View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY)
     }
 
     private fun prepareRoute(selected: String) {
