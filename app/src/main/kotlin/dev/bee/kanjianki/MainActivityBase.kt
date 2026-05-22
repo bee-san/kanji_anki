@@ -386,10 +386,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         studyActionBar?.setPadding(dp(18), dp(10), dp(18), dp(8) + studyActionBarBottomInset)
     }
 
-    fun emptyState(title: String, body: String) {
-        content.addView(homeEmptyStateView(this, title, body))
-    }
-
     fun addSpace(dp: Int) {
         val space = SpaceView(this)
         content.addView(space, LinearLayout.LayoutParams(1, dp(dp)))
