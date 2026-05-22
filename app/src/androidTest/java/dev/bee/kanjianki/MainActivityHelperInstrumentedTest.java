@@ -1845,8 +1845,10 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.renderFlashcardSession(failSession);
                 assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
                 assertEquals(activity.flashcardCard, activity.flashcardGestureArea);
+                View actionBarHost = activity.studyActionBar.getChildAt(0);
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
+                assertSame(actionBarHost, activity.studyActionBar.getChildAt(0));
                 assertTrue(containsText(activity.content, "split"));
                 activity.flashcardTouchStartX = 100f;
                 activity.flashcardTouchStartY = 100f;

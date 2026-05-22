@@ -24,6 +24,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,12 +42,18 @@ private val StudyActionPinkDark = Color(0xFFDA3A7A)
 private val StudyActionBorder = Color(0xFFFFADCD)
 private val StudyActionFailFill = Color(0xFFFFF5FA)
 
-fun studyFlashcardActionBarView(
-    context: Context,
+internal class FlashcardActionBarState(
     revealed: Boolean,
-    onReveal: Runnable,
-    onFail: Runnable,
-    onPass: Runnable
+    val onReveal: Runnable,
+    val onFail: Runnable,
+    val onPass: Runnable,
+) {
+    var revealed by mutableStateOf(revealed)
+}
+
+internal fun studyFlashcardActionBarView(
+    context: Context,
+    state: FlashcardActionBarState,
 ): View {
     return ComposeView(context).apply {
         layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -52,10 +61,10 @@ fun studyFlashcardActionBarView(
             MaterialTheme {
                 Surface {
                     StudyFlashcardActionBar(
-                        revealed = revealed,
-                        onReveal = { onReveal.run() },
-                        onFail = { onFail.run() },
-                        onPass = { onPass.run() }
+                        revealed = state.revealed,
+                        onReveal = { state.onReveal.run() },
+                        onFail = { state.onFail.run() },
+                        onPass = { state.onPass.run() },
                     )
                 }
             }

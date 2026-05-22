@@ -113,6 +113,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardRevealState: FlashcardRevealState? = null
 
     @JvmField
+    var flashcardActionBarState: FlashcardActionBarState? = null
+
+    @JvmField
     var typingAnswerState: TypingAnswerState? = null
 
     @JvmField

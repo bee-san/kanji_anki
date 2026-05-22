@@ -107,6 +107,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         activity.flashcardCard = null
         activity.writingAnswerPanelState = null
         activity.flashcardRevealState = null
+        activity.flashcardActionBarState = null
         activity.flashcardAnswerRevealed = false
         activity.flashcardTouchTracking = false
     }

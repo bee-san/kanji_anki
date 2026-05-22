@@ -124,6 +124,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
             studyActionBar.removeAllViews()
             studyActionBar.visibility = View.GONE
         }
+        home.flashcardActionBarState = null
     }
 
     fun renderSimilarWritingRepair(

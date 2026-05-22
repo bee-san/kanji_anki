@@ -16,16 +16,25 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
     fun buildFlashcardActionBar(revealed: Boolean) {
         val studyActionBar = activity.studyActionBar ?: return
         activity.styleStudyActionBarShell()
-        studyActionBar.removeAllViews()
         studyActionBar.visibility = View.VISIBLE
+        val existing = activity.flashcardActionBarState
+        if (existing != null && studyActionBar.childCount > 0) {
+            existing.revealed = revealed
+            return
+        }
 
+        studyActionBar.removeAllViews()
+        val state = FlashcardActionBarState(
+            revealed,
+            Runnable { revealFlashcardAnswer() },
+            Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
+            Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
+        )
+        activity.flashcardActionBarState = state
         studyActionBar.addView(
             studyFlashcardActionBarView(
                 activity,
-                revealed,
-                Runnable { revealFlashcardAnswer() },
-                Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
-                Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) }
+                state,
             )
         )
     }
