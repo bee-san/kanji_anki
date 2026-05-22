@@ -419,6 +419,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val DAY_MILLIS = 86_400_000L
         const val NAV_HOME_ROUTE = "home"
         const val NAV_STUDY = "study"
+        const val NAV_STATS_ROUTE = "stats"
         const val NAV_SETTINGS = "Settings"
         const val NAV_SETTINGS_ROUTE = "settings"
         const val LABEL_BACK_HOME = "Back home"
