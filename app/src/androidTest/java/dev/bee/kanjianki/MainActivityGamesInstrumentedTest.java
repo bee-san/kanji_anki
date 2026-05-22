@@ -7,7 +7,6 @@ import android.content.Context;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -27,7 +26,6 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(AndroidJUnit4.class)
@@ -78,20 +76,16 @@ public final class MainActivityGamesInstrumentedTest {
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
 
                 for (int answer = 0; answer < 10; answer++) {
-                    Button choice = firstAnswerButton(activity.content);
-                    assertNotNull(choice);
-                    assertTrue(choice.performClick());
+                    assertTrue(performFirstAnswerClick(activity.findViewById(android.R.id.content)));
                     if (answer < 9) {
-                        Button next = findButton(activity.content, LABEL_NEXT);
-                        assertNotNull(next);
-                        assertTrue(next.performClick());
+                        assertTrue(performClickWithText(activity.findViewById(android.R.id.content), LABEL_NEXT));
                     }
                 }
 
-                assertTrue(containsText(activity.content, "Round complete"));
-                assertTrue(containsText(activity.content, "Final score:"));
-                assertNotNull(findButton(activity.content, LABEL_NEW_ROUND));
-                assertNull(findButton(activity.content, LABEL_NEXT));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), "Round complete"));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), "Final score:"));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), LABEL_NEW_ROUND));
+                assertTrue(!containsText(activity.findViewById(android.R.id.content), LABEL_NEXT));
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
             });
         }
@@ -212,42 +206,69 @@ public final class MainActivityGamesInstrumentedTest {
         }
     }
 
-    private static Button firstAnswerButton(View view) {
-        if (view instanceof Button) {
-            Button button = (Button) view;
-            String label = button.getText().toString();
-            if (!LABEL_NEXT.equals(label) && !LABEL_GAMES.equals(label) && !LABEL_NEW_ROUND.equals(label)) {
-                return button;
-            }
-        }
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                Button found = firstAnswerButton(group.getChildAt(i));
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
+    private static boolean performFirstAnswerClick(View root) {
+        return performFirstAnswerClick(root.createAccessibilityNodeInfo());
     }
 
-    private static Button findButton(View view, String label) {
-        if (view instanceof Button) {
-            Button button = (Button) view;
-            if (label.equals(button.getText().toString())) {
-                return button;
-            }
+    private static boolean performFirstAnswerClick(AccessibilityNodeInfo node) {
+        if (node == null) {
+            return false;
         }
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                Button found = findButton(group.getChildAt(i), label);
-                if (found != null) {
-                    return found;
+        try {
+            String text = nodeText(node);
+            if (node.isClickable()
+                    && !text.isEmpty()
+                    && !LABEL_NEXT.equals(text)
+                    && !LABEL_GAMES.equals(text)
+                    && !text.startsWith(LABEL_GAMES + " ")
+                    && !LABEL_NEW_ROUND.equals(text)) {
+                return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                if (performFirstAnswerClick(child)) {
+                    return true;
                 }
             }
+            return false;
+        } finally {
+            node.recycle();
         }
-        return null;
+    }
+
+    private static boolean performClickWithText(View root, String label) {
+        return performClickWithText(root.createAccessibilityNodeInfo(), label);
+    }
+
+    private static boolean performClickWithText(AccessibilityNodeInfo node, String label) {
+        if (node == null) {
+            return false;
+        }
+        try {
+            if (node.isClickable() && label.equals(nodeText(node))) {
+                return node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                if (performClickWithText(child, label)) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            node.recycle();
+        }
+    }
+
+    private static String nodeText(AccessibilityNodeInfo node) {
+        CharSequence text = node.getText();
+        if (text != null) {
+            return text.toString();
+        }
+        CharSequence description = node.getContentDescription();
+        if (description != null) {
+            return description.toString();
+        }
+        return "";
     }
 }

@@ -1108,17 +1108,17 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals(1, activity.content.getChildCount());
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Pick the meaning");
-                performClickableWithText(activity.content, "split");
-                assertContainsText(activity.content, "Answer:");
+                performClickableWithText(activity.findViewById(android.R.id.content), "split");
+                assertContainsText(activity.findViewById(android.R.id.content), "Answer:");
                 assertEquals(1, activity.content.getChildCount());
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
-                performClickableWithText(activity.content, "Next");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Next");
                 assertHasText(activity, "Pick the meaning");
 
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
-                performClickableWithText(activity.content, "language");
-                assertContainsText(activity.content, "Answer:");
-                performClickableWithText(activity.content, "Games");
+                performClickableWithText(activity.findViewById(android.R.id.content), "language");
+                assertContainsText(activity.findViewById(android.R.id.content), "Answer:");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Games");
                 assertHasText(activity, "Games");
             });
         }

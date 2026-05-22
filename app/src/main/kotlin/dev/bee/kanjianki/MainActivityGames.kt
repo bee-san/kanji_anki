@@ -76,16 +76,14 @@ internal abstract class MainActivityGames : MainActivityHome() {
             renderGameUnavailable(mode)
             return
         }
-        base("home")
-        content.addView(
-            gamesQuestionScreenView(
-                activity = this,
-                title = mode.title,
-                score = gameScoreModel(awaitingAnswer = true),
-                question = question,
-                onChoiceSelected = { choice -> answerGameQuestion(question, choice) }
-            )
-        )
+        composeRoute("home") {
+            GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = true)) {
+                GamesQuestionCard(
+                    question = question,
+                    onChoiceSelected = { choice -> answerGameQuestion(question, choice) }
+                )
+            }
+        }
     }
 
     private fun renderGameUnavailable(mode: KanjiGameEngine.GameMode) {
@@ -120,69 +118,65 @@ internal abstract class MainActivityGames : MainActivityHome() {
         selected: String,
         correct: Boolean
     ) {
-        base("home")
         val roundComplete = gameRound.roundComplete()
         val color = gameResultTitleColor(roundComplete, correct)
-        content.addView(
-            gamesResultScreenView(
-                activity = this,
-                title = question.mode.title,
-                score = gameScoreModel(awaitingAnswer = false),
-                result = GamesResultModel(
-                    title = KanjiGameCopy.resultTitle(roundComplete, correct),
-                    titleColor = color,
-                    finalScore = if (roundComplete) {
-                        KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions)
-                    } else {
-                        null
-                    },
-                    accuracy = if (roundComplete) {
-                        KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered)
-                    } else {
-                        null
-                    },
-                    answer = KanjiGameCopy.answerText(question.correctAnswer),
-                    selectedAnswer = if (question.isCorrect(selected)) {
-                        null
-                    } else {
-                        KanjiGameCopy.selectedAnswerText(selected)
-                    },
-                    explanation = question.explanation,
-                    primaryLabel = if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT,
-                    primaryColor = colorForGameMode(question.mode),
-                    onPrimary = if (roundComplete) {
-                        Runnable { startGame(question.mode) }
-                    } else {
-                        Runnable { renderGameQuestion(question.mode) }
-                    },
-                    onGames = Runnable { renderGames() }
+        composeRoute("home") {
+            GamesPlayScreen(title = question.mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
+                GamesResultCard(
+                    GamesResultModel(
+                        title = KanjiGameCopy.resultTitle(roundComplete, correct),
+                        titleColor = color,
+                        finalScore = if (roundComplete) {
+                            KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions)
+                        } else {
+                            null
+                        },
+                        accuracy = if (roundComplete) {
+                            KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered)
+                        } else {
+                            null
+                        },
+                        answer = KanjiGameCopy.answerText(question.correctAnswer),
+                        selectedAnswer = if (question.isCorrect(selected)) {
+                            null
+                        } else {
+                            KanjiGameCopy.selectedAnswerText(selected)
+                        },
+                        explanation = question.explanation,
+                        primaryLabel = if (roundComplete) KanjiGameCopy.LABEL_NEW_ROUND else KanjiGameCopy.LABEL_NEXT,
+                        primaryColor = colorForGameMode(question.mode),
+                        onPrimary = if (roundComplete) {
+                            Runnable { startGame(question.mode) }
+                        } else {
+                            Runnable { renderGameQuestion(question.mode) }
+                        },
+                        onGames = Runnable { renderGames() }
+                    )
                 )
-            )
-        )
+            }
+        }
     }
 
     private fun renderGameRoundComplete(mode: KanjiGameEngine.GameMode) {
-        base("home")
-        content.addView(
-            gamesResultScreenView(
-                activity = this,
-                title = mode.title,
-                score = gameScoreModel(awaitingAnswer = false),
-                result = GamesResultModel(
-                    title = KanjiGameCopy.LABEL_ROUND_COMPLETE,
-                    titleColor = BLUE,
-                    finalScore = KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions),
-                    accuracy = KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered),
-                    answer = null,
-                    selectedAnswer = null,
-                    explanation = null,
-                    primaryLabel = KanjiGameCopy.LABEL_NEW_ROUND,
-                    primaryColor = colorForGameMode(mode),
-                    onPrimary = Runnable { startGame(mode) },
-                    onGames = Runnable { renderGames() }
+        composeRoute("home") {
+            GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
+                GamesResultCard(
+                    GamesResultModel(
+                        title = KanjiGameCopy.LABEL_ROUND_COMPLETE,
+                        titleColor = BLUE,
+                        finalScore = KanjiGameCopy.finalScoreText(gameRound.correct, gameRound.totalQuestions),
+                        accuracy = KanjiGameCopy.accuracyText(gameRound.correct, gameRound.answered),
+                        answer = null,
+                        selectedAnswer = null,
+                        explanation = null,
+                        primaryLabel = KanjiGameCopy.LABEL_NEW_ROUND,
+                        primaryColor = colorForGameMode(mode),
+                        onPrimary = Runnable { startGame(mode) },
+                        onGames = Runnable { renderGames() }
+                    )
                 )
-            )
-        )
+            }
+        }
     }
 
     private fun gameResultTitleColor(roundComplete: Boolean, correct: Boolean): Int {

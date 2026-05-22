@@ -2,8 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,61 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
-import dev.bee.kanjianki.core.KanjiGameEngine
-
-internal fun gamesQuestionScreenView(
-    activity: MainActivityGames,
-    title: String,
-    score: GamesScoreStripModel,
-    question: KanjiGameEngine.GameQuestion,
-    onChoiceSelected: (String) -> Unit
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                GamesPlayScreen(
-                    title = title,
-                    onGames = activity::returnToGames,
-                    score = score
-                ) {
-                    GamesQuestionCard(
-                        question = question,
-                        onChoiceSelected = onChoiceSelected
-                    )
-                }
-            }
-        }
-    }
-}
-
-internal fun gamesResultScreenView(
-    activity: MainActivityGames,
-    title: String,
-    score: GamesScoreStripModel,
-    result: GamesResultModel
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                GamesPlayScreen(
-                    title = title,
-                    onGames = activity::returnToGames,
-                    score = score
-                ) {
-                    GamesResultCard(result)
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun GamesPlayScreen(
