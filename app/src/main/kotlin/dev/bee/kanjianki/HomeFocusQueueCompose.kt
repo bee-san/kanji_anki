@@ -77,7 +77,7 @@ internal fun homeFocusQueueCardModel(
             }
         },
         accentColor = queueAccentColor(item, nowMillis),
-        onClick = { home.renderDetail(row.kanji) }
+        onClick = { home.renderDetail(row.kanji, false) }
     )
 }
 

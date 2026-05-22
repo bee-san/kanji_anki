@@ -269,10 +269,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         const val HOME_PREVIEW_ROW_LIMIT = 3
     }
 
-    fun renderDetail(kanji: String) {
-        browseDetail.renderDetail(kanji, false)
-    }
-
     fun renderBrowseKanji(query: String?) {
         browseDetail.renderBrowseKanji(query)
     }

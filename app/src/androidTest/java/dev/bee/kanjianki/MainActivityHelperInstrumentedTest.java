@@ -1711,7 +1711,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertEquals(1, activity.content.getChildCount());
         assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
-        activity.renderDetail("missing");
+        activity.renderDetail("missing", false);
         assertEquals(1, activity.content.getChildCount());
         assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Kanji not found");
