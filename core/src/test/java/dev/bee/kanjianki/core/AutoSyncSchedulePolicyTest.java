@@ -18,6 +18,11 @@ public final class AutoSyncSchedulePolicyTest {
         assertEquals(0L, plan.triggerAtMillis());
         assertEquals(0L, plan.minimumLatencyMillis());
         assertEquals(0L, plan.overrideDeadlineMillis());
+        assertTrue(AutoSyncSchedulePolicy.SchedulePlan.class.isRecord());
+        assertEquals(
+                "SchedulePlan[enabled=false, triggerAtMillis=0, minimumLatencyMillis=0, overrideDeadlineMillis=0]",
+                plan.toString()
+        );
     }
 
     @Test

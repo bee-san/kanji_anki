@@ -102,8 +102,8 @@ internal object AutoSyncScheduler {
         plan: AutoSyncSchedulePolicy.SchedulePlan,
     ) {
         try {
-            val scheduled = backend.schedule(plan.minimumLatencyMillis(), plan.overrideDeadlineMillis())
-            recorder.markAutoSyncScheduled(if (scheduled) plan.triggerAtMillis() else 0L)
+            val scheduled = backend.schedule(plan.minimumLatencyMillis, plan.overrideDeadlineMillis)
+            recorder.markAutoSyncScheduled(if (scheduled) plan.triggerAtMillis else 0L)
         } catch (error: RuntimeException) {
             warn("Failed to schedule automatic sync job.", error)
             recorder.markAutoSyncScheduled(0L)
