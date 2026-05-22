@@ -66,6 +66,15 @@ public final class HistoricalKanjiAggregateTest {
         assertEquals(4, aggregate.matureSupportCount());
     }
 
+    @Test
+    public void fsrsMemoryValuesStayAJavaRecord() {
+        HistoricalKanjiAggregate.FsrsMemoryValues values = fsrs(1.0, 2.0, 3.0);
+
+        assertEquals(true, HistoricalKanjiAggregate.FsrsMemoryValues.class.isRecord());
+        assertEquals("stability", HistoricalKanjiAggregate.FsrsMemoryValues.class.getRecordComponents()[0].getName());
+        assertEquals(1.0, values.stability(), 0.0001);
+    }
+
     private static HistoricalKanjiAggregate.FsrsMemoryValues fsrs(Double stability, Double difficulty, Double retrievability) {
         return new HistoricalKanjiAggregate.FsrsMemoryValues(stability, difficulty, retrievability);
     }

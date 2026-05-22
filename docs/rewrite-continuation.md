@@ -123,6 +123,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
 - `core/src/main/java/dev/bee/kanjianki/core` is reduced to zero Java files, or every remaining Java file has a written reason that it is intentionally left Java for compatibility.
 - Large core Java files are migrated in risk order: record/model containers, scheduler/review logic, copy/text helpers, import selection, game/planner logic, and analyzers.
 - Java-to-Kotlin migrations preserve Java-callable APIs where tests or Android code still depend on method-style accessors.
+- Current intentional Java exception: `FrequencyRetentionRanges.java` stays Java until this compatibility contract is no longer needed, because its nested `Rule` constructor must remain genuinely private to Java reflection. Kotlin private nested constructors emit a public synthetic `DefaultConstructorMarker` constructor.
 
 ### 7. Finish fsrs-java and scheduler parity
 

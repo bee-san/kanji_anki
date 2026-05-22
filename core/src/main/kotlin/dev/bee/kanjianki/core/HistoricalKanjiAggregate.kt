@@ -130,21 +130,12 @@ class HistoricalKanjiAggregate(kanji: String?) {
         )
     }
 
+    @JvmRecord
     data class FsrsMemoryValues(
-        @JvmField val stability: Double?,
-        @JvmField val difficulty: Double?,
-        @JvmField val retrievability: Double?,
-    ) {
-        fun stability(): Double? = stability
-
-        fun difficulty(): Double? = difficulty
-
-        fun retrievability(): Double? = retrievability
-
-        override fun toString(): String {
-            return "FsrsMemoryValues[stability=$stability, difficulty=$difficulty, retrievability=$retrievability]"
-        }
-    }
+        val stability: Double?,
+        val difficulty: Double?,
+        val retrievability: Double?,
+    )
 
     companion object {
         private val EMPTY_FSRS = FsrsMemoryValues(null, null, null)
