@@ -359,18 +359,6 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         return inventoryData().rowSnapshotFromCursor(db, cursor)
     }
 
-    fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
-        val items = HashMap<String, StudySnapshot>()
-        db.query(TABLE_STUDY_ITEMS, arrayOf(COLUMN_KANJI, COLUMN_ANSWER_SIGNATURE, COLUMN_STATE), null, null, null, null, null).use { cursor ->
-            while (cursor.moveToNext()) {
-                val kanji = string(cursor, COLUMN_KANJI)
-                val answerSignature = string(cursor, COLUMN_ANSWER_SIGNATURE)
-                items[studyFamilyKey(kanji, answerSignature)] = StudySnapshot(string(cursor, COLUMN_STATE))
-            }
-        }
-        return items
-    }
-
     fun firstExampleForKanji(db: SQLiteDatabase, kanji: String): SourceSnapshot {
         return inventoryData().firstExampleForKanji(db, kanji)
     }
