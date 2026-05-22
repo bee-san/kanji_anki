@@ -4,7 +4,7 @@ object StudyTextCopy {
     const val SIMILAR_REPAIR_REASON: String = "Why: similar-kanji miss \u00b7 writing repair \u00b7 practice-only"
 
     @JvmStatic
-    fun countText(count: Int, singular: String, plural: String): String {
+    fun countText(count: Int, singular: String?, plural: String?): String {
         return "$count " + if (count == 1) singular else plural
     }
 
@@ -175,7 +175,7 @@ object StudyTextCopy {
         return StudyCueFormatter.compact(value, maxChars)
     }
 
-    private fun sessionClueRawText(session: RecordsSchedulerModels.StudySession?): String {
+    private fun sessionClueRawText(session: RecordsSchedulerModels.StudySession?): String? {
         if (session == null) {
             return ""
         }

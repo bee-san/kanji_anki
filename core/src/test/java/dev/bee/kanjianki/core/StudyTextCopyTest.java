@@ -13,6 +13,8 @@ public final class StudyTextCopyTest {
     public void countAndCompactTextPreserveAppCopyHelpers() {
         assertEquals("1 item", StudyTextCopy.countText(1, "item", "items"));
         assertEquals("2 items", StudyTextCopy.countText(2, "item", "items"));
+        assertEquals("1 null", StudyTextCopy.countText(1, null, "items"));
+        assertEquals("2 null", StudyTextCopy.countText(2, "item", null));
         assertEquals("", StudyTextCopy.compact(null, 12));
         assertEquals("short", StudyTextCopy.compact("short", 12));
         assertEquals("a very long s...", StudyTextCopy.compact("a very long sentence that should be shortened", 16));
@@ -35,6 +37,7 @@ public final class StudyTextCopyTest {
         assertEquals("Split, tear", StudyTextCopy.sessionClue(lookup, session(item, row, "fallback prompt")));
         assertEquals("Row meaning", StudyTextCopy.sessionClue(DictionaryLookup.empty(), session(item, row, "fallback prompt")));
         assertEquals("Fallback prompt", StudyTextCopy.sessionClue(DictionaryLookup.empty(), session(studyItem("?"), null, "fallback prompt")));
+        assertEquals("Collection clue", StudyTextCopy.sessionClue(DictionaryLookup.empty(), session(studyItem("?"), null, null)));
         assertEquals("Collection clue", StudyTextCopy.sessionClue(DictionaryLookup.empty(), null));
     }
 
