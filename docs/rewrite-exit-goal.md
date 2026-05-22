@@ -10,7 +10,7 @@ item is satisfied.
 - Last verified commit before this refresh: `6d13bc16`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
-- `core/src/main/java/dev/bee/kanjianki/core` has 6 Java files.
+- `core/src/main/java/dev/bee/kanjianki/core` has 5 Java files.
 - `FrequencyRetentionRanges.java` is an intentional compatibility exception
   unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
 - Compose is wired through direct `setContent` route surfaces, but the shell
@@ -80,7 +80,6 @@ item is satisfied.
 Migrate or explicitly justify every remaining file. The finite remaining list is:
 
 - `FrequencyRetentionRanges.java`
-- `RecordsBase.java`
 - `RecordsImportModels.java`
 - `RecordsSchedulerModels.java`
 - `RecordsStudyModels.java`
@@ -90,7 +89,7 @@ The only already-accepted exception is `FrequencyRetentionRanges.java`; keep it
 only if its Java-reflection privacy contract is documented and tested. The
 remaining migration order is:
 
-1. Record/model containers: `RecordsBase.java`, `RecordsImportModels.java`,
+1. Record/model containers: `RecordsImportModels.java`,
    `RecordsSchedulerModels.java`, `RecordsStudyModels.java`,
    `RecordsSyncModels.java`.
 2. Compatibility exception audit: `FrequencyRetentionRanges.java`.
@@ -138,8 +137,8 @@ documented Android interop exception; Home, Settings, Study, Browse/Detail,
 Stats, Games, Sync, and Update are model-driven Compose surfaces with current
 behavior parity; production test-only bridges are removed or moved to
 androidTest; `app/src/main` and `fsrs-java/src/main` remain Kotlin-only;
-the finite remaining Java migration list is `RecordsBase.java`,
-`RecordsImportModels.java`, `RecordsSchedulerModels.java`,
+the finite remaining Java migration list is `RecordsImportModels.java`,
+`RecordsSchedulerModels.java`,
 `RecordsStudyModels.java`, and `RecordsSyncModels.java`; when those are migrated,
 `core/src/main/java/dev/bee/kanjianki/core` is zero Java files except for the
 explicitly documented and tested `FrequencyRetentionRanges.java` compatibility
