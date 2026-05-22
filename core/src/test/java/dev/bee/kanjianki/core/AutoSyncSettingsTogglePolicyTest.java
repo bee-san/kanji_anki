@@ -13,6 +13,7 @@ public final class AutoSyncSettingsTogglePolicyTest {
 
         assertTrue(result.enabled());
         assertEquals("Daily Anki sync turned on.", result.message());
+        assertTrue(AutoSyncSettingsTogglePolicy.ToggleResult.class.isRecord());
     }
 
     @Test
