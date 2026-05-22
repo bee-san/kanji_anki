@@ -121,7 +121,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         insertHistoricalKanjiAggregates(db, sync.id, sync.finishedAt, aggregates)
     }
 
-    fun backfillHistoricalCards(
+    private fun backfillHistoricalCards(
         db: SQLiteDatabase,
         sync: LocalStoreBase.HistoricalSyncRun,
         notes: Map<Long, LocalStoreBase.HistoricalNoteSnapshot>,
@@ -135,7 +135,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    fun backfillHistoricalCard(
+    private fun backfillHistoricalCard(
         db: SQLiteDatabase,
         cards: Cursor,
         sync: LocalStoreBase.HistoricalSyncRun,
@@ -177,7 +177,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    fun historicalCardValues(
+    private fun historicalCardValues(
         cards: Cursor,
         sync: LocalStoreBase.HistoricalSyncRun,
         note: LocalStoreBase.HistoricalNoteSnapshot,
@@ -221,7 +221,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         return cardValues
     }
 
-    fun backfillHistoricalNotes(
+    private fun backfillHistoricalNotes(
         db: SQLiteDatabase,
         sync: LocalStoreBase.HistoricalSyncRun,
         notes: Map<Long, LocalStoreBase.HistoricalNoteSnapshot>,
@@ -258,7 +258,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    fun deckNamesByNote(cards: List<RecordsSyncModels.Card>): Map<Long, LinkedHashSet<String>> {
+    private fun deckNamesByNote(cards: List<RecordsSyncModels.Card>): Map<Long, LinkedHashSet<String>> {
         val out = LinkedHashMap<Long, LinkedHashSet<String>>()
         for (card in cards) {
             linkedSetFor(out, card.noteId).add(card.deckName)
@@ -266,7 +266,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         return out
     }
 
-    fun deckIdsByNote(cards: List<RecordsSyncModels.Card>): Map<Long, LinkedHashSet<String>> {
+    private fun deckIdsByNote(cards: List<RecordsSyncModels.Card>): Map<Long, LinkedHashSet<String>> {
         val out = LinkedHashMap<Long, LinkedHashSet<String>>()
         for (card in cards) {
             linkedSetFor(out, card.noteId).add(card.deckId)
@@ -274,7 +274,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         return out
     }
 
-    fun linkedSetFor(map: MutableMap<Long, LinkedHashSet<String>>, key: Long): LinkedHashSet<String> {
+    private fun linkedSetFor(map: MutableMap<Long, LinkedHashSet<String>>, key: Long): LinkedHashSet<String> {
         var values = map[key]
         if (values == null) {
             values = LinkedHashSet()
@@ -283,13 +283,13 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         return values
     }
 
-    fun extractedKanji(note: RecordsSyncModels.Note, settings: RecordsSyncModels.Settings): List<String> {
+    private fun extractedKanji(note: RecordsSyncModels.Note, settings: RecordsSyncModels.Settings): List<String> {
         val expression = TextUtil.normalizeJapanese(note.expression(settings))
         val sentence = TextUtil.normalizeJapanese(note.sentence(settings))
         return TextUtil.extractKanji("$expression $sentence")
     }
 
-    fun aggregateFor(
+    private fun aggregateFor(
         aggregates: MutableMap<String, HistoricalKanjiAggregate>,
         kanji: String,
     ): HistoricalKanjiAggregate {
@@ -301,7 +301,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         return aggregate
     }
 
-    fun overlayDashboardRows(
+    private fun overlayDashboardRows(
         aggregates: MutableMap<String, HistoricalKanjiAggregate>,
         rows: List<RecordsImportModels.DashboardRow>,
     ) {
@@ -353,13 +353,13 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    fun tableHasRows(db: SQLiteDatabase, table: String): Boolean {
+    private fun tableHasRows(db: SQLiteDatabase, table: String): Boolean {
         db.rawQuery("SELECT 1 FROM $table LIMIT 1", null).use {
             return it.moveToFirst()
         }
     }
 
-    fun latestSuccessfulSyncRun(db: SQLiteDatabase): LocalStoreBase.HistoricalSyncRun? {
+    private fun latestSuccessfulSyncRun(db: SQLiteDatabase): LocalStoreBase.HistoricalSyncRun? {
         db.query(
             LocalStoreBase.TABLE_SYNC_RUNS,
             arrayOf("id", LocalStoreBase.COLUMN_STARTED_AT, LocalStoreBase.COLUMN_FINISHED_AT),
@@ -381,7 +381,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         }
     }
 
-    fun currentSourceNotes(db: SQLiteDatabase): Map<Long, LocalStoreBase.HistoricalNoteSnapshot> {
+    private fun currentSourceNotes(db: SQLiteDatabase): Map<Long, LocalStoreBase.HistoricalNoteSnapshot> {
         val notes = LinkedHashMap<Long, LocalStoreBase.HistoricalNoteSnapshot>()
         db.query(LocalStoreBase.TABLE_SOURCE_NOTES, null, null, null, null, null, "note_id ASC").use {
             while (it.moveToNext()) {
@@ -404,7 +404,7 @@ internal class HistoricalSyncStore(private val localStore: LocalStoreHistory) {
         return notes
     }
 
-    fun currentDashboardRows(db: SQLiteDatabase): List<RecordsImportModels.DashboardRow> {
+    private fun currentDashboardRows(db: SQLiteDatabase): List<RecordsImportModels.DashboardRow> {
         val rows = ArrayList<RecordsImportModels.DashboardRow>()
         db.query(
             LocalStoreBase.TABLE_DASHBOARD_ROWS,
