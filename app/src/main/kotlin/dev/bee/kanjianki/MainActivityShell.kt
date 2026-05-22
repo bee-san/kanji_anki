@@ -26,17 +26,8 @@ fun MainActivityShell(
     legacyRoot: View,
     model: MainActivityShellModel = MainActivityShellModel(),
 ) {
-    MaterialTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag("main-activity-shell")
-                .semantics {
-                    contentDescription = "Kani shell ${model.selectedRoute}"
-                }
-        ) {
-            MainActivityRouteHost(legacyRoot = legacyRoot, model = model)
-        }
+    MainActivityShellFrame(model) {
+        MainActivityRouteHost(legacyRoot = legacyRoot, model = model)
     }
 }
 
@@ -45,6 +36,21 @@ fun MainActivityComposeRoute(
     model: MainActivityShellModel = MainActivityShellModel(),
     initialScrollY: Int = 0,
     onScrollY: (Int) -> Unit = {},
+    content: @Composable () -> Unit,
+) {
+    MainActivityShellFrame(model) {
+        MainActivityRouteContent(
+            model = model,
+            initialScrollY = initialScrollY,
+            onScrollY = onScrollY,
+            content = content
+        )
+    }
+}
+
+@Composable
+private fun MainActivityShellFrame(
+    model: MainActivityShellModel,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme {
@@ -56,12 +62,7 @@ fun MainActivityComposeRoute(
                     contentDescription = "Kani shell ${model.selectedRoute}"
                 }
         ) {
-            MainActivityRouteContent(
-                model = model,
-                initialScrollY = initialScrollY,
-                onScrollY = onScrollY,
-                content = content
-            )
+            content()
         }
     }
 }
