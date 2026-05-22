@@ -21,29 +21,3 @@ internal fun MainActivityStudy.renderComposeStudyRoute(content: @Composable () -
         }
     }
 }
-
-internal fun MainActivityStudy.renderComposeStudyRouteWithActionBar(
-    beforeContent: () -> Unit = {},
-    content: @Composable () -> Unit,
-    actionBar: @Composable () -> Unit,
-) {
-    initializeSessionProgressTarget(activeStudyPlan)
-    val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
-    composeRouteWithActionBar(
-        selected = MainActivityBase.NAV_STUDY,
-        beforeContent = beforeContent,
-        content = {
-            Column {
-                StudyTopBar(
-                    completed = progress.completed,
-                    target = progress.target,
-                    fraction = progress.fraction,
-                    onClose = ::renderHome,
-                    onSettings = ::renderSettings,
-                )
-                content()
-            }
-        },
-        actionBar = actionBar,
-    )
-}

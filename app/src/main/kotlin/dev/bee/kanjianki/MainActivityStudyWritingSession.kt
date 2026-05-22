@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.view.View
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -17,9 +18,23 @@ import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 internal class MainActivityStudyWritingSession(private val home: MainActivityStudy) {
     fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
         lateinit var route: WritingSessionRouteModel
-        home.renderComposeStudyRouteWithActionBar(
+        home.initializeSessionProgressTarget(home.activeStudyPlan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        home.composeRouteWithActionBar(
+            selected = MainActivityBase.NAV_STUDY,
             beforeContent = { route = composeWritingRouteModel(session) },
-            content = { ComposeWritingSessionCard(route) },
+            content = {
+                Column {
+                    StudyTopBar(
+                        completed = progress.completed,
+                        target = progress.target,
+                        fraction = progress.fraction,
+                        onClose = home::renderHome,
+                        onSettings = home::renderSettings,
+                    )
+                    ComposeWritingSessionCard(route)
+                }
+            },
             actionBar = { ComposeWritingActionBar(route) },
         )
         home.updateResultActions()

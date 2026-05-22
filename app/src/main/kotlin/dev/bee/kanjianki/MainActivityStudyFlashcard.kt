@@ -4,6 +4,7 @@ import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -22,9 +23,23 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
     fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
         lateinit var route: ComposeFlashcardRouteModel
-        activity.renderComposeStudyRouteWithActionBar(
+        activity.initializeSessionProgressTarget(activity.activeStudyPlan)
+        val progress = activity.studySessionTracker.topBarProgress(activity.activeSession != null, activity.continueAllKanjiSession)
+        activity.composeRouteWithActionBar(
+            selected = MainActivityBase.NAV_STUDY,
             beforeContent = { route = composeFlashcardRouteModel(session) },
-            content = { ComposeFlashcardCard(route) },
+            content = {
+                Column {
+                    StudyTopBar(
+                        completed = progress.completed,
+                        target = progress.target,
+                        fraction = progress.fraction,
+                        onClose = activity::renderHome,
+                        onSettings = activity::renderSettings,
+                    )
+                    ComposeFlashcardCard(route)
+                }
+            },
             actionBar = { ComposeFlashcardActionBar(route) },
         )
     }
