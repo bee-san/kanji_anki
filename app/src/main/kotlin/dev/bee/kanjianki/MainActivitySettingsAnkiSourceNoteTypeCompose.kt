@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -41,20 +39,6 @@ private val NoteTypeButtonBorder = Color(0xFFEEBDDA)
 private val NoteTypeWhite = Color(0xFFFFFFFF)
 private val NoteTypePanelShape = RoundedCornerShape(24.dp)
 private val NoteTypeButtonShape = RoundedCornerShape(12.dp)
-
-internal fun noteTypeSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsNoteTypePanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsNoteTypePanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {

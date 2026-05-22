@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -55,20 +53,6 @@ private val RetentionButtonBorder = Color(0xFFEEBDDA)
 private val RetentionWhite = Color(0xFFFFFFFF)
 private val RetentionPanelShape = RoundedCornerShape(24.dp)
 private val RetentionButtonShape = RoundedCornerShape(12.dp)
-
-internal fun retentionSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsRetentionPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsRetentionPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {

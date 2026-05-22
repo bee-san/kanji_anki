@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,20 +41,6 @@ private val ReminderPanelShape = RoundedCornerShape(24.dp)
 private val ReminderButtonShape = RoundedCornerShape(12.dp)
 
 internal fun reminderPresetRowTestTag(rowIndex: Int): String = "settings-reminder-preset-row-$rowIndex"
-
-internal fun reminderSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsReminderPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsReminderPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsReminderPanel(model: SettingsReminderPanelModel) {

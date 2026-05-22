@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,20 +37,6 @@ private val StudySortButtonBorder = Color(0xFFEEBDDA)
 private val StudySortWhite = Color(0xFFFFFFFF)
 private val StudySortPanelShape = RoundedCornerShape(24.dp)
 private val StudySortButtonShape = RoundedCornerShape(12.dp)
-
-internal fun newCardSortSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsNewCardSortPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsNewCardSortPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {

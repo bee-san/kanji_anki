@@ -1,16 +1,11 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 
 internal class MainActivitySettingsLadderThresholdPanel(private val activity: MainActivitySettings) {
-    fun ladderThresholdSettingsPanel(): View {
-        return ladderThresholdSettingsPanelView(activity, ladderThresholdSettingsPanelModel())
-    }
-
     fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
         val current = activity.settings()
         return SettingsLadderThresholdPanelModel(

@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -43,20 +41,6 @@ private val StudyLadderDivider = Color(0xFFF3D4E4)
 private val StudyLadderWhite = Color(0xFFFFFFFF)
 private val StudyLadderPanelShape = RoundedCornerShape(24.dp)
 private val StudyLadderButtonShape = RoundedCornerShape(12.dp)
-
-internal fun studyLadderSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsStudyLadderPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsStudyLadderPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsStudyLadderPanel(model: SettingsStudyLadderPanelModel) {

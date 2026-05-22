@@ -3,7 +3,6 @@ package dev.bee.kanjianki
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.provider.Settings
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -11,10 +10,6 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.reminders.ReminderScheduler
 
 internal class MainActivitySettingsAutomationReminder(private val activity: MainActivitySettings) {
-    fun reminderSettingsPanel(): View {
-        return reminderSettingsPanelView(activity, reminderSettingsPanelModel())
-    }
-
     fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
         val reminder = activity.store.reminderSettings()
         val notificationsAllowed = activity.notificationsAllowedForReminders()

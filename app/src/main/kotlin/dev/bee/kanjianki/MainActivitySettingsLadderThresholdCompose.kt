@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,20 +45,6 @@ private val LadderThresholdButtonShape = RoundedCornerShape(12.dp)
 object SettingsLadderThresholdTestTags {
     const val PROMOTION_DAYS_INPUT = "settings-ladder-threshold-promotion-days-input"
     const val FAIL_STREAK_INPUT = "settings-ladder-threshold-fail-streak-input"
-}
-
-internal fun ladderThresholdSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsLadderThresholdPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsLadderThresholdPanel(model)
-            }
-        }
-    }
 }
 
 @Composable

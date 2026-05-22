@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +27,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -51,20 +49,6 @@ private val FrequencyPanelBorder = Color(0xFFFFC7DE)
 private val FrequencyWhite = Color(0xFFFFFFFF)
 private val FrequencyPanelShape = RoundedCornerShape(24.dp)
 private val FrequencyButtonShape = RoundedCornerShape(12.dp)
-
-internal fun frequencyRangeSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsFrequencyRangePanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsFrequencyRangePanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsFrequencyRangePanel(model: SettingsFrequencyRangePanelModel) {

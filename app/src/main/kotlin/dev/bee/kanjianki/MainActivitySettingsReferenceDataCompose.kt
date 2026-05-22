@@ -2,9 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,14 +11,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,22 +32,6 @@ private val StrokeBorder = ComposeColor(0xFFF6CAE1)
 private val FontBorder = ComposeColor(0xFFFFD640)
 private val PanelShape = RoundedCornerShape(24.dp)
 private val ButtonShape = RoundedCornerShape(12.dp)
-
-internal fun referenceDataLinkPanelView(activity: MainActivitySettings, model: SettingsReferenceDataLinkModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            setMargins(0, activity.dp(8), 0, activity.dp(6))
-        }
-        setContent {
-            MaterialTheme {
-                ReferenceDataLinkPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun ReferenceDataLinkPanel(model: SettingsReferenceDataLinkModel) {

@@ -34,9 +34,9 @@ The relevant code paths today are:
 - `SyncSettings.fromStore(...)` in
   `app/src/main/java/dev/bee/kanjianki/sync/SyncSettings.java` loads persisted
   settings from `LocalStore`.
-- `MainActivity.importFilterSettingsPanel(...)` in
-  `app/src/main/java/dev/bee/kanjianki/MainActivity.java` renders and saves
-  the Import filters screen.
+- `MainActivitySettingsAnkiSourceImportFilters.importFilterSettingsPanelModel(...)`
+  in `app/src/main/kotlin/dev/bee/kanjianki/MainActivitySettingsAnkiSourceImportFilters.kt`
+  builds the model rendered by the Compose Import filters screen.
 - `AnkiDroidGateway.readCollection(...)` in
   `app/src/main/java/dev/bee/kanjianki/anki/AnkiDroidGateway.java` reads notes
   and cards from the AnkiDroid provider.

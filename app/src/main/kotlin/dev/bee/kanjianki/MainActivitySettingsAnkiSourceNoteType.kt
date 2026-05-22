@@ -1,15 +1,10 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsAnkiSourceNoteType(private val activity: MainActivitySettings) {
-    fun noteTypeSettingsPanel(current: RecordsSyncModels.Settings): View {
-        return noteTypeSettingsPanelView(activity, noteTypeSettingsPanelModel(current))
-    }
-
     fun noteTypeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNoteTypePanelModel {
         val defaults = RecordsSyncModels.Settings.kikuDefaults()
         val fieldState = SettingsNoteTypeFieldState(

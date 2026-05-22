@@ -1,14 +1,9 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsReferenceData(private val activity: MainActivitySettings) {
-    fun dataLicenseSettingsPanel(): View {
-        return referenceDataLinkPanelView(activity, dataLicenseSettingsPanelModel())
-    }
-
     fun dataLicenseSettingsPanelModel(): SettingsReferenceDataLinkModel {
         return SettingsReferenceDataLinkModel(
             title = SettingsTextCopy.offlineDataLicensesTitle(),

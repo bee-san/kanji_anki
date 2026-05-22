@@ -1,16 +1,11 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsStudySortPanel(private val activity: MainActivitySettings) {
     private val actions = MainActivitySettingsStudySortActions(activity)
-
-    fun newCardSortSettingsPanel(current: RecordsSyncModels.Settings): View {
-        return newCardSortSettingsPanelView(activity, newCardSortSettingsPanelModel(current))
-    }
 
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
         return SettingsNewCardSortPanelModel(

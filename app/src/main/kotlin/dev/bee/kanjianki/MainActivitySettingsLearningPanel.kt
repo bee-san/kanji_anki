@@ -1,16 +1,11 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsLearningPanel(private val activity: MainActivitySettings) {
-    fun learningStepsSettingsPanel(): View {
-        return learningStepsSettingsPanelView(activity, learningStepsSettingsPanelModel())
-    }
-
     fun learningStepsSettingsPanelModel(): SettingsLearningStepsPanelModel {
         val current = activity.store.learningStepSettings()
         val defaults = RecordsSchedulerModels.LearningStepSettings.defaults()

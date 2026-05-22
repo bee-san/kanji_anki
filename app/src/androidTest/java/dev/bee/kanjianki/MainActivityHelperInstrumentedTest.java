@@ -638,16 +638,19 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_AUTO);
-                View autoPanel = activity.workloadSettingsPanel();
-                assertTrue(autoPanel instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsWorkloadPanelModel autoPanel = activity.workloadSettingsPanelModel();
+                assertTrue(autoPanel.getAutoMode());
+                assertEquals(activity.store.adaptiveLoadWorkPercent(), autoPanel.getSelectedWorkloadPercent()[0]);
 
                 activity.store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL);
-                View manualPanel = activity.workloadSettingsPanel();
-                assertTrue(manualPanel instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsWorkloadPanelModel manualPanel = activity.workloadSettingsPanelModel();
+                assertFalse(manualPanel.getAutoMode());
+                manualPanel.getOnEnableManual().run();
                 assertEquals(AdaptiveLoadPlanner.MODE_MANUAL, activity.store.adaptiveLoadMode());
 
-                View stepsPanel = activity.learningStepsSettingsPanel();
-                assertTrue(stepsPanel instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsLearningStepsPanelModel stepsPanel = activity.learningStepsSettingsPanelModel();
+                assertEquals("1m", stepsPanel.getInitialNewStepsText());
+                assertEquals("1m, 10m", stepsPanel.getInitialReviewStepsText());
                 assertEquals("1m, 10m", activity.store.learningStepSettings().reviewStepsText());
             });
         }
@@ -657,8 +660,15 @@ public final class MainActivityHelperInstrumentedTest {
     public void importFilterAndFrequencyPanelsUseComposeBridges() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                assertTrue(activity.importFilterSettingsPanel(activity.settings()) instanceof androidx.compose.ui.platform.ComposeView);
-                assertTrue(activity.frequencyRangeSettingsPanel(activity.settings()) instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsImportFiltersPanelModel importFilters = activity.importFilterSettingsPanelModel(activity.settings());
+                assertEquals(SettingsTextCopy.importFiltersTitle(), importFilters.getTitle());
+                assertFalse(importFilters.getState().getActiveCards());
+                assertTrue(importFilters.getState().getSuspendedCards());
+
+                SettingsFrequencyRangePanelModel frequencyRange = activity.frequencyRangeSettingsPanelModel(activity.settings());
+                assertEquals(SettingsTextCopy.frequencyRangeTitle(), frequencyRange.getTitle());
+                assertEquals(activity.settings().suspendedRankMin, frequencyRange.getSelectedRanks()[0]);
+                assertEquals(activity.settings().suspendedRankMax, frequencyRange.getSelectedRanks()[1]);
             });
         }
     }
@@ -697,8 +707,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertEquals("", frequency.getText().toString());
                 assertEquals("", frequencySort.getText().toString());
 
-                View panel = activity.noteTypeSettingsPanel(activity.settings());
-                assertTrue(panel instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsNoteTypePanelModel panel = activity.noteTypeSettingsPanelModel(activity.settings());
+                assertEquals(activity.settings().modelName, panel.getFields().getNoteType());
+                assertEquals(activity.settings().expressionField, panel.getFields().getExpression());
             });
         }
     }
@@ -707,28 +718,38 @@ public final class MainActivityHelperInstrumentedTest {
     public void settingsValidationPanelsPersistStudyAheadLadderRetentionAndReminder() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                View studyAhead = activity.studyAheadSettingsPanel();
-                assertTrue(studyAhead instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsStudyAheadPanelModel studyAhead = activity.studyAheadSettingsPanelModel();
+                assertEquals(Integer.toString(activity.store.studyAheadMinutes()), studyAhead.getInitialMinutesText());
 
-                View ladder = activity.ladderThresholdSettingsPanel();
-                assertTrue(ladder instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsLadderThresholdPanelModel ladder = activity.ladderThresholdSettingsPanelModel();
+                assertEquals(Integer.toString(activity.settings().ladderPromotionIntervalDays), ladder.getInitialPromotionDaysText());
+                assertEquals(Integer.toString(activity.settings().ladderDemotionFailStreak), ladder.getInitialFailStreakText());
 
-                View ladderOrder = activity.studyLadderSettingsPanel();
-                assertTrue(ladderOrder instanceof androidx.compose.ui.platform.ComposeView);
-                activity.toggleLadderRung(RecordsBase.LadderRung.SIMILAR_KANJI);
+                SettingsStudyLadderPanelModel ladderOrder = activity.studyLadderSettingsPanelModel();
+                assertFalse(ladderOrder.getRungs().isEmpty());
+                ladderOrder.getRungs().stream()
+                        .filter(rung -> rung.getLabel().contains("Similar kanji"))
+                        .findFirst()
+                        .orElseThrow()
+                        .getOnToggle()
+                        .run();
                 assertFalse(activity.studyLadderSettings().isEnabled(RecordsBase.LadderRung.SIMILAR_KANJI));
                 activity.store.saveStudyLadderSettings(activity.studyLadderSettings().moveRung(RecordsBase.LadderRung.WORD_READING, -6));
                 assertEquals(RecordsBase.LadderRung.WORD_READING, activity.studyLadderSettings().orderedRungs.get(0));
 
-                View newCardSort = activity.newCardSortSettingsPanel(activity.settings());
-                assertTrue(newCardSort instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsNewCardSortPanelModel newCardSort = activity.newCardSortSettingsPanelModel(activity.settings());
+                assertEquals(activity.settings().newCardSortMode, newCardSort.getInitialMode());
 
-                View retention = activity.retentionSettingsPanel();
-                assertTrue(retention instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsRetentionPanelModel retention = activity.retentionSettingsPanelModel();
+                assertEquals(
+                        (int) Math.round(activity.store.schedulerParameters().targetRetention * 100.0),
+                        retention.getSelectedRetentionPercent()[0]
+                );
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 21, 0));
-                View reminder = activity.reminderSettingsPanel();
-                assertTrue(reminder instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsReminderPanelModel reminder = activity.reminderSettingsPanelModel();
+                assertEquals(21, reminder.getSelectedHour()[0]);
+                assertEquals(0, reminder.getSelectedMinute()[0]);
                 assertEquals(MainActivityBase.CORAL, reminderStatusColor(true, true));
                 assertEquals(MainActivityBase.TEAL, reminderStatusColor(true, false));
                 assertEquals(MainActivityBase.MUTED, reminderStatusColor(false, false));
@@ -757,24 +778,24 @@ public final class MainActivityHelperInstrumentedTest {
             scenario.onActivity(activity -> {
                 MainActivitySettingsAutomationReminder reminderHelper = new MainActivitySettingsAutomationReminder(activity);
                 activity.store.saveAutoSyncSettings(new LocalStore.AutoSyncSettings(true, true, 6, 45, 1000L, 1000L, 2000L));
-                View syncOn = activity.autoSyncSettingsPanel();
-                assertTrue(syncOn instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsAutoSyncPanelModel syncOn = activity.autoSyncSettingsPanelModel();
+                assertEquals(MainActivityBase.TEAL, syncOn.getStatusColor());
 
                 activity.store.setAutoSyncEnabled(false);
-                View syncOff = activity.autoSyncSettingsPanel();
-                assertTrue(syncOff instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsAutoSyncPanelModel syncOff = activity.autoSyncSettingsPanelModel();
+                assertEquals(MainActivityBase.MUTED, syncOff.getStatusColor());
 
                 activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
-                View missingPermission = activity.updateSettingsPanel();
-                assertTrue(missingPermission instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsUpdateOverviewPanelModel missingPermission = activity.updateSettingsPanelModel();
+                assertFalse(missingPermission.getPanel().getCanInstallUpdates());
 
                 MainActivity.setInstallPermissionForTests(true);
-                View readyUpdate = activity.updateSettingsPanel();
-                assertTrue(readyUpdate instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsUpdateOverviewPanelModel readyUpdate = activity.updateSettingsPanelModel();
+                assertTrue(readyUpdate.getPanel().getCanInstallUpdates());
 
                 activity.store.saveAutoUpdateEnabled(false);
-                View updateOff = activity.updateSettingsPanel();
-                assertTrue(updateOff instanceof androidx.compose.ui.platform.ComposeView);
+                SettingsUpdateOverviewPanelModel updateOff = activity.updateSettingsPanelModel();
+                assertEquals(SettingsTextCopy.automaticUpdatesToggleLabel(false), updateOff.getPanel().getAutomaticUpdatesToggleLabel());
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 22, 45));
                 reminderHelper.saveReminderFromSelection(6, 15, false);
@@ -782,7 +803,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(reminder.enabled);
                 assertEquals(6, reminder.hour);
                 assertEquals(15, reminder.minute);
-                assertTrue(activity.reminderSettingsPanel() instanceof androidx.compose.ui.platform.ComposeView);
+                assertEquals(6, activity.reminderSettingsPanelModel().getSelectedHour()[0]);
             });
         } finally {
             MainActivity.setInstallPermissionForTests(null);
@@ -832,7 +853,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(saved.enabled);
                 assertEquals(8, saved.hour);
                 assertEquals(15, saved.minute);
-                assertTrue(activity.reminderSettingsPanel() instanceof androidx.compose.ui.platform.ComposeView);
+                assertEquals(8, activity.reminderSettingsPanelModel().getSelectedHour()[0]);
 
                 activity.pendingReminderSettings = new LocalStore.ReminderSettings(true, 9, 30);
                 activity.saveGrantedReminderPermission(activity.pendingReminderSettings);

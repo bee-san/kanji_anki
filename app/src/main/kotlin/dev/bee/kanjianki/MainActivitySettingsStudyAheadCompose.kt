@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,20 +42,6 @@ private val StudyAheadButtonShape = RoundedCornerShape(12.dp)
 
 object SettingsStudyAheadTestTags {
     const val MINUTES_INPUT = "settings-study-ahead-minutes-input"
-}
-
-internal fun studyAheadSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsStudyAheadPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsStudyAheadPanel(model)
-            }
-        }
-    }
 }
 
 @Composable

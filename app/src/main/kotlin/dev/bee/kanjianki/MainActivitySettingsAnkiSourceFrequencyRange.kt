@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsInputRules
@@ -10,10 +9,6 @@ internal class MainActivitySettingsAnkiSourceFrequencyRange(
     private val activity: MainActivitySettings,
     private val validation: MainActivitySettingsAnkiSourceValidation,
 ) {
-    fun frequencyRangeSettingsPanel(current: RecordsSyncModels.Settings): View {
-        return frequencyRangeSettingsPanelView(activity, frequencyRangeSettingsPanelModel(current))
-    }
-
     fun frequencyRangeSettingsPanelModel(
         current: RecordsSyncModels.Settings,
     ): SettingsFrequencyRangePanelModel {

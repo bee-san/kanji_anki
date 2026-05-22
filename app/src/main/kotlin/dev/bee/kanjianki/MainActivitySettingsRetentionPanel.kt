@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.FrequencyRetentionRanges
 import dev.bee.kanjianki.core.RetentionSettingsPolicy
@@ -8,10 +7,6 @@ import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsRetentionPanel(private val activity: MainActivitySettings) {
-    fun retentionSettingsPanel(): View {
-        return retentionSettingsPanelView(activity, retentionSettingsPanelModel())
-    }
-
     fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
         val current = activity.store.schedulerParameters()
         val selected = intArrayOf(SettingsInputRules.retentionPercent(current.targetRetention))

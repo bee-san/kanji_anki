@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
@@ -12,10 +11,6 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
     private val activity: MainActivitySettings,
     private val validation: MainActivitySettingsAnkiSourceValidation,
 ) {
-    fun importFilterSettingsPanel(current: RecordsSyncModels.Settings): View {
-        return importFiltersSettingsPanelView(activity, importFilterSettingsPanelModel(current))
-    }
-
     fun importFilterSettingsPanelModel(
         current: RecordsSyncModels.Settings,
     ): SettingsImportFiltersPanelModel {

@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,20 +31,6 @@ private val AutoSyncButtonBorder = Color(0xFFEEBDDA)
 private val AutoSyncWhite = Color(0xFFFFFFFF)
 private val AutoSyncPanelShape = RoundedCornerShape(24.dp)
 private val AutoSyncButtonShape = RoundedCornerShape(12.dp)
-
-internal fun autoSyncSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsAutoSyncPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsAutoSyncPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsAutoSyncPanel(model: SettingsAutoSyncPanelModel) {

@@ -1,16 +1,11 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy
 
 internal class MainActivitySettingsWorkloadPanel(private val activity: MainActivitySettings) {
-    fun workloadSettingsPanel(): View {
-        return workloadSettingsPanelView(activity, workloadSettingsPanelModel())
-    }
-
     fun workloadSettingsPanelModel(): SettingsWorkloadPanelModel {
         val current = activity.store.adaptiveLoadWorkPercent()
         val currentMax = activity.store.adaptiveLoadMaxItems()

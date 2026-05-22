@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,20 +31,6 @@ private val WorkloadTeal = Color(0xFF24756C)
 private val WorkloadPanelBorder = Color(0xFFFFC7DE)
 private val WorkloadWhite = Color(0xFFFFFFFF)
 private val WorkloadPanelShape = RoundedCornerShape(24.dp)
-
-internal fun workloadSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsWorkloadPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsWorkloadPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsWorkloadPanel(model: SettingsWorkloadPanelModel) {

@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -46,20 +44,6 @@ private val ImportFilterButtonBorder = Color(0xFFEEBDDA)
 private val ImportFilterWhite = Color(0xFFFFFFFF)
 private val ImportFilterPanelShape = RoundedCornerShape(24.dp)
 private val ImportFilterButtonShape = RoundedCornerShape(12.dp)
-
-internal fun importFiltersSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsImportFiltersPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsImportFiltersPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {

@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +27,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -46,20 +44,6 @@ private val LearningStepsButtonBorder = Color(0xFFEEBDDA)
 private val LearningStepsWhite = Color(0xFFFFFFFF)
 private val LearningStepsPanelShape = RoundedCornerShape(24.dp)
 private val LearningStepsButtonShape = RoundedCornerShape(12.dp)
-
-internal fun learningStepsSettingsPanelView(
-    activity: MainActivitySettings,
-    model: SettingsLearningStepsPanelModel,
-): View {
-    return ComposeView(activity).apply {
-        layoutParams = settingsPanelLayoutParams(activity)
-        setContent {
-            MaterialTheme {
-                SettingsLearningStepsPanel(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SettingsLearningStepsPanel(model: SettingsLearningStepsPanelModel) {

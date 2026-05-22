@@ -1,15 +1,10 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal class MainActivitySettingsStudyLadder(private val activity: MainActivitySettings) {
-    fun studyLadderSettingsPanel(): View {
-        return studyLadderSettingsPanelView(activity, studyLadderSettingsPanelModel())
-    }
-
     fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
         val ladder = activity.studyLadderSettings()
         return SettingsStudyLadderPanelModel(

@@ -1,15 +1,10 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
 
 internal class MainActivitySettingsStudyAheadPanel(private val activity: MainActivitySettings) {
-    fun studyAheadSettingsPanel(): View {
-        return studyAheadSettingsPanelView(activity, studyAheadSettingsPanelModel())
-    }
-
     fun studyAheadSettingsPanelModel(): SettingsStudyAheadPanelModel {
         return SettingsStudyAheadPanelModel(
             title = SettingsTextCopy.studyAheadTitle(),

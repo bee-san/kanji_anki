@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import android.widget.Toast
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy
 import dev.bee.kanjianki.core.DateTextPolicy
@@ -9,10 +8,6 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 
 internal class MainActivitySettingsAutomationAutoSync(private val activity: MainActivitySettings) {
-    fun autoSyncSettingsPanel(): View {
-        return autoSyncSettingsPanelView(activity, autoSyncSettingsPanelModel())
-    }
-
     fun autoSyncSettingsPanelModel(): SettingsAutoSyncPanelModel {
         val auto = activity.store.autoSyncSettings()
         val action = autoSyncAction(auto)
