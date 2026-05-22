@@ -77,6 +77,24 @@ public final class KaniFsrsAdapterTest {
     }
 
     @Test
+    public void latestAdapterTreatsNullAndUnknownRatingsAsAgain() {
+        LatestFsrsAdapter adapter = new LatestFsrsAdapter();
+
+        KaniFsrsReviewResult nullInitial = adapter.initialReview(null, 0.4, 6.0, 0.9, true);
+        KaniFsrsReviewResult unknownInitial = adapter.initialReview("???", 0.4, 6.0, 0.9, true);
+        assertEquals(0.212, nullInitial.stability, 0.000001);
+        assertEquals(unknownInitial.stability, nullInitial.stability, 0.000001);
+        assertEquals(unknownInitial.difficulty, nullInitial.difficulty, 0.000001);
+        assertEquals(unknownInitial.intervalDays(), nullInitial.intervalDays());
+
+        KaniFsrsReviewResult nullReview = adapter.review(5.0, 6.0, null, 7, 0.9);
+        KaniFsrsReviewResult unknownReview = adapter.review(5.0, 6.0, "???", 7, 0.9);
+        assertEquals(unknownReview.stability, nullReview.stability, 0.000001);
+        assertEquals(unknownReview.difficulty, nullReview.difficulty, 0.000001);
+        assertEquals(unknownReview.intervalDays(), nullReview.intervalDays());
+    }
+
+    @Test
     public void resultCeilsIntervalsToAtLeastOneDay() {
         KaniFsrsReviewResult result = new KaniFsrsReviewResult(1.0, 2.0, 1L);
 

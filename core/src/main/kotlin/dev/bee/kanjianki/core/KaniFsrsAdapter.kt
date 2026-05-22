@@ -2,7 +2,7 @@ package dev.bee.kanjianki.core
 
 internal interface KaniFsrsAdapter {
     fun initialReview(
-        rating: String,
+        rating: String?,
         currentStability: Double,
         currentDifficulty: Double,
         targetRetention: Double,
@@ -12,7 +12,7 @@ internal interface KaniFsrsAdapter {
     fun review(
         stability: Double,
         difficulty: Double,
-        rating: String,
+        rating: String?,
         elapsedDays: Int,
         targetRetention: Double,
     ): KaniFsrsReviewResult

@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    id("org.jetbrains.kotlin.jvm")
     jacoco
 }
 
@@ -7,6 +8,10 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 tasks.withType<Test>().configureEach {

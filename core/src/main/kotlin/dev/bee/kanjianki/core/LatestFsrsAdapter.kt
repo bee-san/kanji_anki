@@ -10,7 +10,7 @@ internal class LatestFsrsAdapter(
     private val engine: FsrsEngine = FsrsEngine.latestDefault(),
 ) : KaniFsrsAdapter {
     override fun initialReview(
-        rating: String,
+        rating: String?,
         currentStability: Double,
         currentDifficulty: Double,
         targetRetention: Double,
@@ -36,7 +36,7 @@ internal class LatestFsrsAdapter(
     override fun review(
         stability: Double,
         difficulty: Double,
-        rating: String,
+        rating: String?,
         elapsedDays: Int,
         targetRetention: Double,
     ): KaniFsrsReviewResult {
@@ -59,7 +59,7 @@ internal class LatestFsrsAdapter(
             intervalDays * KaniFsrsReviewResult.DAY_MILLIS,
         )
 
-    private fun String.toFsrsRating(): FsrsRating = when (this) {
+    private fun String?.toFsrsRating(): FsrsRating = when (this) {
         StudyRatings.HARD -> FsrsRating.HARD
         StudyRatings.GOOD -> FsrsRating.GOOD
         StudyRatings.EASY -> FsrsRating.EASY
