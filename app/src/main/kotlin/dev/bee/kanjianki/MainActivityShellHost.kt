@@ -78,6 +78,33 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         activity.styleSystemBars()
     }
 
+    fun composeRouteWithActionBar(
+        selected: String,
+        initialScrollY: Int = 0,
+        content: @Composable () -> Unit,
+        actionBar: @Composable () -> Unit,
+    ) {
+        prepareRoute(selected)
+        activity.content = LinearLayout(activity)
+        activity.content.orientation = LinearLayout.VERTICAL
+        activity.content.addView(ComposeView(activity))
+        val scrollMirror = composeScrollMirror(initialScrollY)
+        activity.contentScroll = scrollMirror
+        activity.studyActionBar = LinearLayout(activity)
+        activity.studyActionBar?.orientation = LinearLayout.VERTICAL
+        activity.studyActionBar?.visibility = View.GONE
+        activity.setContent {
+            MainActivityComposeRouteWithActionBar(
+                model = MainActivityShellModel(selectedRoute = selected),
+                initialScrollY = initialScrollY,
+                onScrollY = { scrollMirror.scrollTo(0, it) },
+                content = content,
+                actionBar = actionBar,
+            )
+        }
+        activity.styleSystemBars()
+    }
+
     private fun composeScrollMirror(initialScrollY: Int): ScrollView {
         return ScrollView(activity).apply {
             val child = View(activity)

@@ -22,13 +22,36 @@ internal fun MainActivityStudy.renderComposeStudyRoute(content: @Composable () -
     }
 }
 
+internal fun MainActivityStudy.renderComposeStudyRouteWithActionBar(
+    content: @Composable () -> Unit,
+    actionBar: @Composable () -> Unit,
+) {
+    initializeSessionProgressTarget(activeStudyPlan)
+    val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
+    composeRouteWithActionBar(
+        selected = MainActivityBase.NAV_STUDY,
+        content = {
+            Column {
+                StudyTopBar(
+                    completed = progress.completed,
+                    target = progress.target,
+                    fraction = progress.fraction,
+                    onClose = ::renderHome,
+                    onSettings = ::renderSettings,
+                )
+                content()
+            }
+        },
+        actionBar = actionBar,
+    )
+}
+
 internal fun MainActivityStudy.renderLegacyStudyRoute() {
     base(MainActivityBase.NAV_STUDY)
 }
 
-internal fun MainActivityStudy.renderLegacyFlashcardRoute(session: RecordsSchedulerModels.StudySession) {
-    renderLegacyStudyRoute()
-    renderFlashcardSession(session)
+internal fun MainActivityStudy.renderFlashcardStudyRoute(session: RecordsSchedulerModels.StudySession) {
+    renderComposeFlashcardSession(session)
 }
 
 internal fun MainActivityStudy.renderLegacyWritingRoute(session: RecordsSchedulerModels.StudySession) {

@@ -9,7 +9,7 @@ internal class MainActivityStudySessionRouter(private val home: MainActivityStud
             StudySessionRoute.Destination.WRITING -> home.renderLegacyWritingRoute(session)
             StudySessionRoute.Destination.SIMILAR_KANJI -> home.renderSimilarKanjiSession(session)
             StudySessionRoute.Destination.MEANING_KANJI -> home.renderMeaningKanjiSession(session)
-            StudySessionRoute.Destination.FLASHCARD -> home.renderLegacyFlashcardRoute(session)
+            StudySessionRoute.Destination.FLASHCARD -> home.renderFlashcardStudyRoute(session)
         }
     }
 }

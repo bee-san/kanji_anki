@@ -1846,14 +1846,13 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = failSession;
                 activity.activeStudyPlan = new RecordsSchedulerModels.AdaptiveLoadPlan(20, 1, 1, Collections.singletonList("裂"), 0, false, "One left");
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
-                activity.renderFlashcardSession(failSession);
+                activity.renderSession(failSession);
                 assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
                 assertEquals(activity.flashcardCard, activity.flashcardGestureArea);
-                View actionBarHost = activity.studyActionBar.getChildAt(0);
-                performClickableWithText(activity.studyActionBar, "Reveal");
+                View root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
-                assertSame(actionBarHost, activity.studyActionBar.getChildAt(0));
-                assertTrue(containsText(activity.content, "split"));
+                assertTrue(containsText(root, "split"));
                 activity.flashcardTouchStartX = 100f;
                 activity.flashcardTouchStartY = 100f;
                 assertTrue(activity.handleFlashcardRelease(motion(MotionEvent.ACTION_UP, 20f, 100f)));
@@ -1865,7 +1864,9 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = failSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
                 activity.renderFlashcardSession(failSession);
+                View actionBarHost = activity.studyActionBar.getChildAt(0);
                 performClickableWithText(activity.studyActionBar, "Reveal");
+                assertSame(actionBarHost, activity.studyActionBar.getChildAt(0));
                 performClickableWithText(activity.studyActionBar, "Fail");
                 RecordsSchedulerModels.ReviewStats failStats = activity.store.reviewStatsSince(0L);
                 assertEquals(2, failStats.total);

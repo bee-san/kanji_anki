@@ -3,7 +3,9 @@ package dev.bee.kanjianki
 import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +46,25 @@ fun MainActivityComposeRoute(
             initialScrollY = initialScrollY,
             onScrollY = onScrollY,
             content = content
+        )
+    }
+}
+
+@Composable
+fun MainActivityComposeRouteWithActionBar(
+    model: MainActivityShellModel = MainActivityShellModel(),
+    initialScrollY: Int = 0,
+    onScrollY: (Int) -> Unit = {},
+    content: @Composable () -> Unit,
+    actionBar: @Composable () -> Unit,
+) {
+    MainActivityShellFrame(model) {
+        MainActivityRouteContentWithActionBar(
+            model = model,
+            initialScrollY = initialScrollY,
+            onScrollY = onScrollY,
+            content = content,
+            actionBar = actionBar,
         )
     }
 }
@@ -118,5 +139,45 @@ internal fun MainActivityRouteContent(
             .verticalScroll(scrollState),
     ) {
         content()
+    }
+}
+
+@Composable
+internal fun MainActivityRouteContentWithActionBar(
+    model: MainActivityShellModel,
+    initialScrollY: Int = 0,
+    onScrollY: (Int) -> Unit = {},
+    content: @Composable () -> Unit,
+    actionBar: @Composable () -> Unit,
+) {
+    val scrollState = rememberScrollState(initial = initialScrollY)
+    LaunchedEffect(scrollState, onScrollY) {
+        snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+    }
+    val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
+        MainActivityUiSupport.STUDY_BG_SOFT
+    } else {
+        MainActivityUiSupport.BG
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag(model.routeTestTag)
+            .semantics {
+                contentDescription = model.routeContentDescription
+            }
+            .background(Color(backgroundColor))
+            .systemBarsPadding()
+            .padding(18.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(scrollState),
+        ) {
+            content()
+        }
+        actionBar()
     }
 }

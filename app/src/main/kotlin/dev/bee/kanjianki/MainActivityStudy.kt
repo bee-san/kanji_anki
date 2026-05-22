@@ -162,6 +162,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         flashcardUi.renderFlashcardSession(session)
     }
 
+    fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
+        flashcardUi.renderComposeFlashcardSession(session)
+    }
+
     fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
         return flashcardUi.recognitionHeroCard(session)
     }

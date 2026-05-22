@@ -19,13 +19,15 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         activity.styleStudyActionBarShell()
         studyActionBar.visibility = View.VISIBLE
         val existing = activity.flashcardActionBarState
-        if (existing != null && studyActionBar.isNotEmpty()) {
+        if (existing != null) {
             existing.revealed = revealed
-            return
+            if (studyActionBar.isNotEmpty()) {
+                return
+            }
         }
 
         studyActionBar.removeAllViews()
-        val state = FlashcardActionBarState(
+        val state = existing ?: FlashcardActionBarState(
             revealed,
             Runnable { revealFlashcardAnswer() },
             Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },

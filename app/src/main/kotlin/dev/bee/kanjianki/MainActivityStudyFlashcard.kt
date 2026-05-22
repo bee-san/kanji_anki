@@ -4,6 +4,14 @@ import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -11,6 +19,14 @@ import dev.bee.kanjianki.core.study.HintState
 
 internal class MainActivityStudyFlashcard(private val activity: MainActivityStudy) {
     private val interaction = MainActivityStudyFlashcardInteraction(activity)
+
+    fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
+        val route = composeFlashcardRouteModel(session)
+        activity.renderComposeStudyRouteWithActionBar(
+            content = { ComposeFlashcardCard(route) },
+            actionBar = { ComposeFlashcardActionBar(route) },
+        )
+    }
 
     fun renderFlashcardSession(session: RecordsSchedulerModels.StudySession) {
         resetFlashcardSession()
@@ -27,6 +43,10 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
     fun resetFlashcardSession() {
         activity.prepareStudyContent(activity.activeStudyPlan, true)
+        resetFlashcardInteractionState()
+    }
+
+    private fun resetFlashcardInteractionState() {
         activity.activeSimilarWritingRepair = null
         activity.activeAnalysis = null
         activity.checkingWriting = false
@@ -38,6 +58,21 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.drawingPad = null
         activity.flashcardHeroPanel = null
         activity.hideStudyActionBar()
+    }
+
+    private fun composeFlashcardRouteModel(session: RecordsSchedulerModels.StudySession): ComposeFlashcardRouteModel {
+        resetFlashcardInteractionState()
+        val card = recognitionHeroCard(session)
+        activity.flashcardCard = card
+        activity.flashcardGestureArea = card
+        val actionBarState = FlashcardActionBarState(
+            false,
+            Runnable { revealFlashcardAnswer() },
+            Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
+            Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, false) },
+        )
+        activity.flashcardActionBarState = actionBarState
+        return ComposeFlashcardRouteModel(card, actionBarState)
     }
 
     fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
@@ -140,4 +175,31 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     fun isTouchInsideView(view: View?, event: MotionEvent): Boolean {
         return interaction.isTouchInsideView(view, event)
     }
+
+    @Composable
+    private fun ComposeFlashcardCard(route: ComposeFlashcardRouteModel) {
+        val card = remember(route) { route.card }
+        AndroidView(
+            factory = { card },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 420.dp)
+                .padding(top = 10.dp, bottom = 14.dp),
+        )
+    }
+
+    @Composable
+    private fun ComposeFlashcardActionBar(route: ComposeFlashcardRouteModel) {
+        StudyFlashcardActionBar(
+            revealed = route.actionBarState.revealed,
+            onReveal = { route.actionBarState.onReveal.run() },
+            onFail = { route.actionBarState.onFail.run() },
+            onPass = { route.actionBarState.onPass.run() },
+        )
+    }
+
+    private data class ComposeFlashcardRouteModel(
+        val card: View,
+        val actionBarState: FlashcardActionBarState,
+    )
 }
