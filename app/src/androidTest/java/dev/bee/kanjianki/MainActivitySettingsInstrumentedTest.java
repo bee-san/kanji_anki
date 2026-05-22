@@ -36,6 +36,7 @@ import java.util.Locale;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static dev.bee.kanjianki.MainActivitySettingsInstrumentedTestModels.settingsUpdatePanelForTest;
 
 @RunWith(AndroidJUnit4.class)
 public final class MainActivitySettingsInstrumentedTest {
@@ -201,7 +202,14 @@ public final class MainActivitySettingsInstrumentedTest {
     public void settingsValidationPanelsPersistStudyAheadLadderRetentionAndReminder() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                SettingsStudyAheadPanelModel studyAhead = activity.studyAheadSettingsPanelModel();
+                SettingsStudyAheadPanelModel studyAhead = new SettingsStudyAheadPanelModel(
+                        SettingsTextCopy.studyAheadTitle(),
+                        SettingsTextCopy.studyAheadBody(),
+                        SettingsTextCopy.studyAheadMinutesLabel(),
+                        Integer.toString(activity.store.studyAheadMinutes()),
+                        SettingsTextCopy.saveStudyAheadLabel(),
+                        minutesText -> { }
+                );
                 assertEquals(Integer.toString(activity.store.studyAheadMinutes()), studyAhead.getInitialMinutesText());
 
                 SettingsLadderThresholdPanelModel ladder = activity.ladderThresholdSettingsPanelModel();
@@ -269,16 +277,16 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertEquals(MainActivityBase.MUTED, syncOff.getStatusColor());
 
                 activity.store.recordAutoUpdateResult(1234L, "Ready to install.", "v0.5.0", "kani.apk", "");
-                SettingsUpdateOverviewPanelModel missingPermission = activity.updateSettingsPanelModel();
-                assertFalse(missingPermission.getPanel().getCanInstallUpdates());
+                SettingsUpdatePanelModel missingPermission = settingsUpdatePanelForTest(activity);
+                assertFalse(missingPermission.getCanInstallUpdates());
 
                 MainActivity.setInstallPermissionForTests(true);
-                SettingsUpdateOverviewPanelModel readyUpdate = activity.updateSettingsPanelModel();
-                assertTrue(readyUpdate.getPanel().getCanInstallUpdates());
+                SettingsUpdatePanelModel readyUpdate = settingsUpdatePanelForTest(activity);
+                assertTrue(readyUpdate.getCanInstallUpdates());
 
                 activity.store.saveAutoUpdateEnabled(false);
-                SettingsUpdateOverviewPanelModel updateOff = activity.updateSettingsPanelModel();
-                assertEquals(SettingsTextCopy.automaticUpdatesToggleLabel(false), updateOff.getPanel().getAutomaticUpdatesToggleLabel());
+                SettingsUpdatePanelModel updateOff = settingsUpdatePanelForTest(activity);
+                assertEquals(SettingsTextCopy.automaticUpdatesToggleLabel(false), updateOff.getAutomaticUpdatesToggleLabel());
 
                 activity.store.saveReminderSettings(new LocalStore.ReminderSettings(true, 22, 45));
                 reminderHelper.saveReminderFromSelection(6, 15, false);
@@ -506,4 +514,5 @@ public final class MainActivitySettingsInstrumentedTest {
             node.recycle();
         }
     }
+
 }

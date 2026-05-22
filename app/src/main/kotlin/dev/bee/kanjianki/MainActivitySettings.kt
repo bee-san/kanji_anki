@@ -243,29 +243,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanelModel()
     }
 
-    fun studyAheadSettingsPanelModel(): SettingsStudyAheadPanelModel {
-        return SettingsStudyAheadPanelModel(
-            title = SettingsTextCopy.studyAheadTitle(),
-            body = SettingsTextCopy.studyAheadBody(),
-            minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
-            initialMinutesText = store.studyAheadMinutes().toString(),
-            saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
-            onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
-        )
-    }
-
-    fun updateSettingsPanelModel(): SettingsUpdateOverviewPanelModel {
-        return SettingsUpdateOverviewPanelModel(
-            settingsUpdatePanelModel(
-                activity = this,
-                title = SettingsTextCopy.appUpdatesTitle(),
-            ),
-            SettingsTextCopy.openUpdaterLabel(),
-        ) {
-            renderUpdate()
-        }
-    }
-
     fun runUpdate(cachedPending: Boolean) {
         val copy = UpdateRunScreenCopy.forRun(cachedPending)
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
