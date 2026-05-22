@@ -19,10 +19,12 @@ object LearningStepsSettingsPolicy {
         @JvmField val message: String,
     ) {
         companion object {
+            @JvmStatic
             fun valid(settings: RecordsSchedulerModels.LearningStepSettings): SaveResult {
                 return SaveResult(true, settings, "")
             }
 
+            @JvmStatic
             fun invalid(message: String): SaveResult {
                 return SaveResult(false, null, message)
             }

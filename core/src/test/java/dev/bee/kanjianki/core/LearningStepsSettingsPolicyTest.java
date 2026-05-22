@@ -21,6 +21,22 @@ public final class LearningStepsSettingsPolicyTest {
     }
 
     @Test
+    public void saveResultFactoriesRemainCallableFromJava() {
+        RecordsSchedulerModels.LearningStepSettings settings =
+                new RecordsSchedulerModels.LearningStepSettings(Arrays.asList(1), Arrays.asList(10));
+
+        LearningStepsSettingsPolicy.SaveResult valid = LearningStepsSettingsPolicy.SaveResult.valid(settings);
+        LearningStepsSettingsPolicy.SaveResult invalid = LearningStepsSettingsPolicy.SaveResult.invalid("bad");
+
+        assertTrue(valid.valid);
+        assertEquals(settings, valid.settings);
+        assertEquals("", valid.message);
+        assertFalse(invalid.valid);
+        assertNull(invalid.settings);
+        assertEquals("bad", invalid.message);
+    }
+
+    @Test
     public void saveRequestRejectsInvalidNewStepsWithExistingCopy() {
         assertInvalid("", "10m");
         assertInvalid("soon", "10m");
