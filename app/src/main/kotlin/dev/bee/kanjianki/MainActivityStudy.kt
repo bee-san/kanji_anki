@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyExampleSelector
 import dev.bee.kanjianki.core.StudyLayoutPolicy
 import dev.bee.kanjianki.core.StudySessionFocusPolicy
+import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.StrokeGuide
 import dev.bee.kanjianki.core.study.StrokeGuideGuard
@@ -121,7 +122,32 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             }
             val repair = store.nextDueSimilarWritingRepair(now)
             if (repair != null) {
-                writingSession.renderSimilarWritingRepair(repair, plan, now)
+                val active = StudyRepairActions.activateSimilarWritingRepair(
+                    repair,
+                    now,
+                    store::saveSimilarWritingRepair,
+                )
+                val activeRepair = active.repair
+                activeSimilarWritingRepair = activeRepair
+                val item = BridgeScheduler().newTargetedStudyItem(activeRepair.repairKanji, now, studyLadderSettings())
+                val session = RecordsSchedulerModels.StudySession(
+                    item.withToken(active.token),
+                    null,
+                    active.token,
+                    MainActivityBase.TASK_REPAIR_WRITING,
+                    true,
+                    StudyTextCopy.similarRepairPrompt(activeRepair)
+                )
+                activeSession = session
+                activeStudyPlan = plan
+                registerStudyTaskShown(active.progressKey)
+                startActiveStudyTask(
+                    active.studyTaskKey,
+                    activeRepair.repairKanji,
+                    MainActivityBase.TASK_REPAIR_WRITING,
+                    now,
+                )
+                writingSession.renderComposeWritingSession(session)
                 return true
             }
         }
