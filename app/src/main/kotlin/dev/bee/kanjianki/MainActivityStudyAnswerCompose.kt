@@ -2,7 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
@@ -21,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,51 +33,11 @@ private val StudyAnswerPink = Color(MainActivityUiSupport.STUDY_PINK_DARK)
 private val StudyAnswerPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
 private val StudyAnswerBorder = Color(MainActivityUiSupport.STUDY_BORDER)
 
-internal fun flashcardAnswerPanelView(
-    activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
-): View {
-    val model = flashcardAnswerPanelModel(activity, session)
-    return ComposeView(activity).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            setMargins(0, activity.dp(12), 0, activity.dp(10))
-        }
-        setContent {
-            MaterialTheme {
-                StudyAnswerPanel(model)
-            }
-        }
-    }
-}
-
 internal fun flashcardAnswerPanelModel(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
 ): StudyAnswerPanelModel {
     return answerPanelModel(activity, session, "Answer", 76, null)
-}
-
-internal fun learningPanelView(
-    activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
-): View {
-    val model = learningPanelModel(activity, session)
-    return ComposeView(activity).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            setMargins(0, activity.dp(12), 0, activity.dp(10))
-        }
-        setContent {
-            MaterialTheme {
-                StudyAnswerPanel(model)
-            }
-        }
-    }
 }
 
 internal fun learningPanelModel(

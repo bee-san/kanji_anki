@@ -150,7 +150,20 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     fun flashcardAnswerPanel(session: RecordsSchedulerModels.StudySession): View {
-        return flashcardAnswerPanelView(activity, session)
+        val model = flashcardAnswerPanelModel(session)
+        return ComposeView(activity).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, activity.dp(12), 0, activity.dp(10))
+            }
+            setContent {
+                MaterialTheme {
+                    StudyAnswerPanel(model)
+                }
+            }
+        }
     }
 
     fun flashcardAnswerPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {

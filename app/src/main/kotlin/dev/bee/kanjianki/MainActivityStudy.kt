@@ -4,6 +4,8 @@ import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.platform.ComposeView
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
@@ -46,7 +48,20 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val dictionaryLookupProvider = MainActivityDictionaryLookupProvider(this)
 
     fun learningPanel(session: RecordsSchedulerModels.StudySession): View {
-        return learningPanelView(this, session)
+        val model = learningPanelModel(this, session)
+        return ComposeView(this).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, dp(12), 0, dp(10))
+            }
+            setContent {
+                MaterialTheme {
+                    StudyAnswerPanel(model)
+                }
+            }
+        }
     }
 
     fun learningPanelModel(session: RecordsSchedulerModels.StudySession): StudyAnswerPanelModel {
