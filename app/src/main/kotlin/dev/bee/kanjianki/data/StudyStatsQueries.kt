@@ -74,11 +74,11 @@ internal class StudyStatsQueries(private val store: LocalStore) {
             studyDays.lastStudyAt
         )
         return StudyStatsStore.StudyStreak(
-            streak.currentDays(),
-            streak.bestDays(),
-            streak.studiedToday(),
-            streak.reviewsToday(),
-            streak.lastStudyAtMillis()
+            streak.currentDays,
+            streak.bestDays,
+            streak.studiedToday,
+            streak.reviewsToday,
+            streak.lastStudyAtMillis
         )
     }
 
