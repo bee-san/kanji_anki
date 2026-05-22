@@ -140,6 +140,25 @@ internal class LocalStoreSimilarKanjiData(
         )
     }
 
+    fun similarChoiceCard(
+        db: SQLiteDatabase,
+        targetKanji: String?,
+        choiceSignature: String?,
+    ): RecordsImportModels.SimilarKanjiChoiceCard? {
+        db.query(
+            LocalStoreBase.TABLE_SIMILAR_KANJI_CHOICE_STATE,
+            null,
+            LocalStoreBase.WHERE_SIMILAR_CHOICE,
+            arrayOf(targetKanji, choiceSignature),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) readSimilarChoiceCard(cursor) else null
+        }
+    }
+
     fun hasPendingSimilarRepairs(
         db: SQLiteDatabase,
         targetKanji: String?,

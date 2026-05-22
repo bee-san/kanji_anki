@@ -271,20 +271,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         db: SQLiteDatabase,
         targetKanji: String,
         choiceSignature: String,
-    ): RecordsImportModels.SimilarKanjiChoiceCard? {
-        db.query(
-            TABLE_SIMILAR_KANJI_CHOICE_STATE,
-            null,
-            WHERE_SIMILAR_CHOICE,
-            arrayOf(targetKanji, choiceSignature),
-            null,
-            null,
-            null,
-            "1",
-        ).use { cursor ->
-            return if (cursor.moveToFirst()) readSimilarChoiceCard(cursor) else null
-        }
-    }
+    ): RecordsImportModels.SimilarKanjiChoiceCard? = similarKanjiData().similarChoiceCard(db, targetKanji, choiceSignature)
 
     fun readSimilarChoiceCard(cursor: Cursor): RecordsImportModels.SimilarKanjiChoiceCard = similarKanjiData().readSimilarChoiceCard(cursor)
 
