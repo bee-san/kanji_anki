@@ -7,6 +7,7 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.core.view.isNotEmpty
 import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -18,7 +19,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         activity.styleStudyActionBarShell()
         studyActionBar.visibility = View.VISIBLE
         val existing = activity.flashcardActionBarState
-        if (existing != null && studyActionBar.childCount > 0) {
+        if (existing != null && studyActionBar.isNotEmpty()) {
             existing.revealed = revealed
             return
         }
