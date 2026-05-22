@@ -12,11 +12,9 @@ internal class MainActivitySettingsScreen(private val activity: MainActivitySett
         } else {
             0
         }
-        activity.base(MainActivityBase.NAV_SETTINGS_ROUTE)
         val current = activity.settings()
-        activity.content.addView(settingsScreenView(activity, settingsScreenModel(current)))
-        if (preserveScroll) {
-            activity.contentScroll?.post { activity.contentScroll?.scrollTo(0, scrollY) }
+        activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
+            SettingsScreen(settingsScreenModel(current))
         }
     }
 

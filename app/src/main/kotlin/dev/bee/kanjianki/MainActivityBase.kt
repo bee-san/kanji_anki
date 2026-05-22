@@ -276,8 +276,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         shellHost.base(selected)
     }
 
-    fun composeRoute(selected: String, content: @Composable () -> Unit) {
-        shellHost.composeRoute(selected, content)
+    fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
+        shellHost.composeRoute(selected, initialScrollY, content)
     }
 
     fun isActiveToken(token: String): Boolean {

@@ -10,7 +10,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -41,6 +43,8 @@ fun MainActivityShell(
 @Composable
 fun MainActivityComposeRoute(
     model: MainActivityShellModel = MainActivityShellModel(),
+    initialScrollY: Int = 0,
+    onScrollY: (Int) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     MaterialTheme {
@@ -52,7 +56,12 @@ fun MainActivityComposeRoute(
                     contentDescription = "Kani shell ${model.selectedRoute}"
                 }
         ) {
-            MainActivityRouteContent(model = model, content = content)
+            MainActivityRouteContent(
+                model = model,
+                initialScrollY = initialScrollY,
+                onScrollY = onScrollY,
+                content = content
+            )
         }
     }
 }
@@ -82,8 +91,14 @@ internal fun MainActivityRouteHost(
 @Composable
 internal fun MainActivityRouteContent(
     model: MainActivityShellModel,
+    initialScrollY: Int = 0,
+    onScrollY: (Int) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
+    val scrollState = rememberScrollState(initial = initialScrollY)
+    LaunchedEffect(scrollState, onScrollY) {
+        snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+    }
     val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
         MainActivityUiSupport.STUDY_BG_SOFT
     } else {
@@ -99,7 +114,7 @@ internal fun MainActivityRouteContent(
             .background(Color(backgroundColor))
             .systemBarsPadding()
             .padding(18.dp)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(scrollState),
     ) {
         content()
     }

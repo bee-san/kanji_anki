@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.activity.compose.setContent
@@ -55,23 +56,33 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         requestInsetsWhenAttached(root)
     }
 
-    fun composeRoute(selected: String, content: @Composable () -> Unit) {
+    fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
         prepareRoute(selected)
         activity.content = LinearLayout(activity)
         activity.content.orientation = LinearLayout.VERTICAL
         // Keep the legacy content field structurally compatible while this route renders through Activity.setContent.
         activity.content.addView(ComposeView(activity))
-        activity.contentScroll = null
+        val scrollMirror = composeScrollMirror(initialScrollY)
+        activity.contentScroll = scrollMirror
         activity.studyActionBar = LinearLayout(activity)
         activity.studyActionBar?.orientation = LinearLayout.VERTICAL
         activity.studyActionBar?.visibility = View.GONE
         activity.setContent {
             MainActivityComposeRoute(
                 model = MainActivityShellModel(selectedRoute = selected),
+                initialScrollY = initialScrollY,
+                onScrollY = { scrollMirror.scrollTo(0, it) },
                 content = content
             )
         }
         activity.styleSystemBars()
+    }
+
+    private fun composeScrollMirror(initialScrollY: Int): ScrollView {
+        return ScrollView(activity).apply {
+            addView(View(activity), ViewGroup.LayoutParams(1, COMPOSE_SCROLL_MIRROR_HEIGHT))
+            scrollTo(0, initialScrollY)
+        }
     }
 
     private fun prepareRoute(selected: String) {
@@ -104,5 +115,9 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
 
             override fun onViewDetachedFromWindow(view: View) = Unit
         })
+    }
+
+    private companion object {
+        const val COMPOSE_SCROLL_MIRROR_HEIGHT = 100_000
     }
 }
