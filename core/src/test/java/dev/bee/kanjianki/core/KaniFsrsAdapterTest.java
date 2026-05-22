@@ -95,6 +95,18 @@ public final class KaniFsrsAdapterTest {
     }
 
     @Test
+    public void latestAdapterNormalizesNegativeElapsedDaysAtTheAppBoundary() {
+        LatestFsrsAdapter adapter = new LatestFsrsAdapter();
+
+        KaniFsrsReviewResult negativeElapsed = adapter.review(5.0, 6.0, StudyRatings.GOOD, -7, 0.9);
+        KaniFsrsReviewResult zeroElapsed = adapter.review(5.0, 6.0, StudyRatings.GOOD, 0, 0.9);
+
+        assertEquals(zeroElapsed.stability, negativeElapsed.stability, 0.000001);
+        assertEquals(zeroElapsed.difficulty, negativeElapsed.difficulty, 0.000001);
+        assertEquals(zeroElapsed.intervalDays(), negativeElapsed.intervalDays());
+    }
+
+    @Test
     public void resultCeilsIntervalsToAtLeastOneDay() {
         KaniFsrsReviewResult result = new KaniFsrsReviewResult(1.0, 2.0, 1L);
 

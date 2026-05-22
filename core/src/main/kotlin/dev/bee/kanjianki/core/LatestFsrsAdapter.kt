@@ -44,7 +44,7 @@ internal class LatestFsrsAdapter(
             FsrsReviewInput(
                 FsrsMemoryState(safeStability(stability), safeDifficulty(difficulty)),
                 rating.toFsrsRating(),
-                elapsedDays,
+                safeElapsedDays(elapsedDays),
                 safeRetention(targetRetention),
                 MAXIMUM_INTERVAL_DAYS,
             ),
@@ -86,6 +86,8 @@ internal class LatestFsrsAdapter(
         }
         return difficulty.coerceIn(Fsrs.MIN_DIFFICULTY, Fsrs.MAX_DIFFICULTY)
     }
+
+    private fun safeElapsedDays(elapsedDays: Int): Int = elapsedDays.coerceAtLeast(0)
 
     private companion object {
         private const val MAXIMUM_INTERVAL_DAYS = 36_500
