@@ -51,80 +51,78 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         }
         val current = settings()
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
-            SettingsScreen(settingsScreenModel(current))
-        }
-    }
-
-    private fun settingsScreenModel(current: RecordsSyncModels.Settings): SettingsScreenModel {
-        return settingsScreenModel(
-            settingsAutomationHeroModel(
-                current,
-                store.reminderSettings(),
-                store.autoSyncSettings(),
-                store.autoUpdateStatus(),
-                ReminderScheduler.notificationsAllowed(this)
-            ),
-            listOf(
-                settingsAnkiSourceCategoryModel(
-                    settingsAnkiExpanded,
-                    Runnable {
-                        settingsAnkiExpanded = !settingsAnkiExpanded
-                        renderSettings(true)
-                    },
-                    noteTypeSettingsPanelModel(current),
-                    importFilterSettingsPanelModel(current),
-                    frequencyRangeSettingsPanelModel(current)
-                ),
-                settingsStudyBehaviorCategoryModel(
-                    settingsStudyExpanded,
-                    Runnable {
-                        settingsStudyExpanded = !settingsStudyExpanded
-                        renderSettings(true)
-                    },
-                    MainActivitySettingsStudySortPanel(this).newCardSortSettingsPanelModel(current),
-                    MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel(),
-                    MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel(),
-                    learningStepsSettingsPanelModel(),
-                    SettingsStudyAheadPanelModel(
-                        title = SettingsTextCopy.studyAheadTitle(),
-                        body = SettingsTextCopy.studyAheadBody(),
-                        minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
-                        initialMinutesText = store.studyAheadMinutes().toString(),
-                        saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
-                        onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
+            SettingsScreen(
+                settingsScreenModel(
+                    settingsAutomationHeroModel(
+                        current,
+                        store.reminderSettings(),
+                        store.autoSyncSettings(),
+                        store.autoUpdateStatus(),
+                        ReminderScheduler.notificationsAllowed(this)
                     ),
-                    MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel(),
-                    ladderThresholdSettingsPanelModel()
-                ),
-                settingsAutomationCategoryModel(
-                    settingsSyncExpanded,
-                    Runnable {
-                        settingsSyncExpanded = !settingsSyncExpanded
-                        renderSettings(true)
-                    },
-                    reminderSettingsPanelModel(),
-                    autoSyncSettingsPanelModel(),
-                    SettingsUpdateOverviewPanelModel(
-                        settingsUpdatePanelModel(
-                            activity = this,
-                            title = SettingsTextCopy.appUpdatesTitle(),
+                    listOf(
+                        settingsAnkiSourceCategoryModel(
+                            settingsAnkiExpanded,
+                            Runnable {
+                                settingsAnkiExpanded = !settingsAnkiExpanded
+                                renderSettings(true)
+                            },
+                            noteTypeSettingsPanelModel(current),
+                            importFilterSettingsPanelModel(current),
+                            frequencyRangeSettingsPanelModel(current)
                         ),
-                        SettingsTextCopy.openUpdaterLabel(),
-                    ) {
-                        renderUpdate()
-                    }
-                ),
-                settingsReferenceDataCategoryModel(
-                    settingsAppExpanded,
-                    Runnable {
-                        settingsAppExpanded = !settingsAppExpanded
-                        renderSettings(true)
-                    },
-                    MainActivitySettingsReferenceData(this).dataLicenseSettingsPanelModel()
+                        settingsStudyBehaviorCategoryModel(
+                            settingsStudyExpanded,
+                            Runnable {
+                                settingsStudyExpanded = !settingsStudyExpanded
+                                renderSettings(true)
+                            },
+                            MainActivitySettingsStudySortPanel(this).newCardSortSettingsPanelModel(current),
+                            MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel(),
+                            MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel(),
+                            learningStepsSettingsPanelModel(),
+                            SettingsStudyAheadPanelModel(
+                                title = SettingsTextCopy.studyAheadTitle(),
+                                body = SettingsTextCopy.studyAheadBody(),
+                                minutesLabel = SettingsTextCopy.studyAheadMinutesLabel(),
+                                initialMinutesText = store.studyAheadMinutes().toString(),
+                                saveLabel = SettingsTextCopy.saveStudyAheadLabel(),
+                                onSave = SettingsStudyAheadSaver { minutesText -> saveStudyAhead(minutesText) }
+                            ),
+                            MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel(),
+                            ladderThresholdSettingsPanelModel()
+                        ),
+                        settingsAutomationCategoryModel(
+                            settingsSyncExpanded,
+                            Runnable {
+                                settingsSyncExpanded = !settingsSyncExpanded
+                                renderSettings(true)
+                            },
+                            reminderSettingsPanelModel(),
+                            autoSyncSettingsPanelModel(),
+                            SettingsUpdateOverviewPanelModel(
+                                settingsUpdatePanelModel(
+                                    activity = this,
+                                    title = SettingsTextCopy.appUpdatesTitle(),
+                                ),
+                                SettingsTextCopy.openUpdaterLabel(),
+                            ) {
+                                renderUpdate()
+                            }
+                        ),
+                        settingsReferenceDataCategoryModel(
+                            settingsAppExpanded,
+                            Runnable {
+                                settingsAppExpanded = !settingsAppExpanded
+                                renderSettings(true)
+                            },
+                            MainActivitySettingsReferenceData(this).dataLicenseSettingsPanelModel()
+                        )
+                    ),
+                    Runnable { renderHome() }
                 )
-            ),
-            Runnable { renderHome() }
-        )
+            )
+        }
     }
 
     fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
