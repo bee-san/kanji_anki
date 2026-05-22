@@ -97,26 +97,6 @@ fun HomeMetricRow(metrics: List<HomeMetricModel>) {
 
 @Composable
 fun HomeMetricCard(
-    iconRes: Int,
-    accent: Int,
-    label: String,
-    value: String,
-    body: String?
-) {
-    HomeMetricCard(
-        model = HomeMetricModel(
-            iconRes = iconRes,
-            accent = accent,
-            label = label,
-            value = value,
-            body = body,
-            onClick = null
-        )
-    )
-}
-
-@Composable
-fun HomeMetricCard(
     model: HomeMetricModel,
     modifier: Modifier = Modifier
 ) {
