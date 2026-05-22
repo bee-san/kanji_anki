@@ -2,10 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,12 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -29,29 +23,6 @@ import androidx.compose.ui.unit.sp
 
 private val StudyChoiceResultPrimary = Color(MainActivityUiSupport.STUDY_PINK_DARK)
 private val StudyChoiceResultPrimaryBorder = Color(MainActivityUiSupport.STUDY_BORDER)
-
-internal fun meaningKanjiChoiceResultActionBarView(
-    context: Context,
-    status: String,
-    statusColor: Int,
-    onNext: Runnable,
-): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        setContent {
-            MaterialTheme {
-                MeaningChoiceResultActionBar(
-                    status = status,
-                    statusColor = statusColor,
-                    onNext = { onNext.run() }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 internal fun MeaningChoiceResultActionBar(

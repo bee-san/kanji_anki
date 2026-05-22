@@ -2,15 +2,12 @@
 
 package dev.bee.kanjianki
 
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -35,39 +31,6 @@ private val StudyPanelFill = Color(MainActivityUiSupport.STUDY_PANEL)
 private val StudyPillFill = Color(MainActivityUiSupport.STUDY_PILL)
 private val StudyPinkDark = Color(MainActivityUiSupport.STUDY_PINK_DARK)
 private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
-
-internal fun similarKanjiGridView(activity: MainActivityStudy, model: SimilarChoiceGridModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                SimilarChoiceGrid(model)
-            }
-        }
-    }
-}
-
-internal fun similarKanjiSessionView(activity: MainActivityStudy, model: SimilarChoiceSessionModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                SimilarChoiceSessionCard(model)
-            }
-        }
-    }
-}
-
-internal fun meaningKanjiSessionView(activity: MainActivityStudy, model: MeaningChoiceSessionModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                MeaningChoiceSessionCard(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifier = Modifier) {

@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -83,28 +82,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.store.activeDashboardRows(),
             home.store.searchKanjiInventory(""),
             meaningChoiceRandom
-        )
-    }
-
-    fun showMeaningKanjiChoiceResult(card: RecordsImportModels.MeaningKanjiChoiceCard, selectedKanji: String) {
-        val correct = card.isCorrect(selectedKanji)
-        val studyActionBar = home.studyActionBar
-        if (studyActionBar == null) {
-            home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
-            return
-        }
-        home.styleStudyActionBarShell()
-        studyActionBar.removeAllViews()
-        studyActionBar.visibility = View.VISIBLE
-        val prompt = home.activeSession?.prompt ?: ""
-        val status = StudyTextCopy.meaningKanjiChoiceResult(card, prompt, correct)
-        studyActionBar.addView(
-            meaningKanjiChoiceResultActionBarView(
-                home,
-                status,
-                if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
-                Runnable { home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false) }
-            )
         )
     }
 
