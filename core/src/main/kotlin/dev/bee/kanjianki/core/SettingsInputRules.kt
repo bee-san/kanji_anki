@@ -79,9 +79,6 @@ object SettingsInputRules {
         return max(FrequencyRetentionRanges.MIN_RANK, min(FrequencyRetentionRanges.MAX_RANK, rank))
     }
 
-    data class RankRange(val minRank: Int, val maxRank: Int) {
-        fun minRank(): Int = minRank
-
-        fun maxRank(): Int = maxRank
-    }
+    @JvmRecord
+    data class RankRange(val minRank: Int, val maxRank: Int)
 }
