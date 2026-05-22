@@ -52,7 +52,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
 
     fun saveReminderFromSelection(hour: Int, minute: Int, enabled: Boolean) {
         val fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute)
-        val reminder = LocalStoreBase.ReminderSettings(fields.enabled(), fields.hour(), fields.minute())
+        val reminder = LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute)
         if (!enabled) {
             disableReminder(reminder)
             return
@@ -80,7 +80,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
     private fun disableReminder(reminder: LocalStoreBase.ReminderSettings) {
         val fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute)
         activity.store.saveReminderSettings(
-            LocalStoreBase.ReminderSettings(fields.enabled(), fields.hour(), fields.minute())
+            LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute)
         )
         ReminderScheduler.cancel(activity)
         Toast.makeText(activity, ReminderSettingsSavePolicy.DISABLED_MESSAGE, Toast.LENGTH_SHORT).show()
