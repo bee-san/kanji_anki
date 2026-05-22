@@ -31,20 +31,6 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
 
-internal fun gamesMenuScreenView(activity: MainActivityGames, model: GamesScreenModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                GamesMenuScreen(
-                    model = model,
-                    onHome = activity::renderHome
-                )
-            }
-        }
-    }
-}
-
 internal fun gamesQuestionScreenView(
     activity: MainActivityGames,
     title: String,

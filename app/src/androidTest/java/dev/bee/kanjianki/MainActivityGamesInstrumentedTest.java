@@ -62,7 +62,7 @@ public final class MainActivityGamesInstrumentedTest {
             scenario.onActivity(activity -> {
                 activity.renderGames();
 
-                assertTrue(containsText(activity.content, "Home"));
+                assertTrue(containsText(activity.findViewById(android.R.id.content), "Home"));
                 assertNotNull(findComposeView(activity.content));
             });
         }
@@ -135,6 +135,14 @@ public final class MainActivityGamesInstrumentedTest {
         if (view instanceof TextView) {
             TextView textView = (TextView) view;
             if (textView.getText().toString().contains(expected)) {
+                return true;
+            }
+        }
+        if (view instanceof androidx.compose.ui.platform.ComposeView) {
+            CharSequence text = view.createAccessibilityNodeInfo().getText();
+            CharSequence description = view.createAccessibilityNodeInfo().getContentDescription();
+            if ((text != null && text.toString().contains(expected))
+                    || (description != null && description.toString().contains(expected))) {
                 return true;
             }
         }

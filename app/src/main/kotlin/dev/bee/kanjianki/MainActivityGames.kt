@@ -13,8 +13,13 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     override fun renderGames() {
         clearGameSession()
-        base("home")
-        content.addView(gamesMenuScreenView(this, gamesScreenModel()))
+        val model = gamesScreenModel()
+        composeRoute("home") {
+            GamesMenuScreen(
+                model = model,
+                onHome = this::renderHome
+            )
+        }
     }
 
     internal fun returnToGames() {
