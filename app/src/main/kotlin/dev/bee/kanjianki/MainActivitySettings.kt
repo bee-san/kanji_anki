@@ -94,7 +94,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                         settingsAppExpanded = !settingsAppExpanded
                         renderSettings(true)
                     },
-                    dataLicenseSettingsPanelModel()
+                    MainActivitySettingsReferenceData(this).dataLicenseSettingsPanelModel()
                 )
             ),
             Runnable { renderHome() }
@@ -107,10 +107,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun frequencyRangeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsFrequencyRangePanelModel {
         return ankiSource().frequencyRangeSettingsPanelModel(current)
-    }
-
-    fun dataLicenseSettingsPanelModel(): SettingsReferenceDataLinkModel {
-        return MainActivitySettingsReferenceData(this).dataLicenseSettingsPanelModel()
     }
 
     fun noteTypeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNoteTypePanelModel {
