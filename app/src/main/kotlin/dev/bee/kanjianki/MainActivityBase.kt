@@ -210,7 +210,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun handleFlashcardGesture(event: MotionEvent): Boolean
     abstract fun initializeSessionProgressTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?)
     abstract fun currentDictionaryLookup(): DictionaryLookup
-    abstract fun wordReadingExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example
+    abstract fun wordReadingExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example?
     abstract fun clearStudyModeOverrides()
     abstract fun fontResource(fontRes: Int, fallback: Typeface): Typeface
     abstract fun thresholdInput(value: Int): EditText

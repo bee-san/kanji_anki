@@ -56,15 +56,15 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return learningPanelModel(this, session)
     }
 
-    fun firstExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example {
+    fun firstExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example? {
         return StudyExampleSelector.firstExample(row)
     }
 
-    override fun wordReadingExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example {
+    override fun wordReadingExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example? {
         return StudyExampleSelector.wordReadingExample(row)
     }
 
-    fun exampleForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.Example {
+    fun exampleForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.Example? {
         return StudyExampleSelector.exampleForSession(session)
     }
 
