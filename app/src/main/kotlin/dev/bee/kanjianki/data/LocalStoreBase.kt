@@ -20,7 +20,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
     null,
     DB_VERSION,
 ) {
-    private val settingsRepository = SettingsRepository(this)
+    private val settingsRepository = SettingsRepository(SqliteSettingsStorage(this))
 
     internal fun settingsRepository(): SettingsRepository = settingsRepository
 
