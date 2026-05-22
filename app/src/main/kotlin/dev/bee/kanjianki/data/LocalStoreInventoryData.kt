@@ -184,4 +184,49 @@ internal class LocalStoreInventoryData(
             )
         }
     }
+
+    fun rowSnapshots(db: SQLiteDatabase): Map<String, LocalStoreBase.RowSnapshot> {
+        val rows = LinkedHashMap<String, LocalStoreBase.RowSnapshot>()
+        db.query(
+            LocalStoreBase.TABLE_DASHBOARD_ROWS,
+            null,
+            null,
+            null,
+            null,
+            null,
+            LocalStoreBase.ORDER_KANJI_ASC,
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val row = rowSnapshotFromCursor(db, cursor)
+                rows[row.kanji] = row
+            }
+        }
+        return rows
+    }
+
+    fun rowSnapshot(db: SQLiteDatabase, kanji: String): LocalStoreBase.RowSnapshot? {
+        db.query(
+            LocalStoreBase.TABLE_DASHBOARD_ROWS,
+            null,
+            LocalStoreBase.WHERE_KANJI,
+            arrayOf(kanji),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) rowSnapshotFromCursor(db, cursor) else null
+        }
+    }
+
+    fun rowSnapshotFromCursor(db: SQLiteDatabase, cursor: Cursor): LocalStoreBase.RowSnapshot {
+        val kanji = LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI)
+        return LocalStoreBase.RowSnapshot(
+            kanji,
+            LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_WEAKNESS_SCORE),
+            LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT),
+            LocalStoreBase.longValue(cursor, "rebuilt_at"),
+            firstExampleForKanji(db, kanji),
+        )
+    }
 }

@@ -348,31 +348,15 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     }
 
     fun rowSnapshots(db: SQLiteDatabase): Map<String, RowSnapshot> {
-        val rows = LinkedHashMap<String, RowSnapshot>()
-        db.query(TABLE_DASHBOARD_ROWS, null, null, null, null, null, ORDER_KANJI_ASC).use { cursor ->
-            while (cursor.moveToNext()) {
-                val row = rowSnapshotFromCursor(db, cursor)
-                rows[row.kanji] = row
-            }
-        }
-        return rows
+        return inventoryData().rowSnapshots(db)
     }
 
     fun rowSnapshot(db: SQLiteDatabase, kanji: String): RowSnapshot? {
-        db.query(TABLE_DASHBOARD_ROWS, null, WHERE_KANJI, arrayOf(kanji), null, null, null, "1").use { cursor ->
-            return if (cursor.moveToFirst()) rowSnapshotFromCursor(db, cursor) else null
-        }
+        return inventoryData().rowSnapshot(db, kanji)
     }
 
     fun rowSnapshotFromCursor(db: SQLiteDatabase, cursor: Cursor): RowSnapshot {
-        val kanji = string(cursor, COLUMN_KANJI)
-        return RowSnapshot(
-            kanji,
-            integer(cursor, COLUMN_WEAKNESS_SCORE),
-            integer(cursor, COLUMN_MATURE_SUPPORT_COUNT),
-            longValue(cursor, "rebuilt_at"),
-            firstExampleForKanji(db, kanji),
-        )
+        return inventoryData().rowSnapshotFromCursor(db, cursor)
     }
 
     fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
