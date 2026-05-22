@@ -49,7 +49,7 @@ internal class LocalStoreInventoryMaintenance(
         if (snapshot == null) {
             return
         }
-        val activeIndex = activity.activeCardIndex(snapshot.cards)
+        val activeIndex = LocalStoreSyncMirrorAdapters.activeCardIndex(snapshot.cards)
         for (note in snapshot.notes) {
             if (activeIndex.noteIds.contains(note.noteId)) {
                 inventory.addSnapshotNote(note)

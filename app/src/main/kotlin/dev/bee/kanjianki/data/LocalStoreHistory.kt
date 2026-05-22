@@ -15,7 +15,6 @@ import dev.bee.kanjianki.core.SimilarChoiceCodec
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SimilarKanjiStorageKeys
 import dev.bee.kanjianki.core.TextUtil
-import dev.bee.kanjianki.syncdomain.SyncMirrorPolicy
 
 internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(context) {
     private val historicalSyncStore = HistoricalSyncStore(this)
@@ -167,7 +166,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         if (snapshot == null) {
             return
         }
-        val activeIndex = activeCardIndex(snapshot.cards)
+        val activeIndex = LocalStoreSyncMirrorAdapters.activeCardIndex(snapshot.cards)
         for (note in snapshot.notes) {
             if (activeIndex.noteIds.contains(note.noteId)) {
                 inventory.addSnapshotNote(note)
@@ -557,25 +556,6 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         } else {
             RecordsStudyModels.TaskMemory.initial()
         }
-    }
-
-    fun selectedSuspendedCardIds(imports: List<RecordsImportModels.SuspendedImport>): Set<Long> {
-        val sources = ArrayList<SyncMirrorPolicy.SelectedSource>()
-        for (imported in imports) {
-            for (source in imported.sources) {
-                sources.add(SyncMirrorPolicy.SelectedSource(source.cardId, source.suspended))
-            }
-        }
-        return SyncMirrorPolicy.selectedSuspendedCardIds(sources)
-    }
-
-    fun activeCardIndex(cards: List<RecordsSyncModels.Card>): ActiveCardIndex {
-        val policyCards = ArrayList<SyncMirrorPolicy.Card>()
-        for (card in cards) {
-            policyCards.add(SyncMirrorPolicy.Card(card.cardId, card.noteId, card.suspended))
-        }
-        val index = SyncMirrorPolicy.activeCardIndex(policyCards)
-        return ActiveCardIndex(index.noteIds(), index.cardIds(), index.activeCardCount())
     }
 
     companion object {

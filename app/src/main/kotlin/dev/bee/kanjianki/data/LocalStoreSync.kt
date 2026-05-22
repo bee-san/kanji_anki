@@ -70,8 +70,8 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
         return db.transaction {
             val decisionImports = auditImports ?: imports
             val previousRows = rowSnapshots(db)
-            val activeIndex = activeCardIndex(snapshot.cards)
-            val selectedSuspendedCardIds = selectedSuspendedCardIds(imports)
+            val activeIndex = LocalStoreSyncMirrorAdapters.activeCardIndex(snapshot.cards)
+            val selectedSuspendedCardIds = LocalStoreSyncMirrorAdapters.selectedSuspendedCardIds(imports)
             val deletedNotes = countDeletedExisting(
                 db,
                 TABLE_SOURCE_NOTES,
