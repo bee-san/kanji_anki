@@ -21,8 +21,9 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     private val interaction = MainActivityStudyFlashcardInteraction(activity)
 
     fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
-        val route = composeFlashcardRouteModel(session)
+        lateinit var route: ComposeFlashcardRouteModel
         activity.renderComposeStudyRouteWithActionBar(
+            beforeContent = { route = composeFlashcardRouteModel(session) },
             content = { ComposeFlashcardCard(route) },
             actionBar = { ComposeFlashcardActionBar(route) },
         )

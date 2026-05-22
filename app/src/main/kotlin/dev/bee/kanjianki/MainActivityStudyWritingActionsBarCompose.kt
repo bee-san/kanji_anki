@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -39,15 +40,23 @@ internal fun writingActionsBarView(
                 setContent {
                     MaterialTheme {
                         Surface {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                WritingToolActions(state.toolActions)
-                                WritingPrimaryActions(state.primaryActions)
-                                WritingFallbackActions(state.fallbackActions)
-                            }
+                            WritingActionsBar(state)
                         }
                     }
                 }
             },
         )
+    }
+}
+
+@Composable
+internal fun WritingActionsBar(
+    state: WritingActionsBarState,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        WritingToolActions(state.toolActions)
+        WritingPrimaryActions(state.primaryActions)
+        WritingFallbackActions(state.fallbackActions)
     }
 }

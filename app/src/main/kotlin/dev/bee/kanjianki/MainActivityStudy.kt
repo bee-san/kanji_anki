@@ -182,6 +182,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         writingSession.renderWritingSession(session)
     }
 
+    fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
+        writingSession.renderComposeWritingSession(session)
+    }
+
     fun resetWritingSession(session: RecordsSchedulerModels.StudySession) {
         writingSession.resetWritingSession(session)
     }
@@ -304,6 +308,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun buildStudyActionBar() {
         writingUi.buildStudyActionBar()
+    }
+
+    fun buildComposeWritingActionBarState(): WritingActionsBarState {
+        return writingUi.buildComposeActionBarState()
     }
 
     fun refreshWritingModelStatus() {

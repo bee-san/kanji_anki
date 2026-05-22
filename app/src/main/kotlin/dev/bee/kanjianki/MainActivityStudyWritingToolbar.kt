@@ -15,4 +15,12 @@ internal class MainActivityStudyWritingToolbar(private val activity: MainActivit
         activity.writingFallbackActionsView = WritingFallbackActionsView(activity, state)
         actionBar.addView(writingActionsBarView(activity, state))
     }
+
+    fun buildComposeActionBarState(): WritingActionsBarState {
+        val state = WritingActionsBarState()
+        activity.writingToolActionsView = WritingToolActionsView(activity, state)
+        activity.writingPrimaryActionsView = WritingPrimaryActionsView(activity, state)
+        activity.writingFallbackActionsView = WritingFallbackActionsView(activity, state)
+        return state
+    }
 }

@@ -23,6 +23,7 @@ internal fun MainActivityStudy.renderComposeStudyRoute(content: @Composable () -
 }
 
 internal fun MainActivityStudy.renderComposeStudyRouteWithActionBar(
+    beforeContent: () -> Unit = {},
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
@@ -30,6 +31,7 @@ internal fun MainActivityStudy.renderComposeStudyRouteWithActionBar(
     val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
     composeRouteWithActionBar(
         selected = MainActivityBase.NAV_STUDY,
+        beforeContent = beforeContent,
         content = {
             Column {
                 StudyTopBar(
@@ -54,9 +56,8 @@ internal fun MainActivityStudy.renderFlashcardStudyRoute(session: RecordsSchedul
     renderComposeFlashcardSession(session)
 }
 
-internal fun MainActivityStudy.renderLegacyWritingRoute(session: RecordsSchedulerModels.StudySession) {
-    renderLegacyStudyRoute()
-    renderWritingSession(session)
+internal fun MainActivityStudy.renderWritingStudyRoute(session: RecordsSchedulerModels.StudySession) {
+    renderComposeWritingSession(session)
 }
 
 internal fun MainActivityStudy.renderLegacySimilarWritingRepairRoute(

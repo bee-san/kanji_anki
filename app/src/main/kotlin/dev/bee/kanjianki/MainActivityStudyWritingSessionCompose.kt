@@ -27,9 +27,12 @@ internal fun writingSessionCardView(activity: MainActivityStudy, model: WritingS
 }
 
 @Composable
-fun WritingSessionCard(model: WritingSessionCardModel) {
+fun WritingSessionCard(
+    model: WritingSessionCardModel,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
         color = Color.White,
         shadowElevation = 8.dp

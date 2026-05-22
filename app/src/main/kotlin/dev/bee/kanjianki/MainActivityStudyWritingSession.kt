@@ -1,6 +1,12 @@
 package dev.bee.kanjianki
 
 import android.view.View
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -9,9 +15,41 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
 internal class MainActivityStudyWritingSession(private val home: MainActivityStudy) {
-    fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
-        resetWritingSession(session)
+    fun renderComposeWritingSession(session: RecordsSchedulerModels.StudySession) {
+        lateinit var route: WritingSessionRouteModel
+        home.renderComposeStudyRouteWithActionBar(
+            beforeContent = { route = composeWritingRouteModel(session) },
+            content = { ComposeWritingSessionCard(route) },
+            actionBar = { ComposeWritingActionBar(route) },
+        )
+        home.updateResultActions()
+        home.refreshWritingModelStatus()
+    }
 
+    fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
+        home.renderLegacyStudyRoute()
+        resetWritingSession(session)
+        val route = writingRouteModel(session)
+        home.content.addView(
+            writingSessionCardView(
+                home,
+                route.cardModel
+            )
+        )
+
+        home.buildStudyActionBar()
+        home.updateResultActions()
+        home.refreshWritingModelStatus()
+    }
+
+    private fun composeWritingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
+        resetWritingInteractionState(session)
+        val route = writingRouteModel(session)
+        route.actionBarState = home.buildComposeWritingActionBarState()
+        return route
+    }
+
+    private fun writingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
         val answerPanelState = WritingAnswerPanelState(false)
         home.writingAnswerPanelState = answerPanelState
         home.studyAnswerPanel = null
@@ -30,26 +68,20 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         val resultStatus = WritingResultStatusHandle()
         home.writingResultStatus = resultStatus
         resultStatus.hide()
-        home.content.addView(
-            writingSessionCardView(
-                home,
-                WritingSessionCardModel(
-                    writingPromptHeaderModel(session),
-                    answerPanel,
-                    answerPanelState,
-                    "Writing",
-                    MainActivityUiSupport.STUDY_PLUM,
-                    status,
-                    drawingPad,
-                    home.studyPadHeight(),
-                    resultStatus
-                )
-            )
-        )
 
-        home.buildStudyActionBar()
-        home.updateResultActions()
-        home.refreshWritingModelStatus()
+        return WritingSessionRouteModel(
+            WritingSessionCardModel(
+                writingPromptHeaderModel(session),
+                answerPanel,
+                answerPanelState,
+                "Writing",
+                MainActivityUiSupport.STUDY_PLUM,
+                status,
+                drawingPad,
+                home.studyPadHeight(),
+                resultStatus
+            ),
+        )
     }
 
     private fun writingPromptHeaderModel(session: RecordsSchedulerModels.StudySession): WritingPromptHeaderModel {
@@ -108,6 +140,10 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
 
     fun resetWritingSession(session: RecordsSchedulerModels.StudySession) {
         home.prepareStudyContent(home.activeStudyPlan, false)
+        resetWritingInteractionState(session)
+    }
+
+    private fun resetWritingInteractionState(session: RecordsSchedulerModels.StudySession) {
         home.activeAnalysis = null
         home.checkingWriting = false
         home.flashcardGestureArea = null
@@ -116,6 +152,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         home.typingAnswerState = null
         home.hintsUsed = 0
         home.setHintState(home.initialHintState(session))
+        hideStudyActionBar()
     }
 
     fun hideStudyActionBar() {
@@ -150,4 +187,26 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         home.startActiveStudyTask(active.studyTaskKey, activeRepair.repairKanji, MainActivityBase.TASK_REPAIR_WRITING, now)
         renderWritingSession(session)
     }
+
+    @Composable
+    private fun ComposeWritingSessionCard(route: WritingSessionRouteModel) {
+        val model = remember(route) { route.cardModel }
+        WritingSessionCard(
+            model = model,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp, bottom = 14.dp),
+        )
+    }
+
+    @Composable
+    private fun ComposeWritingActionBar(route: WritingSessionRouteModel) {
+        val state = route.actionBarState ?: return
+        WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
+    }
+
+    private data class WritingSessionRouteModel(
+        val cardModel: WritingSessionCardModel,
+        var actionBarState: WritingActionsBarState? = null,
+    )
 }

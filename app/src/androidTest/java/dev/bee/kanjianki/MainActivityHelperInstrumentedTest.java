@@ -1409,16 +1409,19 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
                 activity.renderSession(recall);
-                assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Prompt: Split, rend");
-                assertEquals(1, activity.studyActionBar.getChildCount());
-                assertTrue(activity.studyActionBar.getChildAt(0) instanceof android.widget.FrameLayout);
                 assertNotNull(activity.writingToolActionsView);
                 assertNotNull(activity.writingPrimaryActionsView);
                 assertNotNull(activity.writingFallbackActionsView);
+                assertFalse(activity.writingToolActionsView.currentModelForTests().getUndoEnabled());
+                assertTrue(activity.writingToolActionsView.currentModelForTests().getHintVisible());
+                assertTrue(activity.writingPrimaryActionsView.currentModelForTests().getCheckVisible());
+                assertTrue(activity.writingPrimaryActionsView.currentModelForTests().getCheckEnabled());
+                assertFalse(activity.writingPrimaryActionsView.currentModelForTests().getNextVisible());
+                assertFalse(activity.writingFallbackActionsView.currentModelForTests().getReplayVisible());
                 assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
                 assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
-                performClickableWithText(activity.studyActionBar, "Erase");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Erase");
 
                 activity.activeSession = promptOnly;
                 activity.renderWritingSession(promptOnly);

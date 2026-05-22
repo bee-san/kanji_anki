@@ -12,6 +12,10 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
         writingToolbar.buildStudyActionBar()
     }
 
+    fun buildComposeActionBarState(): WritingActionsBarState {
+        return writingToolbar.buildComposeActionBarState()
+    }
+
     fun updateResultActions() {
         val presentation = writingActionPresentation()
         updateToolActionRow(presentation)

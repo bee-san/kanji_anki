@@ -81,6 +81,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun composeRouteWithActionBar(
         selected: String,
         initialScrollY: Int = 0,
+        beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
@@ -93,6 +94,7 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         activity.studyActionBar = LinearLayout(activity)
         activity.studyActionBar?.orientation = LinearLayout.VERTICAL
         activity.studyActionBar?.visibility = View.GONE
+        beforeContent()
         activity.setContent {
             MainActivityComposeRouteWithActionBar(
                 model = MainActivityShellModel(selectedRoute = selected),

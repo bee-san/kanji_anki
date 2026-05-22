@@ -286,10 +286,11 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     fun composeRouteWithActionBar(
         selected: String,
         initialScrollY: Int = 0,
+        beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
     ) {
-        shellHost.composeRouteWithActionBar(selected, initialScrollY, content, actionBar)
+        shellHost.composeRouteWithActionBar(selected, initialScrollY, beforeContent, content, actionBar)
     }
 
     fun isActiveToken(token: String): Boolean {
