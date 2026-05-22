@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.core
 
-class TargetedStudySessionPolicy {
+internal class TargetedStudySessionPolicy {
     fun targetedSession(
         seededItems: List<RecordsStudyModels.StudyItem>?,
         row: RecordsImportModels.DashboardRow?,
