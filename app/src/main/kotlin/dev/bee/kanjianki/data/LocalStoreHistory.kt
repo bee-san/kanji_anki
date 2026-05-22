@@ -419,30 +419,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     }
 
     fun examplesForKanji(db: SQLiteDatabase, kanji: String): List<RecordsImportModels.Example> {
-        val examples = ArrayList<RecordsImportModels.Example>()
-        db.query(TABLE_KANJI_EXAMPLES, null, WHERE_KANJI, arrayOf(kanji), null, null, "source_type DESC, id ASC", "8").use { cursor ->
-            while (cursor.moveToNext()) {
-                examples.add(
-                    RecordsImportModels.Example(
-                        string(cursor, "source_type"),
-                        longValue(cursor, COLUMN_CARD_ID),
-                        longValue(cursor, COLUMN_NOTE_ID),
-                        string(cursor, COLUMN_EXPRESSION),
-                        string(cursor, COLUMN_READING),
-                        string(cursor, COLUMN_MEANING),
-                        string(cursor, COLUMN_SENTENCE),
-                        integer(cursor, COLUMN_MATURE) == 1,
-                        integer(cursor, COLUMN_LAPSES),
-                        integer(cursor, COLUMN_INTERVAL_DAYS),
-                        integer(cursor, COLUMN_REPS),
-                        nullableDouble(cursor, COLUMN_FSRS_STABILITY),
-                        nullableDouble(cursor, COLUMN_FSRS_DIFFICULTY),
-                        nullableDouble(cursor, COLUMN_FSRS_RETRIEVABILITY),
-                    )
-                )
-            }
-        }
-        return examples
+        return inventoryData().examplesForKanji(db, kanji)
     }
 
     fun upsertStudyItem(db: SQLiteDatabase, item: RecordsStudyModels.StudyItem) {

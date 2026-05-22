@@ -76,8 +76,44 @@ internal class LocalStoreInventoryData(
             LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_ACTIVE_EXAMPLE_COUNT),
             LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_SUSPENDED_EXAMPLE_COUNT),
             LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_MATURE_SUPPORT_COUNT),
-            activity.examplesForKanji(db, kanji),
+            examplesForKanji(db, kanji),
         )
+    }
+
+    fun examplesForKanji(db: SQLiteDatabase, kanji: String): List<RecordsImportModels.Example> {
+        val examples = ArrayList<RecordsImportModels.Example>()
+        db.query(
+            LocalStoreBase.TABLE_KANJI_EXAMPLES,
+            null,
+            LocalStoreBase.WHERE_KANJI,
+            arrayOf(kanji),
+            null,
+            null,
+            "source_type DESC, id ASC",
+            "8",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                examples.add(
+                    RecordsImportModels.Example(
+                        LocalStoreBase.string(cursor, "source_type"),
+                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_CARD_ID),
+                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_NOTE_ID),
+                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_EXPRESSION),
+                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_READING),
+                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_MEANING),
+                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_SENTENCE),
+                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_MATURE) == 1,
+                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_LAPSES),
+                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_INTERVAL_DAYS),
+                        LocalStoreBase.integer(cursor, LocalStoreBase.COLUMN_REPS),
+                        LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_STABILITY),
+                        LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_DIFFICULTY),
+                        LocalStoreBase.nullableDouble(cursor, LocalStoreBase.COLUMN_FSRS_RETRIEVABILITY),
+                    ),
+                )
+            }
+        }
+        return examples
     }
 
     fun studyItemForKanji(db: SQLiteDatabase, kanji: String?): RecordsStudyModels.StudyItem? {
