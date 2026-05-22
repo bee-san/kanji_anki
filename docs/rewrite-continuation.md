@@ -6,7 +6,7 @@ Last updated: 2026-05-22
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `48601d6e Inline study flashcard route model`
+- Latest confirmed pushed commit before this note: `68bc7e55 Move study learning panel into androidTest`
 - Latest confirmed PR state: draft, mergeable, head SHA `2f1cf8e643b23d0bd055a6a440f9f9e82a0388e8`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -43,6 +43,7 @@ Completed foundations include:
 - Kotlin and Compose are now wired into the Android app.
 - Real Compose surfaces now include Home header/actions/CTA/metrics, Home recent mistakes and browse-detail timeline, Stats, Settings update/reference/category/automation hero areas, Games question card, Study top bar, flashcard actions, and done actions.
 - Recent pushed slices include study flashcard actions, study done actions, and follow-up done-action test coverage.
+- Study helper bridges are being pushed into `androidTest`; `learningPanel(session)` no longer lives in `MainActivityStudy`.
 
 ## Verification Baseline
 
@@ -113,7 +114,7 @@ This is the working list for the remaining rewrite. Keep the branch as the activ
 ### 3. Study shell
 
 - Keep inlining the remaining study bridges into the study route and Compose files.
-- Preserve test-backed wrappers until the helper tests are moved, especially `learningPanel(session)`.
+- Preserve test-backed wrappers until the helper tests are moved.
 - Continue the study write and flashcard lanes:
   - writing session card
   - writing toolbar
