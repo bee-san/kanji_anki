@@ -6,13 +6,12 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal class MainActivityStudyReviewFlow(private val activity: MainActivityStudy) {
-    private val reviewWriter: StudyReviewActions.ReviewWriter = MainActivityStudyReviewWriter(activity)
-
     fun submitReview(rating: String, override: Boolean) {
         val session = activity.activeSession ?: return
         if (activity.activeSimilarWritingRepair != null) {
@@ -101,7 +100,21 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             result,
             activity.activeSession!!.item,
             now,
-            reviewWriter,
+            object : StudyReviewActions.ReviewWriter {
+                override fun saveStudyItem(item: RecordsStudyModels.StudyItem) {
+                    activity.store.saveStudyItem(item)
+                }
+
+                override fun saveReview(
+                    request: RecordsSchedulerModels.ReviewRequest,
+                    appliedRating: String?,
+                    reviewedAt: Long,
+                    beforeReview: RecordsStudyModels.StudyItem,
+                    afterReview: RecordsStudyModels.StudyItem,
+                ) {
+                    activity.store.saveReview(request, appliedRating, reviewedAt, beforeReview, afterReview)
+                }
+            },
             activity.studySessionTracker::recordReviewOutcome,
             activity::markStudyRunPassed
         )
