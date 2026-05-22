@@ -107,6 +107,10 @@ public final class FsrsEngineReferenceTest {
 
     @Test
     public void memoryStateAndReviewModelsValidateInputs() {
+        assertTrue(FsrsMemoryState.class.isRecord());
+        assertTrue(FsrsReviewInput.class.isRecord());
+        assertTrue(FsrsReviewOutput.class.isRecord());
+
         FsrsMemoryState state = new FsrsMemoryState(5.0, 6.0);
         assertEquals(5.0, state.stability(), 0.0);
         assertEquals(6.0, state.difficulty(), 0.0);

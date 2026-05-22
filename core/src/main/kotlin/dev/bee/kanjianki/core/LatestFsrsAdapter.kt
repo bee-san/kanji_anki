@@ -26,7 +26,7 @@ internal class LatestFsrsAdapter(
             )
         }
         val intervalDays = engine.nextIntervalDays(
-            state.stability(),
+            state.stability,
             safeRetention(targetRetention),
             MAXIMUM_INTERVAL_DAYS,
         )
@@ -49,13 +49,13 @@ internal class LatestFsrsAdapter(
                 MAXIMUM_INTERVAL_DAYS,
             ),
         )
-        return output.nextState().toResult(output.nextIntervalDays())
+        return output.nextState!!.toResult(output.nextIntervalDays)
     }
 
     private fun FsrsMemoryState.toResult(intervalDays: Int): KaniFsrsReviewResult =
         KaniFsrsReviewResult(
-            stability(),
-            difficulty(),
+            stability,
+            difficulty,
             intervalDays * KaniFsrsReviewResult.DAY_MILLIS,
         )
 

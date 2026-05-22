@@ -48,5 +48,6 @@ tasks.check {
 }
 
 dependencies {
+    api(kotlin("stdlib"))
     testImplementation("junit:junit:${providers.gradleProperty("junitVersion").get()}")
 }
