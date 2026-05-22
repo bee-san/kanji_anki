@@ -417,6 +417,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val REQUEST_POST_NOTIFICATIONS = 704
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         const val DAY_MILLIS = 86_400_000L
+        const val NAV_HOME_ROUTE = "home"
         const val NAV_STUDY = "study"
         const val NAV_SETTINGS = "Settings"
         const val NAV_SETTINGS_ROUTE = "settings"

@@ -14,7 +14,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     override fun renderGames() {
         clearGameSession()
         val model = gamesScreenModel()
-        composeRoute("home") {
+        renderHomeRoute {
             GamesMenuScreen(
                 model = model,
                 onHome = this::renderHome
@@ -76,7 +76,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
             renderGameUnavailable(mode)
             return
         }
-        composeRoute("home") {
+        renderHomeRoute {
             GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = true)) {
                 GamesQuestionCard(
                     question = question,
@@ -88,7 +88,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
 
     private fun renderGameUnavailable(mode: KanjiGameEngine.GameMode) {
         val model = GamesUnavailableModel(KanjiGameCopy.GAME_NOT_READY_TITLE, KanjiGameCopy.GAME_NOT_READY_BODY)
-        composeRoute("home") {
+        renderHomeRoute {
             GamesPlayScreen(title = mode.title, onGames = this::returnToGames) {
                 GamesUnavailableCard(model)
             }
@@ -120,7 +120,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     ) {
         val roundComplete = gameRound.roundComplete()
         val color = gameResultTitleColor(roundComplete, correct)
-        composeRoute("home") {
+        renderHomeRoute {
             GamesPlayScreen(title = question.mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(
@@ -158,7 +158,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     }
 
     private fun renderGameRoundComplete(mode: KanjiGameEngine.GameMode) {
-        composeRoute("home") {
+        renderHomeRoute {
             GamesPlayScreen(title = mode.title, onGames = this::returnToGames, score = gameScoreModel(awaitingAnswer = false)) {
                 GamesResultCard(
                     GamesResultModel(

@@ -48,7 +48,7 @@ internal fun renderHomeScreen(home: MainActivityHome) {
             homeFocusQueueCardModel(home, entry, now)
         }
     )
-    home.composeRoute("home") {
+    home.renderHomeRoute {
         HomeScreen(model)
     }
 }

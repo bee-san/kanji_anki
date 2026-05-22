@@ -21,7 +21,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         home.activeBrowseQuery = query ?: ""
         val items = home.store.searchKanjiInventory(query)
         val model = browseScreenModel(this, home.activeBrowseQuery, items)
-        home.composeRoute("home") {
+        home.renderHomeRoute {
             BrowseScreen(model)
         }
     }
@@ -45,7 +45,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                         HomeTextCopy.kanjiNotFoundTitle(),
                         HomeTextCopy.kanjiNotFoundBody()
             )
-            home.composeRoute("home") {
+            home.renderHomeRoute {
                 BrowseDetailMissing(model)
             }
             return
@@ -53,7 +53,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         val displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory)
         val suspended = inventory != null && inventory.suspended
         val model = detailScreenModel(timeline, row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended)
-        home.composeRoute("home") {
+        home.renderHomeRoute {
             BrowseDetailScreen(model)
         }
     }

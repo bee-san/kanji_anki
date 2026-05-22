@@ -22,7 +22,7 @@ internal fun renderFocusQueueScreen(home: MainActivityHome) {
         queue = homeFocusQueuePanelModel(home, rows, entries, now, plan),
         onSync = home::confirmSync
     )
-    home.composeRoute("home") {
+    home.renderHomeRoute {
         HomeFocusQueueScreen(model)
     }
 }
@@ -45,7 +45,7 @@ internal fun renderRecentMistakesScreen(home: MainActivityHome) {
         onHome = home::renderHome,
         mistakes = mistakesModel
     )
-    home.composeRoute("home") {
+    home.renderHomeRoute {
         HomeRecentMistakesScreen(model)
     }
 }

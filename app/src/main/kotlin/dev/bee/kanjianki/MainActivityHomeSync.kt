@@ -19,7 +19,7 @@ internal class MainActivityHomeSync(private val home: MainActivityHome) {
 
     fun runSync() {
         val progressView = SyncProgressPanel()
-        home.composeRoute("home") {
+        home.renderHomeRoute {
             SyncProgressScreen(
                 title = HomeTextCopy.syncingTitle(),
                 progressPanel = progressView,
@@ -122,7 +122,7 @@ internal class MainActivityHomeSync(private val home: MainActivityHome) {
     }
 
     private fun renderSyncResultScreen(model: SyncResultScreenModel) {
-        home.composeRoute("home") {
+        home.renderHomeRoute {
             SyncResultScreen(model)
         }
     }
