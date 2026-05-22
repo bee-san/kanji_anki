@@ -280,9 +280,9 @@ class StudyStatsStore internal constructor(store: LocalStore) {
 
         init {
             val mistake = RecentMistakePolicy.mistake(kanji, rating, reviewedAtMillis)
-            this.kanji = mistake.kanji
-            this.rating = mistake.rating
-            this.reviewedAtMillis = mistake.reviewedAtMillis
+            this.kanji = mistake.kanji()
+            this.rating = mistake.rating()
+            this.reviewedAtMillis = mistake.reviewedAtMillis()
         }
     }
 

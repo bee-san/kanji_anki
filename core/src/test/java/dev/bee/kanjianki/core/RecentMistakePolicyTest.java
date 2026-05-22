@@ -24,11 +24,12 @@ public final class RecentMistakePolicyTest {
     @Test
     public void mistakeNormalizesTextButPreservesTimestamp() {
         RecentMistakePolicy.RecentMistake mistake = RecentMistakePolicy.mistake(null, null, -10L);
+        RecentMistakePolicy.RecentMistake constructed = new RecentMistakePolicy.RecentMistake(null, null, -10L);
 
-        assertEquals(true, mistake.getClass().isRecord());
         assertEquals("", mistake.kanji());
         assertEquals("", mistake.rating());
         assertEquals(-10L, mistake.reviewedAtMillis());
         assertEquals("RecentMistake[kanji=, rating=, reviewedAtMillis=-10]", mistake.toString());
+        assertEquals(mistake, constructed);
     }
 }

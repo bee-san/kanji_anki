@@ -16,12 +16,31 @@ object RecentMistakePolicy {
         return RecentMistake(kanji.orEmpty(), rating.orEmpty(), reviewedAtMillis)
     }
 
-    @JvmRecord
-    data class RecentMistake(
-        val kanji: String,
-        val rating: String,
-        val reviewedAtMillis: Long,
-    ) {
+    class RecentMistake(kanji: String?, rating: String?, reviewedAtMillis: Long) {
+        private val kanji = kanji.orEmpty()
+        private val rating = rating.orEmpty()
+        private val reviewedAtMillis = reviewedAtMillis
+
+        fun kanji(): String = kanji
+
+        fun rating(): String = rating
+
+        fun reviewedAtMillis(): Long = reviewedAtMillis
+
+        override fun equals(other: Any?): Boolean {
+            return other is RecentMistake &&
+                kanji == other.kanji &&
+                rating == other.rating &&
+                reviewedAtMillis == other.reviewedAtMillis
+        }
+
+        override fun hashCode(): Int {
+            var result = kanji.hashCode()
+            result = 31 * result + rating.hashCode()
+            result = 31 * result + reviewedAtMillis.hashCode()
+            return result
+        }
+
         override fun toString(): String {
             return "RecentMistake[kanji=$kanji, rating=$rating, reviewedAtMillis=$reviewedAtMillis]"
         }
