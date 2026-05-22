@@ -25,12 +25,12 @@ object StudyReviewRequestPolicy {
             session.item.answerSignature,
             session.prompt,
         )
-        return MappedReview(request, mappedRating)
+        return MappedReview.create(request, mappedRating)
     }
 
     @JvmStatic
     fun writingOutcome(writingPassed: Boolean, cleanWriting: Boolean, maxAllowedRating: String?): WritingOutcome {
-        return WritingOutcome(writingPassed, cleanWriting, StudyRatings.normalize(maxAllowedRating))
+        return WritingOutcome.create(writingPassed, cleanWriting, StudyRatings.normalize(maxAllowedRating))
     }
 
     private fun applyRequestedRating(
@@ -62,18 +62,35 @@ object StudyReviewRequestPolicy {
         }
     }
 
-    class WritingOutcome internal constructor(
+    class WritingOutcome private constructor(
         val writingPassed: Boolean,
         val cleanWriting: Boolean,
         val maxAllowedRating: String,
-    )
+    ) {
+        companion object {
+            @JvmSynthetic
+            internal fun create(
+                writingPassed: Boolean,
+                cleanWriting: Boolean,
+                maxAllowedRating: String,
+            ): WritingOutcome = WritingOutcome(writingPassed, cleanWriting, maxAllowedRating)
+        }
+    }
 
-    class MappedReview(
+    class MappedReview private constructor(
         private val request: RecordsSchedulerModels.ReviewRequest,
         private val ratingCode: String,
     ) {
         fun request(): RecordsSchedulerModels.ReviewRequest = request
 
         fun ratingCode(): String = ratingCode
+
+        companion object {
+            @JvmSynthetic
+            internal fun create(
+                request: RecordsSchedulerModels.ReviewRequest,
+                ratingCode: String,
+            ): MappedReview = MappedReview(request, ratingCode)
+        }
     }
 }

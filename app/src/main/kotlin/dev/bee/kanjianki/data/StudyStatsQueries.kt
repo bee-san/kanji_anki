@@ -23,9 +23,9 @@ internal class StudyStatsQueries(private val store: LocalStore) {
                 "COUNT(*) AS week_tasks " +
                 "FROM study_task_log WHERE answered_at>=? AND answered_at<?",
             arrayOf(
-                window.todayStartMillis().toString(),
-                window.sevenDayStartMillis().toString(),
-                window.tomorrowStartMillis().toString()
+                window.todayStartMillis.toString(),
+                window.sevenDayStartMillis.toString(),
+                window.tomorrowStartMillis.toString()
             )
         )
         cursor.use {

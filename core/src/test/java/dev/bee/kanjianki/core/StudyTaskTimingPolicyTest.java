@@ -14,10 +14,11 @@ public final class StudyTaskTimingPolicyTest {
             long today = utcDay(15);
             StudyTaskTimingPolicy.Window window = StudyTaskTimingPolicy.windowFor(today + 12 * 60_000L);
 
-            assertEquals(today, window.todayStartMillis());
-            assertEquals(utcDay(9), window.sevenDayStartMillis());
-            assertEquals(utcDay(16), window.tomorrowStartMillis());
-        });
+        assertEquals(today, window.todayStartMillis());
+        assertEquals(utcDay(9), window.sevenDayStartMillis());
+        assertEquals(utcDay(16), window.tomorrowStartMillis());
+        assertEquals(Record.class, StudyTaskTimingPolicy.Window.class.getSuperclass());
+    });
     }
 
     @Test
@@ -30,6 +31,7 @@ public final class StudyTaskTimingPolicyTest {
 
         StudyTaskTimingPolicy.Summary summary = StudyTaskTimingPolicy.summarize(50L, 99L, 4);
         assertEquals(24L, summary.averageMillisPerTask());
+        assertEquals(Record.class, StudyTaskTimingPolicy.Summary.class.getSuperclass());
     }
 
     @Test

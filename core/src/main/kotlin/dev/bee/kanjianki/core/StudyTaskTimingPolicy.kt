@@ -12,7 +12,7 @@ object StudyTaskTimingPolicy {
 
     @JvmStatic
     fun summarize(todayMillis: Long, lastSevenDaysMillis: Long, answeredTasks: Int): Summary {
-        return Summary(todayMillis, lastSevenDaysMillis, answeredTasks)
+        return Summary(max(0L, todayMillis), max(0L, lastSevenDaysMillis), max(0, answeredTasks))
     }
 
     @JvmStatic
@@ -37,33 +37,19 @@ object StudyTaskTimingPolicy {
         return if (visibleSinceElapsedMillis <= 0L) nowElapsedMillis else visibleSinceElapsedMillis
     }
 
-    class Window(
-        private val todayStartMillis: Long,
-        private val sevenDayStartMillis: Long,
-        private val tomorrowStartMillis: Long,
+    @JvmRecord
+    data class Window(
+        val todayStartMillis: Long,
+        val sevenDayStartMillis: Long,
+        val tomorrowStartMillis: Long,
+    )
+
+    @JvmRecord
+    data class Summary(
+        val todayMillis: Long,
+        val lastSevenDaysMillis: Long,
+        val answeredTasks: Int,
     ) {
-        fun todayStartMillis(): Long = todayStartMillis
-
-        fun sevenDayStartMillis(): Long = sevenDayStartMillis
-
-        fun tomorrowStartMillis(): Long = tomorrowStartMillis
-    }
-
-    class Summary(
-        todayMillis: Long,
-        lastSevenDaysMillis: Long,
-        answeredTasks: Int,
-    ) {
-        private val todayMillis = max(0L, todayMillis)
-        private val lastSevenDaysMillis = max(0L, lastSevenDaysMillis)
-        private val answeredTasks = max(0, answeredTasks)
-
-        fun todayMillis(): Long = todayMillis
-
-        fun lastSevenDaysMillis(): Long = lastSevenDaysMillis
-
-        fun answeredTasks(): Int = answeredTasks
-
         fun averageMillisPerTask(): Long {
             if (answeredTasks == 0) {
                 return 0L

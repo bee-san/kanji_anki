@@ -1,9 +1,11 @@
 package dev.bee.kanjianki.core
 
+import java.util.Objects
+
 object StudyCuePolicy {
     @JvmStatic
     fun answerLines(
-        dictionaryLookup: DictionaryLookup,
+        dictionaryLookup: DictionaryLookup?,
         session: RecordsSchedulerModels.StudySession?,
         example: RecordsImportModels.Example?,
         wordReadingTask: Boolean,
@@ -23,7 +25,7 @@ object StudyCuePolicy {
 
     @JvmStatic
     fun studyCue(
-        dictionaryLookup: DictionaryLookup,
+        dictionaryLookup: DictionaryLookup?,
         session: RecordsSchedulerModels.StudySession?,
         example: RecordsImportModels.Example?,
         wordReadingTask: Boolean,
@@ -41,7 +43,7 @@ object StudyCuePolicy {
         } else {
             session.row.primaryMeaning
         }
-        return dictionaryLookup.studyCue(
+        return Objects.requireNonNull(dictionaryLookup, "dictionaryLookup")!!.studyCue(
             session.item.kanji,
             ankiMeaning,
             session.row.reading,

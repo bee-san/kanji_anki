@@ -70,7 +70,11 @@ public final class StudyCuePolicyTest {
 
         assertEquals(
                 Collections.singletonList("Collection clue"),
-                StudyCuePolicy.answerLines(DictionaryLookup.empty(), null, null, false)
+                StudyCuePolicy.answerLines(null, null, null, false)
+        );
+        assertEquals(
+                Collections.singletonList("Collection clue"),
+                StudyCuePolicy.answerLines(null, wordReading, example(null, null, ""), true)
         );
         assertEquals(
                 Collections.singletonList("Collection clue"),

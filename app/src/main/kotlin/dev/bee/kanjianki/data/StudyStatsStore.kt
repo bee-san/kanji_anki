@@ -89,9 +89,9 @@ class StudyStatsStore internal constructor(store: LocalStore) {
 
         init {
             val summary = StudyTaskTimingPolicy.summarize(todayMillis, lastSevenDaysMillis, answeredTasks)
-            this.todayMillis = summary.todayMillis()
-            this.lastSevenDaysMillis = summary.lastSevenDaysMillis()
-            this.answeredTasks = summary.answeredTasks()
+            this.todayMillis = summary.todayMillis
+            this.lastSevenDaysMillis = summary.lastSevenDaysMillis
+            this.answeredTasks = summary.answeredTasks
         }
 
         fun averageMillisPerTask(): Long {

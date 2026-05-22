@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core;
 
 import org.junit.Test;
 
+import java.lang.reflect.Modifier;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
@@ -124,6 +125,16 @@ public final class StudyReviewRequestPolicyTest {
         assertEquals(StudyRatings.HARD, hardCap.ratingCode());
         assertEquals(StudyRatings.GOOD, goodCap.ratingCode());
         assertEquals(StudyRatings.EASY, easyCap.ratingCode());
+    }
+
+    @Test
+    public void policyResultConstructorsStayPrivate() throws NoSuchMethodException {
+        assertTrue(Modifier.isPrivate(StudyReviewRequestPolicy.WritingOutcome.class
+                .getDeclaredConstructor(boolean.class, boolean.class, String.class)
+                .getModifiers()));
+        assertTrue(Modifier.isPrivate(StudyReviewRequestPolicy.MappedReview.class
+                .getDeclaredConstructor(RecordsSchedulerModels.ReviewRequest.class, String.class)
+                .getModifiers()));
     }
 
     private static RecordsSchedulerModels.StudySession session(String kanji, boolean writingRequired, String taskType) {
