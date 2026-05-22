@@ -16,6 +16,7 @@ import dev.bee.kanjianki.core.study.StrokeGuideGuard
 import dev.bee.kanjianki.core.study.WritingActionPresentation
 import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.core.study.WritingSample
+import dev.bee.kanjianki.core.StudySessionRoute
 import dev.bee.kanjianki.study.CapturedWriting
 import dev.bee.kanjianki.study.WritingRecognizer
 
@@ -46,7 +47,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     val targetedLaunch = MainActivityStudyTargetedLaunch(this)
 
     private val reasonLine = MainActivityStudyReasonLine(this)
-    private val sessionRouter = MainActivityStudySessionRouter(this)
 
     fun learningPanel(session: RecordsSchedulerModels.StudySession): View {
         return learningPanelView(this, session)
@@ -131,7 +131,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
-        sessionRouter.renderSession(session)
+        when (StudySessionRoute.destination(session)) {
+            StudySessionRoute.Destination.WRITING -> renderWritingStudyRoute(session)
+            StudySessionRoute.Destination.SIMILAR_KANJI -> renderSimilarKanjiSession(session)
+            StudySessionRoute.Destination.MEANING_KANJI -> renderMeaningKanjiSession(session)
+            StudySessionRoute.Destination.FLASHCARD -> renderFlashcardStudyRoute(session)
+        }
     }
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
