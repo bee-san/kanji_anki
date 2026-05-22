@@ -74,6 +74,9 @@ public class GitHubReleaseParserTest {
         );
         assertEquals("", GitHubReleaseParser.parseSha256(null));
         assertEquals("", GitHubReleaseParser.parseSha256("not a digest"));
+        assertTrue(GitHubReleaseParser.isSha256Digest("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+        assertFalse(GitHubReleaseParser.isSha256Digest(null));
+        assertFalse(GitHubReleaseParser.isSha256Digest("not a digest"));
     }
 
     @Test
