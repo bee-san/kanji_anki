@@ -1,12 +1,13 @@
 package dev.bee.kanjianki
 
+import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.sync.SyncSettings
 
 internal class MainActivitySettingsStudySortPanel(private val activity: MainActivitySettings) {
-    private val actions = MainActivitySettingsStudySortActions(activity)
-
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
         return SettingsNewCardSortPanelModel(
             title = SettingsTextCopy.newCardSortTitle(),
@@ -14,7 +15,7 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
             initialMode = current.newCardSortMode,
             options = newCardSortOptions(),
             saveLabel = SettingsTextCopy.saveNewCardSortLabel(),
-            onSave = SettingsNewCardSortSaver { mode -> actions.saveNewCardSort(mode) }
+            onSave = SettingsNewCardSortSaver { mode -> saveNewCardSort(mode) }
         )
     }
 
@@ -32,5 +33,12 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
             label = SettingsTextCopy.newCardSortLabel(mode),
             mode = mode
         )
+    }
+
+    private fun saveNewCardSort(mode: String) {
+        val request = NewCardSortSettingsPolicy.saveRequest(mode)
+        activity.store.putStringSetting(SyncSettings.NEW_CARD_SORT_MODE_SETTING_KEY, request.mode)
+        Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
+        activity.renderSettings()
     }
 }
