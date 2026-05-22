@@ -23,6 +23,8 @@ public final class TimeOfDaySettingsPolicyTest {
         assertTrue(early.enabled());
         assertEquals(0, early.hour());
         assertEquals(59, early.minute());
+        assertTrue(TimeOfDaySettingsPolicy.ReminderFields.class.isRecord());
+        assertEquals("ReminderFields[enabled=true, hour=0, minute=59]", early.toString());
         assertFalse(late.enabled());
         assertEquals(23, late.hour());
         assertEquals(0, late.minute());
@@ -47,6 +49,11 @@ public final class TimeOfDaySettingsPolicyTest {
         assertEquals(0L, autoSync.lastAttemptAtMillis());
         assertEquals(0L, autoSync.lastSuccessAtMillis());
         assertEquals(0L, autoSync.nextRunAtMillis());
+        assertTrue(TimeOfDaySettingsPolicy.AutoSyncFields.class.isRecord());
+        assertEquals(
+                "AutoSyncFields[configured=false, enabled=false, hour=0, minute=59, lastAttemptAtMillis=0, lastSuccessAtMillis=0, nextRunAtMillis=0]",
+                autoSync.toString()
+        );
     }
 
     @Test

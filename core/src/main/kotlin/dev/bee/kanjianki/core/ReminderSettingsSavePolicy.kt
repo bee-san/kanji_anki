@@ -8,7 +8,7 @@ object ReminderSettingsSavePolicy {
     @JvmStatic
     fun fields(enabled: Boolean, hour: Int, minute: Int): ReminderFields {
         val normalized = TimeOfDaySettingsPolicy.normalizeReminder(enabled, hour, minute)
-        return ReminderFields(normalized.enabled(), normalized.hour(), normalized.minute())
+        return ReminderFields(normalized.enabled, normalized.hour, normalized.minute)
     }
 
     @JvmStatic

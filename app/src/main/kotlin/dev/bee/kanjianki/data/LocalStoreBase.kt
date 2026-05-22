@@ -357,7 +357,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
     ) {
         fun normalized(): ReminderSettings {
             val normalized = TimeOfDaySettingsPolicy.normalizeReminder(enabled, hour, minute)
-            return ReminderSettings(normalized.enabled(), normalized.hour(), normalized.minute())
+            return ReminderSettings(normalized.enabled, normalized.hour, normalized.minute)
         }
 
         fun displayTime(): String = TimeOfDaySettingsPolicy.displayTime(hour, minute)
@@ -383,13 +383,13 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
                 nextRunAt,
             )
             return AutoSyncSettings(
-                normalized.configured(),
-                normalized.enabled(),
-                normalized.hour(),
-                normalized.minute(),
-                normalized.lastAttemptAtMillis(),
-                normalized.lastSuccessAtMillis(),
-                normalized.nextRunAtMillis(),
+                normalized.configured,
+                normalized.enabled,
+                normalized.hour,
+                normalized.minute,
+                normalized.lastAttemptAtMillis,
+                normalized.lastSuccessAtMillis,
+                normalized.nextRunAtMillis,
             )
         }
 
