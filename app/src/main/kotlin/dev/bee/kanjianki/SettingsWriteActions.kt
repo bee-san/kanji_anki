@@ -44,7 +44,7 @@ internal object SettingsWriteActions {
         if (request == null || !request.valid) {
             return
         }
-        writer.saveLearningStepSettings(request.settings)
+        writer.saveLearningStepSettings(request.settings!!)
     }
 
     @JvmStatic
