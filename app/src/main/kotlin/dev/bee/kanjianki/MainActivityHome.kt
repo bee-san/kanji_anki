@@ -3,13 +3,8 @@ package dev.bee.kanjianki
 import android.app.AlertDialog
 import android.graphics.Typeface
 import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.platform.ComposeView
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -75,55 +70,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
         renderHomeRoute {
             HomeScreen(model)
-        }
-    }
-
-    fun homeActionRow(): View {
-        return ComposeView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setContent {
-                MaterialTheme {
-                    Surface {
-                        HomeActionGrid(actions = homeActionModels(this@MainActivityHome))
-                    }
-                }
-            }
-        }
-    }
-
-    fun homeSectionHeader(title: String, actionLabel: String?, action: Runnable?): View {
-        return ComposeView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setContent {
-                MaterialTheme {
-                    Surface {
-                        HomeSectionHeader(
-                            title = title,
-                            actionLabel = actionLabel,
-                            onAction = action?.let { { it.run() } }
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    fun fullWidthHomeButton(): View {
-        return ComposeView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)).apply {
-                setMargins(0, 0, 0, dp(10))
-            }
-            setOnClickListener { renderHome() }
-            setContent {
-                MaterialTheme {
-                    Surface {
-                        HomeFullWidthHomeButton(
-                            label = HomeTextCopy.homeLabel(),
-                            onClick = this@MainActivityHome::renderHome
-                        )
-                    }
-                }
-            }
         }
     }
 

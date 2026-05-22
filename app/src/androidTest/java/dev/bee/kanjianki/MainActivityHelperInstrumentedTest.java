@@ -744,24 +744,24 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(metricClicked[0]);
 
                 boolean[] headerClicked = {false};
-                View header = activity.homeSectionHeader("Focus queue", "View all", () -> headerClicked[0] = true);
+                View header = HomeComposeTestViews.homeSectionHeaderTestView(activity, "Focus queue", "View all", () -> headerClicked[0] = true);
                 performClickableWithText(header, "View all >");
                 assertTrue(headerClicked[0]);
 
-                performClickableWithText(activity.homeActionRow(), "Browse Kanji");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Browse Kanji");
                 assertHasText(activity, "Browse Kanji");
 
-                performClickableWithText(activity.homeActionRow(), "Recent mistakes");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Recent mistakes");
                 assertHasText(activity, "Recent mistakes");
                 assertHasText(activity, "No recent mistakes yet");
 
-                performClickableWithText(activity.homeActionRow(), "Stats");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Stats");
                 assertHasText(activity, "Stats");
 
-                performClickableWithText(activity.homeActionRow(), "Settings");
+                performClickableWithText(HomeComposeTestViews.homeActionRowTestView(activity), "Settings");
                 assertHasText(activity, "Automation");
 
-                activity.fullWidthHomeButton().performClick();
+                HomeComposeTestViews.fullWidthHomeButtonTestView(activity).performClick();
                 assertHasText(activity, "Kani");
             });
         }
@@ -1675,7 +1675,7 @@ public final class MainActivityHelperInstrumentedTest {
     ) {
         HomeMetricModel passiveMetric = new HomeMetricModel(R.drawable.ic_target_24, MainActivityBase.CORAL, "Focus", "Waiting", null, null);
         assertNull(passiveMetric.getOnClick());
-        assertFalse(containsText(activity.homeSectionHeader("Focus queue", null, null), "Focus queue >"));
+                assertFalse(containsText(HomeComposeTestViews.homeSectionHeaderTestView(activity, "Focus queue", null, null), "Focus queue >"));
         BrowseExampleCardModel activeExample = new MainActivityHomeBrowseDetail(activity)
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
         assertEquals("裂語  レツゴ", activeExample.getExpression());
@@ -1991,7 +1991,7 @@ public final class MainActivityHelperInstrumentedTest {
     public void homeActionGridUsesTwoColumnsWithWrappingHeights() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                View homeGrid = activity.homeActionRow();
+                View homeGrid = HomeComposeTestViews.homeActionRowTestView(activity);
                 measureAtWidth(homeGrid, 320);
                 assertTwoColumnGrid(homeGrid, 3);
                 assertTrue(containsText(homeGrid, "Recent mistakes"));
