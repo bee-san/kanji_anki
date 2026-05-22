@@ -44,9 +44,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val writingSession = MainActivityStudyWritingSession(this)
     private val dictionaryLookupProvider = MainActivityDictionaryLookupProvider(this)
 
-    @JvmField
-    val targetedLaunch = MainActivityStudyTargetedLaunch(this)
-
     fun learningPanel(session: RecordsSchedulerModels.StudySession): View {
         return learningPanelView(this, session)
     }
@@ -178,7 +175,35 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     override fun renderStudyForKanji(kanji: String?) {
-        targetedLaunch.renderStudyForKanji(kanji)
+        clearStudyModeOverrides()
+        resetStudyRunProgress()
+        base(MainActivityBase.NAV_STUDY)
+        activeSimilarWritingRepair = null
+        val rows = store.activeDashboardRows()
+        val now = System.currentTimeMillis()
+        activeStudyPlan = if (rows.isEmpty()) null else adaptivePlan(rows, store.studyItems(), now)
+        val row = findRow(rows, kanji ?: "")
+        if (row == null) {
+            renderStudyForKanjiNotAvailable()
+            return
+        }
+        val seeded = studyQueue(rows, now, true, activeStudyPlan)
+        activeStudyPlan = adaptivePlan(rows, seeded, now)
+        val session = BridgeScheduler().targetedSession(
+            seeded,
+            row,
+            now,
+            studyLadderSettings()
+        )
+        activeSession = session
+        StudySessionActions.activateStudySession(
+            session,
+            now,
+            store::saveStudyItem,
+            ::registerStudyTaskShown,
+            ::startActiveStudyTask
+        )
+        renderSession(session)
     }
 
     fun renderStudyForKanjiNotAvailable() {
