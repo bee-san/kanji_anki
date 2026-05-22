@@ -1,7 +1,6 @@
 package dev.bee.kanjianki
 
 import android.view.View
-import android.widget.LinearLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
@@ -20,7 +19,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     private val meaningChoiceRandom = Random()
 
     fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        resetChoiceSession(true)
+        resetChoiceSessionState(true)
 
         val choiceCard = meaningKanjiChoiceCardForSession(session)
         if (choiceCard == null || choiceCard.choices.size < 4) {
@@ -35,23 +34,42 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.settings().matureSupportThreshold,
             System.currentTimeMillis()
         )
-        val cardShell = meaningKanjiSessionView(
-            home,
-            MeaningChoiceSessionModel(
-                "Recall",
-                LABEL_CHOOSE_KANJI,
-                StudyTaskCopy.labelForTask(session.taskType),
-                "Pick the kanji that matches the meaning.",
-                reason,
-                StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
-                choiceCard.choices,
-                answerPanel
-            ) { glyph -> showMeaningKanjiChoiceResult(choiceCard, glyph) }
+        val model = MeaningChoiceSessionModel(
+            "Recall",
+            LABEL_CHOOSE_KANJI,
+            StudyTaskCopy.labelForTask(session.taskType),
+            "Pick the kanji that matches the meaning.",
+            reason,
+            StudyTextCopy.meaningKanjiChoiceQuestion(choiceCard, session.prompt),
+            choiceCard.choices,
+            answerPanel,
+            KanjiChoiceHandler { glyph ->
+                val correct = choiceCard.isCorrect(glyph)
+                home.submitReview(if (correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN, false)
+            },
+            MeaningChoiceResultResolver { glyph ->
+                val correct = choiceCard.isCorrect(glyph)
+                val prompt = home.activeSession?.prompt ?: ""
+                MeaningChoiceResultModel(
+                    StudyTextCopy.meaningKanjiChoiceResult(choiceCard, prompt, correct),
+                    if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
+                )
+            },
         )
-
-        val cardLp = LinearLayout.LayoutParams(-1, 0, 1f)
-        cardLp.setMargins(0, home.dp(6), 0, home.dp(12))
-        home.content.addView(cardShell, cardLp)
+        home.initializeSessionProgressTarget(home.activeStudyPlan)
+        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        home.composeRoute(MainActivityBase.NAV_STUDY) {
+            Column {
+                StudyTopBar(
+                    completed = progress.completed,
+                    target = progress.target,
+                    fraction = progress.fraction,
+                    onClose = home::renderHome,
+                    onSettings = home::renderSettings,
+                )
+                MeaningChoiceSessionCard(model = model)
+            }
+        }
     }
 
     fun meaningKanjiChoiceCardForSession(

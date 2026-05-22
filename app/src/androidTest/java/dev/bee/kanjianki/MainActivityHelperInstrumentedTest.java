@@ -1387,17 +1387,15 @@ public final class MainActivityHelperInstrumentedTest {
                         row("劣", "inferior", "レツ", Collections.emptyList())
                 ));
                 activity.renderMeaningKanjiSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
-                assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
+                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertNull(activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
-                performClickableWithText(activity.content, "裂");
+                View root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "裂");
                 assertHasText(activity, "Correct");
-                assertEquals(View.VISIBLE, activity.studyActionBar.getVisibility());
-                assertEquals(1, activity.studyActionBar.getChildCount());
-                assertTrue(activity.studyActionBar.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
-                assertTrue(containsText(activity.studyActionBar, "Next"));
+                assertEquals(View.GONE, activity.studyActionBar.getVisibility());
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
-                performClickableWithText(activity.studyActionBar, "Next");
+                performClickableWithText(root, "Next");
                 assertEquals(1, activity.store.reviewStatsSince(0L).good);
 
                 activity.renderMeaningKanjiSession(session("返", BridgeScheduler.TASK_MEANING_KANJI, row("返", "return", "ヘン", Collections.emptyList())));

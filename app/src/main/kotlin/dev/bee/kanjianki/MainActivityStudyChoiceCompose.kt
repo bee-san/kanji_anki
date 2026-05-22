@@ -85,7 +85,8 @@ fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifie
 
 @Composable
 fun MeaningChoiceSessionCard(model: MeaningChoiceSessionModel) {
-    var answered by remember { mutableStateOf(false) }
+    var selectedChoice by remember { mutableStateOf<String?>(null) }
+    val answered = selectedChoice != null
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,
         title = model.title,
@@ -98,10 +99,13 @@ fun MeaningChoiceSessionCard(model: MeaningChoiceSessionModel) {
             answered = answered,
             onAnswered = { glyph ->
                 if (!answered) {
-                    answered = true
-                    model.onChoice.onChoice(glyph)
+                    selectedChoice = glyph
+                    if (model.resultResolver == null) {
+                        model.onChoice.onChoice(glyph)
+                    }
                 }
-            }
+            },
+            selectedChoice = selectedChoice,
         )
     }
 }
@@ -177,6 +181,7 @@ private fun MeaningChoiceInsetPanel(
     model: MeaningChoiceSessionModel,
     answered: Boolean,
     onAnswered: (String) -> Unit,
+    selectedChoice: String?,
 ) {
     Surface(
         modifier = Modifier
@@ -201,6 +206,14 @@ private fun MeaningChoiceInsetPanel(
                         .fillMaxWidth()
                         .padding(top = 10.dp)
                 )
+                val result = selectedChoice?.let { model.resultResolver?.resultForChoice(it) }
+                if (result != null) {
+                    MeaningChoiceResultActionBar(
+                        status = result.status,
+                        statusColor = result.statusColor,
+                        onNext = { model.onChoice.onChoice(selectedChoice) },
+                    )
+                }
             }
         }
     }

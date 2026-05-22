@@ -4,6 +4,15 @@ fun interface KanjiChoiceHandler {
     fun onChoice(glyph: String)
 }
 
+fun interface MeaningChoiceResultResolver {
+    fun resultForChoice(glyph: String): MeaningChoiceResultModel
+}
+
+data class MeaningChoiceResultModel(
+    val status: String,
+    val statusColor: Int,
+)
+
 data class SimilarChoiceGridModel(
     val choices: List<String>,
     val balanceLastRow: Boolean,
@@ -30,4 +39,5 @@ data class MeaningChoiceSessionModel(
     val choices: List<String>,
     val answerPanel: StudyAnswerPanelModel,
     val onChoice: KanjiChoiceHandler,
+    val resultResolver: MeaningChoiceResultResolver? = null,
 )
