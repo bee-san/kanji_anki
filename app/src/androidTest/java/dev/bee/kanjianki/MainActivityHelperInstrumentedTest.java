@@ -1104,7 +1104,7 @@ public final class MainActivityHelperInstrumentedTest {
                         true,
                         "Prompt only"
                 );
-                assertTrue(containsText(activity.learningPanel(promptOnly), "Prompt only"));
+                assertTrue(containsText(StudyComposeTestViews.learningPanelTestView(activity, promptOnly), "Prompt only"));
                 assertTrue(containsText(activity.heroKanjiPanel(session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
                 assertNotNull(activity.randomFontVariantTypeface());
 

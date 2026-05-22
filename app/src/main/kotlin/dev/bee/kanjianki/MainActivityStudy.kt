@@ -54,23 +54,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return learningPanelModel(this, session)
     }
 
-    fun learningPanel(session: RecordsSchedulerModels.StudySession): View {
-        val model = learningPanelModel(this, session)
-        return ComposeView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, dp(12), 0, dp(10))
-            }
-            setContent {
-                MaterialTheme {
-                    StudyAnswerPanel(model)
-                }
-            }
-        }
-    }
-
     fun firstExample(row: RecordsImportModels.DashboardRow): RecordsImportModels.Example? {
         return StudyExampleSelector.firstExample(row)
     }
