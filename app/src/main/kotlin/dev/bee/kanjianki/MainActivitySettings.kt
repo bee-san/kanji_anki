@@ -5,6 +5,7 @@ import android.widget.EditText
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.reminders.ReminderScheduler
 import java.util.Locale
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
@@ -48,10 +49,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsUpdatePage(this)
     }
 
-    private fun settingsScreen(): MainActivitySettingsScreen {
-        return MainActivitySettingsScreen(this)
-    }
-
     private fun updateFlow(): MainActivitySettingsUpdateFlow {
         return MainActivitySettingsUpdateFlow(this)
     }
@@ -65,7 +62,73 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun renderSettings(preserveScroll: Boolean) {
-        settingsScreen().renderSettings(preserveScroll)
+        val previousScroll = contentScroll
+        val scrollY = if (preserveScroll && previousScroll != null) {
+            previousScroll.scrollY
+        } else {
+            0
+        }
+        val current = settings()
+        renderSettingsRoute(scrollY) {
+            SettingsScreen(settingsScreenModel(current))
+        }
+    }
+
+    private fun settingsScreenModel(current: RecordsSyncModels.Settings): SettingsScreenModel {
+        return settingsScreenModel(
+            settingsAutomationHeroModel(
+                current,
+                store.reminderSettings(),
+                store.autoSyncSettings(),
+                store.autoUpdateStatus(),
+                ReminderScheduler.notificationsAllowed(this)
+            ),
+            listOf(
+                settingsAnkiSourceCategoryModel(
+                    settingsAnkiExpanded,
+                    Runnable {
+                        settingsAnkiExpanded = !settingsAnkiExpanded
+                        renderSettings(true)
+                    },
+                    noteTypeSettingsPanelModel(current),
+                    importFilterSettingsPanelModel(current),
+                    frequencyRangeSettingsPanelModel(current)
+                ),
+                settingsStudyBehaviorCategoryModel(
+                    settingsStudyExpanded,
+                    Runnable {
+                        settingsStudyExpanded = !settingsStudyExpanded
+                        renderSettings(true)
+                    },
+                    newCardSortSettingsPanelModel(current),
+                    workloadSettingsPanelModel(),
+                    retentionSettingsPanelModel(),
+                    learningStepsSettingsPanelModel(),
+                    studyAheadSettingsPanelModel(),
+                    studyLadderSettingsPanelModel(),
+                    ladderThresholdSettingsPanelModel()
+                ),
+                settingsAutomationCategoryModel(
+                    settingsSyncExpanded,
+                    Runnable {
+                        settingsSyncExpanded = !settingsSyncExpanded
+                        renderSettings(true)
+                    },
+                    reminderSettingsPanelModel(),
+                    autoSyncSettingsPanelModel(),
+                    updateSettingsPanelModel()
+                ),
+                settingsReferenceDataCategoryModel(
+                    settingsAppExpanded,
+                    Runnable {
+                        settingsAppExpanded = !settingsAppExpanded
+                        renderSettings(true)
+                    },
+                    dataLicenseSettingsPanelModel()
+                )
+            ),
+            Runnable { renderHome() }
+        )
     }
 
     fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
