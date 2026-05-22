@@ -1,12 +1,12 @@
 # Kani Rewrite Continuation
 
-Last updated: 2026-05-19
+Last updated: 2026-05-22
 
 ## Branch and PR
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `2f1cf8e6 Tighten study done-actions test coverage`
+- Latest confirmed pushed commit before this note: `48601d6e Inline study flashcard route model`
 - Latest confirmed PR state: draft, mergeable, head SHA `2f1cf8e643b23d0bd055a6a440f9f9e82a0388e8`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -79,38 +79,88 @@ git show --check 2f1cf8e6
 
 Commit `2f1cf8e6` closes those gaps by clicking `Study more new cards` in the helper test and covering both populated and empty extra-new-card states in the Compose test.
 
-## Next Work
+## Migration Backlog
 
-Continue with small, behavior-preserving Compose migrations before any broad cleanup. Good next slices:
+This is the working list for the remaining rewrite. Keep the branch as the active migration branch, keep product behavior as the parity contract, and cut one lane at a time.
 
-1. Use Semble before choosing a slice.
-2. Finish the Home browse screen migration: move the search header, input, result heading, empty state, and result rows out of legacy Views into `MainActivityHomeBrowseDetailCompose.kt`.
-3. Keep `MainActivityHome.browseKanjiRow(...)` as a thin wrapper if tests still call it.
-4. Add or extend Compose tests in `MainActivityHomeBrowseDetailComposeTest.kt` for suspended rows, empty rows, and row click callbacks.
-5. After each slice, run the focused local gate, commit, push, dispatch a reviewer agent, and watch GitHub CI.
+### 1. Home shell
 
-Avoid starting the final merge until a parity audit has passed for:
+- Finish the Home browse-detail migration in `MainActivityHomeBrowseDetailCompose.kt`.
+- Move the search header, query input, result heading, empty state, and result rows out of legacy Views.
+- Keep `MainActivityHome.browseKanjiRow(...)` only if tests still need it as a bridge.
+- Decide whether the remaining Home helper views stay as test-backed bridges or move into the Compose host:
+  - `MainActivityHome.homeActionRow()`
+  - `MainActivityHome.homeSectionHeader(...)`
+  - `MainActivityHome.fullWidthHomeButton()`
+- Continue the Home overview, metrics, recent mistakes, focus queue, and sync surfaces toward Compose-only rendering.
+
+### 2. Settings shell
+
+- Keep collapsing the remaining settings panels into the Compose files.
+- Remaining settings lanes include:
+  - update/release
+  - reference data
+  - category sections
+  - automation hero/reminder/autosync
+  - study ladder and threshold settings
+  - learning steps
+  - retention
+  - workload
+  - study sort
+  - Anki source import filters, frequency range, and note type
+- Keep `MainActivitySettings*` wrappers only while androidTest still depends on them.
+
+### 3. Study shell
+
+- Keep inlining the remaining study bridges into the study route and Compose files.
+- Preserve test-backed wrappers until the helper tests are moved, especially `learningPanel(session)`.
+- Continue the study write and flashcard lanes:
+  - writing session card
+  - writing toolbar
+  - primary and fallback writing actions
+  - writing pad
+  - study prompt and answer panels
+  - flashcard card and action bar
+  - choice grid/session/result screens
+  - done-actions and empty/focus-done states
+- Keep the Study shell split into route, model, and surface pieces instead of a new god class.
+
+### 4. Data and repository boundary
+
+- Keep pushing view logic out of the data layer.
+- Remaining boundary work includes:
+  - `LocalStore`
+  - `SettingsRepository`
+  - `HistoricalSyncStore`
+  - migration hooks and schema helpers
+  - any remaining activity-owned repository adapters
+- Keep `LocalStoreMigrations`, `LocalStoreSchema`, and `LocalStoreMigrationHooks` as the active migration boundary until the rewrite is done.
+
+### 5. `fsrs_java` integration
+
+- Keep the in-repo `:fsrs-java` engine covered by `core` and `fsrs-java` tests.
+- Keep the adapter path through `BridgeScheduler` and the review transition code under coverage.
+- Verify any remaining ladder or memory-handoff behavior against the reference fixtures before removing related shims.
+
+### 6. Parity tests and review
+
+- Add or extend Compose tests before removing a bridge.
+- Keep androidTest helper coverage for any legacy surface that is still asserted.
+- After every small batch:
+  - run the narrow compile or focused test gate first
+  - run `./gradlew ciFast` before push
+  - commit
+  - push
+  - dispatch a reviewer agent on the commit
+- Use Semble first when picking the next slice or checking for duplicate work.
+
+### 7. Final parity audit before merge
+
+Do not call the rewrite complete until a real audit passes for:
 
 - AnkiDroid sync and import defaults
-- Study ladder behavior and learning/relearning semantics
+- study ladder behavior and learning/relearning semantics
 - FSRS scheduling and reference fixtures
-- Writing recognition, guided handwriting, repair actions, and similar-kanji flows
+- writing recognition, guided handwriting, repair actions, and similar-kanji flows
 - Stats, settings, update/release behavior, and database migrations
-- Existing app identity and release path
-
-## Standard Loop
-
-Use this loop for the next session:
-
-```bash
-git status --short --branch
-semble search "next duplicated study policy or activity helper" .
-./gradlew --no-daemon :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugJavaWithJavac :app:compileDebugAndroidTestJavaWithJavac :app:testDebugUnitTest :app:lintDebug
-git diff --check
-git add <scoped files>
-git commit -m "<focused message>"
-git push
-gh run list --repo bee-san/kanji_anki --branch codex-android-architecture-20260518 --limit 3
-```
-
-Use a broader `./gradlew ciFast` before calling a larger section done.
+- app identity, packaging, and the release path
