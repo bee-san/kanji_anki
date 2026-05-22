@@ -20,26 +20,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsAnkiSource(this)
     }
 
-    private fun retentionPanel(): MainActivitySettingsRetentionPanel {
-        return MainActivitySettingsRetentionPanel(this)
-    }
-
-    private fun studySortPanel(): MainActivitySettingsStudySortPanel {
-        return MainActivitySettingsStudySortPanel(this)
-    }
-
-    private fun workloadPanel(): MainActivitySettingsWorkloadPanel {
-        return MainActivitySettingsWorkloadPanel(this)
-    }
-
-    private fun studyLadderUi(): MainActivitySettingsStudyLadder {
-        return MainActivitySettingsStudyLadder(this)
-    }
-
-    private fun referenceData(): MainActivitySettingsReferenceData {
-        return MainActivitySettingsReferenceData(this)
-    }
-
     override fun renderUpdate() {
         val model = settingsUpdatePageModel(this)
         composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
@@ -130,7 +110,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun dataLicenseSettingsPanelModel(): SettingsReferenceDataLinkModel {
-        return referenceData().dataLicenseSettingsPanelModel()
+        return MainActivitySettingsReferenceData(this).dataLicenseSettingsPanelModel()
     }
 
     fun noteTypeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNoteTypePanelModel {
@@ -138,11 +118,11 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
-        return studySortPanel().newCardSortSettingsPanelModel(current)
+        return MainActivitySettingsStudySortPanel(this).newCardSortSettingsPanelModel(current)
     }
 
     fun workloadSettingsPanelModel(): SettingsWorkloadPanelModel {
-        return workloadPanel().workloadSettingsPanelModel()
+        return MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel()
     }
 
     fun learningStepsSettingsPanelModel(): SettingsLearningStepsPanelModel {
@@ -200,11 +180,11 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
-        return studyLadderUi().studyLadderSettingsPanelModel()
+        return MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel()
     }
 
     fun toggleLadderRung(rung: RecordsBase.LadderRung) {
-        studyLadderUi().toggleLadderRung(rung)
+        MainActivitySettingsStudyLadder(this).toggleLadderRung(rung)
     }
 
     fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
@@ -256,7 +236,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
-        return retentionPanel().retentionSettingsPanelModel()
+        return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel()
     }
 
     fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
