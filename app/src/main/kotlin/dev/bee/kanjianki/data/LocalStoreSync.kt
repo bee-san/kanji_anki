@@ -8,8 +8,8 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 
 internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(context) {
-    private fun syncRunStore(): LocalStoreSyncRunStore {
-        return LocalStoreSyncRunStore(this)
+    private fun syncRunRepository(): SyncRunRepository {
+        return SyncRunRepository(SqliteSyncRunStorage(this))
     }
 
     private fun importAuditStore(): LocalStoreSyncImportAuditStore {
@@ -84,8 +84,7 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
                 COLUMN_CARD_ID,
                 activeIndex.cardIds,
             )
-            val syncId = syncRunStore().insertSyncRun(
-                db,
+            val syncId = SyncRunRepository(SqliteSyncRunStorage(this@LocalStoreSync, db)).insertSuccessfulSync(
                 LocalStoreBase.SyncRunInsert(
                     timing.startedAt,
                     timing.finishedAt,
@@ -146,11 +145,11 @@ internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(
     }
 
     fun saveFailedSync(startedAt: Long, finishedAt: Long, status: String, errorCode: String, errorMessage: String?) {
-        syncRunStore().saveFailedSync(startedAt, finishedAt, status, errorCode, errorMessage)
+        syncRunRepository().saveFailedSync(startedAt, finishedAt, status, errorCode, errorMessage)
     }
 
     fun updateSyncRemovalMessage(syncId: Long, message: String?) {
-        syncRunStore().updateSyncRemovalMessage(syncId, message)
+        syncRunRepository().updateSyncRemovalMessage(syncId, message)
     }
 
     private fun countDeletedExisting(db: SQLiteDatabase, table: String, idColumn: String, currentIds: Set<Long>): Int {
