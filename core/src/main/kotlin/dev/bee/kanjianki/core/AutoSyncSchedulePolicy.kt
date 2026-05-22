@@ -76,6 +76,7 @@ object AutoSyncSchedulePolicy {
         }
 
         companion object {
+            @JvmStatic
             fun disabled(): SchedulePlan {
                 return SchedulePlan(false, 0L, 0L, 0L)
             }

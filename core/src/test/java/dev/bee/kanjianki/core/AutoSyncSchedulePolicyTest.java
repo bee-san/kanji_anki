@@ -23,6 +23,7 @@ public final class AutoSyncSchedulePolicyTest {
                 "SchedulePlan[enabled=false, triggerAtMillis=0, minimumLatencyMillis=0, overrideDeadlineMillis=0]",
                 plan.toString()
         );
+        assertEquals(plan, AutoSyncSchedulePolicy.SchedulePlan.disabled());
     }
 
     @Test
