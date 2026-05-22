@@ -2,8 +2,6 @@ package dev.bee.kanjianki
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
-import dev.bee.kanjianki.core.RecordsImportModels
-import dev.bee.kanjianki.core.RecordsSchedulerModels
 
 internal fun MainActivityStudy.renderComposeStudyRoute(content: @Composable () -> Unit) {
     initializeSessionProgressTarget(activeStudyPlan)
