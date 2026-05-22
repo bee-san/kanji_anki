@@ -388,21 +388,11 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     }
 
     fun firstExampleForKanji(db: SQLiteDatabase, kanji: String): SourceSnapshot {
-        db.query(TABLE_KANJI_EXAMPLES, arrayOf(COLUMN_EXPRESSION, COLUMN_READING), WHERE_KANJI, arrayOf(kanji), null, null, "source_type ASC, id ASC", "1").use { cursor ->
-            if (!cursor.moveToFirst()) {
-                return SourceSnapshot.EMPTY
-            }
-            return SourceSnapshot(string(cursor, COLUMN_EXPRESSION), string(cursor, COLUMN_READING))
-        }
+        return inventoryData().firstExampleForKanji(db, kanji)
     }
 
     fun firstSuspendedSourceForKanji(db: SQLiteDatabase, kanji: String): SourceSnapshot {
-        db.query(TABLE_SUSPENDED_SOURCES, arrayOf(COLUMN_EXPRESSION, COLUMN_READING), WHERE_KANJI, arrayOf(kanji), null, null, "card_id ASC", "1").use { cursor ->
-            if (!cursor.moveToFirst()) {
-                return SourceSnapshot.EMPTY
-            }
-            return SourceSnapshot(string(cursor, COLUMN_EXPRESSION), string(cursor, COLUMN_READING))
-        }
+        return inventoryData().firstSuspendedSourceForKanji(db, kanji)
     }
 
     fun sourceFromImport(imported: RecordsImportModels.SuspendedImport): SourceSnapshot {

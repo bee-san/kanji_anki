@@ -142,4 +142,46 @@ internal class LocalStoreInventoryData(
         }
         return previous
     }
+
+    fun firstExampleForKanji(db: SQLiteDatabase, kanji: String): LocalStoreBase.SourceSnapshot {
+        db.query(
+            LocalStoreBase.TABLE_KANJI_EXAMPLES,
+            arrayOf(LocalStoreBase.COLUMN_EXPRESSION, LocalStoreBase.COLUMN_READING),
+            LocalStoreBase.WHERE_KANJI,
+            arrayOf(kanji),
+            null,
+            null,
+            "source_type ASC, id ASC",
+            "1",
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                return LocalStoreBase.SourceSnapshot.EMPTY
+            }
+            return LocalStoreBase.SourceSnapshot(
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_EXPRESSION),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_READING),
+            )
+        }
+    }
+
+    fun firstSuspendedSourceForKanji(db: SQLiteDatabase, kanji: String): LocalStoreBase.SourceSnapshot {
+        db.query(
+            LocalStoreBase.TABLE_SUSPENDED_SOURCES,
+            arrayOf(LocalStoreBase.COLUMN_EXPRESSION, LocalStoreBase.COLUMN_READING),
+            LocalStoreBase.WHERE_KANJI,
+            arrayOf(kanji),
+            null,
+            null,
+            "card_id ASC",
+            "1",
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                return LocalStoreBase.SourceSnapshot.EMPTY
+            }
+            return LocalStoreBase.SourceSnapshot(
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_EXPRESSION),
+                LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_READING),
+            )
+        }
+    }
 }
