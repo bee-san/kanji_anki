@@ -47,8 +47,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     @JvmField
     val targetedLaunch = MainActivityStudyTargetedLaunch(this)
 
-    private val reasonLine = MainActivityStudyReasonLine(this)
-
     fun learningPanel(session: RecordsSchedulerModels.StudySession): View {
         return learningPanelView(this, session)
     }
@@ -257,7 +255,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun studyReasonLine(session: RecordsSchedulerModels.StudySession): String {
-        return reasonLine.studyReasonLine(session)
+        return dev.bee.kanjianki.core.StudyTextCopy.studyReasonLine(
+            activeSimilarWritingRepair != null,
+            session,
+            settings().matureSupportThreshold,
+            System.currentTimeMillis()
+        )
     }
 
     fun renderSimilarWritingRepair(
