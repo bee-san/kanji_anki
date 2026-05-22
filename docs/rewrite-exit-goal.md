@@ -7,10 +7,10 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `d8b3b3b2`
+- Last verified commit before this refresh: `0b9359d3`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
-- `core/src/main/java/dev/bee/kanjianki/core` has 9 Java files.
+- `core/src/main/java/dev/bee/kanjianki/core` has 8 Java files.
 - `FrequencyRetentionRanges.java` is an intentional compatibility exception
   unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
 - Compose is wired through direct `setContent` route surfaces, but the shell
@@ -87,14 +87,12 @@ Migrate or explicitly justify every remaining file. The finite remaining list is
 - `RecordsSchedulerModels.java`
 - `RecordsStudyModels.java`
 - `RecordsSyncModels.java`
-- `ReviewTransitionEngine.java`
 
 The only already-accepted exception is `FrequencyRetentionRanges.java`; keep it
 only if its Java-reflection privacy contract is documented and tested. The
 remaining migration order is:
 
-1. Scheduler/review logic: `AdaptiveLoadPlanner.java`, `BridgeScheduler.java`,
-   `ReviewTransitionEngine.java`.
+1. Scheduler/review logic: `AdaptiveLoadPlanner.java`, `BridgeScheduler.java`.
 2. Record/model containers: `RecordsBase.java`, `RecordsImportModels.java`,
    `RecordsSchedulerModels.java`, `RecordsStudyModels.java`,
    `RecordsSyncModels.java`.
@@ -148,9 +146,9 @@ for the explicitly documented `FrequencyRetentionRanges.java` compatibility
 exception if it still cannot be moved safely; the finite remaining Java list is
 `AdaptiveLoadPlanner.java`, `BridgeScheduler.java`, `RecordsBase.java`,
 `RecordsImportModels.java`, `RecordsSchedulerModels.java`,
-`RecordsStudyModels.java`, `RecordsSyncModels.java`, and
-`ReviewTransitionEngine.java`; production legacy route mirrors and test-only
-bridges are removed or moved to androidTest; remaining data and repository
+`RecordsStudyModels.java`, and `RecordsSyncModels.java`; production legacy route
+mirrors and test-only bridges are removed or moved to androidTest; remaining
+data and repository
 boundaries are clean and backward-compatible; no new god classes or layout dumps
 are introduced; every slice is committed, reviewed by an agent, pushed, and
 verified with focused tests plus `ciFast`; final verification passes
