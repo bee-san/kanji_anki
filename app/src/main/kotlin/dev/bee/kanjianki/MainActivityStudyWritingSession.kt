@@ -41,10 +41,6 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         home.refreshWritingModelStatus()
     }
 
-    fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
-        renderComposeWritingSession(session)
-    }
-
     private fun composeWritingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
         resetWritingInteractionState(session)
         val route = writingRouteModel(session)

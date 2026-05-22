@@ -1115,7 +1115,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertSame(activity.flashcardCard, activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
                 activity.store.rebuildSimilarKanjiPairs(similarIndex("裂\t列\n裂\t烈\n"), System.currentTimeMillis());
-                activity.renderSimilarKanjiSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
+                activity.renderSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, MainActivityBase.LABEL_SIMILAR_KANJI);
                 assertHasText(activity, "Which kanji means split?");
@@ -1127,7 +1127,7 @@ public final class MainActivityHelperInstrumentedTest {
                         row("烈", "ardent", "レツ", Collections.emptyList()),
                         row("劣", "inferior", "レツ", Collections.emptyList())
                 ));
-                activity.renderMeaningKanjiSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
+                activity.renderSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
                 assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertNull(activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
@@ -1163,7 +1163,7 @@ public final class MainActivityHelperInstrumentedTest {
                 performClickableWithText(activity.findViewById(android.R.id.content), "Erase");
 
                 activity.activeSession = promptOnly;
-                activity.renderWritingSession(promptOnly);
+                activity.renderSession(promptOnly);
                 assertHasText(activity, "Prompt only");
 
                 RecordsSchedulerModels.StudySession nullPromptOnly = new RecordsSchedulerModels.StudySession(
@@ -1175,7 +1175,7 @@ public final class MainActivityHelperInstrumentedTest {
                         null
                 );
                 activity.activeSession = nullPromptOnly;
-                activity.renderWritingSession(nullPromptOnly);
+                activity.renderSession(nullPromptOnly);
                 assertHasText(activity, "Draw this kanji");
 
                 activity.activeSession = null;
@@ -1605,7 +1605,7 @@ public final class MainActivityHelperInstrumentedTest {
                 failSession = sessionWithToken("裂", BridgeScheduler.TASK_KANJI_MEANING, row, "fail-token-button");
                 activity.activeSession = failSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
-                activity.renderFlashcardSession(failSession);
+                activity.renderSession(failSession);
                 View actionBarHost = activity.studyActionBar.getChildAt(0);
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 assertSame(actionBarHost, activity.studyActionBar.getChildAt(0));
@@ -1617,7 +1617,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsSchedulerModels.StudySession passSession = sessionWithToken("語", BridgeScheduler.TASK_KANJI_MEANING, row("語", "language", "ゴ", Collections.emptyList()), "pass-token");
                 activity.activeSession = passSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
-                activity.renderFlashcardSession(passSession);
+                activity.renderSession(passSession);
                 assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
                 performClickableWithText(activity.studyActionBar, "Reveal");
                 performClickableWithText(activity.studyActionBar, MainActivityBase.LABEL_PASS);

@@ -44,19 +44,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         )
     }
 
-    fun renderFlashcardSession(session: RecordsSchedulerModels.StudySession) {
-        resetFlashcardSession()
-
-        val card = recognitionHeroCard(session)
-        activity.flashcardCard = card
-        activity.flashcardGestureArea = card
-
-        val cardLp = LinearLayout.LayoutParams(-1, 0, 1f)
-        cardLp.setMargins(0, 0, 0, activity.dp(14))
-        activity.content.addView(card, cardLp)
-        interaction.buildFlashcardActionBar(false)
-    }
-
     fun resetFlashcardSession() {
         activity.prepareStudyContent(activity.activeStudyPlan, true)
         resetFlashcardInteractionState()

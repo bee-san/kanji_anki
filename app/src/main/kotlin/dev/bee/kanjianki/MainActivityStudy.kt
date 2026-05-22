@@ -239,24 +239,16 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
         when (StudySessionRoute.destination(session)) {
             StudySessionRoute.Destination.WRITING -> writingSession.renderComposeWritingSession(session)
-            StudySessionRoute.Destination.SIMILAR_KANJI -> renderSimilarKanjiSession(session)
-            StudySessionRoute.Destination.MEANING_KANJI -> renderMeaningKanjiSession(session)
-            StudySessionRoute.Destination.FLASHCARD -> renderComposeFlashcardSession(session)
+            StudySessionRoute.Destination.SIMILAR_KANJI -> choiceSessions.renderSimilarKanjiSession(session)
+            StudySessionRoute.Destination.MEANING_KANJI -> choiceSessions.renderMeaningKanjiSession(session)
+            StudySessionRoute.Destination.FLASHCARD -> flashcardUi.renderComposeFlashcardSession(session)
         }
-    }
-
-    fun renderMeaningKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        choiceSessions.renderMeaningKanjiSession(session)
     }
 
     fun meaningKanjiChoiceCardForSession(
         session: RecordsSchedulerModels.StudySession,
     ): RecordsImportModels.MeaningKanjiChoiceCard? {
         return choiceSessions.meaningKanjiChoiceCardForSession(session)
-    }
-
-    fun renderSimilarKanjiSession(session: RecordsSchedulerModels.StudySession) {
-        choiceSessions.renderSimilarKanjiSession(session)
     }
 
     fun similarChoiceCardForSession(
@@ -269,16 +261,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return choiceSessions.buildSimilarKanjiChoices(targetKanji)
     }
 
-    fun renderFlashcardSession(session: RecordsSchedulerModels.StudySession) {
-        flashcardUi.renderFlashcardSession(session)
-    }
-
     fun renderComposeFlashcardSession(session: RecordsSchedulerModels.StudySession) {
         flashcardUi.renderComposeFlashcardSession(session)
-    }
-
-    fun renderWritingSession(session: RecordsSchedulerModels.StudySession) {
-        writingSession.renderComposeWritingSession(session)
     }
 
     fun recognitionHeroCard(session: RecordsSchedulerModels.StudySession): View {
