@@ -312,21 +312,7 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
     }
 
     fun previousInventoryItems(db: SQLiteDatabase): Map<String, KanjiInventoryBuilder.PreviousItem> {
-        val previous = LinkedHashMap<String, KanjiInventoryBuilder.PreviousItem>()
-        db.query(TABLE_KANJI_INVENTORY, null, null, null, null, null, ORDER_KANJI_ASC).use { cursor ->
-            while (cursor.moveToNext()) {
-                previous[string(cursor, COLUMN_KANJI)] = KanjiInventoryBuilder.PreviousItem(
-                    string(cursor, COLUMN_PRIMARY_MEANING),
-                    string(cursor, "readings"),
-                    string(cursor, COLUMN_BROWSER_SEARCH),
-                    integer(cursor, "source_count"),
-                    integer(cursor, "example_count"),
-                    longValue(cursor, COLUMN_FIRST_SEEN_AT),
-                    longValue(cursor, COLUMN_LAST_SEEN_AT),
-                )
-            }
-        }
-        return previous
+        return inventoryData().previousInventoryItems(db)
     }
 
     fun readDashboardRow(db: SQLiteDatabase, kanji: String?): RecordsImportModels.DashboardRow? {

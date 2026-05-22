@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import dev.bee.kanjianki.core.KanjiInventoryBuilder
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 
@@ -113,5 +114,32 @@ internal class LocalStoreInventoryData(
         ).use { cursor ->
             return cursor.moveToFirst()
         }
+    }
+
+    fun previousInventoryItems(db: SQLiteDatabase): Map<String, KanjiInventoryBuilder.PreviousItem> {
+        val previous = LinkedHashMap<String, KanjiInventoryBuilder.PreviousItem>()
+        db.query(
+            LocalStoreBase.TABLE_KANJI_INVENTORY,
+            null,
+            null,
+            null,
+            null,
+            null,
+            LocalStoreBase.ORDER_KANJI_ASC,
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                previous[LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_KANJI)] =
+                    KanjiInventoryBuilder.PreviousItem(
+                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_PRIMARY_MEANING),
+                        LocalStoreBase.string(cursor, "readings"),
+                        LocalStoreBase.string(cursor, LocalStoreBase.COLUMN_BROWSER_SEARCH),
+                        LocalStoreBase.integer(cursor, "source_count"),
+                        LocalStoreBase.integer(cursor, "example_count"),
+                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_FIRST_SEEN_AT),
+                        LocalStoreBase.longValue(cursor, LocalStoreBase.COLUMN_LAST_SEEN_AT),
+                    )
+            }
+        }
+        return previous
     }
 }
