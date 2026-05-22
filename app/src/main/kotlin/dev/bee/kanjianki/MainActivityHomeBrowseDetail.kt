@@ -26,10 +26,6 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         }
     }
 
-    fun renderDetail(kanji: String) {
-        renderDetail(kanji, false)
-    }
-
     fun renderDetail(kanji: String, fromBrowse: Boolean) {
         renderDetail(kanji, fromBrowse, if (fromBrowse) home.activeBrowseQuery else "")
     }

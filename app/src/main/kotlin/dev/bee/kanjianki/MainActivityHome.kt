@@ -270,7 +270,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderDetail(kanji: String) {
-        browseDetail.renderDetail(kanji)
+        browseDetail.renderDetail(kanji, false)
     }
 
     fun renderBrowseKanji(query: String?) {
