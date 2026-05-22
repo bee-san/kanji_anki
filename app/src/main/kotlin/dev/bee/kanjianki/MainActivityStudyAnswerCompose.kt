@@ -39,31 +39,7 @@ internal fun flashcardAnswerPanelView(
     activity: MainActivityStudy,
     session: RecordsSchedulerModels.StudySession
 ): View {
-    return studyAnswerPanelView(activity, flashcardAnswerPanelModel(activity, session))
-}
-
-internal fun flashcardAnswerPanelModel(
-    activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
-): StudyAnswerPanelModel {
-    return answerPanelModel(activity, session, "Answer", 76, null)
-}
-
-internal fun learningPanelView(
-    activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
-): View {
-    return studyAnswerPanelView(activity, learningPanelModel(activity, session))
-}
-
-internal fun learningPanelModel(
-    activity: MainActivityStudy,
-    session: RecordsSchedulerModels.StudySession
-): StudyAnswerPanelModel {
-    return answerPanelModel(activity, session, "Reference", 72, "Trace it below, then check.")
-}
-
-private fun studyAnswerPanelView(activity: MainActivityStudy, model: StudyAnswerPanelModel): View {
+    val model = flashcardAnswerPanelModel(activity, session)
     return ComposeView(activity).apply {
         layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -77,6 +53,40 @@ private fun studyAnswerPanelView(activity: MainActivityStudy, model: StudyAnswer
             }
         }
     }
+}
+
+internal fun flashcardAnswerPanelModel(
+    activity: MainActivityStudy,
+    session: RecordsSchedulerModels.StudySession
+): StudyAnswerPanelModel {
+    return answerPanelModel(activity, session, "Answer", 76, null)
+}
+
+internal fun learningPanelView(
+    activity: MainActivityStudy,
+    session: RecordsSchedulerModels.StudySession
+): View {
+    val model = learningPanelModel(activity, session)
+    return ComposeView(activity).apply {
+        layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, activity.dp(12), 0, activity.dp(10))
+        }
+        setContent {
+            MaterialTheme {
+                StudyAnswerPanel(model)
+            }
+        }
+    }
+}
+
+internal fun learningPanelModel(
+    activity: MainActivityStudy,
+    session: RecordsSchedulerModels.StudySession
+): StudyAnswerPanelModel {
+    return answerPanelModel(activity, session, "Reference", 72, "Trace it below, then check.")
 }
 
 private fun answerPanelModel(
