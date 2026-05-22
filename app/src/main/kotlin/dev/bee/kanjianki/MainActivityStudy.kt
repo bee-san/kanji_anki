@@ -218,6 +218,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             now,
             studyLadderSettings()
         )
+        if (session == null) {
+            renderStudyForKanjiNotAvailable()
+            return
+        }
         activeSession = session
         StudySessionActions.activateStudySession(
             session,
