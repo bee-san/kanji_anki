@@ -49,20 +49,6 @@ internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
     }
 }
 
-internal fun homeActionRowView(home: MainActivityHome): View {
-    val actions = homeActionModels(home)
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    HomeActionGrid(actions = actions)
-                }
-            }
-        }
-    }
-}
-
 internal fun homeSectionHeaderView(
     home: MainActivityHome,
     title: String,
