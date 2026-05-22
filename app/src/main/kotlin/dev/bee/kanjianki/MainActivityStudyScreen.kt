@@ -7,7 +7,6 @@ import dev.bee.kanjianki.core.StudySessionFocusPolicy
 
 internal class MainActivityStudyScreen(private val study: MainActivityStudy) {
     fun renderStudy() {
-        study.base(MainActivityBase.NAV_STUDY)
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
         val ladder = study.studyLadderSettings()
@@ -64,6 +63,7 @@ internal class MainActivityStudyScreen(private val study: MainActivityStudy) {
             }
             val repair = study.store.nextDueSimilarWritingRepair(now)
             if (repair != null) {
+                study.renderLegacyStudyRoute()
                 study.renderSimilarWritingRepair(repair, plan, now)
                 return true
             }

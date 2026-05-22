@@ -19,3 +19,7 @@ internal fun MainActivityStudy.renderComposeStudyRoute(content: @Composable () -
         }
     }
 }
+
+internal fun MainActivityStudy.renderLegacyStudyRoute() {
+    base(MainActivityBase.NAV_STUDY)
+}

@@ -1369,7 +1369,9 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(containsText(activity.heroKanjiPanel(session("裂", BridgeScheduler.TASK_FONT_MEANING, row)), "裂"));
                 assertNotNull(activity.randomFontVariantTypeface());
 
-                activity.renderSimilarKanjiSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
+                RecordsSchedulerModels.StudySession similarFallback = session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row);
+                activity.activeSession = similarFallback;
+                activity.renderSession(similarFallback);
                 assertNotNull(activity.flashcardCard);
                 assertSame(activity.flashcardCard, activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
@@ -1398,13 +1400,15 @@ public final class MainActivityHelperInstrumentedTest {
                 performClickableWithText(root, "Next");
                 assertEquals(1, activity.store.reviewStatsSince(0L).good);
 
-                activity.renderMeaningKanjiSession(session("返", BridgeScheduler.TASK_MEANING_KANJI, row("返", "return", "ヘン", Collections.emptyList())));
+                RecordsSchedulerModels.StudySession meaningFallback = session("返", BridgeScheduler.TASK_MEANING_KANJI, row("返", "return", "ヘン", Collections.emptyList()));
+                activity.activeSession = meaningFallback;
+                activity.renderSession(meaningFallback);
                 assertNotNull(activity.flashcardCard);
                 assertSame(activity.flashcardCard, activity.flashcardGestureArea);
 
                 RecordsSchedulerModels.StudySession recall = session("裂", "blind_writing", row);
                 activity.activeSession = recall;
-                activity.renderWritingSession(recall);
+                activity.renderSession(recall);
                 assertTrue(activity.content.getChildAt(1) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Prompt: Split, rend");
                 assertEquals(1, activity.studyActionBar.getChildCount());

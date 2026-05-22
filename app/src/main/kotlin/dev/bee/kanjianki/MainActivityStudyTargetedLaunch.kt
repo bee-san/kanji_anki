@@ -6,7 +6,6 @@ internal class MainActivityStudyTargetedLaunch(private val home: MainActivityStu
     fun renderStudyForKanji(kanji: String?) {
         home.clearStudyModeOverrides()
         home.resetStudyRunProgress()
-        home.base(MainActivityBase.NAV_STUDY)
         home.activeSimilarWritingRepair = null
         val rows = home.store.activeDashboardRows()
         val now = System.currentTimeMillis()
