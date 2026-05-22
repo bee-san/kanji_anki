@@ -41,7 +41,7 @@ internal fun browseScreenModel(
     query: String,
     items: List<RecordsImportModels.KanjiInventoryItem>
 ): BrowseScreenModel {
-    val rows = items.map { item -> browseKanjiRowModel(activity, item) }
+    val rows = items.map { item -> browseKanjiRowModel(activity, query, item) }
     return BrowseScreenModel(
         initialQuery = query,
         resultHeading = HomeTextCopy.browseResultHeading(rows.size),
@@ -53,6 +53,7 @@ internal fun browseScreenModel(
 
 private fun browseKanjiRowModel(
     activity: MainActivityHome,
+    browseQuery: String,
     item: RecordsImportModels.KanjiInventoryItem
 ): BrowseKanjiRowModel {
     return BrowseKanjiRowModel(
@@ -61,7 +62,7 @@ private fun browseKanjiRowModel(
         readings = item.readings,
         summary = HomeTextCopy.browseInventorySummary(item.sourceCount, item.exampleCount),
         suspended = item.suspended,
-        onClick = { activity.renderDetail(item.kanji, true) }
+        onClick = { activity.renderDetail(item.kanji, true, browseQuery) }
     )
 }
 

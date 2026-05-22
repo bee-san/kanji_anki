@@ -273,10 +273,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         browseDetail.renderBrowseKanji(query)
     }
 
-    fun renderDetail(kanji: String, fromBrowse: Boolean) {
-        browseDetail.renderDetail(kanji, fromBrowse)
-    }
-
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?) {
         browseDetail.renderDetail(kanji, fromBrowse, browseQuery)
     }

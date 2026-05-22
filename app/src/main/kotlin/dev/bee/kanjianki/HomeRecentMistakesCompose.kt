@@ -45,7 +45,7 @@ internal fun homeRecentMistakesPanelModel(
             ),
             sourceEvidence = row?.let { FocusQueueCopy.sourceEvidenceText(it) },
             accentColor = recentMistakeAccentColor(mistake.rating),
-            onClick = { home.renderDetail(mistake.kanji, false) }
+            onClick = { home.renderDetail(mistake.kanji, false, "") }
         )
     }
     return HomeRecentMistakesPanelModel(
