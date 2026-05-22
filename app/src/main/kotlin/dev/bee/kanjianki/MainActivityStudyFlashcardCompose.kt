@@ -2,10 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -49,27 +44,6 @@ internal class FlashcardActionBarState(
     val onPass: Runnable,
 ) {
     var revealed by mutableStateOf(revealed)
-}
-
-internal fun studyFlashcardActionBarView(
-    context: Context,
-    state: FlashcardActionBarState,
-): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    StudyFlashcardActionBar(
-                        revealed = state.revealed,
-                        onReveal = { state.onReveal.run() },
-                        onFail = { state.onFail.run() },
-                        onPass = { state.onPass.run() },
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
