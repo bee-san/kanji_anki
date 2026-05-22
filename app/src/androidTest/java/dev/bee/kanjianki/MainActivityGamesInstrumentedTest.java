@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels;
 import dev.bee.kanjianki.core.KanjiGameEngine;
 import android.content.Context;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
@@ -63,7 +64,7 @@ public final class MainActivityGamesInstrumentedTest {
                 activity.renderGames();
 
                 assertTrue(containsText(activity.findViewById(android.R.id.content), "Home"));
-                assertNotNull(findComposeView(activity.content));
+                assertNotNull(findComposeView(activity.findViewById(android.R.id.content)));
             });
         }
     }
@@ -139,10 +140,7 @@ public final class MainActivityGamesInstrumentedTest {
             }
         }
         if (view instanceof androidx.compose.ui.platform.ComposeView) {
-            CharSequence text = view.createAccessibilityNodeInfo().getText();
-            CharSequence description = view.createAccessibilityNodeInfo().getContentDescription();
-            if ((text != null && text.toString().contains(expected))
-                    || (description != null && description.toString().contains(expected))) {
+            if (containsAccessibilityText(view.createAccessibilityNodeInfo(), expected)) {
                 return true;
             }
         }
@@ -187,6 +185,31 @@ public final class MainActivityGamesInstrumentedTest {
             }
         }
         return null;
+    }
+
+    private static boolean containsAccessibilityText(AccessibilityNodeInfo node, String expected) {
+        if (node == null) {
+            return false;
+        }
+        try {
+            CharSequence value = node.getText();
+            if (value != null && value.toString().contains(expected)) {
+                return true;
+            }
+            CharSequence description = node.getContentDescription();
+            if (description != null && description.toString().contains(expected)) {
+                return true;
+            }
+            for (int i = 0; i < node.getChildCount(); i++) {
+                AccessibilityNodeInfo child = node.getChild(i);
+                if (child != null && containsAccessibilityText(child, expected)) {
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            node.recycle();
+        }
     }
 
     private static Button firstAnswerButton(View view) {
