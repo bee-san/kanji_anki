@@ -71,6 +71,7 @@ public final class NoteTypeFieldMappingPolicyTest {
     public void noteTypeChoicesNormalizeAndLabelFieldCounts() {
         NoteTypeFieldMappingPolicy.NoteTypeChoice blank = NoteTypeFieldMappingPolicy.choice(null, null);
         NoteTypeFieldMappingPolicy.NoteTypeChoice basic = NoteTypeFieldMappingPolicy.choice("Basic", Arrays.asList("Front", "Back"));
+        List<? extends NoteTypeFieldMappingPolicy.NoteTypeChoice> covariantChoices = Arrays.asList(blank, basic);
 
         assertEquals("", blank.name());
         assertEquals(0, blank.fields().size());
@@ -78,7 +79,7 @@ public final class NoteTypeFieldMappingPolicyTest {
         assertEquals("Basic (2 fields)", NoteTypeFieldMappingPolicy.label(basic));
         assertArrayEquals(
                 new String[]{" (0 fields)", "Basic (2 fields)"},
-                NoteTypeFieldMappingPolicy.labels(Arrays.asList(blank, basic))
+                NoteTypeFieldMappingPolicy.labels(covariantChoices)
         );
         assertArrayEquals(new String[0], NoteTypeFieldMappingPolicy.labels(null));
     }

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.core
 
 import java.util.Collections
+import kotlin.jvm.JvmWildcard
 
 object NoteTypeFieldMappingPolicy {
     @JvmStatic
@@ -65,7 +66,7 @@ object NoteTypeFieldMappingPolicy {
     }
 
     @JvmStatic
-    fun labels(noteTypes: List<NoteTypeChoice?>?): Array<String> {
+    fun labels(noteTypes: List<@JvmWildcard NoteTypeChoice?>?): Array<String> {
         return noteTypes.orEmpty().map { label(it) }.toTypedArray()
     }
 
