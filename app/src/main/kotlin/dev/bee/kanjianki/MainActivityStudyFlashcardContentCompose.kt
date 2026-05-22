@@ -3,9 +3,6 @@
 package dev.bee.kanjianki
 
 import android.graphics.Typeface
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,14 +18,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -45,34 +40,6 @@ private val HeroPlum = Color(MainActivityUiSupport.STUDY_HERO_PLUM)
 private val HeroPink = Color(MainActivityUiSupport.STUDY_HERO_PINK)
 private val HeroPillFill = Color(MainActivityUiSupport.STUDY_HERO_PILL)
 private val StudyMuted = Color(MainActivityUiSupport.STUDY_MUTED)
-
-internal fun heroKanjiPanelView(activity: MainActivityStudy, model: FlashcardHeroPanelModel): View {
-    return ComposeView(activity).apply {
-        layoutParams = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            activity.dp(210)
-        ).apply {
-            setMargins(0, activity.dp(16), 0, 0)
-        }
-        setContent {
-            MaterialTheme {
-                FlashcardHeroPanel(model)
-            }
-        }
-    }
-}
-
-internal fun flashcardCardView(activity: MainActivityStudy, model: FlashcardCardModel): View {
-    return ComposeView(activity).apply {
-        isClickable = true
-        isFocusable = true
-        setContent {
-            MaterialTheme {
-                FlashcardCard(model)
-            }
-        }
-    }
-}
 
 @Composable
 fun FlashcardCard(model: FlashcardCardModel) {

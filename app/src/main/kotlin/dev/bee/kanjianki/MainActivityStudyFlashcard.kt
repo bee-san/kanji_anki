@@ -3,14 +3,17 @@ package dev.bee.kanjianki
 import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -92,16 +95,23 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
 
         val answerPanel = flashcardAnswerPanelModel(session)
 
-        return flashcardCardView(
-            activity,
-            FlashcardCardModel(
-                flashcardPromptHeaderModel(session),
-                heroPanel,
-                typingAnswer,
-                answerPanel,
-                revealState
-            )
-        )
+        return ComposeView(activity).apply {
+            isClickable = true
+            isFocusable = true
+            setContent {
+                MaterialTheme {
+                    FlashcardCard(
+                        FlashcardCardModel(
+                            flashcardPromptHeaderModel(session),
+                            heroPanel,
+                            typingAnswer,
+                            answerPanel,
+                            revealState
+                        )
+                    )
+                }
+            }
+        }
     }
 
     fun flashcardPromptHeaderModel(session: RecordsSchedulerModels.StudySession): FlashcardPromptHeaderModel {
@@ -115,10 +125,19 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     fun heroKanjiPanel(session: RecordsSchedulerModels.StudySession): View {
-        return heroKanjiPanelView(
-            activity,
-            heroKanjiPanelModel(session)
-        )
+        return ComposeView(activity).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                activity.dp(210)
+            ).apply {
+                setMargins(0, activity.dp(16), 0, 0)
+            }
+            setContent {
+                MaterialTheme {
+                    FlashcardHeroPanel(heroKanjiPanelModel(session))
+                }
+            }
+        }
     }
 
     fun heroKanjiPanelModel(session: RecordsSchedulerModels.StudySession): FlashcardHeroPanelModel {
