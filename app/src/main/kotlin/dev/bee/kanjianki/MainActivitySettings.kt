@@ -4,6 +4,8 @@ import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.LearningStepsSettingsPolicy
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyAheadSettingsPolicy
@@ -26,10 +28,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun workloadPanel(): MainActivitySettingsWorkloadPanel {
         return MainActivitySettingsWorkloadPanel(this)
-    }
-
-    private fun learningPanel(): MainActivitySettingsLearningPanel {
-        return MainActivitySettingsLearningPanel(this)
     }
 
     private fun studyLadderUi(): MainActivitySettingsStudyLadder {
@@ -155,7 +153,35 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun learningStepsSettingsPanelModel(): SettingsLearningStepsPanelModel {
-        return learningPanel().learningStepsSettingsPanelModel()
+        val current = store.learningStepSettings()
+        val defaults = RecordsSchedulerModels.LearningStepSettings.defaults()
+        return SettingsLearningStepsPanelModel(
+            title = SettingsTextCopy.learningStepsTitle(),
+            body = SettingsTextCopy.learningStepsBody(),
+            newCardsLabel = MainActivityBase.LABEL_NEW_CARDS,
+            initialNewStepsText = current.newStepsText(),
+            reviewMissesLabel = SettingsTextCopy.reviewMissesLabel(),
+            initialReviewStepsText = current.reviewStepsText(),
+            defaultNewStepsText = defaults.newStepsText(),
+            defaultReviewStepsText = defaults.reviewStepsText(),
+            ankiDefaultLabel = SettingsTextCopy.ankiDefaultLabel(),
+            sameStepsLabel = SettingsTextCopy.sameLearningStepsLabel(),
+            saveLabel = SettingsTextCopy.saveLearningStepsLabel(),
+            onSave = SettingsLearningStepsSaveAction { newStepsText, reviewStepsText ->
+                saveLearningSteps(newStepsText, reviewStepsText)
+            }
+        )
+    }
+
+    private fun saveLearningSteps(newStepsText: String, reviewStepsText: String) {
+        val request = LearningStepsSettingsPolicy.saveRequest(newStepsText, reviewStepsText)
+        if (!request.valid) {
+            Toast.makeText(this, request.message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        SettingsWriteActions.saveLearningSteps(request, store::saveLearningStepSettings)
+        Toast.makeText(this, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show()
+        renderSettings()
     }
 
     fun studyAheadSettingsPanelModel(): SettingsStudyAheadPanelModel {
