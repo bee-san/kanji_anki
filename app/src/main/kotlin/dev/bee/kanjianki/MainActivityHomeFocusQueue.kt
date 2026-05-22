@@ -6,15 +6,54 @@ import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.data.StudyStatsStore
 
 internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     fun renderFocusQueue() {
-        renderFocusQueueScreen(home)
+        val now = System.currentTimeMillis()
+        val rows = home.store.activeDashboardRows()
+        val items = home.studyQueue(rows, now, false, null)
+        val plan = if (rows.isEmpty()) null else home.adaptivePlan(rows, items, now)
+        val entries = if (rows.isEmpty()) {
+            emptyList()
+        } else {
+            home.queuedEntries(rows, items, now, plan)
+        }
+
+        val model = HomeFocusQueueScreenModel(
+            title = HomeTextCopy.focusQueueTitle(),
+            homeLabel = HomeTextCopy.homeLabel(),
+            onHome = home::renderHome,
+            queue = homeFocusQueuePanelModel(home, rows, entries, now, plan),
+            onSync = home::confirmSync
+        )
+        home.renderHomeRoute {
+            HomeFocusQueueScreen(model)
+        }
     }
 
     fun renderRecentMistakes() {
-        renderRecentMistakesScreen(home)
+        val mistakes = home.store.recentMistakes(RECENT_MISTAKE_LIMIT)
+        val mistakesModel = if (mistakes.isEmpty()) {
+            HomeRecentMistakesPanelModel(
+                emptyTitle = HomeTextCopy.noRecentMistakesTitle(),
+                emptyBody = HomeTextCopy.noRecentMistakesBody(),
+                cards = emptyList(),
+                emptyStyle = HomeEmptyStateStyle.LegacyBand
+            )
+        } else {
+            homeRecentMistakesPanelModel(home, mistakes, home.store.activeDashboardRows())
+        }
+        val model = HomeRecentMistakesScreenModel(
+            title = HomeTextCopy.recentMistakesTitle(),
+            homeLabel = HomeTextCopy.homeLabel(),
+            onHome = home::renderHome,
+            mistakes = mistakesModel
+        )
+        home.renderHomeRoute {
+            HomeRecentMistakesScreen(model)
+        }
     }
 
     fun streakAccent(streak: StudyStatsStore.StudyStreak?): Int {
@@ -81,4 +120,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         }
     }
 
+    private companion object {
+        const val RECENT_MISTAKE_LIMIT = 12
+    }
 }
