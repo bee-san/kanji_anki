@@ -4,7 +4,6 @@ package dev.bee.kanjianki
 
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,28 +45,6 @@ internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
         add(HomeActionModel(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, home::renderStats))
         add(HomeActionModel(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, home::renderGames))
         add(HomeActionModel(MainActivityBase.NAV_SETTINGS, R.drawable.ic_settings_24, home::renderSettings))
-    }
-}
-
-internal fun homeSectionHeaderView(
-    home: MainActivityHome,
-    title: String,
-    actionLabel: String?,
-    action: Runnable?
-): View {
-    return ComposeView(home).apply {
-        layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        setContent {
-            MaterialTheme {
-                Surface {
-                    HomeSectionHeader(
-                        title = title,
-                        actionLabel = actionLabel,
-                        onAction = action?.let { { it.run() } }
-                    )
-                }
-            }
-        }
     }
 }
 

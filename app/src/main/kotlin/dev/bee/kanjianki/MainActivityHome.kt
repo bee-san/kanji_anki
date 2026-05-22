@@ -92,7 +92,20 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun homeSectionHeader(title: String, actionLabel: String?, action: Runnable?): View {
-        return homeSectionHeaderView(this, title, actionLabel, action)
+        return ComposeView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setContent {
+                MaterialTheme {
+                    Surface {
+                        HomeSectionHeader(
+                            title = title,
+                            actionLabel = actionLabel,
+                            onAction = action?.let { { it.run() } }
+                        )
+                    }
+                }
+            }
+        }
     }
 
     fun fullWidthHomeButton(): View {
