@@ -7,7 +7,7 @@ import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 internal class MainActivitySettingsUpdateFlow(private val activity: MainActivitySettings) {
     fun runUpdate(cachedPending: Boolean) {
         val copy = UpdateRunScreenCopy.forRun(cachedPending)
-        activity.renderSettingsRoute {
+        activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
             SettingsUpdateRunScreen(
                 model = SettingsUpdateRunModel(
                     title = copy.title(),

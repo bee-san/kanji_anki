@@ -15,7 +15,7 @@ internal class MainActivitySettingsReferenceData(private val activity: MainActiv
 
     fun renderDataSources() {
         val model = referenceDataScreenModel()
-        activity.renderSettingsRoute {
+        activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE) {
             ReferenceDataScreen(model)
         }
     }

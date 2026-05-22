@@ -62,7 +62,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             0
         }
         val current = settings()
-        renderSettingsRoute(scrollY) {
+        composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
             SettingsScreen(settingsScreenModel(current))
         }
     }
