@@ -13,7 +13,7 @@ internal class MainActivitySettingsScreen(private val activity: MainActivitySett
             0
         }
         val current = activity.settings()
-        activity.composeRoute(MainActivityBase.NAV_SETTINGS_ROUTE, scrollY) {
+        activity.renderSettingsRoute(scrollY) {
             SettingsScreen(settingsScreenModel(current))
         }
     }
