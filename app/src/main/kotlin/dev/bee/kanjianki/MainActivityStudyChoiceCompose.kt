@@ -48,7 +48,12 @@ fun SimilarChoiceSessionCard(model: SimilarChoiceSessionModel, modifier: Modifie
 
 @Composable
 fun MeaningChoiceSessionCard(model: MeaningChoiceSessionModel) {
-    var selectedChoice by remember { mutableStateOf<String?>(null) }
+    var selectedChoice by remember(
+        model.question,
+        model.choices,
+        model.answerPanel.glyph,
+        model.answerPanel.lines,
+    ) { mutableStateOf<String?>(null) }
     val answered = selectedChoice != null
     StudyChoiceSessionSurface(
         modeLabel = model.modeLabel,

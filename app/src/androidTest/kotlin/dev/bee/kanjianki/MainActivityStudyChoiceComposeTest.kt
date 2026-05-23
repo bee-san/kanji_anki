@@ -2,11 +2,15 @@ package dev.bee.kanjianki
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -129,6 +133,41 @@ class MainActivityStudyChoiceComposeTest {
     }
 
     @Test
+    fun meaningChoiceSessionClearsRevealedAnswerWhenModelChanges() {
+        var selected = ""
+        val first = meaningChoiceModel(
+            question = "Which kanji means split?",
+            choices = listOf("裂", "列", "烈", "劣"),
+            answerGlyph = "裂",
+            answerDetail = "First answer detail",
+            onChoice = { selected = it },
+        )
+        val second = meaningChoiceModel(
+            question = "Which kanji means basics?",
+            choices = listOf("基", "収", "保", "似"),
+            answerGlyph = "基",
+            answerDetail = "Second answer detail",
+            onChoice = { selected = it },
+        )
+        var model by mutableStateOf(first)
+
+        composeRule.setContent {
+            MeaningChoiceSessionCard(model = model)
+        }
+
+        composeRule.onNodeWithText("裂").performClick()
+        composeRule.onNodeWithText("First answer detail").assertIsDisplayed()
+
+        composeRule.runOnIdle { model = second }
+
+        composeRule.onNodeWithText("Which kanji means basics?").assertIsDisplayed()
+        composeRule.onAllNodesWithText("First answer detail").assertCountEquals(0)
+        composeRule.onAllNodesWithText("Second answer detail").assertCountEquals(0)
+        composeRule.onNodeWithTag(similarChoiceTestTag("基")).assertIsEnabled()
+        assertEquals("裂", selected)
+    }
+
+    @Test
     fun usesLegacyChoiceGridSpacingConstants() {
         assertEquals(4.dp, SimilarChoiceCellHorizontalPadding)
         assertEquals(8.dp, SimilarChoiceCellTopPadding)
@@ -191,5 +230,38 @@ class MainActivityStudyChoiceComposeTest {
     private companion object {
         private const val POSITION_TOLERANCE_PX = 1.0f
         private const val SIZE_TOLERANCE_PX = 1.0f
+
+        private fun meaningChoiceModel(
+            question: String,
+            choices: List<String>,
+            answerGlyph: String,
+            answerDetail: String,
+            onChoice: (String) -> Unit,
+        ): MeaningChoiceSessionModel {
+            return MeaningChoiceSessionModel(
+                modeLabel = "Recall",
+                title = "Choose the kanji",
+                taskLabel = "meaning -> kanji",
+                body = "Pick the kanji that matches the meaning.",
+                reasonLine = "",
+                question = question,
+                choices = choices,
+                answerPanel = StudyAnswerPanelModel(
+                    title = "Answer",
+                    glyph = answerGlyph,
+                    glyphSizeSp = 76,
+                    lines = listOf(
+                        StudyAnswerLineModel(
+                            text = answerDetail,
+                            color = Color(0xFF2D1635),
+                            sizeSp = 15,
+                            bold = false,
+                        )
+                    ),
+                    helperText = null,
+                ),
+                onChoice = KanjiChoiceHandler { onChoice(it) },
+            )
+        }
     }
 }
