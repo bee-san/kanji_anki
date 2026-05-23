@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -85,7 +86,7 @@ public final class MainActivityGamesInstrumentedTest {
                 assertTrue(containsText(activity.findViewById(android.R.id.content), "Round complete"));
                 assertTrue(containsText(activity.findViewById(android.R.id.content), "Final score:"));
                 assertTrue(containsText(activity.findViewById(android.R.id.content), LABEL_NEW_ROUND));
-                assertTrue(!containsText(activity.findViewById(android.R.id.content), LABEL_NEXT));
+                assertFalse(containsText(activity.findViewById(android.R.id.content), LABEL_NEXT));
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
             });
         }

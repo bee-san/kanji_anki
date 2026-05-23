@@ -313,19 +313,23 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertTrue(firstRun != 0 && activity.activeUpdateUiRunToken == firstRun);
 
                 activity.renderSettings();
-                assertFalse(firstRun != 0 && activity.activeUpdateUiRunToken == firstRun);
+                assertFalse(isActiveRun(activity, firstRun));
 
                 int staleRun = ++activity.updateUiRunCounter;
                 activity.activeUpdateUiRunToken = staleRun;
                 int activeRun = ++activity.updateUiRunCounter;
                 activity.activeUpdateUiRunToken = activeRun;
-                assertFalse(staleRun != 0 && activity.activeUpdateUiRunToken == staleRun);
-                assertTrue(activeRun != 0 && activity.activeUpdateUiRunToken == activeRun);
+                assertFalse(isActiveRun(activity, staleRun));
+                assertTrue(isActiveRun(activity, activeRun));
 
                 activity.renderHome();
-                assertFalse(activeRun != 0 && activity.activeUpdateUiRunToken == activeRun);
+                assertFalse(isActiveRun(activity, activeRun));
             });
         }
+    }
+
+    private static boolean isActiveRun(MainActivity activity, int run) {
+        return run != 0 && activity.activeUpdateUiRunToken == run;
     }
 
     @Test

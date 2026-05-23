@@ -119,7 +119,7 @@ public final class MainActivityInstrumentedTest {
                     .getUiAutomation()
                     .grantRuntimePermission(target.getPackageName(), Manifest.permission.POST_NOTIFICATIONS);
         } catch (SecurityException ignored) {
-            assertNotNull(ignored);
+            // Some devices do not allow the shell identity to grant this permission.
         }
     }
 
@@ -2406,7 +2406,7 @@ public final class MainActivityInstrumentedTest {
             try {
                 released.get(5L, TimeUnit.SECONDS);
             } catch (Exception ignored) {
-                assertNotNull(ignored);
+                // Continue when the UI release signal is not needed for this fake gateway path.
             }
             progress.onSyncProgress(SyncProgress.cardsScanned(snapshot.cards.size(), snapshot.cards.size()));
             return snapshot;
