@@ -40,6 +40,10 @@ val maybeSonarTestBinaries = listOf(
     rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
 )
+fun existingSonarPaths(paths: Iterable<String>): String = paths
+    .filter { file(it).exists() }
+    .joinToString(",")
+
 val maybeSonarCoveragePaths = buildList<String> {
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -90,9 +94,9 @@ sonar {
         property("sonar.projectKey", "bee-san_kanji_anki")
         property("sonar.organization", "bee-san")
         property("sonar.projectVersion", sonarProjectVersion.get())
-        property("sonar.java.binaries", maybeSonarMainBinaries.joinToString(","))
-        property("sonar.java.test.binaries", maybeSonarTestBinaries.joinToString(","))
-        property("sonar.coverage.jacoco.xmlReportPaths", maybeSonarCoveragePaths.joinToString(","))
+        property("sonar.java.binaries", existingSonarPaths(maybeSonarMainBinaries))
+        property("sonar.java.test.binaries", existingSonarPaths(maybeSonarTestBinaries))
+        property("sonar.coverage.jacoco.xmlReportPaths", existingSonarPaths(maybeSonarCoveragePaths))
         property("sonar.coverage.exclusions", sonarCoverageExclusions.joinToString(","))
     }
 }
