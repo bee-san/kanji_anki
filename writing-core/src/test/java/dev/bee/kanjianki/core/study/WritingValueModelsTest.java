@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core.study;
 
 import org.junit.Test;
 
+import java.lang.reflect.Constructor;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
@@ -105,5 +106,65 @@ public class WritingValueModelsTest {
         assertFalse(diagnosis.hasLabel(StrokeDiagnosis.Label.WRONG_ORDER, 1));
         assertEquals(2, diagnosis.plus(StrokeDiagnosis.Label.MISSING_STROKE, 2).entries.size());
         assertTrue(StrokeDiagnosis.builder().build().isEmpty());
+    }
+
+    @Test
+    public void writingAnalysisKeepsJavaConstructorCompatibility() throws Exception {
+        Constructor<WritingAnalysis> basic = WritingAnalysis.class.getConstructor(
+                WritingAnalysis.Status.class,
+                String.class,
+                boolean.class,
+                String.class,
+                java.util.List.class,
+                StrokeOrderEvaluator.StrokeOrderResult.class
+        );
+        Constructor<WritingAnalysis> hintArray = WritingAnalysis.class.getConstructor(
+                WritingAnalysis.Status.class,
+                String.class,
+                boolean.class,
+                String.class,
+                java.util.List.class,
+                StrokeOrderEvaluator.StrokeOrderResult.class,
+                Object[].class
+        );
+        Constructor<WritingAnalysis> singleHint = WritingAnalysis.class.getConstructor(
+                WritingAnalysis.Status.class,
+                String.class,
+                boolean.class,
+                String.class,
+                java.util.List.class,
+                StrokeOrderEvaluator.StrokeOrderResult.class,
+                Object.class
+        );
+        Constructor<WritingAnalysis> varargsHints = WritingAnalysis.class.getConstructor(
+                WritingAnalysis.Status.class,
+                String.class,
+                boolean.class,
+                String.class,
+                java.util.List.class,
+                StrokeOrderEvaluator.StrokeOrderResult.class,
+                Object.class,
+                Object.class,
+                Object[].class
+        );
+
+        assertFalse(basic.isVarArgs());
+        assertFalse(hintArray.isVarArgs());
+        assertFalse(singleHint.isVarArgs());
+        assertTrue(varargsHints.isVarArgs());
+
+        WritingAnalysis analysis = varargsHints.newInstance(
+                WritingAnalysis.Status.PASS,
+                "good",
+                true,
+                "ok",
+                Collections.emptyList(),
+                null,
+                HintLevel.OUTLINE,
+                2,
+                new Object[0]
+        );
+        assertEquals(HintLevel.OUTLINE, analysis.hintLevel());
+        assertEquals(2, analysis.hintsUsed());
     }
 }
