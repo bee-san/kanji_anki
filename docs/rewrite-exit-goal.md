@@ -7,7 +7,7 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified code commit before this refresh: `44df402e`
+- Last verified code commit before this refresh: `d7ab9ba9`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
@@ -26,6 +26,8 @@ item is satisfied.
   dependency overrides now go through the debug-only mutable
   `MainActivityRuntimeOverrides`.
 - Latest local verification on 2026-05-23 passed `./gradlew ciFast`.
+- Latest focused Sonar cleanup verification on 2026-05-23 passed
+  `./gradlew :core:test :app:testDebugUnitTest`.
 - Latest clean compile verification on 2026-05-23 passed
   `./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin`.
 - Latest androidTest compilation verification on 2026-05-23 passed
@@ -39,15 +41,18 @@ item is satisfied.
   Settings, Browse, Detail, Stats, Games, and Update route rendering.
 - Latest targeted emulator sync progress test on 2026-05-23 passed
   `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
-- GitHub Actions run `26331843021` passed for commit
-  `44df402eb6e2b80bb240e29492676cfc1e375639`.
-- SonarQube workflow run `26331843026` passed for the same branch head, and the
-  SonarCloud Code Analysis check completed successfully.
+- GitHub Actions run `26332463828` passed for commit
+  `d7ab9ba9e686b8b5173137a75148bceddaff2cef`.
+- SonarQube workflow run `26332463839` passed for the same branch head, and the
+  live SonarCloud PR API now reports quality gate `OK`, zero open issues, zero
+  new code smells, zero bugs, zero vulnerabilities, zero security hotspots,
+  100.0% reviewed security hotspots, 84.5303867403315% new coverage, and 0.0%
+  new duplication.
 
 ## Final Prompt-To-Artifact Audit
 
 This audit was refreshed on 2026-05-23 against commit
-`44df402eb6e2b80bb240e29492676cfc1e375639`.
+`d7ab9ba9e686b8b5173137a75148bceddaff2cef`.
 
 | Requirement | Evidence |
 | --- | --- |
@@ -60,7 +65,7 @@ This audit was refreshed on 2026-05-23 against commit
 | Clean compile gate | `./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin` passed on the current head. Local Kotlin daemon cache warnings recovered through Gradle's fallback compiler and the command returned `BUILD SUCCESSFUL`. |
 | androidTest compilation gate | `./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac` passed on the current head. |
 | Deterministic local fast gate | `./gradlew ciFast` passed on the current head. |
-| PR CI and SonarQube green | PR #11 check rollup is green for `44df402e`: Android CI run `26331843021`, SonarQube run `26331843026`, and SonarCloud Code Analysis all succeeded. |
+| PR CI and SonarQube green | PR #11 check rollup is green for `d7ab9ba9`: Android CI run `26332463828` and SonarQube run `26332463839` succeeded; live SonarCloud reports gate `OK`, `new_code_smells=0`, and `new_duplicated_lines_density=0.0`. |
 | Branch state | `git status --short --branch` reports `codex-android-architecture-20260518...origin/codex-android-architecture-20260518` with no local changes before this evidence-doc update. |
 
 ## Completion Checklist

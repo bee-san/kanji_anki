@@ -6,8 +6,8 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest verified commit before this note: `44df402e Clean androidTest assertion smells`
-- Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`, mergeable
+- Latest verified commit before this note: `d7ab9ba9 Fix remaining Sonar code smells`
+- Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`, mergeable with green PR checks
 
 If `/tmp` has been wiped, resume from a normal checkout:
 
@@ -57,6 +57,9 @@ Completed foundations include:
   The live emulator smoke reached `Sync complete`; the local save stage is still
   a relatively long persistence window on the emulator dataset, but it is no
   longer mislabeled as practice-queue work.
+- The final Sonar cleanup removed the last three new-code smells from PR #11.
+  SonarCloud now reports zero open PR issues, zero new code smells, and zero new
+  duplication on the live PR analysis.
 - Study flashcard, Study writing, similar-kanji choice, and meaning-kanji choice
   have targeted production-route emulator smoke coverage in
   `MainActivityStudyRouteSmokeInstrumentedTest`.
@@ -67,11 +70,12 @@ Completed foundations include:
 ## Verification Baseline
 
 The final proof pass on 2026-05-23 verified code head
-`44df402eb6e2b80bb240e29492676cfc1e375639`.
+`d7ab9ba9e686b8b5173137a75148bceddaff2cef`.
 
 The focused local gates passed with:
 
 ```bash
+./gradlew :core:test :app:testDebugUnitTest
 ./gradlew --no-build-cache clean :core:test :app:compileDebugKotlin
 ./gradlew :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac
 ./gradlew ciFast
@@ -103,8 +107,8 @@ points and one production `AndroidView` in `MainActivityStudyWritingPadCompose`;
 there is no production `ComposeView`. The production test-bridge search returns
 no matches.
 
-GitHub Actions run `26331843021` passed for commit
-`44df402eb6e2b80bb240e29492676cfc1e375639`:
+GitHub Actions run `26332463828` passed for commit
+`d7ab9ba9e686b8b5173137a75148bceddaff2cef`:
 
 - App unit tests and coverage
 - JVM tests and coverage
@@ -112,8 +116,10 @@ GitHub Actions run `26331843021` passed for commit
 - App lint and androidTest compile
 - Fast confidence gate
 
-SonarQube workflow run `26331843026` passed for the same commit, and the
-SonarCloud Code Analysis check completed successfully.
+SonarQube workflow run `26332463839` passed for the same commit. The live
+SonarCloud PR API reports quality gate `OK`, zero open issues, zero new code
+smells, zero bugs, zero vulnerabilities, zero security hotspots, 100.0% reviewed
+security hotspots, 84.5303867403315% new coverage, and 0.0% new duplication.
 
 Local Gradle may fail inside the Codex sandbox with:
 
