@@ -220,18 +220,21 @@ jobs:
     permissions:
       checks: read
       contents: read
-    timeout-minutes: 5
+    timeout-minutes: 60
 
     steps:
-      - name: Require Android CI, SonarQube, and CodeQL success
+      - name: Wait for Android CI, SonarQube, and CodeQL success
         env:
           GH_TOKEN: ${{ github.token }}
           REQUIRED_CHECKS: Fast confidence gate|Build coverage and analyze|Analyze Java/Kotlin
         run: |
           set -euo pipefail
           checks_json="${RUNNER_TEMP}/check-runs.json"
-          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" > "${checks_json}"
-          python3 - "${checks_json}" <<'PY'
+          deadline=$((SECONDS + 55 * 60))
+
+          while true; do
+            gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" > "${checks_json}"
+            result="$(python3 - "${checks_json}" <<'PY'
           import json
           import os
           import sys
@@ -244,11 +247,13 @@ jobs:
           for run in runs:
               by_name.setdefault(run.get("name"), []).append(run)
 
+          pending = []
+          missing = []
           failures = []
           for name in required:
               candidates = by_name.get(name, [])
               if not candidates:
-                  failures.append(f"{name}: missing")
+                  missing.append(name)
                   continue
               latest = sorted(
                   candidates,
@@ -257,15 +262,57 @@ jobs:
               )[0]
               conclusion = latest.get("conclusion")
               status = latest.get("status")
-              if status != "completed" or conclusion != "success":
+              if status != "completed":
+                  pending.append(f"{name}: status={status} conclusion={conclusion}")
+              elif conclusion == "success":
+                  continue
+              else:
                   failures.append(f"{name}: status={status} conclusion={conclusion}")
 
           if failures:
-              print("Required commit checks are not green:")
+              print("failure")
               for failure in failures:
-                  print(f"- {failure}")
-              raise SystemExit(1)
+                  print(failure)
+          elif pending or missing:
+              print("pending")
+              for item in pending:
+                  print(item)
+              for name in missing:
+                  print(f"{name}: missing")
+          else:
+              print("success")
           PY
+            )"
+
+            state="$(head -n 1 <<< "${result}")"
+            details="$(tail -n +2 <<< "${result}" || true)"
+            case "${state}" in
+              success)
+                echo "Required commit checks are green."
+                break
+                ;;
+              failure)
+                echo "Required commit checks failed:"
+                printf '%s\n' "${details}"
+                exit 1
+                ;;
+              pending)
+                if (( SECONDS >= deadline )); then
+                  echo "Timed out waiting for required commit checks:"
+                  printf '%s\n' "${details}"
+                  exit 1
+                fi
+                echo "Waiting for required commit checks:"
+                printf '%s\n' "${details}"
+                sleep 30
+                ;;
+              *)
+                echo "Unexpected check state: ${state}"
+                printf '%s\n' "${result}"
+                exit 1
+                ;;
+            esac
+          done
 
   ankidroid-fixture:
     name: Verify AnkiDroid provider fixture

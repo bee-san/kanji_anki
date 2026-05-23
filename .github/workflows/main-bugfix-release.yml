@@ -1,0 +1,91 @@
+name: Main Bugfix Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag-bugfix-release:
+    name: Tag pushed main commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Create one patch release tag per pushed commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --force --tags origin
+
+          mapfile -t pushed_commits < <(python3 <<'PY'
+          import json
+          import os
+
+          with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as handle:
+              event = json.load(handle)
+
+          seen = set()
+          for commit in event.get("commits", []):
+              sha = commit.get("id", "")
+              if sha and sha not in seen:
+                  seen.add(sha)
+                  print(sha)
+          PY
+          )
+
+          if [[ "${#pushed_commits[@]}" -eq 0 ]]; then
+            echo "No pushed commits found in event payload; nothing to tag."
+            exit 0
+          fi
+
+          next_patch_tag() {
+            python3 <<'PY'
+          import re
+          import subprocess
+
+          tags = subprocess.check_output(
+              ["git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*"],
+              text=True,
+          ).splitlines()
+          versions = []
+          for tag in tags:
+              match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
+              if match:
+                  versions.append(tuple(int(part) for part in match.groups()))
+          major, minor, patch = max(versions) if versions else (0, 0, 0)
+          print(f"v{major}.{minor}.{patch + 1}")
+          PY
+          }
+
+          for sha in "${pushed_commits[@]}"; do
+            if ! git cat-file -e "${sha}^{commit}" 2>/dev/null; then
+              echo "Commit ${sha} is not present locally; fetching it."
+              git fetch --no-tags origin "${sha}"
+            fi
+
+            existing_tag="$(git tag --points-at "${sha}" --list 'v[0-9]*.[0-9]*.[0-9]*' | head -n 1 || true)"
+            if [[ -n "${existing_tag}" ]]; then
+              echo "${sha} already has release tag ${existing_tag}; skipping."
+              continue
+            fi
+
+            release_tag="$(next_patch_tag)"
+            echo "Tagging ${sha} as ${release_tag}."
+            git tag "${release_tag}" "${sha}"
+            git push origin "refs/tags/${release_tag}"
+            git fetch --force --tags origin
+          done
