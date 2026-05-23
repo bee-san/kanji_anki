@@ -79,8 +79,8 @@ class MlKitJapaneseWritingRecognizer : WritingRecognizer {
         val prepared = if (writing!!.hasWritingArea()) {
             CapturedWriting.prepareForRecognition(
                 writing.strokes,
-                writing.writingAreaWidth,
-                writing.writingAreaHeight
+                writing.writingAreaWidth!!,
+                writing.writingAreaHeight!!
             )
         } else {
             writing
@@ -241,7 +241,7 @@ class MlKitJapaneseWritingRecognizer : WritingRecognizer {
                     if (point.timestampMillis == null) {
                         stroke.addPoint(Ink.Point.create(point.x, point.y))
                     } else {
-                        stroke.addPoint(Ink.Point.create(point.x, point.y, point.timestampMillis))
+                        stroke.addPoint(Ink.Point.create(point.x, point.y, point.timestampMillis!!))
                     }
                 }
                 ink.addStroke(stroke.build())
@@ -256,7 +256,7 @@ class MlKitJapaneseWritingRecognizer : WritingRecognizer {
             val builder = RecognitionContext.builder()
                 .setPreContext(writing.preContext)
             if (writing.hasWritingArea()) {
-                builder.setWritingArea(WritingArea(writing.writingAreaWidth, writing.writingAreaHeight))
+                builder.setWritingArea(WritingArea(writing.writingAreaWidth!!, writing.writingAreaHeight!!))
             }
             return builder.build()
         }
