@@ -7,7 +7,7 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `2718956b`
+- Last verified commit before this refresh: `ff506966`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
@@ -29,6 +29,9 @@ item is satisfied.
 - Latest targeted emulator smoke on 2026-05-23 passed
   `MainActivityStudyRouteSmokeInstrumentedTest`, covering production Study
   flashcard, writing, and similar-kanji choice route rendering.
+- Latest targeted primary-route emulator smoke on 2026-05-23 passed
+  `MainActivityPrimaryRouteSmokeInstrumentedTest`, covering production Home,
+  Settings, Browse, Detail, Stats, Games, and Update route rendering.
 - Latest targeted emulator sync progress test on 2026-05-23 passed
   `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
 
@@ -148,8 +151,9 @@ fields, constructor visibility, or nullable behavior.
 - A final smoke pass covers Home, Settings, Study flashcard, Study writing,
   Study choice, Browse/Detail, Stats, Games, manual sync, and update/settings
   navigation.
-- Current smoke evidence: Home, Settings, Browse, Stats, Games, Update, and
-  manual sync were exercised on the emulator; manual sync reached `Sync
+- Current smoke evidence: Home, Settings, Browse, Detail, Stats, Games, and
+  Update are covered by the targeted primary-route emulator smoke test added in
+  `ff506966`. Manual sync was exercised on the emulator and reached `Sync
   complete` on the live emulator dataset. Study flashcard, Study writing, and
   Study similar-kanji choice are covered by the targeted production-route
   emulator smoke test updated in `2718956b`.
