@@ -30,23 +30,21 @@ object StudyCuePolicy {
         example: RecordsImportModels.Example?,
         wordReadingTask: Boolean,
     ): StudyCue {
-        if (session?.row == null) {
-            return StudyCue("", "", "", "")
-        }
+        val row = session?.row ?: return StudyCue("", "", "", "")
         if (wordReadingTask) {
             return wordReadingCue(session, example)
         }
         val sourceExpression = example?.expression ?: ""
-        val sourceReading = example?.reading ?: session.row.reading
+        val sourceReading = example?.reading ?: row.reading
         val ankiMeaning = if (example != null && !example.meaning.isNullOrEmpty()) {
             example.meaning
         } else {
-            session.row.primaryMeaning
+            row.primaryMeaning
         }
         return Objects.requireNonNull(dictionaryLookup, "dictionaryLookup")!!.studyCue(
             session.item.kanji,
             ankiMeaning,
-            session.row.reading,
+            row.reading,
             sourceExpression,
             sourceReading,
         )
@@ -56,9 +54,10 @@ object StudyCuePolicy {
         session: RecordsSchedulerModels.StudySession,
         example: RecordsImportModels.Example?,
     ): StudyCue {
+        val row = session.row ?: return StudyCue("", "", "", "")
         val sourceExpression = example?.expression ?: ""
-        val sourceReading = example?.reading ?: session.row.reading
-        val cueReading = firstNonEmpty(sourceReading, session.row.reading)
+        val sourceReading = example?.reading ?: row.reading
+        val cueReading = firstNonEmpty(sourceReading, row.reading)
         return StudyCue("", cueReading, firstNonEmpty(sourceExpression), DictionaryLookup.SOURCE_ANKI)
     }
 

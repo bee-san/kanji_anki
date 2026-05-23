@@ -19,7 +19,7 @@ object StudyTextCopy {
         session: RecordsSchedulerModels.StudySession?,
     ): String {
         val raw = sessionClueRawText(session)
-        val kanji = if (session == null || session.item == null) "" else session.item.kanji
+        val kanji = if (session == null) "" else session.item.kanji
         return canonicalKanjiMeaning(dictionaryLookup, kanji, raw, 96)
     }
 
@@ -47,7 +47,7 @@ object StudyTextCopy {
         if (example != null && example.expression.isNotEmpty()) {
             return example.expression
         }
-        return if (session == null || session.item == null) "" else session.item.kanji
+        return if (session == null) "" else session.item.kanji
     }
 
     @JvmStatic

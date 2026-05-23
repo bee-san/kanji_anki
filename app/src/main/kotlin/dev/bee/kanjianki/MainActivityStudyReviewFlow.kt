@@ -66,8 +66,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         val consumed = HashSet(activity.store.consumedTokens())
         val now = System.currentTimeMillis()
         val parameters = activity.store.schedulerParameters()
+        val sessionRank = session.row?.jitenRank
         val effectiveParameters = parameters.withTargetRetention(
-            parameters.targetRetentionForRank(session.row.jitenRank)
+            parameters.targetRetentionForRank(sessionRank)
         )
         val result = scheduler.applyReview(
             session.item,

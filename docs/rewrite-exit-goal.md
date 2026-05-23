@@ -10,7 +10,7 @@ item is satisfied.
 - Last verified commit before this refresh: `6d13bc16`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
-- `core/src/main/java/dev/bee/kanjianki/core` has 2 Java files.
+- `core/src/main/java/dev/bee/kanjianki/core` has 1 Java file.
 - `FrequencyRetentionRanges.java` is the intentional compatibility exception
   unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
 - Compose is wired through direct `setContent` route surfaces, but the shell
@@ -79,15 +79,13 @@ item is satisfied.
 
 Migrate or explicitly justify every remaining file. The finite remaining list is:
 
-- `RecordsSchedulerModels.java`
 - `FrequencyRetentionRanges.java`
 
 The only already-accepted exception is `FrequencyRetentionRanges.java`; keep it
 only if its Java-reflection privacy contract is documented and tested. The
 remaining migration order is:
 
-1. Record/model container: `RecordsSchedulerModels.java`.
-2. Compatibility exception audit: `FrequencyRetentionRanges.java`.
+1. Compatibility exception audit: `FrequencyRetentionRanges.java`.
 
 Every Java-to-Kotlin migration must preserve Java-callable APIs where Android
 code or tests still depend on method-style accessors, Java records, public
@@ -132,12 +130,11 @@ documented Android interop exception; Home, Settings, Study, Browse/Detail,
 Stats, Games, Sync, and Update are model-driven Compose surfaces with current
 behavior parity; production test-only bridges are removed or moved to
 androidTest; `app/src/main` and `fsrs-java/src/main` remain Kotlin-only;
-the finite remaining Java migration list is `RecordsSchedulerModels.java` and,
-if it still cannot be moved safely without breaking the Java-reflection
-contract, the explicitly documented `FrequencyRetentionRanges.java`
-compatibility exception; when `RecordsSchedulerModels.java` is migrated,
-`core/src/main/java/dev/bee/kanjianki/core` is zero Java files except for the
-tested `FrequencyRetentionRanges.java` exception if it remains in Java;
+the only remaining Java file under main sources is the explicitly documented
+and tested `FrequencyRetentionRanges.java` compatibility exception, kept only
+because its nested `Rule` constructor must remain truly private to Java
+reflection; `core/src/main/java/dev/bee/kanjianki/core` is otherwise zero Java
+files;
 production legacy route mirrors and test-only bridges are removed or moved to androidTest; remaining data and repository
 boundaries are clean and backward-compatible; no new god classes or layout dumps
 are introduced; every slice is committed, reviewed by an agent, pushed, and
