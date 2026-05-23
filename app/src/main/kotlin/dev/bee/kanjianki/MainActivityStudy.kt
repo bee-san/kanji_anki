@@ -387,10 +387,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return flashcardUi.isTouchInsideView(view, event)
     }
 
-    fun buildStudyActionBar() {
-        writingUi.buildStudyActionBar()
-    }
-
     fun buildComposeWritingActionBarState(): WritingActionsBarState {
         return writingUi.buildComposeActionBarState()
     }

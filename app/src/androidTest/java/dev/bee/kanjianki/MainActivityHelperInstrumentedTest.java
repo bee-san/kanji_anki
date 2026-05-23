@@ -1164,7 +1164,7 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeSession = null;
                 activity.studyActionBar = null;
-                activity.buildStudyActionBar();
+                activity.buildComposeWritingActionBarState();
                 activity.checkWriting();
                 activity.submitReview(MainActivityBase.RATING_GOOD, false);
                 activity.showWritingHint();
