@@ -103,9 +103,9 @@ internal class AnkiDroidCardReader(
                         intValue(cardCursor, COLUMN_REPS, 0),
                         intValue(cardCursor, COLUMN_LAPSES, 0),
                         suspended,
-                        fsrs.stability(),
-                        fsrs.difficulty(),
-                        fsrs.retrievability(),
+                        fsrs.stability,
+                        fsrs.difficulty,
+                        fsrs.retrievability,
                     ),
                 )
             }
