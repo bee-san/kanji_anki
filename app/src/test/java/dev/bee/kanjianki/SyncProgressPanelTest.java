@@ -15,6 +15,7 @@ public final class SyncProgressPanelTest {
         assertEquals(SyncProgressCopy.Stage.READING_NOTES, SyncProgress.coreStage(SyncProgress.Stage.READING_NOTES));
         assertEquals(SyncProgressCopy.Stage.SCANNING_CARDS, SyncProgress.coreStage(SyncProgress.Stage.SCANNING_CARDS));
         assertEquals(SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS, SyncProgress.coreStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS));
+        assertEquals(SyncProgressCopy.Stage.SAVING_LOCAL_DATA, SyncProgress.coreStage(SyncProgress.Stage.SAVING_LOCAL_DATA));
         assertEquals(SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE, SyncProgress.coreStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE));
         assertEquals(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS, SyncProgress.coreStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS));
         assertEquals(SyncProgressCopy.Stage.SCANNING_CARDS, SyncProgress.cardsScanned(1, 2).coreStage());

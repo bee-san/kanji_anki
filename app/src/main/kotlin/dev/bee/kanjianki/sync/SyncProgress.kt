@@ -20,6 +20,7 @@ class SyncProgress private constructor(
         READING_NOTES,
         SCANNING_CARDS,
         PROCESSING_IMPORTED_CARDS,
+        SAVING_LOCAL_DATA,
         BUILDING_PRACTICE_QUEUE,
         ARCHIVING_IMPORTED_CARDS,
     }
@@ -46,6 +47,7 @@ class SyncProgress private constructor(
                 Stage.READING_NOTES -> SyncProgressCopy.Stage.READING_NOTES
                 Stage.SCANNING_CARDS -> SyncProgressCopy.Stage.SCANNING_CARDS
                 Stage.PROCESSING_IMPORTED_CARDS -> SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS
+                Stage.SAVING_LOCAL_DATA -> SyncProgressCopy.Stage.SAVING_LOCAL_DATA
                 Stage.BUILDING_PRACTICE_QUEUE -> SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE
                 Stage.ARCHIVING_IMPORTED_CARDS -> SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS
             }

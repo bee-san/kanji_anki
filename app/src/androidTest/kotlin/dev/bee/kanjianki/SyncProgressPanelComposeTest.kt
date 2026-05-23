@@ -181,7 +181,7 @@ class SyncProgressPanelComposeTest {
     fun keepsKnownCountAcrossLocalStages() {
         val panel = syncProgressPanel()
         panel.render(SyncProgress.cardsScanned(7, 9))
-        panel.render(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
+        panel.render(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
 
         composeRule.setContent {
             SyncProgressScreen(
@@ -190,9 +190,9 @@ class SyncProgressPanelComposeTest {
             )
         }
 
-        composeRule.onNodeWithText("Building practice queue").assertIsDisplayed()
+        composeRule.onNodeWithText("Saving local data").assertIsDisplayed()
         composeRule.onNodeWithText("7 / 9 cards scanned").assertIsDisplayed()
-        composeRule.onNodeWithText("Saving the practice queue.").assertIsDisplayed()
+        composeRule.onNodeWithText("Saving the Anki snapshot and import evidence.").assertIsDisplayed()
 
         composeRule.runOnIdle {
             panel.render(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))

@@ -10,6 +10,7 @@ object SyncProgressCopy {
             Stage.READING_NOTES -> "Reading notes"
             Stage.SCANNING_CARDS -> "Scanning cards"
             Stage.PROCESSING_IMPORTED_CARDS -> "Processing imported cards"
+            Stage.SAVING_LOCAL_DATA -> "Saving local data"
             Stage.BUILDING_PRACTICE_QUEUE -> "Building practice queue"
             Stage.ARCHIVING_IMPORTED_CARDS -> "Archiving imported suspended cards"
             null -> "Syncing cards"
@@ -22,6 +23,7 @@ object SyncProgressCopy {
             Stage.FINDING_NOTE_TYPE -> "Checking collection shape."
             Stage.READING_NOTES -> "Reading notes before the card total is known."
             Stage.PROCESSING_IMPORTED_CARDS -> "AnkiDroid read finished. Processing imported cards locally."
+            Stage.SAVING_LOCAL_DATA -> "Saving the Anki snapshot and import evidence."
             Stage.BUILDING_PRACTICE_QUEUE -> "Saving the practice queue."
             Stage.ARCHIVING_IMPORTED_CARDS -> "Updating archived suspended cards."
             Stage.SCANNING_CARDS,
@@ -89,6 +91,7 @@ object SyncProgressCopy {
         READING_NOTES,
         SCANNING_CARDS,
         PROCESSING_IMPORTED_CARDS,
+        SAVING_LOCAL_DATA,
         BUILDING_PRACTICE_QUEUE,
         ARCHIVING_IMPORTED_CARDS,
     }

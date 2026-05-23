@@ -99,7 +99,7 @@ internal class ManualSyncEngine {
             )
             val rows = KanjiAnalyzer().rebuildSelectedSources(snapshot, analysisImports, ranks, settings)
             val similarKanjiIndex = loadSimilarKanjiIndex()
-            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
             val finished = clock.nowMillis()
             val syncId = store.saveSuccessfulSync(
                 snapshot,
@@ -114,6 +114,7 @@ internal class ManualSyncEngine {
             val removal = gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress)
             store.updateSyncRemovalMessage(syncId, removal.message)
 
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
             val scheduler = BridgeScheduler()
             val currentItems = store.studyItems()
             val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())

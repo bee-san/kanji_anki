@@ -11,6 +11,7 @@ public final class SyncProgressCopyTest {
         assertEquals("Reading notes", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.READING_NOTES));
         assertEquals("Scanning cards", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.SCANNING_CARDS));
         assertEquals("Processing imported cards", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS));
+        assertEquals("Saving local data", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.SAVING_LOCAL_DATA));
         assertEquals("Building practice queue", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE));
         assertEquals("Archiving imported suspended cards", SyncProgressCopy.stageTitle(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS));
         assertEquals("Syncing cards", SyncProgressCopy.stageTitle(null));
@@ -19,6 +20,7 @@ public final class SyncProgressCopyTest {
         assertEquals("Reading notes before the card total is known.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.READING_NOTES));
         assertEquals("Preparing card scan.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.SCANNING_CARDS));
         assertEquals("AnkiDroid read finished. Processing imported cards locally.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.PROCESSING_IMPORTED_CARDS));
+        assertEquals("Saving the Anki snapshot and import evidence.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.SAVING_LOCAL_DATA));
         assertEquals("Saving the practice queue.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.BUILDING_PRACTICE_QUEUE));
         assertEquals("Updating archived suspended cards.", SyncProgressCopy.stageBody(SyncProgressCopy.Stage.ARCHIVING_IMPORTED_CARDS));
         assertEquals("Preparing card scan.", SyncProgressCopy.stageBody(null));
