@@ -9,11 +9,12 @@ object StudyReviewRequestPolicy {
         rating: String?,
         override: Boolean,
     ): MappedReview {
+        val item = session.item ?: throw NullPointerException("session.item")
         val mappedRating = applyRequestedRating(rating, session.writingRequired, writingOutcome, override)
         val passed = !session.writingRequired || (writingOutcome != null && writingOutcome.writingPassed)
         val cleanWriting = writingOutcome != null && writingOutcome.cleanWriting
         val request = RecordsSchedulerModels.ReviewRequest(
-            session.item.kanji,
+            item.kanji,
             session.token,
             mappedRating,
             session.writingRequired,
@@ -22,7 +23,7 @@ object StudyReviewRequestPolicy {
             override,
             hintsUsed,
             session.taskType,
-            session.item.answerSignature,
+            item.answerSignature,
             session.prompt,
         )
         return MappedReview.create(request, mappedRating)

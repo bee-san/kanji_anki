@@ -113,13 +113,14 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
 
     fun similarChoiceCardForSession(session: RecordsSchedulerModels.StudySession): RecordsImportModels.SimilarKanjiChoiceCard {
         val now = System.currentTimeMillis()
-        val stored = home.store.dueSimilarChoiceForActiveTarget(session.item.kanji, now)
+        val targetKanji = session.item?.kanji ?: ""
+        val stored = home.store.dueSimilarChoiceForActiveTarget(targetKanji, now)
         val meaning = if (session.row == null) "" else StudyTextCopy.rowMeaning(session.row)
         return SimilarKanjiChoicePlanner.choiceCardForSession(
             stored,
-            session.item.kanji,
+            targetKanji,
             meaning,
-            home.store.similarPairsForKanji(session.item.kanji)
+            home.store.similarPairsForKanji(targetKanji)
         )
     }
 

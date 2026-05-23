@@ -169,6 +169,16 @@ public final class StudyTextCopyTest {
         assertEquals("", StudyTextCopy.studyReasonLine(false, session(item, null, "prompt"), 3, 1000L));
     }
 
+    @Test
+    public void copyHelpersTolerateLegacyNullItemSessionSentinel() {
+        RecordsImportModels.DashboardRow row = row("裂", "split", "reason", Collections.emptyList());
+        RecordsSchedulerModels.StudySession session = session(null, row, "fallback prompt");
+
+        assertEquals("Split", StudyTextCopy.sessionClue(DictionaryLookup.empty(), session));
+        assertEquals("", StudyTextCopy.wordPrompt(session));
+        assertEquals("", StudyTextCopy.studyReasonLine(false, session, 3, 1000L));
+    }
+
     private static RecordsSchedulerModels.StudySession session(
             RecordsStudyModels.StudyItem item,
             RecordsImportModels.DashboardRow row,

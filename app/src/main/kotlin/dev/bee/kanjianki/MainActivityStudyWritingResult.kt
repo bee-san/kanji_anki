@@ -19,7 +19,7 @@ internal class MainActivityStudyWritingResult(private val activity: MainActivity
 
     fun showAnalysis(analysis: WritingAnalysis) {
         val session = activity.activeSession
-        val guide = session?.let { activity.strokeGuide(it.item.kanji) }
+        val guide = session?.item?.let { activity.strokeGuide(it.kanji) }
         val shouldIncreaseSupport = WritingFeedbackCopy.shouldIncreaseSupportAfterAnalysis(analysis)
         if (shouldIncreaseSupport) {
             activity.setHintState(activity.hintProgression.afterWriting(activity.currentHintState, analysis))

@@ -16,7 +16,7 @@ internal class MainActivityStudyWritingCheck(private val activity: MainActivityS
             return
         }
         val token = session.token
-        val target = session.item.kanji
+        val target = session.item?.kanji ?: return
         val attempt = try {
             capturedWritingAttempt()
         } catch (error: IllegalArgumentException) {

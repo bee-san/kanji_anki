@@ -63,7 +63,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             StudyTaskCopy.isTypingMeaningTask(session) &&
             TypingAnswerMatcher.matches(
                 activity.currentDictionaryLookup(),
-                session.item.kanji,
+                session.item?.kanji ?: "",
                 activity.typingAnswerState?.text?.toString() ?: "",
                 StudyTextCopy.collectionMeaningForSession(session)
             )

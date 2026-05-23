@@ -19,7 +19,7 @@ object StudyTextCopy {
         session: RecordsSchedulerModels.StudySession?,
     ): String {
         val raw = sessionClueRawText(session)
-        val kanji = if (session == null) "" else session.item.kanji
+        val kanji = session?.item?.kanji ?: ""
         return canonicalKanjiMeaning(dictionaryLookup, kanji, raw, 96)
     }
 
@@ -47,7 +47,7 @@ object StudyTextCopy {
         if (example != null && example.expression.isNotEmpty()) {
             return example.expression
         }
-        return if (session == null) "" else session.item.kanji
+        return session?.item?.kanji ?: ""
     }
 
     @JvmStatic
@@ -159,10 +159,9 @@ object StudyTextCopy {
         if (similarRepairActive) {
             return SIMILAR_REPAIR_REASON
         }
-        if (session?.row == null) {
-            return ""
-        }
-        return FocusQueueCopy.focusReasonLine(session.row, session.item, nowMillis, matureSupportThreshold)
+        val row = session?.row ?: return ""
+        val item = session.item ?: return ""
+        return FocusQueueCopy.focusReasonLine(row, item, nowMillis, matureSupportThreshold)
     }
 
     @JvmStatic

@@ -73,7 +73,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.flashcardHeroPanel = null
         activity.studyAnswerPanel = null
         val heroPanel = FlashcardHeroPanelModel(
-            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item.kanji,
+            if (StudyTaskCopy.isWordReadingTask(session)) StudyTextCopy.wordPrompt(session) else session.item?.kanji ?: "",
             if (StudyTaskCopy.isWordReadingTask(session)) 44 else 116,
             if (StudyTaskCopy.isFontRecognitionTask(session)) StudyFontVariants.random(activity) else Typeface.DEFAULT
         )

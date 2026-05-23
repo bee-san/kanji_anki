@@ -12,10 +12,11 @@ internal object StudySessionActions {
         registrar: TaskRegistrar,
         starter: ActiveTaskStarter,
     ): String {
-        writer.saveStudyItem(session.item)
+        val item = session.item ?: return ""
+        writer.saveStudyItem(item)
         val taskKey = StudySessionTracker.sessionTaskKey(session)
         registrar.registerStudyTaskShown(taskKey)
-        starter.startActiveStudyTask(taskKey, session.item.kanji, session.taskType, nowMillis)
+        starter.startActiveStudyTask(taskKey, item.kanji, session.taskType, nowMillis)
         return taskKey
     }
 

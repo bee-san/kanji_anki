@@ -49,18 +49,19 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     private fun writingRouteModel(session: RecordsSchedulerModels.StudySession): WritingSessionRouteModel {
+        val targetKanji = session.item?.kanji ?: ""
         val answerPanelState = WritingAnswerPanelState(false)
         home.writingAnswerPanelState = answerPanelState
         home.studyAnswerPanel = null
         val answerPanel = home.learningPanelModel(session)
 
-        val guide = home.strokeGuide(session.item.kanji)
+        val guide = home.strokeGuide(targetKanji)
         val status = WritingStatusState()
         home.studyStatus = status
         status.setStatus(WritingFeedbackCopy.guideLabel(home.currentHintState, guide), MainActivityUiSupport.STUDY_MUTED)
         val drawingPad = DrawingPadView(home)
         home.drawingPad = drawingPad
-        drawingPad.setTarget(session.item.kanji)
+        drawingPad.setTarget(targetKanji)
         drawingPad.setInkEditListener(home::handleDrawingEdited)
         drawingPad.setStrokeBlockedListener(home::handleDrawingBlocked)
         drawingPad.setGuide(guide, home.currentHintState, false)

@@ -20,10 +20,11 @@ internal class MainActivityStudyState(private val study: MainActivityStudy) {
     }
 
     fun initialHintState(session: RecordsSchedulerModels.StudySession): HintState {
+        val item = session.item ?: return HintState.initial()
         return WritingHintPolicy.initialHintState(
-            session.item.writingLevel,
-            session.item.totalReviews,
-            session.item.learningStep,
+            item.writingLevel,
+            item.totalReviews,
+            item.learningStep,
             MainActivityBase.TASK_TARGETED_WRITING == session.taskType
         )
     }

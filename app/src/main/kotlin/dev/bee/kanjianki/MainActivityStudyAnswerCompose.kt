@@ -80,7 +80,7 @@ private fun answerPanelModel(
     }
     return StudyAnswerPanelModel(
         title = title,
-        glyph = session.item.kanji,
+        glyph = session.item?.kanji ?: "",
         glyphSizeSp = glyphSizeSp,
         lines = lines,
         helperText = helperText

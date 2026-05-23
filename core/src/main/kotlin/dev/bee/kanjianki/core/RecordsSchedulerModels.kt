@@ -7,16 +7,15 @@ import java.util.regex.Pattern
 
 private fun Array<out Any?>.toSchedulerArgsArray(): Array<Any?> = Array(size) { index -> this[index] }
 
-abstract class RecordsSchedulerModels protected constructor() : RecordsStudyModels() {
+abstract class RecordsSchedulerModels : RecordsStudyModels() {
     class StudySession(
-        item: StudyItem,
+        @JvmField val item: StudyItem?,
         @JvmField val row: DashboardRow?,
         token: String?,
         taskType: String?,
         @JvmField val writingRequired: Boolean,
         prompt: String?,
     ) {
-        @JvmField val item: StudyItem = item
         @JvmField val token: String = nullToEmpty(token)
         @JvmField val taskType: String = nullToEmpty(taskType)
         @JvmField val prompt: String = nullToEmpty(prompt)

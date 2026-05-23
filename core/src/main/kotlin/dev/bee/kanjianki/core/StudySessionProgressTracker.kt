@@ -134,7 +134,7 @@ class StudySessionProgressTracker {
             if (session == null) {
                 return ""
             }
-            return "session:" + session.taskType + ":" + session.item.kanji + ":" + session.token
+            return "session:" + session.taskType + ":" + (session.item?.kanji ?: "") + ":" + session.token
         }
 
         @JvmStatic

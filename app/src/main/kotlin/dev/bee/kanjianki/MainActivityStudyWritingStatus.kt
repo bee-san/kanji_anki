@@ -16,7 +16,7 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
                 WritingFeedbackCopy.unavailableModelStatusMessage(
                     WritingFeedbackCopy.guideLabel(
                         activity.currentHintState,
-                        activity.strokeGuide(activity.activeSession!!.item.kanji)
+                        activity.activeSession?.item?.let { activity.strokeGuide(it.kanji) }
                     )
                 ),
                 MainActivityBase.CORAL
@@ -42,7 +42,7 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
     fun setWritingModelStatusMessage(status: WritingRecognizer.ModelStatus?, error: Throwable?) {
         val prefix = WritingFeedbackCopy.guideLabel(
             activity.currentHintState,
-            activity.strokeGuide(activity.activeSession!!.item.kanji)
+            activity.activeSession?.item?.let { activity.strokeGuide(it.kanji) }
         )
         if (error != null || status == null) {
             activity.setStudyStatus(WritingFeedbackCopy.modelStatusMessage(prefix, status != null, false, error != null), MainActivityBase.CORAL)

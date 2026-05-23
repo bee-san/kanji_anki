@@ -31,6 +31,7 @@ object StudyCuePolicy {
         wordReadingTask: Boolean,
     ): StudyCue {
         val row = session?.row ?: return StudyCue("", "", "", "")
+        val item = session.item ?: return StudyCue("", "", "", "")
         if (wordReadingTask) {
             return wordReadingCue(session, example)
         }
@@ -42,7 +43,7 @@ object StudyCuePolicy {
             row.primaryMeaning
         }
         return Objects.requireNonNull(dictionaryLookup, "dictionaryLookup")!!.studyCue(
-            session.item.kanji,
+            item.kanji,
             ankiMeaning,
             row.reading,
             sourceExpression,

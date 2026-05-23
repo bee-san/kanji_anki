@@ -62,6 +62,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
 
     fun submitNormalReview(request: RecordsSchedulerModels.ReviewRequest) {
         val session = activity.activeSession!!
+        val item = session.item ?: return
         val scheduler = BridgeScheduler()
         val consumed = HashSet(activity.store.consumedTokens())
         val now = System.currentTimeMillis()
@@ -71,7 +72,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             parameters.targetRetentionForRank(sessionRank)
         )
         val result = scheduler.applyReview(
-            session.item,
+            item,
             request,
             consumed,
             now,
@@ -96,10 +97,11 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         result: RecordsSchedulerModels.ReviewResult,
         now: Long,
     ) {
+        val item = activity.activeSession?.item ?: return
         StudyReviewActions.saveAppliedReview(
             request,
             result,
-            activity.activeSession!!.item,
+            item,
             now,
             object : StudyReviewActions.ReviewWriter {
                 override fun saveStudyItem(item: RecordsStudyModels.StudyItem) {

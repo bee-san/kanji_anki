@@ -41,7 +41,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
         input.writingModelDownloaded = activity.writingModelDownloaded
         input.hasReplaySnapshot = drawingPad != null && drawingPad.hasReplaySnapshot()
         input.hasInk = drawingPad != null && drawingPad.hasInk()
-        input.guide = session?.let { activity.strokeGuide(it.item.kanji) }
+        input.guide = session?.item?.let { activity.strokeGuide(it.kanji) }
         input.canRevealMoreHelp = canRevealMoreHelp()
         input.recallTask = session != null && StudyTaskCopy.isRecallTask(session)
         input.teachingTask = session != null && StudyTaskCopy.isTeachingTask(session)
@@ -114,7 +114,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
 
     fun canRevealMoreHelp(): Boolean {
         val session = activity.activeSession ?: return false
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(session.item?.kanji ?: return false)
         return activity.hintProgression.canRevealMoreHelp(activity.currentHintState, guide)
     }
 

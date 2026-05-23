@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.StrokeGuideGuard
 import dev.bee.kanjianki.core.study.WritingAnalysis
@@ -13,8 +14,9 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
         val session = activity.activeSession!!
         activity.drawingPad!!.clear()
         activity.activeAnalysis = null
+        val targetKanji = targetKanji(session) ?: return
         activity.setStudyStatus(
-            WritingFeedbackCopy.guideLabel(activity.currentHintState, activity.strokeGuide(session.item.kanji)),
+            WritingFeedbackCopy.guideLabel(activity.currentHintState, activity.strokeGuide(targetKanji)),
             MainActivityBase.MUTED
         )
         activity.updateResultActions()
@@ -27,7 +29,7 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
         activity.hintsUsed++
         activity.activeAnalysis = null
         drawingPad.clear()
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         drawingPad.setGuide(guide, activity.currentHintState, false)
         activity.setStudyStatus(
             WritingFeedbackCopy.freshGuidedTryStatus(WritingFeedbackCopy.guideLabel(activity.currentHintState, guide)),
@@ -57,7 +59,7 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
     fun showWritingHint() {
         val drawingPad = activity.drawingPad ?: return
         val session = activity.activeSession ?: return
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         activity.setHintState(activity.hintProgression.revealNext(activity.currentHintState, guide))
         activity.hintsUsed++
         activity.activeAnalysis = null
@@ -73,7 +75,7 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
         val drawingPad = activity.drawingPad ?: return
         val session = activity.activeSession ?: return
         clearWritingResult()
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         drawingPad.clear()
         drawingPad.setGuide(guide, activity.currentHintState, false)
         activity.setStudyStatus(
@@ -91,7 +93,7 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
             return
         }
         clearWritingResult()
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         activity.setStudyStatus(
             WritingFeedbackCopy.undoStrokeStatus(WritingFeedbackCopy.guideLabel(activity.currentHintState, guide)),
             MainActivityBase.MUTED
@@ -102,7 +104,7 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
     fun replayWritingAnalysis() {
         val drawingPad = activity.drawingPad ?: return
         val session = activity.activeSession ?: return
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         if (WritingFeedbackCopy.canReplayAnalysis(activity.activeAnalysis, drawingPad.hasInk(), guide)) {
             drawingPad.setGuide(guide, activity.currentHintState, true)
             drawingPad.startReplay()
@@ -118,7 +120,7 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
         }
         clearWritingResult()
         drawingPad.clearReplaySnapshot()
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         activity.setStudyStatus(
             WritingFeedbackCopy.updatedInkStatus(WritingFeedbackCopy.guideLabel(activity.currentHintState, guide)),
             MainActivityBase.MUTED
@@ -135,11 +137,15 @@ internal class MainActivityStudyWritingFlow(private val activity: MainActivitySt
         if (activity.drawingPad == null) {
             return
         }
-        val guide = activity.strokeGuide(session.item.kanji)
+        val guide = activity.strokeGuide(targetKanji(session) ?: return)
         activity.setStudyStatus(
             WritingFeedbackCopy.blockedStrokeStatus(WritingFeedbackCopy.guideLabel(activity.currentHintState, guide), decision),
             MainActivityBase.MUTED
         )
         activity.updateUndoStrokeButton()
+    }
+
+    private fun targetKanji(session: RecordsSchedulerModels.StudySession): String? {
+        return session.item?.kanji
     }
 }
