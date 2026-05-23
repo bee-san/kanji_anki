@@ -353,19 +353,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return studyPlanProvider.allCurrentProblemKanjiPlan(rows, items, now)
     }
 
-    fun studyTopBar(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): View {
-        initializeSessionProgressTarget(plan)
-        val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
-        return studyTopBarView(
-            this,
-            progress.completed,
-            progress.target,
-            progress.fraction,
-            ::renderHome,
-            ::renderSettings,
-        )
-    }
-
     fun startOfDay(now: Long): Long {
         return LocalDayPolicy.localDayStart(now)
     }

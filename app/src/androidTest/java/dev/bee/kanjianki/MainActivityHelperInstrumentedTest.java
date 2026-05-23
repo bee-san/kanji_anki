@@ -247,7 +247,6 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.markStudyTaskCompleted("topbar:one");
                 activity.markStudyTaskCompleted("topbar:two");
                 activity.continueAllKanjiSession = true;
-                assertTrue(activity.studyTopBar(all) instanceof androidx.compose.ui.platform.ComposeView);
                 RecordsStudyModels.StudyItem clueItem = studyItem("?", RecordsBase.LadderRung.KANJI_MEANING, "review", now);
                 assertEquals(
                         "Fallback prompt",

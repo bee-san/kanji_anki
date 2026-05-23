@@ -2,10 +2,6 @@
 
 package dev.bee.kanjianki
 
-import android.content.Context
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -41,7 +36,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.roundToInt
 
 private val StudyHeroPlum = Color(0xFF7A245D)
 private val StudyHeroPink = Color(0xFFF82D72)
@@ -60,32 +54,6 @@ private val StudyTopBarProgressTextStyle = TextStyle(
     textAlign = TextAlign.Center,
     platformStyle = PlatformTextStyle(includeFontPadding = false)
 )
-
-fun studyTopBarView(
-    context: Context,
-    completed: Int,
-    target: Int,
-    fraction: Float,
-    closeAction: Runnable,
-    settingsAction: Runnable
-): View {
-    return ComposeView(context).apply {
-        layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            setMargins(0, 0, 0, context.dp(18))
-        }
-        setContent {
-            MaterialTheme {
-                StudyTopBar(
-                    completed = completed,
-                    target = target,
-                    fraction = fraction,
-                    onClose = closeAction::run,
-                    onSettings = settingsAction::run
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun StudyTopBar(
@@ -133,8 +101,6 @@ fun StudyTopBar(
         }
     }
 }
-
-private fun Context.dp(value: Int): Int = (value * resources.displayMetrics.density).roundToInt()
 
 @Composable
 private fun StudyTopBarIconButton(
