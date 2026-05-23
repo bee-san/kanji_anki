@@ -205,7 +205,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun renderStudyForKanji(kanji: String?) {
         clearStudyModeOverrides()
         resetStudyRunProgress()
-        base(MainActivityBase.NAV_STUDY)
         activeSimilarWritingRepair = null
         val rows = store.activeDashboardRows()
         val now = System.currentTimeMillis()

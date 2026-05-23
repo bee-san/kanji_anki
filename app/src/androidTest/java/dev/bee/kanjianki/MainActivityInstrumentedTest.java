@@ -230,8 +230,6 @@ public final class MainActivityInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             clickText(scenario, "Stats");
             scenario.onActivity(activity -> {
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasTexts(activity, "Stats", "Kani is not currently working for you", "Weakness Burn-Down", "Anki Support Conversion", "Ladder Health");
             });
 
@@ -690,8 +688,6 @@ public final class MainActivityInstrumentedTest {
             clickText(scenario, "Open data licenses");
             waitForText(scenario, "Data licenses");
             scenario.onActivity(activity -> {
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Dictionary data");
                 assertHasText(activity, "Stroke data");
                 assertHasText(activity, "Fonts");

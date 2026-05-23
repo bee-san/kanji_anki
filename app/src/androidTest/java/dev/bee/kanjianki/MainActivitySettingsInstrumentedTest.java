@@ -74,8 +74,6 @@ public final class MainActivitySettingsInstrumentedTest {
             scenario.onActivity(activity -> {
                 activity.renderSettings();
                 View settingsRoot = activity.findViewById(android.R.id.content);
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(activity.settingsAnkiExpanded);
                 assertFalse(activity.settingsStudyExpanded);
                 assertTrue(containsText(settingsRoot, "Frequency range"));
@@ -88,8 +86,6 @@ public final class MainActivitySettingsInstrumentedTest {
 
                 performClickableWithText(settingsRoot, "Study behavior");
                 settingsRoot = activity.findViewById(android.R.id.content);
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertTrue(activity.settingsStudyExpanded);
                 assertTrue(containsText(settingsRoot, "Daily workload"));
 
@@ -108,8 +104,6 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertTrue(activity.settingsAppExpanded);
                 assertTrue(containsText(settingsRoot, "Offline data & licenses"));
                 performClickableWithText(settingsRoot, "Open data licenses");
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Data licenses");
                 performClickableWithText(activity.findViewById(android.R.id.content), "Back to settings");
                 assertHasText(activity, "Automation");
@@ -314,7 +308,6 @@ public final class MainActivitySettingsInstrumentedTest {
     public void updateUiContinuationStopsAfterNavigationAway() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                activity.base(MainActivityBase.NAV_SETTINGS_ROUTE);
                 int firstRun = ++activity.updateUiRunCounter;
                 activity.activeUpdateUiRunToken = firstRun;
                 assertTrue(firstRun != 0 && activity.activeUpdateUiRunToken == firstRun);

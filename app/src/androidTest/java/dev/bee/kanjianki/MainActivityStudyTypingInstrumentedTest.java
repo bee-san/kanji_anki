@@ -82,7 +82,7 @@ public final class MainActivityStudyTypingInstrumentedTest {
             scenario.onActivity(activity -> {
                 assertNotNull(activity.typingAnswerState);
                 assertEquals("split", activity.typingAnswerState.getText().toString());
-                performClickableWithText(activity.studyActionBar, "Reveal");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Reveal");
                 RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.good);
@@ -107,11 +107,12 @@ public final class MainActivityStudyTypingInstrumentedTest {
                 assertFalse(activity.handleFlashcardGesture(motion(MotionEvent.ACTION_UP, inputCenterX, inputCenterY)));
                 assertFalse(activity.flashcardTouchTracking);
 
-                performClickableWithText(activity.studyActionBar, "Reveal");
+                View root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
                 assertTrue(activity.flashcardAnswerRevealed);
-                assertTrue(containsText(activity.content, "split"));
-                assertTrue(containsText(activity.studyActionBar, "Fail"));
-                assertTrue(containsText(activity.studyActionBar, MainActivityBase.LABEL_PASS));
+                assertTrue(containsText(root, "split"));
+                assertTrue(containsText(root, "Fail"));
+                assertTrue(containsText(root, MainActivityBase.LABEL_PASS));
                 RecordsSchedulerModels.ReviewStats stats = activity.store.reviewStatsSince(0L);
                 assertEquals(1, stats.total);
                 assertEquals(1, stats.good);

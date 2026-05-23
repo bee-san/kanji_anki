@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,17 +19,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-
-@Composable
-fun MainActivityShell(
-    legacyRoot: View,
-    model: MainActivityShellModel = MainActivityShellModel(),
-) {
-    MainActivityShellFrame(model) {
-        MainActivityRouteHost(legacyRoot = legacyRoot, model = model)
-    }
-}
 
 @Composable
 fun MainActivityComposeRoute(
@@ -84,28 +71,6 @@ private fun MainActivityShellFrame(
                 }
         ) {
             content()
-        }
-    }
-}
-
-@Composable
-internal fun MainActivityRouteHost(
-    legacyRoot: View,
-    model: MainActivityShellModel,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(model.routeTestTag)
-            .semantics {
-                contentDescription = model.routeContentDescription
-            }
-    ) {
-        key(legacyRoot) {
-            AndroidView(
-                factory = { legacyRoot },
-                modifier = Modifier.fillMaxSize()
-            )
         }
     }
 }

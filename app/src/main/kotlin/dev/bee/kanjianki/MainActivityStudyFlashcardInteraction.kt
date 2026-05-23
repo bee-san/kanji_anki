@@ -18,12 +18,14 @@ import dev.bee.kanjianki.core.TypingAnswerMatcher
 
 internal class MainActivityStudyFlashcardInteraction(private val activity: MainActivityStudy) {
     fun buildFlashcardActionBar(revealed: Boolean) {
-        val studyActionBar = activity.studyActionBar ?: return
-        activity.styleStudyActionBarShell()
-        studyActionBar.visibility = View.VISIBLE
         val existing = activity.flashcardActionBarState
         if (existing != null) {
             existing.revealed = revealed
+        }
+        val studyActionBar = activity.studyActionBar ?: return
+        activity.styleStudyActionBarShell()
+        studyActionBar.visibility = View.VISIBLE
+        if (existing != null) {
             if (studyActionBar.isNotEmpty()) {
                 return
             }

@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
@@ -56,7 +57,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var gateway: AnkiDroidGateway = uninitialized()
 
     @JvmField
-    var content: LinearLayout = uninitialized()
+    var content: ViewGroup = uninitialized()
 
     @JvmField
     var contentScroll: ScrollView? = null
@@ -273,10 +274,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             return true
         }
         return super.dispatchTouchEvent(event)
-    }
-
-    fun base(selected: String) {
-        shellHost.base(selected)
     }
 
     fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {

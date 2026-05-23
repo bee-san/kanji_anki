@@ -772,15 +772,11 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.renderHome();
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, HomeTextCopy.noKanjiQueuedTitle());
                 assertHasText(activity, HomeTextCopy.syncAnkiDroidLabel());
 
                 seedRows(activity, Collections.singletonList(row("裂", "split", "レツ", Collections.emptyList())));
                 activity.renderHome();
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, MainActivityBase.LABEL_STUDY_NOW);
                 assertHasText(activity, HomeTextCopy.viewAllLabel() + " >");
                 assertHasText(activity, "裂");
@@ -799,21 +795,18 @@ public final class MainActivityHelperInstrumentedTest {
                 assertHasText(activity, "No recent mistakes yet");
 
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "Already syncing.", ""));
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync already running");
                 assertHasText(activity, "Already syncing.");
                 activity.renderSyncResult(syncResult(false, true, 0, 0, "", ""));
                 assertHasText(activity, "Kani is already reading AnkiDroid.");
 
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "Provider unavailable.", ""));
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync needs attention");
                 assertHasText(activity, "Provider unavailable.");
                 activity.renderSyncResult(syncResult(false, false, 0, 0, "", ""));
                 assertHasText(activity, "Try again after checking AnkiDroid permissions.");
 
                 activity.renderSyncResult(syncResult(true, false, 0, 2, "Cleanup finished.", "Auto Pareto: 2 items today"));
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Sync complete");
                 assertHasText(activity, "Cleanup finished.");
 
@@ -831,26 +824,19 @@ public final class MainActivityHelperInstrumentedTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 activity.renderGames();
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
+                assertHasText(activity, "Games");
 
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
                 assertHasText(activity, "Game not ready");
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
 
                 seedRows(activity, Arrays.asList(
                         row("裂", "split", "レツ", Collections.emptyList()),
                         row("語", "language", "ゴ", Collections.emptyList())
                 ));
                 activity.startGame(KanjiGameEngine.GameMode.MEANING_POP);
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, "Pick the meaning");
                 performClickableWithText(activity.findViewById(android.R.id.content), "split");
                 assertContainsText(activity.findViewById(android.R.id.content), "Answer:");
-                assertEquals(1, activity.content.getChildCount());
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 performClickableWithText(activity.findViewById(android.R.id.content), "Next");
                 assertHasText(activity, "Pick the meaning");
 
@@ -890,7 +876,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertHasText(activity, "Nothing to study yet");
         activity.renderNoStudySession(dueLater);
         assertHasText(activity, "Nothing due now");
-        performClickableWithText(activity.content, MainActivityBase.LABEL_BACK_HOME);
+        performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
         assertHasText(activity, "Kani");
         activity.renderFocusDone(complete);
         assertHasText(activity, "Today's focus done");
@@ -1034,13 +1020,13 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.renderFocusDone(complete);
                 assertHasText(activity, "Study more new cards");
-                performClickableWithText(activity.content, "Study more new cards");
+                performClickableWithText(activity.findViewById(android.R.id.content), "Study more new cards");
                 assertHasText(activity, "How many extra new cards do you want to study now?");
-                performClickableWithText(activity.content, "Cancel");
-                performClickableWithText(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
+                performClickableWithText(activity.findViewById(android.R.id.content), "Cancel");
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderFocusDone(complete);
-                performClickableWithText(activity.content, MainActivityBase.LABEL_BACK_HOME);
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
                 assertFalse(activity.continueAllKanjiSession);
                 assertHasText(activity, "Kani");
 
@@ -1048,10 +1034,10 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.studySessionTracker.setTargetCount(2);
                 activity.markStudyTaskCompleted("continue:one");
                 activity.renderStudyRunDone(complete);
-                performClickableWithText(activity.content, MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_CONTINUE_ALL_KANJI);
                 assertTrue(activity.continueAllKanjiSession);
                 activity.renderStudyRunDone(null);
-                performClickableWithText(activity.content, MainActivityBase.LABEL_BACK_HOME);
+                performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_BACK_HOME);
                 assertFalse(activity.continueAllKanjiSession);
 
                 int available = activity.availableStudyMoreNewCards();
@@ -1116,7 +1102,6 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(activity.flashcardAnswerRevealed);
                 activity.store.rebuildSimilarKanjiPairs(similarIndex("裂\t列\n裂\t烈\n"), System.currentTimeMillis());
                 activity.renderSession(session("裂", BridgeScheduler.TASK_SIMILAR_KANJI, row));
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertHasText(activity, MainActivityBase.LABEL_SIMILAR_KANJI);
                 assertHasText(activity, "Which kanji means split?");
                 assertNull(activity.flashcardGestureArea);
@@ -1128,13 +1113,12 @@ public final class MainActivityHelperInstrumentedTest {
                         row("劣", "inferior", "レツ", Collections.emptyList())
                 ));
                 activity.renderSession(session("裂", BridgeScheduler.TASK_MEANING_KANJI, row));
-                assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
                 assertNull(activity.flashcardGestureArea);
                 assertFalse(activity.flashcardAnswerRevealed);
                 View root = activity.findViewById(android.R.id.content);
                 performClickableWithText(root, "裂");
                 assertHasText(activity, "Correct");
-                assertEquals(View.GONE, activity.studyActionBar.getVisibility());
+                assertNull(activity.studyActionBar);
                 assertEquals(0, activity.store.reviewStatsSince(0L).total);
                 performClickableWithText(root, "Next");
                 assertEquals(1, activity.store.reviewStatsSince(0L).good);
@@ -1606,10 +1590,9 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.activeSession = failSession;
                 activity.startActiveStudyTask(activity.sessionTaskKey(failSession), "裂", failSession.taskType, System.currentTimeMillis());
                 activity.renderSession(failSession);
-                View actionBarHost = activity.studyActionBar.getChildAt(0);
-                performClickableWithText(activity.studyActionBar, "Reveal");
-                assertSame(actionBarHost, activity.studyActionBar.getChildAt(0));
-                performClickableWithText(activity.studyActionBar, "Fail");
+                root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
+                performClickableWithText(root, "Fail");
                 RecordsSchedulerModels.ReviewStats failStats = activity.store.reviewStatsSince(0L);
                 assertEquals(2, failStats.total);
                 assertEquals(2, failStats.again);
@@ -1619,8 +1602,9 @@ public final class MainActivityHelperInstrumentedTest {
                 activity.startActiveStudyTask(activity.sessionTaskKey(passSession), "語", passSession.taskType, System.currentTimeMillis());
                 activity.renderSession(passSession);
                 assertTrue(activity.flashcardCard instanceof androidx.compose.ui.platform.ComposeView);
-                performClickableWithText(activity.studyActionBar, "Reveal");
-                performClickableWithText(activity.studyActionBar, MainActivityBase.LABEL_PASS);
+                root = activity.findViewById(android.R.id.content);
+                performClickableWithText(root, "Reveal");
+                performClickableWithText(root, MainActivityBase.LABEL_PASS);
                 RecordsSchedulerModels.ReviewStats passStats = activity.store.reviewStatsSince(0L);
                 assertEquals(3, passStats.total);
                 assertEquals(1, passStats.good);
@@ -1700,20 +1684,13 @@ public final class MainActivityHelperInstrumentedTest {
 
         activity.renderBrowseKanji("裂");
         assertEquals("裂", activity.activeBrowseQuery);
-        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "SUSPENDED");
         performClickableWithText(activity.findViewById(android.R.id.content), "split");
-        assertEquals(1, activity.content.getChildCount());
-        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Back to Browse Kanji");
         assertHasText(activity, "Local inventory");
         performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
-        assertEquals(1, activity.content.getChildCount());
-        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing", false, "");
-        assertEquals(1, activity.content.getChildCount());
-        assertTrue(activity.content.getChildAt(0) instanceof androidx.compose.ui.platform.ComposeView);
         assertHasText(activity, "Kanji not found");
     }
 
@@ -1722,7 +1699,7 @@ public final class MainActivityHelperInstrumentedTest {
         assertHasText(activity, "No recent mistakes yet");
         activity.store.saveReview(new RecordsSchedulerModels.ReviewRequest("裂", "miss-token", "again", false, false, false, 0), "again", 2000L);
         activity.renderRecentMistakes();
-        assertContainsText(activity.content, "Rated again");
+        assertContainsText(activity.findViewById(android.R.id.content), "Rated again");
 
         MainActivityHomeBrowseDetail.BrowseTimelinePanelsModel emptyTimeline = new MainActivityHomeBrowseDetail(activity)
                 .recoveryTimelineModel(new RecordsStudyModels.KanjiRecoveryTimeline(null, null, null, Collections.emptyList()));
@@ -1830,7 +1807,7 @@ public final class MainActivityHelperInstrumentedTest {
 
     private static void verifySyncResultStudyNow(MainActivity activity) {
         activity.renderSyncResult(syncResult(true, false, 1, 0, "", ""));
-        performClickableWithText(activity.content, MainActivityBase.LABEL_STUDY_NOW);
+        performClickableWithText(activity.findViewById(android.R.id.content), MainActivityBase.LABEL_STUDY_NOW);
         assertHasText(activity, "Name this kanji");
         assertHasText(activity, "What does this kanji mean?");
 
@@ -1958,7 +1935,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertFalse(fallback.getManualOverrideVisible());
                 primary.getOnNext().run();
                 assertEquals(1, activity.store.reviewStatsSince(0L).good);
-                assertEquals(View.GONE, activity.studyActionBar.getVisibility());
+                assertNull(activity.studyActionBar);
             });
         }
     }
