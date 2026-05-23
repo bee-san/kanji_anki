@@ -7,14 +7,16 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `6d13bc16`
+- Last verified commit before this refresh: `882b8702`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
+- `update-core/src/main` is Kotlin-only.
 - `core/src/main/java/dev/bee/kanjianki/core` has 1 Java file.
 - `FrequencyRetentionRanges.java` is the intentional compatibility exception
   unless a Kotlin replacement can keep `Rule` truly private to Java reflection.
-- Compose is wired through direct `setContent` route surfaces, but the shell
-  still keeps legacy mirror views for test and scroll compatibility.
+- Compose is wired through direct `setContent` route surfaces. The only live
+  production `AndroidView` bridge is the handwriting pad, which must host the
+  real `DrawingPadView`.
 
 ## Remaining Migration Items
 
@@ -25,9 +27,8 @@ item is satisfied.
   and secondary Home screens.
 - No production primary screen is assembled from `LinearLayout`, `TextView`,
   `Button`, `ScrollView`, or other manual View-tree layout code.
-- `ComposeView` remains only for Android interop that genuinely needs a View:
-  the handwriting pad, small legacy wrappers that are still being retired, or
-  androidTest-local helpers.
+- `ComposeView` remains only in test-local helpers. Production Android interop
+  is limited to the handwriting pad `AndroidView` bridge.
 - `MainActivityBase`, `MainActivityHome`, `MainActivitySettings`, and
   `MainActivityStudy` are coordinators only: route selection, model building,
   and action dispatch are allowed; screen layout code is not.

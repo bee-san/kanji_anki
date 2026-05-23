@@ -6,7 +6,7 @@ Last updated: 2026-05-22
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `68bc7e55 Move study learning panel into androidTest`
+- Latest confirmed pushed commit before this note: `882b8702 Migrate update metadata helpers to Kotlin`
 - Latest confirmed PR state: draft, mergeable, head SHA `2f1cf8e643b23d0bd055a6a440f9f9e82a0388e8`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -41,8 +41,9 @@ Completed foundations include:
 - CI is split into fast deterministic jobs and currently finishes well under the 15-minute ceiling.
 - Several study/writing behaviors have been moved from activity code into core or writing-core policies.
 - Kotlin and Compose are now wired into the Android app.
-- Real Compose surfaces now include Home header/actions/CTA/metrics, Home recent mistakes and browse-detail timeline, Stats, Settings update/reference/category/automation hero areas, Games question card, Study top bar, flashcard actions, and done actions.
-- Recent pushed slices include study flashcard actions, study done actions, and follow-up done-action test coverage.
+- Real Compose surfaces now include Home header/actions/CTA/metrics, Home recent mistakes and browse-detail timeline, Stats, Settings update/reference/category/automation hero areas, Games question card, Study top bar, flashcard card/actions, writing action bars, and done actions.
+- Recent pushed slices removed the legacy shell/content/scroll mirrors, removed production `ComposeView` and `TextView` helper wrappers, rendered flashcards directly in Compose, and migrated `update-core` production code to Kotlin.
+- Production View interop is now limited to the handwriting pad `AndroidView`, which hosts the real `DrawingPadView`.
 - Study helper bridges are being pushed into `androidTest`; `learningPanel(session)` no longer lives in `MainActivityStudy`.
 
 ## Verification Baseline
@@ -88,7 +89,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
 
 - Home, Settings, Stats, Games, Study, Update, and secondary Home screens all enter through `setContent` / `composeRoute` paths.
 - No production route renders its primary screen by manually assembling `LinearLayout`, `TextView`, or other legacy View trees.
-- `ComposeView` wrappers are allowed only inside Android interop components that still must host a real platform View, such as the handwriting pad or test-only helper code.
+- `ComposeView` wrappers are allowed only in test-only helper code. Production Android interop is limited to components that still must host a real platform View, currently the handwriting pad.
 - `MainActivityBase`, `MainActivityHome`, `MainActivitySettings`, and `MainActivityStudy` are route coordinators only. They may build models and dispatch actions, but they must not contain screen layout code.
 
 ### 2. Remove production test bridges
@@ -121,6 +122,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
 
 - `app/src/main` remains Kotlin-only.
 - `core/src/main/java/dev/bee/kanjianki/core` is reduced to zero Java files, or every remaining Java file has a written reason that it is intentionally left Java for compatibility.
+- `update-core/src/main` remains Kotlin-only.
 - Large core Java files are migrated in risk order: record/model containers, scheduler/review logic, copy/text helpers, import selection, game/planner logic, and analyzers.
 - Java-to-Kotlin migrations preserve Java-callable APIs where tests or Android code still depend on method-style accessors.
 - Current intentional Java exception: `FrequencyRetentionRanges.java` stays Java until this compatibility contract is no longer needed, because its nested `Rule` constructor must remain genuinely private to Java reflection. Kotlin private nested constructors emit a public synthetic `DefaultConstructorMarker` constructor.
