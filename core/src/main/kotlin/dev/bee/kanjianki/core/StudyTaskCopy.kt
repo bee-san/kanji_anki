@@ -64,10 +64,9 @@ object StudyTaskCopy {
         if (session == null) {
             return false
         }
-        val item = session.item ?: return false
         return TASK_CONTEXT_WRITING == session.taskType ||
             TASK_GUIDED_WRITING == session.taskType ||
-            (TASK_TARGETED_WRITING == session.taskType && item.learningStep < 2)
+            (TASK_TARGETED_WRITING == session.taskType && (session.item?.learningStep ?: Int.MAX_VALUE) < 2)
     }
 
     @JvmStatic

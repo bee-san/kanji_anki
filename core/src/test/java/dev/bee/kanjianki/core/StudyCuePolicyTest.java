@@ -65,6 +65,23 @@ public final class StudyCuePolicyTest {
     }
 
     @Test
+    public void wordReadingCueDoesNotRequireStudyItem() {
+        RecordsSchedulerModels.StudySession session = new RecordsSchedulerModels.StudySession(
+                null,
+                row("読"),
+                "token",
+                BridgeScheduler.TASK_WORD_READING,
+                false,
+                "prompt"
+        );
+
+        assertEquals(
+                Arrays.asList("Reading: どくしょ", "From: 読書"),
+                StudyCuePolicy.answerLines(DictionaryLookup.empty(), session, example("読書", "ドクショ", ""), true)
+        );
+    }
+
+    @Test
     public void emptySessionsAndBlankWordReadingCuesUseCollectionClueFallback() {
         RecordsSchedulerModels.StudySession wordReading = session("読", false, BridgeScheduler.TASK_WORD_READING, "", null);
 
@@ -196,5 +213,22 @@ public final class StudyCuePolicyTest {
 
     private static RecordsImportModels.Example example(String expression, String reading, String meaning) {
         return new RecordsImportModels.Example("anki", 1L, 2L, expression, reading, meaning, "", false, 0);
+    }
+
+    private static RecordsImportModels.DashboardRow row(String kanji) {
+        return new RecordsImportModels.DashboardRow(
+                kanji,
+                null,
+                "collection meaning",
+                "ご",
+                kanji,
+                1,
+                "reason",
+                "Needs practice",
+                1,
+                0,
+                0,
+                Collections.emptyList()
+        );
     }
 }

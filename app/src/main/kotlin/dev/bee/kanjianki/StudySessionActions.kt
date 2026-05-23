@@ -12,7 +12,7 @@ internal object StudySessionActions {
         registrar: TaskRegistrar,
         starter: ActiveTaskStarter,
     ): String {
-        val item = session.item ?: return ""
+        val item = session.item ?: throw NullPointerException("session.item")
         writer.saveStudyItem(item)
         val taskKey = StudySessionTracker.sessionTaskKey(session)
         registrar.registerStudyTaskShown(taskKey)

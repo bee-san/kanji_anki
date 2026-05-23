@@ -59,7 +59,10 @@ public final class StudyTaskCopyTest {
         assertFalse(StudyTaskCopy.isTeachingTask(null));
         assertTrue(StudyTaskCopy.isTeachingTask(session("context_writing", false)));
         assertTrue(StudyTaskCopy.isTeachingTask(session("guided_writing", false)));
+        assertTrue(StudyTaskCopy.isTeachingTask(nullItemSession("context_writing")));
+        assertTrue(StudyTaskCopy.isTeachingTask(nullItemSession("guided_writing")));
         assertTrue(StudyTaskCopy.isTeachingTask(sessionWithLearningStep("targeted_writing", 1)));
+        assertFalse(StudyTaskCopy.isTeachingTask(nullItemSession("targeted_writing")));
         assertFalse(StudyTaskCopy.isTeachingTask(sessionWithLearningStep("targeted_writing", 2)));
         assertFalse(StudyTaskCopy.isTeachingTask(session(StudyTaskTypes.KANJI_MEANING, false)));
 
@@ -115,6 +118,17 @@ public final class StudyTaskCopyTest {
                 "token",
                 taskType,
                 writingRequired,
+                "prompt"
+        );
+    }
+
+    private static RecordsSchedulerModels.StudySession nullItemSession(String taskType) {
+        return new RecordsSchedulerModels.StudySession(
+                null,
+                null,
+                "token",
+                taskType,
+                true,
                 "prompt"
         );
     }

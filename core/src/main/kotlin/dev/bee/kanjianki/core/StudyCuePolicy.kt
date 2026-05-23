@@ -31,10 +31,10 @@ object StudyCuePolicy {
         wordReadingTask: Boolean,
     ): StudyCue {
         val row = session?.row ?: return StudyCue("", "", "", "")
-        val item = session.item ?: return StudyCue("", "", "", "")
         if (wordReadingTask) {
             return wordReadingCue(session, example)
         }
+        val item = session.item ?: return StudyCue("", "", "", "")
         val sourceExpression = example?.expression ?: ""
         val sourceReading = example?.reading ?: row.reading
         val ankiMeaning = if (example != null && !example.meaning.isNullOrEmpty()) {

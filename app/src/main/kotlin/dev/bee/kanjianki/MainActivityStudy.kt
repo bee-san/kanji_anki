@@ -97,6 +97,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             renderNoStudySession(seededPlan)
             return
         }
+        if (session.item == null) {
+            activeSession = null
+            renderNoStudySession(seededPlan)
+            return
+        }
         StudySessionActions.activateStudySession(
             session,
             now,

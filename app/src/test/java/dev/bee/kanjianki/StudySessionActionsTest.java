@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 
 public final class StudySessionActionsTest {
@@ -39,6 +40,29 @@ public final class StudySessionActionsTest {
         assertEquals("語", starter.kanji);
         assertEquals("kanji_meaning", starter.taskType);
         assertEquals(1234L, starter.nowMillis);
+    }
+
+    @Test
+    public void activateStudySessionRejectsNullItemSessions() {
+        RecordsSchedulerModels.StudySession session = new RecordsSchedulerModels.StudySession(
+                null,
+                row("語"),
+                "token-1",
+                "kanji_meaning",
+                false,
+                "language"
+        );
+
+        assertThrows(
+                NullPointerException.class,
+                () -> StudySessionActions.activateStudySession(
+                        session,
+                        1234L,
+                        item -> { },
+                        taskKey -> { },
+                        (taskKey, kanji, taskType, nowMillis) -> { }
+                )
+        );
     }
 
     private static RecordsStudyModels.StudyItem item(String kanji) {
