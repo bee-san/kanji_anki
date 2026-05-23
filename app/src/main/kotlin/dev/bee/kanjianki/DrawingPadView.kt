@@ -399,14 +399,15 @@ class DrawingPadView(context: Context) : View(context) {
     }
 
     private fun drawStrokeHint(canvas: Canvas, width: Float, height: Float, hint: HintPolicy.StrokeHint) {
-        if (!hint.visible || hint.stroke.points.size < 2) {
+        val stroke = hint.stroke ?: return
+        if (!hint.visible || stroke.points.size < 2) {
             return
         }
         val path = Path()
-        val first: InkPoint = hint.stroke.points[0]
+        val first: InkPoint = stroke.points[0]
         path.moveTo(first.x * width, first.y * height)
-        for (i in 1 until hint.stroke.points.size) {
-            val point: InkPoint = hint.stroke.points[i]
+        for (i in 1 until stroke.points.size) {
+            val point: InkPoint = stroke.points[i]
             path.lineTo(point.x * width, point.y * height)
         }
         guidePaint.color = if (hint.current) DRAWING_CORAL else Color.rgb(111, 74, 39)

@@ -8,7 +8,8 @@ class StrokeDiagnosisFormatter private constructor() {
                 return ""
             }
             val lines = ArrayList<String>()
-            for (entry in analysis!!.strokeOrder.diagnosis.entries) {
+            val strokeOrder = analysis!!.strokeOrder ?: return ""
+            for (entry in strokeOrder.diagnosis.entries) {
                 val line = line(entry)
                 if (line.isNotEmpty()) {
                     lines.add(line)
