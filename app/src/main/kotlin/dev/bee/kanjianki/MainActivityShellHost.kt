@@ -1,13 +1,11 @@
 package dev.bee.kanjianki
 
-import android.widget.FrameLayout
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 
 internal class MainActivityShellHost(private val activity: MainActivityBase) {
     fun composeRoute(selected: String, initialScrollY: Int = 0, content: @Composable () -> Unit) {
         prepareRoute(selected)
-        activity.content = FrameLayout(activity)
         activity.contentScrollY = initialScrollY
         activity.studyActionBar = null
         activity.setContent {
@@ -29,7 +27,6 @@ internal class MainActivityShellHost(private val activity: MainActivityBase) {
         actionBar: @Composable () -> Unit,
     ) {
         prepareRoute(selected)
-        activity.content = FrameLayout(activity)
         activity.contentScrollY = initialScrollY
         activity.studyActionBar = null
         beforeContent()

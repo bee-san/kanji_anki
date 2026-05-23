@@ -126,7 +126,6 @@ public final class MainActivityHelperInstrumentedTest {
                 ViewGroup activityContent = activity.findViewById(android.R.id.content);
                 assertEquals(1, activityContent.getChildCount());
                 assertTrue(activityContent.getChildAt(0) instanceof ComposeView);
-                assertNotNull(activity.content);
                 assertHasText(activity, "Kani");
             });
         }
@@ -1056,10 +1055,11 @@ public final class MainActivityHelperInstrumentedTest {
                         "Prompt fallback"
                 );
                 View promptAnswerPanel = StudyComposeTestViews.flashcardAnswerPanelTestView(activity, promptOnly);
-                activity.content.addView(promptAnswerPanel);
+                ViewGroup root = activity.findViewById(android.R.id.content);
+                root.addView(promptAnswerPanel);
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync();
                 assertHasText(activity, "Prompt fallback");
-                activity.content.removeView(promptAnswerPanel);
+                root.removeView(promptAnswerPanel);
                 assertEquals("split", StudyTextCopy.collectionMeaningForSession(session("裂", BridgeScheduler.TASK_KANJI_MEANING, row("裂", "split", "レツ", Collections.emptyList()))));
                 assertEquals(Typeface.SERIF, activity.fontResource(0, Typeface.SERIF));
             });
@@ -1533,7 +1533,7 @@ public final class MainActivityHelperInstrumentedTest {
                 RecordsImportModels.DashboardRow row = row("裂", "split", "レツ", Collections.emptyList());
                 activity.activeSession = session("裂", BridgeScheduler.TASK_TYPE_MEANING, row);
                 LinearLayout area = new LinearLayout(activity);
-                activity.content.addView(area, new LinearLayout.LayoutParams(300, 300));
+                ((ViewGroup) activity.findViewById(android.R.id.content)).addView(area, new LinearLayout.LayoutParams(300, 300));
                 area.layout(0, 0, 300, 300);
                 activity.flashcardGestureArea = area;
                 activity.typingAnswerState = new TypingAnswerState();

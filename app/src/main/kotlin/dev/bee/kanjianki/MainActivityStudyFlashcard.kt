@@ -48,7 +48,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     fun resetFlashcardSession() {
-        activity.prepareStudyContent(activity.activeStudyPlan, true)
         resetFlashcardInteractionState()
     }
 

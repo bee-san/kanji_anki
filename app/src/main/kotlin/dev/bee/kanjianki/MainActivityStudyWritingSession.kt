@@ -139,7 +139,6 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     fun resetWritingSession(session: RecordsSchedulerModels.StudySession) {
-        home.prepareStudyContent(home.activeStudyPlan, false)
         resetWritingInteractionState(session)
     }
 

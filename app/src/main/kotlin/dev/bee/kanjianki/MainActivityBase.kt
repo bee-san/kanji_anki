@@ -9,7 +9,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
@@ -54,9 +53,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var gateway: AnkiDroidGateway = uninitialized()
-
-    @JvmField
-    var content: ViewGroup = uninitialized()
 
     @JvmField
     var contentScrollY = 0
@@ -364,12 +360,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return studyPlanProvider.allCurrentProblemKanjiPlan(rows, items, now)
     }
 
-    fun prepareStudyContent(plan: RecordsSchedulerModels.AdaptiveLoadPlan?, fillViewport: Boolean) {
-        activeStudyPlan = plan
-        content.removeAllViews()
-        content.addView(studyTopBar(plan))
-    }
-
     fun studyTopBar(plan: RecordsSchedulerModels.AdaptiveLoadPlan?): View {
         initializeSessionProgressTarget(plan)
         val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
@@ -392,11 +382,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     fun applyStudyActionBarPadding() {
         studyActionBar?.setPadding(dp(18), dp(10), dp(18), dp(8) + studyActionBarBottomInset)
-    }
-
-    fun addSpace(dp: Int) {
-        val space = SpaceView(this)
-        content.addView(space, LinearLayout.LayoutParams(1, dp(dp)))
     }
 
     fun startOfDay(now: Long): Long {

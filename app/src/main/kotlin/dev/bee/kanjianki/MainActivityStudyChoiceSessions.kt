@@ -132,7 +132,6 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     fun resetChoiceSession(resetTouchTracking: Boolean) {
-        home.prepareStudyContent(home.activeStudyPlan, true)
         resetChoiceSessionState(resetTouchTracking)
     }
 
