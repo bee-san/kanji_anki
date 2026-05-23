@@ -6,7 +6,7 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `ff506966 Add primary route Compose smoke`
+- Latest confirmed pushed commit before this note: `933709ae Cover meaning choice study route smoke`
 - Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -177,7 +177,7 @@ This is the definitive remaining work. The rewrite is done only when every item 
   - `./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac`
   - `./gradlew :app:testDebugUnitTest`
   - `./gradlew ciFast`
-- Manual or emulator smoke coverage must include Home, Settings, Study flashcard, Study writing, Study choice cards, browse/detail, sync/update, and Stats before merging. The current targeted route smokes cover Study flashcard, writing, and similar-kanji choice plus Home, Settings, Browse, Detail, Stats, Games, and Update.
+- Manual or emulator smoke coverage must include Home, Settings, Study flashcard, Study writing, Study choice cards, browse/detail, sync/update, and Stats before merging. The current targeted route smokes cover Study flashcard, writing, similar-kanji choice, meaning-kanji choice, plus Home, Settings, Browse, Detail, Stats, Games, and Update.
 
 ### 10. Final merge criteria
 
