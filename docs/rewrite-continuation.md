@@ -6,7 +6,7 @@ Last updated: 2026-05-23
 
 - Rewrite branch: `codex-android-architecture-20260518`
 - Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
-- Latest confirmed pushed commit before this note: `1fc1545c Rename replay overlay state query`
+- Latest confirmed pushed commit before this note: `4da4e2b9 Add study route smoke test`
 - Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`
 
 If `/tmp` has been wiped, resume from a normal checkout:
@@ -53,19 +53,26 @@ Completed foundations include:
   `SyncRunRepository`, and feature-specific `LocalStore*` classes. Do not claim
   those libraries are migrated unless Gradle dependencies and production code
   are added in a later persistence PR.
+- Manual sync progress now has separate local-save and practice-queue stages.
+  The live emulator smoke reached `Sync complete`; the local save stage is still
+  a relatively long persistence window on the emulator dataset, but it is no
+  longer mislabeled as practice-queue work.
+- Study flashcard and Study writing have targeted production-route emulator
+  smoke coverage in `MainActivityStudyRouteSmokeInstrumentedTest`.
 
 ## Verification Baseline
 
 The most recent focused local gate passed with:
 
 ```bash
-./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac
+./gradlew ciFast
 ```
 
-The latest variant-boundary gate passed with:
+The latest targeted emulator gates passed with:
 
 ```bash
-./gradlew :app:compileDebugKotlin :app:compileDebugAndroidTestJavaWithJavac :app:compileReleaseKotlin
+env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.sync.ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents
+env ANDROID_HOME=/home/bee/Documents/src/github/thaiwrite/.android-sdk ANDROID_SDK_ROOT=/home/bee/Documents/src/github/thaiwrite/.android-sdk ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.bee.kanjianki.MainActivityStudyRouteSmokeInstrumentedTest
 ```
 
 The latest writing-core ABI regression gate passed with:

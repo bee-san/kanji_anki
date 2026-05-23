@@ -7,7 +7,7 @@ item is satisfied.
 ## Current State
 
 - Branch: `codex-android-architecture-20260518`
-- Last verified commit before this refresh: `1fc1545c`
+- Last verified commit before this refresh: `4da4e2b9`
 - `app/src/main` is Kotlin-only.
 - `fsrs-java/src/main` is Kotlin-only.
 - `writing-core/src/main` is Kotlin-only.
@@ -22,6 +22,12 @@ item is satisfied.
 - Production `ForTests` APIs have been removed from app main sources; test
   dependency overrides now go through the debug-only mutable
   `MainActivityRuntimeOverrides`.
+- Latest local verification on 2026-05-23 passed `./gradlew ciFast`.
+- Latest targeted emulator smoke on 2026-05-23 passed
+  `MainActivityStudyRouteSmokeInstrumentedTest`, covering production Study
+  flashcard and writing route rendering.
+- Latest targeted emulator sync progress test on 2026-05-23 passed
+  `ManualSyncEngineInstrumentedTest#manualSyncReceivesOrderedProgressEvents`.
 
 ## Remaining Migration Items
 
@@ -139,6 +145,11 @@ fields, constructor visibility, or nullable behavior.
 - PR checks are green.
 - A final smoke pass covers Home, Settings, Study flashcard, Study writing,
   Browse/Detail, Stats, Games, manual sync, and update/settings navigation.
+- Current smoke evidence: Home, Settings, Browse, Stats, Games, Update, and
+  manual sync were exercised on the emulator; manual sync reached `Sync
+  complete` on the live emulator dataset. Study flashcard and Study writing are
+  covered by the targeted production-route emulator smoke test added in
+  `4da4e2b9`.
 
 ## Paste-Ready `/goal`
 
