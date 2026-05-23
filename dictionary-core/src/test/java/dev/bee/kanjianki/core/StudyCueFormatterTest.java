@@ -119,6 +119,22 @@ public class StudyCueFormatterTest {
                 "Red",
                 StudyCueFormatter.cleanFallbackMeaning("noun na-adjective red", "", 96)
         );
+        assertEquals(
+                "Burden load responsibility",
+                StudyCueFormatter.cleanFallbackMeaning(
+                        "(★,) noun burden load responsibility 彼 は、 両 親 の 負担 になった?",
+                        "",
+                        96
+                )
+        );
+        assertEquals(
+                "Dumbfounded overcome with surprise in blank amazement",
+                StudyCueFormatter.cleanFallbackMeaning(
+                        "Taru to-adverb dumbfounded overcome with surprise in blank amazement",
+                        "",
+                        96
+                )
+        );
     }
 
     @Test
