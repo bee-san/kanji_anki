@@ -9,7 +9,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -60,7 +59,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var content: ViewGroup = uninitialized()
 
     @JvmField
-    var contentScroll: ScrollView? = null
+    var contentScrollY = 0
 
     @JvmField
     var studyActionBar: LinearLayout? = null
@@ -368,7 +367,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     fun prepareStudyContent(plan: RecordsSchedulerModels.AdaptiveLoadPlan?, fillViewport: Boolean) {
         activeStudyPlan = plan
         content.removeAllViews()
-        contentScroll?.isFillViewport = fillViewport
         content.addView(studyTopBar(plan))
     }
 

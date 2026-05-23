@@ -44,9 +44,8 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
     }
 
     fun renderSettings(preserveScroll: Boolean) {
-        val previousScroll = contentScroll
-        val scrollY = if (preserveScroll && previousScroll != null) {
-            previousScroll.scrollY
+        val scrollY = if (preserveScroll) {
+            contentScrollY
         } else {
             0
         }

@@ -78,10 +78,10 @@ public final class MainActivitySettingsInstrumentedTest {
                 assertFalse(activity.settingsStudyExpanded);
                 assertTrue(containsText(settingsRoot, "Frequency range"));
                 assertFalse(containsText(settingsRoot, "Daily workload"));
-                activity.contentScroll.scrollTo(0, 48);
+                activity.contentScrollY = 48;
                 activity.renderSettings(true);
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-                assertEquals(48, activity.contentScroll.getScrollY());
+                assertEquals(48, activity.contentScrollY);
                 settingsRoot = activity.findViewById(android.R.id.content);
 
                 performClickableWithText(settingsRoot, "Study behavior");
