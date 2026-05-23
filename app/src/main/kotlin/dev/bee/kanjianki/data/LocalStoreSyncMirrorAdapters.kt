@@ -12,7 +12,7 @@ internal object LocalStoreSyncMirrorAdapters {
                 sources.add(SyncMirrorPolicy.SelectedSource(source.cardId, source.suspended))
             }
         }
-        return SyncMirrorPolicy.selectedSuspendedCardIds(sources)
+        return SyncMirrorPolicy.selectedSuspendedCardIds(sources) ?: emptySet()
     }
 
     fun activeCardIndex(cards: List<RecordsSyncModels.Card>): LocalStoreBase.ActiveCardIndex {
@@ -21,6 +21,6 @@ internal object LocalStoreSyncMirrorAdapters {
             policyCards.add(SyncMirrorPolicy.Card(card.cardId, card.noteId, card.suspended))
         }
         val index = SyncMirrorPolicy.activeCardIndex(policyCards)
-        return LocalStoreBase.ActiveCardIndex(index.noteIds(), index.cardIds(), index.activeCardCount())
+        return LocalStoreBase.ActiveCardIndex(index.noteIds, index.cardIds, index.activeCardCount)
     }
 }
