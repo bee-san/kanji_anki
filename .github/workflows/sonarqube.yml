@@ -183,10 +183,10 @@ jobs:
             TASKS+=( :core:test :core:jacocoTestReport )
           fi
           if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestJavaWithJavac )
+            TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac )
           fi
           if [ ${#TASKS[@]} -eq 0 ]; then
-            TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport )
+            TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac )
           fi
           ./gradlew \
             :core:jar \
