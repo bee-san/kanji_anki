@@ -1143,12 +1143,12 @@ public final class MainActivityHelperInstrumentedTest {
                 assertNotNull(activity.writingToolActionsView);
                 assertNotNull(activity.writingPrimaryActionsView);
                 assertNotNull(activity.writingFallbackActionsView);
-                assertFalse(activity.writingToolActionsView.currentModelForTests().getUndoEnabled());
-                assertTrue(activity.writingToolActionsView.currentModelForTests().getHintVisible());
-                assertTrue(activity.writingPrimaryActionsView.currentModelForTests().getCheckVisible());
-                assertTrue(activity.writingPrimaryActionsView.currentModelForTests().getCheckEnabled());
-                assertFalse(activity.writingPrimaryActionsView.currentModelForTests().getNextVisible());
-                assertFalse(activity.writingFallbackActionsView.currentModelForTests().getReplayVisible());
+                assertFalse(activity.writingToolActionsView.currentModel().getUndoEnabled());
+                assertTrue(activity.writingToolActionsView.currentModel().getHintVisible());
+                assertTrue(activity.writingPrimaryActionsView.currentModel().getCheckVisible());
+                assertTrue(activity.writingPrimaryActionsView.currentModel().getCheckEnabled());
+                assertFalse(activity.writingPrimaryActionsView.currentModel().getNextVisible());
+                assertFalse(activity.writingFallbackActionsView.currentModel().getReplayVisible());
                 assertTrue(activity.drawingPad.getParent() instanceof MainActivityUiSupport.SquarePadFrame);
                 assertEquals(View.GONE, activity.writingResultStatus.getVisibility());
                 performClickableWithText(activity.findViewById(android.R.id.content), "Erase");
@@ -1398,7 +1398,7 @@ public final class MainActivityHelperInstrumentedTest {
         MainActivityStudyWritingStatus writingStatus = new MainActivityStudyWritingStatus(activity);
         activity.checkingWriting = true;
         activity.updateResultActions();
-        WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModelForTests();
+        WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModel();
         assertEquals("Checking...", primary.getCheckText());
         assertFalse(primary.getCheckEnabled());
         activity.checkingWriting = false;
@@ -1411,22 +1411,22 @@ public final class MainActivityHelperInstrumentedTest {
                 wrong.strokeOrder
         );
         activity.updateResultActions();
-        primary = activity.writingPrimaryActionsView.currentModelForTests();
+        primary = activity.writingPrimaryActionsView.currentModel();
         assertEquals("Try cleaner", primary.getCheckText());
         assertTrue(primary.getCheckEnabled());
 
         activity.writingModelStatusKnown = true;
         activity.writingModelDownloaded = true;
         activity.updateResultActions();
-        primary = activity.writingPrimaryActionsView.currentModelForTests();
+        primary = activity.writingPrimaryActionsView.currentModel();
         assertFalse(primary.getDownloadVisible());
         activity.activeAnalysis = wrong;
         activity.updateResultActions();
-        primary = activity.writingPrimaryActionsView.currentModelForTests();
+        primary = activity.writingPrimaryActionsView.currentModel();
         assertTrue(primary.getNextVisible());
         assertEquals("Fail", primary.getNextText());
 
-        WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModelForTests();
+        WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModel();
         assertTrue(fallback.getManualOverrideVisible());
         assertTrue(fallback.getPracticeWithGuideVisible());
         activity.showModelUnavailable("checker unavailable");
@@ -1909,16 +1909,16 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.WRONG, false, order);
                 activity.updateResultActions();
-                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModelForTests();
-                WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModelForTests();
+                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModel();
+                WritingFallbackActionsModel fallback = activity.writingFallbackActionsView.currentModel();
                 assertEquals("Fail", primary.getNextText());
                 assertTrue(primary.getNextVisible());
                 assertTrue(fallback.getManualOverrideVisible());
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.CLOSE, true, order);
                 activity.updateResultActions();
-                primary = activity.writingPrimaryActionsView.currentModelForTests();
-                fallback = activity.writingFallbackActionsView.currentModelForTests();
+                primary = activity.writingPrimaryActionsView.currentModel();
+                fallback = activity.writingFallbackActionsView.currentModel();
                 assertEquals("Try cleaner", primary.getCheckText());
                 assertEquals("Save hard", primary.getNextText());
                 assertTrue(fallback.getManualOverrideVisible());
@@ -1928,8 +1928,8 @@ public final class MainActivityHelperInstrumentedTest {
 
                 activity.activeAnalysis = analysis(WritingAnalysis.Status.PASS, true, order);
                 activity.updateResultActions();
-                primary = activity.writingPrimaryActionsView.currentModelForTests();
-                fallback = activity.writingFallbackActionsView.currentModelForTests();
+                primary = activity.writingPrimaryActionsView.currentModel();
+                fallback = activity.writingFallbackActionsView.currentModel();
                 assertEquals("Pass", primary.getNextText());
                 assertFalse(fallback.getManualOverrideVisible());
                 primary.getOnNext().run();
@@ -2033,7 +2033,7 @@ public final class MainActivityHelperInstrumentedTest {
                 assertTrue(activity.writingModelStatusKnown);
                 assertFalse(activity.writingModelDownloaded);
                 assertTrue(activity.studyStatus.getText().toString().contains("Download the handwriting checker"));
-                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModelForTests();
+                WritingPrimaryActionsModel primary = activity.writingPrimaryActionsView.currentModel();
                 assertTrue(primary.getDownloadVisible());
                 primary.getOnDownload().run();
             });

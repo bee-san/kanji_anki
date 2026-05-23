@@ -51,7 +51,7 @@ class WritingPrimaryActionsView private constructor(
         }
     }
 
-    fun currentModelForTests(): WritingPrimaryActionsModel = sharedState?.primaryActions ?: model
+    fun currentModel(): WritingPrimaryActionsModel = sharedState?.primaryActions ?: model
 }
 
 @Composable

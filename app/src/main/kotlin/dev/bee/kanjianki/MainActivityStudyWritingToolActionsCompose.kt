@@ -31,7 +31,7 @@ class WritingToolActionsView private constructor(
         }
     }
 
-    fun currentModelForTests(): WritingToolActionsModel = sharedState?.toolActions ?: model
+    fun currentModel(): WritingToolActionsModel = sharedState?.toolActions ?: model
 }
 
 @Composable

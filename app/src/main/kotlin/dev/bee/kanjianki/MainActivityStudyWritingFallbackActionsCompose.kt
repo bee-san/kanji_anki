@@ -31,7 +31,7 @@ class WritingFallbackActionsView private constructor(
         }
     }
 
-    fun currentModelForTests(): WritingFallbackActionsModel = sharedState?.fallbackActions ?: model
+    fun currentModel(): WritingFallbackActionsModel = sharedState?.fallbackActions ?: model
 }
 
 @Composable
