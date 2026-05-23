@@ -15,13 +15,19 @@ import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
+import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.data.LocalStore;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.StringReader;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -102,6 +108,26 @@ public final class MainActivityStudyRouteSmokeInstrumentedTest {
                 assertNotNull(activity.studyStatus);
                 assertFalse(activity.flashcardAnswerRevealed);
             });
+
+            scenario.onActivity(activity -> {
+                seedSimilarChoiceRows(activity);
+                RecordsSchedulerModels.StudySession similarChoice = session(
+                        row,
+                        "choice-smoke",
+                        BridgeScheduler.TASK_SIMILAR_KANJI,
+                        false
+                );
+                activity.activeStudyPlan = plan("裂");
+                activity.activeSession = similarChoice;
+                activity.startActiveStudyTask(activity.sessionTaskKey(similarChoice), "裂", similarChoice.taskType, System.currentTimeMillis());
+                activity.renderSession(similarChoice);
+            });
+
+            assertVisible("Choose the kanji");
+            assertVisible(MainActivityBase.LABEL_SIMILAR_KANJI);
+            assertVisible("Which kanji means split?");
+            assertVisible("裂");
+            assertVisible("列");
         }
     }
 
@@ -162,6 +188,36 @@ public final class MainActivityStudyRouteSmokeInstrumentedTest {
                 0,
                 Collections.emptyList()
         );
+    }
+
+    private static void seedSimilarChoiceRows(MainActivity activity) {
+        List<RecordsImportModels.DashboardRow> rows = Arrays.asList(
+                row("裂", "split", "レツ"),
+                row("列", "row", "レツ")
+        );
+        RecordsSyncModels.CollectionSnapshot snapshot = new RecordsSyncModels.CollectionSnapshot(
+                Arrays.asList(
+                        TestRecords.kikuNote(1L, "裂語", "レツ", "split", "裂を見た。"),
+                        TestRecords.kikuNote(2L, "列語", "レツ", "row", "列を見た。")
+                ),
+                Arrays.asList(
+                        TestRecords.kikuCard(10L, 1L).build(),
+                        TestRecords.kikuCard(20L, 2L).build()
+                )
+        );
+        try {
+            activity.store.saveSuccessfulSync(
+                    snapshot,
+                    Collections.emptyList(),
+                    rows,
+                    RecordsSyncModels.Settings.kikuDefaults(),
+                    new LocalStore.SyncTiming(1000L, 2000L),
+                    null,
+                    SimilarKanjiIndex.parseTsv(new StringReader("裂\t列\tfixture\n"))
+            );
+        } catch (Exception error) {
+            throw new AssertionError(error);
+        }
     }
 
     private static void assertVisible(String text) {
